@@ -1,0 +1,21 @@
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Bun / Node
+node_modules/
+bun.lock
+bun.lockb
+*.log
+npm-debug.log*
+
+# Local notes / scratch
+.scratch/
+tmp/
+
+# Build output (no plugin needs this today, but keep the door open)
+dist/
+build/

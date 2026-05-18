@@ -1,0 +1,65 @@
+{
+  "id": "ma-fetch",
+  "name": "Fetch",
+  "version": "0.1.0",
+  "description": "Fetch web pages with a real JS-rendering headless browser. Backend-pluggable (default: obscura). Tool: Fetch.",
+  "prompt": "./PROMPT.md",
+  "tuis": [
+    {
+      "id": "fetch",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "Fetch",
+          "description": "Fetch a webpage and return its rendered content. Runs the page through a real headless browser (JS executes, dynamic content loads) and returns the result in the requested format. Prefer this over Bash+curl when the page needs JavaScript to render or when you need clean markdown for reading. Returns raw page text in `content`.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The page URL. Must start with http:// or https://. Max 4096 chars."
+              },
+              "format": {
+                "type": "string",
+                "enum": ["markdown", "text", "html", "links", "original"],
+                "default": "markdown",
+                "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text (no markup). 'html' is the rendered HTML. 'links' returns just the page's links. 'original' streams the raw response body verbatim - use for images, JSON, JS, CSS, or any non-HTML resource."
+              },
+              "selector": {
+                "type": "string",
+                "description": "Optional CSS selector. The browser waits for this element before returning. Useful for SPAs where the interesting content arrives after initial load."
+              },
+              "eval": {
+                "type": "string",
+                "description": "Optional JavaScript expression to evaluate in the page context. When set, the eval result is what gets returned instead of the page body. Power-user feature - most callers don't need this."
+              },
+              "wait_until": {
+                "type": "string",
+                "enum": ["load", "domcontentloaded", "networkidle0"],
+                "default": "load",
+                "description": "When to consider navigation complete. 'load' = window load event (default). 'domcontentloaded' = HTML parsed (faster, may miss async content). 'networkidle0' = no network activity for 500ms (slowest, best for SPAs/dynamic pages)."
+              },
+              "timeout_sec": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120,
+                "default": 30,
+                "description": "Navigation timeout in seconds. Bump this for slow or dynamic pages."
+              }
+            },
+            "required": ["url"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/fetch.ts",
+        "export": "default"
+      },
+      "interactive": false,
+      "icon": "󰚲",
+      "color": "brightCyan"
+    }
+  ]
+}
