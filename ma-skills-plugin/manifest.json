@@ -1,0 +1,55 @@
+{
+  "id": "ma-skills",
+  "name": "Skills",
+  "version": "0.1.0",
+  "description": "Agent Skills support: discovers SKILL.md packs from project, home-shared, and user-agent roots and exposes them via progressive disclosure (Level 1 catalog in the system prompt + Skill tool for Level 2/3 on-demand load).",
+  "prompt": "./PROMPT.md",
+  "tuis": [
+    {
+      "id": "skill",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "Skill",
+          "description": "Inspect or activate an Agent Skill (SKILL.md pack). 'list' enumerates everything discovered, 'info' shows one skill's frontmatter, 'read' loads its full SKILL.md body into context. Skills are discovered at session start from <cwd>/.agents/skills/, ~/.agents/skills/, and ~/.minimal-agent/skills/.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": ["list", "info", "read"],
+                "description": "What to do. 'list' returns every discovered skill (with broken + shadowed diagnostics) in JSON. 'info' returns one skill's frontmatter only. 'read' loads the full SKILL.md body, plus a footer listing bundled sibling files (scripts/, references/, …) and any self-enforced allowed-tools."
+              },
+              "name": {
+                "type": "string",
+                "description": "Skill name (must match the SKILL.md frontmatter `name` field). Required for 'info' and 'read'."
+              }
+            },
+            "required": ["action"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/skill.ts",
+        "export": "default"
+      },
+      "interactive": false,
+      "icon": "✦",
+      "color": "violet"
+    }
+  ],
+  "promptFragments": [
+    {
+      "id": "skills-catalog",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/prompt-fragment.ts",
+        "export": "default"
+      },
+      "timeoutMs": 2000,
+      "order": 200
+    }
+  ]
+}
