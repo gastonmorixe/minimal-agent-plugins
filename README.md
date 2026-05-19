@@ -25,8 +25,10 @@ ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/tui-plugins/ma-fetch-plu
 | Directory | Tool(s) | Purpose |
 |-----------|---------|---------|
 | [`ma-fetch-plugin/`](./ma-fetch-plugin) | `Fetch` | Fetch web pages with JS rendering (default backend: [obscura][o]) |
+| [`ma-skills-plugin/`](./ma-skills-plugin) | `Skill` | [Agent Skills][as] support: discovers `SKILL.md` packs from project / home / user roots and exposes them via progressive disclosure |
 
 [o]: https://github.com/h4ckf0r0day/obscura
+[as]: https://agentskills.io
 
 ## Layout convention
 
