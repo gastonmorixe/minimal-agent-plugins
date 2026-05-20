@@ -15,8 +15,21 @@
  *   name: my-skill
  *   description: One-line description ending here.
  *   description: |
- *     Multi-line block-scalar
- *     description.
+ *     Multi-line literal block-scalar
+ *     description (newlines preserved).
+ *   description: |-
+ *     As above, with strip chomping
+ *     (`-`/`+` chomping indicators honoured).
+ *   description: >
+ *     Multi-line folded block-scalar
+ *     (joined with spaces).
+ *   description: >-
+ *     As above, with strip chomping.
+ *   description:
+ *     Implicit folded plain scalar across
+ *     multiple indented lines (joined with
+ *     spaces, like `>`). Widely used by
+ *     third-party skills (e.g. Vercel).
  *   license: Apache-2.0
  *   compatibility: Requires Python 3.14+
  *   metadata:
@@ -194,12 +207,20 @@ interface YamlErr {
  * Parse the constrained YAML subset our frontmatter uses.
  *
  * Grammar (informal):
- *   document   := entry*
- *   entry      := key ':' (inline_value | block_scalar | nested_map)
- *   key        := [A-Za-z0-9_-]+
- *   inline_value := <rest of line, optionally quoted>
- *   block_scalar := '|' newline (indented lines)+
- *   nested_map   := newline (indented entry)+    -- only for `metadata`
+ *   document      := entry*
+ *   entry         := key ':' (inline_value | block_scalar | nested_map | folded_plain)
+ *   key           := [A-Za-z0-9_-]+
+ *   inline_value  := <rest of line, optionally quoted>
+ *   block_scalar  := ('|' | '>') newline (indented lines)+
+ *   nested_map    := newline (indented `key: value`)+        -- e.g. `metadata`
+ *   folded_plain  := newline (indented plain text)+          -- folds to one string
+ *
+ * Disambiguation of the empty-value cases (`key:` with no inline value):
+ *   - The next non-blank line dictates the shape.
+ *   - Zero indentation (or EOF) → empty string.
+ *   - Indented and looks like `subkey: …` → nested map.
+ *   - Indented plain text       → folded plain scalar (YAML 1.2 default;
+ *                                 joined with single spaces, like `>`).
  *
  * Comments (`# ...`) and blank lines are skipped. Quoted strings honor
  * `\"` / `\'` and `\\` escapes; unquoted strings are trimmed.
@@ -245,37 +266,94 @@ export function parseFrontmatterYaml(text: string): YamlOk | YamlErr {
 
     const valuePart = stripInlineComment(rest).trim()
 
-    if (valuePart === "|") {
-      // Block scalar.
+    // Block scalar header: `|` (literal) or `>` (folded), with an
+    // optional chomping indicator (`-` strip, `+` keep) per YAML 1.2.
+    // We honour the style but ignore the chomping subtlety — our
+    // `consumeBlockScalar` already strips trailing empties, which is
+    // close enough for `description:`-style string fields. Indent
+    // indicators (`|2`, `>3`, …) are not supported.
+    const blockHeader = valuePart.match(/^([|>])([-+])?$/)
+    if (blockHeader) {
+      const style = blockHeader[1]
       const block = consumeBlockScalar(lines, i + 1)
-      out[key] = block.value
-      i = block.nextIndex
-      continue
-    }
-
-    if (valuePart === ">") {
-      // Folded block scalar — treat like `|` but join lines with single
-      // space. Spec doesn't require us to support this, but it's a
-      // friendly extension.
-      const block = consumeBlockScalar(lines, i + 1)
-      out[key] = block.value.split("\n").map((s) => s.trim()).filter(Boolean).join(" ")
+      if (style === "|") {
+        // Literal: preserve newlines as-is.
+        out[key] = block.value
+      } else {
+        // Folded: join non-empty lines with single spaces.
+        out[key] = block.value
+          .split("\n")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+          .join(" ")
+      }
       i = block.nextIndex
       continue
     }
 
     if (valuePart === "") {
-      // Either a nested map (only `metadata` is allowed by spec) OR an
-      // empty string. Look ahead.
-      const nested = consumeNestedMap(lines, i + 1)
-      if (nested.entries.size > 0) {
-        const m: Record<string, string> = {}
-        for (const [k, v] of nested.entries) m[k] = v
-        out[key] = m
-        i = nested.nextIndex
+      // An empty inline value can mean three things in YAML, and we must
+      // peek the following content to disambiguate:
+      //   1. EOF / next line at column 0           → empty string
+      //   2. Indented `subkey: value` block        → nested map
+      //   3. Indented plain text                   → folded plain scalar
+      //
+      // Case (3) is the YAML 1.2 default when an indented plain-text
+      // block follows an empty mapping value. It is widely used by
+      // third-party skills to wrap long `description:` strings across
+      // several lines without quotes or block-scalar indicators.
+      let peekIdx = i + 1
+      while (peekIdx < lines.length) {
+        const pl = lines[peekIdx]
+        if (pl.trim().length === 0 || pl.trimStart().startsWith("#")) {
+          peekIdx++
+          continue
+        }
+        break
+      }
+
+      if (peekIdx >= lines.length || !/^\s/.test(lines[peekIdx])) {
+        // Case 1: no indented continuation.
+        out[key] = ""
+        i++
         continue
       }
-      out[key] = ""
-      i++
+
+      // First indented non-blank line — decide between map and folded
+      // scalar based on whether it looks like a `subkey:` entry. Real
+      // YAML uses richer context here (presence of a colon at the
+      // appropriate position), but our keys-as-identifiers grammar
+      // makes the simple regex check unambiguous for spec-conformant
+      // skills. Authors who need a literal `Word:` at the start of a
+      // plain scalar should quote the value.
+      const peekTrim = lines[peekIdx].trimStart()
+      const looksLikeMapEntry = /^[A-Za-z][A-Za-z0-9_-]*\s*:/.test(peekTrim)
+
+      if (looksLikeMapEntry) {
+        const nested = consumeNestedMap(lines, i + 1)
+        if (nested.entries.size > 0) {
+          const m: Record<string, string> = {}
+          for (const [k, v] of nested.entries) m[k] = v
+          out[key] = m
+          i = nested.nextIndex
+          continue
+        }
+        // Defensive fall-through: the lookahead said "map-like" but
+        // consumeNestedMap returned nothing (e.g. mixed
+        // indentation). Treat as folded scalar so we don't lose the
+        // content with a confusing "unexpected indentation" error.
+      }
+
+      // Case 3: indented plain scalar. Reuse the block-scalar consumer
+      // and apply `>`-style folding (trim each line, drop empties,
+      // join with single spaces).
+      const block = consumeBlockScalar(lines, i + 1)
+      out[key] = block.value
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .join(" ")
+      i = block.nextIndex
       continue
     }
 

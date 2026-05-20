@@ -185,6 +185,49 @@ describe("parseFrontmatterYaml — block scalars", () => {
     expect(r.value.description).toBe("x")
     expect(r.value.name).toBe("y")
   })
+
+  test("literal block scalar with strip chomping (|-)", () => {
+    // YAML 1.2: `|-` strips trailing newlines. We already drop trailing
+    // empties, so the practical result is identical to bare `|` here.
+    const text = `description: |-\n  Line one.\n  Line two.\nname: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe("Line one.\nLine two.")
+    expect(r.value.name).toBe("x")
+  })
+
+  test("literal block scalar with keep chomping (|+)", () => {
+    const text = `description: |+\n  Hi.\nname: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe("Hi.")
+    expect(r.value.name).toBe("x")
+  })
+
+  test("folded block scalar with strip chomping (>-)", () => {
+    const text =
+      `description: >-\n` +
+      `  Read source code instead of\n` +
+      `  relying on training data.\n` +
+      `name: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe(
+      "Read source code instead of relying on training data.",
+    )
+    expect(r.value.name).toBe("x")
+  })
+
+  test("folded block scalar with keep chomping (>+)", () => {
+    const text = `description: >+\n  one two\n  three four\nname: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe("one two three four")
+  })
 })
 
 describe("parseFrontmatterYaml — nested map (metadata)", () => {
@@ -212,6 +255,88 @@ describe("parseFrontmatterYaml — nested map (metadata)", () => {
     if (!r.ok) return
     expect(r.value.metadata).toBe("")
     expect(r.value.name).toBe("x")
+  })
+})
+
+// ===========================================================================
+// parseFrontmatterYaml — implicit folded plain scalar (YAML 1.2 default
+// when an empty `key:` is followed by an indented plain-text block).
+// This is the form third-party skills (e.g. Vercel) use to wrap long
+// `description:` values across multiple lines without `|` or `>`.
+// ===========================================================================
+
+describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
+  test("indented continuation after empty key: folds to single line", () => {
+    const text =
+      `description:\n` +
+      `  Line one continuing\n` +
+      `  on the second line.\n` +
+      `name: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe("Line one continuing on the second line.")
+    expect(r.value.name).toBe("x")
+  })
+
+  test("Vercel-style multi-line description parses cleanly", () => {
+    // Exact shape used by vercel-react-native-skills SKILL.md.
+    const text =
+      `name: vercel-react-native-skills\n` +
+      `description:\n` +
+      `  React Native and Expo best practices for building performant mobile apps. Use\n` +
+      `  when building React Native components, optimizing list performance,\n` +
+      `  implementing animations, or working with native modules. Triggers on tasks\n` +
+      `  involving React Native, Expo, mobile performance, or native platform APIs.\n` +
+      `license: MIT\n` +
+      `metadata:\n` +
+      `  author: vercel\n` +
+      `  version: '1.0.0'\n`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.name).toBe("vercel-react-native-skills")
+    expect(r.value.description).toBe(
+      "React Native and Expo best practices for building performant mobile apps. Use " +
+        "when building React Native components, optimizing list performance, " +
+        "implementing animations, or working with native modules. Triggers on tasks " +
+        "involving React Native, Expo, mobile performance, or native platform APIs.",
+    )
+    expect(r.value.license).toBe("MIT")
+    expect(r.value.metadata).toEqual({ author: "vercel", version: "1.0.0" })
+  })
+
+  test("blank line between key and continuation tolerated", () => {
+    const text = `description:\n\n  text after blank\n  line\nname: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe("text after blank line")
+  })
+
+  test("de-dents back to top-level key correctly", () => {
+    const text =
+      `description:\n` +
+      `  first line\n` +
+      `  second line\n` +
+      `license: MIT\n` +
+      `name: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.description).toBe("first line second line")
+    expect(r.value.license).toBe("MIT")
+    expect(r.value.name).toBe("x")
+  })
+
+  test("ambiguous map-like first line still parses as nested map", () => {
+    // Backwards-compatible: an indented `key: value` first line is
+    // treated as a nested map (current behaviour for `metadata:`).
+    const text = `metadata:\n  author: alice\n  topic: testing\nname: x`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.metadata).toEqual({ author: "alice", topic: "testing" })
   })
 })
 
