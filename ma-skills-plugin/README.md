@@ -47,7 +47,7 @@ automatically. The startup tree's `tools` row will include
 | 4 | `~/.minimal-agent/skills/` | user, agent-specific |
 | 5 | extras from config | lowest |
 
-Collisions resolved by skill `name`; closer-to-user wins. Lower-precedence
+Collisions resolved by skill `name`. Closer-to-user wins. Lower-precedence
 collisions are listed under "Shadowed" in the catalog (and `Skill list`).
 
 ## Progressive disclosure
@@ -93,7 +93,7 @@ User config at `~/.minimal-agent/config.jsonc` under `plugins["ma-skills"]`:
 ```
 
 All keys are optional with the defaults shown. To disable the plugin
-entirely, set `enabled` to `false` (or omit the symlink — the loader
+entirely, set `enabled` to `false` (or omit the symlink, since the loader
 only picks up what's there).
 
 ## Example skill
@@ -149,7 +149,7 @@ warning applies:
 > untrusted or unknown source, exercise extreme caution and thoroughly
 > audit it before use.
 
-The plugin does not sandbox script execution — `scripts/extract.py`
+The plugin does not sandbox script execution. `scripts/extract.py`
 runs with the agent's full privileges via `Bash`. Audit third-party
 skills before installing them.
 
