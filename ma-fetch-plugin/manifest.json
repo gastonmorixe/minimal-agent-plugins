@@ -3,7 +3,6 @@
   "name": "Fetch",
   "version": "0.1.0",
   "description": "Fetch web pages with a real JS-rendering headless browser. Backend-pluggable (default: obscura). Tool: Fetch.",
-  "prompt": "./PROMPT.md",
   "tuis": [
     {
       "id": "fetch",

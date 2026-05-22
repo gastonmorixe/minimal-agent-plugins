@@ -3,7 +3,6 @@
   "name": "Skills",
   "version": "0.1.0",
   "description": "Agent Skills support: discovers SKILL.md packs from project, home-shared, and user-agent roots and exposes them via progressive disclosure (Level 1 catalog in the system prompt + Skill tool for Level 2/3 on-demand load).",
-  "prompt": "./PROMPT.md",
   "tuis": [
     {
       "id": "skill",
