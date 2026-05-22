@@ -1,0 +1,19 @@
+{
+  "id": "ma-agent-writing-style",
+  "name": "Agent Writing Style",
+  "version": "0.1.0",
+  "description": "Opinionated agent writing style. Injects a prose discipline into the system prompt so the model writes like a knowledgeable human, not AI slop. Hard bans on em-dashes and semicolons. Kills the AI vocabulary (delve, tapestry, leverage, pivotal, etc.), copula avoidance (serves as, stands as), 'not just X but Y' parallelisms, superficial -ing tails, sycophancy, signposting, significance inflation, vague attribution, emoji-as-formatting, and mechanical boldface. User-overridable per request.",
+  "prompt": "./PROMPT.md",
+  "promptFragments": [
+    {
+      "id": "noop",
+      "handler": {
+        "type": "module",
+        "path": "./lib/prompt-fragment.ts",
+        "export": "default"
+      },
+      "timeoutMs": 500,
+      "order": 100
+    }
+  ]
+}
