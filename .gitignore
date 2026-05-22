@@ -16,6 +16,11 @@ npm-debug.log*
 .scratch/
 tmp/
 
+# Debugger / agent scratch dirs (e.g. .net-dbg, .claude-dbg, .agent-dbg)
+.*-dbg/
+.*-debug/
+.*.dbg/
+
 # Build output (no plugin needs this today, but keep the door open)
 dist/
 build/
