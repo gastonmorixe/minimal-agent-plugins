@@ -7,6 +7,7 @@ import handler, {
   buildDisplayFooter,
   formatBytes,
   mergeInputs,
+  normalizeMarkdown,
   runWithDeps,
   validateInput,
 } from "./fetch.ts"
@@ -330,7 +331,11 @@ describe("runWithDeps - happy path", () => {
     )
     expectToolResult(r)
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toBe("line1\nline2\nline3\n")
+    // `normalizeMarkdown` strips the trailing newline as part of its
+    // "trim trailing blank lines" rule. The pre-normalize stdout was
+    // "line1\nline2\nline3\n"; the post-normalize content is the
+    // same three lines without the trailing empty line.
+    expect(r.content).toBe("line1\nline2\nline3")
     expect(r.displayHeader).toBe("https://example.com")
     expect(r.display).toContain("line1")
     expect(r.displayFooter).toContain("markdown")
@@ -447,5 +452,132 @@ describe("handler default export - input validation", () => {
     expectToolResult(r)
     expect(r.is_error).toBe(true)
     expect(r.content).toContain("wrong trigger")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// normalizeMarkdown (whitespace noise stopgap for HTML→markdown converters)
+// ---------------------------------------------------------------------------
+
+describe("normalizeMarkdown - shape", () => {
+  test("empty string is preserved", () => {
+    expect(normalizeMarkdown("")).toBe("")
+  })
+
+  test("single line with no trailing newline is unchanged", () => {
+    expect(normalizeMarkdown("hello world")).toBe("hello world")
+  })
+
+  test("rstrips trailing spaces and tabs per line", () => {
+    const input = "foo   \nbar\t\t\nbaz"
+    expect(normalizeMarkdown(input)).toBe("foo\nbar\nbaz")
+  })
+
+  test("collapses runs of 2+ blank lines into a single blank", () => {
+    const input = "a\n\n\n\n\nb"
+    expect(normalizeMarkdown(input)).toBe("a\n\nb")
+  })
+
+  test("collapses runs of whitespace-only lines (after rstrip)", () => {
+    // Tabs/spaces on each line become empty after rstrip; the run
+    // then collapses to a single blank.
+    const input = "a\n\t\n  \n\t\t\nb"
+    expect(normalizeMarkdown(input)).toBe("a\n\nb")
+  })
+
+  test("strips leading blank lines", () => {
+    expect(normalizeMarkdown("\n\n\nhello")).toBe("hello")
+  })
+
+  test("strips trailing blank lines", () => {
+    expect(normalizeMarkdown("hello\n\n\n")).toBe("hello")
+  })
+
+  test("is idempotent", () => {
+    const noisy = "  \n\n\nfoo\n\n\n  \nbar  \n\n"
+    const once = normalizeMarkdown(noisy)
+    const twice = normalizeMarkdown(once)
+    expect(twice).toBe(once)
+  })
+
+  test("preserves single blank lines between paragraphs", () => {
+    const input = "para 1\n\npara 2\n\npara 3"
+    expect(normalizeMarkdown(input)).toBe("para 1\n\npara 2\n\npara 3")
+  })
+})
+
+describe("normalizeMarkdown - wikipedia-style fixture", () => {
+  // Synthesized from the real Wikipedia output captured during the
+  // design research (private/research/raw-tool-output/05-wikipedia-markdown.raw):
+  // long run of blank + tab-indented blank lines around real content.
+  const fixture =
+    "[Jump to content](#bodyContent)\n" +
+    "\n\t\n\n\t\t\n\n\t\t\t\n\n\t\t\t\t\n\n\t\n\t\n\n" +
+    "Main menu\n" +
+    "\t\n\t\n\n\t\t\t\t\n\n\t\t\n\n\t\n\n\t\n" +
+    "Main menu"
+
+  test("reduces line count by an order of magnitude", () => {
+    const before = fixture.split("\n").length
+    const after = normalizeMarkdown(fixture).split("\n").length
+    expect(before).toBeGreaterThan(20)
+    expect(after).toBeLessThanOrEqual(7) // 3 content lines + at most 4 separators
+  })
+
+  test("preserves all non-blank content verbatim", () => {
+    const normed = normalizeMarkdown(fixture)
+    expect(normed).toContain("[Jump to content](#bodyContent)")
+    // "Main menu" appears twice in the source: both occurrences
+    // must survive (we only collapse blanks, never content lines).
+    expect(normed.match(/Main menu/g)?.length).toBe(2)
+  })
+})
+
+describe("runWithDeps - normalizer is format-gated", () => {
+  const noisyStdout = "line1\n\n\n\n\nline2\n\n\n\nline3\n\n\n"
+
+  async function runWithFormat(
+    format: "markdown" | "text" | "html" | "links" | "original",
+  ) {
+    const spawnFn: SpawnFn = () => fakeProc({ stdout: noisyStdout, exitCode: 0 })
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      {
+        url: "https://example.com",
+        format,
+        waitUntil: "load",
+        timeoutSec: 30,
+      },
+      { spawnFn, existsFn: () => true },
+    )
+    expectToolResult(r)
+    return r
+  }
+
+  test("markdown: blank runs collapsed", async () => {
+    const r = await runWithFormat("markdown")
+    expect(r.content).toBe("line1\n\nline2\n\nline3")
+  })
+
+  test("text: blank runs collapsed (same as markdown)", async () => {
+    const r = await runWithFormat("text")
+    expect(r.content).toBe("line1\n\nline2\n\nline3")
+  })
+
+  test("html: passthrough (newlines are syntactically meaningful inside <pre>)", async () => {
+    const r = await runWithFormat("html")
+    expect(r.content).toBe(noisyStdout)
+  })
+
+  test("links: passthrough", async () => {
+    const r = await runWithFormat("links")
+    expect(r.content).toBe(noisyStdout)
+  })
+
+  test("original: passthrough (raw byte stream from backend)", async () => {
+    const r = await runWithFormat("original")
+    expect(r.content).toBe(noisyStdout)
   })
 })
