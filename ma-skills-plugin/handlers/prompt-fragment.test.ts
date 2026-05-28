@@ -9,7 +9,9 @@
  */
 
 import { describe, expect, test } from "bun:test"
+
 import type { DiscoveryResult, Skill } from "../lib/types.ts"
+
 import { renderBrokenRow, renderFragment, renderTable, shortenPath } from "./prompt-fragment.ts"
 
 const CWD = "/work/proj"
@@ -146,7 +148,12 @@ describe("renderFragment — populated", () => {
     const r = renderFragment(
       {
         skills: [
-          skill({ name: "proj", description: "x", scope: "project", dir: `${CWD}/.agents/skills/proj` }),
+          skill({
+            name: "proj",
+            description: "x",
+            scope: "project",
+            dir: `${CWD}/.agents/skills/proj`,
+          }),
           skill({ name: "usr", description: "y", scope: "userAgent" }),
         ],
         broken: [],

@@ -8,10 +8,12 @@
  * @module lib/discovery.test
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import { defaultConfig, type SkillsConfig } from "./config.ts"
 import {
   dirIdOf,
@@ -101,10 +103,7 @@ describe("resolveRoots", () => {
 
 describe("walkRoot", () => {
   test("missing root → empty result, no error", () => {
-    const r = walkRoot(
-      { scope: "project", path: join(TMP, "nope") },
-      { allowReservedNames: false },
-    )
+    const r = walkRoot({ scope: "project", path: join(TMP, "nope") }, { allowReservedNames: false })
     expect(r.ok).toEqual([])
     expect(r.broken).toEqual([])
   })
@@ -270,11 +269,7 @@ describe("discoverSkills — precedence + dedup", () => {
     const userAgentRoot = join(home, ".minimal-agent", "skills")
     makeSkill(userAgentRoot, "alpha", `name: alpha\ndescription: user-alpha`)
 
-    const r = discoverSkills(
-      { ...defaultConfig(), extraRoots: [extraRoot] },
-      cwd,
-      home,
-    )
+    const r = discoverSkills({ ...defaultConfig(), extraRoots: [extraRoot] }, cwd, home)
     expect(r.skills.map((s) => s.front.name).sort()).toEqual(["alpha", "ext"])
     // alpha should resolve to user-agent (higher precedence), not extra.
     expect(findSkill(r, "alpha")!.scope).toBe("userAgent")

@@ -1,0 +1,73 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "import", "jsdoc"],
+  "jsPlugins": [
+    {
+      "name": "jsdoc-js",
+      "specifier": "eslint-plugin-jsdoc"
+    }
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "warn"
+  },
+  "settings": {
+    "jsdoc": {
+      "ignorePrivate": true,
+      "ignoreInternal": true
+    }
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/await-thenable": "off",
+    "typescript/no-base-to-string": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/no-unnecessary-boolean-literal-compare": "off",
+    "typescript/restrict-template-expressions": "off",
+    "typescript/require-array-sort-compare": "off",
+    "typescript/consistent-return": "off",
+    "typescript/unbound-method": "off",
+    "no-await-in-loop": "off",
+    "no-control-regex": "off",
+    "no-shadow": "off",
+    "no-underscore-dangle": "off",
+    "no-unmodified-loop-condition": "off",
+    "jsdoc/check-tag-names": "error",
+    "jsdoc-js/require-jsdoc": "off",
+    "jsdoc-js/require-description": "off",
+    "jsdoc-js/require-param": "off",
+    "jsdoc-js/require-param-description": "off",
+    "jsdoc-js/require-returns": "off",
+    "jsdoc-js/require-returns-description": "off",
+    "jsdoc-js/check-param-names": "off",
+    "jsdoc-js/check-tag-names": "error",
+    "max-lines": ["warn", { "max": 800, "skipBlankLines": true, "skipComments": true }]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "jsdoc-js/require-jsdoc": "off",
+        "jsdoc-js/require-description": "off",
+        "jsdoc-js/check-param-names": "off",
+        "jsdoc-js/check-tag-names": "off",
+        "jsdoc/check-tag-names": "off",
+        "require-yield": "off",
+        "max-lines": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.net-dbg/**",
+    "**/docs/**",
+    "**/dist/**",
+    "**/build/**"
+  ]
+}

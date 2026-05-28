@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test"
+
 import {
   buildBackendEnv,
   callBackend,
+  DEFAULT_WATCHDOG_SLACK_SEC,
+  defaultParentExitHook,
+  killBackend,
   resolveBackendPath,
-  type SpawnFn,
   type SpawnedProcess,
+  type SpawnFn,
 } from "./backend.ts"
 import { defaultConfig, type FetchConfig } from "./config.ts"
 
@@ -162,6 +166,53 @@ describe("buildBackendEnv - config-applied fields", () => {
     expect(env).not.toHaveProperty("MA_FETCH_USER_AGENT")
     expect(env).not.toHaveProperty("MA_FETCH_PROXY")
     expect(env).not.toHaveProperty("MA_FETCH_BIN")
+    expect(env).not.toHaveProperty("MA_FETCH_EXTENSIONS")
+  })
+
+  test("MA_FETCH_EXTENSIONS comes from config.backends[backend].extensions, joined by \\n", () => {
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      backends: {
+        obscura: {
+          extensions: ["/path/bpc.xpi", "/path/ublock.crx"],
+        },
+      },
+    }
+    const env = buildBackendEnv(
+      cfg,
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      {},
+    )
+    expect(env.MA_FETCH_EXTENSIONS).toBe("/path/bpc.xpi\n/path/ublock.crx")
+  })
+
+  test("MA_FETCH_EXTENSIONS absent when extensions is empty array", () => {
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      backends: { obscura: { extensions: [] } },
+    }
+    const env = buildBackendEnv(
+      cfg,
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      {},
+    )
+    expect(env).not.toHaveProperty("MA_FETCH_EXTENSIONS")
+  })
+
+  test("MA_FETCH_EXTENSIONS only forwarded for the active backend", () => {
+    // extensions set on `playwright` but active backend is `obscura` →
+    // not forwarded. Keeps backends isolated.
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      backend: "obscura",
+      backends: { playwright: { extensions: ["/path/foo.xpi"] } },
+    }
+    const env = buildBackendEnv(
+      cfg,
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      {},
+    )
+    expect(env).not.toHaveProperty("MA_FETCH_EXTENSIONS")
   })
 })
 
@@ -221,9 +272,7 @@ function fakeProc(opts: {
     })
   const exited =
     opts.exitDelayMs && opts.exitDelayMs > 0
-      ? new Promise<number>((res) =>
-          setTimeout(() => res(opts.exitCode ?? 0), opts.exitDelayMs),
-        )
+      ? new Promise<number>((res) => setTimeout(() => res(opts.exitCode ?? 0), opts.exitDelayMs))
       : Promise.resolve(opts.exitCode ?? 0)
   return {
     stdout: mkStream(opts.stdout ?? ""),
@@ -357,5 +406,266 @@ describe("callBackend - abort", () => {
     )
     expect(killed).toBe(true)
     expect(result.aborted).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// callBackend - detached spawn (process-group isolation)
+// ---------------------------------------------------------------------------
+
+describe("callBackend - detached spawn option", () => {
+  test("backend is spawned with detached:true (own pgrp leader)", async () => {
+    let receivedOptions: Parameters<SpawnFn>[1] | undefined
+    const spawnFn: SpawnFn = (_argv, options) => {
+      receivedOptions = options
+      return fakeProc({ exitCode: 0 })
+    }
+    await callBackend(
+      "/plugin",
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      new AbortController().signal,
+      { spawnFn, existsFn: () => true, parentExitHook: () => () => {} },
+    )
+    expect(receivedOptions?.detached).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// killBackend helper
+// ---------------------------------------------------------------------------
+
+describe("killBackend", () => {
+  test("falls back to proc.kill when pid is missing", () => {
+    let killedWith: NodeJS.Signals | number | undefined
+    const proc: SpawnedProcess = {
+      stdout: null,
+      stderr: null,
+      exited: Promise.resolve(0),
+      kill: (sig) => {
+        killedWith = sig
+        return true
+      },
+    }
+    killBackend(proc, "SIGTERM")
+    expect(killedWith).toBe("SIGTERM")
+  })
+
+  test("swallows proc.kill errors silently", () => {
+    const proc: SpawnedProcess = {
+      stdout: null,
+      stderr: null,
+      exited: Promise.resolve(0),
+      kill: () => {
+        throw new Error("ESRCH")
+      },
+    }
+    // Should not throw - the postmortem-recovery story is that we always
+    // get to the finally block in callBackend so we can clean up listeners.
+    expect(() => killBackend(proc, "SIGTERM")).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// callBackend - outer wall-clock watchdog
+// ---------------------------------------------------------------------------
+
+describe("callBackend - outer watchdog", () => {
+  test("watchdog fires at (timeoutSec + slack) * 1000 ms and SIGTERMs backend", async () => {
+    const timersScheduled: Array<{ ms: number; cb: () => void }> = []
+    let nextHandle = 1
+    const setTimeoutFn = ((cb: () => void, ms: number) => {
+      timersScheduled.push({ ms, cb })
+      return nextHandle++ as unknown as ReturnType<typeof setTimeout>
+    }) as typeof setTimeout
+    const clearTimeoutFn = (() => {}) as typeof clearTimeout
+
+    let killed = false
+    let killSignal: NodeJS.Signals | number | undefined
+    const spawnFn: SpawnFn = () => ({
+      ...fakeProc({ exitCode: 143, exitDelayMs: 30 }),
+      kill: (sig) => {
+        killed = true
+        killSignal = sig
+        return true
+      },
+    })
+
+    const promise = callBackend(
+      "/plugin",
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      new AbortController().signal,
+      {
+        spawnFn,
+        existsFn: () => true,
+        parentExitHook: () => () => {},
+        setTimeoutFn,
+        clearTimeoutFn,
+        watchdogSlackSec: 5,
+      },
+    )
+
+    // The outer-watchdog timer is the FIRST one scheduled (before any
+    // escalation timer, which only arms on abort).
+    const watchdog = timersScheduled[0]
+    expect(watchdog).toBeDefined()
+    expect(watchdog.ms).toBe(35_000) // (30 + 5) * 1000
+
+    // Manually trigger it - mimics the wall clock elapsing.
+    watchdog.cb()
+    const result = await promise
+
+    expect(killed).toBe(true)
+    expect(killSignal).toBe("SIGTERM")
+    expect(result.aborted).toBe(true)
+    expect(result.stderr).toContain("outer watchdog fired at 35s")
+  })
+
+  test("watchdog uses DEFAULT_WATCHDOG_SLACK_SEC when not overridden", async () => {
+    const timersScheduled: Array<{ ms: number }> = []
+    const setTimeoutFn = ((_cb: () => void, ms: number) => {
+      timersScheduled.push({ ms })
+      return 1 as unknown as ReturnType<typeof setTimeout>
+    }) as typeof setTimeout
+    const spawnFn: SpawnFn = () => fakeProc({ exitCode: 0 })
+
+    await callBackend(
+      "/plugin",
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      new AbortController().signal,
+      {
+        spawnFn,
+        existsFn: () => true,
+        parentExitHook: () => () => {},
+        setTimeoutFn,
+        clearTimeoutFn: () => {},
+      },
+    )
+
+    expect(timersScheduled[0].ms).toBe((30 + DEFAULT_WATCHDOG_SLACK_SEC) * 1000)
+  })
+
+  test("watchdog does NOT fire on a fast-exiting backend", async () => {
+    let cleared = false
+    const setTimeoutFn = ((_cb: () => void, _ms: number) => {
+      return 42 as unknown as ReturnType<typeof setTimeout>
+    }) as typeof setTimeout
+    const clearTimeoutFn = ((handle: ReturnType<typeof setTimeout>) => {
+      if ((handle as unknown as number) === 42) cleared = true
+    }) as typeof clearTimeout
+
+    const result = await callBackend(
+      "/plugin",
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      new AbortController().signal,
+      {
+        spawnFn: () => fakeProc({ exitCode: 0, stdout: "ok" }),
+        existsFn: () => true,
+        parentExitHook: () => () => {},
+        setTimeoutFn,
+        clearTimeoutFn,
+      },
+    )
+
+    expect(cleared).toBe(true) // watchdog cleanly cancelled in the finally
+    expect(result.ok).toBe(true)
+    expect(result.aborted).toBeUndefined()
+    expect(result.stderr).not.toContain("outer watchdog")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// callBackend - parent-exit hook
+// ---------------------------------------------------------------------------
+
+describe("callBackend - parent-exit hook", () => {
+  test("registers a hook and unsubscribes in the finally", async () => {
+    let registered = false
+    let unsubscribed = false
+    const parentExitHook = (_cb: () => void) => {
+      registered = true
+      return () => {
+        unsubscribed = true
+      }
+    }
+
+    await callBackend(
+      "/plugin",
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      new AbortController().signal,
+      {
+        spawnFn: () => fakeProc({ exitCode: 0 }),
+        existsFn: () => true,
+        parentExitHook,
+      },
+    )
+
+    expect(registered).toBe(true)
+    expect(unsubscribed).toBe(true)
+  })
+
+  test("parent-exit hook SIGKILLs the backend (single-pid fallback)", async () => {
+    let onExit: (() => void) | undefined
+    const parentExitHook = (cb: () => void) => {
+      onExit = cb
+      return () => {}
+    }
+
+    let killSignal: NodeJS.Signals | number | undefined
+    const spawnFn: SpawnFn = () => ({
+      ...fakeProc({ exitCode: 0, exitDelayMs: 20 }),
+      kill: (sig) => {
+        killSignal = sig
+        return true
+      },
+    })
+
+    const promise = callBackend(
+      "/plugin",
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      new AbortController().signal,
+      { spawnFn, existsFn: () => true, parentExitHook },
+    )
+
+    // Simulate the parent shutting down while the backend is in-flight.
+    queueMicrotask(() => onExit?.())
+    await promise
+
+    expect(killSignal).toBe("SIGKILL")
+  })
+
+  test("parent-exit hook errors are swallowed (default hook)", () => {
+    // Smoke: defaultParentExitHook returns an unsubscribe that doesn't throw
+    // even if the hook closure throws.
+    const unsub = defaultParentExitHook(() => {
+      throw new Error("boom")
+    })
+    expect(() => unsub()).not.toThrow()
+  })
+
+  test("default hook subscribes to exit + SIGINT + SIGTERM + SIGHUP", () => {
+    // We can't easily emit real signals in a test, but we can confirm that
+    // the listener count delta is 4 (one per event) and reverts on unsubscribe.
+    const before = {
+      exit: process.listenerCount("exit"),
+      sigint: process.listenerCount("SIGINT"),
+      sigterm: process.listenerCount("SIGTERM"),
+      sighup: process.listenerCount("SIGHUP"),
+    }
+    const unsub = defaultParentExitHook(() => {})
+    expect(process.listenerCount("exit")).toBe(before.exit + 1)
+    expect(process.listenerCount("SIGINT")).toBe(before.sigint + 1)
+    expect(process.listenerCount("SIGTERM")).toBe(before.sigterm + 1)
+    expect(process.listenerCount("SIGHUP")).toBe(before.sighup + 1)
+    unsub()
+    expect(process.listenerCount("exit")).toBe(before.exit)
+    expect(process.listenerCount("SIGINT")).toBe(before.sigint)
+    expect(process.listenerCount("SIGTERM")).toBe(before.sigterm)
+    expect(process.listenerCount("SIGHUP")).toBe(before.sighup)
   })
 })

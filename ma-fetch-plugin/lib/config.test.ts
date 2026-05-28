@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { defaultConfig, parseFetchConfig } from "./config.ts"
 
 describe("defaultConfig", () => {
@@ -9,8 +10,9 @@ describe("defaultConfig", () => {
     expect(c.userAgent).toBeNull()
     expect(c.proxy).toBeNull()
     expect(c.defaults.format).toBe("markdown")
-    expect(c.defaults.waitUntil).toBe("load")
+    expect(c.defaults.waitUntil).toBe("domcontentloaded")
     expect(c.defaults.timeoutSec).toBe(30)
+    expect(c.defaults.cleanup).toBe("basic")
   })
 
   test("defaults.backends is empty (no per-backend overrides by default)", () => {
@@ -35,15 +37,11 @@ describe("parseFetchConfig - falls back to defaults on bad input", () => {
 
   test("missing plugins['ma-fetch'] block", () => {
     expect(parseFetchConfig({ plugins: {} })).toEqual(defaultConfig())
-    expect(parseFetchConfig({ plugins: { "other-plugin": {} } })).toEqual(
-      defaultConfig(),
-    )
+    expect(parseFetchConfig({ plugins: { "other-plugin": {} } })).toEqual(defaultConfig())
   })
 
   test("plugins['ma-fetch'] not an object", () => {
-    expect(parseFetchConfig({ plugins: { "ma-fetch": "yes" } })).toEqual(
-      defaultConfig(),
-    )
+    expect(parseFetchConfig({ plugins: { "ma-fetch": "yes" } })).toEqual(defaultConfig())
   })
 })
 
@@ -125,7 +123,7 @@ describe("parseFetchConfig - defaults block", () => {
     const c = parseFetchConfig({
       plugins: { "ma-fetch": { defaults: { waitUntil: "ready" } } },
     })
-    expect(c.defaults.waitUntil).toBe("load")
+    expect(c.defaults.waitUntil).toBe("domcontentloaded")
   })
 
   test("timeoutSec integer override", () => {
@@ -156,8 +154,30 @@ describe("parseFetchConfig - defaults block", () => {
       plugins: { "ma-fetch": { defaults: { format: "links" } } },
     })
     expect(c.defaults.format).toBe("links")
-    expect(c.defaults.waitUntil).toBe("load")
+    expect(c.defaults.waitUntil).toBe("domcontentloaded")
     expect(c.defaults.timeoutSec).toBe(30)
+    expect(c.defaults.cleanup).toBe("basic")
+  })
+
+  test("cleanup default override (aggressive)", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { cleanup: "aggressive" } } },
+    })
+    expect(c.defaults.cleanup).toBe("aggressive")
+  })
+
+  test("cleanup default override (off)", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { cleanup: "off" } } },
+    })
+    expect(c.defaults.cleanup).toBe("off")
+  })
+
+  test("invalid cleanup keeps the default", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { cleanup: "extreme" } } },
+    })
+    expect(c.defaults.cleanup).toBe("basic")
   })
 })
 
@@ -206,5 +226,54 @@ describe("parseFetchConfig - per-backend blocks", () => {
     })
     expect(c.backends).not.toHaveProperty("defaults")
     expect(c.backends.obscura?.bin).toBe("/path/obscura")
+  })
+
+  test("obscura.extensions extracted as string array", () => {
+    const c = parseFetchConfig({
+      plugins: {
+        "ma-fetch": {
+          obscura: {
+            bin: "/path/obscura",
+            extensions: ["/path/to/bpc.xpi", "/path/to/ublock.crx"],
+          },
+        },
+      },
+    })
+    expect(c.backends.obscura?.extensions).toEqual(["/path/to/bpc.xpi", "/path/to/ublock.crx"])
+  })
+
+  test("extensions: empty / whitespace / non-string entries are dropped", () => {
+    const c = parseFetchConfig({
+      plugins: {
+        "ma-fetch": {
+          obscura: {
+            extensions: ["/path/ok.xpi", "", "   ", 42, null, "/path/ok2.xpi"],
+          },
+        },
+      },
+    })
+    expect(c.backends.obscura?.extensions).toEqual(["/path/ok.xpi", "/path/ok2.xpi"])
+  })
+
+  test("extensions: empty array yields undefined (no key set)", () => {
+    const c = parseFetchConfig({
+      plugins: {
+        "ma-fetch": {
+          obscura: { extensions: [] },
+        },
+      },
+    })
+    expect(c.backends.obscura?.extensions).toBeUndefined()
+  })
+
+  test("extensions: non-array value is ignored", () => {
+    const c = parseFetchConfig({
+      plugins: {
+        "ma-fetch": {
+          obscura: { extensions: "/path/just-a-string.xpi" },
+        },
+      },
+    })
+    expect(c.backends.obscura?.extensions).toBeUndefined()
   })
 })

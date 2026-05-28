@@ -28,6 +28,12 @@
  *   MA_FETCH_USER_AGENT   (optional)  override UA (plugin-config provided)
  *   MA_FETCH_PROXY        (optional)  HTTP/SOCKS5 proxy URL (plugin-config provided)
  *   MA_FETCH_BIN          (optional)  path to obscura binary (default: "obscura" on PATH)
+ *   MA_FETCH_EXTENSIONS   (optional)  newline-separated list of WebExtension
+ *                                     bundle paths (`.crx`, `.xpi`, `.zip`, or
+ *                                     unpacked dir). Each entry becomes one
+ *                                     `--extension <PATH>`. Obscura today
+ *                                     honors only the first and warns on
+ *                                     extras.
  *
  * ## Output contract
  *
@@ -64,6 +70,8 @@ export interface BuildArgvOptions {
   userAgent?: string
   /** Optional proxy URL (from plugin config). */
   proxy?: string
+  /** Optional WebExtension bundle paths. Each becomes `--extension <PATH>`. */
+  extensions?: string[]
 }
 
 /**
@@ -99,6 +107,11 @@ export function buildArgv(opts: BuildArgvOptions): string[] {
   }
   if (opts.proxy && opts.proxy.length > 0) {
     argv.push("--proxy", opts.proxy)
+  }
+  if (opts.extensions && opts.extensions.length > 0) {
+    for (const e of opts.extensions) {
+      argv.push("--extension", e)
+    }
   }
   argv.push(opts.url)
   return argv
@@ -158,6 +171,17 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
   const userAgent = env.MA_FETCH_USER_AGENT?.trim() || undefined
   const proxy = env.MA_FETCH_PROXY?.trim() || undefined
 
+  // Newline-separated list (`\n` is the one byte POSIX paths cannot contain).
+  // Empty / whitespace-only entries are dropped.
+  const extRaw = env.MA_FETCH_EXTENSIONS
+  const extensions =
+    extRaw && extRaw.length > 0
+      ? extRaw
+          .split("\n")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+      : undefined
+
   return {
     url,
     format: format as BuildArgvOptions["format"],
@@ -167,6 +191,7 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
     evalExpr,
     userAgent,
     proxy,
+    extensions: extensions && extensions.length > 0 ? extensions : undefined,
   }
 }
 

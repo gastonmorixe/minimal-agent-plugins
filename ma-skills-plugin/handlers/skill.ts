@@ -24,10 +24,10 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
+
+import { formatAllowedTools, parseAllowedTools } from "../lib/allowed-tools.ts"
 import { loadSkillsConfig } from "../lib/config.ts"
 import { discoverSkills, findSkill, listSiblings } from "../lib/discovery.ts"
-import { formatAllowedTools, parseAllowedTools } from "../lib/allowed-tools.ts"
-import { shortenPath } from "./prompt-fragment.ts"
 import type {
   BrokenSkill,
   DiscoveryResult,
@@ -37,6 +37,8 @@ import type {
   TUIHandler,
   TUIResult,
 } from "../lib/types.ts"
+
+import { shortenPath } from "./prompt-fragment.ts"
 
 // ---------------------------------------------------------------------------
 // Constants / styling
@@ -73,9 +75,7 @@ export interface ParsedInput {
   name?: string
 }
 
-export type ValidateResult =
-  | { ok: true; value: ParsedInput }
-  | { ok: false; error: string }
+export type ValidateResult = { ok: true; value: ParsedInput } | { ok: false; error: string }
 
 export function validateInput(raw: Record<string, unknown>): ValidateResult {
   if (typeof raw.action !== "string" || raw.action.length === 0) {
@@ -204,7 +204,9 @@ export function buildListDisplay(result: DiscoveryResult, cwd: string, home: str
       lines.push(
         `  ${RED}${b.dirName}${RESET_FG}  ${DIM}${SCOPE_LABEL[b.scope]}  ${shortenPath(b.dir, cwd, home)}${RESET}`,
       )
-      lines.push(`    ${DIM}${b.errors[0] ?? "unknown"}${b.errors.length > 1 ? `  (+${b.errors.length - 1} more)` : ""}${RESET}`)
+      lines.push(
+        `    ${DIM}${b.errors[0] ?? "unknown"}${b.errors.length > 1 ? `  (+${b.errors.length - 1} more)` : ""}${RESET}`,
+      )
     }
   }
   return lines.join("\n")
@@ -319,9 +321,7 @@ export function buildReadContent(skill: Skill, siblings: string[], body: string)
   }
   if (skill.front.allowedTools && skill.front.allowedTools.length > 0) {
     trailerLines.push("")
-    trailerLines.push(
-      `Self-enforce \`allowed-tools\`: ${skill.front.allowedTools.join(" ")}`,
-    )
+    trailerLines.push(`Self-enforce \`allowed-tools\`: ${skill.front.allowedTools.join(" ")}`)
   }
   return `${trimmedBody}\n${trailerLines.join("\n")}\n`
 }
@@ -339,12 +339,7 @@ export function buildReadDisplay(body: string): string {
   return clipped.join("\n")
 }
 
-function doRead(
-  result: DiscoveryResult,
-  name: string,
-  cwd: string,
-  home: string,
-): TUIResult {
+function doRead(result: DiscoveryResult, name: string, cwd: string, home: string): TUIResult {
   const skill = findSkill(result, name)
   if (!skill) {
     return notFound(result, name, "read", cwd, home)
@@ -435,12 +430,11 @@ function notFound(
 ): TUIResult {
   const candidates = result.skills.map((s) => s.front.name)
   const brokenNames = result.broken.map((b) => b.dirName)
-  const hint = candidates.length === 0
-    ? "no skills are currently discovered. The catalog is empty."
-    : `available: ${candidates.join(", ")}`
-  const brokenHint = brokenNames.length > 0
-    ? ` (broken on disk: ${brokenNames.join(", ")})`
-    : ""
+  const hint =
+    candidates.length === 0
+      ? "no skills are currently discovered. The catalog is empty."
+      : `available: ${candidates.join(", ")}`
+  const brokenHint = brokenNames.length > 0 ? ` (broken on disk: ${brokenNames.join(", ")})` : ""
   const msg = `Skill ${action}: no skill named "${name}". ${hint}${brokenHint}`
   // Surface a stub display so the transcript shows what we looked at.
   return {
@@ -459,4 +453,4 @@ function clip(s: string, n: number): string {
 }
 
 // Re-export for tests
-export { findBodyStart, listSiblings as _listSiblings, type BrokenSkill }
+export { type BrokenSkill, findBodyStart, listSiblings as _listSiblings }

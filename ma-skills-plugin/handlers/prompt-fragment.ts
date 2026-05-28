@@ -31,6 +31,7 @@
 
 import { homedir } from "node:os"
 import { relative } from "node:path"
+
 import { loadSkillsConfig } from "../lib/config.ts"
 import { discoverSkills } from "../lib/discovery.ts"
 import type {
@@ -96,7 +97,7 @@ export function renderFragment(
 
   if (result.skills.length > 0) {
     lines.push(
-      "Each skill is a SKILL.md pack that bundles instructions + scripts + references for a specific task. The catalog below is **metadata only** (Level 1 of progressive disclosure). To activate a skill, call `Skill {action: \"read\", name: \"<name>\"}` or `Read` the SKILL.md path directly. Then follow the instructions and read referenced files / run scripts on demand.",
+      'Each skill is a SKILL.md pack that bundles instructions + scripts + references for a specific task. The catalog below is **metadata only** (Level 1 of progressive disclosure). To activate a skill, call `Skill {action: "read", name: "<name>"}` or `Read` the SKILL.md path directly. Then follow the instructions and read referenced files / run scripts on demand.',
     )
     lines.push("")
     lines.push(renderTable(result.skills, cwd, home))
@@ -211,10 +212,13 @@ const handler: PromptFragmentHandler = (ctx: PromptFragmentContext): string => {
     const result = discoverSkills(config, ctx.cwd, homedir())
     return renderFragment(result, ctx.cwd, homedir())
   } catch (e) {
+    // Route through the structured diagnostic logger (file log + TUI
+    // surface). `ctx.log` is auto-prefixed by the loader, so the
+    // emitted source becomes `ma-skills.prompt-fragment`.
     try {
-      ctx.stderr.write(`[ma-skills] prompt-fragment failed: ${(e as Error).message}\n`)
+      ctx.log.error("prompt-fragment", (e as Error).message)
     } catch {
-      // stderr write itself can fail in tests; swallow.
+      // Logging itself must never break boot.
     }
     return ""
   }

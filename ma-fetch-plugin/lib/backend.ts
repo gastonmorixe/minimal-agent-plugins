@@ -16,6 +16,7 @@
 
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+
 import type { FetchConfig, FetchFormat, WaitUntil } from "./config.ts"
 
 export interface BackendCallInput {
@@ -46,6 +47,8 @@ export interface SpawnedProcess {
   readonly stdout: ReadableStream<Uint8Array> | null
   readonly stderr: ReadableStream<Uint8Array> | null
   readonly exited: Promise<number>
+  /** PID for process-group signaling. Optional so test fakes need not synthesize one. */
+  readonly pid?: number
   kill(signal?: NodeJS.Signals | number): boolean
 }
 
@@ -57,12 +60,104 @@ export type SpawnFn = (
     stdin: "ignore"
     stdout: "pipe"
     stderr: "pipe"
+    /**
+     * When true, the child is launched as its own process-group leader
+     * (pgid=pid). Required for `process.kill(-pid, sig)` group-kill to
+     * reach any helpers the backend may fork (e.g. a CDP-driven Chromium
+     * subprocess). Bun honors this on POSIX; on Windows it's ignored.
+     */
+    detached?: boolean
   },
 ) => SpawnedProcess
 
 export interface BackendDeps {
   spawnFn?: SpawnFn
   existsFn?: (path: string) => boolean
+  /**
+   * Test seam: override the parent-exit hook registrar. Default subscribes
+   * to `process.on("exit"|"SIGINT"|"SIGTERM"|"SIGHUP")` so a wedged backend
+   * gets killed when the agent itself goes away. Returns an unsubscribe.
+   *
+   * Without this hook the 2026-05-19 orphan obscura postmortem reproduces:
+   * agent exits normally, backend keeps spinning, gets adopted by launchd
+   * (PPID=1), burns 100% CPU until manually killed.
+   */
+  parentExitHook?: (onParentExit: () => void) => () => void
+  /**
+   * Outer wall-clock cap, in seconds, ADDED to `input.timeoutSec`. The
+   * backend's own `--timeout` only gates navigation; this is the agent-side
+   * defense against backend bugs that wedge past their own timeout.
+   * Default 30s.
+   */
+  watchdogSlackSec?: number
+  /** Test seam for the outer-watchdog timer (default: setTimeout). */
+  setTimeoutFn?: (cb: () => void, ms: number) => TimerHandle
+  /** Test seam paired with setTimeoutFn (default: clearTimeout). */
+  clearTimeoutFn?: (handle: TimerHandle) => void
+}
+
+/**
+ * Opaque handle returned by `setTimeout` and consumed by `clearTimeout`.
+ * Aliased once at file scope so the type resolution is stable across
+ * the file (both Bun's `Timer` and Node's `Timeout` are in scope through
+ * `bun-types` + its transitive `@types/node`, and `ReturnType<typeof
+ * setTimeout>` resolved repeatedly can pick different overloads in
+ * different positions). Using one alias forces a single resolution.
+ */
+type TimerHandle = ReturnType<typeof setTimeout>
+
+/** Default outer wall-clock slack added on top of `input.timeoutSec`. */
+export const DEFAULT_WATCHDOG_SLACK_SEC = 30
+
+/**
+ * Default parent-exit hook: kill the child if the agent process itself is
+ * exiting. Registers across `exit` and the common termination signals so
+ * any path out (normal exit, SIGINT, SIGTERM, SIGHUP) takes the backend
+ * down with it. Returns an unsubscribe to remove all handlers.
+ */
+export function defaultParentExitHook(onParentExit: () => void): () => void {
+  const wrapped = () => {
+    try {
+      onParentExit()
+    } catch {
+      // never let our cleanup throw during shutdown
+    }
+  }
+  process.on("exit", wrapped)
+  process.on("SIGINT", wrapped)
+  process.on("SIGTERM", wrapped)
+  process.on("SIGHUP", wrapped)
+  return () => {
+    process.off("exit", wrapped)
+    process.off("SIGINT", wrapped)
+    process.off("SIGTERM", wrapped)
+    process.off("SIGHUP", wrapped)
+  }
+}
+
+/**
+ * Kill a spawned backend. Tries the whole process group first (so any
+ * children the backend forked get the signal too), falls back to a
+ * single-pid kill via the SpawnedProcess.kill method.
+ *
+ * Mirrors the pattern in minimal-agent's own `src/tools.ts:execBash`
+ * (commit 5e6bddf, memory #mp5cj7gt-11f1) where group-kill turned out
+ * to be load-bearing for ever returning from `await proc.exited`.
+ */
+export function killBackend(proc: SpawnedProcess, signal: NodeJS.Signals): void {
+  if (typeof proc.pid === "number" && proc.pid > 0) {
+    try {
+      process.kill(-proc.pid, signal)
+      return
+    } catch {
+      // ESRCH / EPERM / non-POSIX - fall through to single-pid kill
+    }
+  }
+  try {
+    proc.kill(signal)
+  } catch {
+    // already exited, or no permission - nothing more we can do
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +208,15 @@ export function buildBackendEnv(
   if (config.proxy) env.MA_FETCH_PROXY = config.proxy
   const bin = config.backends[config.backend]?.bin
   if (bin && bin.length > 0) env.MA_FETCH_BIN = bin
+  // Backend-specific extension paths. Joined by `\n` because newline is the
+  // one byte POSIX paths cannot legally contain — safer than `:` (used in
+  // PATH-style lists, would collide with `file:` or absolute paths
+  // containing colons on weird filesystems). Backends that don't care about
+  // extensions (anything non-obscura today) ignore this var.
+  const extensions = config.backends[config.backend]?.extensions
+  if (extensions && extensions.length > 0) {
+    env.MA_FETCH_EXTENSIONS = extensions.join("\n")
+  }
   return env
 }
 
@@ -125,8 +229,25 @@ export function buildBackendEnv(
  * encoded in the returned result (never thrown). The caller (handler)
  * decides how to shape them into a `tool_result`.
  *
- * Abort: when `signal` fires, sends SIGTERM and escalates to SIGKILL
- * after 2s. The returned result's `aborted` flag is set.
+ * Three independent kill paths protect against orphan/wedge bugs:
+ *
+ *   1. **Caller AbortSignal** — Ctrl+C / mode-toggle / agent-side abort
+ *      bus. Sends SIGTERM (group), escalates to SIGKILL after 2s.
+ *   2. **Outer wall-clock watchdog** — agent-side cap at
+ *      `input.timeoutSec + DEFAULT_WATCHDOG_SLACK_SEC`. If the backend
+ *      blows past its own `--timeout` (its bug, not ours), we still
+ *      reclaim the slot. `aborted` is reported as `"watchdog"` in
+ *      stderr for postmortem clarity. Defense in depth for the
+ *      2026-05-19 obscura wedge: a runaway V8 microtask loop made the
+ *      backend ignore its own 30s timeout for 2½ hours.
+ *   3. **Parent-exit hook** — `process.on("exit"|SIG{INT,TERM,HUP})`
+ *      sends SIGKILL (group) to the backend. POSIX does not propagate
+ *      parent death to children by default on macOS (no PR_SET_PDEATHSIG),
+ *      so without this the backend gets reparented to launchd and
+ *      keeps spinning.
+ *
+ * The backend is spawned with `detached: true` so it becomes its own
+ * process-group leader; group-signaling reaches any helpers it forks.
  */
 export async function callBackend(
   packageDir: string,
@@ -137,6 +258,18 @@ export async function callBackend(
 ): Promise<BackendCallResult> {
   const exists = deps.existsFn ?? existsSync
   const spawn = deps.spawnFn ?? (Bun.spawn as unknown as SpawnFn)
+  const parentExitHook = deps.parentExitHook ?? defaultParentExitHook
+  // `setTimeout` / `clearTimeout` have two overloaded signatures in scope
+  // (Bun's Timer-returning + Node's Timeout-returning, since `bun-types`
+  // re-exports `@types/node`). `ReturnType<typeof setTimeout>` resolves
+  // to different types at different positions, so we coerce the fallback
+  // through `unknown` to match the deps' typed shape and keep the rest
+  // of the function consistent.
+  const setTimeoutFn: (cb: () => void, ms: number) => TimerHandle =
+    deps.setTimeoutFn ?? (setTimeout as unknown as (cb: () => void, ms: number) => TimerHandle)
+  const clearTimeoutFn: (handle: TimerHandle) => void =
+    deps.clearTimeoutFn ?? (clearTimeout as unknown as (handle: TimerHandle) => void)
+  const watchdogSlackSec = deps.watchdogSlackSec ?? DEFAULT_WATCHDOG_SLACK_SEC
 
   const scriptPath = resolveBackendPath(packageDir, config.backend)
   if (!exists(scriptPath)) {
@@ -155,7 +288,13 @@ export async function callBackend(
 
   let proc: SpawnedProcess
   try {
-    proc = spawn(argv, { env, stdin: "ignore", stdout: "pipe", stderr: "pipe" })
+    proc = spawn(argv, {
+      env,
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
+      detached: true,
+    })
   } catch (err) {
     return {
       ok: false,
@@ -167,30 +306,51 @@ export async function callBackend(
   }
 
   let aborted = false
-  let killEscalation: ReturnType<typeof setTimeout> | undefined
-  const onAbort = () => {
+  let abortReason: "signal" | "watchdog" | "parent-exit" | undefined
+  let killEscalation: TimerHandle | undefined
+
+  const doKill = (reason: "signal" | "watchdog" | "parent-exit") => {
+    if (aborted) return
     aborted = true
-    try {
-      proc.kill("SIGTERM")
-    } catch {
-      // ignore - process may have already exited
-    }
-    killEscalation = setTimeout(() => {
-      try {
-        proc.kill("SIGKILL")
-      } catch {
-        // ignore
-      }
+    abortReason = reason
+    killBackend(proc, "SIGTERM")
+    killEscalation = setTimeoutFn(() => {
+      killBackend(proc, "SIGKILL")
     }, 2000)
     // Avoid keeping the event loop alive just for the escalation timer.
     ;(killEscalation as unknown as { unref?: () => void }).unref?.()
   }
 
+  // (1) Caller AbortSignal.
+  const onAbort = () => doKill("signal")
   if (signal.aborted) {
     onAbort()
   } else {
     signal.addEventListener("abort", onAbort, { once: true })
   }
+
+  // (2) Outer wall-clock watchdog.
+  const watchdogMs = (input.timeoutSec + watchdogSlackSec) * 1000
+  const watchdogHandle = setTimeoutFn(() => doKill("watchdog"), watchdogMs)
+  ;(watchdogHandle as unknown as { unref?: () => void }).unref?.()
+
+  // (3) Parent-exit hook. Synchronously SIGKILL on parent shutdown - we
+  // don't have time for graceful SIGTERM-then-SIGKILL in an exit handler.
+  const unsubscribeParentExit = parentExitHook(() => {
+    if (typeof proc.pid === "number" && proc.pid > 0) {
+      try {
+        process.kill(-proc.pid, "SIGKILL")
+      } catch {
+        try {
+          proc.kill("SIGKILL")
+        } catch {}
+      }
+    } else {
+      try {
+        proc.kill("SIGKILL")
+      } catch {}
+    }
+  })
 
   try {
     const [stdoutText, stderrText, exitCode] = await Promise.all([
@@ -198,17 +358,23 @@ export async function callBackend(
       drainStream(proc.stderr),
       proc.exited,
     ])
+    const watchdogAnnotation =
+      abortReason === "watchdog"
+        ? `\n[ma-fetch: outer watchdog fired at ${input.timeoutSec + watchdogSlackSec}s — backend wedged past its own --timeout]`
+        : ""
     return {
       ok: exitCode === 0 && !aborted,
       exitCode,
       stdout: stdoutText,
-      stderr: stderrText,
+      stderr: stderrText + watchdogAnnotation,
       backend: `${config.backend}.ts`,
       aborted: aborted || undefined,
     }
   } finally {
     signal.removeEventListener("abort", onAbort)
-    if (killEscalation) clearTimeout(killEscalation)
+    if (killEscalation) clearTimeoutFn(killEscalation)
+    clearTimeoutFn(watchdogHandle)
+    unsubscribeParentExit()
   }
 }
 

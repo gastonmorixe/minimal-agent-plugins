@@ -31,13 +31,33 @@ result in your chosen format.
   anything where you specifically don't want the HTML/DOM layer.
 - **Use `format: "text"`** when markdown markup itself is noise - useful
   for paragraph-heavy reading or text extraction pipelines.
+- **Default `wait_until` is `domcontentloaded`.** It captures the SSR'd
+  initial DOM, which is where article content lives. The fancier `load`
+  default that other tools use waits for *all* subresources (ads, fonts,
+  analytics pixels); on stealth-protected sites that race ends in a
+  nav-only shell because anti-bot scripts rewrite the DOM mid-load.
+  Leave the default alone unless you have a reason.
 - **Use `wait_until: "networkidle0"`** for SPAs / dashboards that load
-  content after the initial paint. Slower (waits for ~500ms of network
-  idleness) but reliable.
+  content *after* the initial paint via fetch/XHR. Slower (waits for
+  ~500ms of network idleness) but reliable for shells that hydrate
+  client-side.
+- **Use `wait_until: "load"`** when you specifically need every
+  subresource (images, fonts, stylesheets) to have arrived, e.g. for
+  screenshot-adjacent workflows. Rarely the right call for text content.
 - **Use `selector`** when you only care about one piece of the page  - 
   the browser waits for that element before dumping. Pairs well with
   dynamic pages.
 - **Bump `timeout_sec`** if a page is slow. Default is 30s, max is 120.
+- **Use `cleanup: "aggressive"`** when a page comes back with lots of
+  blank lines / NBSPs / zero-width chars wasting your preview budget
+  (common on Bloomberg, Wikipedia, GitHub nav-heavy pages: ~30 %+ of
+  lines are blank separators around every block). Aggressive folds
+  unicode whitespace and drops ALL blank lines. Markdown rendering may
+  break (headings won't pair with adjacent lists in strict parsers) but
+  the model reads lines, so that's fine. Default `"basic"` keeps single
+  blank lines as paragraph separators. Use `"off"` only for verbatim
+  diffing — the `[raw-output: ...]` blob already preserves the
+  pre-cleanup bytes regardless of level.
 
 ## Output
 

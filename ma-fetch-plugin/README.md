@@ -107,7 +107,7 @@ Backend output:
          },
          "defaults": {
            "format": "markdown",
-           "waitUntil": "load",
+           "waitUntil": "domcontentloaded",
            "timeoutSec": 30
          }
        }
@@ -139,7 +139,7 @@ never invoked - fast and offline.
 ```bash
 MA_FETCH_URL="https://example.com" \
 MA_FETCH_FORMAT="markdown" \
-MA_FETCH_WAIT_UNTIL="load" \
+MA_FETCH_WAIT_UNTIL="domcontentloaded" \
 MA_FETCH_TIMEOUT_SEC="30" \
 MA_FETCH_BIN="/Users/me/Projects/obscura/target/release/obscura" \
 bun backends/obscura.ts

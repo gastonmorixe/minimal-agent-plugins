@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, test } from "bun:test"
+
 import { formatAllowedTools, parseAllowedTools, parseToken } from "./allowed-tools.ts"
 
 describe("parseToken", () => {
