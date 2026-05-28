@@ -9,15 +9,15 @@ self-contained plugin package consumed by minimal-agent's plugin loader.
 
 minimal-agent walks three roots in precedence order (closer-to-user wins):
 
-1. `<cwd>/.agents/tui-plugins/` (project-local)
-2. `~/.agents/tui-plugins/` (per-user, home)
-3. `<agent-install>/tui-plugins/` (shipped built-ins)
+1. `<cwd>/.agents/plugins/` (project-local)
+2. `~/.agents/plugins/` (per-user, home)
+3. `<agent-install>/plugins/` (shipped built-ins)
 
 Plugins from this repo install into the **home root** by symlinking the
-plugin directory into `~/.agents/tui-plugins/`:
+plugin directory into `~/.agents/plugins/`:
 
 ```bash
-ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/tui-plugins/ma-fetch-plugin
+ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
 ```
 
 ## Plugins in this repo

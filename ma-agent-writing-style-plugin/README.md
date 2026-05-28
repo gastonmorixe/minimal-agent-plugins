@@ -33,7 +33,7 @@ Injects `PROMPT.md` into the system prompt at session start. The model reads it 
 Symlink into the home plugin root:
 
 ```bash
-ln -s ~/Projects/minimal-agent-plugins/ma-agent-writing-style-plugin ~/.agents/tui-plugins/ma-agent-writing-style-plugin
+ln -s ~/Projects/minimal-agent-plugins/ma-agent-writing-style-plugin ~/.agents/plugins/ma-agent-writing-style-plugin
 ```
 
 minimal-agent picks it up on next launch. To disable, either remove the symlink or set `plugins["ma-agent-writing-style"].enabled = false` in `~/.minimal-agent/config.jsonc`.

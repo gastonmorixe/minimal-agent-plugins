@@ -78,8 +78,8 @@ Backend output:
 2. Symlink the plugin into your minimal-agent home plugin root:
 
    ```bash
-   mkdir -p ~/.agents/tui-plugins
-   ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/tui-plugins/ma-fetch-plugin
+   mkdir -p ~/.agents/plugins
+   ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
    ```
 
 3. Install [obscura][o] (the default backend). Easiest:

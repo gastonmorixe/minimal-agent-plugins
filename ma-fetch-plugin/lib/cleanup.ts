@@ -39,7 +39,7 @@
  * All levels are pure and idempotent. `applyCleanup(applyCleanup(x, L), L) === applyCleanup(x, L)`.
  *
  * The blob store ALWAYS persists the pre-cleanup bytes, so even at
- * `aggressive` the original is recoverable from the `[raw-output: ...]`
+ * `aggressive` the original is recoverable from the `<ma::agent::raw-output .../>`
  * footer's path. Cleanup shapes the model's view, not the on-disk truth.
  *
  * @module lib/cleanup
