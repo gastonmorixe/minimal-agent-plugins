@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import type { BackendDeps, SpawnFn, SpawnedProcess } from "../lib/backend.ts"
+
+import type { SpawnedProcess, SpawnFn } from "../lib/backend.ts"
 import { defaultConfig, type FetchConfig } from "../lib/config.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
+
 import handler, {
   buildDisplayBody,
   buildDisplayFooter,
@@ -156,6 +158,33 @@ describe("validateInput - selector and eval", () => {
   })
 })
 
+describe("validateInput - cleanup", () => {
+  test("accepts 'off' | 'basic' | 'aggressive'", () => {
+    for (const level of ["off", "basic", "aggressive"] as const) {
+      const v = validateInput({ url: "https://x", cleanup: level })
+      expect(v.ok).toBe(true)
+      if (v.ok) expect(v.value.cleanup).toBe(level)
+    }
+  })
+
+  test("rejects unknown levels", () => {
+    const v = validateInput({ url: "https://x", cleanup: "extreme" })
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.error).toMatch(/cleanup/)
+  })
+
+  test("rejects non-string cleanup", () => {
+    expect(validateInput({ url: "https://x", cleanup: 1 }).ok).toBe(false)
+    expect(validateInput({ url: "https://x", cleanup: {} }).ok).toBe(false)
+  })
+
+  test("absent cleanup → undefined (handler falls back to config default)", () => {
+    const v = validateInput({ url: "https://x" })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.value.cleanup).toBeUndefined()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // mergeInputs
 // ---------------------------------------------------------------------------
@@ -165,14 +194,16 @@ describe("mergeInputs", () => {
     const cfg = defaultConfig()
     const merged = mergeInputs({ url: "https://x" }, cfg)
     expect(merged.format).toBe("markdown")
-    expect(merged.waitUntil).toBe("load")
+    // defaultConfig().defaults.waitUntil was switched to "domcontentloaded"
+    // (stealth-friendly default for article sites). See JSDoc on defaultConfig.
+    expect(merged.waitUntil).toBe("domcontentloaded")
     expect(merged.timeoutSec).toBe(30)
   })
 
   test("input overrides config defaults", () => {
     const cfg: FetchConfig = {
       ...defaultConfig(),
-      defaults: { format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      defaults: { format: "markdown", waitUntil: "load", timeoutSec: 30, cleanup: "basic" },
     }
     const merged = mergeInputs(
       { url: "https://x", format: "text", waitUntil: "networkidle0", timeoutSec: 60 },
@@ -271,11 +302,7 @@ describe("buildDisplayFooter", () => {
 // runWithDeps - full handler with fake backend
 // ---------------------------------------------------------------------------
 
-function fakeProc(opts: {
-  stdout?: string
-  stderr?: string
-  exitCode?: number
-}): SpawnedProcess {
+function fakeProc(opts: { stdout?: string; stderr?: string; exitCode?: number }): SpawnedProcess {
   const enc = new TextEncoder()
   const mkStream = (s: string) =>
     new ReadableStream<Uint8Array>({
@@ -536,9 +563,7 @@ describe("normalizeMarkdown - wikipedia-style fixture", () => {
 describe("runWithDeps - normalizer is format-gated", () => {
   const noisyStdout = "line1\n\n\n\n\nline2\n\n\n\nline3\n\n\n"
 
-  async function runWithFormat(
-    format: "markdown" | "text" | "html" | "links" | "original",
-  ) {
+  async function runWithFormat(format: "markdown" | "text" | "html" | "links" | "original") {
     const spawnFn: SpawnFn = () => fakeProc({ stdout: noisyStdout, exitCode: 0 })
     const ctx = fakeCtx({ url: "https://example.com" })
     const r = await runWithDeps(
@@ -579,5 +604,56 @@ describe("runWithDeps - normalizer is format-gated", () => {
   test("original: passthrough (raw byte stream from backend)", async () => {
     const r = await runWithFormat("original")
     expect(r.content).toBe(noisyStdout)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// runWithDeps - cleanup level threading (per-call cleanup override)
+// ---------------------------------------------------------------------------
+
+describe("runWithDeps - cleanup level", () => {
+  // Bloomberg-shaped fixture: every content line wrapped by a blank line.
+  // Basic preserves the blanks (paragraph separators), aggressive drops
+  // them all.
+  const wrapped = "# Title\n\nBy Author\n\n- [Link 1](#)\n- [Link 2](#)\n\nBody paragraph.\n"
+
+  async function runAt(
+    level: "off" | "basic" | "aggressive",
+    format: "markdown" | "text" | "html" = "markdown",
+  ) {
+    const spawnFn: SpawnFn = () => fakeProc({ stdout: wrapped, exitCode: 0 })
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format, waitUntil: "load", timeoutSec: 30 },
+      { spawnFn, existsFn: () => true },
+      level,
+    )
+    expectToolResult(r)
+    return r
+  }
+
+  test("off: content is verbatim stdout (no transform)", async () => {
+    const r = await runAt("off")
+    expect(r.content).toBe(wrapped)
+  })
+
+  test("basic: preserves single blank lines (paragraph separators)", async () => {
+    const r = await runAt("basic")
+    expect(r.content).toBe(
+      "# Title\n\nBy Author\n\n- [Link 1](#)\n- [Link 2](#)\n\nBody paragraph.",
+    )
+  })
+
+  test("aggressive: drops ALL blank lines", async () => {
+    const r = await runAt("aggressive")
+    expect(r.content).toBe("# Title\nBy Author\n- [Link 1](#)\n- [Link 2](#)\nBody paragraph.")
+  })
+
+  test("aggressive on html: still passthrough (format-gated)", async () => {
+    // Cleanup is ONLY applied to markdown/text regardless of level.
+    const r = await runAt("aggressive", "html")
+    expect(r.content).toBe(wrapped)
   })
 })

@@ -44,6 +44,12 @@
                 "maximum": 120,
                 "default": 30,
                 "description": "Navigation timeout in seconds. Bump this for slow or dynamic pages."
+              },
+              "cleanup": {
+                "type": "string",
+                "enum": ["off", "basic", "aggressive"],
+                "default": "basic",
+                "description": "Whitespace cleanup for `markdown`/`text` only (no-op for html/links/original). 'basic' (default): rstrip per line, collapse 2+ blank runs, trim ends. Safe paragraph separation preserved. 'aggressive': basic + fold unicode whitespace (NBSP, ideographic space, etc.) to ASCII + strip zero-width chars (ZWSP, BOM, ZWJ) + drop ALL remaining blank lines. Use 'aggressive' when the page is noisy (Bloomberg / Wikipedia / GitHub nav lists wrap every block in blank lines, ~30%+ of the file). 'off' = passthrough; only use when verbatim bytes matter. The pre-cleanup raw bytes are always preserved at the blob path in the `[raw-output: ...]` footer."
               }
             },
             "required": ["url"],
@@ -58,7 +64,7 @@
       },
       "interactive": false,
       "icon": "⤓",
-      "color": "brightCyan"
+      "color": "sky"
     }
   ]
 }

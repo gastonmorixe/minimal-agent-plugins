@@ -1,0 +1,30 @@
+{
+  "id": "ma-slash-menu",
+  "name": "Slash Menu",
+  "version": "0.2.0",
+  "description": "Inline command palette triggered by '/' (mixed actions+skills, soft dispatch) or '$' (skills-only, forced activation). Fuzzy autocomplete, \u2191/\u2193 navigation, Tab to complete, Esc to dismiss, Enter to select. Approximate token cost displayed per item.",
+  "hooks": [
+    {
+      "id": "on_key",
+      "channel": "editor.key",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/on_key.ts",
+        "export": "default"
+      },
+      "priority": 70
+    }
+  ],
+  "events": [
+    {
+      "id": "on_buffer_changed",
+      "on": "editor.buffer.changed",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/on_buffer_changed.ts",
+        "export": "default"
+      }
+    }
+  ],
+  "permissions": ["hooks:editor.key", "hooks:editor.buffer.changed", "hooks:editor.buffer.set"]
+}

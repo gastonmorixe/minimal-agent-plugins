@@ -29,6 +29,23 @@ export interface ToolTrigger {
   input: Record<string, unknown>
 }
 
+/**
+ * Mirror of minimal-agent's `PluginLogger`. Eight severity methods, all
+ * `(source, message, sd?) => void`. The loader auto-prefixes `source`
+ * with the plugin id so emits land in the file log + TUI surface tagged
+ * with which plugin spoke. `sd` is structured data (free-form record).
+ */
+export interface PluginLogger {
+  emergency(source: string, message: string, sd?: Record<string, unknown>): void
+  alert(source: string, message: string, sd?: Record<string, unknown>): void
+  critical(source: string, message: string, sd?: Record<string, unknown>): void
+  error(source: string, message: string, sd?: Record<string, unknown>): void
+  warn(source: string, message: string, sd?: Record<string, unknown>): void
+  notice(source: string, message: string, sd?: Record<string, unknown>): void
+  info(source: string, message: string, sd?: Record<string, unknown>): void
+  debug(source: string, message: string, sd?: Record<string, unknown>): void
+}
+
 export interface TUIContext {
   trigger: ToolTrigger | { type: "inline_tag"; [k: string]: unknown }
   /** Absolute path to the plugin's own directory. */
@@ -42,6 +59,8 @@ export interface TUIContext {
   stdout: NodeJS.WriteStream
   stdin: NodeJS.ReadStream
   stderr: NodeJS.WriteStream
+  /** Plugin-scoped diagnostic logger. Auto-prefixed with this plugin's id. */
+  log: PluginLogger
 }
 
 export type TUIResult =
@@ -86,11 +105,11 @@ export interface PromptFragmentContext {
   abort: AbortSignal
   /** Diagnostic stream. */
   stderr: NodeJS.WriteStream
+  /** Plugin-scoped diagnostic logger. Auto-prefixed with this plugin's id. */
+  log: PluginLogger
 }
 
-export type PromptFragmentHandler = (
-  ctx: PromptFragmentContext,
-) => Promise<string> | string
+export type PromptFragmentHandler = (ctx: PromptFragmentContext) => Promise<string> | string
 
 // ---------------------------------------------------------------------------
 // Skill domain types

@@ -497,10 +497,7 @@ function parseScalar(text: string): ScalarResult {
  * Consume a block scalar (`|` or `>`) starting at `start`. Returns the
  * dedented text and the index of the next unconsumed line.
  */
-function consumeBlockScalar(
-  lines: string[],
-  start: number,
-): { value: string; nextIndex: number } {
+function consumeBlockScalar(lines: string[], start: number): { value: string; nextIndex: number } {
   // Determine indentation from the first non-empty line.
   let baseIndent = -1
   const block: string[] = []
@@ -669,7 +666,8 @@ export function validateFrontmatter(
 /** Validate `name` against the spec. Returns an error string or null. */
 function validateName(name: string, opts: ParseOptions): string | null {
   if (name.length === 0) return "frontmatter field `name` must be non-empty"
-  if (name.length > 64) return `frontmatter field \`name\` exceeds 64 characters (got ${name.length})`
+  if (name.length > 64)
+    return `frontmatter field \`name\` exceeds 64 characters (got ${name.length})`
   if (!NAME_RE.test(name)) {
     return `frontmatter field \`name\` must match ${NAME_RE} (lowercase letters, digits, single hyphens; no leading/trailing hyphen; no consecutive hyphens)`
   }

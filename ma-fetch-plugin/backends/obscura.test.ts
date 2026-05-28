@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+
 import { BackendInputError, buildArgv, parseEnv } from "./obscura.ts"
 
 describe("buildArgv - invariants (always-on)", () => {
@@ -329,5 +330,115 @@ describe("parseEnv - optional fields", () => {
       MA_FETCH_EVAL: "  return 1 + 2  ",
     })
     expect(opts.evalExpr).toBe("  return 1 + 2  ")
+  })
+})
+
+describe("parseEnv - MA_FETCH_EXTENSIONS", () => {
+  test("absent → extensions is undefined", () => {
+    const opts = parseEnv({
+      MA_FETCH_URL: "https://example.com",
+      MA_FETCH_FORMAT: "markdown",
+      MA_FETCH_WAIT_UNTIL: "load",
+      MA_FETCH_TIMEOUT_SEC: "30",
+    })
+    expect(opts.extensions).toBeUndefined()
+  })
+
+  test("single path → one-element array", () => {
+    const opts = parseEnv({
+      MA_FETCH_URL: "https://example.com",
+      MA_FETCH_FORMAT: "markdown",
+      MA_FETCH_WAIT_UNTIL: "load",
+      MA_FETCH_TIMEOUT_SEC: "30",
+      MA_FETCH_EXTENSIONS: "/path/bpc.xpi",
+    })
+    expect(opts.extensions).toEqual(["/path/bpc.xpi"])
+  })
+
+  test("newline-separated paths split correctly", () => {
+    const opts = parseEnv({
+      MA_FETCH_URL: "https://example.com",
+      MA_FETCH_FORMAT: "markdown",
+      MA_FETCH_WAIT_UNTIL: "load",
+      MA_FETCH_TIMEOUT_SEC: "30",
+      MA_FETCH_EXTENSIONS: "/path/bpc.xpi\n/path/ublock.crx",
+    })
+    expect(opts.extensions).toEqual(["/path/bpc.xpi", "/path/ublock.crx"])
+  })
+
+  test("empty / whitespace entries dropped", () => {
+    const opts = parseEnv({
+      MA_FETCH_URL: "https://example.com",
+      MA_FETCH_FORMAT: "markdown",
+      MA_FETCH_WAIT_UNTIL: "load",
+      MA_FETCH_TIMEOUT_SEC: "30",
+      MA_FETCH_EXTENSIONS: "/a.xpi\n\n   \n/b.xpi\n",
+    })
+    expect(opts.extensions).toEqual(["/a.xpi", "/b.xpi"])
+  })
+
+  test("empty string → extensions is undefined", () => {
+    const opts = parseEnv({
+      MA_FETCH_URL: "https://example.com",
+      MA_FETCH_FORMAT: "markdown",
+      MA_FETCH_WAIT_UNTIL: "load",
+      MA_FETCH_TIMEOUT_SEC: "30",
+      MA_FETCH_EXTENSIONS: "",
+    })
+    expect(opts.extensions).toBeUndefined()
+  })
+})
+
+describe("buildArgv - extensions", () => {
+  test("no extensions → no --extension flag", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+    })
+    expect(argv).not.toContain("--extension")
+  })
+
+  test("single extension → one --extension <path> pair", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      extensions: ["/path/bpc.xpi"],
+    })
+    const idx = argv.indexOf("--extension")
+    expect(idx).toBeGreaterThanOrEqual(0)
+    expect(argv[idx + 1]).toBe("/path/bpc.xpi")
+    expect(argv.filter((s) => s === "--extension").length).toBe(1)
+  })
+
+  test("multiple extensions → multiple --extension <path> pairs in order", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      extensions: ["/path/a.xpi", "/path/b.crx"],
+    })
+    expect(argv.filter((s) => s === "--extension").length).toBe(2)
+    // Order preserved.
+    const firstIdx = argv.indexOf("--extension")
+    const secondIdx = argv.indexOf("--extension", firstIdx + 1)
+    expect(argv[firstIdx + 1]).toBe("/path/a.xpi")
+    expect(argv[secondIdx + 1]).toBe("/path/b.crx")
+  })
+
+  test("URL stays the final argument even with extensions", () => {
+    const url = "https://example.com/article"
+    const argv = buildArgv({
+      url,
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      extensions: ["/path/a.xpi"],
+    })
+    expect(argv[argv.length - 1]).toBe(url)
   })
 })

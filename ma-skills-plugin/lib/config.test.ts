@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, test } from "bun:test"
+
 import { defaultConfig, parseSkillsConfig } from "./config.ts"
 
 describe("defaultConfig", () => {
@@ -142,15 +143,9 @@ describe("parseSkillsConfig — maxSkills", () => {
     expect(c.maxSkills).toBe(7)
   })
   test("out-of-range ignored", () => {
-    expect(
-      parseSkillsConfig({ plugins: { "ma-skills": { maxSkills: 0 } } }).maxSkills,
-    ).toBe(64)
-    expect(
-      parseSkillsConfig({ plugins: { "ma-skills": { maxSkills: -1 } } }).maxSkills,
-    ).toBe(64)
-    expect(
-      parseSkillsConfig({ plugins: { "ma-skills": { maxSkills: 1e6 } } }).maxSkills,
-    ).toBe(64)
+    expect(parseSkillsConfig({ plugins: { "ma-skills": { maxSkills: 0 } } }).maxSkills).toBe(64)
+    expect(parseSkillsConfig({ plugins: { "ma-skills": { maxSkills: -1 } } }).maxSkills).toBe(64)
+    expect(parseSkillsConfig({ plugins: { "ma-skills": { maxSkills: 1e6 } } }).maxSkills).toBe(64)
   })
   test("non-finite ignored", () => {
     expect(

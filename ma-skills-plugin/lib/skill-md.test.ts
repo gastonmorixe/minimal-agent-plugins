@@ -14,6 +14,7 @@
  */
 
 import { describe, expect, test } from "bun:test"
+
 import {
   parseFrontmatterYaml,
   parseSkillMd,
@@ -215,9 +216,7 @@ describe("parseFrontmatterYaml — block scalars", () => {
     const r = parseFrontmatterYaml(text)
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    expect(r.value.description).toBe(
-      "Read source code instead of relying on training data.",
-    )
+    expect(r.value.description).toBe("Read source code instead of relying on training data.")
     expect(r.value.name).toBe("x")
   })
 
@@ -267,11 +266,7 @@ describe("parseFrontmatterYaml — nested map (metadata)", () => {
 
 describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
   test("indented continuation after empty key: folds to single line", () => {
-    const text =
-      `description:\n` +
-      `  Line one continuing\n` +
-      `  on the second line.\n` +
-      `name: x`
+    const text = `description:\n  Line one continuing\n  on the second line.\nname: x`
     const r = parseFrontmatterYaml(text)
     expect(r.ok).toBe(true)
     if (!r.ok) return
@@ -315,12 +310,7 @@ describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
   })
 
   test("de-dents back to top-level key correctly", () => {
-    const text =
-      `description:\n` +
-      `  first line\n` +
-      `  second line\n` +
-      `license: MIT\n` +
-      `name: x`
+    const text = `description:\n  first line\n  second line\nlicense: MIT\nname: x`
     const r = parseFrontmatterYaml(text)
     expect(r.ok).toBe(true)
     if (!r.ok) return
@@ -347,9 +337,16 @@ describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
 describe("validateFrontmatter — name rules", () => {
   const desc = "A non-empty description."
 
-  for (const valid of ["pdf-processing", "data-analysis", "code-review", "a", "x-y-z", "v2-thing"]) {
+  for (const valid of [
+    "pdf-processing",
+    "data-analysis",
+    "code-review",
+    "a",
+    "x-y-z",
+    "v2-thing",
+  ]) {
     test(`accepts valid name: ${valid}`, () => {
-      const errors: ReturnType<typeof validateFrontmatter>["arguments"] extends never ? never : Parameters<typeof validateFrontmatter>[2] = []
+      const errors: Parameters<typeof validateFrontmatter>[2] = []
       const out = validateFrontmatter({ name: valid, description: desc }, {}, errors)
       expect(errors).toEqual([])
       expect(out.name).toBe(valid)
@@ -449,11 +446,7 @@ describe("validateFrontmatter — name rules", () => {
 
   test("expectedDirName match passes silently", () => {
     const errors: Parameters<typeof validateFrontmatter>[2] = []
-    validateFrontmatter(
-      { name: "same", description: desc },
-      { expectedDirName: "same" },
-      errors,
-    )
+    validateFrontmatter({ name: "same", description: desc }, { expectedDirName: "same" }, errors)
     expect(errors).toEqual([])
   })
 })
@@ -485,11 +478,7 @@ describe("validateFrontmatter — description rules", () => {
 
   test("rejects XML tags inside description", () => {
     const errors: Parameters<typeof validateFrontmatter>[2] = []
-    validateFrontmatter(
-      { name: "ok", description: "has <tag> inside" },
-      {},
-      errors,
-    )
+    validateFrontmatter({ name: "ok", description: "has <tag> inside" }, {}, errors)
     expect(errors.length).toBeGreaterThan(0)
   })
 })
@@ -529,11 +518,7 @@ describe("validateFrontmatter — license / compatibility / metadata / allowed-t
 
   test("compatibility > 500 chars rejected", () => {
     const errors: Parameters<typeof validateFrontmatter>[2] = []
-    validateFrontmatter(
-      { ...okBase(), compatibility: "x".repeat(501) },
-      {},
-      errors,
-    )
+    validateFrontmatter({ ...okBase(), compatibility: "x".repeat(501) }, {}, errors)
     expect(errors.length).toBeGreaterThan(0)
   })
 
@@ -574,22 +559,14 @@ describe("validateFrontmatter — license / compatibility / metadata / allowed-t
 
   test("camelCase allowedTools also accepted", () => {
     const errors: Parameters<typeof validateFrontmatter>[2] = []
-    const out = validateFrontmatter(
-      { ...okBase(), allowedTools: "Read Write" },
-      {},
-      errors,
-    )
+    const out = validateFrontmatter({ ...okBase(), allowedTools: "Read Write" }, {}, errors)
     expect(errors).toEqual([])
     expect(out.allowedTools).toEqual(["Read", "Write"])
   })
 
   test("allowed-tools empty string → dropped", () => {
     const errors: Parameters<typeof validateFrontmatter>[2] = []
-    const out = validateFrontmatter(
-      { ...okBase(), "allowed-tools": "   " },
-      {},
-      errors,
-    )
+    const out = validateFrontmatter({ ...okBase(), "allowed-tools": "   " }, {}, errors)
     expect(errors).toEqual([])
     expect(out.allowedTools).toBeUndefined()
   })

@@ -22,7 +22,7 @@
  *         },
  *         "defaults": {                   // per-call defaults
  *           "format": "markdown",
- *           "waitUntil": "load",
+ *           "waitUntil": "domcontentloaded",
  *           "timeoutSec": 30
  *         }
  *       }
@@ -35,6 +35,9 @@
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+
+import type { CleanupLevel } from "./cleanup.ts"
+import { CLEANUP_LEVELS } from "./cleanup.ts"
 import { parseJsonc } from "./jsonc.ts"
 
 export type FetchFormat = "markdown" | "text" | "html" | "links" | "original"
@@ -44,12 +47,22 @@ export interface FetchDefaults {
   format: FetchFormat
   waitUntil: WaitUntil
   timeoutSec: number
+  /** Default whitespace cleanup level for `markdown`/`text` output.
+   *  Overridden per-call by the tool's `cleanup` param. See `lib/cleanup.ts`
+   *  for the level semantics. */
+  cleanup: CleanupLevel
 }
 
 export interface BackendConfig {
   /** Absolute path to the backend's binary. When unset, the backend script
    *  falls back to its default (e.g. `obscura` on PATH). */
   bin?: string
+  /** Optional list of WebExtension bundle paths (`.crx`, `.xpi`, `.zip`, or
+   *  unpacked dir). Obscura-specific today: forwarded as `--extension <PATH>`
+   *  per entry. Other backends ignore this field. Obscura currently honors
+   *  only the FIRST extension and warns on extras (multi-extension support
+   *  is on the roadmap). */
+  extensions?: string[]
 }
 
 export interface FetchConfig {
@@ -69,8 +82,19 @@ export interface FetchConfig {
 
 const VALID_FORMATS = new Set<FetchFormat>(["markdown", "text", "html", "links", "original"])
 const VALID_WAIT_UNTIL = new Set<WaitUntil>(["load", "domcontentloaded", "networkidle0"])
+const VALID_CLEANUP = new Set<CleanupLevel>(CLEANUP_LEVELS)
 
-/** Built-in defaults. Pure - no IO. */
+/** Built-in defaults. Pure - no IO.
+ *
+ * `waitUntil` defaults to `domcontentloaded`, not `load`. Empirically, on
+ * stealth-protected article sites (Schwab, SoFi, etc.) waiting for the
+ * full `load` event races with anti-bot redirects and post-parse DOM
+ * rewrites, and ends up capturing a nav-only shell. `domcontentloaded`
+ * captures the SSR'd initial DOM, which is where article content actually
+ * lives. `load` and `networkidle0` are still available as explicit
+ * overrides (`load` for asset-completeness, `networkidle0` for SPA shells
+ * that fetch their content after the initial paint).
+ */
 export function defaultConfig(): FetchConfig {
   return {
     enabled: true,
@@ -80,8 +104,9 @@ export function defaultConfig(): FetchConfig {
     backends: {},
     defaults: {
       format: "markdown",
-      waitUntil: "load",
+      waitUntil: "domcontentloaded",
       timeoutSec: 30,
+      cleanup: "basic",
     },
   }
 }
@@ -153,6 +178,9 @@ export function parseFetchConfig(raw: unknown): FetchConfig {
     if (typeof d.timeoutSec === "number" && d.timeoutSec >= 1 && d.timeoutSec <= 600) {
       out.defaults.timeoutSec = Math.floor(d.timeoutSec)
     }
+    if (typeof d.cleanup === "string" && VALID_CLEANUP.has(d.cleanup as CleanupLevel)) {
+      out.defaults.cleanup = d.cleanup as CleanupLevel
+    }
   }
 
   // Per-backend blocks: any object-valued key under cfg (other than known
@@ -166,6 +194,12 @@ export function parseFetchConfig(raw: unknown): FetchConfig {
     const block: BackendConfig = {}
     if (typeof v.bin === "string" && v.bin.trim().length > 0) {
       block.bin = v.bin.trim()
+    }
+    if (Array.isArray(v.extensions)) {
+      const exts = v.extensions
+        .filter((e): e is string => typeof e === "string" && e.trim().length > 0)
+        .map((e) => e.trim())
+      if (exts.length > 0) block.extensions = exts
     }
     backends[k] = block
   }
@@ -188,9 +222,7 @@ export function loadFetchConfig(): FetchConfig {
     parsed = parseJsonc(raw)
   } catch (err) {
     if (process.env.DEBUG === "1") {
-      process.stderr.write(
-        `[ma-fetch] ${path}: parse error: ${(err as Error).message}\n`,
-      )
+      process.stderr.write(`[ma-fetch] ${path}: parse error: ${(err as Error).message}\n`)
     }
     return defaultConfig()
   }

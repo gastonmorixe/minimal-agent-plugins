@@ -33,6 +33,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { isAbsolute, join } from "node:path"
+
 import { parseJsonc } from "./jsonc.ts"
 
 export type DiscoveryRootKey = "project" | "projectClaudeCode" | "homeShared" | "userAgent"
@@ -118,8 +119,7 @@ export function parseSkillsConfig(raw: unknown): SkillsConfig {
   if (isPlainObject(cfg.roots)) {
     const r = cfg.roots
     if (typeof r.project === "boolean") out.roots.project = r.project
-    if (typeof r.projectClaudeCode === "boolean")
-      out.roots.projectClaudeCode = r.projectClaudeCode
+    if (typeof r.projectClaudeCode === "boolean") out.roots.projectClaudeCode = r.projectClaudeCode
     if (typeof r.homeShared === "boolean") out.roots.homeShared = r.homeShared
     if (typeof r.userAgent === "boolean") out.roots.userAgent = r.userAgent
   }
@@ -168,9 +168,7 @@ export function loadSkillsConfig(): SkillsConfig {
     parsed = parseJsonc(raw)
   } catch (err) {
     if (process.env.DEBUG === "1") {
-      process.stderr.write(
-        `[ma-skills] ${path}: parse error: ${(err as Error).message}\n`,
-      )
+      process.stderr.write(`[ma-skills] ${path}: parse error: ${(err as Error).message}\n`)
     }
     return defaultConfig()
   }

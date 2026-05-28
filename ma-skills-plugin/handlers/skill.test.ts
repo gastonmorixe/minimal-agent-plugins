@@ -12,11 +12,14 @@
  * @module handlers/skill.test
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+
 import type { DiscoveryResult, Skill, TUIContext, TUIResult } from "../lib/types.ts"
+
 import handler, {
   buildInfoContent,
   buildListDisplay,
@@ -124,10 +127,18 @@ describe("buildListJson", () => {
     const result: DiscoveryResult = {
       skills: [skill({ name: "a", description: "alpha" })],
       broken: [
-        { dirName: "bad", dir: "/u/.minimal-agent/skills/bad", scope: "userAgent", errors: ["err"] },
+        {
+          dirName: "bad",
+          dir: "/u/.minimal-agent/skills/bad",
+          scope: "userAgent",
+          errors: ["err"],
+        },
       ],
       shadowed: [
-        { skill: skill({ name: "z", description: "z", scope: "homeShared" }), shadowedBy: "project" },
+        {
+          skill: skill({ name: "z", description: "z", scope: "homeShared" }),
+          shadowedBy: "project",
+        },
       ],
     }
     const j = buildListJson(result)
@@ -155,7 +166,11 @@ describe("buildListDisplay", () => {
 
   test("renders names and descriptions", () => {
     const out = buildListDisplay(
-      { skills: [skill({ name: "alpha", description: "alpha desc" })], broken: [], shadowed: [] },
+      {
+        skills: [skill({ name: "alpha", description: "alpha desc" })],
+        broken: [],
+        shadowed: [],
+      },
       "/c",
       "/h",
     )
@@ -169,7 +184,12 @@ describe("buildListDisplay", () => {
       {
         skills: [],
         broken: [
-          { dirName: "bad", dir: "/u/.minimal-agent/skills/bad", scope: "userAgent", errors: ["e1", "e2"] },
+          {
+            dirName: "bad",
+            dir: "/u/.minimal-agent/skills/bad",
+            scope: "userAgent",
+            errors: ["e1", "e2"],
+          },
         ],
         shadowed: [],
       },
@@ -279,6 +299,19 @@ function ctxFor(input: Record<string, unknown>): TUIContext {
     stdout: process.stdout,
     stdin: process.stdin,
     stderr: process.stderr,
+    log: (() => {
+      const noop = () => {}
+      return {
+        emergency: noop,
+        alert: noop,
+        critical: noop,
+        error: noop,
+        warn: noop,
+        notice: noop,
+        info: noop,
+        debug: noop,
+      }
+    })(),
   }
 }
 
@@ -309,7 +342,12 @@ describe("Skill handler — list action", () => {
       JSON.stringify({
         plugins: {
           "ma-skills": {
-            roots: { project: true, projectClaudeCode: false, homeShared: false, userAgent: false },
+            roots: {
+              project: true,
+              projectClaudeCode: false,
+              homeShared: false,
+              userAgent: false,
+            },
           },
         },
       }),
@@ -333,7 +371,12 @@ describe("Skill handler — list action", () => {
       JSON.stringify({
         plugins: {
           "ma-skills": {
-            roots: { project: true, projectClaudeCode: false, homeShared: false, userAgent: false },
+            roots: {
+              project: true,
+              projectClaudeCode: false,
+              homeShared: false,
+              userAgent: false,
+            },
           },
         },
       }),
@@ -376,7 +419,12 @@ describe("Skill handler — info action", () => {
       JSON.stringify({
         plugins: {
           "ma-skills": {
-            roots: { project: true, projectClaudeCode: false, homeShared: false, userAgent: false },
+            roots: {
+              project: true,
+              projectClaudeCode: false,
+              homeShared: false,
+              userAgent: false,
+            },
           },
         },
       }),
@@ -421,7 +469,12 @@ describe("Skill handler — read action", () => {
       JSON.stringify({
         plugins: {
           "ma-skills": {
-            roots: { project: true, projectClaudeCode: false, homeShared: false, userAgent: false },
+            roots: {
+              project: true,
+              projectClaudeCode: false,
+              homeShared: false,
+              userAgent: false,
+            },
           },
         },
       }),

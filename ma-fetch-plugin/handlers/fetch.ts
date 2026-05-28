@@ -17,18 +17,24 @@
  * @module handlers/fetch
  */
 
-import { callBackend, type BackendCallInput, type BackendDeps } from "../lib/backend.ts"
+import { type BackendCallInput, type BackendDeps, callBackend } from "../lib/backend.ts"
 import {
-  defaultConfig,
-  loadFetchConfig,
+  applyCleanup,
+  CLEANUP_LEVELS,
+  type CleanupLevel,
+  isCleanableFormat,
+} from "../lib/cleanup.ts"
+import {
   type FetchConfig,
   type FetchFormat,
+  loadFetchConfig,
   type WaitUntil,
 } from "../lib/config.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 const VALID_FORMATS = new Set<FetchFormat>(["markdown", "text", "html", "links", "original"])
 const VALID_WAIT_UNTIL = new Set<WaitUntil>(["load", "domcontentloaded", "networkidle0"])
+const VALID_CLEANUP = new Set<CleanupLevel>(CLEANUP_LEVELS)
 
 const PREVIEW_LINES = 12
 const PREVIEW_LINE_WIDTH = 300
@@ -40,11 +46,10 @@ export interface ParsedInput {
   evalExpr?: string
   waitUntil?: WaitUntil
   timeoutSec?: number
+  cleanup?: CleanupLevel
 }
 
-export type ValidateResult =
-  | { ok: true; value: ParsedInput }
-  | { ok: false; error: string }
+export type ValidateResult = { ok: true; value: ParsedInput } | { ok: false; error: string }
 
 /** Validate the raw tool input. Returns parsed values or an error message. */
 export function validateInput(raw: Record<string, unknown>): ValidateResult {
@@ -88,10 +93,7 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
   }
 
   if (raw.wait_until !== undefined) {
-    if (
-      typeof raw.wait_until !== "string" ||
-      !VALID_WAIT_UNTIL.has(raw.wait_until as WaitUntil)
-    ) {
+    if (typeof raw.wait_until !== "string" || !VALID_WAIT_UNTIL.has(raw.wait_until as WaitUntil)) {
       return {
         ok: false,
         error: `\`wait_until\` must be one of: ${[...VALID_WAIT_UNTIL].join(", ")}`,
@@ -112,6 +114,16 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
     out.timeoutSec = Math.floor(raw.timeout_sec)
   }
 
+  if (raw.cleanup !== undefined) {
+    if (typeof raw.cleanup !== "string" || !VALID_CLEANUP.has(raw.cleanup as CleanupLevel)) {
+      return {
+        ok: false,
+        error: `\`cleanup\` must be one of: ${[...VALID_CLEANUP].join(", ")}`,
+      }
+    }
+    out.cleanup = raw.cleanup as CleanupLevel
+  }
+
   return { ok: true, value: out }
 }
 
@@ -125,6 +137,11 @@ export function mergeInputs(parsed: ParsedInput, config: FetchConfig): BackendCa
     selector: parsed.selector,
     evalExpr: parsed.evalExpr,
   }
+}
+
+/** Resolve the effective cleanup level: per-call > config default. */
+export function resolveCleanup(parsed: ParsedInput, config: FetchConfig): CleanupLevel {
+  return parsed.cleanup ?? config.defaults.cleanup
 }
 
 // ---------------------------------------------------------------------------
@@ -159,56 +176,21 @@ function truncLine(line: string, max: number): string {
 }
 
 /**
- * Normalize whitespace noise in markdown / text output.
+ * Backwards-compat re-export of the long-standing markdown normalizer.
+ * New code should import `cleanupBasic` from `lib/cleanup.ts` directly.
  *
- * Stopgap fix for HTML→markdown converter quirks (notably obscura on
- * Wikipedia / GitHub / MDPI) that emit massive runs of blank or
- * whitespace-only lines for empty container elements. On a Wikipedia
- * article the conversion produces 651 lines, 85 % of which are blank
- * or whitespace, with one run of 47 consecutive blank lines. This
- * helper collapses that to 175 lines (-73 %) without touching content.
- *
- * Three transformations, all idempotent:
- *   1. `rstrip` every line (drop trailing spaces/tabs).
- *   2. Collapse runs of 2+ blank-or-whitespace-only lines into a SINGLE
- *      blank line.
- *   3. Strip leading + trailing blank lines.
- *
- * Applied ONLY to `markdown` and `text` formats. `html`, `links`, and
- * `original` pass through verbatim: HTML newlines are syntactically
- * significant in <pre>/<textarea>, link lists are one-per-line by
- * design, and `original` is the raw byte stream from the backend.
- *
- * Exported so tests and future tooling can call it directly.
+ * Behavior is unchanged: rstrip per line, collapse 2+ blank-line runs,
+ * strip leading/trailing blank lines.
  */
-export function normalizeMarkdown(input: string): string {
-  if (input.length === 0) return input
-  const lines = input.split("\n")
-  for (let i = 0; i < lines.length; i++) {
-    lines[i] = lines[i].replace(/[\t ]+$/, "")
-  }
-  const out: string[] = []
-  let prevBlank = false
-  for (const l of lines) {
-    const isBlank = l.length === 0
-    if (isBlank && prevBlank) continue
-    out.push(l)
-    prevBlank = isBlank
-  }
-  while (out.length > 0 && out[0] === "") out.shift()
-  while (out.length > 0 && out[out.length - 1] === "") out.pop()
-  return out.join("\n")
-}
-
-/** Formats for which `normalizeMarkdown` is a sound transformation. */
-const NORMALIZABLE_FORMATS = new Set<FetchFormat>(["markdown", "text"])
+export { cleanupBasic as normalizeMarkdown } from "../lib/cleanup.ts"
 
 /**
- * Apply the markdown normalizer iff the format is one of the
- * normalizable ones. Pass-through for HTML / links / original.
+ * Apply the configured cleanup level iff the format is markdown/text.
+ * Pass-through for HTML / links / original (newlines are significant).
  */
-function maybeNormalize(content: string, format: FetchFormat): string {
-  return NORMALIZABLE_FORMATS.has(format) ? normalizeMarkdown(content) : content
+function maybeCleanup(content: string, format: FetchFormat, level: CleanupLevel): string {
+  if (!isCleanableFormat(format)) return content
+  return applyCleanup(content, level)
 }
 
 /** Build the body lines (`display` field) - first N lines, width-clamped. */
@@ -263,25 +245,31 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
   if (!config.enabled) {
     return {
       kind: "tool_result",
-      content: "Fetch: plugin is disabled in user config (plugins[\"ma-fetch\"].enabled = false)",
+      content: 'Fetch: plugin is disabled in user config (plugins["ma-fetch"].enabled = false)',
       is_error: true,
     }
   }
 
   const input = mergeInputs(v.value, config)
-  return await runWithDeps(ctx, config, input, {})
+  const cleanup = resolveCleanup(v.value, config)
+  return await runWithDeps(ctx, config, input, {}, cleanup)
 }
 
 /**
  * Test-injectable inner. Exported so handler tests can pass a fake
  * `spawnFn`/`existsFn` via `BackendDeps` without spawning a real
  * subprocess or hitting disk.
+ *
+ * `cleanup` defaults to `"basic"` (long-standing behavior) when not
+ * supplied — keeps existing tests that call `runWithDeps` directly
+ * without a level passing.
  */
 export async function runWithDeps(
   ctx: TUIContext,
   config: FetchConfig,
   input: BackendCallInput,
   deps: BackendDeps,
+  cleanup: CleanupLevel = "basic",
 ): Promise<TUIResult> {
   const result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
 
@@ -320,17 +308,19 @@ export async function runWithDeps(
     }
   }
 
-  // Success. Run the markdown normalizer on `markdown` and `text` formats
-  // BEFORE building `display` + `content`. HTML→markdown converters
-  // (notably obscura on Wikipedia / GitHub) emit massive runs of
+  // Success. Run the cleanup pass on `markdown`/`text` BEFORE building
+  // `display` + `content`. HTML→markdown converters (notably obscura on
+  // Wikipedia / GitHub / Bloomberg) emit massive runs of blank or
   // whitespace-only lines that bloat the model's view of the page
-  // without adding signal; the normalizer collapses 47-line blank
-  // runs to a single blank without touching content. Pass-through
-  // for `html` / `links` / `original` (newlines are significant
-  // there). See `normalizeMarkdown` JSDoc.
-  const content = maybeNormalize(result.stdout, input.format)
+  // without adding signal. Level is set by the caller (per-call param,
+  // falling back to config default, falling back to "basic").
+  //
+  // Pass-through for `html` / `links` / `original` regardless of level
+  // (newlines are syntactically significant in those). See `lib/cleanup.ts`.
+  const content = maybeCleanup(result.stdout, input.format, cleanup)
   const size = Buffer.byteLength(content, "utf-8")
-  const lineCount = content.length === 0 ? 0 : content.split("\n").length - (content.endsWith("\n") ? 1 : 0)
+  const lineCount =
+    content.length === 0 ? 0 : content.split("\n").length - (content.endsWith("\n") ? 1 : 0)
 
   const displayBody = buildDisplayBody(content, PREVIEW_LINES)
   const truncated = lineCount > PREVIEW_LINES
