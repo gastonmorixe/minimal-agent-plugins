@@ -442,3 +442,114 @@ describe("buildArgv - extensions", () => {
     expect(argv[argv.length - 1]).toBe(url)
   })
 })
+
+// ---------------------------------------------------------------------------
+// buildArgv - --storage-dir (persistence)
+// ---------------------------------------------------------------------------
+
+describe("buildArgv - storageDir", () => {
+  test("--storage-dir <DIR> emitted when storageDir is set", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      storageDir: "/home/me/.minimal-agent/sessions/fetch/twitter",
+    })
+    const idx = argv.indexOf("--storage-dir")
+    expect(idx).toBeGreaterThanOrEqual(0)
+    expect(argv[idx + 1]).toBe("/home/me/.minimal-agent/sessions/fetch/twitter")
+  })
+
+  test("--storage-dir absent when storageDir is omitted", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+    })
+    expect(argv).not.toContain("--storage-dir")
+  })
+
+  test("--storage-dir absent when storageDir is empty string", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      storageDir: "",
+    })
+    expect(argv).not.toContain("--storage-dir")
+  })
+
+  test("URL stays the final argument even with storageDir set", () => {
+    const url = "https://example.com/article"
+    const argv = buildArgv({
+      url,
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      storageDir: "/abs/dir",
+    })
+    expect(argv[argv.length - 1]).toBe(url)
+  })
+
+  test("--storage-dir composes with --extension / --proxy / --user-agent", () => {
+    const argv = buildArgv({
+      url: "https://x",
+      format: "markdown",
+      waitUntil: "load",
+      timeoutSec: 30,
+      userAgent: "UA/1",
+      proxy: "http://p",
+      extensions: ["/ext/a.xpi"],
+      storageDir: "/store/x",
+    })
+    expect(argv).toContain("--user-agent")
+    expect(argv).toContain("--proxy")
+    expect(argv).toContain("--extension")
+    expect(argv).toContain("--storage-dir")
+    // Final positional is still the URL.
+    expect(argv[argv.length - 1]).toBe("https://x")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseEnv - MA_FETCH_STORAGE_DIR
+// ---------------------------------------------------------------------------
+
+describe("parseEnv - storageDir", () => {
+  const base = {
+    MA_FETCH_URL: "https://example.com",
+    MA_FETCH_FORMAT: "markdown",
+    MA_FETCH_WAIT_UNTIL: "load",
+    MA_FETCH_TIMEOUT_SEC: "30",
+  }
+
+  test("MA_FETCH_STORAGE_DIR populates storageDir", () => {
+    const opts = parseEnv({ ...base, MA_FETCH_STORAGE_DIR: "/abs/dir" })
+    expect(opts.storageDir).toBe("/abs/dir")
+  })
+
+  test("missing var leaves storageDir undefined", () => {
+    const opts = parseEnv({ ...base })
+    expect(opts.storageDir).toBeUndefined()
+  })
+
+  test("empty / whitespace-only var leaves storageDir undefined", () => {
+    expect(parseEnv({ ...base, MA_FETCH_STORAGE_DIR: "" }).storageDir).toBeUndefined()
+    expect(parseEnv({ ...base, MA_FETCH_STORAGE_DIR: "   " }).storageDir).toBeUndefined()
+  })
+
+  test("trims surrounding whitespace", () => {
+    const opts = parseEnv({ ...base, MA_FETCH_STORAGE_DIR: "  /abs/dir  " })
+    expect(opts.storageDir).toBe("/abs/dir")
+  })
+
+  test("storageDir survives the round-trip through buildArgv", () => {
+    const opts = parseEnv({ ...base, MA_FETCH_STORAGE_DIR: "/abs/dir" })
+    const argv = buildArgv(opts)
+    const idx = argv.indexOf("--storage-dir")
+    expect(argv[idx + 1]).toBe("/abs/dir")
+  })
+})

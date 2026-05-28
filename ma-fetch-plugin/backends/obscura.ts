@@ -27,6 +27,15 @@
  *   MA_FETCH_EVAL         (optional)  JS expression to evaluate
  *   MA_FETCH_USER_AGENT   (optional)  override UA (plugin-config provided)
  *   MA_FETCH_PROXY        (optional)  HTTP/SOCKS5 proxy URL (plugin-config provided)
+ *   MA_FETCH_STORAGE_DIR  (optional)  absolute path; forwarded as
+ *                                     `--storage-dir <DIR>` so obscura
+ *                                     persists cookies + localStorage to
+ *                                     this directory across runs. The
+ *                                     handler is the sole party allowed
+ *                                     to set this — already resolved and
+ *                                     sandboxed under the plugin's
+ *                                     `storageRoot`. Backend treats it
+ *                                     verbatim, no further checks.
  *   MA_FETCH_BIN          (optional)  path to obscura binary (default: "obscura" on PATH)
  *   MA_FETCH_EXTENSIONS   (optional)  newline-separated list of WebExtension
  *                                     bundle paths (`.crx`, `.xpi`, `.zip`, or
@@ -72,6 +81,10 @@ export interface BuildArgvOptions {
   proxy?: string
   /** Optional WebExtension bundle paths. Each becomes `--extension <PATH>`. */
   extensions?: string[]
+  /** Optional absolute path forwarded as `--storage-dir <DIR>`. When set,
+   *  obscura persists cookies + localStorage to this directory and loads
+   *  them on the next run with the same path. */
+  storageDir?: string
 }
 
 /**
@@ -112,6 +125,9 @@ export function buildArgv(opts: BuildArgvOptions): string[] {
     for (const e of opts.extensions) {
       argv.push("--extension", e)
     }
+  }
+  if (opts.storageDir && opts.storageDir.length > 0) {
+    argv.push("--storage-dir", opts.storageDir)
   }
   argv.push(opts.url)
   return argv
@@ -170,6 +186,7 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
   const evalExpr = env.MA_FETCH_EVAL || undefined // don't trim - JS may want leading/trailing ws
   const userAgent = env.MA_FETCH_USER_AGENT?.trim() || undefined
   const proxy = env.MA_FETCH_PROXY?.trim() || undefined
+  const storageDir = env.MA_FETCH_STORAGE_DIR?.trim() || undefined
 
   // Newline-separated list (`\n` is the one byte POSIX paths cannot contain).
   // Empty / whitespace-only entries are dropped.
@@ -192,6 +209,7 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
     userAgent,
     proxy,
     extensions: extensions && extensions.length > 0 ? extensions : undefined,
+    storageDir,
   }
 }
 

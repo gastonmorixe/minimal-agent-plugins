@@ -203,7 +203,13 @@ describe("mergeInputs", () => {
   test("input overrides config defaults", () => {
     const cfg: FetchConfig = {
       ...defaultConfig(),
-      defaults: { format: "markdown", waitUntil: "load", timeoutSec: 30, cleanup: "basic" },
+      defaults: {
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        cleanup: "basic",
+        session: null,
+      },
     }
     const merged = mergeInputs(
       { url: "https://x", format: "text", waitUntil: "networkidle0", timeoutSec: 60 },
@@ -655,5 +661,213 @@ describe("runWithDeps - cleanup level", () => {
     // Cleanup is ONLY applied to markdown/text regardless of level.
     const r = await runAt("aggressive", "html")
     expect(r.content).toBe(wrapped)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Persistence: session validation, resolveSessionDir, footer rendering
+// ---------------------------------------------------------------------------
+
+import { join } from "node:path"
+
+import { resolveSessionDir, sessionLeafName } from "./fetch.ts"
+
+describe("validateInput - session", () => {
+  test("undefined leaves value.session undefined", () => {
+    const v = validateInput({ url: "https://x" })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.value.session).toBeUndefined()
+  })
+
+  test("empty string is allowed (opt-out sentinel)", () => {
+    const v = validateInput({ url: "https://x", session: "" })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.value.session).toBe("")
+  })
+
+  test("valid name accepted verbatim", () => {
+    const v = validateInput({ url: "https://x", session: "twitter" })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.value.session).toBe("twitter")
+  })
+
+  test("alnum + dash + underscore accepted", () => {
+    const v = validateInput({ url: "https://x", session: "my-session_2" })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.value.session).toBe("my-session_2")
+  })
+
+  test("path-traversal shapes rejected", () => {
+    for (const bad of ["..", "../etc", "a/b", "a\\b", "a;b", "a b", ".hidden", "foo.bar"]) {
+      const v = validateInput({ url: "https://x", session: bad })
+      expect(v.ok).toBe(false)
+      if (!v.ok) expect(v.error).toMatch(/session/)
+    }
+  })
+
+  test("non-string rejected", () => {
+    expect(validateInput({ url: "https://x", session: 42 }).ok).toBe(false)
+    expect(validateInput({ url: "https://x", session: null }).ok).toBe(false)
+    expect(validateInput({ url: "https://x", session: ["x"] }).ok).toBe(false)
+  })
+
+  test("> 64 chars rejected", () => {
+    const tooLong = "a".repeat(65)
+    expect(validateInput({ url: "https://x", session: tooLong }).ok).toBe(false)
+  })
+
+  test("exactly 64 chars accepted", () => {
+    const max = "a".repeat(64)
+    const v = validateInput({ url: "https://x", session: max })
+    expect(v.ok).toBe(true)
+  })
+})
+
+describe("resolveSessionDir", () => {
+  const cfg: FetchConfig = {
+    ...defaultConfig(),
+    storageRoot: "/root/sessions",
+  }
+
+  test("per-call name wins", () => {
+    expect(resolveSessionDir({ url: "https://x", session: "twitter" }, cfg)).toBe(
+      "/root/sessions/twitter",
+    )
+  })
+
+  test("empty per-call session is explicit opt-out (overrides default)", () => {
+    const cfgWithDefault: FetchConfig = {
+      ...cfg,
+      defaults: { ...cfg.defaults, session: "fallback" },
+    }
+    expect(resolveSessionDir({ url: "https://x", session: "" }, cfgWithDefault)).toBeUndefined()
+  })
+
+  test("undefined per-call falls back to config default", () => {
+    const cfgWithDefault: FetchConfig = {
+      ...cfg,
+      defaults: { ...cfg.defaults, session: "fallback" },
+    }
+    expect(resolveSessionDir({ url: "https://x" }, cfgWithDefault)).toBe("/root/sessions/fallback")
+  })
+
+  test("no per-call, no default → undefined (stateless one-shot)", () => {
+    expect(resolveSessionDir({ url: "https://x" }, cfg)).toBeUndefined()
+  })
+
+  test("per-call always trumps default", () => {
+    const cfgWithDefault: FetchConfig = {
+      ...cfg,
+      defaults: { ...cfg.defaults, session: "fallback" },
+    }
+    expect(resolveSessionDir({ url: "https://x", session: "explicit" }, cfgWithDefault)).toBe(
+      "/root/sessions/explicit",
+    )
+  })
+
+  test("malicious name (already caught by validate, defense-in-depth here)", () => {
+    // resolveSessionDir is also called with config-default values which
+    // come from the config loader. Even if a future bug let a bad name
+    // through, the pattern recheck blocks the traversal.
+    expect(
+      resolveSessionDir({ url: "https://x", session: "../etc" as string }, cfg),
+    ).toBeUndefined()
+  })
+
+  test("uses path.join (cross-platform separator)", () => {
+    const got = resolveSessionDir({ url: "https://x", session: "foo" }, cfg)
+    expect(got).toBe(join("/root/sessions", "foo"))
+  })
+})
+
+describe("mergeInputs - storageDir", () => {
+  test("propagates session → storageDir on the merged input", () => {
+    const cfg: FetchConfig = { ...defaultConfig(), storageRoot: "/root" }
+    const merged = mergeInputs({ url: "https://x", session: "twitter" }, cfg)
+    expect(merged.storageDir).toBe("/root/twitter")
+  })
+
+  test("omits storageDir when no session", () => {
+    const cfg: FetchConfig = { ...defaultConfig(), storageRoot: "/root" }
+    const merged = mergeInputs({ url: "https://x" }, cfg)
+    expect(merged.storageDir).toBeUndefined()
+  })
+
+  test("config default session is applied when input omits it", () => {
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      storageRoot: "/root",
+      defaults: { ...defaultConfig().defaults, session: "main" },
+    }
+    const merged = mergeInputs({ url: "https://x" }, cfg)
+    expect(merged.storageDir).toBe("/root/main")
+  })
+
+  test("empty session opts out of default", () => {
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      storageRoot: "/root",
+      defaults: { ...defaultConfig().defaults, session: "main" },
+    }
+    const merged = mergeInputs({ url: "https://x", session: "" }, cfg)
+    expect(merged.storageDir).toBeUndefined()
+  })
+})
+
+describe("sessionLeafName", () => {
+  test("returns undefined for undefined input", () => {
+    expect(sessionLeafName(undefined)).toBeUndefined()
+  })
+
+  test("extracts leaf from posix path", () => {
+    expect(sessionLeafName("/root/sessions/twitter")).toBe("twitter")
+  })
+
+  test("extracts leaf from windows path", () => {
+    expect(sessionLeafName("C:\\root\\sessions\\twitter")).toBe("twitter")
+  })
+
+  test("strips trailing slash", () => {
+    expect(sessionLeafName("/root/sessions/twitter/")).toBe("twitter")
+    expect(sessionLeafName("/root/sessions/twitter//")).toBe("twitter")
+  })
+
+  test("no separator → whole string", () => {
+    expect(sessionLeafName("twitter")).toBe("twitter")
+  })
+})
+
+describe("buildDisplayFooter - sessionName", () => {
+  test("includes session label when set", () => {
+    const f = buildDisplayFooter({
+      format: "markdown",
+      size: 100,
+      lineCount: 5,
+      backend: "obscura.ts",
+      sessionName: "twitter",
+    })
+    // The footer is ANSI-dimmed but the text is intact between escape codes.
+    expect(f).toContain("session: twitter")
+  })
+
+  test("omits session label when undefined", () => {
+    const f = buildDisplayFooter({
+      format: "markdown",
+      size: 100,
+      lineCount: 5,
+      backend: "obscura.ts",
+    })
+    expect(f).not.toContain("session:")
+  })
+
+  test("omits session label for empty string", () => {
+    const f = buildDisplayFooter({
+      format: "markdown",
+      size: 100,
+      lineCount: 5,
+      backend: "obscura.ts",
+      sessionName: "",
+    })
+    expect(f).not.toContain("session:")
   })
 })

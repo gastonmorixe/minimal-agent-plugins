@@ -59,6 +59,51 @@ result in your chosen format.
   diffing — the `<ma::agent::raw-output .../>` blob already preserves the
   pre-cleanup bytes regardless of level.
 
+## Persistent sessions (cookies + `localStorage`)
+
+`Fetch` is stateless by default. Pass `session: "<name>"` to keep
+cookies and `localStorage` alive across calls, and a follow-up call
+with the same name comes back logged in.
+
+- **When to use it.** Workflows that need authentication: scraping a
+  Twitter / X account, paging through LinkedIn search, hitting a
+  rate-limited dashboard with a session token, anything where round 2
+  needs round 1's cookie jar.
+- **When NOT to use it.** One-shot reads of public pages. Don't pay
+  the disk-I/O tax for a single `Fetch`.
+- **The shape.** Names are alnum + `-`/`_`, 1–64 chars, must start
+  with alnum. The plugin sandboxes the name under
+  `~/.minimal-agent/sessions/fetch/<name>/`. You cannot pass an
+  absolute path — only names.
+- **First call usually logs in.** Use `eval` to fill in form fields
+  and submit:
+  ```
+  Fetch({
+    url: "https://twitter.com/login",
+    session: "twitter",
+    eval: "document.querySelector('form').username.value='me'; ...; document.querySelector('form').submit(); 'ok'"
+  })
+  ```
+- **Later calls just hit the URL.** The Rust browser loads the saved
+  cookies + `localStorage` on context creation:
+  ```
+  Fetch({ url: "https://twitter.com/home", session: "twitter", format: "text" })
+  ```
+- **Pass `session: ""` to opt out of any config-default session for
+  one call** (rare; only matters if the user configured a
+  `defaults.session`).
+- **The transcript footer shows the session name** when it was used
+  (`session: twitter`), so the user can see which jar the call
+  touched.
+- **Plaintext on disk.** Cookies + tokens land in plain JSON under
+  `~/.minimal-agent/sessions/fetch/<name>/`. Don't pick a session
+  name that includes the user's identity if other people might see
+  the transcript. The directory inherits the user's home
+  permissions; treat it like a browser profile.
+- **Single-writer.** Two `Fetch` calls hitting the same session at
+  the same time will race. Calls are sequential per-turn, so this
+  rarely bites, but be aware.
+
 ## Output
 
 - The full page content lands in the tool result (`content` field) for
