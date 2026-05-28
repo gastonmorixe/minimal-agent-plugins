@@ -56,7 +56,7 @@ result in your chosen format.
   break (headings won't pair with adjacent lists in strict parsers) but
   the model reads lines, so that's fine. Default `"basic"` keeps single
   blank lines as paragraph separators. Use `"off"` only for verbatim
-  diffing — the `[raw-output: ...]` blob already preserves the
+  diffing — the `<ma::agent::raw-output .../>` blob already preserves the
   pre-cleanup bytes regardless of level.
 
 ## Output

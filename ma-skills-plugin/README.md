@@ -30,7 +30,7 @@ See the spec for the full grammar: <https://agentskills.io/specification>.
 
 ```bash
 git clone https://github.com/gastonmorixe/minimal-agent-plugins ~/Projects/minimal-agent-plugins
-ln -s ~/Projects/minimal-agent-plugins/ma-skills-plugin ~/.agents/tui-plugins/ma-skills-plugin
+ln -s ~/Projects/minimal-agent-plugins/ma-skills-plugin ~/.agents/plugins/ma-skills-plugin
 ```
 
 Next time you launch minimal-agent, the plugin loader picks it up
