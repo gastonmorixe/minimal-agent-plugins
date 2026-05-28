@@ -17,6 +17,8 @@
  * @module handlers/fetch
  */
 
+import { join } from "node:path"
+
 import { type BackendCallInput, type BackendDeps, callBackend } from "../lib/backend.ts"
 import {
   applyCleanup,
@@ -28,6 +30,7 @@ import {
   type FetchConfig,
   type FetchFormat,
   loadFetchConfig,
+  SESSION_NAME_PATTERN,
   type WaitUntil,
 } from "../lib/config.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
@@ -47,6 +50,16 @@ export interface ParsedInput {
   waitUntil?: WaitUntil
   timeoutSec?: number
   cleanup?: CleanupLevel
+  /**
+   * Session selector, kept as the source the caller passed:
+   *   - `undefined` → use `config.defaults.session` (or no session)
+   *   - `""`        → explicit "no session for this call" (override default)
+   *   - `<name>`    → use this session (validated against SESSION_NAME_PATTERN)
+   *
+   * The distinction matters: a missing field falls back to config, an
+   * empty string opts out. Same pattern as a Python `None` vs `""`.
+   */
+  session?: string
 }
 
 export type ValidateResult = { ok: true; value: ParsedInput } | { ok: false; error: string }
@@ -124,7 +137,53 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
     out.cleanup = raw.cleanup as CleanupLevel
   }
 
+  if (raw.session !== undefined) {
+    if (typeof raw.session !== "string") {
+      return { ok: false, error: "`session` must be a string" }
+    }
+    // Empty string is a valid "opt-out" sentinel (overrides any config
+    // default for this one call). Non-empty must match the regex.
+    if (raw.session.length > 0 && !SESSION_NAME_PATTERN.test(raw.session)) {
+      return {
+        ok: false,
+        error:
+          "`session` must be 1-64 chars, alphanumeric / `-` / `_` only, starting with alnum. " +
+          'Pass `""` to opt out of any config-default session for this call.',
+      }
+    }
+    out.session = raw.session
+  }
+
   return { ok: true, value: out }
+}
+
+/**
+ * Resolve the session selector + config into an absolute storage directory.
+ *
+ * Three cases:
+ *   1. `parsed.session === ""` → explicit opt-out, returns `undefined`.
+ *   2. `parsed.session` is a non-empty name → `<storageRoot>/<name>`.
+ *   3. `parsed.session === undefined` and `config.defaults.session` set
+ *      → `<storageRoot>/<default-name>`.
+ *   4. Otherwise → `undefined` (stateless one-shot fetch).
+ *
+ * The returned path is guaranteed to be a direct child of `storageRoot`
+ * — the model can't escape via `..`, slashes, or any other shape because
+ * the name was already constrained by SESSION_NAME_PATTERN at validation.
+ *
+ * Exposed for tests.
+ */
+export function resolveSessionDir(parsed: ParsedInput, config: FetchConfig): string | undefined {
+  // Case 1: explicit opt-out.
+  if (parsed.session === "") return undefined
+  // Case 2: per-call name wins over default.
+  const name = parsed.session ?? config.defaults.session
+  if (!name) return undefined
+  // SESSION_NAME_PATTERN already excludes "/", "\\", "..", etc., so the
+  // join below cannot path-traverse. Double-check as a belt-and-suspenders
+  // hedge against a future regex relaxation.
+  if (!SESSION_NAME_PATTERN.test(name)) return undefined
+  return join(config.storageRoot, name)
 }
 
 /** Merge config defaults with parsed input → finalized BackendCallInput. */
@@ -136,6 +195,7 @@ export function mergeInputs(parsed: ParsedInput, config: FetchConfig): BackendCa
     timeoutSec: parsed.timeoutSec ?? config.defaults.timeoutSec,
     selector: parsed.selector,
     evalExpr: parsed.evalExpr,
+    storageDir: resolveSessionDir(parsed, config),
   }
 }
 
@@ -203,13 +263,16 @@ export function buildDisplayBody(content: string, lines: number = PREVIEW_LINES)
   return slice.map((l) => truncLine(l, PREVIEW_LINE_WIDTH)).join("\n")
 }
 
-/** Build the footer line - format · size · line count · backend. */
+/** Build the footer line - format · size · line count · backend [· session]. */
 export function buildDisplayFooter(opts: {
   format: FetchFormat
   size: number
   lineCount: number
   backend: string
   truncated?: boolean
+  /** When set, the call wrote to / read from this session. The footer
+   *  shows just the leaf name (`twitter`), not the full path. */
+  sessionName?: string
 }): string {
   const parts = [
     opts.format,
@@ -217,6 +280,9 @@ export function buildDisplayFooter(opts: {
     `${opts.lineCount} lines`,
     `via ${opts.backend}`,
   ]
+  if (opts.sessionName && opts.sessionName.length > 0) {
+    parts.push(`session: ${opts.sessionName}`)
+  }
   const main = parts.map(dim).join(dim(" · "))
   if (opts.truncated) {
     return `${main} ${dim("·")} ${dim("preview truncated")}`
@@ -330,6 +396,7 @@ export async function runWithDeps(
     lineCount,
     backend: result.backend,
     truncated,
+    sessionName: sessionLeafName(input.storageDir),
   })
 
   return {
@@ -339,6 +406,17 @@ export async function runWithDeps(
     displayHeader: input.url,
     displayFooter,
   }
+}
+
+/** Extract the leaf name from a session directory path for the footer.
+ *  Returns `undefined` when no path was set. Pure. */
+export function sessionLeafName(storageDir: string | undefined): string | undefined {
+  if (!storageDir) return undefined
+  // `path.basename` handles trailing slash too; doing it by hand keeps the
+  // function dependency-free and self-evident.
+  const trimmed = storageDir.replace(/[/\\]+$/, "")
+  const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"))
+  return idx >= 0 ? trimmed.slice(idx + 1) : trimmed
 }
 
 export default handler

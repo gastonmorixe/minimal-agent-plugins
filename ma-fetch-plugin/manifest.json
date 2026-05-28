@@ -50,6 +50,11 @@
                 "enum": ["off", "basic", "aggressive"],
                 "default": "basic",
                 "description": "Whitespace cleanup for `markdown`/`text` only (no-op for html/links/original). 'basic' (default): rstrip per line, collapse 2+ blank runs, trim ends. Safe paragraph separation preserved. 'aggressive': basic + fold unicode whitespace (NBSP, ideographic space, etc.) to ASCII + strip zero-width chars (ZWSP, BOM, ZWJ) + drop ALL remaining blank lines. Use 'aggressive' when the page is noisy (Bloomberg / Wikipedia / GitHub nav lists wrap every block in blank lines, ~30%+ of the file). 'off' = passthrough; only use when verbatim bytes matter. The pre-cleanup raw bytes are always preserved at the blob path in the `<ma::agent::raw-output .../>` footer."
+              },
+              "session": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
+                "description": "Optional session name to keep cookies + localStorage alive across calls. Use the SAME name for related fetches and the second call comes back logged in. Names are alnum + `-`/`_`, max 64 chars; the plugin sandboxes them under `~/.minimal-agent/sessions/fetch/<name>/` so the model cannot escape to arbitrary disk paths. Use when a workflow needs to stay logged in (Twitter scrape across pages, LinkedIn search across companies, etc.) — first call logs in via `eval` form-submit, subsequent calls reuse the saved jar. Omit for stateless one-shot fetches: the default is no persistence. Pass an empty string to override a config-default session for one call."
               }
             },
             "required": ["url"],

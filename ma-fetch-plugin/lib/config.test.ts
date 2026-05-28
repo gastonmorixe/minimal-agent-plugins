@@ -277,3 +277,169 @@ describe("parseFetchConfig - per-backend blocks", () => {
     expect(c.backends.obscura?.extensions).toBeUndefined()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Persistence: storageRoot + defaults.session
+// ---------------------------------------------------------------------------
+
+import { homedir } from "node:os"
+import { join } from "node:path"
+
+import { defaultStorageRoot, expandHome, SESSION_NAME_PATTERN } from "./config.ts"
+
+describe("expandHome", () => {
+  test("expands a bare `~`", () => {
+    expect(expandHome("~")).toBe(homedir())
+  })
+
+  test("expands `~/...`", () => {
+    expect(expandHome("~/foo")).toBe(join(homedir(), "foo"))
+    expect(expandHome("~/foo/bar")).toBe(join(homedir(), "foo/bar"))
+  })
+
+  test("leaves absolute paths alone", () => {
+    expect(expandHome("/abs/path")).toBe("/abs/path")
+  })
+
+  test("leaves `~foo` (different user) alone", () => {
+    // We don't try to resolve other users' homes — Python `os.path.expanduser`
+    // does, but it's a footgun and we don't need it.
+    expect(expandHome("~root/foo")).toBe("~root/foo")
+  })
+
+  test("leaves relative paths alone (they get filtered by parseFetchConfig)", () => {
+    expect(expandHome("foo/bar")).toBe("foo/bar")
+  })
+})
+
+describe("defaultStorageRoot", () => {
+  test("rooted under user home + .minimal-agent/sessions/fetch", () => {
+    expect(defaultStorageRoot()).toBe(join(homedir(), ".minimal-agent", "sessions", "fetch"))
+  })
+})
+
+describe("defaultConfig - persistence fields", () => {
+  test("storageRoot defaults to ~/.minimal-agent/sessions/fetch", () => {
+    expect(defaultConfig().storageRoot).toBe(defaultStorageRoot())
+  })
+
+  test("defaults.session defaults to null (stateless one-shot)", () => {
+    expect(defaultConfig().defaults.session).toBeNull()
+  })
+})
+
+describe("parseFetchConfig - storageRoot", () => {
+  test("absolute path is accepted verbatim", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { storageRoot: "/abs/sessions" } },
+    })
+    expect(c.storageRoot).toBe("/abs/sessions")
+  })
+
+  test("tilde is expanded to user home", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { storageRoot: "~/my-sessions" } },
+    })
+    expect(c.storageRoot).toBe(join(homedir(), "my-sessions"))
+  })
+
+  test("relative path is rejected (default preserved)", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { storageRoot: "relative/path" } },
+    })
+    expect(c.storageRoot).toBe(defaultStorageRoot())
+  })
+
+  test("empty / whitespace-only is rejected", () => {
+    expect(parseFetchConfig({ plugins: { "ma-fetch": { storageRoot: "" } } }).storageRoot).toBe(
+      defaultStorageRoot(),
+    )
+    expect(parseFetchConfig({ plugins: { "ma-fetch": { storageRoot: "   " } } }).storageRoot).toBe(
+      defaultStorageRoot(),
+    )
+  })
+
+  test("wrong type is ignored", () => {
+    expect(parseFetchConfig({ plugins: { "ma-fetch": { storageRoot: 42 } } }).storageRoot).toBe(
+      defaultStorageRoot(),
+    )
+  })
+
+  test("storageRoot does NOT become a backend block", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { storageRoot: "/abs/x" } },
+    })
+    expect(c.backends).not.toHaveProperty("storageRoot")
+  })
+})
+
+describe("parseFetchConfig - defaults.session", () => {
+  test("valid session name is accepted", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { session: "twitter" } } },
+    })
+    expect(c.defaults.session).toBe("twitter")
+  })
+
+  test("alnum + dash + underscore are valid", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { session: "my-session_1" } } },
+    })
+    expect(c.defaults.session).toBe("my-session_1")
+  })
+
+  test("path-traversal shapes are rejected", () => {
+    for (const bad of ["..", "../etc/passwd", "a/b", "a;b", "foo bar", "foo.bar", ".hidden"]) {
+      const c = parseFetchConfig({
+        plugins: { "ma-fetch": { defaults: { session: bad } } },
+      })
+      expect(c.defaults.session).toBeNull()
+    }
+  })
+
+  test("empty / whitespace-only is rejected (stays null)", () => {
+    expect(
+      parseFetchConfig({ plugins: { "ma-fetch": { defaults: { session: "" } } } }).defaults.session,
+    ).toBeNull()
+    expect(
+      parseFetchConfig({ plugins: { "ma-fetch": { defaults: { session: "   " } } } }).defaults
+        .session,
+    ).toBeNull()
+  })
+
+  test("wrong type is ignored", () => {
+    expect(
+      parseFetchConfig({ plugins: { "ma-fetch": { defaults: { session: 42 } } } }).defaults.session,
+    ).toBeNull()
+  })
+
+  test("names longer than 64 chars are rejected", () => {
+    const longName = "a".repeat(65)
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { session: longName } } },
+    })
+    expect(c.defaults.session).toBeNull()
+  })
+
+  test("exactly 64 chars accepted", () => {
+    const max = "a".repeat(64)
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { session: max } } },
+    })
+    expect(c.defaults.session).toBe(max)
+  })
+})
+
+describe("SESSION_NAME_PATTERN", () => {
+  test("matches alnum-start names with allowed continuation chars", () => {
+    for (const ok of ["x", "x_y", "x-y", "abc123", "A-B_2", "1foo"]) {
+      expect(SESSION_NAME_PATTERN.test(ok)).toBe(true)
+    }
+  })
+
+  test("rejects empty, leading non-alnum, slashes, dots, spaces", () => {
+    for (const bad of ["", "-x", "_x", ".x", "x.y", "x/y", "x y", "x\\y"]) {
+      expect(SESSION_NAME_PATTERN.test(bad)).toBe(false)
+    }
+  })
+})

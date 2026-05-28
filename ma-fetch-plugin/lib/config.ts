@@ -17,13 +17,15 @@
  *         "backend": "obscura",           // backend script name (in backends/<name>.ts)
  *         "userAgent": null,              // optional UA override (plugin-wide)
  *         "proxy": null,                  // optional proxy URL  (plugin-wide)
+ *         "storageRoot": "~/...",         // optional override for session sandbox root
  *         "obscura": {                    // per-backend config
  *           "bin": "/Users/.../obscura"   // path to obscura binary (else `obscura` on PATH)
  *         },
  *         "defaults": {                   // per-call defaults
  *           "format": "markdown",
  *           "waitUntil": "domcontentloaded",
- *           "timeoutSec": 30
+ *           "timeoutSec": 30,
+ *           "session": "default"          // optional default session for every call
  *         }
  *       }
  *     }
@@ -34,7 +36,7 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 
 import type { CleanupLevel } from "./cleanup.ts"
 import { CLEANUP_LEVELS } from "./cleanup.ts"
@@ -51,6 +53,11 @@ export interface FetchDefaults {
    *  Overridden per-call by the tool's `cleanup` param. See `lib/cleanup.ts`
    *  for the level semantics. */
   cleanup: CleanupLevel
+  /** Optional default session name applied when the model omits `session`.
+   *  When set, every call without an explicit `session` reuses this jar.
+   *  The model can opt out for one call by passing `session: ""`.
+   *  Validated against the same regex as the per-call field. */
+  session: string | null
 }
 
 export interface BackendConfig {
@@ -74,6 +81,12 @@ export interface FetchConfig {
   userAgent: string | null
   /** Optional proxy applied by the backend (not exposed to the model). */
   proxy: string | null
+  /** Sandbox directory under which session subdirectories are created.
+   *  Per-call `session: "<name>"` resolves to `<storageRoot>/<name>/`.
+   *  Defaults to `~/.minimal-agent/sessions/fetch/`. Tilde is expanded to
+   *  the user's home directory. The plugin never lets the model address
+   *  anything outside this root. */
+  storageRoot: string
   /** Per-backend config blocks keyed by backend id. */
   backends: Record<string, BackendConfig>
   /** Per-call defaults, overridden by tool input. */
@@ -83,6 +96,32 @@ export interface FetchConfig {
 const VALID_FORMATS = new Set<FetchFormat>(["markdown", "text", "html", "links", "original"])
 const VALID_WAIT_UNTIL = new Set<WaitUntil>(["load", "domcontentloaded", "networkidle0"])
 const VALID_CLEANUP = new Set<CleanupLevel>(CLEANUP_LEVELS)
+
+/** Same shape the manifest's `pattern` enforces. Repeated here so the
+ *  validation can fire in code paths the model never touches (config
+ *  defaults). Alnum start + alnum/`-`/`_` continuation, 1–64 chars. */
+export const SESSION_NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
+
+/** Expand a leading `~` or `~/` to the user's home directory.
+ *
+ *  Why not use `node:path`'s `resolve()` directly? It treats `~` as a
+ *  plain character, so `~/x` becomes `<cwd>/~/x`. Doing it here keeps
+ *  the user-facing JSON readable (`"~/sessions"`) without making them
+ *  hard-code their absolute home path.
+ *
+ *  Exposed for tests. */
+export function expandHome(p: string): string {
+  if (p === "~") return homedir()
+  if (p.startsWith("~/")) return join(homedir(), p.slice(2))
+  return p
+}
+
+/** Default sandbox root for sessions. Relative to the user's home so
+ *  it survives across hostnames and matches where every other agent
+ *  artifact lives (`~/.minimal-agent/sessions/<id>.tasks.jsonl`, etc.). */
+export function defaultStorageRoot(): string {
+  return join(homedir(), ".minimal-agent", "sessions", "fetch")
+}
 
 /** Built-in defaults. Pure - no IO.
  *
@@ -101,12 +140,14 @@ export function defaultConfig(): FetchConfig {
     backend: "obscura",
     userAgent: null,
     proxy: null,
+    storageRoot: defaultStorageRoot(),
     backends: {},
     defaults: {
       format: "markdown",
       waitUntil: "domcontentloaded",
       timeoutSec: 30,
       cleanup: "basic",
+      session: null,
     },
   }
 }
@@ -167,6 +208,17 @@ export function parseFetchConfig(raw: unknown): FetchConfig {
     out.proxy = cfg.proxy.trim()
   }
 
+  if (typeof cfg.storageRoot === "string" && cfg.storageRoot.trim().length > 0) {
+    // Expand `~` / `~/` and reject non-absolute paths after expansion. We
+    // refuse relative roots because the agent's cwd is not a stable
+    // anchor — the agent moves between projects, and a relative root
+    // would silently relocate session jars with it.
+    const expanded = expandHome(cfg.storageRoot.trim())
+    if (isAbsolute(expanded)) {
+      out.storageRoot = expanded
+    }
+  }
+
   if (isPlainObject(cfg.defaults)) {
     const d = cfg.defaults
     if (typeof d.format === "string" && VALID_FORMATS.has(d.format as FetchFormat)) {
@@ -181,12 +233,15 @@ export function parseFetchConfig(raw: unknown): FetchConfig {
     if (typeof d.cleanup === "string" && VALID_CLEANUP.has(d.cleanup as CleanupLevel)) {
       out.defaults.cleanup = d.cleanup as CleanupLevel
     }
+    if (typeof d.session === "string" && SESSION_NAME_PATTERN.test(d.session.trim())) {
+      out.defaults.session = d.session.trim()
+    }
   }
 
   // Per-backend blocks: any object-valued key under cfg (other than known
   // top-level keys) is treated as a backend config block. Currently the
   // only field we look at inside one is `bin`.
-  const knownTop = new Set(["enabled", "backend", "userAgent", "proxy", "defaults"])
+  const knownTop = new Set(["enabled", "backend", "userAgent", "proxy", "storageRoot", "defaults"])
   const backends: Record<string, BackendConfig> = {}
   for (const [k, v] of Object.entries(cfg)) {
     if (knownTop.has(k)) continue

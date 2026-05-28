@@ -669,3 +669,66 @@ describe("callBackend - parent-exit hook", () => {
     expect(process.listenerCount("SIGHUP")).toBe(before.sighup)
   })
 })
+
+// ---------------------------------------------------------------------------
+// buildBackendEnv - storageDir (persistence)
+// ---------------------------------------------------------------------------
+
+describe("buildBackendEnv - storageDir", () => {
+  test("MA_FETCH_STORAGE_DIR set when input provides storageDir", () => {
+    const env = buildBackendEnv(
+      defaultConfig(),
+      {
+        url: "https://x",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        storageDir: "/home/me/.minimal-agent/sessions/fetch/twitter",
+      },
+      {},
+    )
+    expect(env.MA_FETCH_STORAGE_DIR).toBe("/home/me/.minimal-agent/sessions/fetch/twitter")
+  })
+
+  test("MA_FETCH_STORAGE_DIR absent when input omits storageDir", () => {
+    const env = buildBackendEnv(
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      {},
+    )
+    expect(env).not.toHaveProperty("MA_FETCH_STORAGE_DIR")
+  })
+
+  test("empty-string storageDir is NOT forwarded", () => {
+    const env = buildBackendEnv(
+      defaultConfig(),
+      {
+        url: "https://x",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        storageDir: "",
+      },
+      {},
+    )
+    expect(env).not.toHaveProperty("MA_FETCH_STORAGE_DIR")
+  })
+
+  test("storageDir is independent of MA_FETCH_USER_AGENT / PROXY", () => {
+    const cfg = { ...defaultConfig(), userAgent: "UA/1", proxy: "http://p" }
+    const env = buildBackendEnv(
+      cfg,
+      {
+        url: "https://x",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        storageDir: "/abs/dir",
+      },
+      {},
+    )
+    expect(env.MA_FETCH_USER_AGENT).toBe("UA/1")
+    expect(env.MA_FETCH_PROXY).toBe("http://p")
+    expect(env.MA_FETCH_STORAGE_DIR).toBe("/abs/dir")
+  })
+})

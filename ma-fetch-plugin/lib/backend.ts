@@ -26,6 +26,11 @@ export interface BackendCallInput {
   timeoutSec: number
   selector?: string
   evalExpr?: string
+  /** Absolute directory under which the backend persists this call's
+   *  session (cookies + localStorage). Already resolved + sandboxed by
+   *  the handler — backends receive it verbatim, no further validation.
+   *  Omitted → stateless one-shot fetch (default). */
+  storageDir?: string
 }
 
 export interface BackendCallResult {
@@ -203,6 +208,9 @@ export function buildBackendEnv(
   // Optional per-call fields.
   if (input.selector && input.selector.length > 0) env.MA_FETCH_SELECTOR = input.selector
   if (input.evalExpr && input.evalExpr.length > 0) env.MA_FETCH_EVAL = input.evalExpr
+  if (input.storageDir && input.storageDir.length > 0) {
+    env.MA_FETCH_STORAGE_DIR = input.storageDir
+  }
   // Plugin-config fields.
   if (config.userAgent) env.MA_FETCH_USER_AGENT = config.userAgent
   if (config.proxy) env.MA_FETCH_PROXY = config.proxy
