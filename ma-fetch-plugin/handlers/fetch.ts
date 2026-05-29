@@ -33,6 +33,7 @@ import {
   SESSION_NAME_PATTERN,
   type WaitUntil,
 } from "../lib/config.ts"
+import { classifyBackendFailure, FetchError, writeTraceLog } from "../lib/errors.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 const VALID_FORMATS = new Set<FetchFormat>(["markdown", "text", "html", "links", "original"])
@@ -263,23 +264,22 @@ export function buildDisplayBody(content: string, lines: number = PREVIEW_LINES)
   return slice.map((l) => truncLine(l, PREVIEW_LINE_WIDTH)).join("\n")
 }
 
-/** Build the footer line - format · size · line count · backend [· session]. */
+/** Build the footer line - format · size · line count [· session].
+ *
+ *  The rendering engine is deliberately NOT shown. The Fetch tool is
+ *  backend-agnostic by contract: nothing the caller (model) or the
+ *  transcript sees may reveal which engine served the page. Backend
+ *  identity lives only in the operator's config + the plugin README. */
 export function buildDisplayFooter(opts: {
   format: FetchFormat
   size: number
   lineCount: number
-  backend: string
   truncated?: boolean
   /** When set, the call wrote to / read from this session. The footer
    *  shows just the leaf name (`twitter`), not the full path. */
   sessionName?: string
 }): string {
-  const parts = [
-    opts.format,
-    formatBytes(opts.size),
-    `${opts.lineCount} lines`,
-    `via ${opts.backend}`,
-  ]
+  const parts = [opts.format, formatBytes(opts.size), `${opts.lineCount} lines`]
   if (opts.sessionName && opts.sessionName.length > 0) {
     parts.push(`session: ${opts.sessionName}`)
   }
@@ -340,38 +340,52 @@ export async function runWithDeps(
   const result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
 
   if (result.scriptMissing) {
-    return {
-      kind: "tool_result",
-      content: `Fetch: ${result.stderr}\n\nCheck plugins["ma-fetch"].backend in ~/.minimal-agent/config.jsonc, or drop a backends/<name>.ts in the plugin directory.`,
-      is_error: true,
-      displayHeader: red("backend missing"),
-      display: dim(result.stderr),
-      displayFooter: dim(`backend: ${config.backend}`),
-    }
+    // Plugin-misconfiguration path. Generic by design: the model must not
+    // learn which render engine is (or isn't) installed. Operators fix this
+    // via config + the ma-fetch plugin README.
+    return fetchErrorResult(
+      new FetchError(
+        "engine-unavailable",
+        "Fetch: the render engine is unavailable (ma-fetch plugin misconfiguration). See the plugin README for setup.",
+      ),
+      input.url,
+      input.format,
+    )
   }
 
   if (result.aborted) {
-    return {
-      kind: "tool_result",
-      content: `Fetch: aborted by user (partial stdout: ${result.stdout.length} bytes)`,
-      is_error: true,
-      displayHeader: red(`${input.url}  aborted`),
-      display: dim("(aborted)"),
-      displayFooter: dim(`via ${result.backend}`),
-    }
+    return fetchErrorResult(
+      new FetchError(
+        "aborted",
+        `Fetch: aborted by user (partial output: ${result.stdout.length} bytes).`,
+      ),
+      input.url,
+      input.format,
+    )
   }
 
   if (!result.ok) {
-    // Surface obscura's stderr to the model. Keep it concise.
-    const stderrTail = result.stderr.trim().split("\n").slice(-10).join("\n")
-    return {
-      kind: "tool_result",
-      content: `Fetch: backend exited with code ${result.exitCode}\n\n${stderrTail || "(no stderr output)"}`,
-      is_error: true,
-      displayHeader: red(`${input.url}  exit ${result.exitCode}`),
-      display: stderrTail ? dim(stderrTail) : dim("(no diagnostics)"),
-      displayFooter: dim(`${input.format} · via ${result.backend}`),
+    // Classify into a typed, backend-agnostic error. Raw stderr never
+    // reaches the model: a recognized failure becomes a clean message; an
+    // unrecognized one gets a generic message + an opaque ref id, with the
+    // full detail (incl. stderr) written to an operator-only trace whose
+    // path is never disclosed.
+    let err = classifyBackendFailure({ exitCode: result.exitCode, stderr: result.stderr })
+    if (err.kind === "unknown") {
+      const traceId = writeTraceLog({
+        url: input.url,
+        backend: result.backend,
+        exitCode: result.exitCode,
+        stderr: result.stderr,
+        kind: err.kind,
+      })
+      err = new FetchError(
+        "unknown",
+        `Fetch: the page could not be fetched (exit code ${result.exitCode}).`,
+        { exitCode: result.exitCode, traceId },
+      )
     }
+    return fetchErrorResult(err, input.url, input.format)
   }
 
   // Success. Run the cleanup pass on `markdown`/`text` BEFORE building
@@ -394,7 +408,6 @@ export async function runWithDeps(
     format: input.format,
     size,
     lineCount,
-    backend: result.backend,
     truncated,
     sessionName: sessionLeafName(input.storageDir),
   })
@@ -417,6 +430,28 @@ export function sessionLeafName(storageDir: string | undefined): string | undefi
   const trimmed = storageDir.replace(/[/\\]+$/, "")
   const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"))
   return idx >= 0 ? trimmed.slice(idx + 1) : trimmed
+}
+
+/**
+ * Render a typed `FetchError` into a `tool_result`.
+ *
+ * Single choke point for failure output. Everything here is
+ * backend-agnostic: `err.message` is a hand-written, engine-free string,
+ * and `err.traceId` (when present) is an opaque correlation handle. The
+ * trace's filesystem path is never referenced, so the model has no artifact
+ * to go hunting for. Pure apart from the ANSI helpers.
+ */
+export function fetchErrorResult(err: FetchError, url: string, format: FetchFormat): TUIResult {
+  const ref = err.traceId ? ` [ref: ${err.traceId}]` : ""
+  const body = err.message.replace(/^Fetch:\s*/, "")
+  return {
+    kind: "tool_result",
+    content: `${err.message}${ref}`,
+    is_error: true,
+    displayHeader: red(`${url}  ${err.kind}`),
+    display: dim(`${body}${ref}`),
+    displayFooter: dim(format),
+  }
 }
 
 export default handler
