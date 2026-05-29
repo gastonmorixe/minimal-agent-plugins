@@ -273,6 +273,32 @@ before it reaches the backend.
   `defaults.session` to a fixed value and tell users to pass
   `session: ""` to opt out.
 
+## Failure traces (operator)
+
+The Fetch tool is backend-agnostic on every surface the model sees: a
+failed fetch returns either a typed, engine-free message (timeout, DNS,
+TLS, HTTP status, connection error) or, for anything unrecognized, a
+generic message with an opaque ref id like `[ref: t-lqy3p-9f1a2b]`.
+
+The full raw detail for an unclassified failure (URL, exit code, backend
+that ran, and the backend's **raw stderr**) is written to an
+operator-only trace file:
+
+```
+$TMPDIR/ma-fetch-traces/<ref-id>.log        # mode 0600
+```
+
+(`$TMPDIR` is the OS temp dir, e.g. `/var/folders/.../T/` on macOS,
+`/tmp` on Linux.) To debug a failure the model reported, grep that
+directory for the ref id.
+
+This path is **deliberately never put in any tool output**: a model told
+about a readable file will try to read it. The model only ever gets the
+opaque id; the mapping from id to path lives here, in operator docs.
+Traces are best-effort (a logging failure never masks the original
+fetch error) and are not auto-pruned, so wipe `ma-fetch-traces/`
+whenever you like.
+
 ## Tests
 
 ```bash

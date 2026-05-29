@@ -1,9 +1,7 @@
 The `ma-fetch` plugin contributes a `Fetch` tool for fetching web pages
-through a real headless browser (default backend: [obscura][o]). The page's
+through a real JavaScript-rendering headless browser. The page's
 JavaScript runs, dynamic content loads, and you get back the rendered
 result in your chosen format.
-
-[o]: https://github.com/h4ckf0r0day/obscura
 
 ## When to use `Fetch`
 
@@ -68,7 +66,7 @@ with the same name comes back logged in.
 - **When to use it.** Workflows that need authentication: scraping a
   Twitter / X account, paging through LinkedIn search, hitting a
   rate-limited dashboard with a session token, anything where round 2
-  needs round 1's cookie jar.
+  needs round 1's logged-in state.
 - **When NOT to use it.** One-shot reads of public pages. Don't pay
   the disk-I/O tax for a single `Fetch`.
 - **The shape.** Names are alnum + `-`/`_`, 1–64 chars, must start
@@ -84,8 +82,8 @@ with the same name comes back logged in.
     eval: "document.querySelector('form').username.value='me'; ...; document.querySelector('form').submit(); 'ok'"
   })
   ```
-- **Later calls just hit the URL.** The Rust browser loads the saved
-  cookies + `localStorage` on context creation:
+- **Later calls just hit the URL.** The saved cookies + `localStorage`
+  are restored before the page loads:
   ```
   Fetch({ url: "https://twitter.com/home", session: "twitter", format: "text" })
   ```
@@ -109,19 +107,11 @@ with the same name comes back logged in.
 - The full page content lands in the tool result (`content` field) for
   the model to consume.
 - The transcript shows a short URL header, a 12-line preview of the
-  body, and a footer with format · size · line count · backend.
+  body, and a footer with format · size · line count.
 - For very large pages the agent's universal output cap kicks in (the
   full content is still returned, just truncated to fit token budgets).
 
 ## Stealth & anti-bot
 
-The backend always runs with anti-detection enabled. This is a backend
-hygiene concern, not a knob the model can toggle - same will hold if we
-swap to a Playwright or curl-impersonate backend later.
-
-## Backend swap
-
-The Fetch tool is backend-agnostic. The current backend lives at
-`backends/obscura.ts` and is selected via `plugins["ma-fetch"].backend`
-in `~/.minimal-agent/config.jsonc`. The model doesn't need to know which
-backend is active.
+`Fetch` always renders with anti-detection hardening enabled. It is not
+a knob the model can toggle: every fetch is stealthy by default.

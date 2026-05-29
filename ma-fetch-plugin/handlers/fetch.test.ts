@@ -279,17 +279,20 @@ describe("buildDisplayBody", () => {
 })
 
 describe("buildDisplayFooter", () => {
-  test("contains format, size, line count, backend", () => {
+  test("contains format, size, line count; never the backend", () => {
     const footer = buildDisplayFooter({
       format: "markdown",
       size: 13_200,
       lineCount: 350,
-      backend: "obscura.ts",
     })
     expect(footer).toContain("markdown")
     expect(footer).toContain("12.9 KB")
     expect(footer).toContain("350 lines")
-    expect(footer).toContain("obscura.ts")
+    // The Fetch contract is backend-agnostic: the footer must never name
+    // the rendering engine.
+    expect(footer.toLowerCase()).not.toContain("obscura")
+    expect(footer).not.toContain("via ")
+    expect(footer).not.toContain(".ts")
   })
 
   test("includes 'preview truncated' marker when set", () => {
@@ -297,7 +300,6 @@ describe("buildDisplayFooter", () => {
       format: "markdown",
       size: 13_200,
       lineCount: 350,
-      backend: "obscura.ts",
       truncated: true,
     })
     expect(footer).toContain("preview truncated")
@@ -373,7 +375,9 @@ describe("runWithDeps - happy path", () => {
     expect(r.display).toContain("line1")
     expect(r.displayFooter).toContain("markdown")
     expect(r.displayFooter).toContain("3 lines")
-    expect(r.displayFooter).toContain("obscura.ts")
+    // Backend-agnostic: nothing in the footer reveals the render engine.
+    expect(r.displayFooter?.toLowerCase()).not.toContain("obscura")
+    expect(r.displayFooter).not.toContain("via ")
   })
 
   test("preview is truncated marker fires when line count > PREVIEW_LINES", async () => {
@@ -404,13 +408,16 @@ describe("runWithDeps - error paths", () => {
     )
     expectToolResult(r)
     expect(r.is_error).toBe(true)
-    expect(r.content).toContain("backend script not found")
-    expect(r.displayHeader).toContain("backend missing")
+    // Generic, backend-agnostic failure. Must not name the engine.
+    expect(r.content).toContain("render engine is unavailable")
+    expect(r.content.toLowerCase()).not.toContain("obscura")
+    expect(r.content).not.toContain(".ts")
+    expect(r.displayHeader).toContain("engine-unavailable")
   })
 
-  test("backend exits non-zero: content includes exit code and stderr tail", async () => {
+  test("classified failure (timeout): clean typed message, no raw stderr, no exit code", async () => {
     const spawnFn: SpawnFn = () =>
-      fakeProc({ stdout: "", stderr: "navigation timed out", exitCode: 1 })
+      fakeProc({ stdout: "", stderr: "FATAL: navigation timed out after 30s", exitCode: 1 })
     const ctx = fakeCtx({ url: "https://example.com" })
     const r = await runWithDeps(
       ctx,
@@ -420,8 +427,33 @@ describe("runWithDeps - error paths", () => {
     )
     expectToolResult(r)
     expect(r.is_error).toBe(true)
-    expect(r.content).toContain("exited with code 1")
-    expect(r.content).toContain("navigation timed out")
+    // Recognized → clean, typed message. The useful signal (timed out)
+    // survives; the raw stderr line does not.
+    expect(r.content.toLowerCase()).toContain("timed out")
+    expect(r.content).not.toContain("FATAL")
+    expect(r.content.toLowerCase()).not.toContain("obscura")
+  })
+
+  test("unclassified failure: generic message + opaque ref, raw stderr NOT surfaced", async () => {
+    const spawnFn: SpawnFn = () =>
+      fakeProc({ stdout: "", stderr: "obscura: kaboom unrecognized at obscura.ts:42", exitCode: 1 })
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { spawnFn, existsFn: () => true },
+    )
+    expectToolResult(r)
+    expect(r.is_error).toBe(true)
+    expect(r.content).toContain("could not be fetched")
+    expect(r.content).toContain("exit code 1")
+    // Opaque correlation id present; no path / file hint and no raw stderr.
+    expect(r.content).toMatch(/\[ref: t-[a-z0-9-]+\]/)
+    expect(r.content).not.toContain("kaboom")
+    expect(r.content.toLowerCase()).not.toContain("obscura")
+    expect(r.content).not.toContain(".log")
+    expect(r.content).not.toContain("/")
   })
 
   test("abort: returns is_error with aborted display", async () => {
@@ -843,7 +875,6 @@ describe("buildDisplayFooter - sessionName", () => {
       format: "markdown",
       size: 100,
       lineCount: 5,
-      backend: "obscura.ts",
       sessionName: "twitter",
     })
     // The footer is ANSI-dimmed but the text is intact between escape codes.
@@ -855,7 +886,6 @@ describe("buildDisplayFooter - sessionName", () => {
       format: "markdown",
       size: 100,
       lineCount: 5,
-      backend: "obscura.ts",
     })
     expect(f).not.toContain("session:")
   })
@@ -865,9 +895,102 @@ describe("buildDisplayFooter - sessionName", () => {
       format: "markdown",
       size: 100,
       lineCount: 5,
-      backend: "obscura.ts",
       sessionName: "",
     })
     expect(f).not.toContain("session:")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Leak guard: NOTHING the model/transcript sees may name the render engine.
+// This is the executable form of the "Fetch is backend-agnostic" contract.
+// ---------------------------------------------------------------------------
+
+describe("backend-agnostic leak guard", () => {
+  const ENGINE_TOKENS = [/obscura/i, /playwright/i, /\bvia .+\.ts\b/i, /curl-impersonate/i]
+
+  function assertNoEngineLeak(r: TUIResult): void {
+    expectToolResult(r)
+    const surfaces = [r.content, r.display, r.displayHeader, r.displayFooter].filter(
+      (s): s is string => typeof s === "string",
+    )
+    for (const s of surfaces) {
+      for (const re of ENGINE_TOKENS) {
+        expect(re.test(s)).toBe(false)
+      }
+    }
+  }
+
+  test("success path surfaces no engine identity", async () => {
+    const spawnFn: SpawnFn = () => fakeProc({ stdout: "hello world\n", exitCode: 0 })
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { spawnFn, existsFn: () => true },
+    )
+    assertNoEngineLeak(r)
+  })
+
+  test("session footer surfaces no engine identity", async () => {
+    const spawnFn: SpawnFn = () => fakeProc({ stdout: "ok\n", exitCode: 0 })
+    const ctx = fakeCtx({ url: "https://example.com", session: "twitter" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      {
+        url: "https://example.com",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        storageDir: "/root/.minimal-agent/sessions/fetch/twitter",
+      },
+      { spawnFn, existsFn: () => true },
+    )
+    assertNoEngineLeak(r)
+  })
+
+  test("missing-script path surfaces no engine identity", async () => {
+    const spawnFn: SpawnFn = () => fakeProc({})
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { spawnFn, existsFn: () => false },
+    )
+    assertNoEngineLeak(r)
+  })
+
+  test("unclassified non-zero exit: generic message, no raw stderr, no identity", async () => {
+    const spawnFn: SpawnFn = () =>
+      fakeProc({ stderr: "obscura: kaboom unrecognized at obscura.ts:42", exitCode: 1 })
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { spawnFn, existsFn: () => true },
+    )
+    expectToolResult(r)
+    // Raw stderr is never surfaced; only a generic message + opaque ref.
+    expect(r.content).not.toContain("kaboom")
+    assertNoEngineLeak(r)
+  })
+
+  test("classified non-zero exit: clean typed message, no identity", async () => {
+    const spawnFn: SpawnFn = () =>
+      fakeProc({ stderr: "obscura: navigation timed out at obscura.ts:42", exitCode: 1 })
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { spawnFn, existsFn: () => true },
+    )
+    expectToolResult(r)
+    expect(r.content.toLowerCase()).toContain("timed out")
+    assertNoEngineLeak(r)
   })
 })
