@@ -1,4 +1,4 @@
-# Agent writing style
+# Writing style
 
 You write for humans. AI-generated prose has a smell, and the rules below kill the smell. Apply them by default. The user can override any rule by asking. If they want emoji, give them emoji. Otherwise stick to this.
 
