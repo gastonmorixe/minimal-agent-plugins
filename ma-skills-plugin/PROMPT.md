@@ -1,10 +1,10 @@
-The `ma-skills` plugin brings the [Agent Skills][as] standard to minimal-agent. A skill is a folder with a `SKILL.md` (YAML frontmatter + markdown body) plus optional `scripts/`, `references/`, and `assets/`. Skills bundle procedural knowledge, things like how to write a release, fill a PDF form, or run a code review, so you can load it on demand instead of carrying it in every system prompt.
+Use `Skill` to discover and load [Agent Skills][as]: on-demand packs of procedural knowledge. A skill is a folder with a `SKILL.md` (YAML frontmatter + markdown body) plus optional `scripts/`, `references/`, and `assets/`, encoding things like how to cut a release, fill a PDF form, or run a code review. You load one only when a task needs it, instead of carrying every workflow in the prompt.
 
 [as]: https://agentskills.io
 
 ## How discovery works
 
-At session start the plugin scans these roots in precedence order (closer-to-user wins) and injects a **Level 1** catalog (name + description + scope + path) into the system prompt. The body of each `SKILL.md` is NOT inlined. That's Level 2, loaded on demand.
+At session start these roots are scanned in precedence order (closer-to-user wins) to build a **Level 1** catalog (name + description + scope + path). The body of each `SKILL.md` is NOT inlined. That's Level 2, loaded on demand.
 
 1. `<cwd>/.agents/skills/` (project, highest precedence)
 2. `<cwd>/.claude/skills/` (project, Claude Code interop, opt-in)
@@ -13,7 +13,7 @@ At session start the plugin scans these roots in precedence order (closer-to-use
 
 If two roots define a skill with the same `name`, the higher-precedence one wins. The shadowed one is listed under "Shadowed" in the catalog.
 
-The catalog injected above this section (under `## Skills available this session`) is the source of truth for what's available. Read it before deciding to invoke a skill.
+The catalog (shown below in this section, under `## Skills available this session`) is the source of truth for what's available. Read it before deciding to invoke a skill.
 
 ## When to use a skill
 
@@ -71,25 +71,3 @@ You're on the hook to respect it. minimal-agent does NOT block tools at the disp
 - `Skill info` content = canonical YAML-ish dump, display = compact key/value block.
 - `Skill read` content = SKILL.md body + sibling trailer + allowed-tools hint, display = first ~14 lines clipped at 240 columns. The full body is in `content`. The agent's universal output guardrail will clamp pathological `SKILL.md` files cleanly (`_truncCtx` is wired).
 
-## Configuration
-
-User config lives at `~/.minimal-agent/config.jsonc` under `plugins["ma-skills"]`. Every key has a sensible default. You can ignore this section unless you want to flip something. See the plugin's `README.md` for the full schema.
-
-```jsonc
-{
-  "plugins": {
-    "ma-skills": {
-      "enabled": true,
-      "roots": {
-        "project":            true,
-        "projectClaudeCode":  false,   // .claude/skills/ interop
-        "homeShared":         true,
-        "userAgent":          true
-      },
-      "extraRoots":            [],
-      "maxSkills":             64,
-      "allowReservedNames":    false   // permit `claude`/`anthropic` in names
-    }
-  }
-}
-```

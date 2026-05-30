@@ -1,4 +1,4 @@
-The `ma-fetch` plugin contributes a `Fetch` tool for fetching web pages through a real JavaScript-rendering headless browser. The page's JavaScript runs, dynamic content loads, and you get back the rendered result in your chosen format.
+Use `Fetch` to retrieve a specific web page through a real JavaScript-rendering headless browser. The page's JavaScript runs, dynamic content loads, and you get back the rendered result in your chosen format.
 
 ## When to use `Fetch`
 
@@ -34,7 +34,7 @@ The `ma-fetch` plugin contributes a `Fetch` tool for fetching web pages through 
 
 - **When to use it.** Workflows that need authentication: scraping a Twitter / X account, paging through LinkedIn search, hitting a rate-limited dashboard with a session token, anything where round 2 needs round 1's logged-in state.
 - **When NOT to use it.** One-shot reads of public pages. Don't pay the disk-I/O tax for a single `Fetch`.
-- **The shape.** Names are alnum + `-`/`_`, 1–64 chars, must start with alnum. The plugin sandboxes the name under `~/.minimal-agent/sessions/fetch/<name>/`. You cannot pass an absolute path, only names.
+- **The shape.** Names are alnum + `-`/`_`, 1–64 chars, must start with alnum. Each name is sandboxed under `~/.minimal-agent/sessions/fetch/<name>/`. You cannot pass an absolute path, only names.
 - **First call usually logs in.** Use `eval` to fill in form fields and submit:
   ```
   Fetch({

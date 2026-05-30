@@ -43,24 +43,18 @@ minimal-agent picks it up on next launch. To disable, either remove the symlink 
 ```
 ma-agent-writing-style-plugin/
 ├── manifest.json    # plugin metadata, points to PROMPT.md
-├── PROMPT.md        # the rules, injected into the system prompt
-├── lib/
-│   └── prompt-fragment.ts   # no-op stub, see below
+├── PROMPT.md        # the rules, composed into the system prompt
 └── README.md        # this file
 ```
 
-### Why the no-op `lib/prompt-fragment.ts`
-
-minimal-agent's manifest validator historically required at least one of
-`tuis`, `modes`, `events`, `hooks`, `promptFragments`, or `liveAreaSlots`
-on every plugin. A non-empty top-level `prompt` field was NOT counted as a
-valid contribution by that gate, even though it works fine.
-
-The validator was relaxed in May 2026 to count `prompt` as a contribution
-(see `src/plugins/manifest.ts` `parseManifest` and the matching tests).
-After that fix lands in the version of minimal-agent you are running, you
-can delete `lib/` and remove the `promptFragments` entry from
-`manifest.json`. Until then, this stub keeps the plugin loadable.
+This is a **prompt-only plugin**: its single contribution is the
+`PROMPT.md` body, declared via the manifest's top-level `prompt` field.
+No tools, no tags, no fragments. minimal-agent's loader infers the prompt
+role from the manifest shape, and a plugin with only a `prompt` (no
+`tuis`/`modes`/`emit` tags) composes as a `<ma::sys::behavior>` mandate:
+a first-class instruction in the system prompt, not documentation about a
+plugin. (Earlier versions shipped a no-op `lib/prompt-fragment.ts` stub to
+satisfy a now-removed validator gate; it is no longer needed.)
 
 ## Why
 
