@@ -127,6 +127,12 @@ function applyEffects(effects: Effect[], payload: EditorKeyPayload, ctx: HookHan
       case "clear-footer":
         ctx.emit("editor.footer.set", { lines: [] })
         break
+      case "run-command":
+        // Dispatch the picked command through the host registry directly.
+        // No buffer write, no submit — the host runs `/slug` and the command
+        // (e.g. /config) paints its own overlay. One Enter, no scrollback leak.
+        ctx.emit("command.run", { line: `/${eff.slug}` })
+        break
     }
   }
 }

@@ -163,17 +163,32 @@ describe("transition — key while OPEN", () => {
     expect(r.effects.some((e) => e.kind === "halt-key")).toBe(true)
   })
 
-  it("Enter rewrites buffer to '/slug' and does NOT halt (lets editor submit)", () => {
-    const s = open("conf")
+  it("Enter on a COMMAND row dispatches via run-command + halts (no buffer submit)", () => {
+    const s = open("conf") // '/config' is an "act" (command) item
+    const r = transition(s, { kind: "key", name: "Enter" }, mkCtx())
+    expect(r.state).toBe(CLOSED)
+    // Command rows dispatch directly — NO buffer rewrite.
+    expect(r.effects.some((e) => e.kind === "set-buffer")).toBe(false)
+    const runEff = r.effects.find((e) => e.kind === "run-command")
+    if (runEff?.kind !== "run-command") throw new Error("narrow")
+    expect(runEff.slug).toBe("config")
+    // Halt — the command owns this Enter; the editor must NOT submit the buffer.
+    expect(r.effects.some((e) => e.kind === "halt-key")).toBe(true)
+    // Footer cleared.
+    expect(r.effects.some((e) => e.kind === "clear-footer")).toBe(true)
+  })
+
+  it("Enter on a SKILL row rewrites buffer to '/slug' and does NOT halt (model-routed submit)", () => {
+    // Filter to a skill item; '/swiftui-pro' is an "skl" item in ITEMS.
+    const s = transition(CLOSED, { kind: "buffer-changed", text: "/swiftui-pro" }, mkCtx()).state
     const r = transition(s, { kind: "key", name: "Enter" }, mkCtx())
     expect(r.state).toBe(CLOSED)
     const setBufEff = r.effects.find((e) => e.kind === "set-buffer")
     if (setBufEff?.kind !== "set-buffer") throw new Error("narrow")
-    expect(setBufEff.text).toBe("/config")
+    expect(setBufEff.text).toBe("/swiftui-pro")
     // NO halt — editor proceeds with default submit on the new buffer.
     expect(r.effects.some((e) => e.kind === "halt-key")).toBe(false)
-    // Footer cleared.
-    expect(r.effects.some((e) => e.kind === "clear-footer")).toBe(true)
+    expect(r.effects.some((e) => e.kind === "run-command")).toBe(false)
   })
 
   it("Escape closes, clears footer, halts", () => {

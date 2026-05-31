@@ -42,14 +42,20 @@ function mkCtx(): {
   hookCtx: HookHandlerContext
   eventCtx: <P>(payload: P) => EventHandlerContext<P>
   footerEmits: FootSet[]
+  commandRuns: string[]
 } {
   const footerEmits: FootSet[] = []
+  const commandRuns: string[] = []
   const emit = (channel: string, payload?: unknown): void => {
     if (channel === "editor.footer.set" && typeof payload === "object" && payload !== null) {
       const p = payload as { lines?: unknown }
       if (Array.isArray(p.lines)) {
         footerEmits.push({ channel, lines: p.lines as string[] })
       }
+    }
+    if (channel === "command.run" && typeof payload === "object" && payload !== null) {
+      const p = payload as { line?: unknown }
+      if (typeof p.line === "string") commandRuns.push(p.line)
     }
   }
   const listCommands = (): CommandInfo[] => COMMANDS
@@ -75,7 +81,7 @@ function mkCtx(): {
     abort: new AbortController().signal,
     stderr: process.stderr,
   })
-  return { hookCtx, eventCtx, footerEmits }
+  return { hookCtx, eventCtx, footerEmits, commandRuns }
 }
 
 function keyPayload(key: string, buffer = "", col = buffer.length) {
@@ -173,13 +179,15 @@ describe("integration — selection", () => {
     expect(payload.result.buffer).toBe("/config ")
   })
 
-  it("Enter rewrites buffer without halt (editor proceeds with submit)", async () => {
-    const { hookCtx, eventCtx, footerEmits } = mkCtx()
+  it("Enter on a command row dispatches via command.run + halts (no buffer submit)", async () => {
+    const { hookCtx, eventCtx, footerEmits, commandRuns } = mkCtx()
     await onBufferChanged(eventCtx({ text: "/conf", cursor: { row: 0, col: 5 } }))
     const payload = keyPayload("Enter", "/conf")
     onKey(payload, hookCtx)
-    expect(payload.result.buffer).toBe("/config")
-    expect(payload.result.halt).toBeUndefined()
+    // Command row → dispatch directly, halt the key, leave the buffer alone.
+    expect(commandRuns).toEqual(["/config"])
+    expect(payload.result.buffer).toBeUndefined()
+    expect(payload.result.halt).toBe(true)
     expect(footerEmits[footerEmits.length - 1]!.lines).toEqual([])
     expect(getFsmState().kind).toBe("closed")
   })
