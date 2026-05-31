@@ -75,6 +75,14 @@ export type Effect =
   | { kind: "clear-footer" }
   | { kind: "set-buffer"; text: string }
   | { kind: "halt-key" }
+  /**
+   * Dispatch a registered slash command directly (the user picked a command
+   * row). The shell emits `command.run` on the agent bus with `/<slug>`, so
+   * ONE Enter dispatches the command (opening its TUI) instead of the
+   * rewrite-buffer-then-submit path that raced the async menu re-open. Only
+   * emitted for `act` (command) items; skills still use `set-buffer` + submit.
+   */
+  | { kind: "run-command"; slug: string }
 
 // ---------------------------------------------------------------------------
 // Reducer context (what the shell knows that the core needs)
@@ -206,22 +214,33 @@ function onKey(state: State, key: KeyName, ctx: TransitionCtx): TransitionResult
       }
     }
     case "Enter": {
-      // Replace buffer with `<trigger><slug>` and let the editor's
-      // default submit handle the rest. Halt is NOT set: we want the
-      // submit to fire on the rewritten buffer.
       const selected = items[state.selectedIndex]
       if (!selected || selected.disabled) {
         return { state, effects: [{ kind: "halt-key" }] }
       }
+      // A registered command row (category "act"): dispatch it DIRECTLY via
+      // the host command registry. Halt the key so the editor never submits
+      // — the command, not the buffer, owns this Enter. This is what makes
+      // ONE Enter open `/config`'s TUI (the old path rewrote the buffer to
+      // `/config ` and relied on a follow-up submit, which raced the async
+      // buffer-changed re-open and took several Enters + leaked to scrollback).
+      if (selected.category === "act") {
+        return {
+          state: CLOSED,
+          effects: [
+            { kind: "clear-footer" },
+            { kind: "run-command", slug: selected.slug },
+            { kind: "halt-key" },
+          ],
+        }
+      }
+      // A skill row (model-routed): replace the buffer with `<trigger><slug>`
+      // and let the editor's default submit handle the rest. No halt — we
+      // want submit to fire on the rewritten buffer.
       const next = `${state.trigger}${selected.slug}`
       return {
         state: CLOSED,
-        effects: [
-          { kind: "clear-footer" },
-          { kind: "set-buffer", text: next },
-          // No halt-key — the editor proceeds to submit() with the
-          // freshly-set buffer.
-        ],
+        effects: [{ kind: "clear-footer" }, { kind: "set-buffer", text: next }],
       }
     }
     case "Escape": {

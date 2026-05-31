@@ -26,5 +26,10 @@
       }
     }
   ],
-  "permissions": ["hooks:editor.key", "hooks:editor.buffer.changed", "hooks:editor.buffer.set"]
+  "permissions": [
+    "hooks:editor.key",
+    "hooks:editor.buffer.changed",
+    "hooks:editor.buffer.set",
+    "hooks:command.run"
+  ]
 }

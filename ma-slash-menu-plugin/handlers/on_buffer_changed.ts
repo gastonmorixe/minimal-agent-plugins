@@ -64,10 +64,11 @@ function applyEffects(effects: Effect[], ctx: EventHandlerContext): void {
         break
       case "set-buffer":
       case "halt-key":
+      case "run-command":
         // These shouldn't surface on the buffer-changed path; the FSM
         // only emits them in response to key events. Silently ignore
-        // so the contract is one-directional: keys cause buffer/halt
-        // effects, buffer-changes cause footer effects.
+        // so the contract is one-directional: keys cause buffer/halt/
+        // run-command effects, buffer-changes cause footer effects.
         break
     }
   }
