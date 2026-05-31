@@ -12,6 +12,21 @@
  */
 
 /**
+ * Mirror of `src/plugins/types.ts:CommandInfo` — one registered slash
+ * command, as exposed read-only through `ctx.listCommands()`.
+ */
+export interface CommandInfo {
+  /** Command name without the slash (e.g. "config"). */
+  name: string
+  /** One-line description. */
+  summary: string
+  /** Optional argument hint. */
+  argHint?: string
+  /** Owning plugin id. */
+  pluginId: string
+}
+
+/**
  * Mirror of `src/plugins/types.ts:HookHandlerContext`.
  *
  * Only the fields we actually consume are typed; the rest are noted in
@@ -37,6 +52,12 @@ export interface HookHandlerContext {
    * `editor.footer.set`).
    */
   emit: (channel: string, payload?: unknown) => void
+  /**
+   * Read-only snapshot of every registered slash command (host-populated).
+   * `undefined` on hosts that predate the command registry — narrow with
+   * `ctx.listCommands?.() ?? []`.
+   */
+  listCommands?: () => CommandInfo[]
   stderr: NodeJS.WriteStream
 }
 
@@ -50,6 +71,8 @@ export interface EventHandlerContext<TPayload = unknown> {
   cwd: string
   env: Record<string, string>
   emit: (event: string, payload?: unknown) => void
+  /** See {@link HookHandlerContext.listCommands}. */
+  listCommands?: () => CommandInfo[]
   abort: AbortSignal
   stderr: NodeJS.WriteStream
 }

@@ -19,7 +19,7 @@
 
 import type { EventHandlerContext } from "../lib/host-types.ts"
 import { type Effect, transition } from "../lib/overlay.ts"
-import { getFsmState, getItems, setFsmState } from "../lib/state.ts"
+import { getFsmState, getItems, refreshItems, setFsmState } from "../lib/state.ts"
 
 interface BufferChangedPayload {
   text: string
@@ -34,6 +34,10 @@ function isPayload(v: unknown): v is BufferChangedPayload {
 
 const handler = async (ctx: EventHandlerContext): Promise<void> => {
   if (!isPayload(ctx.payload)) return
+
+  // Refresh the action rows from the host's live command registry so the
+  // menu lists exactly the commands that actually dispatch (+ skills).
+  refreshItems(ctx.listCommands?.())
 
   const state = getFsmState()
   const result = transition(

@@ -1,36 +1,47 @@
 import { describe, expect, it } from "bun:test"
 
-import { actionsProvider, BUILTIN_ACTIONS } from "./actions.ts"
+import type { CommandInfo } from "../lib/host-types.ts"
 
-describe("actions provider", () => {
-  it("returns the static list", () => {
-    expect(actionsProvider.list()).toBe(BUILTIN_ACTIONS)
+import { commandItems } from "./actions.ts"
+
+const SAMPLE: CommandInfo[] = [
+  { name: "config", summary: "Edit settings", argHint: "[get <id>]", pluginId: "config" },
+  { name: "loop", summary: "Run on repeat", pluginId: "schedule" },
+]
+
+describe("commandItems", () => {
+  it("maps each registered command to an 'act' item", () => {
+    const items = commandItems(SAMPLE)
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatchObject({
+      slug: "config",
+      description: "Edit settings",
+      category: "act",
+    })
+    expect(items[1]).toMatchObject({ slug: "loop", description: "Run on repeat", category: "act" })
   })
 
-  it("every entry has slug + description + category 'act'", () => {
-    for (const item of BUILTIN_ACTIONS) {
-      expect(item.slug.length).toBeGreaterThan(0)
-      expect(item.description.length).toBeGreaterThan(0)
-      expect(item.category).toBe("act")
-      expect(item.payload).toBeDefined()
-    }
+  it("carries actionId + pluginId + argHint in the payload", () => {
+    const [config] = commandItems(SAMPLE)
+    expect(config!.payload).toMatchObject({
+      actionId: "config",
+      kind: "command",
+      pluginId: "config",
+      argHint: "[get <id>]",
+    })
   })
 
-  it("slugs are unique", () => {
-    const slugs = BUILTIN_ACTIONS.map((i) => i.slug)
-    expect(new Set(slugs).size).toBe(slugs.length)
+  it("omits argHint from payload when absent", () => {
+    const [, loop] = commandItems(SAMPLE)
+    expect((loop!.payload as Record<string, unknown>).argHint).toBeUndefined()
   })
 
-  it("slugs are kebab-case lowercase (no spaces, no slashes)", () => {
-    for (const item of BUILTIN_ACTIONS) {
-      expect(item.slug).toMatch(/^[a-z][a-z0-9-]*$/)
-    }
+  it("returns an empty list for no commands", () => {
+    expect(commandItems([])).toEqual([])
   })
 
-  it("includes the canonical example commands the design references", () => {
-    const slugs = new Set(BUILTIN_ACTIONS.map((i) => i.slug))
-    for (const required of ["config", "context", "skills", "memory", "tasks", "help"]) {
-      expect(slugs).toContain(required)
-    }
+  it("preserves the host's command order (host already sorts)", () => {
+    const items = commandItems(SAMPLE)
+    expect(items.map((i) => i.slug)).toEqual(["config", "loop"])
   })
 })

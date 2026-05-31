@@ -1,92 +1,40 @@
 /**
  * Actions provider — the built-in command list.
  *
- * These are commands the agent's harness understands directly: not
- * skills, not LLM-routed. The dispatcher's `kind: "action"` branch
- * handles each one.
+ * These rows are the host's REGISTERED slash commands, surfaced as `act`
+ * items. The list is NOT hardcoded here: that was the old bug — a static
+ * `BUILTIN_ACTIONS` array advertised `/config`, `/memory`, `/tasks`, … even
+ * though no plugin registered them, so selecting one did nothing. Now we
+ * read the live registry the host injects into our handler contexts via
+ * `ctx.listCommands()`, so the menu only ever shows commands that actually
+ * dispatch.
  *
- * To add a new action, append to `BUILTIN_ACTIONS` here AND wire its
- * handler in `lib/dispatch.ts` (or wherever the host harness routes
- * action invocations). The plugin schema is intentionally append-only:
- * existing slugs cannot be renamed without a deprecation window since
- * users build muscle memory around them.
+ * A command provider is therefore just a pure mapping from the host's
+ * {@link CommandInfo} shape to the overlay's {@link Item} shape. The state
+ * module calls {@link commandItems} with whatever `listCommands()` returned
+ * (or `[]` on hosts that predate the command registry).
+ *
+ * @module ma-slash-menu/providers/actions
  */
 
-import type { Item, Provider } from "../lib/types.ts"
-
-/** Static built-in actions. Order is alphabetical (also the display order at empty query). */
-export const BUILTIN_ACTIONS: Item[] = [
-  {
-    slug: "clear",
-    description: "clear scrollback (history preserved)",
-    category: "act",
-    payload: { actionId: "clear" },
-  },
-  {
-    slug: "config",
-    description: "view or edit user config",
-    category: "act",
-    payload: { actionId: "config" },
-  },
-  {
-    slug: "context",
-    description: "show context window / quota usage",
-    category: "act",
-    payload: { actionId: "context" },
-  },
-  {
-    slug: "help",
-    description: "list keyboard shortcuts & commands",
-    category: "act",
-    payload: { actionId: "help" },
-  },
-  {
-    slug: "memory",
-    description: "manage saved memories",
-    category: "act",
-    payload: { actionId: "memory" },
-  },
-  {
-    slug: "mode",
-    description: "toggle agent mode (default / ask / …)",
-    category: "act",
-    payload: { actionId: "mode" },
-  },
-  {
-    slug: "quit",
-    description: "exit the session (asks once)",
-    category: "act",
-    payload: { actionId: "quit" },
-  },
-  {
-    slug: "resume",
-    description: "browse and resume previous sessions",
-    category: "act",
-    payload: { actionId: "resume" },
-  },
-  {
-    slug: "skills",
-    description: "browse and invoke skills",
-    category: "act",
-    payload: { actionId: "skills" },
-  },
-  {
-    slug: "tasks",
-    description: "show task list",
-    category: "act",
-    payload: { actionId: "tasks" },
-  },
-]
+import type { CommandInfo } from "../lib/host-types.ts"
+import type { Item } from "../lib/types.ts"
 
 /**
- * Default provider. Returns the static list as-is. Future iterations
- * may extend with user-defined aliases from config.
+ * Map the host's registered commands to menu items. Pure + dependency-free
+ * so it's trivially testable. `pluginId` + `argHint` ride along in the
+ * payload for the dispatcher / future affordances.
  */
-export const actionsProvider: Provider = {
-  id: "actions",
-  list(): Item[] {
-    return BUILTIN_ACTIONS
-  },
+export function commandItems(commands: readonly CommandInfo[]): Item[] {
+  return commands.map((c) => ({
+    slug: c.name,
+    description: c.summary,
+    category: "act",
+    payload: {
+      actionId: c.name,
+      kind: "command",
+      pluginId: c.pluginId,
+      ...(c.argHint ? { argHint: c.argHint } : {}),
+    },
+  }))
 }
-
-export default actionsProvider

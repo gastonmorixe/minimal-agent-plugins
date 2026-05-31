@@ -28,7 +28,7 @@
 
 import type { HookHandlerContext } from "../lib/host-types.ts"
 import { type Effect, type KeyName, transition } from "../lib/overlay.ts"
-import { getFsmState, getItems, setFsmState } from "../lib/state.ts"
+import { getFsmState, getItems, refreshItems, setFsmState } from "../lib/state.ts"
 
 // ---------------------------------------------------------------------------
 // Payload guard (keep host types decoupled)
@@ -89,6 +89,9 @@ const handler = (payload: unknown, ctx: HookHandlerContext): void => {
   // key alone so other plugins (history) see it cleanly.
   const state = getFsmState()
   if (state.kind === "closed") return
+
+  // Keep the action rows in sync with the host's live command registry.
+  refreshItems(ctx.listCommands?.())
 
   const result = transition(
     state,

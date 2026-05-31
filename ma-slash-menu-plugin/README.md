@@ -75,13 +75,18 @@ bun run bin/preview.ts    # see every canonical visual state
 
 ## Item categories
 
-Items carry a 3-letter `category` badge. Built-ins are:
+Items carry a category:
 
-- `act`: built-in actions like `/config`, `/memory`, `/tasks`.
+- `act`: the host's REGISTERED slash commands, read live from
+  `ctx.listCommands()`. These are NOT hardcoded — the menu lists exactly the
+  commands that actually dispatch (e.g. `/config`, `/loop`, `/schedule`), so
+  selecting one always does something. Any plugin that registers a
+  `manifest.commands[]` entry shows up here automatically.
 - `skl`: skill packs discovered via SKILL.md.
 
-Other plugins can register their own categories by contributing a
-`commandProviders` entry. See [Provider contract](#provider-contract).
+`providers/actions.ts` is now just a pure `commandItems(CommandInfo[]) → Item[]`
+mapping; `lib/state.ts` calls `refreshItems(ctx.listCommands?.())` on each
+handler invocation so a newly-registered command appears without a relaunch.
 
 ## Token cost chip
 

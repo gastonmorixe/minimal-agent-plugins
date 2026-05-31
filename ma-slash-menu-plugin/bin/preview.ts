@@ -11,15 +11,35 @@
  * REPL's editor.
  */
 
+import type { CommandInfo } from "../lib/host-types.ts"
 import { SGR } from "../lib/palette.ts"
 import { renderOverlay } from "../lib/render.ts"
 import { applySortMode, scoreItems } from "../lib/scoring.ts"
 import type { Item, OverlayState, Trigger } from "../lib/types.ts"
-import { actionsProvider } from "../providers/actions.ts"
+import { commandItems } from "../providers/actions.ts"
 import { defaultSkillsDeps, listSkills } from "../providers/skills.ts"
 
+/**
+ * Sample registered commands for the static preview. In the live plugin
+ * these come from the host via `ctx.listCommands()`; here we hardcode a
+ * representative set so the preview still shows `act` rows.
+ */
+const SAMPLE_COMMANDS: CommandInfo[] = [
+  { name: "config", summary: "Edit minimal-agent settings interactively", pluginId: "config" },
+  {
+    name: "loop",
+    summary: "Run a prompt on repeat while the session is open",
+    pluginId: "schedule",
+  },
+  {
+    name: "schedule",
+    summary: "Schedule a prompt by cron, or list/cancel tasks",
+    pluginId: "schedule",
+  },
+]
+
 function gather(): Item[] {
-  const actions = actionsProvider.list() as Item[]
+  const actions = commandItems(SAMPLE_COMMANDS)
   const skills = listSkills(defaultSkillsDeps())
   return [...actions, ...skills]
 }
