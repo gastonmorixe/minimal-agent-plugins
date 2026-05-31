@@ -17,13 +17,21 @@ import { afterEach, describe, expect, it } from "bun:test"
 
 import onBufferChanged from "./handlers/on_buffer_changed.ts"
 import onKey from "./handlers/on_key.ts"
-import type { EventHandlerContext, HookHandlerContext } from "./lib/host-types.ts"
+import type { CommandInfo, EventHandlerContext, HookHandlerContext } from "./lib/host-types.ts"
 import { stripSgr } from "./lib/palette.ts"
 import { _resetForTests, getFsmState } from "./lib/state.ts"
 
 afterEach(() => {
   _resetForTests()
 })
+
+/** Registered commands the fake host exposes via ctx.listCommands(). */
+const COMMANDS: CommandInfo[] = [
+  { name: "config", summary: "Edit minimal-agent settings interactively", pluginId: "config" },
+  { name: "memory", summary: "manage saved memories", pluginId: "memory" },
+  { name: "tasks", summary: "show task list", pluginId: "tasks" },
+  { name: "help", summary: "list shortcuts & commands", pluginId: "core" },
+]
 
 interface FootSet {
   channel: string
@@ -44,6 +52,7 @@ function mkCtx(): {
       }
     }
   }
+  const listCommands = (): CommandInfo[] => COMMANDS
   const hookCtx: HookHandlerContext = {
     channel: "editor.key",
     packageDir: process.cwd(),
@@ -52,6 +61,7 @@ function mkCtx(): {
     abort: new AbortController().signal,
     priority: 70,
     emit,
+    listCommands,
     stderr: process.stderr,
   }
   const eventCtx = <P>(payload: P): EventHandlerContext<P> => ({
@@ -61,6 +71,7 @@ function mkCtx(): {
     cwd: process.cwd(),
     env: { ...process.env } as Record<string, string>,
     emit,
+    listCommands,
     abort: new AbortController().signal,
     stderr: process.stderr,
   })

@@ -8,25 +8,29 @@
  *
  * # Why a singleton?
  *
- * The FSM tracks "is the menu open right now, what's selected, what's
- * the query". That's per-session, not per-event. Threading it through
- * the loader's ctx would require a ctx field that doesn't exist; the
- * singleton is the smallest workable shape.
+ * The FSM tracks "is the menu open right now, what's selected, what's the
+ * query". That's per-session, not per-event. Threading it through the
+ * loader's ctx would require a ctx field that doesn't exist; the singleton
+ * is the smallest workable shape.
  *
- * # Why not on `ctx.env`?
+ * # Item sourcing
  *
- * `env` is a `Record<string,string>` snapshot, not a mutable holder.
- *
- * # Lifetime
- *
- * The process. There's no shutdown hook; the OS reclaims it.
+ * Items are `actions ⊕ skills`. **Actions are the host's REGISTERED slash
+ * commands**, read live from `ctx.listCommands()` and passed into
+ * {@link refreshItems} by each handler before it transitions the FSM. We no
+ * longer ship a hardcoded action list — the menu shows exactly the commands
+ * that actually dispatch (plus skills discovered on disk). Skills are
+ * cached on first build; the command set is refreshed on every handler call
+ * (cheap: a `.map` over a small array) so a newly-registered command shows
+ * up without a relaunch.
  *
  * @module ma-slash-menu/lib/state
  */
 
-import { actionsProvider } from "../providers/actions.ts"
+import { commandItems } from "../providers/actions.ts"
 import { defaultSkillsDeps, listSkills } from "../providers/skills.ts"
 
+import type { CommandInfo } from "./host-types.ts"
 import { CLOSED, type State } from "./overlay.ts"
 import type { Item } from "./types.ts"
 
@@ -45,23 +49,36 @@ export function setFsmState(next: State): void {
 // Items cache
 // ---------------------------------------------------------------------------
 
-let cachedItems: Item[] | null = null
+let cachedSkills: Item[] | null = null
+let commandCache: Item[] = []
 
-/**
- * Aggregate all provider items. Cached per-process; the loader doesn't
- * call our `refreshOn` bus events for us yet, so re-reading is a manual
- * thing the user triggers by quitting and re-launching.
- */
-export function getItems(): readonly Item[] {
-  if (cachedItems) return cachedItems
-  const actions = actionsProvider.list() as Item[]
-  const skills = listSkills(defaultSkillsDeps())
-  cachedItems = [...actions, ...skills]
-  return cachedItems
+/** Discover skills once (disk scan); cached for the process. */
+function skills(): Item[] {
+  if (!cachedSkills) cachedSkills = listSkills(defaultSkillsDeps())
+  return cachedSkills
 }
 
-/** Test hook: discard the cache (force re-read on next `getItems`). */
+/**
+ * Refresh the action items from the host's live command registry. Called by
+ * each handler with `ctx.listCommands?.()` before it runs an FSM transition,
+ * so the menu reflects the current command set. A no-op-safe `undefined`
+ * (older host) leaves the action set empty.
+ */
+export function refreshItems(commands: readonly CommandInfo[] | undefined): void {
+  commandCache = commandItems(commands ?? [])
+}
+
+/**
+ * Aggregate all menu items: registered commands (actions) ⊕ discovered
+ * skills. Reads the command cache populated by {@link refreshItems}.
+ */
+export function getItems(): readonly Item[] {
+  return [...commandCache, ...skills()]
+}
+
+/** Test hook: discard caches + FSM state (force re-read on next use). */
 export function _resetForTests(): void {
   fsmState = CLOSED
-  cachedItems = null
+  cachedSkills = null
+  commandCache = []
 }
