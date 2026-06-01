@@ -255,6 +255,14 @@ describe("parseFrontmatterYaml — nested map (metadata)", () => {
     expect(r.value.metadata).toBe("")
     expect(r.value.name).toBe("x")
   })
+
+  test("duplicate key inside a nested map is flagged (mirrors top-level)", () => {
+    const text = `name: x\nmetadata:\n  author: a\n  author: b\n`
+    const r = parseFrontmatterYaml(text)
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.errors.some((e) => /duplicate key "author"/.test(e.message))).toBe(true)
+  })
 })
 
 // ===========================================================================
@@ -584,6 +592,25 @@ describe("parseSkillMd — end-to-end", () => {
     expect(r.value.front.name).toBe("my-skill")
     expect(r.value.front.description).toBe("One line.")
     expect(r.value.body).toBe("")
+  })
+
+  test("parses a CRLF-authored SKILL.md (Windows line endings)", () => {
+    // Regression: a trailing `\r` on every frontmatter line used to defeat
+    // the `key: value` regex and reject the whole file.
+    const text = "---\r\nname: my-skill\r\ndescription: One line.\r\n---\r\nBody.\r\n"
+    const r = parseSkillMd(text, { expectedDirName: "my-skill" })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.front.name).toBe("my-skill")
+    expect(r.value.front.description).toBe("One line.")
+  })
+
+  test("CRLF literal block scalar has no stray carriage returns", () => {
+    const text = "---\r\nname: my-skill\r\ndescription: |\r\n  line1\r\n  line2\r\n---\r\n"
+    const r = parseSkillMd(text, { expectedDirName: "my-skill" })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.front.description).toBe("line1\nline2")
   })
 
   test("full happy path with all fields", () => {

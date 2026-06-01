@@ -229,9 +229,13 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(2)} MB`
 }
 
-/** Truncate a single line's display width (ASCII-cell heuristic). */
+/**
+ * Truncate a single line to `max` display cells (ASCII-cell heuristic:
+ * one UTF-16 code unit ≈ one cell). Preview-only, so wide/zero-width chars
+ * are not measured precisely; the goal is just to keep the transcript row
+ * from overflowing.
+ */
 function truncLine(line: string, max: number): string {
-  // Cheap heuristic: strip control bytes for width counting, then slice.
   if (line.length <= max) return line
   return `${line.slice(0, max - 1)}…`
 }
@@ -354,11 +358,34 @@ export async function runWithDeps(
   }
 
   if (result.aborted) {
+    // Distinguish a genuine user cancel (Ctrl+C / mode-toggle) from an
+    // internal kill. The wall-clock watchdog fires when the backend wedges
+    // past its own `--timeout`; reporting that as "aborted by user" is false
+    // and misleads the model. Parent-exit shutdown is likewise not the user
+    // abandoning this single call.
+    const partial = `partial output: ${result.stdout.length} bytes`
+    if (result.abortReason === "watchdog") {
+      return fetchErrorResult(
+        new FetchError(
+          "timeout",
+          `Fetch: the page exceeded the time budget and was stopped (${partial}).`,
+        ),
+        input.url,
+        input.format,
+      )
+    }
+    if (result.abortReason === "parent-exit") {
+      return fetchErrorResult(
+        new FetchError(
+          "aborted",
+          `Fetch: stopped because the agent is shutting down (${partial}).`,
+        ),
+        input.url,
+        input.format,
+      )
+    }
     return fetchErrorResult(
-      new FetchError(
-        "aborted",
-        `Fetch: aborted by user (partial output: ${result.stdout.length} bytes).`,
-      ),
+      new FetchError("aborted", `Fetch: aborted by user (${partial}).`),
       input.url,
       input.format,
     )

@@ -228,7 +228,12 @@ interface YamlErr {
 export function parseFrontmatterYaml(text: string): YamlOk | YamlErr {
   const errors: ParseError[] = []
   const out: Record<string, RawYamlValue> = {}
-  const lines = text.split("\n")
+  // Normalise CRLF → LF before line work. A SKILL.md authored on Windows
+  // (or saved by an editor with CRLF endings) otherwise leaves a trailing
+  // `\r` on every line, which defeats the `key: value` regex and the
+  // block-scalar/nested-map consumers — rejecting the whole file. The body
+  // split in `splitFrontmatter` is unaffected (it preserves the raw body).
+  const lines = text.split("\n").map((l) => (l.endsWith("\r") ? l.slice(0, -1) : l))
   let i = 0
 
   while (i < lines.length) {
@@ -332,6 +337,7 @@ export function parseFrontmatterYaml(text: string): YamlOk | YamlErr {
       if (looksLikeMapEntry) {
         const nested = consumeNestedMap(lines, i + 1)
         if (nested.entries.size > 0) {
+          for (const dup of nested.duplicates) errors.push(dup)
           const m: Record<string, string> = {}
           for (const [k, v] of nested.entries) m[k] = v
           out[key] = m
@@ -523,13 +529,15 @@ function consumeBlockScalar(lines: string[], start: number): { value: string; ne
 
 /**
  * Consume an indented `key: value` block as a nested map. Returns the
- * map and the index of the next unconsumed line.
+ * map, any duplicate-key diagnostics (with 1-indexed line numbers), and
+ * the index of the next unconsumed line.
  */
 function consumeNestedMap(
   lines: string[],
   start: number,
-): { entries: Map<string, string>; nextIndex: number } {
+): { entries: Map<string, string>; duplicates: ParseError[]; nextIndex: number } {
   const entries = new Map<string, string>()
+  const duplicates: ParseError[] = []
   let baseIndent = -1
   let i = start
   for (; i < lines.length; i++) {
@@ -545,12 +553,19 @@ function consumeNestedMap(
     const k = m[1]
     const rest = stripInlineComment(m[2]).trim()
     const parsed = parseScalar(rest)
+    // Flag duplicate nested keys, mirroring the top-level guarantee
+    // (a `metadata.author` set twice is an authoring error). Keep the
+    // FIRST value so the surfaced error and retained data agree.
+    if (entries.has(k)) {
+      duplicates.push({ message: `duplicate key "${k}" (line ${i + 1})`, line: i + 1 })
+      continue
+    }
     // For nested maps we coerce to string regardless of inner errors —
     // the strict path is the top-level scalar parser. If the value
     // failed, keep the raw text so downstream validation flags it.
     entries.set(k, parsed.error ? rest : parsed.value)
   }
-  return { entries, nextIndex: i }
+  return { entries, duplicates, nextIndex: i }
 }
 
 // ---------------------------------------------------------------------------

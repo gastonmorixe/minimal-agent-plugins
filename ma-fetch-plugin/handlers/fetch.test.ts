@@ -490,6 +490,62 @@ describe("runWithDeps - error paths", () => {
     expect(r.content).toContain("aborted")
     expect(killed).toBe(true)
   })
+
+  test("watchdog kill is reported as a time-budget timeout, NOT 'aborted by user'", async () => {
+    // Regression: the outer wall-clock watchdog set result.aborted=true and the
+    // handler hard-coded "aborted by user", lying to the model about a backend
+    // wedge. The reason must now travel through and produce a timeout message.
+    let exitResolve: (code: number) => void = () => {}
+    const exited = new Promise<number>((res) => {
+      exitResolve = res
+    })
+    const spawnFn: SpawnFn = () => ({
+      stdout: new ReadableStream<Uint8Array>({
+        start(c) {
+          c.close()
+        },
+      }),
+      stderr: new ReadableStream<Uint8Array>({
+        start(c) {
+          c.close()
+        },
+      }),
+      exited,
+      pid: 4321,
+      // When the watchdog kills, let the process "exit" so callBackend returns.
+      kill: () => {
+        exitResolve(137)
+        return true
+      },
+    })
+    // Fire the very first scheduled timer (the watchdog) synchronously; ignore
+    // the later 2s SIGKILL-escalation timer.
+    let fired = false
+    const setTimeoutFn = (cb: () => void): ReturnType<typeof setTimeout> => {
+      if (!fired) {
+        fired = true
+        cb()
+      }
+      return 0 as unknown as ReturnType<typeof setTimeout>
+    }
+    const ctx = fakeCtx({ url: "https://example.com" })
+    const r = await runWithDeps(
+      ctx,
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 5 },
+      {
+        spawnFn,
+        existsFn: () => true,
+        setTimeoutFn,
+        clearTimeoutFn: () => {},
+        parentExitHook: () => () => {},
+      },
+    )
+    expectToolResult(r)
+    expect(r.is_error).toBe(true)
+    expect(r.content).toContain("time budget")
+    expect(r.content).not.toContain("aborted by user")
+  })
 })
 
 describe("handler default export - input validation", () => {

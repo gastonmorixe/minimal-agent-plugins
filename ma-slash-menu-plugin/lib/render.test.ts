@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { stripSgr } from "./palette.ts"
-import { _internals, renderOverlay } from "./render.ts"
+import { _internals, overlayHeight, renderOverlay } from "./render.ts"
 import { scoreItems } from "./scoring.ts"
 import type { Item, OverlayState } from "./types.ts"
 
@@ -158,6 +158,33 @@ describe("renderOverlay — scroll affordances", () => {
     const out = renderOverlay(mkState({ items, maxRows: 5 }))
     const joined = out.map(stripSgr).join("\n")
     expect(joined).not.toContain("more")
+  })
+})
+
+describe("overlayHeight — matches renderOverlay row count", () => {
+  const items20 = Array.from({ length: 20 }, (_, i) => mkItem(`item${i}`))
+  const cases = [
+    { label: "scrolled (has ↑ more row)", selectedIndex: 12, scrollOffset: 8 },
+    { label: "top of list (no ↑ more row)", selectedIndex: 1, scrollOffset: 0 },
+  ]
+  for (const c of cases) {
+    it(c.label, () => {
+      const state = mkState({
+        items: items20,
+        maxRows: 5,
+        selectedIndex: c.selectedIndex,
+        scrollOffset: c.scrollOffset,
+      })
+      // Regression: overlayHeight returned count+2 even when renderOverlay
+      // emitted an extra "↑ N more" row (count+3), under-reserving a row.
+      expect(overlayHeight(state)).toBe(renderOverlay(state).length)
+    })
+  }
+
+  it("small list (no scroll affordances)", () => {
+    const items = Array.from({ length: 3 }, (_, i) => mkItem(`item${i}`))
+    const state = mkState({ items, maxRows: 5 })
+    expect(overlayHeight(state)).toBe(renderOverlay(state).length)
   })
 })
 
