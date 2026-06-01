@@ -18,6 +18,17 @@ import { dirname, join } from "node:path"
 /** Characters per token, standard heuristic. */
 const CHARS_PER_TOKEN = 4
 
+/**
+ * Approximate token count from a file body using the bytes/4 heuristic.
+ *
+ * Counts UTF-8 *bytes*, not UTF-16 code units (`String.length`): a SKILL.md
+ * with CJK or emoji content has far more bytes than code units, and token
+ * cost tracks bytes. Matches the documented `Math.ceil(bytes / 4)`.
+ */
+function approxTokens(body: string): number {
+  return Math.ceil(Buffer.byteLength(body, "utf8") / CHARS_PER_TOKEN)
+}
+
 /** Cache file location, overridable via env for tests. */
 function defaultCachePath(): string {
   const home = process.env.HOME ?? "/tmp"
@@ -101,7 +112,7 @@ export function approxTokensForFile(path: string, deps: TokenDeps): number | und
   if (hit && hit.mtimeNs === stat.mtimeNs) return hit.tokens
   const body = deps.readFile(path)
   if (body === null) return undefined
-  const tokens = Math.ceil(body.length / CHARS_PER_TOKEN)
+  const tokens = approxTokens(body)
   cache[path] = { mtimeNs: stat.mtimeNs, tokens }
   deps.writeCache(cache)
   return tokens
@@ -134,7 +145,7 @@ export function approxTokensForMany(
       out.set(path, undefined)
       continue
     }
-    const tokens = Math.ceil(body.length / CHARS_PER_TOKEN)
+    const tokens = approxTokens(body)
     cache[path] = { mtimeNs: stat.mtimeNs, tokens }
     out.set(path, tokens)
     dirty = true

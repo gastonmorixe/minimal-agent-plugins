@@ -29,7 +29,7 @@
   "permissions": [
     "hooks:editor.key",
     "hooks:editor.buffer.changed",
-    "hooks:editor.buffer.set",
+    "hooks:editor.footer.set",
     "hooks:command.run"
   ]
 }

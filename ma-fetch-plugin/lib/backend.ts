@@ -43,6 +43,12 @@ export interface BackendCallResult {
   backend: string
   /** Set when an abort signal fired. */
   aborted?: boolean
+  /**
+   * Why the call was aborted, when `aborted` is true. Lets the handler tell a
+   * user-initiated cancel apart from an internal wall-clock watchdog kill (the
+   * backend wedged past its own `--timeout`) and surface the right message.
+   */
+  abortReason?: "signal" | "watchdog" | "parent-exit"
   /** Set when the resolved backend script doesn't exist. */
   scriptMissing?: boolean
 }
@@ -377,6 +383,7 @@ export async function callBackend(
       stderr: stderrText + watchdogAnnotation,
       backend: `${config.backend}.ts`,
       aborted: aborted || undefined,
+      abortReason,
     }
   } finally {
     signal.removeEventListener("abort", onAbort)

@@ -79,9 +79,13 @@ const ICON_COL_W = 2
  * Caller can use this to reserve vertical space.
  */
 export function overlayHeight(state: OverlayState): number {
-  // Rows shown + 1 divider + 1 hint line.
-  const visible = visibleWindow(state).count
-  return Math.max(1, visible) + 2
+  // Rows shown + 1 divider + 1 hint line, plus a `↑ N more` affordance row
+  // when the window is scrolled down (renderOverlay emits it iff start > 0).
+  // Must match renderOverlay's row count exactly or the caller under-reserves
+  // vertical space and the live area wraps.
+  const w = visibleWindow(state)
+  const scrollRow = w.start > 0 ? 1 : 0
+  return Math.max(1, w.count) + 2 + scrollRow
 }
 
 interface VisibleWindow {

@@ -71,7 +71,12 @@ const TRACE_DIR = join(tmpdir(), "ma-fetch-traces")
 
 /** Generate a short, opaque, path-free correlation id (e.g. `t-lqy3-9f1a2b`). */
 export function newTraceId(): string {
-  const rand = Math.random().toString(16).slice(2, 8)
+  // Fixed 6-hex-digit suffix. `Math.random().toString(16).slice(2,8)` could
+  // yield fewer than 6 chars (or "") when the fraction is short or exactly 0,
+  // producing a malformed `t-<ts>-` with a dangling dash; this can't degenerate.
+  const rand = Math.floor(Math.random() * 0x1000000)
+    .toString(16)
+    .padStart(6, "0")
   return `t-${Date.now().toString(36)}-${rand}`
 }
 
