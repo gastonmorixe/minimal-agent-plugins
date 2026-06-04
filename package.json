@@ -6,9 +6,11 @@
   "type": "module",
   "workspaces": [
     "ma-agent-writing-style-plugin",
+    "ma-chrome-cdp-plugin",
     "ma-fetch-plugin",
     "ma-skills-plugin",
-    "ma-slash-menu-plugin"
+    "ma-slash-menu-plugin",
+    "ma-speak-plugin"
   ],
   "scripts": {
     "test": "bun test",

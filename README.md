@@ -27,6 +27,7 @@ ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
 | [`ma-agent-writing-style-plugin/`](./ma-agent-writing-style-plugin) | none (pure prompt) | Opinionated agent writing style. Hard-bans em-dashes and semicolons, kills the AI vocabulary, suppresses sycophancy and significance inflation. Output sounds like a person, not AI slop. |
 | [`ma-fetch-plugin/`](./ma-fetch-plugin) | `Fetch` | Fetch web pages with JS rendering (default backend: [obscura][o]) |
 | [`ma-skills-plugin/`](./ma-skills-plugin) | `Skill` | [Agent Skills][as] support: discovers `SKILL.md` packs from project / home / user roots and exposes them via progressive disclosure |
+| [`ma-speak-plugin/`](./ma-speak-plugin) | `Speak`, `SpeakStatus`, `SpeakStop` | Read text aloud through a swappable speech backend (default: macOS `say`). Speech plays in the background; jobs are tracked by handle and can be stopped. The model never learns which engine speaks. |
 
 [o]: https://github.com/h4ckf0r0day/obscura
 [as]: https://agentskills.io
