@@ -46,7 +46,14 @@ import { OBSCURA_DIST_TOKEN } from "./obscura-token.ts"
 // standalone (the plugin carries no dependency on the agent source tree).
 type SetupBinarySource =
   | { kind: "url"; url: string; archive?: boolean }
-  | { kind: "github-release"; repo: string; tag: string; asset: string; token?: string; archive?: boolean }
+  | {
+      kind: "github-release"
+      repo: string
+      tag: string
+      asset: string
+      token?: string
+      archive?: boolean
+    }
 interface SetupBinarySpec {
   name: string
   version: string
