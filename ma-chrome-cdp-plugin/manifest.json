@@ -1,0 +1,106 @@
+{
+  "id": "ma-chrome-cdp",
+  "name": "Chrome CDP",
+  "version": "0.1.0",
+  "description": "Drive an already-running Chrome/Chromium over the DevTools Protocol through a persistent daemon + unix socket (one macOS Local Network allow, then silent). Tool: ChromeCDP.",
+  "tuis": [
+    {
+      "id": "chrome_cdp",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "ChromeCDP",
+          "description": "Control a running Chrome/Chromium over the full DevTools Protocol. Chrome must be launched with --remote-debugging-port=9222. A persistent background daemon holds ONE connection to the browser and is reached over a unix socket, so macOS prompts for Local Network access only once (at first use), not per command. Convenience actions cover tabs, JS eval, navigation, and downloads. The `send` action is a GENERIC passthrough: it forwards ANY CDP method (Network.*, Performance.*, Tracing.*, Profiler.*, HeapProfiler.*, DOM.*, Page.*, Emulation.*, CSS.*, Accessibility.*, Storage.*, Fetch.*, Input.*, Log.*, Runtime.*, Target.*) with arbitrary params, optionally scoped to a tab. Because CDP events are async pushes (no reply), the daemon buffers them: enable a domain via `send` (e.g. Network.enable), then drain with `events`. Prefer the Fetch tool for stateless one-shot page reads; use ChromeCDP to act inside the user's real logged-in browser, inspect network/performance, profile, trace, or script anything the protocol exposes.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "ping",
+                  "targets",
+                  "alltargets",
+                  "eval",
+                  "frameeval",
+                  "nav",
+                  "newtab",
+                  "setdownload",
+                  "downloads",
+                  "send",
+                  "events",
+                  "record",
+                  "closetarget",
+                  "activatetarget",
+                  "getinfo"
+                ],
+                "description": "What to do. ping: daemon/browser liveness. targets: list open page tabs ({id,title,url}). alltargets: list every target incl. iframes/workers. eval: run JS in a tab. frameeval: run JS in a cross-origin child frame matched by URL substring. nav: navigate a tab. newtab: open a tab (returns its id). setdownload: set a tab's download dir. downloads: list tracked downloads. send: GENERIC passthrough, call any CDP `method` with `params`, optionally scoped to `target`/`sessionId` (this is the full-protocol escape hatch: Network/Performance/Tracing/Profiler/DOM/Emulation/etc). events: drain buffered CDP events (filter/since/sessionId/limit/clear). record: toggle event recording on/off (auto-enabled when you `send` a *.enable). closetarget: close a tab. activatetarget: focus a tab. getinfo: TargetInfo for one tab."
+              },
+              "target": {
+                "type": "string",
+                "description": "Target (tab) id from `targets`/`newtab`. Required for eval, frameeval, nav, setdownload, closetarget, activatetarget, getinfo. Optional for `send` (scopes the call to that tab's session)."
+              },
+              "expr": {
+                "type": "string",
+                "description": "JavaScript expression to evaluate (returned by value). Required for eval and frameeval. A thrown error comes back as {\"__error\":\"...\"}."
+              },
+              "urlSub": {
+                "type": "string",
+                "description": "Substring matched against child-frame URLs to pick the frame. Required for frameeval (e.g. \"idmsa.apple.com\" for an embedded Apple login)."
+              },
+              "url": {
+                "type": "string",
+                "description": "Destination URL. Required for nav; optional for newtab (defaults to about:blank)."
+              },
+              "dir": {
+                "type": "string",
+                "description": "Absolute directory for downloads. Required for setdownload."
+              },
+              "method": {
+                "type": "string",
+                "description": "CDP method in Domain.method form (e.g. \"Network.enable\", \"Performance.getMetrics\", \"Page.captureScreenshot\", \"Tracing.start\"). Required for `send`."
+              },
+              "params": {
+                "type": "object",
+                "description": "Params object for the `send` method (e.g. {\"requestId\":\"...\"} for Network.getResponseBody). Defaults to {} when omitted."
+              },
+              "sessionId": {
+                "type": "string",
+                "description": "Advanced: explicit CDP session id to scope a `send` call (overrides `target`). Usually you pass `target` instead."
+              },
+              "filter": {
+                "type": "string",
+                "description": "For `events`: case-insensitive substring matched against the CDP method name (e.g. \"Network.responseReceived\" or just \"Network\")."
+              },
+              "since": {
+                "type": "number",
+                "description": "For `events`: return only events with seq strictly greater than this. Pass back the previous response's `cursor` to drain incrementally."
+              },
+              "limit": {
+                "type": "number",
+                "description": "For `events`: cap the number of returned events (most recent matching win)."
+              },
+              "clear": {
+                "type": "boolean",
+                "description": "For `events`/`record`: drop the buffer after this call (events) or alongside the toggle (record)."
+              },
+              "on": {
+                "type": "boolean",
+                "description": "For `record`: true to start buffering CDP events, false to stop. Defaults to true."
+              }
+            },
+            "required": ["action"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/chrome_cdp.ts",
+        "export": "default"
+      },
+      "interactive": false,
+      "icon": "◉",
+      "color": "amber"
+    }
+  ]
+}

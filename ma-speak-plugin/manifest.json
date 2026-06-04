@@ -1,0 +1,86 @@
+{
+  "id": "ma-speak",
+  "name": "Speak",
+  "version": "0.1.0",
+  "description": "Read text aloud to the user through a swappable speech backend. Tools: Speak, SpeakStatus, SpeakStop.",
+  "tuis": [
+    {
+      "id": "speak",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "Speak",
+          "description": "Speak text aloud to the user through the computer's speakers, in a clear professional voice. Use it to read out an answer, announce that a long task finished, deliver a short alert, or narrate anything the user asked to hear instead of read. Speech plays in the background and the tool returns immediately with a short job handle (e.g. `s1`); the user hears it while you keep working. Poll `SpeakStatus` to see whether a job is still talking, and `SpeakStop` to cut it off (for example if the user says \"stop\" or you spoke the wrong thing). Speaking does not interrupt the conversation. Keep spoken text natural: prefer plain sentences over markdown, code blocks, or long URLs, which sound bad read aloud.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "The text to read aloud. Plain prose works best. Markdown syntax, code, and raw URLs are read literally and sound bad, so paraphrase them into speech-friendly wording first. Max 8000 characters."
+              },
+              "wait": {
+                "type": "boolean",
+                "default": false,
+                "description": "When false (default), return immediately with a job handle and let the speech play in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line you want confirmed as fully spoken before you move on; never for long passages, which would stall the turn."
+              }
+            },
+            "required": ["text"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/speak.ts", "export": "default" },
+      "interactive": false,
+      "icon": "♪",
+      "color": "sky"
+    },
+    {
+      "id": "speak_status",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "SpeakStatus",
+          "description": "Report whether speech is currently playing. Pass a job handle (e.g. `s1`) from a prior Speak call to check that one job, or omit `id` to list every speech job this session and its state (speaking, done, failed, or stopped). Cheap and read-only. Use it before deciding whether to wait, speak again, or stop an in-flight job.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A speech job handle returned by Speak (e.g. `s1`). Omit to get the state of all jobs in this session."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/speak_status.ts", "export": "default" },
+      "interactive": false,
+      "icon": "◎",
+      "color": "violet"
+    },
+    {
+      "id": "speak_stop",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "SpeakStop",
+          "description": "Stop speech that is currently playing. Pass a job handle (e.g. `s1`) from a prior Speak call to silence just that job, or omit `id` to stop ALL active speech at once (the \"be quiet now\" button). Stopping a job that already finished is a no-op and is reported as such. Use this the moment the user says to stop, or when you realize you spoke the wrong thing.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A speech job handle returned by Speak (e.g. `s1`). Omit to stop every active speech job in this session."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/speak_stop.ts", "export": "default" },
+      "interactive": false,
+      "icon": "■",
+      "color": "red"
+    }
+  ]
+}
