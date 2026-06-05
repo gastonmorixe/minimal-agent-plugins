@@ -553,3 +553,48 @@ describe("parseEnv - storageDir", () => {
     expect(argv[idx + 1]).toBe("/abs/dir")
   })
 })
+
+// ---------------------------------------------------------------------------
+// subprocess role: the no-PATH-fallback guard
+// ---------------------------------------------------------------------------
+//
+// The "refuse to run without MA_FETCH_BIN" behavior lives in `main()`, which
+// calls `process.exit`, so it can only be observed by actually spawning the
+// backend as a subprocess (the role the dispatcher uses). These pin that the
+// backend NEVER reaches for a bare `obscura` on PATH.
+
+describe("obscura backend subprocess - no PATH fallback", () => {
+  const scriptPath = new URL("./obscura.ts", import.meta.url).pathname
+  const validEnv = {
+    MA_FETCH_URL: "https://example.com",
+    MA_FETCH_FORMAT: "markdown",
+    MA_FETCH_WAIT_UNTIL: "domcontentloaded",
+    MA_FETCH_TIMEOUT_SEC: "10",
+  }
+
+  test("exits 2 and refuses when MA_FETCH_BIN is unset", async () => {
+    const proc = Bun.spawn(["bun", scriptPath], {
+      // Build a clean env WITHOUT MA_FETCH_BIN. We do NOT inherit process.env
+      // so a developer machine with obscura on PATH can't mask the guard.
+      env: { ...validEnv, PATH: process.env.PATH ?? "" },
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()])
+    expect(code).toBe(2)
+    expect(stderr).toContain("MA_FETCH_BIN is required")
+    expect(stderr).toContain("refusing to run a PATH fallback")
+  })
+
+  test("exits 2 when MA_FETCH_BIN is empty / whitespace-only", async () => {
+    const proc = Bun.spawn(["bun", scriptPath], {
+      env: { ...validEnv, MA_FETCH_BIN: "   ", PATH: process.env.PATH ?? "" },
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    const code = await proc.exited
+    expect(code).toBe(2)
+  })
+})

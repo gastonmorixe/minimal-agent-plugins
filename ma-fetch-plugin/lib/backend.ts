@@ -15,7 +15,7 @@
  */
 
 import { existsSync } from "node:fs"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 
 import type { FetchConfig, FetchFormat, WaitUntil } from "./config.ts"
 
@@ -51,6 +51,14 @@ export interface BackendCallResult {
   abortReason?: "signal" | "watchdog" | "parent-exit"
   /** Set when the resolved backend script doesn't exist. */
   scriptMissing?: boolean
+  /**
+   * Set when no managed (or operator-overridden) binary could be resolved for
+   * the backend. The dispatcher refuses to spawn rather than fall back to a
+   * bare `PATH` lookup. The handler maps this to the same generic
+   * `engine-unavailable` message as {@link scriptMissing}. See
+   * {@link resolveBackendBin}.
+   */
+  binUnavailable?: boolean
 }
 
 /** Minimal subset of `Bun.spawn`'s return value we depend on. */
@@ -186,12 +194,61 @@ export function resolveBackendPath(packageDir: string, backend: string): string 
 }
 
 /**
+ * Resolve the absolute path to the backend's binary, fail-closed.
+ *
+ * The plugin NEVER runs a binary off the user's `PATH`: an `obscura` a user
+ * happens to have installed is not the build this plugin pins, and silently
+ * executing it is both a correctness and a supply-chain hazard. We only ever
+ * run the copy the AGENT manages. Resolution order:
+ *
+ *   1. **Operator override.** `config.backends[backend].bin` (from
+ *      `plugins["ma-fetch"].<backend>.bin`). An absolute path the operator
+ *      deliberately set wins outright, including a local dev build. Used
+ *      verbatim, presence not checked here (the operator owns that path).
+ *   2. **Managed dir.** `<MINIMAL_AGENT_BIN_DIR>/<backend>`, where the env var
+ *      is advertised by the host at boot and points at the directory the host
+ *      provisions binaries into (`~/.minimal-agent/bin`). The plugin learns the
+ *      location ONLY from this env var: it never hard-codes a home path and
+ *      never scans the filesystem, because the home dir differs per install and
+ *      the agent is the single party that knows where it installed things. We
+ *      require the file to exist (the host provisions it before first use); a
+ *      missing file resolves to `null` so the caller fails closed.
+ *
+ * Returns `null` when neither source yields a usable path. The caller turns
+ * that into an `engine-unavailable` error rather than spawning a bare name and
+ * letting the OS resolve it off `PATH`.
+ *
+ * Pure: no spawn, no env mutation. `existsFn` is injectable for tests.
+ */
+export function resolveBackendBin(
+  config: FetchConfig,
+  baseEnv: Record<string, string | undefined> = process.env as Record<string, string | undefined>,
+  existsFn: (path: string) => boolean = existsSync,
+): string | null {
+  // (1) Operator override wins, verbatim.
+  const override = config.backends[config.backend]?.bin
+  if (override && override.length > 0) return override
+
+  // (2) Managed dir advertised by the host. Absolute + present, or nothing.
+  const binDir = baseEnv.MINIMAL_AGENT_BIN_DIR?.trim()
+  if (!binDir || !isAbsolute(binDir)) return null
+  const candidate = join(binDir, config.backend)
+  return existsFn(candidate) ? candidate : null
+}
+
+/**
  * Build the `MA_FETCH_*` env block from config + per-call input.
  *
  * Inherits `process.env` so the backend keeps PATH, HOME, etc.; that
  * lets obscura find its own libraries and lets bun find itself. Then
  * layers our `MA_FETCH_*` block on top - these always win over any
  * pre-existing values.
+ *
+ * `MA_FETCH_BIN` is set from {@link resolveBackendBin}. When that returns
+ * `null` (no override AND no managed binary) the var is LEFT UNSET on purpose,
+ * so the backend's own "bin required" guard fires instead of falling back to a
+ * bare `PATH` lookup. The dispatcher's `binUnavailable` pre-check normally
+ * short-circuits before we ever spawn, so an unset var here is belt-and-braces.
  *
  * Pure: takes already-validated inputs, returns a fresh dict.
  */
@@ -220,7 +277,10 @@ export function buildBackendEnv(
   // Plugin-config fields.
   if (config.userAgent) env.MA_FETCH_USER_AGENT = config.userAgent
   if (config.proxy) env.MA_FETCH_PROXY = config.proxy
-  const bin = config.backends[config.backend]?.bin
+  // Resolve the managed (or operator-overridden) binary path. Left unset when
+  // neither is available so the backend refuses to run rather than reaching for
+  // a `PATH` obscura. See resolveBackendBin.
+  const bin = resolveBackendBin(config, baseEnv)
   if (bin && bin.length > 0) env.MA_FETCH_BIN = bin
   // Backend-specific extension paths. Joined by `\n` because newline is the
   // one byte POSIX paths cannot legally contain — safer than `:` (used in
@@ -294,6 +354,22 @@ export async function callBackend(
       stderr: `backend script not found: ${scriptPath}`,
       backend: `${config.backend}.ts`,
       scriptMissing: true,
+    }
+  }
+
+  // Fail closed if the managed binary isn't resolvable. We NEVER spawn a bare
+  // backend name and let it pick up a `PATH` obscura. Only the agent-managed
+  // (or operator-overridden) binary is allowed to run. Checked here, before any
+  // spawn, so the failure is a clean typed result instead of an opaque ENOENT
+  // from deep inside the backend subprocess.
+  if (!resolveBackendBin(config, process.env as Record<string, string | undefined>, exists)) {
+    return {
+      ok: false,
+      exitCode: -1,
+      stdout: "",
+      stderr: `no managed binary resolved for backend "${config.backend}"`,
+      backend: `${config.backend}.ts`,
+      binUnavailable: true,
     }
   }
 

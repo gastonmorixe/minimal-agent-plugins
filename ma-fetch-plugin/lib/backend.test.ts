@@ -6,11 +6,28 @@ import {
   DEFAULT_WATCHDOG_SLACK_SEC,
   defaultParentExitHook,
   killBackend,
+  resolveBackendBin,
   resolveBackendPath,
   type SpawnedProcess,
   type SpawnFn,
 } from "./backend.ts"
 import { defaultConfig, type FetchConfig } from "./config.ts"
+
+/**
+ * A config whose backend binary resolves via the operator-override path
+ * (`backends.obscura.bin`). The override wins in {@link resolveBackendBin}
+ * without consulting `MINIMAL_AGENT_BIN_DIR` or the filesystem, so any
+ * `callBackend` test that expects to actually SPAWN must use this (the new
+ * fail-closed precheck refuses to spawn when no binary resolves). Pure spawn
+ * orchestration is what those tests exercise; the binary path is incidental.
+ */
+function binCfg(overrides: Partial<FetchConfig> = {}): FetchConfig {
+  return {
+    ...defaultConfig(),
+    backends: { obscura: { bin: "/managed/obscura" } },
+    ...overrides,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // resolveBackendPath
@@ -30,6 +47,64 @@ describe("resolveBackendPath", () => {
   test("accepts hyphens, digits, mixed case", () => {
     expect(resolveBackendPath("/x", "obscura-2")).toBe("/x/backends/obscura-2.ts")
     expect(resolveBackendPath("/x", "Playwright")).toBe("/x/backends/Playwright.ts")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveBackendBin - the fail-closed binary resolver (NEVER PATH)
+// ---------------------------------------------------------------------------
+
+describe("resolveBackendBin", () => {
+  const present = () => true
+  const absent = () => false
+
+  test("operator override wins, verbatim, no env or fs needed", () => {
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      backends: { obscura: { bin: "/custom/obscura" } },
+    }
+    // Override is used even with no MINIMAL_AGENT_BIN_DIR and existsFn=absent:
+    // the operator owns that path.
+    expect(resolveBackendBin(cfg, {}, absent)).toBe("/custom/obscura")
+  })
+
+  test("override is per-active-backend (a sibling backend's bin is ignored)", () => {
+    const cfg: FetchConfig = {
+      ...defaultConfig(),
+      backend: "obscura",
+      backends: { playwright: { bin: "/pw/bin" } },
+    }
+    // No obscura override + no bin dir → null (not the playwright override).
+    expect(resolveBackendBin(cfg, {}, absent)).toBeNull()
+  })
+
+  test("resolves <MINIMAL_AGENT_BIN_DIR>/<backend> when the file exists", () => {
+    expect(resolveBackendBin(defaultConfig(), { MINIMAL_AGENT_BIN_DIR: "/m/bin" }, present)).toBe(
+      "/m/bin/obscura",
+    )
+  })
+
+  test("returns null when the managed candidate does not exist (fail closed)", () => {
+    expect(
+      resolveBackendBin(defaultConfig(), { MINIMAL_AGENT_BIN_DIR: "/m/bin" }, absent),
+    ).toBeNull()
+  })
+
+  test("returns null when MINIMAL_AGENT_BIN_DIR is unset (NEVER falls back to PATH)", () => {
+    expect(resolveBackendBin(defaultConfig(), {}, present)).toBeNull()
+  })
+
+  test("ignores a non-absolute MINIMAL_AGENT_BIN_DIR", () => {
+    expect(
+      resolveBackendBin(defaultConfig(), { MINIMAL_AGENT_BIN_DIR: "relative/bin" }, present),
+    ).toBeNull()
+  })
+
+  test("honors the active backend name in the candidate path", () => {
+    const cfg: FetchConfig = { ...defaultConfig(), backend: "playwright" }
+    expect(resolveBackendBin(cfg, { MINIMAL_AGENT_BIN_DIR: "/m/bin" }, present)).toBe(
+      "/m/bin/playwright",
+    )
   })
 })
 
@@ -144,7 +219,7 @@ describe("buildBackendEnv - config-applied fields", () => {
     expect(env.MA_FETCH_PROXY).toBe("http://corp:8080")
   })
 
-  test("MA_FETCH_BIN comes from config.backends[backend].bin", () => {
+  test("MA_FETCH_BIN comes from config.backends[backend].bin (operator override)", () => {
     const cfg: FetchConfig = {
       ...defaultConfig(),
       backends: { obscura: { bin: "/opt/obscura/bin/obscura" } },
@@ -155,6 +230,29 @@ describe("buildBackendEnv - config-applied fields", () => {
       {},
     )
     expect(env.MA_FETCH_BIN).toBe("/opt/obscura/bin/obscura")
+  })
+
+  test("MA_FETCH_BIN resolves from MINIMAL_AGENT_BIN_DIR/<backend> when present", () => {
+    const env = buildBackendEnv(
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { MINIMAL_AGENT_BIN_DIR: "/home/u/.minimal-agent/bin" },
+      // NOTE: buildBackendEnv uses the default existsSync; this dir won't
+      // exist in CI, so MA_FETCH_BIN is correctly LEFT UNSET. The resolution
+      // logic itself (with an injectable existsFn) is covered in the
+      // resolveBackendBin describe block below.
+    )
+    // Fail-closed: the candidate path does not exist on the test box.
+    expect(env).not.toHaveProperty("MA_FETCH_BIN")
+  })
+
+  test("MA_FETCH_BIN absent when no override and no MINIMAL_AGENT_BIN_DIR (never PATH)", () => {
+    const env = buildBackendEnv(
+      defaultConfig(),
+      { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      {},
+    )
+    expect(env).not.toHaveProperty("MA_FETCH_BIN")
   })
 
   test("config-fields absent when null/missing", () => {
@@ -291,7 +389,7 @@ describe("callBackend - happy path", () => {
     }
     const result = await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       { spawnFn, existsFn: () => true },
@@ -311,7 +409,7 @@ describe("callBackend - happy path", () => {
       fakeProc({ stdout: "", stderr: "navigation failed", exitCode: 1 })
     const result = await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       { spawnFn, existsFn: () => true },
@@ -349,7 +447,7 @@ describe("callBackend - failure modes", () => {
     }
     const result = await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       { spawnFn, existsFn: () => true },
@@ -357,6 +455,37 @@ describe("callBackend - failure modes", () => {
     expect(result.ok).toBe(false)
     expect(result.stderr).toContain("failed to spawn")
     expect(result.stderr).toContain("ENOENT")
+  })
+
+  test("no resolvable binary → binUnavailable=true, NO spawn (never PATH)", async () => {
+    // The backend SCRIPT exists (existsFn true) but no override is set and the
+    // env carries no MINIMAL_AGENT_BIN_DIR, so the managed binary can't be
+    // resolved. The dispatcher must refuse to spawn rather than run a bare
+    // `obscura` off PATH.
+    const prev = process.env.MINIMAL_AGENT_BIN_DIR
+    process.env.MINIMAL_AGENT_BIN_DIR = ""
+    try {
+      let spawned = false
+      const spawnFn: SpawnFn = () => {
+        spawned = true
+        return fakeProc({})
+      }
+      const result = await callBackend(
+        "/plugin",
+        defaultConfig(), // no operator override
+        { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+        new AbortController().signal,
+        { spawnFn, existsFn: () => true },
+      )
+      expect(result.ok).toBe(false)
+      expect(result.binUnavailable).toBe(true)
+      expect(result.scriptMissing).toBeUndefined()
+      expect(result.stderr).toContain("no managed binary resolved")
+      expect(spawned).toBe(false)
+    } finally {
+      if (prev === undefined) delete process.env.MINIMAL_AGENT_BIN_DIR
+      else process.env.MINIMAL_AGENT_BIN_DIR = prev
+    }
   })
 })
 
@@ -373,7 +502,7 @@ describe("callBackend - abort", () => {
     const ctrl = new AbortController()
     const promise = callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       ctrl.signal,
       { spawnFn, existsFn: () => true },
@@ -399,7 +528,7 @@ describe("callBackend - abort", () => {
     ctrl.abort() // already aborted before callBackend is even called
     const result = await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       ctrl.signal,
       { spawnFn, existsFn: () => true },
@@ -422,7 +551,7 @@ describe("callBackend - detached spawn option", () => {
     }
     await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       { spawnFn, existsFn: () => true, parentExitHook: () => () => {} },
@@ -493,7 +622,7 @@ describe("callBackend - outer watchdog", () => {
 
     const promise = callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       {
@@ -532,7 +661,7 @@ describe("callBackend - outer watchdog", () => {
 
     await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       {
@@ -558,7 +687,7 @@ describe("callBackend - outer watchdog", () => {
 
     const result = await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       {
@@ -594,7 +723,7 @@ describe("callBackend - parent-exit hook", () => {
 
     await callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       {
@@ -626,7 +755,7 @@ describe("callBackend - parent-exit hook", () => {
 
     const promise = callBackend(
       "/plugin",
-      defaultConfig(),
+      binCfg(),
       { url: "https://x", format: "markdown", waitUntil: "load", timeoutSec: 30 },
       new AbortController().signal,
       { spawnFn, existsFn: () => true, parentExitHook },
