@@ -343,10 +343,13 @@ export async function runWithDeps(
 ): Promise<TUIResult> {
   const result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
 
-  if (result.scriptMissing) {
+  if (result.scriptMissing || result.binUnavailable) {
     // Plugin-misconfiguration path. Generic by design: the model must not
-    // learn which render engine is (or isn't) installed. Operators fix this
-    // via config + the ma-fetch plugin README.
+    // learn which render engine is (or isn't) installed. Two distinct causes
+    // collapse to one message: the backend SCRIPT is missing (broken plugin
+    // checkout), or the managed BINARY couldn't be resolved (provisioning did
+    // not run / was skipped, and no operator override is set). Operators fix
+    // either via config + the ma-fetch plugin README.
     return fetchErrorResult(
       new FetchError(
         "engine-unavailable",

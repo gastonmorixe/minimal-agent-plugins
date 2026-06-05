@@ -36,7 +36,11 @@
  *                                     sandboxed under the plugin's
  *                                     `storageRoot`. Backend treats it
  *                                     verbatim, no further checks.
- *   MA_FETCH_BIN          (optional)  path to obscura binary (default: "obscura" on PATH)
+ *   MA_FETCH_BIN          (required)  absolute path to the obscura binary. The
+ *                                     dispatcher resolves the agent-managed
+ *                                     (or operator-overridden) binary and sets
+ *                                     this. There is NO PATH fallback: if it's
+ *                                     unset the backend refuses to run (exit 2).
  *   MA_FETCH_EXTENSIONS   (optional)  newline-separated list of WebExtension
  *                                     bundle paths (`.crx`, `.xpi`, `.zip`, or
  *                                     unpacked dir). Each entry becomes one
@@ -237,7 +241,18 @@ async function main(): Promise<never> {
     process.exit(2)
   }
 
-  const bin = process.env.MA_FETCH_BIN?.trim() || "obscura"
+  // The binary path is REQUIRED. The plugin only ever runs the agent-managed
+  // (or operator-overridden) obscura, never one off the user's `PATH`. The
+  // dispatcher resolves it (`lib/backend.ts:resolveBackendBin`) and passes it in
+  // `MA_FETCH_BIN`; if it's somehow absent we refuse rather than fall back to a
+  // bare `obscura` and execute whatever the host's `PATH` happens to surface.
+  const bin = process.env.MA_FETCH_BIN?.trim()
+  if (!bin) {
+    process.stderr.write(
+      "[ma-fetch/obscura] MA_FETCH_BIN is required (no managed binary resolved); refusing to run a PATH fallback\n",
+    )
+    process.exit(2)
+  }
   const argv = [bin, ...buildArgv(opts)]
 
   const proc = Bun.spawn(argv, {

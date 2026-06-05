@@ -62,7 +62,7 @@ The handler spawns `<plugin>/backends/<backend>.ts` with these env vars:
 | `MA_FETCH_USER_AGENT` | no | from plugin config |
 | `MA_FETCH_PROXY` | no | from plugin config |
 | `MA_FETCH_STORAGE_DIR` | no | absolute path resolved from `session` + `storageRoot`; backends that support persistence (obscura) forward as `--storage-dir <DIR>` |
-| `MA_FETCH_BIN` | no | from `plugins["ma-fetch"].<backend>.bin` |
+| `MA_FETCH_BIN` | yes (set by dispatcher) | absolute path to the backend binary. Resolved by `lib/backend.ts:resolveBackendBin`: operator override (`plugins["ma-fetch"].<backend>.bin`) wins, else `<MINIMAL_AGENT_BIN_DIR>/<backend>` (the agent-managed dir, `~/.minimal-agent/bin`). **No PATH fallback**: if it can't be resolved the backend refuses to run (exit 2) and the tool reports an engine-unavailable error. |
 
 Backend output:
 - **stdout** → page content (verbatim, becomes `tool_result.content`)
@@ -84,17 +84,17 @@ Backend output:
    ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
    ```
 
-3. Install [obscura][o] (the default backend). Easiest:
+3. Get obscura (the default backend). **Normally you do nothing here:** on
+   an interactive start the host provisions the pinned obscura build into the
+   agent-managed dir (`~/.minimal-agent/bin`) automatically (see `setup.ts` plus
+   minimal-agent's `binaries/` subsystem) and advertises that dir to the plugin
+   via `MINIMAL_AGENT_BIN_DIR`. The plugin runs ONLY that managed copy.
 
-   ```bash
-   # macOS Apple Silicon
-   curl -LO https://github.com/h4ckf0r0day/obscura/releases/latest/download/obscura-aarch64-macos.tar.gz
-   tar xzf obscura-aarch64-macos.tar.gz
-   sudo mv obscura /usr/local/bin/
-   ```
-
-   If you put obscura somewhere off `PATH`, set its location in config
-   (see below).
+   The plugin does **not** look on your `PATH`. A `obscura` you drop into
+   `/usr/local/bin` is ignored on purpose (it's not the build this plugin
+   pins, and silently running a user's binary is a supply-chain hazard). If you
+   want to point at your own build, set an absolute path via the `obscura.bin`
+   operator override in config (see below). That wins over the managed copy.
 
 4. (Optional) Configure in `~/.minimal-agent/config.jsonc`:
 
@@ -208,7 +208,7 @@ The handler spawns `<plugin>/backends/<backend>.ts` with these env vars:
 | `MA_FETCH_USER_AGENT` | no | from plugin config |
 | `MA_FETCH_PROXY` | no | from plugin config |
 | `MA_FETCH_STORAGE_DIR` | no | absolute path resolved from `session` + `storageRoot`; backends that support persistence (obscura) forward as `--storage-dir <DIR>` |
-| `MA_FETCH_BIN` | no | from `plugins["ma-fetch"].<backend>.bin` |
+| `MA_FETCH_BIN` | yes (set by dispatcher) | absolute path to the backend binary. Resolved by `lib/backend.ts:resolveBackendBin`: operator override (`plugins["ma-fetch"].<backend>.bin`) wins, else `<MINIMAL_AGENT_BIN_DIR>/<backend>` (the agent-managed dir, `~/.minimal-agent/bin`). **No PATH fallback**: if it can't be resolved the backend refuses to run (exit 2) and the tool reports an engine-unavailable error. |
 
 Backend output:
 - **stdout** → page content (verbatim, becomes `tool_result.content`)
@@ -230,17 +230,17 @@ Backend output:
    ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
    ```
 
-3. Install [obscura][o] (the default backend). Easiest:
+3. Get obscura (the default backend). **Normally you do nothing here:** on
+   an interactive start the host provisions the pinned obscura build into the
+   agent-managed dir (`~/.minimal-agent/bin`) automatically (see `setup.ts` plus
+   minimal-agent's `binaries/` subsystem) and advertises that dir to the plugin
+   via `MINIMAL_AGENT_BIN_DIR`. The plugin runs ONLY that managed copy.
 
-   ```bash
-   # macOS Apple Silicon
-   curl -LO https://github.com/h4ckf0r0day/obscura/releases/latest/download/obscura-aarch64-macos.tar.gz
-   tar xzf obscura-aarch64-macos.tar.gz
-   sudo mv obscura /usr/local/bin/
-   ```
-
-   If you put obscura somewhere off `PATH`, set its location in config
-   (see below).
+   The plugin does **not** look on your `PATH`. A `obscura` you drop into
+   `/usr/local/bin` is ignored on purpose (it's not the build this plugin
+   pins, and silently running a user's binary is a supply-chain hazard). If you
+   want to point at your own build, set an absolute path via the `obscura.bin`
+   operator override in config (see below). That wins over the managed copy.
 
 . Anything with
 `/`, `\`, `..`, dots, or spaces is rejected by the input validator

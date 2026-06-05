@@ -27,6 +27,20 @@
  * sibling `obscura-token.ts` (gitignored; CI writes the real value at release
  * time) so the secret is not committed to the plugin's source tree.
  *
+ * ## How the backend finds the binary at runtime
+ *
+ * This setup hook only DECLARES + installs the binary into the agent-managed
+ * dir. At call time the dispatcher (`lib/backend.ts:resolveBackendBin`) finds
+ * it again, fail-closed, with no `PATH` fallback:
+ *
+ *   1. Operator override `plugins["ma-fetch"].obscura.bin` (absolute path) wins.
+ *   2. Else `<MINIMAL_AGENT_BIN_DIR>/obscura`, where `MINIMAL_AGENT_BIN_DIR` is
+ *      advertised by the host every session and points at the same managed dir
+ *      this hook installs into (`~/.minimal-agent/bin`). The plugin learns the
+ *      location ONLY from that env var; it never hard-codes a home path.
+ *   3. Neither → the tool reports `engine-unavailable`. We never run a bare
+ *      `obscura` off the user's `PATH`.
+ *
  * ## Operator override
  *
  * If the user sets `plugins["ma-fetch"].obscura.bin` to their own obscura

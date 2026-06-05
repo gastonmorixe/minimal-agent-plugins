@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
 import type { SpawnedProcess, SpawnFn } from "../lib/backend.ts"
 import { defaultConfig, type FetchConfig } from "../lib/config.ts"
@@ -13,6 +13,22 @@ import handler, {
   runWithDeps,
   validateInput,
 } from "./fetch.ts"
+
+// The dispatcher's fail-closed binary precheck (lib/backend.ts:resolveBackendBin)
+// reads MINIMAL_AGENT_BIN_DIR from process.env and confirms the candidate via
+// the injected existsFn. The runWithDeps tests below inject `existsFn: () =>
+// true` to simulate "script + binary present", so we advertise a managed bin
+// dir here to match what the host does in production. Without it, callBackend
+// would correctly refuse to spawn (binUnavailable) and these spawn-path tests
+// would see an engine-unavailable error instead of the fake backend's output.
+const SAVED_BIN_DIR = process.env.MINIMAL_AGENT_BIN_DIR
+beforeAll(() => {
+  process.env.MINIMAL_AGENT_BIN_DIR = "/managed/bin"
+})
+afterAll(() => {
+  if (SAVED_BIN_DIR === undefined) delete process.env.MINIMAL_AGENT_BIN_DIR
+  else process.env.MINIMAL_AGENT_BIN_DIR = SAVED_BIN_DIR
+})
 
 // ---------------------------------------------------------------------------
 // validateInput
@@ -413,6 +429,39 @@ describe("runWithDeps - error paths", () => {
     expect(r.content.toLowerCase()).not.toContain("obscura")
     expect(r.content).not.toContain(".ts")
     expect(r.displayHeader).toContain("engine-unavailable")
+  })
+
+  test("no resolvable binary maps to the same generic engine-unavailable error", async () => {
+    // Script EXISTS (existsFn true for the script path) but no managed binary
+    // can be resolved: no operator override and no MINIMAL_AGENT_BIN_DIR for
+    // this one call. The handler must surface the generic engine-unavailable
+    // message, never naming obscura or hinting at a PATH lookup.
+    const prev = process.env.MINIMAL_AGENT_BIN_DIR
+    process.env.MINIMAL_AGENT_BIN_DIR = ""
+    try {
+      let spawned = false
+      const spawnFn: SpawnFn = () => {
+        spawned = true
+        return fakeProc({})
+      }
+      const ctx = fakeCtx({ url: "https://example.com" })
+      const r = await runWithDeps(
+        ctx,
+        defaultConfig(), // no operator override
+        { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+        { spawnFn, existsFn: () => true },
+      )
+      expectToolResult(r)
+      expect(r.is_error).toBe(true)
+      expect(r.content).toContain("render engine is unavailable")
+      expect(r.content.toLowerCase()).not.toContain("obscura")
+      expect(r.content.toLowerCase()).not.toContain("path")
+      expect(r.displayHeader).toContain("engine-unavailable")
+      expect(spawned).toBe(false)
+    } finally {
+      if (prev === undefined) delete process.env.MINIMAL_AGENT_BIN_DIR
+      else process.env.MINIMAL_AGENT_BIN_DIR = prev
+    }
   })
 
   test("classified failure (timeout): clean typed message, no raw stderr, no exit code", async () => {
