@@ -53,8 +53,32 @@ describe("ChromeCDP handler", () => {
       expect(r.is_error).toBeFalsy()
       expect(r.content).toContain('"id": "A"')
       expect(r.displayFooter).toContain("1 target(s)")
+      // The header now echoes the action being issued, and the body previews it.
+      expect(r.displayHeader).toContain("targets")
+      expect(r.display).toBeTruthy()
     }
     expect(calls.some((c) => c.route === "targets")).toBe(true)
+  })
+
+  test("eval header echoes the JS expression being issued", async () => {
+    const socketFetch = async (route: string): Promise<DaemonResponse> => {
+      if (route === "ping") return { status: 200, body: { ok: true } }
+      return { status: 200, body: { result: 42 } }
+    }
+    const r = await runWithDeps(ctxFor({ action: "eval", target: "TAB99", expr: "21*2" }), {
+      ensure: ensureUp,
+      socketFetch,
+    })
+    if (r.kind === "tool_result") {
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: strip SGR
+      const header = (r.displayHeader ?? "").replace(/\x1b\[[0-9;]*m/g, "")
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: strip SGR
+      const body = (r.display ?? "").replace(/\x1b\[[0-9;]*m/g, "")
+      expect(header).toContain("eval")
+      expect(header).toContain("21*2")
+      expect(body).toContain("❯ 21*2")
+      expect(body).toContain("42")
+    }
   })
 
   test("eval error body marks the result as an error", async () => {
