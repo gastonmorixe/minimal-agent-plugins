@@ -6,6 +6,7 @@
   "type": "module",
   "workspaces": [
     "ma-agent-writing-style-plugin",
+    "ma-background-plugin",
     "ma-chrome-cdp-plugin",
     "ma-fetch-plugin",
     "ma-skills-plugin",

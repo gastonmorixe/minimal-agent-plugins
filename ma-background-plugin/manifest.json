@@ -1,0 +1,161 @@
+{
+  "id": "ma-bg",
+  "name": "Background Jobs",
+  "version": "0.1.0",
+  "description": "Run bash-like commands in the background, check status, read logs, and cancel. Each job runs under a detached supervised runner whose lifetime is bound to the harness: when minimal-agent exits (cleanly or not), every job is torn down too. Logs are durable and colocated with session history at ~/.minimal-agent/sessions/<sid>.bgjobs/. Tools: BackgroundRun, BackgroundStatus, BackgroundLogs, BackgroundStop. Disable with MINIMAL_AGENT_DISABLE_BGJOBS=1.",
+  "prompt": "./PROMPT.md",
+  "tuis": [
+    {
+      "id": "bg_run",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "BackgroundRun",
+          "description": "Run a shell command in the BACKGROUND and return immediately with a job handle (e.g. j2) and pid. The job keeps running while you keep working; you are not blocked. Use this by default for anything that takes more than a few seconds: builds, test suites, installs, long searches over big trees, downloads, codegen, dev servers you will poll. Check progress with BackgroundStatus, read output with BackgroundLogs, cancel with BackgroundStop. When a job finishes you get a one-line digest between turns. The full raw output (ANSI included) is stored on disk and readable at any later point, even after a resume. Jobs have no stdin/TTY (non-interactive) and die automatically if the agent exits.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "description": "The shell command to run (executed via bash -c). Required."
+              },
+              "description": {
+                "type": "string",
+                "description": "A short label for this job, shown in the status widget and logs (e.g. \"full test suite\")."
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory for the job. Defaults to the agent's current working directory. Note: this does NOT follow the foreground Bash tool's sticky cd."
+              },
+              "timeout": {
+                "type": "string",
+                "description": "How long the job may run before it is killed. A friendly duration like \"90s\", \"10m\", \"2h\", or \"1d\", or a number of seconds. Defaults to 10 minutes. Most jobs should finish well within the default; only raise it for genuinely long work."
+              }
+            },
+            "required": ["command"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/bg_run.ts", "export": "default" },
+      "interactive": false,
+      "icon": "▶",
+      "color": "cyan"
+    },
+    {
+      "id": "bg_status",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "BackgroundStatus",
+          "description": "Glance at background jobs: their state (running, done, failed, timed out, stopped), elapsed time, exit code, and a short tail of recent output. Pass an id for one job, or omit it for every job in this session. Cheap, so poll it freely. For the full, parametrized output of a job use BackgroundLogs.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A job handle from BackgroundRun (e.g. j2). Omit to see all jobs in this session."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/bg_status.ts", "export": "default" },
+      "interactive": false,
+      "icon": "◎",
+      "color": "violet"
+    },
+    {
+      "id": "bg_logs",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "BackgroundLogs",
+          "description": "Read a background job's captured output. The on-disk log is the full raw stream (stdout+stderr combined, ANSI preserved); what is returned to you is bounded and ANSI-stripped by default. Use tail to get the last N lines, offset/limit for a line range, grep to filter, and since (a byte cursor returned by a prior call) to stream only new output. Set raw:true to keep color codes.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The job handle to read (e.g. j2). Required."
+              },
+              "tail": {
+                "type": "number",
+                "description": "Return only the last N lines (after any grep filter)."
+              },
+              "offset": {
+                "type": "number",
+                "description": "Zero-based first line of a range (after any grep filter)."
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum number of lines to return for a range."
+              },
+              "grep": {
+                "type": "string",
+                "description": "Only return lines matching this regular expression."
+              },
+              "since": {
+                "type": "number",
+                "description": "A byte cursor from a prior BackgroundLogs call. Returns only output written after it, for incremental streaming reads."
+              },
+              "raw": {
+                "type": "boolean",
+                "description": "Keep ANSI escape codes in the returned text. Default false (stripped)."
+              }
+            },
+            "required": ["id"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/bg_logs.ts", "export": "default" },
+      "interactive": false,
+      "icon": "▤",
+      "color": "sky"
+    },
+    {
+      "id": "bg_stop",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "BackgroundStop",
+          "description": "Cancel a background job. Pass an id to stop that one job, or omit it to stop every running job at once. Stopping signals the job (SIGTERM by default, escalating to SIGKILL), so any child processes go too. Stopping a job that already finished is a harmless no-op. Stop jobs you no longer need so they do not hold a concurrency slot.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The job handle to stop (e.g. j2). Omit to stop every running job in this session."
+              },
+              "signal": {
+                "type": "string",
+                "enum": ["SIGTERM", "SIGKILL"],
+                "description": "Signal to send. Default SIGTERM (graceful, escalates to SIGKILL). Use SIGKILL to force-kill immediately."
+              },
+              "reason": {
+                "type": "string",
+                "description": "A short note recorded on the job for why it was stopped."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/bg_stop.ts", "export": "default" },
+      "interactive": false,
+      "icon": "■",
+      "color": "red"
+    }
+  ],
+  "liveAreaSlots": [
+    {
+      "id": "bg_supervisor",
+      "handler": { "type": "module", "path": "./handlers/heartbeat.ts", "export": "default" },
+      "position": "footer",
+      "refreshMs": 1000,
+      "timeoutMs": 4000
+    }
+  ]
+}
