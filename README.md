@@ -25,6 +25,7 @@ ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
 | Directory | Tool(s) | Purpose |
 |-----------|---------|---------|
 | [`ma-agent-writing-style-plugin/`](./ma-agent-writing-style-plugin) | none (pure prompt) | Opinionated agent writing style. Hard-bans em-dashes and semicolons, kills the AI vocabulary, suppresses sycophancy and significance inflation. Output sounds like a person, not AI slop. |
+| [`ma-background-plugin/`](./ma-background-plugin) | `BackgroundRun`, `BackgroundStatus`, `BackgroundLogs`, `BackgroundStop` | Run bash-like commands in the background, check status, read logs, cancel. Durable logs colocated with session history. Jobs are bound to the agent's lifetime: when minimal-agent exits (even on SIGKILL), every job is torn down via a supervised runner watching its stdin for EOF. |
 | [`ma-fetch-plugin/`](./ma-fetch-plugin) | `Fetch` | Fetch web pages with JS rendering (default backend: [obscura][o]) |
 | [`ma-skills-plugin/`](./ma-skills-plugin) | `Skill` | [Agent Skills][as] support: discovers `SKILL.md` packs from project / home / user roots and exposes them via progressive disclosure |
 | [`ma-speak-plugin/`](./ma-speak-plugin) | `Speak`, `SpeakStatus`, `SpeakStop` | Read text aloud through a swappable speech backend (default: macOS `say`). Speech plays in the background; jobs are tracked by handle and can be stopped. The model never learns which engine speaks. |
