@@ -1,6 +1,19 @@
 import { describe, expect, test } from "bun:test"
 
-import { isErrorBody, renderContent, summarize } from "./render.ts"
+import {
+  clip,
+  clipEnd,
+  describeRequest,
+  isErrorBody,
+  renderContent,
+  renderDisplay,
+  shortId,
+  summarize,
+} from "./render.ts"
+
+// Strip ANSI so assertions read against plain text.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching SGR escapes
+const noAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "")
 
 describe("summarize", () => {
   test("targets counts", () => {
@@ -34,6 +47,111 @@ describe("renderContent", () => {
     const out = renderContent(big, 1000)
     expect(out.length).toBeLessThan(1100)
     expect(out).toMatch(/more chars truncated/)
+  })
+})
+
+describe("string helpers", () => {
+  test("clip collapses whitespace and ellipsizes", () => {
+    expect(clip("a\n  b   c", 80)).toBe("a b c")
+    expect(clip("abcdefghij", 5)).toBe("abcd…")
+  })
+  test("clipEnd preserves internal whitespace", () => {
+    expect(clipEnd("a  b\n  c", 80)).toBe("a  b\n  c")
+    expect(clipEnd("abcdef", 4)).toBe("abc…")
+  })
+  test("shortId only shortens long ids", () => {
+    expect(shortId("ABC")).toBe("ABC")
+    expect(noAnsi(shortId("6A21F2A0DEADBEEF0123456789"))).toBe("6A21F2A0D…6789")
+  })
+})
+
+describe("describeRequest", () => {
+  test("eval shows the tab and the JS expression", () => {
+    const h = noAnsi(describeRequest("eval", { target: "TAB123456789", expr: "document.cookie" }))
+    expect(h).toContain("eval")
+    expect(h).toContain("document.cookie")
+  })
+  test("eval collapses multi-line JS to one line", () => {
+    const h = noAnsi(describeRequest("eval", { target: "T", expr: "const a=1;\na+2" }))
+    expect(h).not.toContain("\n")
+    expect(h).toContain("const a=1; a+2")
+  })
+  test("send shows the CDP method and compact params", () => {
+    const h = noAnsi(
+      describeRequest("send", { method: "Network.getResponseBody", params: { requestId: "42.7" } }),
+    )
+    expect(h).toContain("send")
+    expect(h).toContain("Network.getResponseBody")
+    expect(h).toContain('"requestId":"42.7"')
+  })
+  test("send with no params omits the params chunk", () => {
+    const h = noAnsi(describeRequest("send", { method: "Page.enable", params: {} }))
+    expect(h).toContain("Page.enable")
+    expect(h).not.toContain("{")
+  })
+  test("nav shows the destination url", () => {
+    const h = noAnsi(describeRequest("nav", { target: "T", url: "https://example.com/x" }))
+    expect(h).toContain("nav")
+    expect(h).toContain("https://example.com/x")
+  })
+  test("record reflects on/off", () => {
+    expect(noAnsi(describeRequest("record", { on: true }))).toContain("on")
+    expect(noAnsi(describeRequest("record", { on: false }))).toContain("off")
+  })
+  test("argless routes are just the action name", () => {
+    expect(noAnsi(describeRequest("targets", {}))).toBe("targets")
+    expect(noAnsi(describeRequest("ping", {}))).toBe("ping")
+  })
+})
+
+describe("renderDisplay", () => {
+  test("eval body shows the expression and a result preview", () => {
+    const body = noAnsi(renderDisplay("eval", { target: "T", expr: "1+2" }, { result: 3 }))
+    expect(body).toContain("❯ 1+2")
+    expect(body).toContain("result")
+    expect(body).toContain("3")
+  })
+  test("eval error surfaces the __error message, not a result", () => {
+    const body = noAnsi(
+      renderDisplay(
+        "eval",
+        { target: "T", expr: "boom()" },
+        { result: { __error: "ReferenceError: boom" } },
+      ),
+    )
+    expect(body).toContain("❯ boom()")
+    expect(body).toContain("ReferenceError: boom")
+    expect(body).not.toContain("⤷")
+  })
+  test("send body shows method, scope, and params", () => {
+    const body = noAnsi(
+      renderDisplay(
+        "send",
+        { method: "Network.getResponseBody", params: { requestId: "9.1" }, target: "TAB" },
+        { result: { body: "…" } },
+      ),
+    )
+    expect(body).toContain("Network.getResponseBody")
+    expect(body).toContain("scope")
+    expect(body).toContain("tab TAB")
+    expect(body).toContain("requestId")
+  })
+  test("send with no target reports browser-global scope", () => {
+    const body = noAnsi(renderDisplay("send", { method: "Browser.getVersion", params: {} }, {}))
+    expect(body).toContain("browser-global")
+  })
+  test("nav body shows the destination", () => {
+    const body = noAnsi(renderDisplay("nav", { target: "T", url: "https://a.test" }, { ok: true }))
+    expect(body).toContain("→ https://a.test")
+  })
+  test("daemon error body renders an error line", () => {
+    const body = noAnsi(renderDisplay("eval", { target: "T", expr: "x" }, { error: "kaboom" }))
+    expect(body).toContain("kaboom")
+  })
+  test("targets body previews the returned array", () => {
+    const body = noAnsi(renderDisplay("targets", {}, [{ id: "A", url: "https://a" }]))
+    expect(body).toContain("list open page tabs")
+    expect(body).toContain("https://a")
   })
 })
 

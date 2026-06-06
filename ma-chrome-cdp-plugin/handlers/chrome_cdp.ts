@@ -18,7 +18,15 @@ import { join } from "node:path"
 
 import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/client.ts"
 import { validateToolInput } from "../lib/input.ts"
-import { dim, isErrorBody, red, renderContent, summarize } from "../lib/render.ts"
+import {
+  describeRequest,
+  dim,
+  isErrorBody,
+  red,
+  renderContent,
+  renderDisplay,
+  summarize,
+} from "../lib/render.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 const SOCK = process.env.CDP_SOCK ?? "/tmp/cdp.sock"
@@ -94,6 +102,10 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
     spawn: () => doSpawn(ctx.packageDir),
   })
 
+  // Single source of truth for "what is being issued", reused on every exit
+  // path so even a failed request shows the user the attempted command.
+  const reqHeader = describeRequest(v.route, v.body)
+
   if (!up) {
     return {
       kind: "tool_result",
@@ -101,7 +113,8 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
         "ChromeCDP: the CDP daemon is not reachable and could not be started. " +
         "Make sure Chrome/Chromium is running with --remote-debugging-port=9222.",
       is_error: true,
-      displayHeader: red("daemon unreachable"),
+      displayHeader: reqHeader,
+      display: red("✘ daemon unreachable — is Chrome running with --remote-debugging-port=9222?"),
     }
   }
 
@@ -109,11 +122,13 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   try {
     res = await socketFetch(v.route, v.body)
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
     return {
       kind: "tool_result",
-      content: `ChromeCDP: request failed: ${e instanceof Error ? e.message : String(e)}`,
+      content: `ChromeCDP: request failed: ${msg}`,
       is_error: true,
-      displayHeader: red("request failed"),
+      displayHeader: reqHeader,
+      display: red(`✘ request failed — ${msg}`),
     }
   }
 
@@ -122,7 +137,8 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
     kind: "tool_result",
     content: renderContent(res.body),
     is_error: isErr,
-    displayHeader: isErr ? red(v.route) : dim(v.route),
+    displayHeader: reqHeader,
+    display: renderDisplay(v.route, v.body, res.body),
     displayFooter: dim(summarize(v.route, res.body)),
   }
 }
