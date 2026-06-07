@@ -70,7 +70,8 @@
       },
       "interactive": false,
       "icon": "⤓",
-      "color": "sky"
+      "color": "sky",
+      "headerKey": "url"
     }
   ]
 }
