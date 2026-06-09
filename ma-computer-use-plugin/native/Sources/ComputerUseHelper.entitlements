@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Sandbox OFF: required to read/control OTHER applications via AX + CGEvent. -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+
+    <!-- Local dev: allows attaching a debugger under hardened runtime.
+         Remove before notarization (it blocks notarization). -->
+    <key>com.apple.security.get-task-allow</key>
+    <true/>
+</dict>
+</plist>

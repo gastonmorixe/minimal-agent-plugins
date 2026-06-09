@@ -1,0 +1,220 @@
+{
+  "id": "ma-computer-use",
+  "name": "Computer Use",
+  "version": "0.1.0",
+  "description": "Full control of the Mac through a signed Swift helper: Accessibility inspect/interact (preferred) and CGEvent mouse/keyboard + ScreenCaptureKit screenshots (last resort). Persistent daemon over a unix socket; TCC grants persist. Tool: Computer.",
+  "tuis": [
+    {
+      "id": "computer",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "Computer",
+          "description": "Control this Mac. TWO layers, prefer the first: (1) ACCESSIBILITY (structured, reliable) - inspect the UI tree and act on real elements by stable handle; (2) RAW INPUT (last resort) - synthesize mouse/keyboard at screen coordinates, plus screenshots, for canvas/Electron/web UIs where the AX tree is thin. Backed by a signed background helper (ComputerUseHelper.app) that holds the macOS Accessibility + Screen Recording permissions; it auto-starts on first use. Coordinates are logical points, top-left origin, spanning all displays (AX bbox values are in the same space - click an element's bbox center directly). Element handles like 'e7' come from snapshot/find/elementAtPoint/focused and stay valid until the UI changes (then you get a 409 'stale; re-snapshot'). Always check 'perms' first if anything returns a permission error.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "ping",
+                  "perms",
+                  "apps",
+                  "activate",
+                  "windows",
+                  "snapshot",
+                  "find",
+                  "elementAtPoint",
+                  "focused",
+                  "describe",
+                  "getValue",
+                  "setValue",
+                  "perform",
+                  "mouse",
+                  "type",
+                  "key",
+                  "keypress",
+                  "screenshot"
+                ],
+                "description": "What to do. ping: daemon liveness + permission status. perms: report (and with prompt:true, request) Accessibility/Screen/Input permissions and open the right Settings pane. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost (pid or bundleId) so keyboard input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree as a flat element list (default) or nested tree, minting handles. find: search an app's tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at screen x,y. focused: the currently focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value (e.g. text field). perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject literal Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen (or an area) to a PNG path or base64."
+              },
+              "pid": {
+                "type": "number",
+                "description": "Target app process id (for windows/snapshot/find). Omit to target the frontmost app."
+              },
+              "bundleId": {
+                "type": "string",
+                "description": "Target app bundle id, e.g. com.apple.TextEdit (alternative to pid). For windows/snapshot/find it selects the app. For type/key/keypress/mouse, supplying it (or pid) brings that app frontmost BEFORE the input so keystrokes/clicks land in it (recommended before typing). Omit to target the frontmost app."
+              },
+              "maxDepth": {
+                "type": "number",
+                "description": "snapshot: max tree depth to walk (default 20)."
+              },
+              "maxNodes": {
+                "type": "number",
+                "description": "snapshot: cap on total emitted nodes (default 2000). Lower it to keep results small."
+              },
+              "visibleOnly": {
+                "type": "boolean",
+                "description": "snapshot: only include on-screen elements with a real frame (default true)."
+              },
+              "flatten": {
+                "type": "boolean",
+                "description": "snapshot: true (default) returns a flat element list (token-cheap); false returns the nested tree."
+              },
+              "role": {
+                "type": "string",
+                "description": "find: match this AX role, e.g. AXButton, AXTextField, AXTextArea, AXMenuItem, AXCheckBox."
+              },
+              "title": {
+                "type": "string",
+                "description": "find: case-insensitive substring match against the element title/label."
+              },
+              "identifier": {
+                "type": "string",
+                "description": "find: exact match against the developer-set AXIdentifier (often absent)."
+              },
+              "valueContains": {
+                "type": "string",
+                "description": "find: case-insensitive substring match against the element's value (text content)."
+              },
+              "limit": {
+                "type": "number",
+                "description": "find: max matches to return (default 25)."
+              },
+              "el": {
+                "type": "string",
+                "description": "An element handle like 'e7' from snapshot/find/elementAtPoint/focused. Required for describe/getValue/setValue/perform."
+              },
+              "axAction": {
+                "type": "string",
+                "description": "perform: the AX action name. Common: AXPress (click), AXShowMenu, AXConfirm, AXCancel, AXIncrement, AXDecrement, AXRaise."
+              },
+              "value": {
+                "description": "setValue: the new value (usually a string for a text field)."
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "move",
+                  "click",
+                  "doubleclick",
+                  "rightclick",
+                  "middleclick",
+                  "down",
+                  "up",
+                  "drag",
+                  "scroll"
+                ],
+                "description": "mouse: which mouse operation. Defaults to move."
+              },
+              "x": {
+                "type": "number",
+                "description": "X coordinate (logical points, top-left origin). For mouse ops, elementAtPoint, and screenshot area."
+              },
+              "y": {
+                "type": "number",
+                "description": "Y coordinate (logical points, top-left origin)."
+              },
+              "toX": {
+                "type": "number",
+                "description": "mouse drag: destination X."
+              },
+              "toY": {
+                "type": "number",
+                "description": "mouse drag: destination Y."
+              },
+              "button": {
+                "type": "string",
+                "enum": ["left", "right", "center"],
+                "description": "mouse: which button (default left)."
+              },
+              "clicks": {
+                "type": "number",
+                "description": "mouse click: click count (1 single, 2 double, 3 triple)."
+              },
+              "steps": {
+                "type": "number",
+                "description": "mouse drag: number of intermediate move steps (default 20, smoother = more)."
+              },
+              "dy": {
+                "type": "number",
+                "description": "mouse scroll: vertical lines (+up, -down)."
+              },
+              "dx": {
+                "type": "number",
+                "description": "mouse scroll: horizontal lines (+left, -right)."
+              },
+              "text": {
+                "type": "string",
+                "description": "type: the literal text to inject (layout-independent, supports emoji/CJK). Blocked when a secure/password field is focused."
+              },
+              "combo": {
+                "type": "string",
+                "description": "key: a chord like 'cmd+c', 'cmd+shift+4', 'ctrl+left'. Modifiers: cmd/command, shift, alt/option, ctrl/control, fn. Final token is the key."
+              },
+              "key": {
+                "type": "string",
+                "description": "keypress: a single key by name (return, tab, space, delete, escape, up/down/left/right, f1-f20, a-z, 0-9, etc), with optional modifiers[]."
+              },
+              "modifiers": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "keypress: modifier names to hold (cmd, shift, alt, ctrl, fn)."
+              },
+              "holdMs": {
+                "type": "number",
+                "description": "key/keypress: ms to hold the key down before releasing (default 0)."
+              },
+              "mode": {
+                "type": "string",
+                "enum": ["screen", "area"],
+                "description": "screenshot: 'screen' (whole display, default) or 'area' (a rect via x,y,w,h)."
+              },
+              "w": {
+                "type": "number",
+                "description": "screenshot area: width in points."
+              },
+              "h": {
+                "type": "number",
+                "description": "screenshot area: height in points."
+              },
+              "display": {
+                "type": "number",
+                "description": "screenshot: display index (0 = main) for multi-monitor."
+              },
+              "format": {
+                "type": "string",
+                "enum": ["path", "base64"],
+                "description": "screenshot: 'path' (default, writes a PNG and returns its path) or 'base64' (inline PNG bytes)."
+              },
+              "outputDir": {
+                "type": "string",
+                "description": "screenshot path mode: directory to write the PNG into."
+              },
+              "prompt": {
+                "type": "boolean",
+                "description": "perms: when true, fire the native permission prompts for anything missing and open the relevant System Settings pane."
+              },
+              "pane": {
+                "type": "string",
+                "enum": ["ax", "screen", "input"],
+                "description": "perms: which pane to also prompt for (input monitoring is optional/opt-in)."
+              }
+            },
+            "required": ["action"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/computer.ts",
+        "export": "default"
+      },
+      "interactive": false,
+      "icon": "◈",
+      "color": "cyan"
+    }
+  ]
+}
