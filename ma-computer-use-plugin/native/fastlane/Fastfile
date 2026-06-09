@@ -1,0 +1,87 @@
+# Fastlane build/sign automation for ComputerUseHelper.app.
+#
+# The primary path is `bun run bin/cud.ts build` (xcodegen + xcodebuild), which is
+# what the plugin uses day to day. This Fastfile is the heavier, CI-friendly path
+# and the seam for future notarization. Run from the plugin's native/ dir:
+#
+#   cd native && fastlane mac build
+#
+# Dev signing only (Apple Development identity, team RRF7B9FTY3). No notarization:
+# a locally-built app needs none (Gatekeeper only blocks quarantined downloads).
+
+default_platform(:mac)
+
+TEAM_ID   = "RRF7B9FTY3"
+IDENTITY  = "Apple Development: Gaston Morixe (3M6ZXQCBG9)"
+BUNDLE_ID = "dev.gastonmorixe.computeruse"
+SCHEME    = "ComputerUseHelper"
+PROJECT   = "ComputerUseHelper.xcodeproj"
+
+platform :mac do
+  desc "Generate the Xcode project from project.yml (XcodeGen)"
+  lane :generate do
+    sh("xcodegen", "generate")
+  end
+
+  desc "Generate, build and dev-sign ComputerUseHelper.app"
+  lane :build do
+    generate
+
+    # Belt-and-suspenders: force manual signing into the generated project.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: PROJECT,
+      team_id: TEAM_ID,
+      code_sign_identity: "Apple Development",
+      bundle_identifier: BUNDLE_ID,
+      targets: [SCHEME]
+    )
+
+    # Build + sign. A macOS app target produces a .app (no .ipa).
+    build_app(
+      project: PROJECT,
+      scheme: SCHEME,
+      configuration: "Debug",
+      destination: "generic/platform=macOS",
+      skip_package_ipa: true,
+      export_method: "development",
+      output_directory: "build",
+      output_name: "ComputerUseHelper",
+      export_options: {
+        signingStyle: "manual",
+        teamID: TEAM_ID
+      }
+    )
+
+    sh("codesign", "-dv", "--verbose=2", "build/ComputerUseHelper.app")
+    UI.success("Built + signed: native/build/ComputerUseHelper.app")
+  end
+
+  desc "Verify the signature + entitlements of the built app"
+  lane :verify do
+    app = "build/ComputerUseHelper.app"
+    sh("codesign", "-dv", "--verbose=4", app)
+    sh("codesign", "-d", "--entitlements", ":-", app)
+    sh("codesign", "--verify", "--strict", "--verbose=2", app)
+  end
+
+  desc "Release build + Developer ID sign + notarize + staple (distribution)"
+  lane :notarize do
+    generate
+    # Release build, unsigned; sign-and-notarize.sh re-signs with Developer ID
+    # (release entitlements have NO get-task-allow, which notarization requires).
+    sh(
+      "xcodebuild", "-project", PROJECT, "-scheme", SCHEME,
+      "-configuration", "Release",
+      "-derivedDataPath", "build/DerivedData",
+      "CONFIGURATION_BUILD_DIR=#{Dir.pwd}/build",
+      "CODE_SIGNING_ALLOWED=NO", "build"
+    )
+    # Drives: codesign (Developer ID, --options runtime --timestamp,
+    # release entitlements) -> ditto zip -> notarytool submit --wait -> stapler.
+    # Reads notary API-key creds from the private env file (default path inside
+    # the script; override by passing a second arg).
+    sh("bash", "sign-and-notarize.sh")
+    UI.success("Notarized + stapled: native/build/ComputerUseHelper.app")
+  end
+end

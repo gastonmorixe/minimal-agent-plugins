@@ -1,0 +1,13 @@
+# XcodeGen output
+ComputerUseHelper.xcodeproj/
+Generated/
+
+# Build output
+build/
+DerivedData/
+*.xcarchive
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output

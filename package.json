@@ -8,6 +8,7 @@
     "ma-agent-writing-style-plugin",
     "ma-background-plugin",
     "ma-chrome-cdp-plugin",
+    "ma-computer-use-plugin",
     "ma-fetch-plugin",
     "ma-skills-plugin",
     "ma-slash-menu-plugin",

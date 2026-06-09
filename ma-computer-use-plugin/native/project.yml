@@ -1,0 +1,52 @@
+name: ComputerUseHelper
+
+options:
+  bundleIdPrefix: dev.gastonmorixe
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: RRF7B9FTY3
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Apple Development"
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    PRODUCT_BUNDLE_IDENTIFIER: dev.gastonmorixe.computeruse
+    ENABLE_HARDENED_RUNTIME: YES
+    # Self-contained binary: no SwiftUI-preview debug-dylib split, so exec'ing
+    # Contents/MacOS/ComputerUseHelper runs the real code under one signed identity.
+    ENABLE_DEBUG_DYLIB: NO
+    # Background agent app: no Dock icon, no main window.
+    INFOPLIST_KEY_LSUIElement: YES
+
+targets:
+  ComputerUseHelper:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Sources
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleIdentifier: dev.gastonmorixe.computeruse
+        CFBundleName: ComputerUseHelper
+        CFBundleDisplayName: Computer Use Helper
+        CFBundleExecutable: ComputerUseHelper
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        LSUIElement: true
+        NSScreenCaptureUsageDescription: "ComputerUseHelper captures the screen so the agent can see the desktop."
+        NSAppleEventsUsageDescription: "ComputerUseHelper controls applications on your behalf."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gastonmorixe.computeruse
+        CODE_SIGN_ENTITLEMENTS: Sources/ComputerUseHelper.entitlements
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: RRF7B9FTY3
+        ENABLE_HARDENED_RUNTIME: YES
