@@ -7,6 +7,7 @@ import {
   isErrorBody,
   renderContent,
   renderDisplay,
+  resolveSgr,
   shortId,
   summarize,
 } from "./render.ts"
@@ -14,6 +15,32 @@ import {
 // Strip ANSI so assertions read against plain text.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching SGR escapes
 const noAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "")
+
+describe("style facade", () => {
+  test("uses standalone ANSI fallbacks", () => {
+    expect(resolveSgr("not json").red).toBe("\x1b[31m")
+    expect(resolveSgr("not json").gray).toBe("\x1b[90m")
+  })
+
+  test("resolves foreground tokens from host-injected palette context", () => {
+    const sgr = resolveSgr(
+      JSON.stringify({
+        red: "\x1b[38;5;196m",
+        green: "\x1b[38;5;118m",
+        yellow: "\x1b[38;5;214m",
+        cyan: "\x1b[38;5;45m",
+        gray: "\x1b[38;5;246m",
+        _fgReset: "\x1b[39m",
+      }),
+    )
+    expect(sgr.red).toBe("\x1b[38;5;196m")
+    expect(sgr.green).toBe("\x1b[38;5;118m")
+    expect(sgr.yellow).toBe("\x1b[38;5;214m")
+    expect(sgr.cyan).toBe("\x1b[38;5;45m")
+    expect(sgr.gray).toBe("\x1b[38;5;246m")
+    expect(sgr.fgReset).toBe("\x1b[39m")
+  })
+})
 
 describe("summarize", () => {
   test("targets counts", () => {
