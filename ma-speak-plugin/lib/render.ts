@@ -13,28 +13,75 @@
 
 import type { SpeechJob, SpeechState } from "./registry.ts"
 
-const DIM = "\x1b[2m"
-const RESET_DIM = "\x1b[22m"
-const RED = "\x1b[31m"
-const GREEN = "\x1b[32m"
-const YELLOW = "\x1b[33m"
-const CYAN = "\x1b[36m"
-const RESET_FG = "\x1b[39m"
+const FALLBACK_SGR = {
+  dim: "\x1b[2m",
+  weightReset: "\x1b[22m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  cyan: "\x1b[36m",
+  fgReset: "\x1b[39m",
+} as const
 
+export interface SgrTokens {
+  readonly dim: string
+  readonly weightReset: string
+  readonly red: string
+  readonly green: string
+  readonly yellow: string
+  readonly cyan: string
+  readonly fgReset: string
+}
+
+/** Resolve style tokens from the host-injected palette environment. */
+export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+  const palette = parsePaletteEnv(raw)
+  return {
+    ...FALLBACK_SGR,
+    red: palette?.red ?? FALLBACK_SGR.red,
+    green: palette?.green ?? FALLBACK_SGR.green,
+    yellow: palette?.yellow ?? FALLBACK_SGR.yellow,
+    cyan: palette?.cyan ?? FALLBACK_SGR.cyan,
+    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+  }
+}
+
+function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") out[key] = value
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+const SGR = resolveSgr()
+
+/** Wrap a string in the ANSI dim attribute. */
 export function dim(s: string): string {
-  return `${DIM}${s}${RESET_DIM}`
+  return `${SGR.dim}${s}${SGR.weightReset}`
 }
+/** Color a string red (ANSI foreground). */
 export function red(s: string): string {
-  return `${RED}${s}${RESET_FG}`
+  return `${SGR.red}${s}${SGR.fgReset}`
 }
+/** Color a string green (ANSI foreground). */
 export function green(s: string): string {
-  return `${GREEN}${s}${RESET_FG}`
+  return `${SGR.green}${s}${SGR.fgReset}`
 }
+/** Color a string yellow (ANSI foreground). */
 export function yellow(s: string): string {
-  return `${YELLOW}${s}${RESET_FG}`
+  return `${SGR.yellow}${s}${SGR.fgReset}`
 }
+/** Color a string cyan (ANSI foreground). */
 export function cyan(s: string): string {
-  return `${CYAN}${s}${RESET_FG}`
+  return `${SGR.cyan}${s}${SGR.fgReset}`
 }
 
 /** A glyph + colorizer per state, for compact status rendering. */

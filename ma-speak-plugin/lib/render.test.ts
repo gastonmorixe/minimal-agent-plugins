@@ -7,6 +7,7 @@ import {
   renderFooter,
   renderJobLine,
   renderJobList,
+  resolveSgr,
   stateGlyph,
   stateWord,
 } from "./render.ts"
@@ -28,6 +29,30 @@ function job(over: Partial<SpeechJob> = {}): SpeechJob {
     ...over,
   }
 }
+
+describe("style facade", () => {
+  test("uses standalone ANSI fallbacks", () => {
+    expect(plain(stateGlyph("failed"))).toBe("✘ failed")
+    expect(resolveSgr("not json").red).toBe("\x1b[31m")
+  })
+
+  test("resolves foreground tokens from host-injected palette context", () => {
+    const sgr = resolveSgr(
+      JSON.stringify({
+        red: "\x1b[38;5;196m",
+        green: "\x1b[38;5;118m",
+        yellow: "\x1b[38;5;214m",
+        cyan: "\x1b[38;5;45m",
+        _fgReset: "\x1b[39m",
+      }),
+    )
+    expect(sgr.red).toBe("\x1b[38;5;196m")
+    expect(sgr.green).toBe("\x1b[38;5;118m")
+    expect(sgr.yellow).toBe("\x1b[38;5;214m")
+    expect(sgr.cyan).toBe("\x1b[38;5;45m")
+    expect(sgr.fgReset).toBe("\x1b[39m")
+  })
+})
 
 describe("stateGlyph / stateWord", () => {
   test("glyph carries the state word", () => {
