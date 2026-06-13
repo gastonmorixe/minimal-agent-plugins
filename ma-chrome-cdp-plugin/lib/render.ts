@@ -20,36 +20,88 @@
 
 import type { Route } from "./routes.ts"
 
-const BOLD = "\x1b[1m"
-const DIM = "\x1b[2m"
-const RESET = "\x1b[22m" // resets BOTH bold + dim (intensity)
-const RED = "\x1b[31m"
-const GREEN = "\x1b[32m"
-const YELLOW = "\x1b[33m"
-const CYAN = "\x1b[36m"
-const GRAY = "\x1b[90m"
-const RESET_FG = "\x1b[39m"
+const FALLBACK_SGR = {
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  weightReset: "\x1b[22m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  cyan: "\x1b[36m",
+  gray: "\x1b[90m",
+  fgReset: "\x1b[39m",
+} as const
 
+export interface SgrTokens {
+  readonly bold: string
+  readonly dim: string
+  readonly weightReset: string
+  readonly red: string
+  readonly green: string
+  readonly yellow: string
+  readonly cyan: string
+  readonly gray: string
+  readonly fgReset: string
+}
+
+/** Resolve style tokens from the host-injected palette environment. */
+export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+  const palette = parsePaletteEnv(raw)
+  return {
+    ...FALLBACK_SGR,
+    red: palette?.red ?? FALLBACK_SGR.red,
+    green: palette?.green ?? FALLBACK_SGR.green,
+    yellow: palette?.yellow ?? FALLBACK_SGR.yellow,
+    cyan: palette?.cyan ?? FALLBACK_SGR.cyan,
+    gray: palette?.gray ?? FALLBACK_SGR.gray,
+    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+  }
+}
+
+function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") out[key] = value
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+const SGR = resolveSgr()
+
+/** Wrap a string in the ANSI dim attribute. */
 export function dim(s: string): string {
-  return `${DIM}${s}${RESET}`
+  return `${SGR.dim}${s}${SGR.weightReset}`
 }
+/** Wrap a string in the ANSI bold attribute. */
 export function bold(s: string): string {
-  return `${BOLD}${s}${RESET}`
+  return `${SGR.bold}${s}${SGR.weightReset}`
 }
+/** Color a string red (ANSI foreground). */
 export function red(s: string): string {
-  return `${RED}${s}${RESET_FG}`
+  return `${SGR.red}${s}${SGR.fgReset}`
 }
+/** Color a string green (ANSI foreground). */
 export function green(s: string): string {
-  return `${GREEN}${s}${RESET_FG}`
+  return `${SGR.green}${s}${SGR.fgReset}`
 }
+/** Color a string yellow (ANSI foreground). */
 export function yellow(s: string): string {
-  return `${YELLOW}${s}${RESET_FG}`
+  return `${SGR.yellow}${s}${SGR.fgReset}`
 }
+/** Color a string cyan (ANSI foreground). */
 export function cyan(s: string): string {
-  return `${CYAN}${s}${RESET_FG}`
+  return `${SGR.cyan}${s}${SGR.fgReset}`
 }
+/** Color a string gray (ANSI bright-black foreground). */
 export function gray(s: string): string {
-  return `${GRAY}${s}${RESET_FG}`
+  return `${SGR.gray}${s}${SGR.fgReset}`
 }
 
 /** A gray middot bullet for separating chunks on one line. */
@@ -119,10 +171,12 @@ function compactParams(p: unknown): string {
  * browser to do. Single-line (the host requires it). Pure.
  *
  * Examples:
+ * ```
  *   eval ⟩ 6A21F2A0…b3c4  document.cookie + localStorage
  *   send ⟩ Network.getResponseBody  {"requestId":"42.7"}
  *   nav  ⟩ 6A21F2A0…b3c4  → https://example.com
  *   targets
+ * ```
  */
 export function describeRequest(route: Route, body: Record<string, unknown>): string {
   const action = bold(cyan(route))
