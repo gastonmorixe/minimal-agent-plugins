@@ -7,16 +7,54 @@
 
 import type { Route } from "./routes.ts"
 
-const DIM = "\x1b[2m"
-const RESET = "\x1b[22m"
-const RED = "\x1b[31m"
-const RESET_FG = "\x1b[39m"
+const FALLBACK_SGR = {
+  dim: "\x1b[2m",
+  weightReset: "\x1b[22m",
+  red: "\x1b[31m",
+  fgReset: "\x1b[39m",
+} as const
 
-export function dim(s: string): string {
-  return `${DIM}${s}${RESET}`
+export interface SgrTokens {
+  readonly dim: string
+  readonly weightReset: string
+  readonly red: string
+  readonly fgReset: string
 }
+
+/** Resolve style tokens from the host-injected palette environment. */
+export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+  const palette = parsePaletteEnv(raw)
+  return {
+    ...FALLBACK_SGR,
+    red: palette?.red ?? FALLBACK_SGR.red,
+    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+  }
+}
+
+function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") out[key] = value
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+const SGR = resolveSgr()
+
+/** Wrap a string in the ANSI dim attribute. */
+export function dim(s: string): string {
+  return `${SGR.dim}${s}${SGR.weightReset}`
+}
+/** Color a string red (ANSI foreground). */
 export function red(s: string): string {
-  return `${RED}${s}${RESET_FG}`
+  return `${SGR.red}${s}${SGR.fgReset}`
 }
 
 /** One-line summary of a route result for the transcript footer. */
