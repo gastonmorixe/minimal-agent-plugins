@@ -13,10 +13,12 @@ import { loadBgConfig } from "../lib/config.ts"
 import { realReconcileIO, serviceDepsFromCtx } from "../lib/handler-deps.ts"
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
 import type { Effect } from "../lib/reconcile.ts"
-import { renderWidget } from "../lib/render.ts"
+import { configureSgr, renderWidget } from "../lib/render.ts"
 import { runReconcile } from "../lib/service.ts"
 
 const handler = async (ctx: LiveAreaHandlerContext): Promise<string | null> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.env.MINIMAL_AGENT_DISABLE_BGJOBS === "1") return null
 
   const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv)

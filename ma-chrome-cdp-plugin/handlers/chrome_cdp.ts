@@ -19,6 +19,7 @@ import { join } from "node:path"
 import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/client.ts"
 import { validateToolInput } from "../lib/input.ts"
 import {
+  configureSgr,
   describeRequest,
   dim,
   isErrorBody,
@@ -70,6 +71,8 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
 
 /** Test-injectable inner. */
 export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<TUIResult> {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "ChromeCDP: wrong trigger type", is_error: true }
   }

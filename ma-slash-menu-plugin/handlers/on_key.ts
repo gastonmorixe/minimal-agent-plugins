@@ -28,6 +28,7 @@
 
 import type { HookHandlerContext } from "../lib/host-types.ts"
 import { type Effect, type KeyName, transition } from "../lib/overlay.ts"
+import { configureSgr } from "../lib/palette.ts"
 import { getFsmState, getItems, refreshItems, setFsmState } from "../lib/state.ts"
 
 // ---------------------------------------------------------------------------
@@ -80,6 +81,8 @@ function toFsmKey(key: string): KeyName | null {
 // ---------------------------------------------------------------------------
 
 const handler = (payload: unknown, ctx: HookHandlerContext): void => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (!isPayload(payload)) return
   const key = toFsmKey(payload.key)
   if (key === null) return

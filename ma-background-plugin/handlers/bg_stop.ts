@@ -15,12 +15,14 @@
 import { storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { getRegistry, type RunnerRegistry } from "../lib/registry.ts"
-import { dim, jobLine, jobLines, yellow } from "../lib/render.ts"
+import { configureSgr, dim, jobLine, jobLines, yellow } from "../lib/render.ts"
 import { BgJobStore } from "../lib/store.ts"
 import { isActive, type JobRecord, type JobStatus } from "../lib/types.ts"
 import { parseStopRequest } from "../lib/validate.ts"
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "BackgroundStop: wrong trigger type", is_error: true }
   }

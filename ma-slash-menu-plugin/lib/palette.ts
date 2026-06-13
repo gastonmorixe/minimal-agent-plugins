@@ -1,10 +1,10 @@
 /**
  * Slash-menu style facade.
  *
- * The host injects its palette as `MINIMAL_AGENT_PALETTE`; this module
- * consumes that shared context so the external plugin stays visually aligned
- * without importing from `minimal-agent/src/*`. The fallback palette keeps the
- * standalone preview and tests useful when the plugin is run outside the host.
+ * The host injects its palette through the plugin context. Handlers call
+ * `configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)` so this external plugin stays
+ * visually aligned without importing from `minimal-agent/src/*`. The fallback
+ * palette keeps standalone preview and tests useful when run outside the host.
  */
 
 const FALLBACK_SGR = {
@@ -44,7 +44,7 @@ const FALLBACK_SGR = {
 type Sgr = { readonly [K in keyof typeof FALLBACK_SGR]: string }
 
 /** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): Sgr {
+export function resolveSgr(raw?: string): Sgr {
   const palette = parsePaletteEnv(raw)
   const token = (name: string, fallback: string): string => palette?.[name] ?? fallback
   const dimToken = (name: string, fallback: string): string =>
@@ -93,7 +93,12 @@ function parsePaletteEnv(raw: string | undefined): Record<string, string> | null
   }
 }
 
-export const SGR = resolveSgr()
+export let SGR = resolveSgr()
+
+/** Configure display styling from the host-provided context palette. */
+export function configureSgr(raw?: string): void {
+  SGR = resolveSgr(raw)
+}
 
 /** Wrap text in an SGR open + reset, with a guard for empty strings. */
 export function wrap(text: string, sgr: string): string {

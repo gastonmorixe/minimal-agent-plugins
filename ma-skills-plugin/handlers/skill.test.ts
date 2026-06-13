@@ -26,6 +26,7 @@ import handler, {
   buildListJson,
   buildReadContent,
   buildReadDisplay,
+  configureSgr,
   findBodyStart,
   resolveSgr,
   validateInput,
@@ -46,6 +47,20 @@ describe("style facade", () => {
     expect(sgr.red).toBe("\x1b[38;5;196m")
     expect(sgr.fgReset).toBe("\x1b[39m")
     expect(sgr.dim).toBe("\x1b[2m")
+  })
+
+  test("handler uses host context for error display", async () => {
+    const ctx = ctxFor({ action: "nope" })
+    ctx.env.MINIMAL_AGENT_PALETTE = JSON.stringify({
+      red: "\x1b[38;5;196m",
+      _fgReset: "\x1b[39m",
+    })
+    const result = await handler(ctx)
+    configureSgr(undefined)
+
+    expect(result.kind).toBe("tool_result")
+    if (result.kind !== "tool_result") return
+    expect(result.displayHeader).toBe("\x1b[38;5;196merror\x1b[39m")
   })
 })
 

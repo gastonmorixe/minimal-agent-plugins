@@ -19,6 +19,7 @@
 
 import type { EventHandlerContext } from "../lib/host-types.ts"
 import { type Effect, transition } from "../lib/overlay.ts"
+import { configureSgr } from "../lib/palette.ts"
 import { getFsmState, getItems, refreshItems, setFsmState } from "../lib/state.ts"
 
 interface BufferChangedPayload {
@@ -33,6 +34,8 @@ function isPayload(v: unknown): v is BufferChangedPayload {
 }
 
 const handler = async (ctx: EventHandlerContext): Promise<void> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (!isPayload(ctx.payload)) return
 
   // Refresh the action rows from the host's live command registry so the

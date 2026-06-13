@@ -22,7 +22,7 @@ export interface SgrTokens {
 }
 
 /** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+export function resolveSgr(raw?: string): SgrTokens {
   const palette = parsePaletteEnv(raw)
   return {
     ...FALLBACK_SGR,
@@ -46,7 +46,12 @@ function parsePaletteEnv(raw: string | undefined): Record<string, string> | null
   }
 }
 
-const SGR = resolveSgr()
+let SGR = resolveSgr()
+
+/** Configure display styling from the host-provided context palette. */
+export function configureSgr(raw?: string): void {
+  SGR = resolveSgr(raw)
+}
 
 /** Wrap a string in the ANSI dim attribute. */
 export function dim(s: string): string {

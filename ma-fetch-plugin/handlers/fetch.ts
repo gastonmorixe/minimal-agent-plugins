@@ -224,7 +224,7 @@ export interface SgrTokens {
 }
 
 /** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+export function resolveSgr(raw?: string): SgrTokens {
   const palette = parsePaletteEnv(raw)
   return {
     ...FALLBACK_SGR,
@@ -248,7 +248,12 @@ function parsePaletteEnv(raw: string | undefined): Record<string, string> | null
   }
 }
 
-const SGR = resolveSgr()
+let SGR = resolveSgr()
+
+/** Configure display styling from the host-provided context palette. */
+export function configureSgr(raw?: string): void {
+  SGR = resolveSgr(raw)
+}
 
 function dim(s: string): string {
   return `${SGR.dim}${s}${SGR.weightReset}`
@@ -332,6 +337,8 @@ export function buildDisplayFooter(opts: {
 
 /** Default export: the tool handler the loader will invoke. */
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "Fetch: wrong trigger type", is_error: true }
   }
@@ -377,6 +384,8 @@ export async function runWithDeps(
   deps: BackendDeps,
   cleanup: CleanupLevel = "basic",
 ): Promise<TUIResult> {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   const result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
 
   if (result.scriptMissing || result.binUnavailable) {

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import {
   clip,
+  configureSgr,
   elapsed,
   jobBlock,
   jobHeaderContent,
@@ -60,6 +61,12 @@ describe("style facade", () => {
     expect(sgr.cyan).toBe("\x1b[38;5;45m")
     expect(sgr.gray).toBe("\x1b[38;5;246m")
     expect(sgr.fgReset).toBe("\x1b[39m")
+  })
+
+  test("configured facade uses host context for rendered glyphs", () => {
+    configureSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
+    expect(statusGlyph({ kind: "exited", endedAt: "t", exitCode: 1 })).toContain("\x1b[38;5;196m")
+    configureSgr(undefined)
   })
 })
 

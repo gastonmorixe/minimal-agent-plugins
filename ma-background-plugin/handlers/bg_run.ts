@@ -6,7 +6,7 @@
  * a handle. The job runs in the background, the model keeps working and is
  * nudged between turns when it finishes.
  *
- * Thin shell: validate -> resolve config -> service -> render.
+ * Thin shell: validate, resolve config, service, render.
  *
  * @module handlers/bg_run
  */
@@ -15,11 +15,13 @@ import { loadBgConfig } from "../lib/config.ts"
 import { formatDuration, parseDuration } from "../lib/duration.ts"
 import { serviceDepsFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
-import { jobBlock, jobHeaderContent } from "../lib/render.ts"
+import { configureSgr, jobBlock, jobHeaderContent } from "../lib/render.ts"
 import { startJob } from "../lib/service.ts"
 import { parseRunRequest } from "../lib/validate.ts"
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "BackgroundRun: wrong trigger type", is_error: true }
   }

@@ -13,10 +13,12 @@ import { loadBgConfig } from "../lib/config.ts"
 import { fileSize, readFileMaybe, storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { type LogIO, readLog } from "../lib/log-read.ts"
-import { dim, statusWord } from "../lib/render.ts"
+import { configureSgr, dim, statusWord } from "../lib/render.ts"
 import { parseLogsRequest } from "../lib/validate.ts"
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "BackgroundLogs: wrong trigger type", is_error: true }
   }

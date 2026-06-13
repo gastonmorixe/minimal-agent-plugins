@@ -61,7 +61,7 @@ export interface SgrTokens {
 }
 
 /** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+export function resolveSgr(raw?: string): SgrTokens {
   const palette = parsePaletteEnv(raw)
   return {
     ...FALLBACK_SGR,
@@ -85,13 +85,24 @@ function parsePaletteEnv(raw: string | undefined): Record<string, string> | null
   }
 }
 
-const SGR = resolveSgr()
-const DIM = SGR.dim
-const RESET = SGR.weightReset
-const BOLD = SGR.bold
-const RESET_BOLD = SGR.weightReset
-const RED = SGR.red
-const RESET_FG = SGR.fgReset
+let SGR = resolveSgr()
+let DIM = SGR.dim
+let RESET = SGR.weightReset
+let BOLD = SGR.bold
+let RESET_BOLD = SGR.weightReset
+let RED = SGR.red
+let RESET_FG = SGR.fgReset
+
+/** Configure display styling from the host-provided context palette. */
+export function configureSgr(raw?: string): void {
+  SGR = resolveSgr(raw)
+  DIM = SGR.dim
+  RESET = SGR.weightReset
+  BOLD = SGR.bold
+  RESET_BOLD = SGR.weightReset
+  RED = SGR.red
+  RESET_FG = SGR.fgReset
+}
 
 const SCOPE_LABEL: Record<SkillScope, string> = {
   project: "project",
@@ -150,6 +161,8 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
 // ---------------------------------------------------------------------------
 
 const handler: TUIHandler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return errResult("Skill: wrong trigger type")
   }

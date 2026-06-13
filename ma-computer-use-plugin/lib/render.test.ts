@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test"
 
-import { dim, isErrorBody, red, renderContent, resolveSgr, summarize } from "./render.ts"
+import {
+  configureSgr,
+  dim,
+  isErrorBody,
+  red,
+  renderContent,
+  resolveSgr,
+  summarize,
+} from "./render.ts"
 
 describe("style facade", () => {
   test("uses standalone ANSI fallbacks", () => {
@@ -13,6 +21,12 @@ describe("style facade", () => {
     expect(sgr.red).toBe("\x1b[38;5;196m")
     expect(sgr.fgReset).toBe("\x1b[39m")
     expect(sgr.dim).toBe("\x1b[2m")
+  })
+
+  test("configured facade uses host context for rendered strings", () => {
+    configureSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
+    expect(red("bad")).toBe("\x1b[38;5;196mbad\x1b[39m")
+    configureSgr(undefined)
   })
 
   test("ignores malformed palette context", () => {

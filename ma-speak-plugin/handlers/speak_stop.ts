@@ -12,11 +12,13 @@
  */
 
 import { getRegistry, type SpeechRegistry } from "../lib/registry.ts"
-import { dim, red, renderJobLine, yellow } from "../lib/render.ts"
+import { configureSgr, dim, red, renderJobLine, yellow } from "../lib/render.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 /** Default export: the tool handler the loader invokes. */
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "SpeakStop: wrong trigger type", is_error: true }
   }
