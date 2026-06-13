@@ -27,12 +27,27 @@ import handler, {
   buildReadContent,
   buildReadDisplay,
   findBodyStart,
+  resolveSgr,
   validateInput,
 } from "./skill.ts"
 
 // ---------------------------------------------------------------------------
 // validateInput
 // ---------------------------------------------------------------------------
+
+describe("style facade", () => {
+  test("uses standalone ANSI fallbacks", () => {
+    expect(resolveSgr("not json").red).toBe("\x1b[31m")
+    expect(resolveSgr("not json").bold).toBe("\x1b[1m")
+  })
+
+  test("resolves foreground tokens from host-injected palette context", () => {
+    const sgr = resolveSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
+    expect(sgr.red).toBe("\x1b[38;5;196m")
+    expect(sgr.fgReset).toBe("\x1b[39m")
+    expect(sgr.dim).toBe("\x1b[2m")
+  })
+})
 
 describe("validateInput", () => {
   test("missing action → error", () => {

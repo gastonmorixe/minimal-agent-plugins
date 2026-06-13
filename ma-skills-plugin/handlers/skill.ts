@@ -44,12 +44,54 @@ import { shortenPath } from "./prompt-fragment.ts"
 // Constants / styling
 // ---------------------------------------------------------------------------
 
-const DIM = "\x1b[2m"
-const RESET = "\x1b[22m"
-const BOLD = "\x1b[1m"
-const RESET_BOLD = "\x1b[22m"
-const RED = "\x1b[31m"
-const RESET_FG = "\x1b[39m"
+const FALLBACK_SGR = {
+  dim: "\x1b[2m",
+  bold: "\x1b[1m",
+  weightReset: "\x1b[22m",
+  red: "\x1b[31m",
+  fgReset: "\x1b[39m",
+} as const
+
+export interface SgrTokens {
+  readonly dim: string
+  readonly bold: string
+  readonly weightReset: string
+  readonly red: string
+  readonly fgReset: string
+}
+
+/** Resolve style tokens from the host-injected palette environment. */
+export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+  const palette = parsePaletteEnv(raw)
+  return {
+    ...FALLBACK_SGR,
+    red: palette?.red ?? FALLBACK_SGR.red,
+    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+  }
+}
+
+function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") out[key] = value
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+const SGR = resolveSgr()
+const DIM = SGR.dim
+const RESET = SGR.weightReset
+const BOLD = SGR.bold
+const RESET_BOLD = SGR.weightReset
+const RED = SGR.red
+const RESET_FG = SGR.fgReset
 
 const SCOPE_LABEL: Record<SkillScope, string> = {
   project: "project",
@@ -77,6 +119,7 @@ export interface ParsedInput {
 
 export type ValidateResult = { ok: true; value: ParsedInput } | { ok: false; error: string }
 
+/** Validate the raw tool input into a typed `{action, name?}` or a user-facing error. */
 export function validateInput(raw: Record<string, unknown>): ValidateResult {
   if (typeof raw.action !== "string" || raw.action.length === 0) {
     return { ok: false, error: "`action` is required (one of: list, info, read)" }
