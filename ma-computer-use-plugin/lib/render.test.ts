@@ -1,6 +1,24 @@
 import { describe, expect, test } from "bun:test"
 
-import { isErrorBody, renderContent, summarize } from "./render.ts"
+import { dim, isErrorBody, red, renderContent, resolveSgr, summarize } from "./render.ts"
+
+describe("style facade", () => {
+  test("uses standalone ANSI fallbacks", () => {
+    expect(dim("muted")).toBe("\x1b[2mmuted\x1b[22m")
+    expect(red("bad")).toBe("\x1b[31mbad\x1b[39m")
+  })
+
+  test("resolves foreground tokens from host-injected palette context", () => {
+    const sgr = resolveSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
+    expect(sgr.red).toBe("\x1b[38;5;196m")
+    expect(sgr.fgReset).toBe("\x1b[39m")
+    expect(sgr.dim).toBe("\x1b[2m")
+  })
+
+  test("ignores malformed palette context", () => {
+    expect(resolveSgr("not json").red).toBe("\x1b[31m")
+  })
+})
 
 describe("isErrorBody", () => {
   test("status >= 400 is an error", () => {
