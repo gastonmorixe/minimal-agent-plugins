@@ -200,7 +200,7 @@ export function mergeInputs(parsed: ParsedInput, config: FetchConfig): BackendCa
   }
 }
 
-/** Resolve the effective cleanup level: per-call > config default. */
+/** Resolve the effective cleanup level: per-call beats config default. */
 export function resolveCleanup(parsed: ParsedInput, config: FetchConfig): CleanupLevel {
   return parsed.cleanup ?? config.defaults.cleanup
 }
@@ -209,17 +209,53 @@ export function resolveCleanup(parsed: ParsedInput, config: FetchConfig): Cleanu
 // ANSI display rendering
 // ---------------------------------------------------------------------------
 
-const DIM = "\x1b[2m"
-const RESET = "\x1b[22m"
-const RED = "\x1b[31m"
-const RESET_FG = "\x1b[39m"
+const FALLBACK_SGR = {
+  dim: "\x1b[2m",
+  weightReset: "\x1b[22m",
+  red: "\x1b[31m",
+  fgReset: "\x1b[39m",
+} as const
+
+export interface SgrTokens {
+  readonly dim: string
+  readonly weightReset: string
+  readonly red: string
+  readonly fgReset: string
+}
+
+/** Resolve style tokens from the host-injected palette environment. */
+export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+  const palette = parsePaletteEnv(raw)
+  return {
+    ...FALLBACK_SGR,
+    red: palette?.red ?? FALLBACK_SGR.red,
+    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+  }
+}
+
+function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    const out: Record<string, string> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") out[key] = value
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+const SGR = resolveSgr()
 
 function dim(s: string): string {
-  return `${DIM}${s}${RESET}`
+  return `${SGR.dim}${s}${SGR.weightReset}`
 }
 
 function red(s: string): string {
-  return `${RED}${s}${RESET_FG}`
+  return `${SGR.red}${s}${SGR.fgReset}`
 }
 
 /** Compact byte formatter: 1.2 KB, 13.2 KB, 1.5 MB. */
