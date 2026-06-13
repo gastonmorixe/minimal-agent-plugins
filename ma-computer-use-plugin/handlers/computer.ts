@@ -19,7 +19,7 @@ import { dirname } from "node:path"
 
 import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/client.ts"
 import { helperBinary, logPath, socketPath, supportDir } from "../lib/paths.ts"
-import { dim, isErrorBody, red, renderContent, summarize } from "../lib/render.ts"
+import { configureSgr, dim, isErrorBody, red, renderContent, summarize } from "../lib/render.ts"
 import { validateToolInput } from "../lib/routes.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
@@ -69,6 +69,8 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
 
 /** Test-injectable inner. */
 export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<TUIResult> {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "Computer: wrong trigger type", is_error: true }
   }

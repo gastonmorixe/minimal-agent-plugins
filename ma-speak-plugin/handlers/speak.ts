@@ -26,7 +26,7 @@ import { type SpeechDeps, spawnSpeech } from "../lib/backend.ts"
 import { loadSpeakConfig, type SpeakConfig } from "../lib/config.ts"
 import { classifySpeechFailure, engineUnavailable } from "../lib/errors.ts"
 import { getRegistry, type SpeechJob, type SpeechRegistry } from "../lib/registry.ts"
-import { dim, red, renderFooter, renderJobLine } from "../lib/render.ts"
+import { configureSgr, dim, red, renderFooter, renderJobLine } from "../lib/render.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 export interface ParsedSpeakInput {
@@ -68,6 +68,8 @@ export function validateInput(raw: Record<string, unknown>, config: SpeakConfig)
 
 /** Default export: the tool handler the loader invokes. */
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "Speak: wrong trigger type", is_error: true }
   }
@@ -111,6 +113,8 @@ export async function runWithDeps(
   deps: SpeechDeps,
   nowFn: () => number = Date.now,
 ): Promise<TUIResult> {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   const spawn = spawnSpeech(ctx.packageDir, config, { text: input.text }, deps)
 
   if (!spawn.ok || !spawn.controller || !spawn.exited) {

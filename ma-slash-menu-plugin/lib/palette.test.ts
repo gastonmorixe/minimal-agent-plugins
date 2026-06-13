@@ -1,6 +1,14 @@
 import { describe, expect, it } from "bun:test"
 
-import { resolveSgr, stripSgr, truncateVisible, visualWidth, wrap } from "./palette.ts"
+import {
+  configureSgr,
+  resolveSgr,
+  SGR,
+  stripSgr,
+  truncateVisible,
+  visualWidth,
+  wrap,
+} from "./palette.ts"
 
 describe("slash-menu palette facade", () => {
   it("uses host-injected palette tokens when present", () => {
@@ -25,6 +33,13 @@ describe("slash-menu palette facade", () => {
   it("falls back cleanly when palette env is missing or malformed", () => {
     expect(resolveSgr(undefined).pink).toBe("\x1b[38;5;199m")
     expect(resolveSgr("{nope").pink).toBe("\x1b[38;5;199m")
+  })
+
+  it("configured facade updates exported style tokens", () => {
+    configureSgr(JSON.stringify({ sky: "\x1b[36m" }))
+    expect(SGR.sky).toBe("\x1b[36m")
+    expect(wrap("item", SGR.sky)).toBe("\x1b[36mitem\x1b[0m")
+    configureSgr(undefined)
   })
 
   it("centralizes ANSI strip, width, wrap, and clamp helpers", () => {

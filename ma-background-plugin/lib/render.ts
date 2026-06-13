@@ -50,7 +50,7 @@ export interface SgrTokens {
 }
 
 /** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw = process.env.MINIMAL_AGENT_PALETTE): SgrTokens {
+export function resolveSgr(raw?: string): SgrTokens {
   const palette = parsePaletteEnv(raw)
   return {
     ...FALLBACK_SGR,
@@ -78,7 +78,12 @@ function parsePaletteEnv(raw: string | undefined): Record<string, string> | null
   }
 }
 
-const SGR = resolveSgr()
+let SGR = resolveSgr()
+
+/** Configure display styling from the host-provided context palette. */
+export function configureSgr(raw?: string): void {
+  SGR = resolveSgr(raw)
+}
 
 /** Wrap a string in the ANSI bold attribute. */
 export function bold(s: string): string {
@@ -110,7 +115,9 @@ export function gray(s: string): string {
 }
 
 /** A middot bullet for separating chunks on one line. */
-const DOT = gray("·")
+function dot(): string {
+  return gray("·")
+}
 
 /** Clip to one bounded line (collapse whitespace, ellipsize). Pure. */
 export function clip(s: string, max: number): string {
@@ -244,7 +251,7 @@ export function jobHeaderContent(r: JobRecord, nowMs: number): string {
   const trailer: string[] = []
   if (el) trailer.push(dim(el))
   if (r.status.kind === "running") trailer.push(dim(`pid ${r.jobPid ?? r.runnerPid}`))
-  const trail = trailer.length > 0 ? ` ${DOT} ${trailer.join(` ${DOT} `)}` : ""
+  const trail = trailer.length > 0 ? ` ${dot()} ${trailer.join(` ${dot()} `)}` : ""
   return `${bits.join(" ")}${trail}`
 }
 
@@ -284,7 +291,7 @@ export function jobBlock(r: JobRecord, nowMs: number): string {
   } else if (r.status.kind === "exited" && r.status.signal) {
     stateBits.push(dim(`signal ${r.status.signal}`))
   }
-  lines.push(stateBits.join(` ${DOT} `))
+  lines.push(stateBits.join(` ${dot()} `))
 
   // 4. cwd · log file path (so the user can tail -f it in another terminal).
   lines.push(`${dim("cwd")} ${dim(tildify(r.cwd))}`)
@@ -378,7 +385,7 @@ export function renderWidget(records: readonly JobRecord[], opts: WidgetOptions)
   if (done > 0) headerBits.push(`${green("✔")} ${dim(`${done} done`)}`)
   if (failed > 0) headerBits.push(`${red("✘")} ${dim(`${failed} failed`)}`)
   if (stats.stopped > 0) headerBits.push(`${yellow("■")} ${dim(`${stats.stopped} stopped`)}`)
-  const header = ` ${headerBits.join(` ${DOT} `)}`
+  const header = ` ${headerBits.join(` ${dot()} `)}`
 
   // Rows: running first, then most-recent terminal. Cap at maxRows.
   const ordered = [...records].sort((a, b) => rowRank(a.status) - rowRank(b.status))
@@ -395,7 +402,7 @@ export function renderWidget(records: readonly JobRecord[], opts: WidgetOptions)
   }
   if (ordered.length > shown.length) {
     const more = ordered.length - shown.length
-    lines.push(dim(`   … +${more} more ${DOT} BackgroundStatus for all`))
+    lines.push(dim(`   … +${more} more ${dot()} BackgroundStatus for all`))
   }
   return lines.join("\n")
 }

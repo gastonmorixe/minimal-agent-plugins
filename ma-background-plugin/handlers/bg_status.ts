@@ -16,7 +16,15 @@ import { loadBgConfig } from "../lib/config.ts"
 import { readFileMaybe, realReconcileIO, serviceDepsFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { selectLog } from "../lib/log-read.ts"
-import { dim, gray, jobBlock, jobHeaderContent, jobLines, statusWord } from "../lib/render.ts"
+import {
+  configureSgr,
+  dim,
+  gray,
+  jobBlock,
+  jobHeaderContent,
+  jobLines,
+  statusWord,
+} from "../lib/render.ts"
 import { runReconcile } from "../lib/service.ts"
 import { type JobRecord, jobStats } from "../lib/types.ts"
 import { parseStatusRequest } from "../lib/validate.ts"
@@ -25,6 +33,8 @@ const STATUS_TAIL_LINES = 6
 const STATUS_TAIL_BYTES = 2048
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
+  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
+
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "BackgroundStatus: wrong trigger type", is_error: true }
   }

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import type { SpeechJob } from "./registry.ts"
 import {
+  configureSgr,
   formatDuration,
   jobElapsedMs,
   renderFooter,
@@ -51,6 +52,12 @@ describe("style facade", () => {
     expect(sgr.yellow).toBe("\x1b[38;5;214m")
     expect(sgr.cyan).toBe("\x1b[38;5;45m")
     expect(sgr.fgReset).toBe("\x1b[39m")
+  })
+
+  test("configured facade uses host context for rendered glyphs", () => {
+    configureSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
+    expect(stateGlyph("failed")).toBe("\x1b[38;5;196m✘ failed\x1b[39m")
+    configureSgr(undefined)
   })
 })
 
