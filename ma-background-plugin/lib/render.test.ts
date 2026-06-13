@@ -8,6 +8,7 @@ import {
   jobLine,
   jobLines,
   renderWidget,
+  resolveSgr,
   statusGlyph,
   statusWord,
   tildify,
@@ -35,6 +36,32 @@ function rec(id: string, status: JobStatus, over: Partial<JobRecord> = {}): JobR
 }
 
 const running: JobStatus = { kind: "running", pid: pid(1), startedAt: "2026-06-04T00:00:00.000Z" }
+
+describe("style facade", () => {
+  test("uses standalone ANSI fallbacks", () => {
+    expect(resolveSgr("not json").red).toBe("\x1b[31m")
+    expect(resolveSgr("not json").gray).toBe("\x1b[90m")
+  })
+
+  test("resolves foreground tokens from host-injected palette context", () => {
+    const sgr = resolveSgr(
+      JSON.stringify({
+        red: "\x1b[38;5;196m",
+        green: "\x1b[38;5;118m",
+        yellow: "\x1b[38;5;214m",
+        cyan: "\x1b[38;5;45m",
+        gray: "\x1b[38;5;246m",
+        _fgReset: "\x1b[39m",
+      }),
+    )
+    expect(sgr.red).toBe("\x1b[38;5;196m")
+    expect(sgr.green).toBe("\x1b[38;5;118m")
+    expect(sgr.yellow).toBe("\x1b[38;5;214m")
+    expect(sgr.cyan).toBe("\x1b[38;5;45m")
+    expect(sgr.gray).toBe("\x1b[38;5;246m")
+    expect(sgr.fgReset).toBe("\x1b[39m")
+  })
+})
 
 describe("clip", () => {
   test("short passes through", () => {
