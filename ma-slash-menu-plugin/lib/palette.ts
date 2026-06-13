@@ -16,7 +16,7 @@ const FALLBACK_SGR = {
   strike: "\x1b[9m",
   fgReset: "\x1b[39m",
   bgReset: "\x1b[49m",
-  // Modern "Cool Summer" palette (synced with src/palette.ts).
+  // Fallback modern palette used when the host palette context is unavailable.
   pink: "\x1b[38;5;199m",
   lime: "\x1b[38;5;118m",
   sky: "\x1b[38;5;45m",
