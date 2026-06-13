@@ -9,7 +9,16 @@
  * truncates so layout doesn't jiggle).
  */
 
-import { dim, SGR, stripSgr, wrap } from "./palette.ts"
+import {
+  dim,
+  padLeft,
+  padRight,
+  SGR,
+  truncate,
+  truncateVisible,
+  visualWidth,
+  wrap,
+} from "./palette.ts"
 import { formatTokens, tokenSeverity } from "./tokens.ts"
 import type { OverlayState, ScoredItem, Trigger } from "./types.ts"
 
@@ -109,31 +118,6 @@ function visibleWindow(state: OverlayState): VisibleWindow {
   if (start < 0) start = 0
   if (start + maxRows > total) start = total - maxRows
   return { start, end: start + maxRows, count: maxRows }
-}
-
-// ---------------------------------------------------------------------------
-// Width math (cheap; we don't need full Unicode width for ASCII content)
-// ---------------------------------------------------------------------------
-
-function visualWidth(s: string): number {
-  return stripSgr(s).length
-}
-
-function padRight(s: string, width: number, padChar = " "): string {
-  const w = visualWidth(s)
-  if (w >= width) return s
-  return s + padChar.repeat(width - w)
-}
-
-function padLeft(s: string, width: number, padChar = " "): string {
-  const w = visualWidth(s)
-  if (w >= width) return s
-  return padChar.repeat(width - w) + s
-}
-
-function truncate(s: string, maxWidth: number): string {
-  if (visualWidth(s) <= maxWidth) return s
-  return s.slice(0, Math.max(0, maxWidth - 1)) + "…"
 }
 
 // ---------------------------------------------------------------------------
@@ -277,33 +261,6 @@ function renderItemRow(
   const joined = parts.join("")
   if (visualWidth(joined) <= cols) return joined
   return truncateVisible(joined, cols)
-}
-
-/**
- * Truncate an ANSI-bearing string to `maxCells` visible width, keeping
- * SGR sequences intact (no half-escapes). Used as a final safety clamp
- * on overlay rows.
- */
-function truncateVisible(s: string, maxCells: number): string {
-  if (maxCells <= 0) return ""
-  let out = ""
-  let cells = 0
-  let i = 0
-  while (i < s.length) {
-    if (s[i] === "\u001b") {
-      // Pass the entire SGR sequence through (cells-free).
-      const end = s.indexOf("m", i)
-      if (end < 0) break
-      out += s.slice(i, end + 1)
-      i = end + 1
-      continue
-    }
-    if (cells >= maxCells) break
-    out += s[i]
-    cells++
-    i++
-  }
-  return out
 }
 
 function clampSlugWidth(slugLen: number, cols: number): number {
