@@ -22,6 +22,7 @@ import { selfIdentity, thisHost } from "../lib/identity.ts"
 import { readInbox } from "../lib/inbox.ts"
 import { cursorPath, inboxPath, presenceDir, presencePath, sessionLogPath } from "../lib/paths.ts"
 import { phaseFromMtime, readPresenceDir, writePresence } from "../lib/presence.ts"
+import { renderArrival } from "../lib/render.ts"
 import { readSelfState, selfStatePath } from "../lib/selfstate.ts"
 import { realPidAlive } from "../lib/service.ts"
 
@@ -91,5 +92,17 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
   }
 
   const result = runBeat(deps)
+
+  // TUI notification: print newly arrived messages to the terminal so the user
+  // sees them even when the agent is mid-turn or idle. Written to stderr so it
+  // doesn't pollute the agent's stdout/transcript pipeline.
+  if (result.fresh.length > 0) {
+    try {
+      ctx.stderr.write("\n" + renderArrival(result.fresh) + "\n")
+    } catch {
+      // best-effort
+    }
+  }
+
   return result.footer
 }

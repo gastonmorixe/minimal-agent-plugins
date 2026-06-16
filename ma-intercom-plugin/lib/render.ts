@@ -116,9 +116,8 @@ export function renderFooter(counts: RosterCounts): string | null {
 // ---------------------------------------------------------------------------
 
 const KIND_GLYPH: Record<Envelope["kind"], string> = {
-  note: "✉",
-  ping: "‼",
-  interrupt: "⛔",
+  message: "◇",
+  interrupt: "◆",
 }
 
 /** Body of the `<ma::agent::intercom-inbox>` attachment (plain, model-facing). */
@@ -145,12 +144,7 @@ export function renderInboxDisplay(envs: readonly Envelope[]): string {
   if (envs.length === 0) return dim("inbox empty")
   const lines: string[] = []
   for (const e of envs) {
-    const glyph =
-      e.kind === "interrupt"
-        ? red(KIND_GLYPH[e.kind])
-        : e.kind === "ping"
-          ? yellow(KIND_GLYPH[e.kind])
-          : cyan(KIND_GLYPH[e.kind])
+    const glyph = e.kind === "interrupt" ? red(KIND_GLYPH[e.kind]) : cyan(KIND_GLYPH[e.kind])
     lines.push(
       `  ${glyph} ${bold(e.from.short)} ${dim(e.ts.slice(11, 19))}  ${e.body.split("\n")[0]}`,
     )
@@ -249,4 +243,22 @@ export function renderInspectDisplay(b: InspectBundle): string {
   if (b.jobs && b.jobs.length) bits.push(`${b.jobs.length} jobs`)
   if (b.fleet && b.fleet.length) bits.push(`${b.fleet.length} workers`)
   return bits.length ? `${head}  ${dim(bits.join(" · "))}` : head
+}
+
+/** Render a TUI notification for newly arrived messages (written to stderr by the beat handler). */
+export function renderArrival(fresh: readonly Envelope[]): string {
+  const lines: string[] = []
+  for (const e of fresh) {
+    const glyph = e.kind === "interrupt" ? red("◆") : cyan("◇")
+    const verdict = e.kind === "interrupt" ? red(" INTERRUPT ") : ""
+    const short = sanitizePeerLine(e.from.short)
+    const model = e.from.model ? sanitizePeerLine(e.from.model) : "?"
+    const ts = e.ts.slice(11, 19)
+    lines.push(`${magenta("⇆")} ${verdict}${glyph} ${bold(short)} (${dim(model)}) at ${ts}`)
+    for (const bl of sanitizePeerText(e.body).split("\n")) {
+      const clipped = bl.length > 120 ? bl.slice(0, 120) + "…" : bl
+      lines.push(`  ${clipped}`)
+    }
+  }
+  return lines.join("\n")
 }

@@ -1,6 +1,6 @@
 /**
- * `Send` — message another session: a note, a ping, an interrupt, or a
- * broadcast. Thin handler: validate input, call the service, render.
+ * `Send` — message another session. Thin handler: validate input, call the
+ * service, render.
  *
  * @module handlers/send
  */
@@ -8,13 +8,18 @@
 import { isMessageKind, type MessageKind } from "../lib/envelope.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { send, serviceDepsFromAgent } from "../lib/service.ts"
-import { bold, cyan, dim, gray, red, yellow } from "../lib/style.ts"
+import { bold, cyan, dim, gray, red } from "../lib/style.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
 }
 
-const ICON = "⇆"
+/** Truncate a message body to a single short line for the display. */
+function preview(body: string): string {
+  const flat = body.replace(/\s+/g, " ").trim()
+  if (flat.length <= 60) return flat
+  return `${flat.slice(0, 57)}...`
+}
 
 /** Tool handler for `Send`. */
 export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
@@ -47,11 +52,11 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
   if (kindRaw !== undefined && !isMessageKind(kindRaw)) {
     return {
       kind: "tool_result",
-      content: `Send: invalid kind ${JSON.stringify(kindRaw)} (use note | ping | interrupt).`,
+      content: `Send: invalid kind ${JSON.stringify(kindRaw)} (use message | interrupt).`,
       is_error: true,
     }
   }
-  const kind: MessageKind = isMessageKind(kindRaw) ? kindRaw : "note"
+  const kind: MessageKind = isMessageKind(kindRaw) ? kindRaw : "message"
   const replyTo = str(input.replyTo)
 
   const outcome = send(deps, {
@@ -62,8 +67,8 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
     fromCwd: ctx.cwd,
   })
 
-  const kindGlyph = kind === "interrupt" ? red("⛔") : kind === "ping" ? yellow("‼") : cyan("✉")
-  const header = `${cyan(ICON)} ${bold(deps.self.short)} ${dim("·")} ${gray(`send ${kind} → ${outcome.scope}`)}`
+  const kindGlyph = kind === "interrupt" ? red("◆") : cyan("◇")
+  const header = `${gray(`send ${kind} → ${outcome.scope}`)}`
 
   if (outcome.delivered.length === 0) {
     const why =
@@ -82,13 +87,13 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
       ? ` (skipped ${outcome.skipped.map((s) => `${s.ref}: ${s.reason}`).join("; ")})`
       : ""
   const wake =
-    kind === "note"
-      ? " It waits in their inbox until their next turn."
+    kind === "interrupt"
+      ? " They will be woken between turns (interrupt)."
       : " They will be woken between turns."
   return {
     kind: "tool_result",
     content: `Delivered ${kind} to ${outcome.delivered.length} session(s): ${names}.${skipNote}${wake} (envelope ${outcome.envelopeId})`,
     displayHeader: header,
-    display: `  ${kindGlyph} ${dim(`to ${names}`)}`,
+    display: `${kindGlyph} ${bold(names)} ${dim(preview(body))}`,
   }
 }

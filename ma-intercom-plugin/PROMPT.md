@@ -51,13 +51,14 @@ activity, and jobs.
 - `to` is a peer's short id or full session id, or `"all"` to reach every
   reachable session, or `"project"` to reach sessions in your project directory.
 - `body` is the message text. Keep it short and self-contained.
-- `kind` is `"note"` (default), `"ping"`, or `"interrupt"`:
-  - note: passive. It waits in the peer's inbox and arrives the next time they
-    take a turn. Use it for an update, a result, or a handoff.
-  - ping: wakes an idle peer between turns so they see it soon. Use it when you
-    want a reply without waiting for their next turn.
-  - interrupt: wakes them and signals urgency, like "stop, the plan changed". Use
-    it rarely, for genuinely time-critical things.
+- `kind` is `"message"` (default) or `"interrupt"`:
+  - `message`: queued if the recipient is mid-turn, wakes them between turns
+    if idle. Use it for everything: coordination, handoffs, results, questions.
+    The recipient sees the message and processes it on its next turn. Always
+    visible in the terminal TUI.
+  - `interrupt`: same delivery behavior (the host mid-turn preemption hook is
+    not yet built), but signals urgency. The TUI renders it with a distinctive
+    glyph. Use rarely, for "stop, the plan changed" situations.
 
 A normal send reads like this:
 
@@ -77,16 +78,25 @@ next turn, with the sender's identity attached. Read it and act. A block reads
 like this:
 
     <ma::agent::intercom-inbox count="1">
-    [note] from a1b2c3d4 (claude-opus-4 cwd=api-gateway) id=k7p2n9 at 2026-06-13T15:02:11Z
+    [message] from a1b2c3d4 (claude-opus-4 cwd=api-gateway) id=k7p2n9 at 2026-06-13T15:02:11Z
         finished the auth refactor, your turn on the API
     </ma::agent::intercom-inbox>
+
+A message also prints to the terminal as soon as it lands, even when the agent
+is mid-turn or idle. You see a notification like this:
+
+    `⇆ ◇ 9f7c8612 (gpt-5.5) at 00:34:17`
+    `  Reply from session 9f7c8612...`
+
+If you are idle, the sender's message wakes you between turns with a nudge so you
+process it sooner.
 
 Two things to keep in mind:
 
 - Dedup on the message `id`. Delivery is at-least-once, so on a rare retry (a
   crash mid-delivery) you might see one message twice. If you already acted on an
   `id`, skip the repeat.
-- A ping or interrupt may wake you with a one-line nudge between turns. The full
+- Any message wakes you between turns with a one-line nudge. The full
   message is in the `<ma::agent::intercom-inbox>` block, not the nudge, so read the
   block before you reply.
 
@@ -104,5 +114,3 @@ rarely need it, because delivery already happens on its own.
 - Do not chatter. Use intercom for coordination that matters: handing off a
   result, claiming a shared resource, flagging a blocker, asking a peer to stop. It
   is not a place for running commentary.
-- A note is the default and the polite choice. Reserve ping and interrupt for when
-  latency genuinely matters.

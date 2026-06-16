@@ -58,7 +58,7 @@
         "type": "tool",
         "tool": {
           "name": "Send",
-          "description": "Send a message to another minimal-agent session: a note, a ping, an interrupt, or a broadcast. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions that share your project directory. `kind` defaults to \"note\", which is passive and waits in the peer's inbox until their next turn; \"ping\" also wakes an idle peer between turns; \"interrupt\" wakes them and signals urgency. Messages are durable and survive crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run Peers first to see who is online. Example: Send({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
+          "description": "Send a message to another minimal-agent session: a message or an interrupt. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions that share your project directory. `kind` defaults to \"message\", which queues if the recipient is busy or wakes them between turns if idle; \"interrupt\" signals urgency with a distinctive TUI glyph (preemptive mid-turn delivery is not yet implemented at the host level). Messages are durable and survive crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run Peers first to see who is online. Example: Send({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -72,8 +72,8 @@
               },
               "kind": {
                 "type": "string",
-                "enum": ["note", "ping", "interrupt"],
-                "description": "Delivery urgency. \"note\" (default) is passive and waits for the peer's next turn. \"ping\" wakes an idle peer between turns. \"interrupt\" wakes them and signals urgency. Prefer note unless latency matters."
+                "enum": ["message", "interrupt"],
+                "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency (non-preemptive until the host hook is built)."
               },
               "replyTo": {
                 "type": "string",

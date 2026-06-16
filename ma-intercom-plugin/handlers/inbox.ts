@@ -15,13 +15,11 @@ import { selfIdentity } from "../lib/identity.ts"
 import { readInbox } from "../lib/inbox.ts"
 import { cursorPath, inboxPath } from "../lib/paths.ts"
 import { renderInboxDisplay } from "../lib/render.ts"
-import { bold, cyan, dim, gray } from "../lib/style.ts"
+import { gray } from "../lib/style.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
 }
-
-const ICON = "⇆"
 
 /** Tool handler for `Inbox`. */
 export default async function inboxHandler(ctx: TUIContext): Promise<TUIResult> {
@@ -52,7 +50,7 @@ export default async function inboxHandler(ctx: TUIContext): Promise<TUIResult> 
   // this tool can't suppress automatic per-turn delivery.
   advanceCursor(cursorPath(self.sid, ctx.env), { read: all.length })
 
-  const header = `${cyan(ICON)} ${bold("inbox")} ${dim("·")} ${gray(`${selected.length}/${all.length}`)}`
+  const header = gray(`${selected.length}/${all.length}`)
   if (selected.length === 0) {
     return {
       kind: "tool_result",
