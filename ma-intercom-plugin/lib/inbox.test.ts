@@ -15,7 +15,7 @@ function tmp(): { dir: string; cleanup: () => void } {
 }
 
 function env(body: string) {
-  return buildEnvelope({ from: FROM, to: "x", scope: "x", kind: "note", body })
+  return buildEnvelope({ from: FROM, to: "x", scope: "x", kind: "message", body })
 }
 
 describe("drainFrom (pure)", () => {

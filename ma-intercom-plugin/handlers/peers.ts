@@ -27,13 +27,20 @@ import {
   resolvePeer,
   serviceDepsFromAgent,
 } from "../lib/service.ts"
-import { bold, cyan, dim, gray } from "../lib/style.ts"
+import { bold, dim, gray } from "../lib/style.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
 }
 
-const ICON = "⇆"
+/** Build the Peers list displayHeader: session count and reachable breakdown. */
+function peersHeader(rowsCount: number, online: number, busy: number, idle: number): string {
+  const parts: string[] = [`${rowsCount} session(s)`]
+  const reachable = online + busy + idle
+  if (reachable > 0 && reachable < rowsCount) parts.push(`${reachable} reachable`)
+  return gray(parts.join(dim(" · ")))
+}
+
 const VALID_SECTIONS = new Set<InspectSection>(ALL_INSPECT_SECTIONS)
 /** Default inspect sections when the caller doesn't specify (cheap + most useful). */
 const DEFAULT_SECTIONS: readonly InspectSection[] = ["tasks", "activity", "jobs"]
@@ -74,13 +81,13 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
       return {
         kind: "tool_result",
         content: JSON.stringify({ peers: payload, counts }, null, 2),
-        displayHeader: `${cyan(ICON)} ${bold("peers")} ${dim("·")} ${gray(`${counts.total} peer(s)`)}`,
+        displayHeader: peersHeader(rows.length, counts.online, counts.busy, counts.idle),
       }
     }
     return {
       kind: "tool_result",
       content: renderRosterText(rows, counts),
-      displayHeader: `${cyan(ICON)} ${bold("peers")} ${dim("·")} ${gray(`${counts.total} peer(s)`)}`,
+      displayHeader: peersHeader(rows.length, counts.online, counts.busy, counts.idle),
       display: renderRosterDisplay(rows),
     }
   }
@@ -110,14 +117,14 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
       return {
         kind: "tool_result",
         content: JSON.stringify(bundle, null, 2),
-        displayHeader: `${cyan(ICON)} ${bold("inspect")} ${dim("·")} ${gray(res.row.record.short)}`,
+        displayHeader: gray(`inspect ${bold(res.row.record.short)}`),
         display: renderInspectDisplay(bundle),
       }
     }
     return {
       kind: "tool_result",
       content: renderInspectText(bundle),
-      displayHeader: `${cyan(ICON)} ${bold("inspect")} ${dim("·")} ${gray(res.row.record.short)}`,
+      displayHeader: gray(`inspect ${bold(res.row.record.short)}`),
       display: renderInspectDisplay(bundle),
     }
   }

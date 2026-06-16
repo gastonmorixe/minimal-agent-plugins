@@ -89,24 +89,22 @@ export interface BeatResult {
   readonly footer: string | null
   readonly counts: RosterCounts
   readonly woke: number
+  /** Fresh messages that triggered a wake (for TUI notification). Empty when no new messages. */
+  readonly fresh: readonly Envelope[]
 }
 
-/** A short, human nudge injected when a ping/interrupt arrives while idle. */
+/** A short, human nudge injected when messages arrive while idle. */
 export function wakeMessage(fresh: readonly Envelope[]): string {
   const interrupts = fresh.filter((e) => e.kind === "interrupt")
-  const pings = fresh.filter((e) => e.kind === "ping")
-  const lead =
-    interrupts.length > 0
-      ? `intercom: ${interrupts.length} interrupt(s) from ${[...new Set(interrupts.map((e) => e.from.short))].join(", ")}`
-      : `intercom: ${pings.length} ping(s) from ${[...new Set(pings.map((e) => e.from.short))].join(", ")}`
+  const froms = [...new Set(fresh.map((e) => e.from.short))]
+  const parts: string[] = [`${fresh.length} message(s)`]
+  if (interrupts.length > 0) parts.push(`${interrupts.length} interrupt(s)`)
+  const lead = `intercom: ${parts.join(", ")} from ${froms.join(", ")}`
   // First message body, clipped + sanitized, as a hint. The body is
   // peer-controlled and this string becomes a `prompt.inject` user turn, so it
   // must not be able to forge `<ma::...>` framing.
   const first = fresh[fresh.length - 1]
   const hint = first ? ` Latest: "${sanitizePeerLine(first.body).slice(0, 140)}"` : ""
-  // Refer to the inbox tag inertly (declawed) so this nudge can't look like the
-  // attachment block itself. `froms` is already surfaced inside `lead`, so we
-  // don't repeat it in the trailer.
   return `${lead}.${hint} The full message(s) are in the intercom-inbox attachment on this turn. Reply with Send if you need to.`
 }
 
@@ -125,29 +123,27 @@ export function runBeat(deps: BeatDeps): BeatResult {
     // ignore — a failed presence write must not break the REPL
   }
 
-  // 2. Drain the wake channel (ping/interrupt only).
+  // 2. Drain the wake channel (all message kinds wake the peer).
   let woke = 0
+  let fresh: readonly Envelope[] = []
   try {
     const inbox = deps.readMyInbox()
     const cursor = deps.readMyCursor()
-    const fresh = inbox.slice(Math.min(cursor.woken, inbox.length))
-    const wakers = fresh.filter((e) => e.kind === "ping" || e.kind === "interrupt")
-    let emitted = true
-    if (wakers.length > 0) {
+    fresh = inbox.slice(Math.min(cursor.woken, inbox.length))
+    // All fresh messages wake — there is no passive "note" kind.
+    if (fresh.length > 0) {
       // `emit` is best-effort and may be a no-op when the host wired no bus. If
-      // it throws, we DON'T advance `woken` past the wakers, so the next beat
-      // retries the wake instead of silently dropping a ping/interrupt.
+      // it throws, we DON'T advance `woken`, so the next beat retries the wake.
       try {
-        deps.emit("prompt.inject", { text: wakeMessage(wakers), source: "intercom" })
-        woke = wakers.length
+        deps.emit("prompt.inject", { text: wakeMessage(fresh), source: "intercom" })
+        woke = fresh.length
       } catch {
-        emitted = false
+        // emit failed — hold the cursor so it retries next tick
       }
     }
     // Advance `woken` only as far as we've actually handled. When the wake emit
-    // failed, hold the cursor at the first waker so it's retried next tick;
-    // notes before it are harmless to re-scan (they never wake).
-    if (fresh.length > 0 && emitted) {
+    // failed, woke stays 0 and the cursor stays put for the next beat.
+    if (fresh.length > 0 && woke > 0) {
       deps.writeMyCursor({ ...cursor, woken: inbox.length })
     }
   } catch {
@@ -162,7 +158,7 @@ export function runBeat(deps: BeatDeps): BeatResult {
     selfSid: deps.self.sid,
   })
   const counts = rosterCounts(rows)
-  return { footer: renderFooter(counts), counts, woke }
+  return { footer: renderFooter(counts), counts, woke, fresh: fresh ?? [] }
 }
 
 export type { Liveness }

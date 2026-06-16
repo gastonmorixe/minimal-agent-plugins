@@ -12,8 +12,12 @@
 
 import { isSafeSid, shortId } from "./identity.ts"
 
-/** Message intent. Drives delivery behavior (see DESIGN.md §6). */
-export type MessageKind = "note" | "ping" | "interrupt"
+/** Message intent. Drives delivery behavior.
+ * - `"message"` (default): queued if recipient is busy, wakes them if idle.
+ * - `"interrupt"`: preempts the recipient mid-turn (when the host hook is built;
+ *   currently same mechanism as message, with urgency branding).
+ */
+export type MessageKind = "message" | "interrupt"
 
 /** Current envelope schema version. */
 export const ENVELOPE_V = 1
@@ -48,7 +52,7 @@ export interface Envelope {
 
 /** Does a value look like a valid message kind? */
 export function isMessageKind(v: unknown): v is MessageKind {
-  return v === "note" || v === "ping" || v === "interrupt"
+  return v === "message" || v === "interrupt"
 }
 
 /**

@@ -147,7 +147,7 @@ describe("message delivery between sessions", () => {
     runBeat(beatFor(a, now, alive))
     runBeat(beatFor(b, now, alive))
 
-    const outcome = send(svc(a, now, alive), { to: "bbbbbb", body: "hello B", kind: "note" })
+    const outcome = send(svc(a, now, alive), { to: "bbbbbb", body: "hello B", kind: "message" })
     expect(outcome.delivered.map((d) => d.sid)).toEqual(["bbbbbbbb-2"])
 
     // B drains its inbox.
@@ -169,7 +169,7 @@ describe("message delivery between sessions", () => {
 
     for (const s of [a, b, c]) runBeat(beatFor(s, now, alive))
 
-    const outcome = send(svc(a, now, alive), { to: "all", body: "hi all", kind: "note" })
+    const outcome = send(svc(a, now, alive), { to: "all", body: "hi all", kind: "message" })
     const sids = outcome.delivered.map((d) => d.sid).sort()
     expect(sids).toEqual(["bbbbbbbb-2", "cccccccc-3"])
     expect(sids).not.toContain("aaaaaaaa-1")
@@ -180,7 +180,7 @@ describe("message delivery between sessions", () => {
     const now = Date.now()
     const alive = () => true
     runBeat(beatFor(a, now, alive))
-    const outcome = send(svc(a, now, alive), { to: "aaaaaa", body: "to me", kind: "note" })
+    const outcome = send(svc(a, now, alive), { to: "aaaaaa", body: "to me", kind: "message" })
     expect(outcome.delivered.length).toBe(0)
     expect(outcome.skipped[0]?.reason).toContain("self")
   })
@@ -190,14 +190,14 @@ describe("message delivery between sessions", () => {
     const now = Date.now()
     const alive = () => true
     runBeat(beatFor(a, now, alive))
-    const outcome = send(svc(a, now, alive), { to: "zzzzzz", body: "x", kind: "note" })
+    const outcome = send(svc(a, now, alive), { to: "zzzzzz", body: "x", kind: "message" })
     expect(outcome.delivered.length).toBe(0)
     expect(outcome.skipped[0]?.reason).toContain("no such peer")
   })
 })
 
 describe("wake channel end-to-end", () => {
-  it("a ping into B causes B's next beat to inject a prompt", () => {
+  it("a message into B causes B's next beat to inject a prompt", () => {
     const a = ident("aaaaaaaa-1", 8001)
     const b = ident("bbbbbbbb-2", 8002)
     const now = Date.now()
@@ -205,7 +205,7 @@ describe("wake channel end-to-end", () => {
     runBeat(beatFor(a, now, alive))
     runBeat(beatFor(b, now, alive))
 
-    send(svc(a, now, alive), { to: "bbbbbb", body: "wake up", kind: "ping" })
+    send(svc(a, now, alive), { to: "bbbbbb", body: "wake up", kind: "message" })
 
     const injected: { channel: string; payload: unknown }[] = []
     const bBeat = beatFor(b, now + 1000, alive)

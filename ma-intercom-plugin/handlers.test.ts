@@ -102,7 +102,7 @@ describe("Send", () => {
   it("delivers to a present peer", async () => {
     writePresence(presencePath("peer-bbb", env), presence("peer-bbb", process.pid))
     const res = await sendHandler(
-      toolCtx("me-aaa", process.pid, "Send", { to: "peer-b", body: "hi", kind: "note" }),
+      toolCtx("me-aaa", process.pid, "Send", { to: "peer-b", body: "hi", kind: "message" }),
     )
     expect(res.kind).toBe("tool_result")
     if (res.kind === "tool_result") {
@@ -131,13 +131,13 @@ describe("InboxAttachment", () => {
     const sid = "me-2"
     appendEnvelope(
       inboxPath(sid, env),
-      buildEnvelope({ from: FROM, to: sid, scope: sid, kind: "ping", body: "ping body" }),
+      buildEnvelope({ from: FROM, to: sid, scope: sid, kind: "message", body: "ping body" }),
     )
     const att = new InboxAttachment(sid, env)
     const block = att.toAttachment()
     expect(block).not.toBeNull()
     expect(block?.text).toContain("<ma::agent::intercom-inbox")
-    expect(block?.text).toContain('ping="1"')
+    expect(block?.text).toContain('count="1"')
     expect(block?.text).toContain("ping body")
     expect(block?.text).toContain("</ma::agent::intercom-inbox>")
 

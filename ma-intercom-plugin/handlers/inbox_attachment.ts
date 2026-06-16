@@ -52,7 +52,7 @@ export class InboxAttachment implements TurnAttachmentProducer {
 
     const body = renderInboxBody(fresh)
     const kinds = countKinds(fresh)
-    const attr = `count="${fresh.length}"${kinds.ping ? ` ping="${kinds.ping}"` : ""}${kinds.interrupt ? ` interrupt="${kinds.interrupt}"` : ""}`
+    const attr = `count="${fresh.length}"${kinds.interrupt ? ` interrupt="${kinds.interrupt}"` : ""}`
     const text = `<ma::agent::intercom-inbox ${attr}>\n${body}\n</ma::agent::intercom-inbox>`
 
     // Advance `seen` so each message is rendered exactly once. Merge-on-write
@@ -64,14 +64,14 @@ export class InboxAttachment implements TurnAttachmentProducer {
   }
 }
 
-function countKinds(envs: ReadonlyArray<{ kind: string }>): { ping: number; interrupt: number } {
-  let ping = 0
+function countKinds(envs: ReadonlyArray<{ kind: string }>): { message: number; interrupt: number } {
+  let message = 0
   let interrupt = 0
   for (const e of envs) {
-    if (e.kind === "ping") ping += 1
+    if (e.kind === "message") message += 1
     else if (e.kind === "interrupt") interrupt += 1
   }
-  return { ping, interrupt }
+  return { message, interrupt }
 }
 
 /** The factory the host's turn-attachment registry invokes at boot. */

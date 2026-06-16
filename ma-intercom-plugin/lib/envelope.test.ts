@@ -46,11 +46,12 @@ describe("makeEnvelopeId", () => {
 })
 
 describe("isMessageKind", () => {
-  it("accepts the three kinds and rejects others", () => {
-    expect(isMessageKind("note")).toBe(true)
-    expect(isMessageKind("ping")).toBe(true)
+  it("accepts message and interrupt, rejects others", () => {
+    expect(isMessageKind("message")).toBe(true)
     expect(isMessageKind("interrupt")).toBe(true)
     expect(isMessageKind("shout")).toBe(false)
+    expect(isMessageKind("note")).toBe(false)
+    expect(isMessageKind("ping")).toBe(false)
     expect(isMessageKind(5)).toBe(false)
   })
 })
@@ -61,14 +62,14 @@ describe("buildEnvelope", () => {
       from: FROM,
       to: "cccc",
       scope: "cccc",
-      kind: "note",
+      kind: "message",
       body: "hi",
       nowMs: 1_700_000_000_000,
     })
     expect(e.v).toBe(1)
     expect(e.from.short).toBe("bbbbbb")
     expect(e.to).toBe("cccc")
-    expect(e.kind).toBe("note")
+    expect(e.kind).toBe("message")
     expect(e.body).toBe("hi")
     expect("replyTo" in e).toBe(false)
     expect(e.ts).toBe(new Date(1_700_000_000_000).toISOString())
@@ -79,7 +80,7 @@ describe("buildEnvelope", () => {
       from: FROM,
       to: "c",
       scope: "c",
-      kind: "ping",
+      kind: "message",
       body: "y",
       replyTo: "abc-1-0000",
     })
@@ -88,7 +89,7 @@ describe("buildEnvelope", () => {
 
   it("clamps an oversized body so the JSONL line stays append-atomic", () => {
     const huge = "x".repeat(10_000)
-    const e = buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "note", body: huge })
+    const e = buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: huge })
     expect(e.body.length).toBeLessThan(huge.length)
     expect(e.body).toContain("truncated")
     expect(serializeEnvelope(e).length).toBeLessThan(4096)
@@ -100,7 +101,7 @@ describe("buildEnvelope", () => {
         from: FROM,
         to: "c",
         scope: "c",
-        kind: "note",
+        kind: "message",
         body: "x",
         nowMs: Number.NaN,
       }),
@@ -110,7 +111,7 @@ describe("buildEnvelope", () => {
 
 describe("coerceEnvelope path-traversal guard", () => {
   it("rejects an envelope whose from.sid is a path-traversal string", () => {
-    const ok = buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "note", body: "x" })
+    const ok = buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: "x" })
     const raw = JSON.parse(serializeEnvelope(ok).trim()) as Record<string, unknown>
     ;(raw.from as Record<string, unknown>).sid = "../../../etc/evil"
     expect(coerceEnvelope(raw)).toBeNull()
@@ -128,14 +129,20 @@ describe("coerceEnvelope", () => {
   })
 
   it("rejects objects missing id / body / kind / from.sid", () => {
-    expect(coerceEnvelope({ body: "x", kind: "note", from: { sid: "s" } })).toBeNull() // no id
-    expect(coerceEnvelope({ id: "i", kind: "note", from: { sid: "s" } })).toBeNull() // no body
+    expect(coerceEnvelope({ body: "x", kind: "message", from: { sid: "s" } })).toBeNull() // no id
+    expect(coerceEnvelope({ id: "i", kind: "message", from: { sid: "s" } })).toBeNull() // no body
     expect(coerceEnvelope({ id: "i", body: "b", kind: "bad", from: { sid: "s" } })).toBeNull() // bad kind
-    expect(coerceEnvelope({ id: "i", body: "b", kind: "note", from: {} })).toBeNull() // no from.sid
+    expect(coerceEnvelope({ id: "i", body: "b", kind: "message", from: {} })).toBeNull() // no from.sid
   })
 
   it("defaults scope to `to` when scope missing (back-compat)", () => {
-    const back = coerceEnvelope({ id: "i", body: "b", kind: "note", to: "ddd", from: { sid: "s" } })
+    const back = coerceEnvelope({
+      id: "i",
+      body: "b",
+      kind: "message",
+      to: "ddd",
+      from: { sid: "s" },
+    })
     expect(back?.scope).toBe("ddd")
   })
 })
@@ -143,10 +150,10 @@ describe("coerceEnvelope", () => {
 describe("parseInbox", () => {
   it("tolerates blank lines, junk, and a torn last line", () => {
     const good = serializeEnvelope(
-      buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "note", body: "one" }),
+      buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: "one" }),
     )
     const good2 = serializeEnvelope(
-      buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "note", body: "two" }),
+      buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: "two" }),
     )
     const text = `\n${good}garbage-not-json\n${good2}{"torn":` // last line torn
     const out = parseInbox(text)
@@ -159,7 +166,7 @@ describe("parseInbox", () => {
     let blob = ""
     for (const b of ["a", "b", "c"]) {
       blob += serializeEnvelope(
-        buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "note", body: b, nowMs: 1 }),
+        buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: b, nowMs: 1 }),
       )
     }
     expect(parseInbox(blob).map((e) => e.body)).toEqual(["a", "b", "c"])

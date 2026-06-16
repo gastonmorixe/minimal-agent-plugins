@@ -87,15 +87,15 @@ describe("runBeat — presence publish", () => {
 })
 
 describe("runBeat — wake channel", () => {
-  it("injects prompt.inject when a ping arrives past the woken cursor", () => {
-    const h = harness({ inbox: [msg("ping", "hello")] })
+  it("injects prompt.inject when a message arrives past the woken cursor", () => {
+    const h = harness({ inbox: [msg("message", "hello")] })
     const res = runBeat(h.deps)
     expect(res.woke).toBe(1)
     expect(h.injected.length).toBe(1)
     expect(h.injected[0]?.channel).toBe("prompt.inject")
     const payload = h.injected[0]?.payload as { text: string; source: string }
     expect(payload.source).toBe("intercom")
-    expect(payload.text).toContain("ping")
+    expect(payload.text).toContain("message")
     // advances woken to the full inbox length
     expect(h.written).toEqual({ seen: 0, woken: 1, read: 0 })
   })
@@ -109,38 +109,31 @@ describe("runBeat — wake channel", () => {
     expect(payload.text).toContain("stop now")
   })
 
-  it("does NOT wake for a note (passive delivery only)", () => {
-    const h = harness({ inbox: [msg("note", "fyi")] })
-    const res = runBeat(h.deps)
-    expect(res.woke).toBe(0)
-    expect(h.injected.length).toBe(0)
-    // but still advances woken past the note so it never wakes later
-    expect(h.written).toEqual({ seen: 0, woken: 1, read: 0 })
-  })
-
   it("does not re-wake for messages already past the woken cursor", () => {
-    const h = harness({ inbox: [msg("ping", "old")], cursor: { seen: 1, woken: 1, read: 0 } })
+    const h = harness({ inbox: [msg("message", "old")], cursor: { seen: 1, woken: 1, read: 0 } })
     const res = runBeat(h.deps)
     expect(res.woke).toBe(0)
     expect(h.injected.length).toBe(0)
   })
 
-  it("wakes only for the fresh ping when a note precedes it", () => {
-    const h = harness({ inbox: [msg("note", "a"), msg("ping", "b")], cursor: ZERO_CURSOR })
+  it("wakes for all fresh messages regardless of kind", () => {
+    const h = harness({ inbox: [msg("message", "a"), msg("message", "b")], cursor: ZERO_CURSOR })
     const res = runBeat(h.deps)
-    expect(res.woke).toBe(1)
+    expect(res.woke).toBe(2)
     const payload = h.injected[0]?.payload as { text: string }
-    expect(payload.text).toContain("ping")
+    expect(payload.text).toContain("2 message(s)")
   })
 })
 
 describe("wakeMessage", () => {
-  it("leads with interrupts when present", () => {
-    const text = wakeMessage([msg("ping", "p"), msg("interrupt", "i")])
-    expect(text.startsWith("intercom: 1 interrupt")).toBe(true)
+  it("leads with total count and names interrupts when present", () => {
+    const text = wakeMessage([msg("message", "p"), msg("interrupt", "i")])
+    expect(text.startsWith("intercom: 2 message(s), 1 interrupt(s)")).toBe(true)
+    expect(text).toContain("i")
   })
   it("points at the inbox attachment and names the sender, without forging the tag", () => {
-    const text = wakeMessage([msg("ping", "p")])
+    const text = wakeMessage([msg("message", "p")])
+    expect(text).toContain("intercom: 1 message(s)")
     expect(text).toContain("intercom-inbox attachment")
     // It must NOT contain a live `<ma::` framing sequence (that would let a peer
     // forge runtime framing into the woken session's injected prompt).
