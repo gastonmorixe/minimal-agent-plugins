@@ -4,8 +4,8 @@
  * Walks the configured roots in precedence order (closer-to-user wins),
  * reads each candidate `<root>/<name>/SKILL.md`, validates the
  * frontmatter, and deduplicates by `name`. Shadowed skills and parse
- * failures are surfaced separately so the prompt-fragment and `Skill
- * list` action can show them.
+ * failures are surfaced separately so the prompt-fragment and the
+ * `Skill list` action can show them.
  *
  * Precedence (highest first):
  *   1. project           — <cwd>/.agents/skills/
@@ -18,8 +18,8 @@
  * contains a readable SKILL.md is considered a skill candidate.
  *
  * IO is synchronous (`readdirSync` + `readFileSync`). Discovery runs
- * once at session start in the prompt-fragment, and on-demand for `Skill
- * list` — both are fine to block briefly.
+ * once at session start in the prompt-fragment, and on-demand for
+ * `Skill list` — both are fine to block briefly.
  *
  * @module lib/discovery
  */

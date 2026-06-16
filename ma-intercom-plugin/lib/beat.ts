@@ -1,0 +1,170 @@
+/**
+ * One heartbeat tick, parameterized over its IO so it's directly testable with
+ * a fake clock, an in-memory presence store, and a capturing emit.
+ *
+ * A tick does three things:
+ *   1. Publishes THIS session's presence record (the liveness signal peers
+ *      derive aliveness from).
+ *   2. Drains the wake channel: new `ping`/`interrupt` messages past the
+ *      `woken` cursor trigger ONE `prompt.inject` nudge so an idle REPL wakes
+ *      between turns and renders the inbox attachment. `note` messages never
+ *      wake (they wait for the user's next turn).
+ *   3. Returns the ambient footer line (counts), or null when alone.
+ *
+ * The heartbeat handler is a thin wrapper that supplies real fs/clock/emit.
+ *
+ * @module lib/beat
+ */
+
+import type { Thresholds } from "./config.ts"
+import type { Cursor } from "./cursors.ts"
+import type { Envelope } from "./envelope.ts"
+import type { SelfIdentity } from "./identity.ts"
+import type { Liveness, LivenessProbe } from "./liveness.ts"
+import { classifyLiveness } from "./liveness.ts"
+import type { PresenceRecord, SelfPhase } from "./presence.ts"
+import { renderFooter } from "./render.ts"
+import { buildRoster, mergePresence, type RosterCounts, rosterCounts } from "./roster.ts"
+import { sanitizePeerLine } from "./sanitize.ts"
+
+/** The mutable bits a session reports about itself each beat. */
+export interface SelfState {
+  readonly phase: SelfPhase
+  readonly activity: string | null
+  readonly cwd: string
+  readonly projectRoot: string
+  /** Set true on the final (shutdown) beat. */
+  readonly gone?: boolean
+}
+
+/** Build this session's presence record from identity + current self-state. */
+export function buildSelfPresenceRecord(
+  self: SelfIdentity,
+  state: SelfState,
+  startedAt: string,
+  nowIso: string,
+): PresenceRecord {
+  return {
+    v: 1,
+    sid: self.sid,
+    short: self.short,
+    pid: self.pid,
+    host: self.host,
+    ts: nowIso,
+    startedAt,
+    agentVersion: self.agentVersion,
+    model: self.model,
+    cwd: state.cwd,
+    projectRoot: state.projectRoot,
+    phase: state.phase,
+    activity: state.activity,
+    ...(state.gone ? { gone: true as const } : {}),
+  }
+}
+
+/** Inputs to {@link runBeat}. */
+export interface BeatDeps {
+  readonly self: SelfIdentity
+  readonly state: SelfState
+  readonly startedAt: string
+  readonly nowMs: number
+  readonly thresholds: Thresholds
+  readonly probe: LivenessProbe
+  /** Publish this session's presence record (atomic write). */
+  readonly publish: (rec: PresenceRecord) => void
+  /** Read all presence records (own feed + adapted sub-agents feed, merged by caller). */
+  readonly readAllPresence: () => PresenceRecord[]
+  /** Read my inbox envelopes. */
+  readonly readMyInbox: () => Envelope[]
+  /** Read my cursor. */
+  readonly readMyCursor: () => Cursor
+  /** Persist my cursor after advancing `woken`. */
+  readonly writeMyCursor: (c: Cursor) => void
+  /** Fire-and-forget prompt injection (the wake channel). */
+  readonly emit: (channel: string, payload: unknown) => void
+}
+
+/** Result of a beat: the footer line (or null) plus a debug summary. */
+export interface BeatResult {
+  readonly footer: string | null
+  readonly counts: RosterCounts
+  readonly woke: number
+}
+
+/** A short, human nudge injected when a ping/interrupt arrives while idle. */
+export function wakeMessage(fresh: readonly Envelope[]): string {
+  const interrupts = fresh.filter((e) => e.kind === "interrupt")
+  const pings = fresh.filter((e) => e.kind === "ping")
+  const lead =
+    interrupts.length > 0
+      ? `intercom: ${interrupts.length} interrupt(s) from ${[...new Set(interrupts.map((e) => e.from.short))].join(", ")}`
+      : `intercom: ${pings.length} ping(s) from ${[...new Set(pings.map((e) => e.from.short))].join(", ")}`
+  // First message body, clipped + sanitized, as a hint. The body is
+  // peer-controlled and this string becomes a `prompt.inject` user turn, so it
+  // must not be able to forge `<ma::...>` framing.
+  const first = fresh[fresh.length - 1]
+  const hint = first ? ` Latest: "${sanitizePeerLine(first.body).slice(0, 140)}"` : ""
+  // Refer to the inbox tag inertly (declawed) so this nudge can't look like the
+  // attachment block itself. `froms` is already surfaced inside `lead`, so we
+  // don't repeat it in the trailer.
+  return `${lead}.${hint} The full message(s) are in the intercom-inbox attachment on this turn. Reply with Send if you need to.`
+}
+
+/**
+ * Run one heartbeat tick. Publishes presence, drains the wake channel, returns
+ * the footer. Pure given the injected IO.
+ */
+export function runBeat(deps: BeatDeps): BeatResult {
+  const nowIso = new Date(deps.nowMs).toISOString()
+
+  // 1. Publish my presence (best-effort; never throw out of a beat).
+  const rec = buildSelfPresenceRecord(deps.self, deps.state, deps.startedAt, nowIso)
+  try {
+    deps.publish(rec)
+  } catch {
+    // ignore — a failed presence write must not break the REPL
+  }
+
+  // 2. Drain the wake channel (ping/interrupt only).
+  let woke = 0
+  try {
+    const inbox = deps.readMyInbox()
+    const cursor = deps.readMyCursor()
+    const fresh = inbox.slice(Math.min(cursor.woken, inbox.length))
+    const wakers = fresh.filter((e) => e.kind === "ping" || e.kind === "interrupt")
+    let emitted = true
+    if (wakers.length > 0) {
+      // `emit` is best-effort and may be a no-op when the host wired no bus. If
+      // it throws, we DON'T advance `woken` past the wakers, so the next beat
+      // retries the wake instead of silently dropping a ping/interrupt.
+      try {
+        deps.emit("prompt.inject", { text: wakeMessage(wakers), source: "intercom" })
+        woke = wakers.length
+      } catch {
+        emitted = false
+      }
+    }
+    // Advance `woken` only as far as we've actually handled. When the wake emit
+    // failed, hold the cursor at the first waker so it's retried next tick;
+    // notes before it are harmless to re-scan (they never wake).
+    if (fresh.length > 0 && emitted) {
+      deps.writeMyCursor({ ...cursor, woken: inbox.length })
+    }
+  } catch {
+    // ignore — wake is best-effort
+  }
+
+  // 3. Footer.
+  const records = deps.readAllPresence()
+  const rows = buildRoster(records, {
+    thresholds: deps.thresholds,
+    probe: deps.probe,
+    selfSid: deps.self.sid,
+  })
+  const counts = rosterCounts(rows)
+  return { footer: renderFooter(counts), counts, woke }
+}
+
+export type { Liveness }
+/** Re-export so the handler can merge feeds without another import. */
+export { classifyLiveness, mergePresence }

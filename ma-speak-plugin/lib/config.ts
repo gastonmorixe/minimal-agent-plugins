@@ -10,6 +10,7 @@
  *
  * Shape:
  *
+ * ```jsonc
  *   {
  *     "plugins": {
  *       "ma-speak": {
@@ -27,6 +28,7 @@
  *       }
  *     }
  *   }
+ * ```
  *
  * Voice, rate, and binary path are deliberately config-only: the model
  * controls *what* is said, never *how* it sounds. That keeps the tool

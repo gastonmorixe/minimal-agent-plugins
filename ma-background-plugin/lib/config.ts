@@ -10,6 +10,7 @@
  *
  * Shape:
  *
+ * ```jsonc
  *   {
  *     "plugins": {
  *       "ma-bg": {
@@ -29,6 +30,7 @@
  *       }
  *     }
  *   }
+ * ```
  *
  * Everything here is operator config. The model controls only WHAT runs and an
  * optional per-job `timeout` string, it never sees the ceiling or the limits.

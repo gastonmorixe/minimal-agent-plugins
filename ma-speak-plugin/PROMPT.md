@@ -9,7 +9,7 @@ The plugin adds three tools: `Speak` (start talking), `SpeakStatus` (is it still
 - A short spoken alert is more useful than a line of text (a build broke, a timer is up, input is needed).
 - The user set up a hands-free or accessibility workflow and prefers audio.
 
-## When NOT to use `Speak`
+## When not to use `Speak`
 
 - The user hasn't asked for audio and a written answer is the norm. Don't narrate everything.
 - The content is code, a long URL, a table, or dense markdown. Spoken aloud it sounds like noise. Paraphrase it into plain sentences first, or just don't speak it.
@@ -36,7 +36,7 @@ The plugin adds three tools: `Speak` (start talking), `SpeakStatus` (is it still
 
 ## Examples
 
-- User: "read me that summary out loud" → `Speak({ text: "Here's the summary. The deploy finished cleanly, all twelve checks passed, and the new endpoint is live." })`.
-- A long task you kicked off completes → `Speak({ text: "Your build is done. It succeeded." })` and keep working.
-- User: "stop talking" → `SpeakStop()` (no id, stops everything).
-- You want to confirm one short line was fully heard before continuing → `Speak({ text: "Saved.", wait: true })`.
+- User: "read me that summary out loud": `Speak({ text: "Here's the summary. The deploy finished cleanly, all twelve checks passed, and the new endpoint is live." })`.
+- A long task you kicked off completes: `Speak({ text: "Your build is done. It succeeded." })` and keep working.
+- User: "stop talking": `SpeakStop()` (no id, stops everything).
+- You want to confirm one short line was fully heard before continuing: `Speak({ text: "Saved.", wait: true })`.

@@ -7,7 +7,7 @@
  * env contract, building the job argv, and constructing each sidecar snapshot.
  * The executable wires these to real spawn / timers / fs.
  *
- * Env contract (harness -> runner), all `MA_BG_*`:
+ * Env contract (harness to runner), all `MA_BG_*`:
  *   MA_BG_JOB_ID       the job handle ("j2")
  *   MA_BG_COMMAND      the shell command to run via `bash -c`
  *   MA_BG_CWD          working directory

@@ -48,13 +48,18 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>
 }
 
+/**
+ * One stateful connection to a browser's CDP WebSocket: sends requests with
+ * correlated ids, tracks attached target/frame sessions, buffers inbound
+ * events, and folds download lifecycle events into a records list.
+ */
 export class CdpConnection {
   private ws: MinimalSocket | null = null
   private idc = 0
   private readonly pending = new Map<number, Pending>()
-  /** sessionId -> {url,type} for every attached target/frame. */
+  /** Maps sessionId to `{url,type}` for every attached target/frame. */
   readonly frameSessions = new Map<string, { url: string; type: string }>()
-  /** targetId -> cached page sessionId. */
+  /** Maps targetId to its cached page sessionId. */
   readonly targetSessions = new Map<string, string>()
   private downloads: DownloadRecord[] = []
   /** Bounded ring of every inbound CDP event (opt-in recording). */

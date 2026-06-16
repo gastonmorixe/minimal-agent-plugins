@@ -11,8 +11,8 @@
  * Two jobs the registry owns:
  *   1. hold each {@link RunnerHandle} so its pipe stays open until the job ends
  *      or the model stops it,
- *   2. install ONE shared parent-exit fan-out (over `process.on(exit|SIGINT|
- *      SIGTERM|SIGHUP)`) that closes every pipe when the harness exits
+ *   2. install ONE shared parent-exit fan-out (over `process.on` for exit,
+ *      SIGINT, SIGTERM, and SIGHUP) that closes every pipe when the harness exits
  *      GRACEFULLY. That is the fast path, the runner's own stdin-EOF detection
  *      is the foolproof layer that also covers a harness SIGKILL.
  *

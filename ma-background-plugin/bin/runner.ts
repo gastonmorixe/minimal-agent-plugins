@@ -11,7 +11,7 @@
  *   2. streams combined stdout+stderr to the durable log file (raw bytes, ANSI
  *      preserved),
  *   3. writes a `<jobId>.status.json` sidecar on every transition,
- *   4. enforces the timeout (SIGTERM -> grace -> SIGKILL),
+ *   4. enforces the timeout (SIGTERM, then a grace period, then SIGKILL),
  *   5. watches its OWN stdin: when the harness dies by ANY means (including
  *      SIGKILL), the OS closes the write end, stdin emits `end`/`close`, and the
  *      runner group-kills the job and exits.

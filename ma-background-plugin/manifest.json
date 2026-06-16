@@ -11,7 +11,7 @@
         "type": "tool",
         "tool": {
           "name": "BackgroundRun",
-          "description": "Run a shell command in the BACKGROUND and return immediately with a job handle (e.g. j2) and pid. The job keeps running while you keep working; you are not blocked. Use this by default for anything that takes more than a few seconds: builds, test suites, installs, long searches over big trees, downloads, codegen, dev servers you will poll. Check progress with BackgroundStatus, read output with BackgroundLogs, cancel with BackgroundStop. When a job finishes you get a one-line digest between turns. The full raw output (ANSI included) is stored on disk and readable at any later point, even after a resume. Jobs have no stdin/TTY (non-interactive) and die automatically if the agent exits.",
+          "description": "Run a shell command in the background and return immediately with a job handle (e.g. j2) and pid. The job keeps running while you keep working; you are not blocked. Use this by default for anything that takes more than a few seconds: builds, test suites, installs, long searches over big trees, downloads, codegen, dev servers you will poll. Check progress with BackgroundStatus, read output with BackgroundLogs, cancel with BackgroundStop. When a job finishes you get a one-line digest between turns. The full raw output (ANSI included) is stored on disk and readable at any later point, even after a resume. Jobs have no stdin/TTY (non-interactive) and die automatically if the agent exits.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -25,7 +25,7 @@
               },
               "cwd": {
                 "type": "string",
-                "description": "Working directory for the job. Defaults to the agent's current working directory. Note: this does NOT follow the foreground Bash tool's sticky cd."
+                "description": "Working directory for the job. Defaults to the agent's current working directory. Note: this does not follow the foreground Bash tool's sticky cd."
               },
               "timeout": {
                 "type": "string",

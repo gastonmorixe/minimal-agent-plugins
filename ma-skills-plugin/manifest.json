@@ -17,7 +17,7 @@
               "action": {
                 "type": "string",
                 "enum": ["list", "info", "read"],
-                "description": "What to do. 'list' returns every discovered skill (with broken + shadowed diagnostics) in JSON. 'info' returns one skill's frontmatter only. 'read' loads the full SKILL.md body, plus a footer listing bundled sibling files (scripts/, references/, …) and any self-enforced allowed-tools."
+                "description": "What to do. 'list' returns every discovered skill (with broken + shadowed diagnostics) in JSON. 'info' returns one skill's frontmatter only. 'read' loads the full SKILL.md body, plus a footer listing bundled sibling files (scripts/, references/, etc.) and any self-enforced allowed-tools."
               },
               "name": {
                 "type": "string",

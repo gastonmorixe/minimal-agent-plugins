@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { CdpConnection, type MinimalSocket } from "./connection.ts"
 import { dispatch } from "./dispatch.ts"
 
-/** Fake socket that answers requests via a method->result map. */
+/** Fake socket that answers requests via a method-to-result map. */
 class ScriptedSocket implements MinimalSocket {
   sent: Array<Record<string, unknown>> = []
   private handlers: Record<string, Array<(e: unknown) => void>> = {}

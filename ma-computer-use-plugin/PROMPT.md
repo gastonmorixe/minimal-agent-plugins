@@ -15,7 +15,7 @@ bun run bin/cud.ts build     # xcodegen + xcodebuild, signs with the dev identit
 bun run bin/cud.ts prompt    # fires the permission prompts + opens Settings
 ```
 
-The user then enables **ComputerUseHelper** in System Settings → Privacy & Security → **Accessibility** and **Screen & System Audio Recording**, and runs `bun run bin/cud.ts restart`. If any action returns a permission error, call `Computer{action:"perms", prompt:true}` and tell the user what to enable.
+The user then enables **ComputerUseHelper** in System Settings > Privacy & Security > **Accessibility** and **Screen & System Audio Recording**, and runs `bun run bin/cud.ts restart`. If any action returns a permission error, call `Computer{action:"perms", prompt:true}` and tell the user what to enable.
 
 ## Coordinates
 
@@ -52,7 +52,7 @@ Element handles stay valid until the UI changes. If you get a `409` "stale; re-s
 
 ## Troubleshooting
 
-- "helper not built" → run `bun run bin/cud.ts build`.
-- permission error / 403 → `Computer{action:"perms", prompt:true}`, enable in Settings, then `cud restart`.
-- thin/empty snapshot (Electron, Chrome, custom canvas) → fall back to `screenshot` + coordinate `mouse`/`type`. For a browser specifically, prefer the `ChromeCDP` tool.
-- stale handle (409) → re-`snapshot`.
+- "helper not built": run `bun run bin/cud.ts build`.
+- permission error / 403: `Computer{action:"perms", prompt:true}`, enable in Settings, then `cud restart`.
+- thin/empty snapshot (Electron, Chrome, custom canvas): fall back to `screenshot` + coordinate `mouse`/`type`. For a browser specifically, prefer the `ChromeCDP` tool.
+- stale handle (409): re-`snapshot`.

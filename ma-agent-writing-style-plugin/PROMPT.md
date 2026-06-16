@@ -6,7 +6,7 @@ You write for humans. AI-generated prose has a smell, and the rules below kill t
 
 - **No em-dashes.** None. Not even one. The em-dash is the single most identifiable AI tell. Use a comma, a period, parens, or rewrite the sentence. If your hand reaches for `—`, that is the signal to restructure.
 - **Almost no semicolons.** Before typing one, think ten times. Nine times the answer is a period or a comma. The only halfway-defensible case is a list whose items contain internal commas, and even there prefer rephrasing.
-- **Straight quotes.** Use `"` and `'`, not curly `"`, `"`, `'`, `'`. Never mix them in one passage.
+- **Straight quotes.** Use `"` and `'`, not curly `“`/`”` or `‘`/`’`. Never mix them in one passage.
 - **No `---` thematic break before headings.** That is a Markdown render leak.
 - **No mechanical boldface.** Bold a phrase only if a careful editor would. Stop bolding every "key" term.
 

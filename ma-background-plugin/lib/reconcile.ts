@@ -168,7 +168,7 @@ function clip(s: string, max: number): string {
   return one.length <= max ? one : `${one.slice(0, max - 1).trimEnd()}…`
 }
 
-/** Effects emitted on any active->terminal transition: a bus signal + a digest. */
+/** Effects emitted on any active-to-terminal transition: a bus signal + a digest. */
 function terminalEffects(r: JobRecord, next: JobStatus): Effect[] {
   const withStatus: JobRecord = { ...r, status: next }
   return [

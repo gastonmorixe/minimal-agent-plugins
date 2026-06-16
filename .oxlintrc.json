@@ -1,10 +1,14 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "oxc", "import", "jsdoc"],
+  "plugins": ["typescript", "oxc", "import"],
   "jsPlugins": [
     {
       "name": "jsdoc-js",
       "specifier": "eslint-plugin-jsdoc"
+    },
+    {
+      "name": "tsdoc",
+      "specifier": "eslint-plugin-tsdoc"
     }
   ],
   "categories": {
@@ -38,16 +42,35 @@
     "no-shadow": "off",
     "no-underscore-dangle": "off",
     "no-unmodified-loop-condition": "off",
-    "jsdoc/check-tag-names": "error",
-    "jsdoc-js/require-jsdoc": "off",
-    "jsdoc-js/require-description": "off",
+    "jsdoc-js/require-jsdoc": [
+      "error",
+      {
+        "publicOnly": true,
+        "require": {
+          "ArrowFunctionExpression": false,
+          "ClassDeclaration": true,
+          "ClassExpression": true,
+          "FunctionDeclaration": true,
+          "FunctionExpression": false,
+          "MethodDefinition": true
+        }
+      }
+    ],
+    "jsdoc-js/require-description": "error",
     "jsdoc-js/require-param": "off",
     "jsdoc-js/require-param-description": "off",
     "jsdoc-js/require-returns": "off",
     "jsdoc-js/require-returns-description": "off",
-    "jsdoc-js/check-param-names": "off",
-    "jsdoc-js/check-tag-names": "error",
-    "max-lines": ["warn", { "max": 800, "skipBlankLines": true, "skipComments": true }]
+    "jsdoc-js/check-param-names": "error",
+    "max-lines": [
+      "error",
+      {
+        "max": 800,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "tsdoc/syntax": "error"
   },
   "overrides": [
     {
@@ -56,10 +79,7 @@
         "jsdoc-js/require-jsdoc": "off",
         "jsdoc-js/require-description": "off",
         "jsdoc-js/check-param-names": "off",
-        "jsdoc-js/check-tag-names": "off",
-        "jsdoc/check-tag-names": "off",
-        "require-yield": "off",
-        "max-lines": "off"
+        "require-yield": "off"
       }
     }
   ],
