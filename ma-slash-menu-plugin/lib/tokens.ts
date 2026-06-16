@@ -157,9 +157,11 @@ export function approxTokensForMany(
 /**
  * Format a token count for display: short, fits in ~5–6 cells.
  *
+ * ```
  *   < 1000        → "~750t"
  *   1000–9999     → "~2.1k"
  *   ≥ 10000       → "~12k"
+ * ```
  */
 export function formatTokens(n: number | undefined): string {
   if (n === undefined) return ""
@@ -174,14 +176,17 @@ export function formatTokens(n: number | undefined): string {
 /**
  * Severity band for color grading the token chip.
  *
+ * ```
  *   < 1k     → "cheap"     (dim lime)
  *   1–3k     → "normal"    (faintWhite)
  *   3–8k     → "notable"   (gold)
  *   8–20k    → "heavy"     (dim red)
  *   > 20k    → "very-heavy" (bold red)
+ * ```
  */
 export type Severity = "cheap" | "normal" | "notable" | "heavy" | "very-heavy" | "unknown"
 
+/** Map a token count onto its {@link Severity} band. */
 export function tokenSeverity(n: number | undefined): Severity {
   if (n === undefined) return "unknown"
   if (n < 1000) return "cheap"

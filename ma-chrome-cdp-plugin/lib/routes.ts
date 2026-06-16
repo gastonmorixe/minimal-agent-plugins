@@ -30,6 +30,7 @@ export const ROUTES = [
 
 export type Route = (typeof ROUTES)[number]
 
+/** Type guard: is the string one of the known route names? */
 export function isRoute(s: string): s is Route {
   return (ROUTES as readonly string[]).includes(s)
 }

@@ -141,6 +141,7 @@ export function buildArgv(opts: BuildArgvOptions): string[] {
 // Env parsing (subprocess role)
 // ---------------------------------------------------------------------------
 
+/** Error thrown when the MA_FETCH_* env contract is violated (bad URL, unknown format, etc.). */
 export class BackendInputError extends Error {
   constructor(message: string) {
     super(message)

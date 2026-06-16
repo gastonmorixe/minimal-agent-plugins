@@ -119,9 +119,9 @@ export interface BackendDeps {
  * Opaque handle returned by `setTimeout` and consumed by `clearTimeout`.
  * Aliased once at file scope so the type resolution is stable across
  * the file (both Bun's `Timer` and Node's `Timeout` are in scope through
- * `bun-types` + its transitive `@types/node`, and `ReturnType<typeof
- * setTimeout>` resolved repeatedly can pick different overloads in
- * different positions). Using one alias forces a single resolution.
+ * `bun-types` + its transitive `@types/node`, and the same
+ * `ReturnType<typeof setTimeout>` resolved repeatedly can pick different
+ * overloads in different positions). Using one alias forces a single resolution.
  */
 type TimerHandle = ReturnType<typeof setTimeout>
 

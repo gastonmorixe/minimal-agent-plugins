@@ -11,6 +11,7 @@
  *
  * Supported frontmatter shapes:
  *
+ * ```yaml
  *   ---
  *   name: my-skill
  *   description: One-line description ending here.
@@ -37,6 +38,7 @@
  *     version: "1.0"
  *   allowed-tools: Bash(git:*) Read
  *   ---
+ * ```
  *
  * NOT supported (rejected with a clear error): flow sequences/mappings
  * (`[a, b]`, `{k: v}`), anchors/aliases (`&x`, `*x`), document
@@ -207,6 +209,7 @@ interface YamlErr {
  * Parse the constrained YAML subset our frontmatter uses.
  *
  * Grammar (informal):
+ * ```
  *   document      := entry*
  *   entry         := key ':' (inline_value | block_scalar | nested_map | folded_plain)
  *   key           := [A-Za-z0-9_-]+
@@ -214,6 +217,7 @@ interface YamlErr {
  *   block_scalar  := ('|' | '>') newline (indented lines)+
  *   nested_map    := newline (indented `key: value`)+        -- e.g. `metadata`
  *   folded_plain  := newline (indented plain text)+          -- folds to one string
+ * ```
  *
  * Disambiguation of the empty-value cases (`key:` with no inline value):
  *   - The next non-blank line dictates the shape.

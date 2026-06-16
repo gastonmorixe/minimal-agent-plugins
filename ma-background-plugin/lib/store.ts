@@ -54,7 +54,7 @@ export function serializeRecords(records: readonly JobRecord[]): string {
 /**
  * Mint the next job id: prefix + (max existing numeric suffix + 1), so ids are
  * monotonic and never reused even after a record is evicted. Pure. Default
- * prefix `"j"` -> `j1`, `j2`, ... `j100`.
+ * prefix `"j"` yields `j1`, `j2`, ... `j100`.
  */
 export function nextId(records: readonly JobRecord[], prefix = "j"): JobId {
   let max = 0

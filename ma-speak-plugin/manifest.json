@@ -64,7 +64,7 @@
         "type": "tool",
         "tool": {
           "name": "SpeakStop",
-          "description": "Stop speech that is currently playing. Pass a job handle (e.g. `s1`) from a prior Speak call to silence just that job, or omit `id` to stop ALL active speech at once (the \"be quiet now\" button). Stopping a job that already finished is a no-op and is reported as such. Use this the moment the user says to stop, or when you realize you spoke the wrong thing.",
+          "description": "Stop speech that is currently playing. Pass a job handle (e.g. `s1`) from a prior Speak call to silence just that job, or omit `id` to stop every active speech job at once (the \"be quiet now\" button). Stopping a job that already finished is a no-op and is reported as such. Use this the moment the user says to stop, or when you realize you spoke the wrong thing.",
           "input_schema": {
             "type": "object",
             "properties": {

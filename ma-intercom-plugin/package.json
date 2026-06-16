@@ -1,0 +1,18 @@
+{
+  "name": "ma-intercom-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "description": "External user plugin for minimal-agent: inter-session communication and presence. Lets any session see what other sessions are doing (presence, tasks, jobs, fleet) and message them (note, ping, interrupt, broadcast) with durable, pull-delivered, crash-safe queues. Tools: Peers, Send, Inbox.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  }
+}

@@ -10,6 +10,7 @@
  *
  * Shape:
  *
+ * ```jsonc
  *   {
  *     "plugins": {
  *       "ma-skills": {
@@ -26,6 +27,7 @@
  *       }
  *     }
  *   }
+ * ```
  *
  * @module lib/config
  */

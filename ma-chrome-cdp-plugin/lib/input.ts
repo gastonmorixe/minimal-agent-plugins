@@ -19,8 +19,10 @@ const ACTION_HELP =
  * Map the tool input to a route + validated body.
  *
  * Tool input shape:
+ * ```
  *   { action: "<route>", target?, expr?, urlSub?, url?, dir?,
  *     method?, params?, sessionId?, filter?, since?, limit?, clear?, on? }
+ * ```
  *
  * The field names mirror the route params. Validation reuses `validateBody`
  * from the route contract, so the tool and the daemon agree on requirements.

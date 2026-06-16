@@ -1,10 +1,10 @@
 /**
  * Parser for the experimental `allowed-tools` frontmatter field.
  *
- * Spec (https://agentskills.io/specification#allowed-tools-field):
- *   > A space-separated string of tools that are pre-approved to run.
- *   > Experimental. Support for this field may vary between agent
- *   > implementations.
+ * Spec (https://agentskills.io/specification#allowed-tools-field) says:
+ *   "A space-separated string of tools that are pre-approved to run.
+ *   Experimental. Support for this field may vary between agent
+ *   implementations."
  *
  * The spec doesn't pin the token grammar. We model after Claude Code's
  * convention, which the user is most likely to copy-paste:
@@ -16,7 +16,7 @@
  *
  * Tokens are split on whitespace. Each token is then parsed into:
  *
- *   { tool: string; constraint?: string }
+ *   `{ tool: string; constraint?: string }`
  *
  * Constraints inside `(...)` are preserved verbatim — the spec doesn't
  * give them semantics, and enforcement is advisory in this plugin (see

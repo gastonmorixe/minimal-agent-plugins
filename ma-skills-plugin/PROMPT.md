@@ -4,7 +4,7 @@ Use `Skill` to discover and load [Agent Skills][as]: on-demand packs of procedur
 
 ## How discovery works
 
-At session start these roots are scanned in precedence order (closer-to-user wins) to build a **Level 1** catalog (name + description + scope + path). The body of each `SKILL.md` is NOT inlined. That's Level 2, loaded on demand.
+At session start these roots are scanned in precedence order (closer-to-user wins) to build a **Level 1** catalog (name + description + scope + path). The body of each `SKILL.md` is not inlined. That's Level 2, loaded on demand.
 
 1. `<cwd>/.agents/skills/` (project, highest precedence)
 2. `<cwd>/.claude/skills/` (project, Claude Code interop, opt-in)
@@ -21,7 +21,7 @@ The catalog (shown below in this section, under `## Skills available this sessio
 - You'd otherwise re-derive procedural knowledge a skill already encodes.
 - You need a deterministic, repeatable workflow rather than ad-hoc steps.
 
-## When NOT to use a skill
+## When not to use a skill
 
 - The task is trivial or one-off. Don't activate a skill for a single shell command.
 - The catalog has no matching skill. Say so plainly, don't force a fit.
@@ -32,9 +32,9 @@ The catalog (shown below in this section, under `## Skills available this sessio
 Three actions, all addressed by skill `name` (not directory path):
 
 ```
-Skill {action: "list"}                       → enumerate everything
-Skill {action: "info", name: "<name>"}       → show one skill's frontmatter
-Skill {action: "read", name: "<name>"}       → load full SKILL.md body
+Skill {action: "list"}                       # enumerate everything
+Skill {action: "info", name: "<name>"}       # show one skill's frontmatter
+Skill {action: "read", name: "<name>"}       # load full SKILL.md body
 ```
 
 - **`list`** returns a JSON catalog plus broken/shadowed diagnostics. Use it when you're unsure what's available or when the user asks "what skills do I have?".
@@ -56,7 +56,7 @@ The spec's `allowed-tools` field (experimental) is a space-separated list like `
 
 > *Self-enforce `allowed-tools`: Bash(git:*) Read*
 
-You're on the hook to respect it. minimal-agent does NOT block tools at the dispatcher layer (yet). Treat the field as a soft contract from the skill author saying "these tools are sufficient and intended, and staying within this set keeps the workflow auditable."
+You're on the hook to respect it. minimal-agent does not block tools at the dispatcher layer yet. Treat the field as a soft contract from the skill author saying "these tools are sufficient and intended, and staying within this set keeps the workflow auditable."
 
 ## Don't
 
@@ -70,4 +70,3 @@ You're on the hook to respect it. minimal-agent does NOT block tools at the disp
 - `Skill list` content = JSON (model-readable), display = ANSI table.
 - `Skill info` content = canonical YAML-ish dump, display = compact key/value block.
 - `Skill read` content = SKILL.md body + sibling trailer + allowed-tools hint, display = first ~14 lines clipped at 240 columns. The full body is in `content`. The agent's universal output guardrail will clamp pathological `SKILL.md` files cleanly (`_truncCtx` is wired).
-

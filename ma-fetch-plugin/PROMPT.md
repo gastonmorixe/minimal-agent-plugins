@@ -8,12 +8,12 @@ Use `Fetch` to retrieve a specific web page through a real JavaScript-rendering 
 - You want to extract links from a page (`format: "links"`).
 - You need to grab raw bytes - JSON, an image, a JS bundle (`format: "original"`).
 
-## When NOT to use `Fetch`
+## When not to use `Fetch`
 
-- You're searching for information without a known URL → use `WebSearch`.
+- You're searching for information without a known URL: use `WebSearch`.
 - The user already pasted the content in the conversation.
 - A plain `curl` would suffice and the page is static HTML - but if in doubt, prefer `Fetch` since it handles JS rendering for the same cost.
-- The URL points to a *file* on the local disk → use `Read`.
+- The URL points to a *file* on the local disk: use `Read`.
 
 ## How to call it well
 
@@ -26,15 +26,15 @@ Use `Fetch` to retrieve a specific web page through a real JavaScript-rendering 
 - **Use `wait_until: "load"`** when you specifically need every subresource (images, fonts, stylesheets) to have arrived, e.g. for screenshot-adjacent workflows. Rarely the right call for text content.
 - **Use `selector`** when you only care about one piece of the page  - the browser waits for that element before dumping. Pairs well with dynamic pages.
 - **Bump `timeout_sec`** if a page is slow. Default is 30s, max is 120.
-- **Use `cleanup: "aggressive"`** when a page comes back with lots of blank lines / NBSPs / zero-width chars wasting your preview budget (common on Bloomberg, Wikipedia, GitHub nav-heavy pages: ~30 %+ of lines are blank separators around every block). Aggressive folds unicode whitespace and drops ALL blank lines. Markdown rendering may break (headings won't pair with adjacent lists in strict parsers) but the model reads lines, so that's fine. Default `"basic"` keeps single blank lines as paragraph separators. Use `"off"` only for verbatim diffing. The `<ma::agent::raw-output .../>` blob already preserves the pre-cleanup bytes regardless of level.
+- **Use `cleanup: "aggressive"`** when a page comes back with lots of blank lines / NBSPs / zero-width chars wasting your preview budget (common on Bloomberg, Wikipedia, GitHub nav-heavy pages: ~30 %+ of lines are blank separators around every block). Aggressive folds unicode whitespace and drops all blank lines. Markdown rendering may break (headings won't pair with adjacent lists in strict parsers) but the model reads lines, so that's fine. Default `"basic"` keeps single blank lines as paragraph separators. Use `"off"` only for verbatim diffing. The `<ma::agent::raw-output .../>` blob already preserves the pre-cleanup bytes regardless of level.
 
 ## Persistent sessions (cookies + `localStorage`)
 
 `Fetch` is stateless by default. Pass `session: "<name>"` to keep cookies and `localStorage` alive across calls, and a follow-up call with the same name comes back logged in.
 
 - **When to use it.** Workflows that need authentication: scraping a Twitter / X account, paging through LinkedIn search, hitting a rate-limited dashboard with a session token, anything where round 2 needs round 1's logged-in state.
-- **When NOT to use it.** One-shot reads of public pages. Don't pay the disk-I/O tax for a single `Fetch`.
-- **The shape.** Names are alnum + `-`/`_`, 1–64 chars, must start with alnum. Each name is sandboxed under `~/.minimal-agent/sessions/fetch/<name>/`. You cannot pass an absolute path, only names.
+- **When not to use it.** One-shot reads of public pages. Don't pay the disk-I/O tax for a single `Fetch`.
+- **The shape.** Names are alnum + `-`/`_`, 1-64 chars, must start with alnum. Each name is sandboxed under `~/.minimal-agent/sessions/fetch/<name>/`. You cannot pass an absolute path, only names.
 - **First call usually logs in.** Use `eval` to fill in form fields and submit:
   ```
   Fetch({

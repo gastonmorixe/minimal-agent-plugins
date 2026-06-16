@@ -37,10 +37,12 @@ import type { Item } from "./types.ts"
 /** FSM state (per-process). */
 let fsmState: State = CLOSED
 
+/** Read the current overlay FSM state. */
 export function getFsmState(): State {
   return fsmState
 }
 
+/** Replace the overlay FSM state with the given next state. */
 export function setFsmState(next: State): void {
   fsmState = next
 }

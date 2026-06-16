@@ -1,0 +1,107 @@
+# ma-intercom-plugin
+
+Inter-session communication and presence for minimal-agent. Lets any session see
+what other sessions are doing and message them, peer-to-peer, across independent
+top-level REPLs and projects on the same machine.
+
+Tools: **`Peers`** (roster + cross-plugin inspection), **`Send`** (note / ping /
+interrupt / broadcast), **`Inbox`** (re-read received messages). Plus an ambient
+footer (`⇆ intercom · N online`) and automatic per-turn delivery of received
+messages as a `<ma::agent::intercom-inbox>` block.
+
+## How it works
+
+No daemon, no sockets. Everything is small files under the agent home, which the
+host hands the plugin via `MINIMAL_AGENT_HOME` (see "Storage path" below):
+
+```
+<home>/intercom/
+  presence/<sid>.json   one record per session, rewritten each heartbeat (atomic)
+  inbox/<sid>.jsonl     per-RECIPIENT append-only message queue
+  cursors/<sid>.json    recipient-owned high-water marks {seen, woken, read}
+  self/<sid>.json       this session's own activity label (internal)
+```
+
+### Presence + liveness (derived, never trusted)
+
+A session publishes a presence record every 5s (a live-area heartbeat slot)
+carrying its pid + a timestamp. Readers **derive** liveness from heartbeat
+freshness plus a `kill(pid,0)` probe — a session never self-declares "alive" or
+"dead". So a session that dies uncleanly (crash, SIGKILL, a never-fired exit
+hook) is still reported correctly: it stops beating, its age crosses the
+thresholds, and the pid probe confirms it's gone.
+
+| heartbeat age | pid (same host) | verdict |
+|---|---|---|
+| ≤ fresh (20s) | — | `online` (+ self phase: active/idle/busy) |
+| fresh..stale (20–90s) | alive | `online` (slow beat) |
+| fresh..stale | gone | `dead` |
+| fresh..stale | cross-host (no probe) | `stale` |
+| > stale (90s) | alive | `hung` |
+| > stale | gone | `dead` |
+| > stale | cross-host | `offline` |
+
+Thresholds are env-tunable (`MINIMAL_AGENT_INTERCOM_FRESH_MS`, `_STALE_MS`,
+`_HEARTBEAT_MS`). The busy/idle phase is derived from the session transcript's
+modification time, so it's correct across resume and needs no turn-lifecycle
+events.
+
+### Delivery (two channels, each for its strength)
+
+- **Content** rides the `turnAttachments` port: a producer renders inbox
+  messages past the `seen` cursor as a `<ma::agent::intercom-inbox>` block on the
+  first user message each turn (cache-friendly, zero cost when empty, replay-safe
+  via the core `<ma::agent::*>` scrubber). Each message is shown exactly once;
+  the model dedups on envelope `id` for the at-least-once replay window.
+- **Wake** rides `prompt.inject`: the heartbeat slot, on seeing a new
+  `ping`/`interrupt` past the `woken` cursor, injects one nudge so an idle REPL
+  wakes between turns (never mid-response). `note` messages never wake.
+
+### Inter-plugin inspection
+
+`Peers inspect` aggregates a peer's state from other plugins' per-session
+sidecars — `<sid>.tasks.jsonl` (tasks), `<sid>.bgjobs.jsonl` (background jobs),
+`<sid>.subagents.jsonl` (fleet) — with tolerant local parsers, plus the host
+`sessions:read` capability for activity + a transcript excerpt. It imports none
+of those plugins; the shared `sessions/` file layout is the contract.
+
+## Intercom vs Mailbox
+
+`Mailbox` (sub-agents plugin) is intra-fleet: a lead and the workers it spawned,
+scoped to one delegation tree. `Intercom` is peer-to-peer across independent
+top-level sessions. Different scope — both exist; the tool names don't collide.
+
+## Storage path (no hardcoded `~/.minimal-agent`)
+
+The plugin never assumes where the agent keeps its data. The host resolves its
+real home once at boot and publishes it as `MINIMAL_AGENT_HOME` into the
+environment every plugin context inherits (`src/agent-paths.ts:publishAgentHomeEnv`).
+`lib/paths.ts` reads that as authoritative; the `homedir()` fallback is only for
+running this plugin's unit tests outside a host.
+
+## Config / env
+
+- `MINIMAL_AGENT_INTERCOM_HEARTBEAT_MS` (default 5000)
+- `MINIMAL_AGENT_INTERCOM_FRESH_MS` (20000) / `MINIMAL_AGENT_INTERCOM_STALE_MS` (90000)
+- `MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1` — don't publish or participate
+- `plugins.intercom.enabled=false` in `~/.minimal-agent/config.jsonc` — disable
+
+## Layout
+
+```
+lib/        pure core (functional) + thin IO shells
+  config, paths, identity, presence, liveness, envelope, inbox, cursors,
+  sidecars, roster, render, style, beat, selfstate, service, host-types
+handlers/   entry points (imperative shells)
+  peers, send, inbox, beat (slot), inbox_attachment (turn attachment), on_submit (event)
+manifest.json  tool/slot/attachment/event wiring + capabilities
+PROMPT.md      model-facing guidance
+```
+
+## Tests
+
+`bun test` from the repo root (or `cd ma-intercom-plugin && bun test`). Covers the
+liveness classifier (every band), envelope/inbox/cursor round-trips, tolerant
+sidecar parsing, roster merge, the heartbeat (publish + wake), handler smoke
+tests, and a cross-session integration test that drives two simulated sessions
+through a relocated `MINIMAL_AGENT_HOME`.

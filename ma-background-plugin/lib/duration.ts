@@ -61,11 +61,11 @@ export interface ParsedDuration {
  * Parse a raw `timeout` value into a {@link ParsedDuration}.
  *
  * Accepts:
- *   - `undefined` / `""` -> `defaultMs`
- *   - a number -> seconds (so the model can write `90`)
- *   - `"<n><unit>"` -> `ms|s|m|h|d` (e.g. `"10m"`, `"2h"`, `"1d"`, `"500ms"`)
- *   - `"<n>"` (string) -> seconds
- *   - `"infinite"` / `"inf"` / `"none"` / `"never"` / `"0"` -> infinite, IF allowed
+ *   - `undefined` / `""` becomes `defaultMs`
+ *   - a number is read as seconds (so the model can write `90`)
+ *   - `"<n><unit>"` with unit `ms|s|m|h|d` (e.g. `"10m"`, `"2h"`, `"1d"`, `"500ms"`)
+ *   - `"<n>"` (string) is read as seconds
+ *   - `"infinite"` / `"inf"` / `"none"` / `"never"` / `"0"` mean infinite, IF allowed
  *
  * A finite duration is clamped into `[minMs, maxMs]`. Returns a {@link Result}
  * so an invalid string is a typed failure, never a throw.

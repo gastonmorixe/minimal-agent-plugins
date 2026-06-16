@@ -23,6 +23,11 @@ export interface DispatchDeps {
   frameSettleMs?: number
 }
 
+/**
+ * Execute one validated route against the live CDP connection and return the
+ * response body. The single switch that maps every route (ping, targets, eval,
+ * nav, downloads, send, events, ...) onto protocol calls.
+ */
 export async function dispatch(
   conn: CdpConnection,
   route: Route,
