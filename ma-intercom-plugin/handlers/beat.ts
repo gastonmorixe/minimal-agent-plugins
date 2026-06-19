@@ -98,7 +98,7 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
   // doesn't pollute the agent's stdout/transcript pipeline.
   if (result.fresh.length > 0) {
     try {
-      ctx.stderr.write("\n" + renderArrival(result.fresh) + "\n")
+      ctx.stderr.write(renderArrival(result.fresh) + "\n")
     } catch {
       // best-effort
     }

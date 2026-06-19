@@ -56,13 +56,25 @@ export function isMessageKind(v: unknown): v is MessageKind {
 }
 
 /**
- * Max body length. A message line must stay well under PIPE_BUF (4096 on macOS/
- * Linux) so concurrent `O_APPEND` writes from many senders never interleave
- * mid-line (which would corrupt the JSONL and silently drop messages). We budget
- * ~2KB for the body; the rest of the envelope (ids, from-block, ts) adds a few
- * hundred bytes, keeping the whole serialized line comfortably atomic.
+ * Max body length enforced at envelope build time.
+ *
+ * The hard constraint is PIPE_BUF (4096 bytes on macOS/Linux). Multiple
+ * sessions write to the same inbox file concurrently via `O_APPEND`
+ * (appendFileSync in lib/inbox.ts). POSIX guarantees that writes under
+ * PIPE_BUF are atomic — two concurrent appends won't interleave bytes
+ * mid-line. If they did, the JSONL would corrupt and parseInbox silently
+ * drops corrupt lines — the message is permanently lost.
+ *
+ * A serialized envelope has ~300-350 chars of metadata (v, id, ts, kind,
+ * the full `from` block, to, scope), so the safe body ceiling is:
+ *
+ *   PIPE_BUF (4096) - metadata (~350) - margin (~200) ≈ 3,546
+ *
+ * We set 3,500 — well under the ceiling, enough for any reasonable
+ * coordination message, and clampBody's truncation notice still marks
+ * oversized sends so the sender knows to split across two messages.
  */
-export const MAX_BODY_LEN = 2_000
+export const MAX_BODY_LEN = 3_500
 
 /**
  * Generate an envelope id. Sortable-ish (base36 ms prefix per sender) and

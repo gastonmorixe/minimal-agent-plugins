@@ -13,7 +13,7 @@ import type { PresenceRecord } from "./presence.ts"
 import type { RosterCounts, RosterRow } from "./roster.ts"
 import { sanitizePeerLine, sanitizePeerText } from "./sanitize.ts"
 import type { PeerFleetMember, PeerJob, PeerTask, TaskSummary } from "./sidecars.ts"
-import { bold, cyan, dim, gray, green, magenta, red, yellow } from "./style.ts"
+import { bold, cyan, dim, dimCyan, gray, green, magenta, red, yellow } from "./style.ts"
 
 // ---------------------------------------------------------------------------
 // Time helpers
@@ -248,17 +248,26 @@ export function renderInspectDisplay(b: InspectBundle): string {
 /** Render a TUI notification for newly arrived messages (written to stderr by the beat handler). */
 export function renderArrival(fresh: readonly Envelope[]): string {
   const lines: string[] = []
+  const count = fresh.length
+  const label = count === 1 ? "1 new message" : `${count} new messages`
+  lines.push(`  ${dimCyan("╭")} ${magenta("⇆")} ${gray("intercom")} ${dim("·")} ${dim(label)}`)
   for (const e of fresh) {
     const glyph = e.kind === "interrupt" ? red("◆") : cyan("◇")
     const verdict = e.kind === "interrupt" ? red(" INTERRUPT ") : ""
     const short = sanitizePeerLine(e.from.short)
     const model = e.from.model ? sanitizePeerLine(e.from.model) : "?"
     const ts = e.ts.slice(11, 19)
-    lines.push(`${magenta("⇆")} ${verdict}${glyph} ${bold(short)} (${dim(model)}) at ${ts}`)
+    lines.push(
+      `  ${dimCyan("│")} ${magenta("⇆")} ${verdict}${glyph} ${bold(short)} (${dim(model)}) at ${ts}`,
+    )
     for (const bl of sanitizePeerText(e.body).split("\n")) {
-      const clipped = bl.length > 120 ? bl.slice(0, 120) + "…" : bl
-      lines.push(`  ${clipped}`)
+      lines.push(`  ${dimCyan("│")} ${bl}`)
+    }
+    // blank separator between messages when there are multiple
+    if (fresh.length > 1 && e !== fresh[fresh.length - 1]) {
+      lines.push(`  ${dimCyan("│")}`)
     }
   }
+  lines.push(`  ${dimCyan("╰")}`)
   return lines.join("\n")
 }

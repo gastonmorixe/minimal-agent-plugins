@@ -8,17 +8,10 @@
 import { isMessageKind, type MessageKind } from "../lib/envelope.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { send, serviceDepsFromAgent } from "../lib/service.ts"
-import { bold, cyan, dim, gray, red } from "../lib/style.ts"
+import { bold, cyan, gray, red } from "../lib/style.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
-}
-
-/** Truncate a message body to a single short line for the display. */
-function preview(body: string): string {
-  const flat = body.replace(/\s+/g, " ").trim()
-  if (flat.length <= 60) return flat
-  return `${flat.slice(0, 57)}...`
 }
 
 /** Tool handler for `Send`. */
@@ -68,7 +61,7 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
   })
 
   const kindGlyph = kind === "interrupt" ? red("◆") : cyan("◇")
-  const header = `${gray(`send ${kind} → ${outcome.scope}`)}`
+  const header = gray(`send ${kind} → ${outcome.scope}`)
 
   if (outcome.delivered.length === 0) {
     const why =
@@ -94,6 +87,6 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
     kind: "tool_result",
     content: `Delivered ${kind} to ${outcome.delivered.length} session(s): ${names}.${skipNote}${wake} (envelope ${outcome.envelopeId})`,
     displayHeader: header,
-    display: `${kindGlyph} ${bold(names)} ${dim(preview(body))}`,
+    display: `${kindGlyph} ${bold(names)}\n\n${body}`,
   }
 }
