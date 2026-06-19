@@ -39,8 +39,7 @@ const FALLBACK: Record<string, string> = {
 let palette: Record<string, string> | null = null
 
 try {
-  const raw =
-    typeof process !== "undefined" ? process.env?.MINIMAL_AGENT_PALETTE : undefined
+  const raw = typeof process !== "undefined" ? process.env?.MINIMAL_AGENT_PALETTE : undefined
   if (raw) {
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -102,4 +101,13 @@ export function magenta(s: string): string {
 /** Gray foreground. Not in the host palette; falls back to BRIGHT_BLACK. */
 export function gray(s: string): string {
   return `${fgOpen("gray")}${s}${fgReset}`
+}
+
+/** Dim cyan for frame connectors (`╭`, `│`, `╰`). */
+const DIM_CYAN = "\x1b[2;36m"
+const RESET_DIM_CYAN = "\x1b[22;39m"
+
+/** Dim cyan formatted text. */
+export function dimCyan(s: string): string {
+  return `${DIM_CYAN}${s}${RESET_DIM_CYAN}`
 }

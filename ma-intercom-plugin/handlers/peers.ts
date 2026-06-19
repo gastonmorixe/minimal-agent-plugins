@@ -12,12 +12,7 @@
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { livenessLabel } from "../lib/liveness.ts"
-import {
-  renderInspectDisplay,
-  renderInspectText,
-  renderRosterDisplay,
-  renderRosterText,
-} from "../lib/render.ts"
+import { renderInspectText, renderRosterDisplay, renderRosterText } from "../lib/render.ts"
 import { rosterCounts } from "../lib/roster.ts"
 import {
   ALL_INSPECT_SECTIONS,
@@ -118,14 +113,12 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
         kind: "tool_result",
         content: JSON.stringify(bundle, null, 2),
         displayHeader: gray(`inspect ${bold(res.row.record.short)}`),
-        display: renderInspectDisplay(bundle),
       }
     }
     return {
       kind: "tool_result",
       content: renderInspectText(bundle),
       displayHeader: gray(`inspect ${bold(res.row.record.short)}`),
-      display: renderInspectDisplay(bundle),
     }
   }
 
