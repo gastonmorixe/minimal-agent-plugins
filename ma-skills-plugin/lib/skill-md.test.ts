@@ -35,8 +35,7 @@ description: One line.
 describe("splitFrontmatter", () => {
   test("happy path: split frontmatter + body", () => {
     const r = splitFrontmatter("---\nname: a\n---\n# Body")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.frontmatter).toBe("name: a")
     expect(r.body).toBe("# Body")
   })
@@ -48,37 +47,32 @@ describe("splitFrontmatter", () => {
 
   test("rejects when closing --- is missing", () => {
     const r = splitFrontmatter("---\nname: a\nno close")
-    expect(r.ok).toBe(false)
-    if (r.ok) return
+    if (r.ok) return expect(r.ok).toBeFalsy()
     expect(r.error).toMatch(/closing/i)
   })
 
   test("tolerates UTF-8 BOM at file start", () => {
     const r = splitFrontmatter("\ufeff---\nname: a\n---\nbody")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.frontmatter).toBe("name: a")
   })
 
   test("handles CRLF line endings", () => {
     const r = splitFrontmatter("---\r\nname: a\r\n---\r\nhi\r\n")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.frontmatter.trim()).toBe("name: a")
     expect(r.body.replace(/\r/g, "")).toBe("hi\n")
   })
 
   test("body preserves blank lines", () => {
     const r = splitFrontmatter("---\nname: a\n---\nL1\n\n\nL2")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.body).toBe("L1\n\n\nL2")
   })
 
   test("body absent (frontmatter-only file)", () => {
     const r = splitFrontmatter("---\nname: a\n---\n")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.body).toBe("")
   })
 })
@@ -90,36 +84,31 @@ describe("splitFrontmatter", () => {
 describe("parseFrontmatterYaml — scalars", () => {
   test("bare string", () => {
     const r = parseFrontmatterYaml("name: my-skill")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.name).toBe("my-skill")
   })
 
   test("double-quoted string with escapes", () => {
     const r = parseFrontmatterYaml('description: "Line\\nbreak"')
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Line\nbreak")
   })
 
   test("single-quoted string with '' escape", () => {
     const r = parseFrontmatterYaml("name: 'it''s here'")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.name).toBe("it's here")
   })
 
   test("strips trailing # comment after whitespace", () => {
     const r = parseFrontmatterYaml("name: my-skill   # this is a note")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.name).toBe("my-skill")
   })
 
   test("does not treat # without whitespace as comment", () => {
     const r = parseFrontmatterYaml("description: foo#bar")
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("foo#bar")
   })
 
@@ -145,8 +134,7 @@ describe("parseFrontmatterYaml — scalars", () => {
 
   test("skips blanks and comment-only lines", () => {
     const r = parseFrontmatterYaml(`# header comment\n\nname: a\n\n  \n# trailing`)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.name).toBe("a")
   })
 
@@ -164,8 +152,7 @@ describe("parseFrontmatterYaml — block scalars", () => {
   test("literal block scalar (|) preserves newlines", () => {
     const text = `description: |\n  Line one.\n  Line two.\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Line one.\nLine two.")
     expect(r.value.name).toBe("x")
   })
@@ -173,16 +160,14 @@ describe("parseFrontmatterYaml — block scalars", () => {
   test("folded block scalar (>) joins lines with space", () => {
     const text = `description: >\n  Line one\n  Line two\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Line one Line two")
   })
 
   test("block scalar trims trailing empty lines", () => {
     const text = `description: |\n  x\n\n\nname: y`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("x")
     expect(r.value.name).toBe("y")
   })
@@ -192,8 +177,7 @@ describe("parseFrontmatterYaml — block scalars", () => {
     // empties, so the practical result is identical to bare `|` here.
     const text = `description: |-\n  Line one.\n  Line two.\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Line one.\nLine two.")
     expect(r.value.name).toBe("x")
   })
@@ -201,8 +185,7 @@ describe("parseFrontmatterYaml — block scalars", () => {
   test("literal block scalar with keep chomping (|+)", () => {
     const text = `description: |+\n  Hi.\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Hi.")
     expect(r.value.name).toBe("x")
   })
@@ -214,8 +197,7 @@ describe("parseFrontmatterYaml — block scalars", () => {
       `  relying on training data.\n` +
       `name: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Read source code instead of relying on training data.")
     expect(r.value.name).toBe("x")
   })
@@ -223,8 +205,7 @@ describe("parseFrontmatterYaml — block scalars", () => {
   test("folded block scalar with keep chomping (>+)", () => {
     const text = `description: >+\n  one two\n  three four\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("one two three four")
   })
 })
@@ -233,16 +214,14 @@ describe("parseFrontmatterYaml — nested map (metadata)", () => {
   test("simple nested map", () => {
     const text = `name: x\nmetadata:\n  author: alice\n  version: "1.0"\n`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.metadata).toEqual({ author: "alice", version: "1.0" })
   })
 
   test("nested map de-dents back to top level", () => {
     const text = `metadata:\n  k: v\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.metadata).toEqual({ k: "v" })
     expect(r.value.name).toBe("x")
   })
@@ -250,8 +229,7 @@ describe("parseFrontmatterYaml — nested map (metadata)", () => {
   test("empty value with no nested entries becomes empty string", () => {
     const text = `metadata:\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.metadata).toBe("")
     expect(r.value.name).toBe("x")
   })
@@ -259,8 +237,7 @@ describe("parseFrontmatterYaml — nested map (metadata)", () => {
   test("duplicate key inside a nested map is flagged (mirrors top-level)", () => {
     const text = `name: x\nmetadata:\n  author: a\n  author: b\n`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(false)
-    if (r.ok) return
+    if (r.ok) return expect(r.ok).toBeFalsy()
     expect(r.errors.some((e) => /duplicate key "author"/.test(e.message))).toBe(true)
   })
 })
@@ -276,8 +253,7 @@ describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
   test("indented continuation after empty key: folds to single line", () => {
     const text = `description:\n  Line one continuing\n  on the second line.\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("Line one continuing on the second line.")
     expect(r.value.name).toBe("x")
   })
@@ -296,8 +272,7 @@ describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
       `  author: vercel\n` +
       `  version: '1.0.0'\n`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.name).toBe("vercel-react-native-skills")
     expect(r.value.description).toBe(
       "React Native and Expo best practices for building performant mobile apps. Use " +
@@ -312,16 +287,14 @@ describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
   test("blank line between key and continuation tolerated", () => {
     const text = `description:\n\n  text after blank\n  line\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("text after blank line")
   })
 
   test("de-dents back to top-level key correctly", () => {
     const text = `description:\n  first line\n  second line\nlicense: MIT\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.description).toBe("first line second line")
     expect(r.value.license).toBe("MIT")
     expect(r.value.name).toBe("x")
@@ -332,8 +305,7 @@ describe("parseFrontmatterYaml — implicit folded plain scalar", () => {
     // treated as a nested map (current behaviour for `metadata:`).
     const text = `metadata:\n  author: alice\n  topic: testing\nname: x`
     const r = parseFrontmatterYaml(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.metadata).toEqual({ author: "alice", topic: "testing" })
   })
 })
@@ -587,8 +559,7 @@ describe("validateFrontmatter — license / compatibility / metadata / allowed-t
 describe("parseSkillMd — end-to-end", () => {
   test("minimal happy path", () => {
     const r = parseSkillMd(MIN)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.front.name).toBe("my-skill")
     expect(r.value.front.description).toBe("One line.")
     expect(r.value.body).toBe("")
@@ -599,8 +570,7 @@ describe("parseSkillMd — end-to-end", () => {
     // the `key: value` regex and reject the whole file.
     const text = "---\r\nname: my-skill\r\ndescription: One line.\r\n---\r\nBody.\r\n"
     const r = parseSkillMd(text, { expectedDirName: "my-skill" })
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.front.name).toBe("my-skill")
     expect(r.value.front.description).toBe("One line.")
   })
@@ -608,8 +578,7 @@ describe("parseSkillMd — end-to-end", () => {
   test("CRLF literal block scalar has no stray carriage returns", () => {
     const text = "---\r\nname: my-skill\r\ndescription: |\r\n  line1\r\n  line2\r\n---\r\n"
     const r = parseSkillMd(text, { expectedDirName: "my-skill" })
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.front.description).toBe("line1\nline2")
   })
 
@@ -628,8 +597,7 @@ allowed-tools: Bash(pdftotext:*) Read
 Use \`pdftotext\` to extract text.
 `
     const r = parseSkillMd(text, { expectedDirName: "pdf-processing" })
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.front.name).toBe("pdf-processing")
     expect(r.value.front.license).toBe("Apache-2.0")
     expect(r.value.front.compatibility).toBe("Requires Python 3.14+ and uv")
@@ -640,8 +608,7 @@ Use \`pdftotext\` to extract text.
 
   test("reports missing required fields", () => {
     const r = parseSkillMd("---\n---\n")
-    expect(r.ok).toBe(false)
-    if (r.ok) return
+    if (r.ok) return expect(r.ok).toBeFalsy()
     const msgs = r.errors.map((e) => e.message).join(" | ")
     expect(msgs).toMatch(/name/i)
     expect(msgs).toMatch(/description/i)
@@ -649,15 +616,13 @@ Use \`pdftotext\` to extract text.
 
   test("collects multiple errors at once", () => {
     const r = parseSkillMd("---\nname: BAD\ndescription:\n---\n")
-    expect(r.ok).toBe(false)
-    if (r.ok) return
+    if (r.ok) return expect(r.ok).toBeFalsy()
     expect(r.errors.length).toBeGreaterThanOrEqual(2)
   })
 
   test("malformed frontmatter delimiter surfaces split error", () => {
     const r = parseSkillMd("no frontmatter here")
-    expect(r.ok).toBe(false)
-    if (r.ok) return
+    if (r.ok) return expect(r.ok).toBeFalsy()
     expect(r.errors[0].message).toMatch(/frontmatter delimiter/i)
   })
 
@@ -671,8 +636,324 @@ print("hi")
 \`\`\`
 `
     const r = parseSkillMd(text)
-    expect(r.ok).toBe(true)
-    if (!r.ok) return
+    if (!r.ok) return expect(r.ok).toBeTruthy()
     expect(r.value.body).toContain('print("hi")')
+  })
+})
+
+// ===========================================================================
+// validateFrontmatter — metadata.tools parsing
+// ===========================================================================
+
+describe("validateFrontmatter — metadata.tools", () => {
+  const desc = "A non-empty description."
+
+  function validScriptTool(): Record<string, unknown> {
+    return {
+      name: "MyTool",
+      description: "Does a thing.",
+      parameters: { type: "object", properties: { input: { type: "string" } } },
+      handler: { type: "script", path: "scripts/do_it.sh" },
+    }
+  }
+
+  function validInlineTool(): Record<string, unknown> {
+    return {
+      name: "InlineTool",
+      description: "Does inline work.",
+      parameters: { type: "object", properties: { prompt: { type: "string" } } },
+      handler: { type: "inline", promptTemplate: "Process: {input}" },
+    }
+  }
+
+  test("valid single script tool → front.tools populated", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = validScriptTool()
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeDefined()
+    expect(out.tools).toHaveLength(1)
+    expect(out.tools![0].name).toBe("MyTool")
+    expect(out.tools![0].handler.type).toBe("script")
+    expect((out.tools![0].handler as { type: string; path: string }).path).toBe("scripts/do_it.sh")
+  })
+
+  test("valid inline handler tool → front.tools populated", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = validInlineTool()
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeDefined()
+    expect(out.tools).toHaveLength(1)
+    expect(out.tools![0].handler.type).toBe("inline")
+    expect((out.tools![0].handler as { type: string; promptTemplate: string }).promptTemplate).toBe(
+      "Process: {input}",
+    )
+  })
+
+  test("both script and inline tools in same array", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tools = [validScriptTool(), validInlineTool()]
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify(tools) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeDefined()
+    expect(out.tools).toHaveLength(2)
+    expect(out.tools![0].handler.type).toBe("script")
+    expect(out.tools![1].handler.type).toBe("inline")
+  })
+
+  test("no metadata.tools → front.tools undefined (backward compat)", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter({ name: "ok", description: desc }, {}, errors)
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("metadata without tools key → front.tools undefined", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      { name: "ok", description: desc, metadata: { author: "alice", version: "1.0" } },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("invalid JSON in metadata.tools → tools undefined, skill stays valid", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      { name: "ok", description: desc, metadata: { tools: "not-valid-json" } },
+      {},
+      errors,
+    )
+    // Non-fatal: skill stays valid, just without tools
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("metadata.tools not a JSON array → tools undefined, skill stays valid", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      { name: "ok", description: desc, metadata: { tools: JSON.stringify({ name: "x" }) } },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("missing required name → tools undefined, skill stays valid", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([{ ...validScriptTool(), name: "" }]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("missing required description → tools undefined, skill stays valid", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([{ ...validScriptTool(), description: "" }]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("missing parameters → tools undefined", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: {
+          tools: JSON.stringify([
+            { name: "MyTool", description: "d", handler: { type: "script", path: "x" } },
+          ]),
+        },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("parameters with wrong type still accepted (validateToolSpec is permissive)", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = {
+      name: "MyTool",
+      description: "d",
+      parameters: { type: "string", properties: {} },
+      handler: { type: "script", path: "x" },
+    }
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    // validateToolSpec doesn't reject non-"object" type at the top level
+    // (JSON Schema allows absent type, any type, or arrays of types)
+    expect(out.tools).toBeDefined()
+    expect(out.tools?.length).toBe(1)
+  })
+
+  test("missing handler → tools undefined", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = {
+      name: "MyTool",
+      description: "d",
+      parameters: { type: "object", properties: {} },
+    }
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("handler with wrong type → tools undefined", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = {
+      name: "MyTool",
+      description: "d",
+      parameters: { type: "object", properties: {} },
+      handler: { type: "unknown" },
+    }
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("script handler missing path → tools undefined", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = {
+      name: "MyTool",
+      description: "d",
+      parameters: { type: "object", properties: {} },
+      handler: { type: "script" },
+    }
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("inline handler missing promptTemplate → tools undefined", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const tool = {
+      name: "MyTool",
+      description: "d",
+      parameters: { type: "object", properties: {} },
+      handler: { type: "inline" },
+    }
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([tool]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
+  })
+
+  test("mixed valid + invalid tools: invalid silently dropped, valid kept", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const bad = { name: "", description: "d", parameters: {}, handler: {} }
+    const good = validScriptTool()
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([bad, good]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeDefined()
+    expect(out.tools).toHaveLength(1)
+    expect(out.tools![0].name).toBe("MyTool")
+  })
+
+  test("all invalid tools → tools undefined, no errors", () => {
+    const errors: Parameters<typeof validateFrontmatter>[2] = []
+    const out = validateFrontmatter(
+      {
+        name: "ok",
+        description: desc,
+        metadata: { tools: JSON.stringify([{ name: "", description: "", handler: {} }]) },
+      },
+      {},
+      errors,
+    )
+    expect(errors).toEqual([])
+    expect(out.tools).toBeUndefined()
   })
 })

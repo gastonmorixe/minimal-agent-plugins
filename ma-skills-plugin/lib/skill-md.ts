@@ -47,7 +47,8 @@
  * @module lib/skill-md
  */
 
-import type { SkillFrontmatter } from "./types.ts"
+import { validateToolSpec } from "./tool-registry.ts"
+import type { SkillFrontmatter, ToolSpec } from "./types.ts"
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -555,8 +556,7 @@ function consumeNestedMap(
     const m = ln.slice(baseIndent).match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:(.*)$/)
     if (!m) break
     const k = m[1]
-    const rest = stripInlineComment(m[2]).trim()
-    const parsed = parseScalar(rest)
+    let rest = stripInlineComment(m[2]).trim()
     // Flag duplicate nested keys, mirroring the top-level guarantee
     // (a `metadata.author` set twice is an authoring error). Keep the
     // FIRST value so the surfaced error and retained data agree.
@@ -564,6 +564,61 @@ function consumeNestedMap(
       duplicates.push({ message: `duplicate key "${k}" (line ${i + 1})`, line: i + 1 })
       continue
     }
+    // Block scalar indicator in a nested map value (e.g. metadata.tools: |).
+    // Consume the indented block and store the unfolded result.
+    const blockHeader = rest.match(/^([|>])([-+])?$/)
+    if (blockHeader && i + 1 < lines.length) {
+      const style = blockHeader[1]
+      const block = consumeBlockScalar(lines, i + 1)
+      if (style === "|") {
+        entries.set(k, block.value)
+      } else {
+        entries.set(
+          k,
+          block.value
+            .split("\n")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+            .join(" "),
+        )
+      }
+      i = block.nextIndex - 1 // -1 because the for loop will increment
+      continue
+    }
+    // Empty value with an indented block that does NOT look like a sub-map:
+    // treat as a folded plain scalar (YAML 1.2 default).
+    if (rest.length === 0 && i + 1 < lines.length) {
+      let peekIdx = i + 1
+      while (peekIdx < lines.length) {
+        const pl = lines[peekIdx]
+        if (pl.trim().length === 0 || pl.trimStart().startsWith("#")) {
+          peekIdx++
+          continue
+        }
+        break
+      }
+      const peekTrim = (lines[peekIdx] ?? "").trimStart()
+      if (peekIdx >= lines.length || !/^\s/.test(lines[peekIdx] ?? "")) {
+        entries.set(k, "")
+      } else if (/^[A-Za-z][A-Za-z0-9_-]*\s*:/.test(peekTrim)) {
+        // Looks like a sub-sub-map — but we only go one nesting deep.
+        // Store empty string; the value is a map the caller can't express.
+        entries.set(k, "")
+      } else {
+        const block = consumeBlockScalar(lines, i + 1)
+        entries.set(
+          k,
+          block.value
+            .split("\n")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+            .join(" "),
+        )
+        i = block.nextIndex - 1
+      }
+      continue
+    }
+    const parsed = parseScalar(rest)
     // For nested maps we coerce to string regardless of inner errors —
     // the strict path is the top-level scalar parser. If the value
     // failed, keep the raw text so downstream validation flags it.
@@ -661,6 +716,28 @@ export function validateFrontmatter(
     }
   }
 
+  // Optional: tools declared via `metadata.tools` JSON.
+  // Validation failures here are non-fatal: the skill stays valid, just
+  // without tools.  We don't push into `errors` because that would reject
+  // the whole skill.
+  if (out.metadata?.["tools"] !== undefined) {
+    try {
+      const parsed = JSON.parse(out.metadata["tools"])
+      if (Array.isArray(parsed)) {
+        const validated: ToolSpec[] = []
+        for (let i = 0; i < parsed.length; i++) {
+          const entry = parsed[i]
+          const v = validateToolSpec(entry)
+          if (!v.ok) continue
+          validated.push(v.value)
+        }
+        if (validated.length > 0) out.tools = validated
+      }
+    } catch {
+      // invalid JSON — silently dropped, skill stays valid
+    }
+  }
+
   // Optional: allowed-tools (experimental)
   // We tolerate both kebab-case (per spec) and the legacy camelCase
   // `allowedTools` so users coming from various tooling can paste
@@ -714,3 +791,5 @@ function validateDescription(desc: string): string | null {
   }
   return null
 }
+
+/** Placeholder: all ToolSpec validation is now delegated to validateToolSpec in tool-registry.ts. */
