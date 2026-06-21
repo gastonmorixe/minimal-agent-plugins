@@ -34,10 +34,16 @@
             },
             "required": ["command"],
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "BackgroundJobsBackgroundRun is 30 chars, name already reads as background tool"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/bg_run.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/bg_run.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "▶",
       "color": "cyan"
@@ -58,10 +64,16 @@
               }
             },
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "BackgroundJobsBackgroundStatus is verbose, name already reads as background tool"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/bg_status.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/bg_status.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "◎",
       "color": "violet"
@@ -107,10 +119,16 @@
             },
             "required": ["id"],
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "BackgroundJobsBackgroundLogs is verbose, name already reads as background tool"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/bg_logs.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/bg_logs.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "▤",
       "color": "sky"
@@ -140,10 +158,16 @@
               }
             },
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "BackgroundJobsBackgroundStop is verbose, name already reads as background tool"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/bg_stop.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/bg_stop.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "■",
       "color": "red"
@@ -152,7 +176,11 @@
   "liveAreaSlots": [
     {
       "id": "bg_supervisor",
-      "handler": { "type": "module", "path": "./handlers/heartbeat.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/heartbeat.ts",
+        "export": "default"
+      },
       "position": "footer",
       "refreshMs": 1000,
       "timeoutMs": 4000

@@ -2,7 +2,7 @@
   "id": "intercom",
   "name": "Intercom",
   "version": "0.1.0",
-  "description": "Inter-session communication and presence. Lets any session see what other sessions are doing (live roster with derived liveness, plus deep inspection of a peer's tasks, background jobs, and sub-agent fleet) and message them (note, ping, interrupt, or broadcast). Messages are durable, pull-delivered as a per-turn <ma::agent::intercom-inbox> block, and crash/resume safe; ping/interrupt wake an idle peer between turns. Tools: Peers, Send, Inbox. Disable presence with MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
+  "description": "Inter-session communication and presence. Lets any session see what other sessions are doing (live roster with derived liveness, plus deep inspection of a peer's tasks, background jobs, and sub-agent fleet) and message them (note, ping, interrupt, or broadcast). Messages are durable, pull-delivered as a per-turn <ma::agent::intercom-inbox> block, and crash/resume safe; ping/interrupt wake an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. Disable presence with MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
   "prompt": "./PROMPT.md",
   "capabilities": ["sessions:read"],
   "tuis": [
@@ -12,7 +12,7 @@
         "type": "tool",
         "tool": {
           "name": "Peers",
-          "description": "See other minimal-agent sessions running on this machine and what they are doing. action:\"list\" (the default) returns the live roster: every messageable peer with its short id, derived liveness (online, idle, busy, stale, hung, dead, or offline), model, cwd, and current activity. action:\"inspect\" deep-dives one peer, gathering its task list, background jobs, sub-agent fleet, recent activity, and a transcript excerpt from across plugins. Liveness is derived from heartbeat freshness plus a pid probe, so a session that crashed without exiting cleanly still reads as stale, hung, or dead instead of falsely online. Pass liveOnly:true to drop gone sessions from the list. Read-only. Example: Peers({action:\"inspect\", peer:\"a1b2c3d4\", include:[\"tasks\",\"activity\"]}).",
+          "description": "See other minimal-agent sessions running on this machine and what they are doing. action:\"list\" (the default) returns the live roster: every messageable peer with its short id, derived liveness (online, idle, busy, stale, hung, dead, or offline), model, cwd, and current activity. action:\"inspect\" deep-dives one peer, gathering its task list, background jobs, sub-agent fleet, recent activity, and a transcript excerpt from across plugins. Liveness is derived from heartbeat freshness plus a pid probe, so a session that crashed without exiting cleanly still reads as stale, hung, or dead instead of falsely online. Pass liveOnly:true to drop gone sessions from the list. Read-only. Example: IntercomPeers({action:\"inspect\", peer:\"a1b2c3d4\", include:[\"tasks\",\"activity\"]}).",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -58,7 +58,7 @@
         "type": "tool",
         "tool": {
           "name": "Send",
-          "description": "Send a message to another minimal-agent session: a message or an interrupt. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions that share your project directory. `kind` defaults to \"message\", which queues if the recipient is busy or wakes them between turns if idle; \"interrupt\" signals urgency with a distinctive TUI glyph (preemptive mid-turn delivery is not yet implemented at the host level). Messages are durable and survive crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run Peers first to see who is online. Example: Send({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
+          "description": "Send a message to another minimal-agent session: a message or an interrupt. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions that share your project directory. `kind` defaults to \"message\", which queues if the recipient is busy or wakes them between turns if idle; \"interrupt\" signals urgency with a distinctive TUI glyph (preemptive mid-turn delivery is not yet implemented at the host level). Messages are durable and survive crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run IntercomPeers first to see who is online. Example: IntercomSend({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -96,7 +96,7 @@
         "type": "tool",
         "tool": {
           "name": "Inbox",
-          "description": "Re-read intercom messages you have already received. New messages are delivered to you automatically each turn as a <ma::agent::intercom-inbox> block, so you rarely need this tool. Reach for it to review history or to double-check after the fact. scope:\"unread\" (the default) shows messages since your last Inbox read. scope:\"recent\" shows the latest messages regardless. Reading here never hides the automatic per-turn delivery. Example: Inbox({scope:\"recent\", limit:10}).",
+          "description": "Re-read intercom messages you have already received. New messages are delivered to you automatically each turn as a <ma::agent::intercom-inbox> block, so you rarely need this tool. Reach for it to review history or to double-check after the fact. scope:\"unread\" (the default) shows messages since your last Inbox read. scope:\"recent\" shows the latest messages regardless. Reading here never hides the automatic per-turn delivery. Example: IntercomInbox({scope:\"recent\", limit:10}).",
           "input_schema": {
             "type": "object",
             "properties": {

@@ -2,14 +2,14 @@
 
 Other minimal-agent sessions may be running right now on this machine, in other
 terminals and other projects. Intercom lets you see them and message them. It has
-three tools: `Peers` (who is out there and what they are doing), `Send` (message
-one peer or many), and `Inbox` (re-read what you got).
+three tools: `IntercomPeers` (who is out there and what they are doing), `IntercomSend` (message
+one peer or many), and `IntercomInbox` (re-read what you got).
 
 Intercom is peer-to-peer between independent top-level sessions. It differs from
-`Mailbox`: `Mailbox` talks to the sub-agent workers you spawned inside one
+`SubAgentsMailbox`: `SubAgentsMailbox` talks to the sub-agent workers you spawned inside one
 delegation, while `Intercom` reaches whole sessions you did not spawn, like a
 different human, another project, or another window. Rule of thumb: workers you
-launched go through `Mailbox`, separate sessions go through `Intercom`. A
+launched go through `SubAgentsMailbox`, separate sessions go through `Intercom`. A
 sub-agent worker is never an intercom peer.
 
 ## Seeing other sessions
@@ -67,7 +67,7 @@ A normal send reads like this:
 The roster shows the 8-char handle, but `to` and `peer` accept any prefix of a
 session id or the full id, so `"a1b2"`, `"a1b2c3d4"`, and the whole uuid all
 resolve to the same peer. You cannot message yourself. If a prefix is unknown or
-matches more than one session, `Send` says so; run `Peers` to get the right
+matches more than one session, `IntercomSend` says so; run `IntercomPeers` to get the right
 handle. Add `replyTo` with a message id to thread a reply (display only).
 
 ## Receiving is automatic
@@ -101,7 +101,7 @@ Two things to keep in mind:
   block before you reply.
 
 `Inbox({scope})` only re-reads what already arrived: `scope:"recent"` for the
-latest messages, `scope:"unread"` for anything since your last `Inbox` read. You
+latest messages, `scope:"unread"` for anything since your last `IntercomInbox` read. You
 rarely need it, because delivery already happens on its own.
 
 ## Good habits
