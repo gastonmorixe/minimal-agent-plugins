@@ -159,7 +159,9 @@
               },
               "modifiers": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "keypress: modifier names to hold (cmd, shift, alt, ctrl, fn)."
               },
               "holdMs": {
@@ -204,7 +206,9 @@
             },
             "required": ["action"],
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "ComputerUseComputer is long and Computer already reads fine"
         }
       },
       "handler": {

@@ -3,7 +3,10 @@
   "name": "Fetch",
   "version": "0.1.0",
   "description": "Fetch web pages with a real JS-rendering headless browser. Tool: Fetch.",
-  "setup": { "type": "module", "path": "./setup.ts" },
+  "setup": {
+    "type": "module",
+    "path": "./setup.ts"
+  },
   "tuis": [
     {
       "id": "fetch",
@@ -60,7 +63,9 @@
             },
             "required": ["url"],
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "perfect collision: plugin IS the tool name"
         }
       },
       "handler": {

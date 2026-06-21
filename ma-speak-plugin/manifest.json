@@ -26,10 +26,16 @@
             },
             "required": ["text"],
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "SpeakSpeak is a stutter, name already carries plugin identity"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/speak.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/speak.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "♪",
       "color": "sky"
@@ -50,10 +56,16 @@
               }
             },
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "SpeakSpeakStatus is verbose, name already carries plugin identity"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/speak_status.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/speak_status.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "◎",
       "color": "violet"
@@ -74,10 +86,16 @@
               }
             },
             "additionalProperties": false
-          }
+          },
+          "explicitName": true,
+          "reason": "SpeakSpeakStop is verbose, name already carries plugin identity"
         }
       },
-      "handler": { "type": "module", "path": "./handlers/speak_stop.ts", "export": "default" },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/speak_stop.ts",
+        "export": "default"
+      },
       "interactive": false,
       "icon": "■",
       "color": "red"
