@@ -14,7 +14,7 @@ sub-agent worker is never an intercom peer.
 
 ## Seeing other sessions
 
-`Peers({action:"list"})` returns the roster: every messageable session with its
+`IntercomPeers({action:"list"})` returns the roster: every messageable session with its
 short id (the 6-char handle everyone uses), its derived liveness, its model, its
 cwd, and what it is working on. Only sessions actually running intercom appear, so
 anyone on the list can receive a message from you. A row reads like this:
@@ -36,7 +36,7 @@ and one that is merely quiet between turns still reads `online`. Trust the verdi
 Pass `liveOnly:true` to hide the dead and offline sessions and see only reachable
 peers.
 
-`Peers({action:"inspect", peer:"a1b2c3d4"})` is the deep dive on one session. It
+`IntercomPeers({action:"inspect", peer:"a1b2c3d4"})` is the deep dive on one session. It
 gathers that peer's state from across plugins: its task list, recent activity,
 background jobs, and sub-agent fleet, plus an optional transcript excerpt. Use it
 to understand what a peer is actually doing before you message it, not just that
@@ -46,7 +46,7 @@ activity, and jobs.
 
 ## Messaging
 
-`Send({to, body, kind})` delivers a message to one peer or a group.
+`IntercomSend({to, body, kind})` delivers a message to one peer or a group.
 
 - `to` is a peer's short id or full session id, or `"all"` to reach every
   reachable session, or `"project"` to reach sessions in your project directory.
@@ -62,7 +62,7 @@ activity, and jobs.
 
 A normal send reads like this:
 
-    Send({to:"a1b2c3d4", body:"finished the auth refactor, your turn on the API"})
+    IntercomSend({to:"a1b2c3d4", body:"finished the auth refactor, your turn on the API"})
 
 The roster shows the 8-char handle, but `to` and `peer` accept any prefix of a
 session id or the full id, so `"a1b2"`, `"a1b2c3d4"`, and the whole uuid all
@@ -100,14 +100,14 @@ Two things to keep in mind:
   message is in the `<ma::agent::intercom-inbox>` block, not the nudge, so read the
   block before you reply.
 
-`Inbox({scope})` only re-reads what already arrived: `scope:"recent"` for the
+`IntercomInbox({scope})` only re-reads what already arrived: `scope:"recent"` for the
 latest messages, `scope:"unread"` for anything since your last `IntercomInbox` read. You
 rarely need it, because delivery already happens on its own.
 
 ## Good habits
 
-- Before you broadcast, run `Peers list` so you know who will actually receive it.
-- Run `Peers inspect` on a peer before you ask something its task list already
+- Before you broadcast, run `IntercomPeers list` so you know who will actually receive it.
+- Run `IntercomPeers inspect` on a peer before you ask something its task list already
   answers.
 - Keep messages short and self-contained. The recipient is a different session
   with none of your context, so say who you are and what you need.
