@@ -19,12 +19,13 @@ import {
   sidMatchesRef,
   thisHost,
 } from "./identity.ts"
-import { appendEnvelope } from "./inbox.ts"
+import { appendEnvelope, readInbox } from "./inbox.ts"
 import { classifyLiveness, isReachable, type Liveness } from "./liveness.ts"
-import { inboxPath, presenceDir, sessionsDir } from "./paths.ts"
-import { type PresenceRecord, readPresenceDir } from "./presence.ts"
+import { inboxPath, presenceDir, presencePath, sessionsDir } from "./paths.ts"
+import { type PresenceRecord, readPresenceDir, writePresence } from "./presence.ts"
 import type { InspectBundle } from "./render.ts"
 import { buildRoster, type RosterRow } from "./roster.ts"
+import { buildTransport, LocalFsTransport, type Transport } from "./transport.ts"
 import {
   type PeerFleetMember,
   type PeerJob,
@@ -71,15 +72,76 @@ export interface ServiceDeps {
   readonly now: () => number
   readonly host: string
   readonly pidAlive: (pid: number) => boolean
+  /**
+   * The transport the service sends/reads through (Ports & Adapters). OPTIONAL:
+   * when absent, the service lazily builds a default {@link LocalFsTransport}
+   * over the same dirs (see {@link transportOf}), so a caller that doesn't
+   * inject one — e.g. existing tests — gets byte-identical local behavior. The
+   * production handlers inject the effective transport (local + any remote the
+   * host registry advertised) so remote peers integrate without the service
+   * branching on origin.
+   */
+  readonly transport?: Transport
 }
 
-/** Build {@link ServiceDeps} from a handler context, or null when no session id. */
+/**
+ * Build the default local filesystem transport for a session — wires the real
+ * `paths`/`presence`/`inbox` shells behind the {@link Transport} port. This is
+ * the ONE place the local adapter binds to concrete fs functions, all of them
+ * the exact calls Intercom used pre-A5 (no path or format change).
+ */
+export function makeLocalFsTransport(
+  env: NodeJS.ProcessEnv,
+  selfSid: string,
+): LocalFsTransport {
+  return new LocalFsTransport(
+    {
+      presencePath: (sid) => presencePath(sid, env),
+      presenceDir: () => presenceDir(env),
+      inboxPath: (sid) => inboxPath(sid, env),
+      writePresence,
+      readPresenceDir,
+      appendEnvelope,
+      readInbox,
+    },
+    selfSid,
+  )
+}
+
+/** The service's effective transport: the injected one, or a lazy local default. */
+function transportOf(deps: ServiceDeps): Transport {
+  return deps.transport ?? makeLocalFsTransport(deps.env, deps.self.sid)
+}
+
+/**
+ * A minimal structural slice of `ctx.host` the service reads to discover remote
+ * transports. Kept local (not importing host-types' full `PluginHost`) so this
+ * stays a tiny, stable contract. Absent / unwired ⇒ local-only.
+ */
+export interface TransportHostSlice {
+  readonly transportRegistry?: { list(): Transport[] }
+}
+
+/**
+ * Build {@link ServiceDeps} from a handler context, or null when no session id.
+ *
+ * `host` is the optional `ctx.host`: when it carries a `transportRegistry`
+ * (the `intercom:transport` capability — not wired in core yet), every remote
+ * transport it advertises is folded into the effective transport alongside the
+ * always-present local fs adapter (Composite). Today the registry is always
+ * absent, so this returns a plain local transport and behavior is identical to
+ * pre-A5.
+ */
 export function serviceDepsFromAgent(
   agent: AgentContext | undefined,
   env: NodeJS.ProcessEnv = process.env,
+  host?: TransportHostSlice,
 ): ServiceDeps | null {
   const self = selfIdentity(agent)
   if (!self) return null
+  const local = makeLocalFsTransport(env, self.sid)
+  const remotes = safeListRemotes(host)
+  const transport: Transport = buildTransport(local, remotes)
   return {
     env,
     self,
@@ -87,6 +149,16 @@ export function serviceDepsFromAgent(
     now: () => Date.now(),
     host: thisHost(),
     pidAlive: realPidAlive,
+    transport,
+  }
+}
+
+/** Read the host's remote transports defensively (registry may be absent/throw). */
+function safeListRemotes(host: TransportHostSlice | undefined): Transport[] {
+  try {
+    return host?.transportRegistry?.list() ?? []
+  } catch {
+    return []
   }
 }
 
@@ -110,7 +182,10 @@ export function loadRoster(
   deps: ServiceDeps,
   opts: { excludeSelf?: boolean; liveOnly?: boolean } = {},
 ): RosterRow[] {
-  const own = readPresenceDir(presenceDir(deps.env))
+  // Source presence through the transport port. The local fs transport returns
+  // exactly `readPresenceDir(presenceDir(env))` (today's behavior); a composite
+  // also folds in remote peers, merged by newest beat — same `buildRoster` call.
+  const own = transportOf(deps).readPresence()
   return buildRoster(own, {
     thresholds: deps.thresholds,
     probe: { now: deps.now(), pidAlive: deps.pidAlive, host: deps.host },
@@ -222,7 +297,8 @@ export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
   }
 
   // One envelope id per send (shared across fan-out so a broadcast is one
-  // logical message the model can dedup), but appended per-recipient.
+  // logical message the model can dedup), but delivered per-recipient.
+  const transport = transportOf(deps)
   const nowMs = deps.now()
   let envelopeId: string | null = null
   for (const row of recipients) {
@@ -238,7 +314,10 @@ export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
     })
     envelopeId = env.id
     try {
-      appendEnvelope(inboxPath(row.record.sid, deps.env), env)
+      // Deliver through the transport port: the local fs adapter appends to
+      // `inbox/<sid>.jsonl` exactly as before; a composite routes a remote sid
+      // to the cloud transport instead. The service never branches on origin.
+      transport.deliver(row.record.sid, env)
       delivered.push({ short: row.record.short, sid: row.record.sid })
     } catch {
       skipped.push({ ref: row.record.short, reason: "inbox write failed" })

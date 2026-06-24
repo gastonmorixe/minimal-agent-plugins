@@ -25,9 +25,10 @@ import type {
   TurnAttachmentContext,
   TurnAttachmentProducer,
 } from "../lib/host-types.ts"
-import { drainFrom, readInbox } from "../lib/inbox.ts"
-import { cursorPath, inboxPath } from "../lib/paths.ts"
+import { drainFrom } from "../lib/inbox.ts"
+import { cursorPath } from "../lib/paths.ts"
 import { renderInboxBody } from "../lib/render.ts"
+import { makeLocalFsTransport } from "../lib/service.ts"
 
 /**
  * Per-session inbox attachment producer. Constructed once per agent with the
@@ -43,8 +44,10 @@ export class InboxAttachment implements TurnAttachmentProducer {
     const sid = this.sid?.trim()
     if (!sid) return null
 
-    const path = inboxPath(sid, this.env)
-    const all = readInbox(path)
+    // Read the inbox through the Transport port (local fs adapter here — the
+    // turn-attachment context carries no host registry, and the inbox owner is
+    // always local: me). Byte-identical to the prior `readInbox(inboxPath(...))`.
+    const all = makeLocalFsTransport(this.env, sid).readInbox(sid)
     const cpath = cursorPath(sid, this.env)
     const cursor: Cursor = readCursor(cpath)
     const { fresh, nextMark } = drainFrom(all, cursor.seen)

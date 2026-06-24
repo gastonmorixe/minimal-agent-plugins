@@ -19,12 +19,12 @@ import { advanceCursor, readCursor } from "../lib/cursors.ts"
 import { runGc } from "../lib/gc.ts"
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
 import { selfIdentity, thisHost } from "../lib/identity.ts"
-import { readInbox } from "../lib/inbox.ts"
-import { cursorPath, inboxPath, presenceDir, presencePath, sessionLogPath } from "../lib/paths.ts"
-import { phaseFromMtime, readPresenceDir, writePresence } from "../lib/presence.ts"
+<<<<<<< HEAD
+import { cursorPath, sessionLogPath } from "../lib/paths.ts"
+import { phaseFromMtime } from "../lib/presence.ts"
 import { toArrivalNotice } from "../lib/render.ts"
 import { readSelfState, selfStatePath } from "../lib/selfstate.ts"
-import { realPidAlive } from "../lib/service.ts"
+import { makeLocalFsTransport, realPidAlive } from "../lib/service.ts"
 
 /** Read a file's mtime in ms, or null when it doesn't exist / can't stat. */
 function mtimeMs(path: string): number | null {
@@ -67,6 +67,13 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
     thresholds.heartbeatMs * 2,
   )
 
+  // Presence publish + roster read + inbox read all go through the Transport
+  // port (Ports & Adapters). The live-area context carries no `ctx.host`, so
+  // there's no transport registry here today: this is the local fs adapter,
+  // byte-identical to the prior direct fs calls. When the cloud bridge lands it
+  // relays remote presence into the same dirs, so this read picks them up
+  // unchanged (and the footer counts them).
+  const transport = makeLocalFsTransport(env, self.sid)
   const deps: BeatDeps = {
     self,
     state: {
@@ -79,10 +86,10 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
     nowMs,
     thresholds,
     probe: { now: nowMs, pidAlive: realPidAlive, host },
-    publish: (rec) => writePresence(presencePath(self.sid, env), rec),
+    publish: (rec) => transport.publishPresence(rec),
     // Footer counts intercom peers only (own feed), not the sub-agents graveyard.
-    readAllPresence: () => readPresenceDir(presenceDir(env)),
-    readMyInbox: () => readInbox(inboxPath(self.sid, env)),
+    readAllPresence: () => transport.readPresence(),
+    readMyInbox: () => transport.readInbox(self.sid),
     readMyCursor: () => readCursor(cursorPath(self.sid, env)),
     // Merge-on-write (Math.max per field) so the heartbeat's `woken` advance
     // never clobbers a concurrent `seen`/`read` advance from the attachment or

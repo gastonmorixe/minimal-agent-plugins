@@ -46,7 +46,7 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
     return { kind: "tool_result", content: "Peers: unexpected trigger", is_error: true }
   }
   const input = ctx.trigger.input
-  const deps = serviceDepsFromAgent(ctx.agent, ctx.env)
+  const deps = serviceDepsFromAgent(ctx.agent, ctx.env, ctx.host)
   if (!deps) {
     return {
       kind: "tool_result",
