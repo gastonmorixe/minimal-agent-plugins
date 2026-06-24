@@ -44,7 +44,14 @@ const CORE_FACTORY = join(CORE_WT, "src", "plugins", "host", "factory.ts")
 const CORE_RESET = join(CORE_WT, "src", "plugins", "host", "transport-registry.ts")
 
 // Sibling plugin (a5) holding Intercom's real Transport port + composite.
-const INTERCOM_TRANSPORT = join(import.meta.dir, "..", "..", "ma-intercom-plugin", "lib", "transport.ts")
+const INTERCOM_TRANSPORT = join(
+  import.meta.dir,
+  "..",
+  "..",
+  "ma-intercom-plugin",
+  "lib",
+  "transport.ts",
+)
 
 const haveCore = existsSync(CORE_FACTORY)
 const haveIntercom = existsSync(INTERCOM_TRANSPORT)
@@ -67,7 +74,10 @@ describe("KEYSTONE: cloud plugin registers a transport that Intercom folds in (n
     }
     // Real intercom transport composer.
     const intercom = (await import(INTERCOM_TRANSPORT)) as {
-      buildTransport: (local: unknown, remotes?: readonly unknown[]) => { id: string; remote: boolean; readPresence(): unknown[] }
+      buildTransport: (
+        local: unknown,
+        remotes?: readonly unknown[],
+      ) => { id: string; remote: boolean; readPresence(): unknown[] }
       LocalFsTransport: new (io: unknown, sid: string) => unknown
     }
 

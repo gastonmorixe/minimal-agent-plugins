@@ -13,7 +13,9 @@
 
 import { currentFlags, isEnabled } from "../lib/feature-flags.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import { cloudConfig } from "../lib/login.ts"
 import { registerTransport } from "../lib/register.ts"
+import { loadAuth } from "../lib/token-store.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
@@ -29,11 +31,14 @@ export default async function cloudStatus(ctx: TUIContext): Promise<TUIResult> {
   // Ensure the remote transport is registered (idempotent). Degrades gracefully
   // when the capability isn't granted (older core / capability not declared).
   const reg = registerTransport(ctx.host)
-  const flags = currentFlags()
+  const flags = currentFlags(ctx.env)
+  const auth = loadAuth(ctx.env)
+  const cfg = cloudConfig(ctx.env)
 
   const registered = reg.ok
   const transportId = reg.ok ? reg.transportId : null
   const cloudEnabled = isEnabled(flags, "cloudEnabled")
+  const loggedIn = auth !== null
 
   if (asJson) {
     return {
@@ -41,6 +46,9 @@ export default async function cloudStatus(ctx: TUIContext): Promise<TUIResult> {
       content: JSON.stringify(
         {
           cloudEnabled,
+          loggedIn,
+          ...(auth?.userId ? { userId: auth.userId } : {}),
+          baseUrl: cfg.baseUrl,
           flags,
           transport: { registered, id: transportId, note: reg.ok ? undefined : reg.reason },
         },
@@ -51,7 +59,11 @@ export default async function cloudStatus(ctx: TUIContext): Promise<TUIResult> {
   }
 
   const lines: string[] = []
-  lines.push(`cloud: ${cloudEnabled ? "enabled" : "disabled (not connected)"}`)
+  lines.push(`cloud: ${cloudEnabled ? "enabled" : "disabled (not logged in)"}`)
+  lines.push(
+    `  account: ${loggedIn ? `logged in${auth?.userId ? ` as ${auth.userId}` : ""}` : "not logged in — run CloudLogin"}`,
+  )
+  lines.push(`  backend: ${cfg.baseUrl}`)
   lines.push(
     `  flags: ${Object.entries(flags)
       .map(([k, v]) => `${k}=${v}`)
@@ -65,7 +77,7 @@ export default async function cloudStatus(ctx: TUIContext): Promise<TUIResult> {
     lines.push(`  transport: NOT registered — ${reg.ok ? "" : reg.reason}`)
   }
   lines.push(
-    `  (skeleton: remote transport is a stub; no live backend connection until Phase B auth lands)`,
+    `  (the remote transport's network methods are still a stub until the WS layer lands; login + token are real)`,
   )
 
   return { kind: "tool_result", content: lines.join("\n") }

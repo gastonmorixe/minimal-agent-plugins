@@ -30,6 +30,25 @@
       "interactive": false,
       "icon": "☁",
       "color": "sky"
+    },
+    {
+      "id": "login",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "CloudLogin",
+          "description": "Log this CLI into the minimal-agent cloud backend using the device-authorization grant (RFC 8628). Prints a short user code + a verification URL to approve in your browser, then completes the login and saves the access token locally so cloud features (teleport, remote peers, teams) turn on. Configure the backend with MINIMAL_AGENT_CLOUD_URL (default http://localhost:4000/api/auth). Example: CloudLogin({}).",
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/login.ts", "export": "default" },
+      "interactive": false,
+      "icon": "☁",
+      "color": "sky"
     }
   ]
 }
