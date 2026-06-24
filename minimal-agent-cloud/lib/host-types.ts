@@ -112,6 +112,12 @@ export interface LiveAreaHandlerContext {
   stderr: NodeJS.WriteStream
   /** Monotonic tick counter for this slot (0 on first call). */
   tick: number
+  /**
+   * Fire-and-forget emit onto the shared plugin event bus. Used to inject a
+   * claimed pending prompt into the turn loop via `emit("prompt.inject", {text})`.
+   * Optional + best-effort: `undefined` when the host wired no bus (some tests).
+   */
+  emit?: (channel: string, payload?: unknown) => void
   /** Boot-time agent identity. Optional only on the legacy back-compat path. */
   agent?: AgentContext
 }

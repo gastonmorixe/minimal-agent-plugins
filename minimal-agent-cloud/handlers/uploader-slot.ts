@@ -18,6 +18,7 @@
 
 import { currentFlags, isEnabled } from "../lib/feature-flags.ts"
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
+import { ensureRelay, injectorFor } from "../lib/relay-session.ts"
 import { loadAuth } from "../lib/token-store.ts"
 
 import { flushForSession } from "./push.ts"
@@ -31,7 +32,20 @@ export default async function uploaderSlot(ctx: LiveAreaHandlerContext): Promise
   if (!loadAuth(ctx.env)) return null
   if (!isEnabled(currentFlags(ctx.env), "cloudEnabled")) return null
 
-  const outcome = await flushForSession(sid, ctx.env)
+  // Phase D: ensure the pending-prompt relay is running for this session (drains
+  // the backlog + opens the live pendingPromptAdded subscription on first tick).
+  // Gated inside ensureRelay; a no-op when teleport is off. Wires prompt.inject
+  // via the host emit so a claimed prompt actually runs as a turn.
+  if (ctx.emit) ensureRelay(sid, ctx.emit, ctx.env)
+
+  // The relay's injector (if active) stamps pendingId onto the user record a
+  // claimed prompt produces, so web/mobile reconcile. Null ⇒ no stamp (identity).
+  const injector = injectorFor(sid)
+  const outcome = await flushForSession(
+    sid,
+    ctx.env,
+    injector ? (r) => injector.stampPendingId(r) : undefined,
+  )
   if (!outcome.ok) {
     // Network/backend hiccup: never fatal. Show a faint "retrying" so the user
     // knows uploads are pending, not lost (local JSONL is the source of truth).
