@@ -57,6 +57,13 @@ export interface FlushDeps {
   readonly env?: NodeJS.ProcessEnv
   /** Max records per ingest call (batch cap). Default 500. */
   readonly batchSize?: number
+  /**
+   * Optional per-record transform applied to each outgoing record before send.
+   * The Phase-D pending injector wires {@link PendingInjector.stampPendingId}
+   * here to stamp `pendingId` onto the user record produced by a claimed prompt
+   * (so web/mobile reconcile). Identity when absent.
+   */
+  readonly stampRecord?: (record: Record<string, unknown>) => Record<string, unknown>
 }
 
 /**
@@ -89,7 +96,15 @@ export async function flushSession(sid: string, deps: FlushDeps): Promise<FlushO
   const batchSize = deps.batchSize ?? 500
   const batch = tail.records.slice(0, batchSize)
   const fromClientLine = batch[0]?.clientLine ?? 0
-  const records = batch.map((r) => r.record)
+  // Stamp each record (Phase D: tag the user record from a claimed prompt with
+  // its pendingId). Identity when no stamper is wired. Only applies the transform
+  // to object records; non-objects pass through.
+  const stamp = deps.stampRecord
+  const records = batch.map((r) =>
+    stamp && r.record !== null && typeof r.record === "object"
+      ? stamp(r.record as Record<string, unknown>)
+      : r.record,
+  )
 
   // Send. Any failure ⇒ ok:false (the CLI keeps its local truth; we retry next
   // flush). We deliberately do NOT throw.
