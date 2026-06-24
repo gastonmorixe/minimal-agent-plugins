@@ -92,11 +92,38 @@ export const LIVENESS_RANK: Record<Liveness["status"], number> = {
 /**
  * Classify one presence record into a {@link Liveness} verdict.
  *
- * Bands (see DESIGN.md §5). Same-host records get the pid probe; cross-host
- * records fall back to age-only because `kill(pid,0)` on a remote pid is
- * meaningless.
+ * STRATEGY by transport origin (research-core §a.4): a record's `origin` selects
+ * the liveness algorithm.
+ *
+ * - `local` (the default, and what every on-disk record carries): today's
+ *   logic, UNCHANGED — heartbeat freshness + a same-host `kill(pid,0)` probe;
+ *   cross-host local records fall back to age-only `stale`.
+ * - `remote`: relayed from another machine via the cloud backend, where the pid
+ *   is meaningless. The backend is authoritative: it refreshes `ts` while the
+ *   remote socket is connected and stamps `gone` when it drops. So a remote
+ *   record is classified on freshness ALONE (no pid probe), and a remote peer
+ *   can be fully `online` instead of being pinned at `stale` by the old
+ *   `sameHost` gate. This is the seam that unblocks remote peers.
+ *
+ * Today nothing writes `origin: "remote"` (the cloud bridge lands in a later
+ * pass), so in practice every record flows through the local Strategy and
+ * behavior is identical to pre-A5 Intercom.
  */
 export function classifyLiveness(
+  rec: PresenceRecord,
+  thresholds: Thresholds,
+  probe: LivenessProbe,
+): Liveness {
+  if (rec.origin === "remote") return classifyRemote(rec, thresholds, probe)
+  return classifyLocal(rec, thresholds, probe)
+}
+
+/**
+ * Local Strategy: the original same-host pid-probe classifier, verbatim. Kept as
+ * a named function so the dispatch is explicit and the remote Strategy sits
+ * beside it. Behavior is byte-for-byte what `classifyLiveness` did before A5.
+ */
+function classifyLocal(
   rec: PresenceRecord,
   thresholds: Thresholds,
   probe: LivenessProbe,
@@ -152,6 +179,46 @@ export function classifyLiveness(
   }
   // can't probe and long silent ⇒ presumed gone.
   return { status: "offline", reason: "last seen long ago", lastSeen, ageMs }
+}
+
+/**
+ * Remote Strategy: classify a backend-relayed record on freshness alone.
+ *
+ * No pid probe — `kill(pid,0)` is meaningless across machines. The cloud backend
+ * is the authority: it keeps `ts` fresh while the remote agent's socket is
+ * connected (WS push, per Steve's ruling) and sets `gone` on a clean disconnect.
+ * So we trust the relayed heartbeat directly:
+ *
+ *   - `gone`            ⇒ offline (backend saw a clean disconnect).
+ *   - age ≤ staleMs     ⇒ online (backend is relaying a live socket).
+ *   - age >  staleMs     ⇒ offline (relay went quiet — backend unreachable or the
+ *                         remote dropped without a clean `gone`). We say
+ *                         `offline` rather than `stale`: for a remote peer the
+ *                         backend is the ONLY signal, and a quiet backend means
+ *                         we genuinely can't reach the peer.
+ *
+ * `probe` is accepted for signature symmetry with {@link classifyLocal} but its
+ * `pidAlive`/`host` are intentionally ignored — only `probe.now` is used.
+ */
+function classifyRemote(
+  rec: PresenceRecord,
+  thresholds: Thresholds,
+  probe: LivenessProbe,
+): Liveness {
+  const lastSeen = rec.ts
+  const ageMs = probe.now - Date.parse(rec.ts)
+  const ageValid = Number.isFinite(ageMs)
+
+  if (rec.gone === true) {
+    return { status: "offline", reason: "exited", lastSeen, ageMs: ageValid ? ageMs : 0 }
+  }
+  if (!ageValid) {
+    return { status: "offline", reason: "no valid heartbeat", lastSeen, ageMs: 0 }
+  }
+  if (ageMs <= thresholds.staleMs) {
+    return { status: "online", phase: rec.phase, pid: rec.pid, since: rec.startedAt, ageMs }
+  }
+  return { status: "offline", reason: "backend relay went quiet", lastSeen, ageMs }
 }
 
 /** A short human label for a verdict (no ANSI). */

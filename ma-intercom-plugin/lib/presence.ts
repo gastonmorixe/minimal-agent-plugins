@@ -80,6 +80,20 @@ export interface PresenceRecord {
   readonly activity: string | null
   /** Set true on a clean shutdown beat so readers can say "offline (exited)". */
   readonly gone?: true
+  /**
+   * Transport origin — which liveness Strategy applies (see `lib/liveness.ts`).
+   * `undefined` (the default, and what every record on local disk carries) ==
+   * local: a same-host `kill(pid,0)` probe is meaningful. `"remote"` == relayed
+   * from another machine via the cloud backend: the pid is meaningless across
+   * hosts, so freshness is backend-authoritative (the relay refreshes `ts` while
+   * the remote socket is connected).
+   *
+   * OPTIONAL + absent-means-local ON PURPOSE: a local presence record is written
+   * byte-identical to pre-A5 Intercom (no `origin` key), so a refactored session
+   * and an un-refactored peer stay interoperable on the same files. Only the
+   * cloud bridge ever stamps `origin: "remote"` (a later pass).
+   */
+  readonly origin?: "local" | "remote"
 }
 
 /** Validate + coerce an unknown parsed object into a {@link PresenceRecord}, or null. */
@@ -109,6 +123,10 @@ export function coercePresence(o: unknown): PresenceRecord | null {
     activity:
       typeof r.activity === "string" && r.activity.length > 0 ? r.activity.slice(0, 100) : null,
     ...(r.gone === true ? { gone: true as const } : {}),
+    // Only carry `origin` when it is explicitly "remote" (the meaningful case).
+    // Absent / "local" stays absent so a local record's in-memory shape is
+    // identical to pre-A5 Intercom and classifyLiveness defaults it to local.
+    ...(r.origin === "remote" ? { origin: "remote" as const } : {}),
   }
 }
 

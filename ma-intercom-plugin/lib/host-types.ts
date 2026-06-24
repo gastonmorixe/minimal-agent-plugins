@@ -17,6 +17,8 @@
  * @module lib/host-types
  */
 
+import type { Transport } from "./transport.ts"
+
 // ---------------------------------------------------------------------------
 // Shared identity
 // ---------------------------------------------------------------------------
@@ -117,19 +119,53 @@ export interface SessionsReadApi {
 }
 
 /**
+ * `intercom:transport` (host-brokered, NOT YET WIRED IN CORE) — the registry a
+ * decoupled transport-provider plugin (the future `minimal-agent-cloud`) uses to
+ * hand Intercom a remote {@link Transport} WITHOUT either plugin importing the
+ * other. Same dependency-inversion shape core already uses for provider plugins
+ * (`ProviderPlugin.register(ctx)` + a host registrar): the cloud plugin calls
+ * `register(remoteTransport)`, Intercom calls `list()` and folds the results
+ * into its {@link CompositeTransport}.
+ *
+ * This is a STUB declaration for A5: the host does not populate
+ * `transportRegistry` yet (the core capability lands in a later pass — my other
+ * lane), so today `ctx.host?.transportRegistry` is always `undefined` and
+ * Intercom falls back to local-only. Declaring it now lets the wiring compile
+ * and be ready, and documents the exact seam the cloud plugin fills.
+ *
+ * The registry traffics in objects satisfying Intercom's {@link Transport} shape
+ * structurally; the cloud plugin re-declares the same shape locally (the
+ * "re-declare the slice you consume as a local structural interface" rule) and
+ * implements it. The host is a neutral broker that just holds + returns them.
+ */
+export interface TransportRegistryApi {
+  /** A transport-provider plugin registers its remote transport here. */
+  register(transport: Transport): void
+  /** Intercom reads every registered remote transport to build its Composite. */
+  list(): Transport[]
+}
+
+/**
  * The frozen capability host handed to the plugin as `ctx.host`. Only the
  * namespaces the manifest declared are populated; the rest are `undefined`,
  * so we always narrow before use.
  *
- * We declare only `sessions` (the one capability the manifest requests). The
- * host populates other namespaces (clock, logger, ...) when granted, but this
- * plugin doesn't use them, so we don't re-declare their contracts here (a stale
- * local copy of a contract we never call is just drift waiting to happen). For
+ * We declare `sessions` (the one capability the manifest requests today) and
+ * `transportRegistry` (the stubbed remote-transport injection seam — absent
+ * until the core capability is wired, so always narrowed before use). The host
+ * populates other namespaces (clock, logger, ...) when granted, but this plugin
+ * doesn't use them, so we don't re-declare their contracts here (a stale local
+ * copy of a contract we never call is just drift waiting to happen). For
  * diagnostics the handlers use the always-present `ctx.log`, not `host.logger`.
  */
 export interface PluginHost {
   readonly capabilities: readonly string[]
   readonly sessions?: SessionsReadApi
+  /**
+   * Remote-transport registry (`intercom:transport`). STUB: undefined until the
+   * core capability is wired. Narrow before use (`if (ctx.host?.transportRegistry)`).
+   */
+  readonly transportRegistry?: TransportRegistryApi
 }
 
 // ---------------------------------------------------------------------------
