@@ -1,0 +1,35 @@
+{
+  "id": "minimal-agent-cloud",
+  "name": "Cloud",
+  "version": "0.1.0",
+  "description": "The minimal-agent cloud connector. Owns the network transport to the cloud backend and registers it into the host transport registry, so Intercom's peers and teams transparently span machines without Intercom importing this plugin. Skeleton: the remote transport is a stub (no live connection) until the backend auth contract lands. Tool: CloudStatus.",
+  "prompt": "./PROMPT.md",
+  "capabilities": ["transport:registry"],
+  "tuis": [
+    {
+      "id": "status",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "CloudStatus",
+          "description": "Report the minimal-agent cloud connector status: whether cloud features are enabled, the current feature flags, and whether the remote transport is registered into the host transport registry. Calling it also ensures the (stub) remote transport is registered (idempotent). Read-mostly. Example: CloudStatus({}).",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": ["text", "json"],
+                "description": "Output format. Default \"text\"."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/status.ts", "export": "default" },
+      "interactive": false,
+      "icon": "☁",
+      "color": "sky"
+    }
+  ]
+}

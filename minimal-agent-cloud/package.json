@@ -1,0 +1,18 @@
+{
+  "name": "minimal-agent-cloud",
+  "private": true,
+  "version": "0.1.0",
+  "description": "External plugin for minimal-agent: the cloud connector. Owns the network transport to the minimal-agent cloud backend and registers it into the host transport registry so Intercom's peers + teams transparently span machines. Skeleton: the remote transport is a stub until the backend auth contract lands.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  }
+}
