@@ -43,7 +43,15 @@ afterEach(() => {
 const HOST = "test-host"
 
 function ident(sid: string, pid: number): SelfIdentity {
-  return { sid, short: sid.slice(0, 6), pid, host: HOST, model: "m", agentVersion: "0.1.0" }
+  return {
+    sid,
+    short: sid.slice(0, 6),
+    pid,
+    host: HOST,
+    model: "m",
+    agentVersion: "0.1.0",
+    computerId: `cid-${HOST}`,
+  }
 }
 
 /** A beat harness for one session against the shared temp home. */
@@ -51,6 +59,7 @@ function beatFor(
   self: SelfIdentity,
   nowMs: number,
   aliveByPid: (pid: number) => boolean,
+  teams?: readonly string[],
 ): BeatDeps {
   return {
     self,
@@ -59,6 +68,7 @@ function beatFor(
       activity: null,
       cwd: `/work/${self.short}`,
       projectRoot: `/work/${self.short}`,
+      ...(teams ? { teams } : {}),
     },
     startedAt: new Date(nowMs - 60_000).toISOString(),
     nowMs,
@@ -173,6 +183,41 @@ describe("message delivery between sessions", () => {
     const sids = outcome.delivered.map((d) => d.sid).sort()
     expect(sids).toEqual(["bbbbbbbb-2", "cccccccc-3"])
     expect(sids).not.toContain("aaaaaaaa-1")
+  })
+
+  it("team:<id> reaches only members of that team (local membership)", () => {
+    const a = ident("aaaaaaaa-1", 8001) // sender, in backend
+    const b = ident("bbbbbbbb-2", 8002) // in backend
+    const c = ident("cccccccc-3", 8003) // in web only
+    const d = ident("dddddddd-4", 8004) // teamless
+    const now = Date.now()
+    const alive = (pid: number) => [8001, 8002, 8003, 8004].includes(pid)
+
+    runBeat(beatFor(a, now, alive, ["local:backend"]))
+    runBeat(beatFor(b, now, alive, ["local:backend"]))
+    runBeat(beatFor(c, now, alive, ["local:web"]))
+    runBeat(beatFor(d, now, alive))
+
+    const outcome = send(svc(a, now, alive), {
+      to: "team:local:backend",
+      body: "backend standup",
+      kind: "message",
+    })
+    // Only b (backend member, not self) receives it; c (web) + d (teamless) don't.
+    expect(outcome.delivered.map((x) => x.sid)).toEqual(["bbbbbbbb-2"])
+    expect(drainInbox(inboxPath(b.sid, env), 0).fresh[0]?.body).toBe("backend standup")
+    expect(drainInbox(inboxPath(c.sid, env), 0).fresh.length).toBe(0)
+    expect(drainInbox(inboxPath(d.sid, env), 0).fresh.length).toBe(0)
+  })
+
+  it("team:<id> with an invalid id is reported, not delivered", () => {
+    const a = ident("aaaaaaaa-1", 8101)
+    const now = Date.now()
+    const alive = () => true
+    runBeat(beatFor(a, now, alive, ["local:backend"]))
+    const outcome = send(svc(a, now, alive), { to: "team:../escape", body: "x", kind: "message" })
+    expect(outcome.delivered.length).toBe(0)
+    expect(outcome.skipped[0]?.reason).toContain("invalid team id")
   })
 
   it("a self-send is refused", () => {

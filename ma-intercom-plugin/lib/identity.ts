@@ -8,6 +8,7 @@
 import { hostname } from "node:os"
 
 import type { AgentContext } from "./host-types.ts"
+import { machineId } from "./machine-id.ts"
 
 /**
  * The set of characters a session id may contain to be usable as a filename
@@ -91,10 +92,25 @@ export interface SelfIdentity {
   readonly host: string
   readonly model: string
   readonly agentVersion: string
+  /**
+   * Stable per-install machine id (see `lib/machine-id.ts`). Identifies WHICH
+   * computer this session runs on, for the `(Remote)` marker and the global
+   * `(computerId, sid)` address. Distinct from `host` (the human-readable, not
+   * necessarily unique, hostname).
+   */
+  readonly computerId: string
 }
 
-/** Build {@link SelfIdentity} from a handler context's agent block + cwd. */
-export function selfIdentity(agent: AgentContext | undefined): SelfIdentity | null {
+/**
+ * Build {@link SelfIdentity} from a handler context's agent block + cwd.
+ *
+ * `env` is threaded so `computerId` resolves the machine-id file under the right
+ * agent home (defaults to `process.env`, the production path).
+ */
+export function selfIdentity(
+  agent: AgentContext | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): SelfIdentity | null {
   const sid = agent?.sessionId?.trim()
   if (!sid) return null
   return {
@@ -104,5 +120,6 @@ export function selfIdentity(agent: AgentContext | undefined): SelfIdentity | nu
     host: thisHost(),
     model: agent?.model ?? "",
     agentVersion: agent?.version ?? "",
+    computerId: machineId(env),
   }
 }

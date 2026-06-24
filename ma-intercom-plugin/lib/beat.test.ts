@@ -16,6 +16,7 @@ const SELF: SelfIdentity = {
   host: "h",
   model: "m",
   agentVersion: "0.1.0",
+  computerId: "cid-self",
 }
 const PEER_FROM: EnvelopeFrom = {
   sid: "peer-2",

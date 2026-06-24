@@ -17,6 +17,14 @@ export interface RosterRow {
   readonly liveness: Liveness
   /** True for the row representing the calling session itself. */
   readonly isSelf: boolean
+  /**
+   * True when this peer lives on another computer (reached via the cloud
+   * transport). Derived once here so renderers don't recompute it. Today every
+   * record is local (`origin` absent), so this is always false until the cloud
+   * bridge relays `origin:"remote"` records — at which point the `(Remote)`
+   * marker + computerId column light up with no renderer change.
+   */
+  readonly isRemote: boolean
 }
 
 /**
@@ -62,7 +70,8 @@ export function buildRoster(
     if (isSelf && opts.excludeSelf) continue
     const liveness = classifyLiveness(rec, opts.thresholds, opts.probe)
     if (opts.liveOnly && liveness.status !== "online" && liveness.status !== "stale") continue
-    rows.push({ record: rec, liveness, isSelf })
+    const isRemote = rec.origin === "remote"
+    rows.push({ record: rec, liveness, isSelf, isRemote })
   }
   rows.sort((a, b) => {
     const ra = LIVENESS_RANK[a.liveness.status]

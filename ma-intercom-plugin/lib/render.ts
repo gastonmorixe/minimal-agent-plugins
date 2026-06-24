@@ -43,6 +43,12 @@ export function baseName(path: string): string {
   return parts[parts.length - 1] || path
 }
 
+/** Short, stable display form of a computerId (leading 8 chars), or "" when absent. */
+export function shortComputerId(computerId: string | undefined): string {
+  if (!computerId) return ""
+  return computerId.slice(0, 8)
+}
+
 // ---------------------------------------------------------------------------
 // Roster (Peers list)
 // ---------------------------------------------------------------------------
@@ -64,8 +70,12 @@ export function renderRosterText(rows: readonly RosterRow[], counts: RosterCount
     const model = r.model ? sanitizePeerLine(r.model) : "?"
     const act = r.activity ? ` · ${sanitizePeerLine(r.activity)}` : ""
     const seen = row.liveness.status === "online" ? "" : ` · ${ago(row.liveness.ageMs)}`
+    // Remote peers carry a (Remote) tag + their computerId so the model knows the
+    // peer is on another machine and which one. Local peers render unchanged.
+    const cid = shortComputerId(r.computerId)
+    const remote = row.isRemote ? ` (Remote${cid ? ` ${sanitizePeerLine(cid)}` : ""})` : ""
     lines.push(
-      `  ${sanitizePeerLine(r.short)}${self}  [${verdict}]  ${model}  ${where}${act}${seen}`,
+      `  ${sanitizePeerLine(r.short)}${self}${remote}  [${verdict}]  ${model}  ${where}${act}${seen}`,
     )
   }
   return lines.join("\n")
@@ -91,8 +101,10 @@ export function renderRosterDisplay(rows: readonly RosterRow[]): string {
     const where = gray(baseName(r.cwd) || "?")
     const act = r.activity ? dim(` · ${r.activity}`) : ""
     const seen = row.liveness.status === "online" ? "" : dim(` · ${ago(row.liveness.ageMs)}`)
+    const cid = shortComputerId(r.computerId)
+    const remote = row.isRemote ? dim(` (Remote${cid ? ` ${cid}` : ""})`) : ""
     lines.push(
-      `  ${verdict} ${bold(r.short)}${self}  ${paint(livenessLabel(row.liveness).padEnd(7))} ${dim(r.model || "?")}  ${where}${act}${seen}`,
+      `  ${verdict} ${bold(r.short)}${self}${remote}  ${paint(livenessLabel(row.liveness).padEnd(7))} ${dim(r.model || "?")}  ${where}${act}${seen}`,
     )
   }
   return lines.join("\n")
@@ -187,7 +199,17 @@ export function renderInspectText(b: InspectBundle): string {
   lines.push(
     `  model: ${r.model ? sanitizePeerLine(r.model) : "?"}   pid: ${r.pid || "?"}   host: ${r.host ? sanitizePeerLine(r.host) : "?"}`,
   )
+  // computerId + remote marker: which machine the peer is on (global address half).
+  const cid = shortComputerId(r.computerId)
+  if (cid || b.record.origin === "remote") {
+    lines.push(
+      `  computer: ${cid ? sanitizePeerLine(cid) : "?"}${b.record.origin === "remote" ? " (Remote)" : ""}`,
+    )
+  }
   lines.push(`  cwd: ${r.cwd ? sanitizePeerLine(r.cwd) : "?"}`)
+  if (r.teams && r.teams.length > 0) {
+    lines.push(`  teams: ${r.teams.map((t) => sanitizePeerLine(t)).join(", ")}`)
+  }
   if (r.activity) lines.push(`  activity: ${sanitizePeerLine(r.activity)}`)
 
   if (b.tasks) {

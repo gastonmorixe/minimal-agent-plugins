@@ -25,6 +25,7 @@ import { inboxPath, presenceDir, presencePath, sessionsDir } from "./paths.ts"
 import { type PresenceRecord, readPresenceDir, writePresence } from "./presence.ts"
 import type { InspectBundle } from "./render.ts"
 import { buildRoster, type RosterRow } from "./roster.ts"
+import { isSafeTeamId, normalizeTeamRef } from "./teams.ts"
 import { buildTransport, LocalFsTransport, type Transport } from "./transport.ts"
 import {
   type PeerFleetMember,
@@ -274,6 +275,20 @@ export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
     const root = deps.env.PWD ?? input.fromCwd ?? ""
     recipients = liveRecipients(deps).filter(
       (r) => r.record.projectRoot === root || r.record.cwd === root,
+    )
+  } else if (lower.startsWith("team:")) {
+    // 4th scope: team:<id> — every reachable peer whose presence record lists
+    // this team id. The LOCAL half (presence teams[]) resolves today; remote
+    // members fold in automatically because liveRecipients reads through the
+    // transport port (a composite already merges remote presence in). No
+    // team-specific transport call is needed here for the local primitive.
+    const teamId = normalizeTeamRef(toRaw)
+    if (!isSafeTeamId(teamId)) {
+      skipped.push({ ref: toRaw, reason: "invalid team id" })
+      return { delivered, skipped, scope, kind: input.kind, envelopeId: null }
+    }
+    recipients = liveRecipients(deps).filter(
+      (r) => Array.isArray(r.record.teams) && r.record.teams.includes(teamId),
     )
   } else {
     const res = resolvePeer(deps, toRaw)

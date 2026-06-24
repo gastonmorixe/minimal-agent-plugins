@@ -81,6 +81,23 @@ export interface PresenceRecord {
   /** Set true on a clean shutdown beat so readers can say "offline (exited)". */
   readonly gone?: true
   /**
+   * Stable per-install machine id (see `lib/machine-id.ts`) — WHICH computer this
+   * session runs on, for the `(Remote)` marker and the global `(computerId, sid)`
+   * address. OPTIONAL + absent-tolerant: a record without it (legacy, or a peer
+   * that predates Teams) renders no computer column rather than breaking. Local
+   * records written by this build always carry it; the wire stays
+   * forward/backward compatible because readers treat it as best-effort.
+   */
+  readonly computerId?: string
+  /**
+   * Team ids this session belongs to (many-to-many membership; a peer joins many
+   * teams). OPTIONAL + absent-means-NONE: a teamless record omits the key
+   * entirely, so its on-disk JSON is byte-identical to pre-Teams Intercom (same
+   * backward-compat discipline as `origin`). Only a peer that has joined at least
+   * one team writes a non-empty `teams` array.
+   */
+  readonly teams?: readonly string[]
+  /**
    * Transport origin — which liveness Strategy applies (see `lib/liveness.ts`).
    * `undefined` (the default, and what every record on local disk carries) ==
    * local: a same-host `kill(pid,0)` probe is meaningful. `"remote"` == relayed
@@ -127,8 +144,45 @@ export function coercePresence(o: unknown): PresenceRecord | null {
     // Absent / "local" stays absent so a local record's in-memory shape is
     // identical to pre-A5 Intercom and classifyLiveness defaults it to local.
     ...(r.origin === "remote" ? { origin: "remote" as const } : {}),
+    // Only carry `computerId` when present + sane; a missing one stays missing so
+    // a legacy/teamless record's shape is unchanged.
+    ...(typeof r.computerId === "string" && r.computerId.length > 0
+      ? { computerId: r.computerId }
+      : {}),
+    // Only carry `teams` when it's a non-empty array of safe team ids; otherwise
+    // omit the key entirely (absent == no teams), keeping teamless records
+    // byte-identical to pre-Teams Intercom.
+    ...(() => {
+      const t = coerceTeamList(r.teams)
+      return t.length > 0 ? { teams: t } : {}
+    })(),
   }
 }
+
+/**
+ * Coerce an unknown value into a clean list of team ids: keep only safe-shaped
+ * strings, dedup, cap the count so a runaway membership can't bloat the record
+ * (which is rewritten every beat). Pure. Returns `[]` for anything non-arrayish.
+ */
+export function coerceTeamList(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const e of v) {
+    if (typeof e !== "string") continue
+    const id = e.trim()
+    if (id.length === 0 || id.length > 128 || seen.has(id)) continue
+    // Same safe-id shape as sids/team ids: no path-traversal, no framing chars.
+    if (!/^[A-Za-z0-9:_-]{1,128}$/.test(id)) continue
+    seen.add(id)
+    out.push(id)
+    if (out.length >= MAX_TEAMS_PER_PEER) break
+  }
+  return out
+}
+
+/** Cap on how many teams one presence record carries (record is rewritten each beat). */
+export const MAX_TEAMS_PER_PEER = 64
 
 /**
  * Adapt a row from the sub-agents plugin's presence feed
