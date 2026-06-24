@@ -35,7 +35,7 @@ describe("createPendingGateway.listPending", () => {
       let sentAuth: string | undefined
       let sentBody: { query: string; variables: { sid: string } } | undefined
       const fetchSpy = (async (_url: string, init?: RequestInit) => {
-        sentAuth = (init?.headers as Record<string, string>).authorization
+        sentAuth = (init?.headers as Record<string, string> | undefined)?.authorization
         sentBody = JSON.parse(String(init?.body))
         return gqlResponse({
           pendingPrompts: [

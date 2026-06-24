@@ -16,8 +16,9 @@ describe("PendingInjector", () => {
     inj.inject({ pendingId: "P1", content: "do the thing" })
     expect(emitted).toHaveLength(1)
     expect(emitted[0]?.channel).toBe("prompt.inject")
-    expect((emitted[0]?.payload as { text: string }).text).toBe("do the thing")
-    expect((emitted[0]?.payload as { source: string }).source).toContain("P1")
+    const payload = emitted[0]?.payload as { text: string; source: string } | undefined
+    expect(payload?.text).toBe("do the thing")
+    expect(payload?.source).toContain("P1")
     expect(inj.pending).toBe(1)
   })
 
