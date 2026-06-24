@@ -55,9 +55,6 @@ export function registerTransport(
 }
 
 /** Is this plugin's transport currently registered in the host registry? */
-export function isTransportRegistered(
-  host: PluginHost | undefined,
-  id = "cloud-ws",
-): boolean {
+export function isTransportRegistered(host: PluginHost | undefined, id = "cloud-ws"): boolean {
   return host?.transportRegistry?.list().some((t) => t.id === id) ?? false
 }
