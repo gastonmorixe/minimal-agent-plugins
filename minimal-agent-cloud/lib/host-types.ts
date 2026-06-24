@@ -97,3 +97,25 @@ export type TUIResult =
   | { kind: "interactive_result"; value: unknown }
 
 export type TUIHandler = (ctx: TUIContext) => Promise<TUIResult>
+
+/**
+ * Runtime context passed to a live-area slot handler. Mirror of
+ * `LiveAreaHandlerContext`, narrowed to what the uploader slot uses. A slot is
+ * invoked at REPL start and then every `refreshMs`, off the turn loop, with an
+ * in-flight guard — the ideal never-block hook for background uploads.
+ */
+export interface LiveAreaHandlerContext {
+  packageDir: string
+  cwd: string
+  env: Record<string, string>
+  abort: AbortSignal
+  stderr: NodeJS.WriteStream
+  /** Monotonic tick counter for this slot (0 on first call). */
+  tick: number
+  /** Boot-time agent identity. Optional only on the legacy back-compat path. */
+  agent?: AgentContext
+}
+
+export type LiveAreaHandler = (
+  ctx: LiveAreaHandlerContext,
+) => Promise<string | null> | string | null

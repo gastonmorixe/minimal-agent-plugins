@@ -49,6 +49,30 @@
       "interactive": false,
       "icon": "☁",
       "color": "sky"
+    },
+    {
+      "id": "push",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "CloudPush",
+          "description": "Manually upload this session's new records to the cloud teleport store so it can be viewed live from web or mobile. Idempotent and resumable: only records the cloud hasn't seen are sent. Requires being logged in (CloudLogin) with cloud features enabled; otherwise it's a no-op. Uploads also happen automatically in the background between turns. Example: CloudPush({}).",
+          "input_schema": { "type": "object", "properties": {}, "additionalProperties": false }
+        }
+      },
+      "handler": { "type": "module", "path": "./handlers/push.ts", "export": "default" },
+      "interactive": false,
+      "icon": "☁",
+      "color": "sky"
+    }
+  ],
+  "liveAreaSlots": [
+    {
+      "id": "uploader",
+      "handler": { "type": "module", "path": "./handlers/uploader-slot.ts", "export": "default" },
+      "position": "footer",
+      "refreshMs": 8000,
+      "timeoutMs": 7000
     }
   ]
 }
