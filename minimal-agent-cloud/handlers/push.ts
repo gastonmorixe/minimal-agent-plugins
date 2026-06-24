@@ -33,18 +33,30 @@ function readSessionText(sid: string, env: NodeJS.ProcessEnv): string | null {
 }
 
 /** Build {@link FlushDeps} from a plugin env (the production wiring). */
-export function flushDepsFromEnv(env: NodeJS.ProcessEnv): FlushDeps {
+export function flushDepsFromEnv(
+  env: NodeJS.ProcessEnv,
+  stampRecord?: (record: Record<string, unknown>) => Record<string, unknown>,
+): FlushDeps {
   return {
     graphqlUrl: cloudConfig(env).graphqlUrl,
     readSessionText: (sid) => readSessionText(sid, env),
     fetch: (...a: Parameters<typeof fetch>) => fetch(...a),
     env,
+    ...(stampRecord ? { stampRecord } : {}),
   }
 }
 
-/** Flush the given session, returning the outcome. Shared by the tool + slot. */
-export function flushForSession(sid: string, env: NodeJS.ProcessEnv): Promise<FlushOutcome> {
-  return flushSession(sid, flushDepsFromEnv(env))
+/**
+ * Flush the given session, returning the outcome. Shared by the tool + slot.
+ * `stampRecord` (optional) lets the relay tag the user record from a claimed
+ * prompt with its pendingId before upload.
+ */
+export function flushForSession(
+  sid: string,
+  env: NodeJS.ProcessEnv,
+  stampRecord?: (record: Record<string, unknown>) => Record<string, unknown>,
+): Promise<FlushOutcome> {
+  return flushSession(sid, flushDepsFromEnv(env, stampRecord))
 }
 
 /** Tool handler for `CloudPush`. */
