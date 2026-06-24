@@ -50,7 +50,7 @@ function contentKey(content: unknown): string {
  * keeps it for the session's lifetime).
  */
 export class PendingInjector {
-  /** FIFO of {contentKey, pendingId} awaiting a matching user record to stamp. */
+  /** FIFO of content-key + pendingId pairs awaiting a matching user record to stamp. */
   private readonly queue: { key: string; pendingId: string }[] = []
 
   constructor(private readonly emit: EmitFn) {}

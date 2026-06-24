@@ -6,12 +6,12 @@
  * needs (`pendingPrompts` query + `claimPendingPrompt` mutation).
  *
  * Locked contract (Mike, 2026-06-24):
- *   - `pendingPrompts(sid: ID!): [PendingPrompt!]!`  (owner-gated by Bearer)
- *       PendingPrompt { pendingId  sid  content  status  createdAt }
- *   - `claimPendingPrompt(pendingId: ID!): ClaimResult!`
- *       ClaimResult { claimed  pendingId  content  reason }
- *       (optimistic UPDATE ... WHERE status='pending' RETURNING; claimed:false +
- *        reason="already-claimed" when another CLI won)
+ *   - `pendingPrompts(sid: ID!): [PendingPrompt!]!`  (owner-gated by Bearer);
+ *     a PendingPrompt has pendingId, sid, content, status, createdAt.
+ *   - `claimPendingPrompt(pendingId: ID!): ClaimResult!`; a ClaimResult has
+ *     claimed, pendingId, content, reason (optimistic UPDATE ... WHERE
+ *     status='pending' RETURNING; claimed:false + reason "already-claimed" when
+ *     another CLI won).
  *
  * Result-typed, never throws: a network/GraphQL failure degrades to `ok:false`
  * and the drain leaves the prompt pending for the next attach/tick.
