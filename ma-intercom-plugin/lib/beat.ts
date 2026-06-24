@@ -35,6 +35,12 @@ export interface SelfState {
   readonly projectRoot: string
   /** Set true on the final (shutdown) beat. */
   readonly gone?: boolean
+  /**
+   * Team ids this session currently belongs to. Optional + absent-means-none:
+   * omit (or pass `[]`) and the presence record carries no `teams` key, staying
+   * byte-identical to pre-Teams Intercom.
+   */
+  readonly teams?: readonly string[]
 }
 
 /** Build this session's presence record from identity + current self-state. */
@@ -59,6 +65,10 @@ export function buildSelfPresenceRecord(
     phase: state.phase,
     activity: state.activity,
     ...(state.gone ? { gone: true as const } : {}),
+    // computerId is always known for a live self-record (identity mints it); a
+    // teamless session omits `teams` so its on-disk shape is unchanged.
+    ...(self.computerId ? { computerId: self.computerId } : {}),
+    ...(state.teams && state.teams.length > 0 ? { teams: [...state.teams] } : {}),
   }
 }
 
