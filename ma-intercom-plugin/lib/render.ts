@@ -11,9 +11,14 @@ import type { Liveness } from "./liveness.ts"
 import { livenessLabel } from "./liveness.ts"
 import type { PresenceRecord } from "./presence.ts"
 import type { RosterCounts, RosterRow } from "./roster.ts"
-import { sanitizePeerLine, sanitizePeerText } from "./sanitize.ts"
+import {
+  sanitizePeerLine,
+  sanitizePeerText,
+  sanitizeTerminalLine,
+  sanitizeTerminalText,
+} from "./sanitize.ts"
 import type { PeerFleetMember, PeerJob, PeerTask, TaskSummary } from "./sidecars.ts"
-import { bold, cyan, dim, dimCyan, gray, green, magenta, red, yellow } from "./style.ts"
+import { bold, cyan, dim, gray, green, magenta, red, yellow } from "./style.ts"
 
 // ---------------------------------------------------------------------------
 // Time helpers
@@ -245,29 +250,64 @@ export function renderInspectDisplay(b: InspectBundle): string {
   return bits.length ? `${head}  ${dim(bits.join(" · "))}` : head
 }
 
-/** Render a TUI notification for newly arrived messages (written to stderr by the beat handler). */
-export function renderArrival(fresh: readonly Envelope[]): string {
+/**
+ * The "N new message(s)" label for the arrival notice header.
+ *
+ * Goes into the host notice block's `info` slot, beside the ⇆/intercom title.
+ */
+export function arrivalLabel(count: number): string {
+  return count === 1 ? "1 new message" : `${count} new messages`
+}
+
+/**
+ * Styled body rows for the arrival notice, for a HUMAN terminal.
+ *
+ * Returns the BARE content rows only: no `╭│╰` frame, no per-row `│ ` prefix,
+ * no header line. The host's `renderCommandNoticeBlock` owns all of that chrome
+ * (it draws the box, pads with blank `│` rows, and prefixes each body line). We
+ * supply just the ANSI-styled inner lines.
+ *
+ * Crucially this path does NOT html-escape peer text (the `&lt;/&gt;` bug):
+ * these rows never enter a model context. Peer-sourced fields are run through
+ * {@link sanitizeTerminalText}/{@link sanitizeTerminalLine} instead, which strip
+ * smuggled escape/control sequences but leave `<`/`>` and normal text intact.
+ */
+export function renderArrivalLines(fresh: readonly Envelope[]): string[] {
   const lines: string[] = []
-  const count = fresh.length
-  const label = count === 1 ? "1 new message" : `${count} new messages`
-  lines.push(`  ${dimCyan("╭")} ${magenta("⇆")} ${gray("intercom")} ${dim("·")} ${dim(label)}`)
   for (const e of fresh) {
     const glyph = e.kind === "interrupt" ? red("◆") : cyan("◇")
     const verdict = e.kind === "interrupt" ? red(" INTERRUPT ") : ""
-    const short = sanitizePeerLine(e.from.short)
-    const model = e.from.model ? sanitizePeerLine(e.from.model) : "?"
+    const short = sanitizeTerminalLine(e.from.short)
+    const model = e.from.model ? sanitizeTerminalLine(e.from.model) : "?"
     const ts = e.ts.slice(11, 19)
-    lines.push(
-      `  ${dimCyan("│")} ${magenta("⇆")} ${verdict}${glyph} ${bold(short)} (${dim(model)}) at ${ts}`,
-    )
-    for (const bl of sanitizePeerText(e.body).split("\n")) {
-      lines.push(`  ${dimCyan("│")} ${bl}`)
-    }
+    lines.push(`${magenta("⇆")} ${verdict}${glyph} ${bold(short)} (${dim(model)}) at ${ts}`)
+    for (const bl of sanitizeTerminalText(e.body).split("\n")) lines.push(bl)
     // blank separator between messages when there are multiple
-    if (fresh.length > 1 && e !== fresh[fresh.length - 1]) {
-      lines.push(`  ${dimCyan("│")}`)
-    }
+    if (fresh.length > 1 && e !== fresh[fresh.length - 1]) lines.push("")
   }
-  lines.push(`  ${dimCyan("╰")}`)
+  return lines
+}
+
+/**
+ * Plain-text rendering of the arrival notice, for JSONL persistence + resume.
+ *
+ * No ANSI, no frame. Mirrors the styled rows' information so a resumed session
+ * can replay what the user saw. Peer text is terminal-sanitized (escape/control
+ * stripped) but not html-escaped — this is a faithful human-readable record,
+ * not model-facing context.
+ */
+export function renderArrivalText(fresh: readonly Envelope[]): string {
+  const label = arrivalLabel(fresh.length)
+  const lines: string[] = [`⇆ intercom · ${label}`]
+  for (const e of fresh) {
+    const kind = e.kind === "interrupt" ? "INTERRUPT " : ""
+    const glyph = e.kind === "interrupt" ? "◆" : "◇"
+    const short = sanitizeTerminalLine(e.from.short)
+    const model = e.from.model ? sanitizeTerminalLine(e.from.model) : "?"
+    const ts = e.ts.slice(11, 19)
+    lines.push(`⇆ ${kind}${glyph} ${short} (${model}) at ${ts}`)
+    for (const bl of sanitizeTerminalText(e.body).split("\n")) lines.push(`  ${bl}`)
+    if (fresh.length > 1 && e !== fresh[fresh.length - 1]) lines.push("")
+  }
   return lines.join("\n")
 }

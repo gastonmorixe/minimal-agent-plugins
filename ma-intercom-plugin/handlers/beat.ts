@@ -22,7 +22,7 @@ import { selfIdentity, thisHost } from "../lib/identity.ts"
 import { readInbox } from "../lib/inbox.ts"
 import { cursorPath, inboxPath, presenceDir, presencePath, sessionLogPath } from "../lib/paths.ts"
 import { phaseFromMtime, readPresenceDir, writePresence } from "../lib/presence.ts"
-import { renderArrival } from "../lib/render.ts"
+import { arrivalLabel, renderArrivalLines, renderArrivalText } from "../lib/render.ts"
 import { readSelfState, selfStatePath } from "../lib/selfstate.ts"
 import { realPidAlive } from "../lib/service.ts"
 
@@ -93,12 +93,26 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
 
   const result = runBeat(deps)
 
-  // TUI notification: print newly arrived messages to the terminal so the user
-  // sees them even when the agent is mid-turn or idle. Written to stderr so it
-  // doesn't pollute the agent's stdout/transcript pipeline.
+  // TUI notification: surface newly arrived messages so the user sees them even
+  // when the agent is mid-turn or idle. We no longer hand-draw a box to stderr
+  // (that bypassed the host's framing, html-escaped the body, and was never
+  // persisted). Instead we emit a structured notice on the shared bus and let
+  // the HOST own framing, escaping, routing, and persistence to the session log.
+  // The plugin still owns content styling: `block.body` carries our ANSI rows,
+  // `text` is the plain record for resume.
   if (result.fresh.length > 0) {
     try {
-      ctx.stderr.write(renderArrival(result.fresh) + "\n")
+      ctx.emit?.("notification.emit", {
+        source: "intercom",
+        block: {
+          icon: "⇆",
+          title: "intercom",
+          info: arrivalLabel(result.fresh.length),
+          color: "magenta",
+          body: renderArrivalLines(result.fresh),
+        },
+        text: renderArrivalText(result.fresh),
+      })
     } catch {
       // best-effort
     }
