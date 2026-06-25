@@ -22,7 +22,7 @@ import { selfIdentity, thisHost } from "../lib/identity.ts"
 import { readInbox } from "../lib/inbox.ts"
 import { cursorPath, inboxPath, presenceDir, presencePath, sessionLogPath } from "../lib/paths.ts"
 import { phaseFromMtime, readPresenceDir, writePresence } from "../lib/presence.ts"
-import { arrivalLabel, renderArrivalLines, renderArrivalText } from "../lib/render.ts"
+import { toArrivalNotice } from "../lib/render.ts"
 import { readSelfState, selfStatePath } from "../lib/selfstate.ts"
 import { realPidAlive } from "../lib/service.ts"
 
@@ -98,21 +98,11 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
   // (that bypassed the host's framing, html-escaped the body, and was never
   // persisted). Instead we emit a structured notice on the shared bus and let
   // the HOST own framing, escaping, routing, and persistence to the session log.
-  // The plugin still owns content styling: `block.body` carries our ANSI rows,
-  // `text` is the plain record for resume.
+  // This shell decides WHEN to notify; `toArrivalNotice` owns WHAT the notice
+  // looks like (icon/title/color/rows/text), so presentation stays out of here.
   if (result.fresh.length > 0) {
     try {
-      ctx.emit?.("notification.emit", {
-        source: "intercom",
-        block: {
-          icon: "⇆",
-          title: "intercom",
-          info: arrivalLabel(result.fresh.length),
-          color: "magenta",
-          body: renderArrivalLines(result.fresh),
-        },
-        text: renderArrivalText(result.fresh),
-      })
+      ctx.emit?.("notification.emit", toArrivalNotice(result.fresh))
     } catch {
       // best-effort
     }

@@ -260,6 +260,49 @@ export function arrivalLabel(count: number): string {
 }
 
 /**
+ * The structured payload for the `notification.emit` bus channel.
+ *
+ * `block` is a host `CommandNoticeBlock` (the host frames it; `body` is our bare
+ * ANSI rows). `text` is the plain record the host persists to the session log.
+ * This is the plugin↔host contract DTO; the host validates it at the boundary
+ * (`coerceNoticeBlock`) before rendering.
+ */
+export interface ArrivalNotice {
+  readonly source: "intercom"
+  readonly block: {
+    readonly icon: string
+    readonly title: string
+    readonly info: string
+    readonly color: string
+    readonly body: string[]
+  }
+  readonly text: string
+}
+
+/**
+ * Build the full `notification.emit` payload for a batch of fresh messages.
+ *
+ * This is the single home for the arrival notice's PRESENTATION decisions (icon,
+ * title, accent color, the styled rows, the plain persistence text). Keeping it
+ * here, beside the renderers it composes, keeps the beat handler a thin
+ * orchestration shell: it decides WHEN to notify, not WHAT the notice looks
+ * like. Pure.
+ */
+export function toArrivalNotice(fresh: readonly Envelope[]): ArrivalNotice {
+  return {
+    source: "intercom",
+    block: {
+      icon: "⇆",
+      title: "intercom",
+      info: arrivalLabel(fresh.length),
+      color: "magenta",
+      body: renderArrivalLines(fresh),
+    },
+    text: renderArrivalText(fresh),
+  }
+}
+
+/**
  * Styled body rows for the arrival notice, for a HUMAN terminal.
  *
  * Returns the BARE content rows only: no `╭│╰` frame, no per-row `│ ` prefix,
