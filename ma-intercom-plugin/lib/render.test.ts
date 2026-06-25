@@ -9,7 +9,12 @@
 import { describe, expect, test } from "bun:test"
 
 import type { Envelope } from "./envelope.ts"
-import { arrivalLabel, renderArrivalLines, renderArrivalText } from "./render.ts"
+import {
+  arrivalLabel,
+  renderArrivalLines,
+  renderArrivalText,
+  toArrivalNotice,
+} from "./render.ts"
 
 /** Strip ANSI SGR so assertions read against plain text. */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI for assertions.
@@ -122,6 +127,33 @@ describe("renderArrivalLines bare-row contract (host frames per-row)", () => {
     const bodyRows = rows.filter((r) => noAnsi(r).includes("a".repeat(50)))
     expect(bodyRows.length).toBe(1)
     expect(bodyRows[0]).not.toContain("\n")
+  })
+})
+
+describe("toArrivalNotice (the notification.emit payload contract)", () => {
+  test("assembles the full payload: source, framed block, plain text", () => {
+    const n = toArrivalNotice([env({ body: "hi" })])
+    expect(n.source).toBe("intercom")
+    expect(n.block.icon).toBe("⇆")
+    expect(n.block.title).toBe("intercom") // non-empty: survives host coerceNoticeBlock drop-guard
+    expect(n.block.info).toBe("1 new message")
+    expect(n.block.color).toBe("magenta") // real host palette key, not the gold fallback
+    expect(n.block.body).toEqual(renderArrivalLines([env({ body: "hi" })]))
+    expect(n.text).toBe(renderArrivalText([env({ body: "hi" })]))
+  })
+
+  test("block.body carries no frame glyphs (host owns chrome)", () => {
+    const n = toArrivalNotice([env({ kind: "interrupt", body: "a\nb" }), env({ id: "b", body: "c" })])
+    for (const r of n.block.body) {
+      expect(r).not.toContain("╭")
+      expect(r).not.toContain("│")
+      expect(r).not.toContain("╰")
+      expect(r).not.toContain("\n")
+    }
+  })
+
+  test("info pluralizes with the batch size", () => {
+    expect(toArrivalNotice([env(), env({ id: "b" })]).block.info).toBe("2 new messages")
   })
 })
 
