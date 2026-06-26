@@ -142,6 +142,21 @@ describe("BackgroundLogs", () => {
     }
   })
 
+  test("display includes the log body, not just the summary line", async () => {
+    await bgRun(ctx({ command: "echo body-visible-in-display" }))
+    await waitTerminal("j1")
+    const res = await bgLogs(ctx({ id: "j1" }))
+    if (res.kind === "tool_result") {
+      // Regression: display used to be only the dim summary, dropping the body
+      // in the terminal even though content carried it.
+      expect(res.display).toBeDefined()
+      // strip ANSI so the assertion is about the text, not styling.
+      const plain = (res.display ?? "").replace(/\x1b\[[0-9;]*m/g, "")
+      expect(plain).toContain("body-visible-in-display")
+      expect(plain).toContain("shown")
+    }
+  })
+
   test("grep filters log lines", async () => {
     await bgRun(ctx({ command: "printf 'a\\nb\\nerror x\\nc\\n'" }))
     await Bun.sleep(400)
