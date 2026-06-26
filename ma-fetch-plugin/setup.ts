@@ -51,9 +51,9 @@
  */
 
 import { existsSync, readFileSync } from "node:fs"
-import { homedir } from "node:os"
 import { join } from "node:path"
 
+import { agentHome } from "./lib/paths.ts"
 import { OBSCURA_DIST_TOKEN } from "./obscura-token.ts"
 
 // Structural copies of the host's setup types so this file type-checks
@@ -133,8 +133,7 @@ const OBSCURA_BUILDS: Record<string, PlatformBuild> = {
 
 /** Read `plugins["ma-fetch"].obscura.bin` from user config, if set. Lenient. */
 function configuredObscuraBin(): string | undefined {
-  const cfgPath =
-    process.env.MINIMAL_AGENT_CONFIG ?? join(homedir(), ".minimal-agent", "config.jsonc")
+  const cfgPath = process.env.MINIMAL_AGENT_CONFIG ?? join(agentHome(), "config.jsonc")
   try {
     if (!existsSync(cfgPath)) return undefined
     const raw = readFileSync(cfgPath, "utf8")

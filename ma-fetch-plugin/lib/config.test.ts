@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { defaultConfig, parseFetchConfig } from "./config.ts"
 
@@ -285,7 +285,7 @@ describe("parseFetchConfig - per-backend blocks", () => {
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-import { defaultStorageRoot, expandHome, SESSION_NAME_PATTERN } from "./config.ts"
+import { configPath, defaultStorageRoot, expandHome, SESSION_NAME_PATTERN } from "./config.ts"
 
 describe("expandHome", () => {
   test("expands a bare `~`", () => {
@@ -313,8 +313,61 @@ describe("expandHome", () => {
 })
 
 describe("defaultStorageRoot", () => {
+  // These assert the FALLBACK shape, so clear MINIMAL_AGENT_HOME to keep the
+  // assertion deterministic regardless of the ambient env (a live agent or a
+  // relocated test shell would otherwise pollute it). Restore after.
+  let savedHome: string | undefined
+  beforeEach(() => {
+    savedHome = process.env.MINIMAL_AGENT_HOME
+    delete process.env.MINIMAL_AGENT_HOME
+  })
+  afterEach(() => {
+    if (savedHome === undefined) delete process.env.MINIMAL_AGENT_HOME
+    else process.env.MINIMAL_AGENT_HOME = savedHome
+  })
+
   test("rooted under user home + .minimal-agent/sessions/fetch", () => {
     expect(defaultStorageRoot()).toBe(join(homedir(), ".minimal-agent", "sessions", "fetch"))
+  })
+
+  test("MINIMAL_AGENT_HOME relocates the storage root", () => {
+    process.env.MINIMAL_AGENT_HOME = "/tmp/ma-reloc-fetch"
+    expect(defaultStorageRoot()).toBe(join("/tmp/ma-reloc-fetch", "sessions", "fetch"))
+  })
+})
+
+describe("configPath", () => {
+  // configPath consults MINIMAL_AGENT_CONFIG first, then the agent home. Clear
+  // BOTH so the test exercises the agent-home branch deterministically, and
+  // restore after.
+  let savedHome: string | undefined
+  let savedConfig: string | undefined
+  beforeEach(() => {
+    savedHome = process.env.MINIMAL_AGENT_HOME
+    savedConfig = process.env.MINIMAL_AGENT_CONFIG
+    delete process.env.MINIMAL_AGENT_HOME
+    delete process.env.MINIMAL_AGENT_CONFIG
+  })
+  afterEach(() => {
+    if (savedHome === undefined) delete process.env.MINIMAL_AGENT_HOME
+    else process.env.MINIMAL_AGENT_HOME = savedHome
+    if (savedConfig === undefined) delete process.env.MINIMAL_AGENT_CONFIG
+    else process.env.MINIMAL_AGENT_CONFIG = savedConfig
+  })
+
+  test("MINIMAL_AGENT_CONFIG override wins verbatim", () => {
+    process.env.MINIMAL_AGENT_CONFIG = "/custom/cfg.jsonc"
+    expect(configPath()).toBe("/custom/cfg.jsonc")
+  })
+
+  test("relocated MINIMAL_AGENT_HOME moves the resolved config path", () => {
+    // Use a home that does not exist on disk so the existsSync(jsonc) branch is
+    // false and we get the deterministic `config.json` leaf. Either way the
+    // path must live under the relocated home, never under the OS home.
+    process.env.MINIMAL_AGENT_HOME = "/tmp/ma-reloc-fetch-cfg-does-not-exist"
+    const p = configPath()
+    expect(p.startsWith("/tmp/ma-reloc-fetch-cfg-does-not-exist/")).toBe(true)
+    expect(p).toBe(join("/tmp/ma-reloc-fetch-cfg-does-not-exist", "config.json"))
   })
 })
 

@@ -15,6 +15,8 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
+import { agentHome } from "./paths.ts"
+
 /** Characters per token, standard heuristic. */
 const CHARS_PER_TOKEN = 4
 
@@ -29,10 +31,13 @@ function approxTokens(body: string): number {
   return Math.ceil(Buffer.byteLength(body, "utf8") / CHARS_PER_TOKEN)
 }
 
-/** Cache file location, overridable via env for tests. */
-function defaultCachePath(): string {
-  const home = process.env.HOME ?? "/tmp"
-  return join(home, ".minimal-agent", "cache", "ma-slash-menu", "tokens.json")
+/** Cache file location. Rooted under the agent home so it honors
+ *  `MINIMAL_AGENT_HOME` (via {@link agentHome}); absent the override it falls
+ *  back to `~/.minimal-agent/cache/...` as before. Overridable per-call by
+ *  passing an explicit `cachePath` to {@link defaultDeps} (tests do this).
+ *  Exported for unit tests that pin the relocation behavior. */
+export function defaultCachePath(): string {
+  return join(agentHome(), "cache", "ma-slash-menu", "tokens.json")
 }
 
 interface CacheEntry {

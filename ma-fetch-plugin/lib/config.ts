@@ -43,6 +43,7 @@ import { isAbsolute, join } from "node:path"
 import type { CleanupLevel } from "./cleanup.ts"
 import { CLEANUP_LEVELS } from "./cleanup.ts"
 import { parseJsonc } from "./jsonc.ts"
+import { agentHome } from "./paths.ts"
 
 export type FetchFormat = "markdown" | "text" | "html" | "links" | "original"
 export type WaitUntil = "load" | "domcontentloaded" | "networkidle0"
@@ -118,11 +119,12 @@ export function expandHome(p: string): string {
   return p
 }
 
-/** Default sandbox root for sessions. Relative to the user's home so
+/** Default sandbox root for sessions. Rooted under the agent home so
  *  it survives across hostnames and matches where every other agent
- *  artifact lives (`~/.minimal-agent/sessions/<id>.tasks.jsonl`, etc.). */
+ *  artifact lives (`<agent-home>/sessions/<id>.tasks.jsonl`, etc.).
+ *  Honors `MINIMAL_AGENT_HOME` via {@link agentHome}. */
 export function defaultStorageRoot(): string {
-  return join(homedir(), ".minimal-agent", "sessions", "fetch")
+  return join(agentHome(), "sessions", "fetch")
 }
 
 /** Built-in defaults. Pure - no IO.
@@ -154,10 +156,12 @@ export function defaultConfig(): FetchConfig {
   }
 }
 
-/** Resolve config file path. Mirrors `src/config.ts:configPath` in minimal-agent. */
+/** Resolve config file path. Mirrors `src/config.ts:configPath` in minimal-agent.
+ *  `MINIMAL_AGENT_CONFIG` wins; otherwise the file lives under the agent home
+ *  (honoring `MINIMAL_AGENT_HOME` via {@link agentHome}). */
 export function configPath(): string {
   if (process.env.MINIMAL_AGENT_CONFIG) return process.env.MINIMAL_AGENT_CONFIG
-  const dir = join(homedir(), ".minimal-agent")
+  const dir = agentHome()
   const jsoncPath = join(dir, "config.jsonc")
   if (existsSync(jsoncPath)) return jsoncPath
   return join(dir, "config.json")

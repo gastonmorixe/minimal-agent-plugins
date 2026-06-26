@@ -1,6 +1,7 @@
-import { describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import {
+  defaultRoots,
   listSkills,
   makeSkillsProvider,
   parseMinimalFrontmatter,
@@ -218,5 +219,43 @@ describe("makeSkillsProvider", () => {
     files["/root/a/new-skill/SKILL.md"] = "---\nname: new-skill\ndescription: x\n---\nb"
     const items = provider.list() as { slug: string }[]
     expect(items.map((i) => i.slug)).toEqual(["new-skill"])
+  })
+})
+
+describe("defaultRoots — MINIMAL_AGENT_HOME relocation (dual-root split)", () => {
+  // The .minimal-agent user root must honor MINIMAL_AGENT_HOME, while the
+  // SIBLING .agents root (a DIFFERENT `~/.agents` convention) must stay pinned
+  // to the OS-home param. Clear+restore the env so the assertions are
+  // deterministic regardless of the ambient value (a live agent sets it).
+  let saved: string | undefined
+  beforeEach(() => {
+    saved = process.env.MINIMAL_AGENT_HOME
+    delete process.env.MINIMAL_AGENT_HOME
+  })
+  afterEach(() => {
+    if (saved === undefined) delete process.env.MINIMAL_AGENT_HOME
+    else process.env.MINIMAL_AGENT_HOME = saved
+  })
+
+  it("relocates ONLY the .minimal-agent root; .agents stays on the OS-home param", () => {
+    process.env.MINIMAL_AGENT_HOME = "/tmp/ma-reloc"
+    const roots = defaultRoots("/proj", "/home/u")
+    expect(roots).toEqual([
+      "/proj/.agents/skills",
+      "/home/u/.agents/skills", // .agents convention — pinned to OS home, NOT relocated
+      "/tmp/ma-reloc/skills", // .minimal-agent user root — honors MINIMAL_AGENT_HOME
+    ])
+    // Explicit split proof: the userAgent root moved off /home/u while .agents did not.
+    expect(roots[2]).toBe("/tmp/ma-reloc/skills")
+    expect(roots[1]).toBe("/home/u/.agents/skills")
+  })
+
+  it("absent the override, the .minimal-agent root is join(home, '.minimal-agent', 'skills') (back-compat)", () => {
+    const roots = defaultRoots("/proj", "/home/u")
+    expect(roots).toEqual([
+      "/proj/.agents/skills",
+      "/home/u/.agents/skills",
+      "/home/u/.minimal-agent/skills",
+    ])
   })
 })
