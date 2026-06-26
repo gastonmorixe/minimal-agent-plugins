@@ -19,7 +19,6 @@ import { advanceCursor, readCursor } from "../lib/cursors.ts"
 import { runGc } from "../lib/gc.ts"
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
 import { selfIdentity, thisHost } from "../lib/identity.ts"
-<<<<<<< HEAD
 import { cursorPath, sessionLogPath } from "../lib/paths.ts"
 import { phaseFromMtime } from "../lib/presence.ts"
 import { toArrivalNotice } from "../lib/render.ts"
