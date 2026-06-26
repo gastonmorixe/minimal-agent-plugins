@@ -10,14 +10,16 @@
  * registry (`transport:registry`) only requires `{ id }`, so the host accepts it.
  * If Intercom's port shape changes, update this mirror (and add a contract test).
  *
- * ## Why a STUB
+ * ## Wired to the real backend
  *
- * The real remote transport speaks WebSocket / graphql-ws to the cloud backend.
- * That depends on the backend auth contract (Phase B) which doesn't exist yet.
- * This skeleton proves the WIRING — plugin loads, registers a transport, Intercom
- * folds it into its CompositeTransport — with the network methods as safe no-ops
- * (empty roster, dropped delivery). When the backend lands, only the bodies of
- * these methods change; the registration path stays exactly as proven here.
+ * As of the cutover, the transport opens a real graphql-ws WebSocket to the
+ * cloud backend (localhost:4000 by default, or the deployed api later) and
+ * authenticates with the B4 bearer token. The WS stays alive as a keepalive
+ * connection. Presence/Inbox data methods are still empty: the remote-peer
+ * API (a `peers` subscription + `relay` mutation) is a coordinated follow-up
+ * with Mike's backend — until then, `readPresence()` and `readInbox()` return
+ * empty (no remote peers to sync). The connection handshake + auth IS real,
+ * so the transport path is wireable and testable today.
  *
  * @module lib/transport
  */
