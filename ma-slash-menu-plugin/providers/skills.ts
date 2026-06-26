@@ -17,6 +17,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, resolve } from "node:path"
 
+import { agentHome } from "../lib/paths.ts"
 import { approxTokensForMany, defaultDeps, type TokenDeps } from "../lib/tokens.ts"
 import type { Item, Provider } from "../lib/types.ts"
 
@@ -33,7 +34,13 @@ export interface SkillsDeps {
   stat(path: string): { isDirectory: boolean } | null
 }
 
-/** Default roots: project (cwd) → home → user. Skips roots that don't exist. */
+/** Default roots: project (cwd) → home → user. Skips roots that don't exist.
+ *
+ * The `.agents` roots use the OS-home `~/.agents` convention and stay on the
+ * `home` param. The `.minimal-agent` user root routes through {@link agentHome}
+ * so a host that relocated `MINIMAL_AGENT_HOME` is honored; absent the override
+ * it yields `join(home, ".minimal-agent")`, identical to before, so injected-
+ * `home` tests stay green. */
 export function defaultRoots(
   cwd: string = process.cwd(),
   home: string = process.env.HOME ?? "/",
@@ -41,7 +48,7 @@ export function defaultRoots(
   return [
     resolve(cwd, ".agents", "skills"),
     resolve(home, ".agents", "skills"),
-    resolve(home, ".minimal-agent", "skills"),
+    resolve(agentHome(process.env, home), "skills"),
   ]
 }
 

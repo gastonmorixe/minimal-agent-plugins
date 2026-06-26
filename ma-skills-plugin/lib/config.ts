@@ -33,9 +33,9 @@
  */
 
 import { existsSync, readFileSync } from "node:fs"
-import { homedir } from "node:os"
 import { isAbsolute, join } from "node:path"
 
+import { agentHome } from "./agent-home.ts"
 import { parseJsonc } from "./jsonc.ts"
 
 export type DiscoveryRootKey = "project" | "projectClaudeCode" | "homeShared" | "userAgent"
@@ -83,7 +83,7 @@ export function defaultConfig(): SkillsConfig {
 /** Resolve the config file path. Mirrors `src/config.ts:configPath` in minimal-agent. */
 export function configPath(): string {
   if (process.env.MINIMAL_AGENT_CONFIG) return process.env.MINIMAL_AGENT_CONFIG
-  const dir = join(homedir(), ".minimal-agent")
+  const dir = agentHome()
   const jsoncPath = join(dir, "config.jsonc")
   if (existsSync(jsoncPath)) return jsoncPath
   return join(dir, "config.json")

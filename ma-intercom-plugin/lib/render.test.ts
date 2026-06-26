@@ -9,12 +9,7 @@
 import { describe, expect, test } from "bun:test"
 
 import type { Envelope } from "./envelope.ts"
-import {
-  arrivalLabel,
-  renderArrivalLines,
-  renderArrivalText,
-  toArrivalNotice,
-} from "./render.ts"
+import { arrivalLabel, renderArrivalLines, renderArrivalText, toArrivalNotice } from "./render.ts"
 
 /** Strip ANSI SGR so assertions read against plain text. */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI for assertions.
@@ -143,7 +138,10 @@ describe("toArrivalNotice (the notification.emit payload contract)", () => {
   })
 
   test("block.body carries no frame glyphs (host owns chrome)", () => {
-    const n = toArrivalNotice([env({ kind: "interrupt", body: "a\nb" }), env({ id: "b", body: "c" })])
+    const n = toArrivalNotice([
+      env({ kind: "interrupt", body: "a\nb" }),
+      env({ id: "b", body: "c" }),
+    ])
     for (const r of n.block.body) {
       expect(r).not.toContain("╭")
       expect(r).not.toContain("│")

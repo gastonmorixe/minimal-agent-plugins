@@ -1,8 +1,12 @@
-import { describe, expect, it } from "bun:test"
+import { homedir } from "node:os"
+import { join } from "node:path"
+
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import {
   approxTokensForFile,
   approxTokensForMany,
+  defaultCachePath,
   formatTokens,
   type TokenDeps,
   tokenSeverity,
@@ -167,5 +171,32 @@ describe("tokenSeverity", () => {
 
   it("undefined → unknown", () => {
     expect(tokenSeverity(undefined)).toBe("unknown")
+  })
+})
+
+describe("defaultCachePath — MINIMAL_AGENT_HOME relocation", () => {
+  // Clear+restore the env so the fallback-shape assertion is deterministic
+  // regardless of the ambient value (a live agent sets MINIMAL_AGENT_HOME).
+  let saved: string | undefined
+  beforeEach(() => {
+    saved = process.env.MINIMAL_AGENT_HOME
+    delete process.env.MINIMAL_AGENT_HOME
+  })
+  afterEach(() => {
+    if (saved === undefined) delete process.env.MINIMAL_AGENT_HOME
+    else process.env.MINIMAL_AGENT_HOME = saved
+  })
+
+  it("falls back to <home>/.minimal-agent/cache/ma-slash-menu/tokens.json", () => {
+    expect(defaultCachePath()).toBe(
+      join(homedir(), ".minimal-agent", "cache", "ma-slash-menu", "tokens.json"),
+    )
+  })
+
+  it("relocates the cache path under MINIMAL_AGENT_HOME", () => {
+    process.env.MINIMAL_AGENT_HOME = "/tmp/ma-reloc-tokens"
+    expect(defaultCachePath()).toBe(
+      join("/tmp/ma-reloc-tokens", "cache", "ma-slash-menu", "tokens.json"),
+    )
   })
 })

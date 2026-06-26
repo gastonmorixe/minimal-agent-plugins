@@ -28,6 +28,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, join } from "node:path"
 
+import { agentHome } from "./agent-home.ts"
 import type { SkillsConfig } from "./config.ts"
 import { parseSkillMd } from "./skill-md.ts"
 import type { BrokenSkill, DiscoveryResult, Skill, SkillScope } from "./types.ts"
@@ -65,7 +66,12 @@ export function resolveRoots(
     roots.push({ scope: "homeShared", path: join(home, ".agents", "skills") })
   }
   if (config.roots.userAgent) {
-    roots.push({ scope: "userAgent", path: join(home, ".minimal-agent", "skills") })
+    // `~/.minimal-agent/skills/`, honoring a relocated MINIMAL_AGENT_HOME. The
+    // injected `home` stays the fallback base, so absent the override this is
+    // exactly `join(home, ".minimal-agent", "skills")` as before. Note the
+    // homeShared root above stays on `~/.agents` (a DIFFERENT convention) and
+    // must remain based on the OS-home param, unaffected by the override.
+    roots.push({ scope: "userAgent", path: join(agentHome(process.env, home), "skills") })
   }
   for (const extra of config.extraRoots) {
     roots.push({ scope: "extra", path: extra })

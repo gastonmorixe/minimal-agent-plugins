@@ -30,12 +30,23 @@ import {
 
 let TMP: string
 
+// The live host publishes MINIMAL_AGENT_HOME into the env, which would make the
+// userAgent root honor the override instead of the injected `home`. Tests here
+// assert against the injected-`home` fallback, so clear the override around each
+// case (and restore it after) to keep them deterministic regardless of how the
+// suite was launched. The override is exercised explicitly in its own test.
+let SAVED_HOME_ENV: string | undefined
+
 beforeEach(() => {
   TMP = mkdtempSync(join(tmpdir(), "ma-skills-discovery-"))
+  SAVED_HOME_ENV = process.env.MINIMAL_AGENT_HOME
+  delete process.env.MINIMAL_AGENT_HOME
 })
 
 afterEach(() => {
   if (TMP) rmSync(TMP, { recursive: true, force: true })
+  if (SAVED_HOME_ENV === undefined) delete process.env.MINIMAL_AGENT_HOME
+  else process.env.MINIMAL_AGENT_HOME = SAVED_HOME_ENV
 })
 
 function makeSkill(
@@ -94,6 +105,46 @@ describe("resolveRoots", () => {
     const roots = resolveRoots(cfg, "/cwd", "/home")
     expect(roots[roots.length - 1]).toEqual({ scope: "extra", path: "/x/two" })
     expect(roots[roots.length - 2]).toEqual({ scope: "extra", path: "/x/one" })
+  })
+
+  test("MINIMAL_AGENT_HOME relocates userAgent root but NOT homeShared", () => {
+    // Dual-root split proof: a relocated MINIMAL_AGENT_HOME must win for the
+    // `~/.minimal-agent/skills` (userAgent) root, while the `~/.agents/skills`
+    // (homeShared) root is a DIFFERENT convention and must stay anchored to the
+    // injected OS-home param, untouched by the override.
+    const prev = process.env.MINIMAL_AGENT_HOME
+    process.env.MINIMAL_AGENT_HOME = "/tmp/ma-reloc"
+    try {
+      const cfg = configFor({
+        roots: { project: true, projectClaudeCode: true, homeShared: true, userAgent: true },
+      })
+      const roots = resolveRoots(cfg, "/cwd", "/home/u")
+      const byScope = Object.fromEntries(roots.map((r) => [r.scope, r.path]))
+      // userAgent honors the override...
+      expect(byScope.userAgent).toBe("/tmp/ma-reloc/skills")
+      // ...homeShared stays on the OS-home param (~/.agents, not ~/.minimal-agent).
+      expect(byScope.homeShared).toBe("/home/u/.agents/skills")
+    } finally {
+      if (prev === undefined) delete process.env.MINIMAL_AGENT_HOME
+      else process.env.MINIMAL_AGENT_HOME = prev
+    }
+  })
+
+  test("without MINIMAL_AGENT_HOME, userAgent falls back to injected home", () => {
+    const prev = process.env.MINIMAL_AGENT_HOME
+    delete process.env.MINIMAL_AGENT_HOME
+    try {
+      const cfg = configFor({
+        roots: { project: false, projectClaudeCode: false, homeShared: true, userAgent: true },
+      })
+      const roots = resolveRoots(cfg, "/cwd", "/home/u")
+      const byScope = Object.fromEntries(roots.map((r) => [r.scope, r.path]))
+      expect(byScope.userAgent).toBe("/home/u/.minimal-agent/skills")
+      expect(byScope.homeShared).toBe("/home/u/.agents/skills")
+    } finally {
+      if (prev === undefined) delete process.env.MINIMAL_AGENT_HOME
+      else process.env.MINIMAL_AGENT_HOME = prev
+    }
   })
 })
 
