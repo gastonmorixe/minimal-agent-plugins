@@ -142,18 +142,24 @@ describe("BackgroundLogs", () => {
     }
   })
 
-  test("display includes the log body, not just the summary line", async () => {
+  test("body renders on display lines, summary on the footer", async () => {
     await bgRun(ctx({ command: "echo body-visible-in-display" }))
     await waitTerminal("j1")
     const res = await bgLogs(ctx({ id: "j1" }))
     if (res.kind === "tool_result") {
       // Regression: display used to be only the dim summary, dropping the body
-      // in the terminal even though content carried it.
+      // in the terminal even though content carried it. The body belongs on the
+      // │ display lines; the summary belongs on the ╰ footer.
+      const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "")
       expect(res.display).toBeDefined()
-      // strip ANSI so the assertion is about the text, not styling.
-      const plain = (res.display ?? "").replace(/\x1b\[[0-9;]*m/g, "")
-      expect(plain).toContain("body-visible-in-display")
-      expect(plain).toContain("shown")
+      const display = stripAnsi(res.display ?? "")
+      expect(display).toContain("body-visible-in-display")
+      expect(display).not.toContain("shown")
+
+      expect(res.displayFooter).toBeDefined()
+      const footer = stripAnsi(res.displayFooter ?? "")
+      expect(footer).toContain("shown")
+      expect(footer).toContain("cursor")
     }
   })
 

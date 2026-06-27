@@ -13,7 +13,7 @@ import { loadBgConfig } from "../lib/config.ts"
 import { fileSize, readFileMaybe, storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { type LogIO, readLog } from "../lib/log-read.ts"
-import { configureSgr, dim, gray, statusWord } from "../lib/render.ts"
+import { configureSgr, dim, statusWord } from "../lib/render.ts"
 import { parseLogsRequest } from "../lib/validate.ts"
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
@@ -82,12 +82,12 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
 
   const body = result.text.length > 0 ? result.text : "(no matching output)"
 
-  // Transcript display: the dim at-a-glance summary line FIRST, then the full
-  // selected window dimmed below it. BackgroundLogs is the deliberate read, so
-  // unlike BackgroundStatus's 6-line tail we show the whole selected body (it
-  // was already bounded by tail/offset/limit/maxBytes upstream). Without this
-  // body the terminal showed only the one-line summary and dropped the output.
-  const summary = dim(`${shown} · cursor ${result.byteCursor}`)
+  // Transcript display: the full selected window in the body lines, with the
+  // dim at-a-glance summary on the footer (`╰`) line. BackgroundLogs is the
+  // deliberate read, so unlike BackgroundStatus's 6-line tail we show the whole
+  // selected body (already bounded by tail/offset/limit/maxBytes upstream).
+  // Without this body the terminal showed only the one-line summary and dropped
+  // the output.
   const displayBody = body
     .split("\n")
     .map((l) => dim(l))
@@ -96,7 +96,8 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     kind: "tool_result",
     content: `${header}\n\n${body}`,
     displayHeader: `${rec.id} log`,
-    display: `${summary}\n${gray("─ output ─")}\n${displayBody}`,
+    display: displayBody,
+    displayFooter: dim(`${shown} · cursor ${result.byteCursor}`),
   }
 }
 
