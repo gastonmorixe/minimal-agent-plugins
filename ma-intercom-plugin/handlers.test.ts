@@ -110,6 +110,21 @@ describe("Send", () => {
       expect(res.content).toContain("Delivered")
     }
   })
+
+  it("refuses delivery to a dead peer", async () => {
+    // Write a presence record with a pid that doesn't exist, so the liveness
+    // probe returns false and the peer classifies as dead.
+    const deadRec = presence("peer-dead", 99999)
+    writePresence(presencePath("peer-dead", env), deadRec)
+    const res = await sendHandler(
+      toolCtx("me-aaa", process.pid, "Send", { to: "peer-dead", body: "hi" }),
+    )
+    expect(res.kind).toBe("tool_result")
+    if (res.kind === "tool_result") {
+      expect(res.is_error).toBe(true)
+      expect(res.content).toContain("peer is dead")
+    }
+  })
 })
 
 describe("InboxAttachment", () => {

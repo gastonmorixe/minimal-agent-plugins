@@ -304,6 +304,14 @@ export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
       })
       return { delivered, skipped, scope, kind: input.kind, envelopeId: null }
     }
+    // Refuse delivery to a peer that isn't reachable (dead/offline/hung).
+    if (!isReachable(res.row.liveness)) {
+      skipped.push({
+        ref: toRaw,
+        reason: `peer is ${res.row.liveness.status}`,
+      })
+      return { delivered, skipped, scope, kind: input.kind, envelopeId: null }
+    }
     recipients = [res.row]
   }
 
