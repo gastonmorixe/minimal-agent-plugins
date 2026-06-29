@@ -22,7 +22,10 @@ afterEach(() => __resetMachineIdCacheForTests())
 
 function tmpHome(): { env: NodeJS.ProcessEnv; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), "intercom-teams-"))
-  return { env: { MINIMAL_AGENT_HOME: dir }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
+  return {
+    env: { MINIMAL_AGENT_HOME: dir },
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  }
 }
 
 const PRE_TEAMS_REC: PresenceRecord = {

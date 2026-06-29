@@ -35,8 +35,8 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
-  readFileSync,
   readdirSync,
+  readFileSync,
   renameSync,
   writeFileSync,
 } from "node:fs"
@@ -199,7 +199,10 @@ let defaultWs: WsFactory | undefined
 function getDefaultWs(): WsFactory {
   if (defaultWs) return defaultWs
   const Ctor = (globalThis as { WebSocket?: unknown }).WebSocket as
-    | (new (url: string, proto?: string | string[]) => GqlWsSocket)
+    | (new (
+        url: string,
+        proto?: string | string[],
+      ) => GqlWsSocket)
     | undefined
   if (!Ctor) throw new Error("no global WebSocket")
   defaultWs = (url, proto) => new Ctor(url, proto)
@@ -290,10 +293,8 @@ async function gqlMutate<T>(
 }
 
 /** Mutations / subscriptions for contract v4. */
-const PUBLISH_MUTATION =
-  "mutation($r:JSON!){publishPeerPresence(record:$r){sid accepted}}"
-const SEND_MUTATION =
-  "mutation($e:JSON!){sendRemoteMessage(envelope:$e){sent messageId}}"
+const PUBLISH_MUTATION = "mutation($r:JSON!){publishPeerPresence(record:$r){sid accepted}}"
+const SEND_MUTATION = "mutation($e:JSON!){sendRemoteMessage(envelope:$e){sent messageId}}"
 const PRESENCE_SUB =
   "subscription{peerPresenceAdded{sid machineId hostname model cwd phase activity v short pid lastBeat}}"
 const INBOX_SUB =
