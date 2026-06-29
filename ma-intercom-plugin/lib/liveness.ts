@@ -191,7 +191,7 @@ function classifyLocal(
  *
  *   - `gone`            ⇒ offline (backend saw a clean disconnect).
  *   - age ≤ staleMs     ⇒ online (backend is relaying a live socket).
- *   - age >  staleMs     ⇒ offline (relay went quiet — backend unreachable or the
+ *   - age \>  staleMs    ⇒ offline (relay went quiet — backend unreachable or the
  *                         remote dropped without a clean `gone`). We say
  *                         `offline` rather than `stale`: for a remote peer the
  *                         backend is the ONLY signal, and a quiet backend means
