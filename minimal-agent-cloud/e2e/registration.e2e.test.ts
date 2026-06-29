@@ -30,10 +30,11 @@
  * @module e2e/registration.e2e.test
  */
 
-import { existsSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import { isTransportRegistered, registerTransport } from "../lib/register.ts"
 import { RemoteWsTransport } from "../lib/transport.ts"
@@ -61,6 +62,25 @@ describe("KEYSTONE: cloud plugin registers a transport that Intercom folds in (n
     it.skip(`skipped — need core WT (${haveCore}) + intercom a5 (${haveIntercom}) present`, () => {})
     return
   }
+
+  // Pin MINIMAL_AGENT_HOME to an empty temp dir per test so the real
+  // RemoteWsTransport.readPresence() / readInbox() (which read the
+  // host-resolved presence/inbox dirs) do NOT pick up live records from
+  // the dev box's `~/.minimal-agent/intercom/`. Without this the
+  // composite folds real sessions into the assertion and the count
+  // drifts machine-to-machine.
+  let tmpHome: string
+  let savedHome: string | undefined
+  beforeEach(() => {
+    tmpHome = mkdtempSync(join(tmpdir(), "cloud-keystone-e2e-"))
+    savedHome = process.env.MINIMAL_AGENT_HOME
+    process.env.MINIMAL_AGENT_HOME = tmpHome
+  })
+  afterEach(() => {
+    if (savedHome === undefined) delete process.env.MINIMAL_AGENT_HOME
+    else process.env.MINIMAL_AGENT_HOME = savedHome
+    rmSync(tmpHome, { recursive: true, force: true })
+  })
 
   it("end-to-end: register via cloud host → list via intercom host → composite folds it", async () => {
     // Real core registry + a reset helper to keep the process-wide store clean.
