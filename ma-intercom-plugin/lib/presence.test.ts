@@ -54,6 +54,16 @@ describe("coercePresence", () => {
     expect(parsePresence("not json")).toBeNull()
     expect(parsePresence("")).toBeNull()
   })
+
+  it("carries an opt-in name (trimmed, capped) and omits it when blank/absent", () => {
+    expect(coercePresence({ sid: "s", ts: "t", name: "  Laura  " })?.name).toBe("Laura")
+    // absent ⇒ no key (byte-identical to pre-naming records)
+    expect("name" in (coercePresence({ sid: "s", ts: "t" }) as object)).toBe(false)
+    // blank ⇒ treated as absent
+    expect("name" in (coercePresence({ sid: "s", ts: "t", name: "   " }) as object)).toBe(false)
+    // capped at 48 chars
+    expect(coercePresence({ sid: "s", ts: "t", name: "z".repeat(80) })?.name?.length).toBe(48)
+  })
 })
 
 describe("phaseFromMtime", () => {

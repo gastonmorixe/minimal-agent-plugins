@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { isSafeSid, normalizePeerRef, shortId, sidMatchesRef } from "./identity.ts"
+import { isSafeSid, normalizePeerRef, selfIdentity, shortId, sidMatchesRef } from "./identity.ts"
 
 describe("isSafeSid — path-traversal guard", () => {
   it("accepts real uuids and short ids", () => {
@@ -39,5 +39,27 @@ describe("normalizePeerRef + sidMatchesRef", () => {
 
   it("shortId renders the leading 8-char hex group (matches the footer)", () => {
     expect(shortId("bd94a4be-af3a-4bc5-a18c-993b26a86682")).toBe("bd94a4be")
+  })
+})
+
+describe("selfIdentity — opt-in name", () => {
+  const agent = {
+    sessionId: "bd94a4be-af3a-4bc5-a18c-993b26a86682",
+    pid: 1,
+    model: "m",
+    version: "v",
+  }
+
+  it("carries the resolved MINIMAL_AGENT_AGENT_NAME, trimmed", () => {
+    const self = selfIdentity(agent, { MINIMAL_AGENT_AGENT_NAME: "  Laura " } as NodeJS.ProcessEnv)
+    expect(self?.name).toBe("Laura")
+  })
+
+  it("omits name when the env var is unset or blank (naming off)", () => {
+    expect("name" in (selfIdentity(agent, {} as NodeJS.ProcessEnv) as object)).toBe(false)
+    expect(
+      "name" in
+        (selfIdentity(agent, { MINIMAL_AGENT_AGENT_NAME: "   " } as NodeJS.ProcessEnv) as object),
+    ).toBe(false)
   })
 })

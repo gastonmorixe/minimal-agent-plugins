@@ -65,6 +65,10 @@ export function renderRosterText(rows: readonly RosterRow[], counts: RosterCount
     const r = row.record
     const verdict = livenessLabel(row.liveness)
     const self = row.isSelf ? " (you)" : ""
+    // Opt-in agent name (peer-reported); sanitize before model-facing text. Only
+    // shown when the peer carries one (naming off ⇒ omitted), so the model sees
+    // "Jerry" beside the short id when a session is named.
+    const name = r.name ? ` "${sanitizePeerLine(r.name)}"` : ""
     // model / cwd / activity are peer-reported; sanitize before model-facing text.
     const where = sanitizePeerLine(baseName(r.cwd)) || "?"
     const model = r.model ? sanitizePeerLine(r.model) : "?"
@@ -75,7 +79,7 @@ export function renderRosterText(rows: readonly RosterRow[], counts: RosterCount
     const cid = shortComputerId(r.computerId)
     const remote = row.isRemote ? ` (Remote${cid ? ` ${sanitizePeerLine(cid)}` : ""})` : ""
     lines.push(
-      `  ${sanitizePeerLine(r.short)}${self}${remote}  [${verdict}]  ${model}  ${where}${act}${seen}`,
+      `  ${sanitizePeerLine(r.short)}${name}${self}${remote}  [${verdict}]  ${model}  ${where}${act}${seen}`,
     )
   }
   return lines.join("\n")
@@ -98,13 +102,15 @@ export function renderRosterDisplay(rows: readonly RosterRow[]): string {
     const paint = VERDICT_COLOR[row.liveness.status]
     const verdict = paint(`●`)
     const self = row.isSelf ? dim(" (you)") : ""
+    // Opt-in agent name beside the short id, when the peer carries one.
+    const name = r.name ? cyan(` "${r.name}"`) : ""
     const where = gray(baseName(r.cwd) || "?")
     const act = r.activity ? dim(` · ${r.activity}`) : ""
     const seen = row.liveness.status === "online" ? "" : dim(` · ${ago(row.liveness.ageMs)}`)
     const cid = shortComputerId(r.computerId)
     const remote = row.isRemote ? dim(` (Remote${cid ? ` ${cid}` : ""})`) : ""
     lines.push(
-      `  ${verdict} ${bold(r.short)}${self}${remote}  ${paint(livenessLabel(row.liveness).padEnd(7))} ${dim(r.model || "?")}  ${where}${act}${seen}`,
+      `  ${verdict} ${bold(r.short)}${name}${self}${remote}  ${paint(livenessLabel(row.liveness).padEnd(7))} ${dim(r.model || "?")}  ${where}${act}${seen}`,
     )
   }
   return lines.join("\n")
@@ -191,6 +197,9 @@ export function renderInspectText(b: InspectBundle): string {
   const r = b.record
   const lines: string[] = []
   lines.push(`Peer ${r.short} (${r.sid})`)
+  // Opt-in agent name (peer-reported); sanitize before model-facing text. Only
+  // shown when the peer carries one (naming off ⇒ line omitted).
+  if (r.name) lines.push(`  name: ${sanitizePeerLine(r.name)}`)
   lines.push(
     `  liveness: ${livenessLabel(b.liveness)}${b.liveness.status === "online" ? "" : ` · ${ago(b.liveness.ageMs)}`}`,
   )

@@ -78,6 +78,14 @@ export interface PresenceRecord {
   readonly phase: SelfPhase
   /** ≤100-char human summary of what it's doing now, or null. Best-effort. */
   readonly activity: string | null
+  /**
+   * Opt-in per-session agent display name (the host's resolved
+   * `MINIMAL_AGENT_AGENT_NAME`), e.g. "Laura". OPTIONAL + absent-means-unnamed:
+   * a record without it (naming off — the default, or a peer that predates this
+   * field) renders no name rather than breaking. Only a named session writes it,
+   * so a teamless/unnamed record stays byte-identical to pre-naming Intercom.
+   */
+  readonly name?: string
   /** Set true on a clean shutdown beat so readers can say "offline (exited)". */
   readonly gone?: true
   /**
@@ -139,6 +147,11 @@ export function coercePresence(o: unknown): PresenceRecord | null {
     phase,
     activity:
       typeof r.activity === "string" && r.activity.length > 0 ? r.activity.slice(0, 100) : null,
+    // Only carry `name` when present + non-blank; a missing one stays missing so
+    // an unnamed record's shape is unchanged (absent == naming off).
+    ...(typeof r.name === "string" && r.name.trim().length > 0
+      ? { name: r.name.trim().slice(0, 48) }
+      : {}),
     ...(r.gone === true ? { gone: true as const } : {}),
     // Only carry `origin` when it is explicitly "remote" (the meaningful case).
     // Absent / "local" stays absent so a local record's in-memory shape is
