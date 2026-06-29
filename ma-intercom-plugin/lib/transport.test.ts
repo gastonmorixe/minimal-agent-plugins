@@ -20,7 +20,10 @@ import {
 
 function tmp(): { env: NodeJS.ProcessEnv; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), "intercom-transport-"))
-  return { env: { MINIMAL_AGENT_HOME: dir }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
+  return {
+    env: { MINIMAL_AGENT_HOME: dir },
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  }
 }
 
 function rec(overrides: Partial<PresenceRecord> = {}): PresenceRecord {

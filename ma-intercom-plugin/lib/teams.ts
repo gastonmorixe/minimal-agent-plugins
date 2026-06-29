@@ -97,8 +97,7 @@ export function coerceTeamRef(o: unknown): TeamRef | null {
     typeof r.computerId === "string" && r.computerId.length > 0 ? r.computerId : null
   // `remote` defaults to "not local-namespaced": a backend id is remote unless
   // it explicitly says otherwise; a `local:` id is local unless flagged remote.
-  const remote =
-    typeof r.remote === "boolean" ? r.remote : !isLocalTeamId(r.id)
+  const remote = typeof r.remote === "boolean" ? r.remote : !isLocalTeamId(r.id)
   return { id: r.id, name, computerId, remote }
 }
 
@@ -107,10 +106,9 @@ export function coerceTeamRef(o: unknown): TeamRef | null {
  * includes `teamId`. Pure — caller passes the already-read records. This is the
  * local half of membership; remote members fold in via the transport later.
  */
-export function localTeamMembers<T extends { readonly teams?: readonly string[]; readonly sid: string }>(
-  records: readonly T[],
-  teamId: string,
-): T[] {
+export function localTeamMembers<
+  T extends { readonly teams?: readonly string[]; readonly sid: string },
+>(records: readonly T[], teamId: string): T[] {
   return records.filter((r) => Array.isArray(r.teams) && r.teams.includes(teamId))
 }
 

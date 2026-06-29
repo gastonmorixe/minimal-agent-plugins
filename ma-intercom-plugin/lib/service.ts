@@ -25,8 +25,6 @@ import { inboxPath, presenceDir, presencePath, sessionsDir } from "./paths.ts"
 import { type PresenceRecord, readPresenceDir, writePresence } from "./presence.ts"
 import type { InspectBundle } from "./render.ts"
 import { buildRoster, type RosterRow } from "./roster.ts"
-import { isSafeTeamId, normalizeTeamRef } from "./teams.ts"
-import { buildTransport, LocalFsTransport, type Transport } from "./transport.ts"
 import {
   type PeerFleetMember,
   type PeerJob,
@@ -37,6 +35,8 @@ import {
   summarizeTasks,
   type TaskSummary,
 } from "./sidecars.ts"
+import { isSafeTeamId, normalizeTeamRef } from "./teams.ts"
+import { buildTransport, LocalFsTransport, type Transport } from "./transport.ts"
 
 /** Which deep-dive sections `inspectPeer` may gather. */
 export type InspectSection = "tasks" | "jobs" | "fleet" | "activity" | "transcript"
@@ -91,10 +91,7 @@ export interface ServiceDeps {
  * the ONE place the local adapter binds to concrete fs functions, all of them
  * the exact calls Intercom used pre-A5 (no path or format change).
  */
-export function makeLocalFsTransport(
-  env: NodeJS.ProcessEnv,
-  selfSid: string,
-): LocalFsTransport {
+export function makeLocalFsTransport(env: NodeJS.ProcessEnv, selfSid: string): LocalFsTransport {
   return new LocalFsTransport(
     {
       presencePath: (sid) => presencePath(sid, env),
