@@ -64,6 +64,8 @@ export function buildSelfPresenceRecord(
     projectRoot: state.projectRoot,
     phase: state.phase,
     activity: state.activity,
+    // The opt-in name rides every beat when set; absent ⇒ omitted (unnamed).
+    ...(self.name ? { name: self.name } : {}),
     ...(state.gone ? { gone: true as const } : {}),
     // computerId is always known for a live self-record (identity mints it); a
     // teamless session omits `teams` so its on-disk shape is unchanged.

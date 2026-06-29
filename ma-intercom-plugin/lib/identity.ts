@@ -99,6 +99,13 @@ export interface SelfIdentity {
    * necessarily unique, hostname).
    */
   readonly computerId: string
+  /**
+   * Opt-in per-session agent display name (the host's resolved
+   * `MINIMAL_AGENT_AGENT_NAME`), e.g. "Laura". Absent when naming is off (the
+   * default). Cosmetic: the roster/inspect surfaces show it so a human can refer
+   * to a peer by name instead of only its short id.
+   */
+  readonly name?: string
 }
 
 /**
@@ -113,6 +120,10 @@ export function selfIdentity(
 ): SelfIdentity | null {
   const sid = agent?.sessionId?.trim()
   if (!sid) return null
+  // The host resolves + freezes the opt-in name at boot and publishes it via
+  // MINIMAL_AGENT_AGENT_NAME (off ⇒ unset). Read it here so it rides every
+  // presence beat; absent/blank ⇒ no name carried (byte-identical to pre-naming).
+  const name = env.MINIMAL_AGENT_AGENT_NAME?.trim()
   return {
     sid,
     short: shortId(sid),
@@ -121,5 +132,6 @@ export function selfIdentity(
     model: agent?.model ?? "",
     agentVersion: agent?.version ?? "",
     computerId: machineId(env),
+    ...(name ? { name } : {}),
   }
 }

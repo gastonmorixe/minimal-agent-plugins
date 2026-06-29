@@ -37,7 +37,7 @@ function mtimeMs(path: string): number | null {
 /** Live-area heartbeat slot handler. */
 export default async function beat(ctx: LiveAreaHandlerContext): Promise<string | null> {
   if (presenceDisabled(ctx.env)) return null
-  const self = selfIdentity(ctx.agent)
+  const self = selfIdentity(ctx.agent, ctx.env)
   if (!self) return null
 
   const env = ctx.env

@@ -65,6 +65,7 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
       const payload = rows.map((r) => ({
         short: r.record.short,
         sid: r.record.sid,
+        ...(r.record.name ? { name: r.record.name } : {}),
         self: r.isSelf,
         liveness: livenessLabel(r.liveness),
         model: r.record.model,
