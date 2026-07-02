@@ -82,8 +82,11 @@ describe("external plugin prompt audit", () => {
   })
 
   test("keeps prompt markdown free of typographic punctuation drift", () => {
+    // Scan every model-facing surface (PROMPT.md AND manifest.json tool
+    // descriptions), not just PROMPT.md: a tool description is read by the
+    // model too, so typographic drift there is the same hygiene bug.
     const bad = violations(
-      promptFiles(),
+      modelFacingFiles(),
       /[—–→…“”‘’]/g,
       "typographic punctuation",
       isWritingStyleQuoteExample,
@@ -113,5 +116,46 @@ describe("external plugin prompt audit", () => {
     const repeatedBlankLines = violations(promptFiles(), /\n{3,}/g, "3+ blank lines")
     const trailingWhitespace = violations(promptFiles(), /[ \t]+$/gm, "trailing whitespace")
     expect([...repeatedBlankLines, ...trailingWhitespace]).toEqual([])
+  })
+
+  // Model-facing prose belongs in external markdown (PROMPT.md / prompts/*.md),
+  // not inlined as TS string literals in handlers (Gaston's prompt-hygiene
+  // rule). We flag a handler .ts that assigns a `systemPrompt:` field, since
+  // that is a model-facing system prompt that should live in a prompts/*.md
+  // read at load (the ma-tasks-plugin planning_fragment.ts + prompts/planning.md
+  // pair is the reference pattern).
+  //
+  // ALLOWLIST: ma-sub-agents-plugin/lib/library.ts. Its per-specialist
+  // systemPrompt strings are DELIBERATELY shipped as typed WorkerDefinition
+  // objects (see the file header: "Shipped as typed objects rather than parsed
+  // `.md` frontmatter so they are type-safe and testable"). They are compact,
+  // structured worker DEFINITIONS closer to config than to freeform prose, the
+  // shared discipline clause is already external (imported from ./prompts.ts),
+  // and they are tested as typed objects. Externalizing to .md would trade that
+  // type-safety + test coverage for marginal gain. The `.md`-frontmatter
+  // discovery the header calls "an additive follow-up" is a separate feature,
+  // not a hygiene fix.
+  const INLINE_SYSTEM_PROMPT_ALLOW = new Set(["ma-sub-agents-plugin/lib/library.ts"])
+
+  test("does not inline model-facing system prompts in handler .ts", () => {
+    const handlerTs = readdirSync(ROOT)
+      .filter((name) => name.startsWith("ma-") && name.endsWith("-plugin"))
+      .flatMap((name) => walk(join(ROOT, name)))
+      .map((abs) => ({ abs, rel: relative(ROOT, abs), text: readFileSync(abs, "utf8") }))
+      .filter(
+        (file) =>
+          file.rel.endsWith(".ts") &&
+          !file.rel.endsWith(".test.ts") &&
+          !file.rel.endsWith(".fixtures.ts"),
+      )
+      .sort((a, b) => a.rel.localeCompare(b.rel))
+
+    const bad = violations(
+      handlerTs,
+      /\bsystemPrompt\s*:\s*(?:"|'|`)/g,
+      "inlined model-facing systemPrompt (externalize to prompts/*.md)",
+      (file) => INLINE_SYSTEM_PROMPT_ALLOW.has(file.rel),
+    )
+    expect(bad).toEqual([])
   })
 })
