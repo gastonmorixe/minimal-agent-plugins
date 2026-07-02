@@ -59,7 +59,7 @@ const estimateOpenAITokens = makeCharRatioEstimator(4)
  * @returns The registered model ids.
  */
 /**
- * Local catalog of {id, tags} captured at registration, so the adapter's
+ * Local catalog of id + tags captured at registration, so the adapter's
  * `recommendSubagentModels` can pick scout/balanced/deep models from THIS
  * provider's own catalog by tag, without a host registry read
  * (`findModelByTags`). A moved plugin can't reach host registry state, and it
@@ -72,10 +72,13 @@ export function findOpenAIModelByTags(mustHave: readonly string[]): string | und
   return localCatalog.find((m) => mustHave.every((t) => m.tags.includes(t)))?.id
 }
 
+/**
+ * Register the full OpenAI catalog through the setup-context registrar (the
+ * `models:register` capability). As a moved plugin this always runs with a
+ * real registrar handed in at `register(ctx)`; there is no host-registry
+ * fallback import. Returns the registered model ids.
+ */
 export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
-  // Register through the setup-context registrar (the `models:register`
-  // capability). As a moved plugin, this always runs with a real registrar
-  // handed in at register(ctx); there is no host-registry fallback import.
   localCatalog.length = 0
   const register = (spec: ProviderModelSpec): void => {
     registrar.register(spec)
