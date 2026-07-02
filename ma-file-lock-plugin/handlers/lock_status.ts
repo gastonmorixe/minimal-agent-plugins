@@ -487,8 +487,7 @@ function resolveStaleAfterMs(_ctx: TUIContext): number {
     const fs = require("node:fs") as typeof import("node:fs")
     if (!fs.existsSync(path)) return DEFAULT_STALE_AFTER_MS
     const raw = fs.readFileSync(path, "utf-8")
-    const jsonc =
-      require("@minimal-agent/plugin-api/utils/jsonc") as typeof import("@minimal-agent/plugin-api/utils/jsonc")
+    const jsonc = require("../lib/jsonc.ts") as typeof import("../lib/jsonc.ts")
     const parsed = jsonc.parseJsonc(raw) as Record<string, unknown> | null
     if (!parsed || typeof parsed !== "object") return DEFAULT_STALE_AFTER_MS
     const plugins = (parsed as Record<string, unknown>).plugins as
