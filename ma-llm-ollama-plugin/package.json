@@ -1,0 +1,18 @@
+{
+  "name": "ma-llm-ollama-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "description": "External provider plugin for minimal-agent: Ollama Cloud (native /api/chat NDJSON streaming).",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  }
+}
