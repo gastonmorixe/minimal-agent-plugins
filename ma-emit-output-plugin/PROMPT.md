@@ -4,13 +4,13 @@ Renders a tool call's raw output or a filesystem path inline in the response str
 
 ## Two source modes (mutually exclusive)
 
-1. **By tool call** — `tool="call_00_xxx"` using the tool_use_id from the `<ma::agent::raw-output>` footer:
+1. **By tool call**: `tool="call_00_xxx"` using the tool_use_id from the `<ma::agent::raw-output>` footer:
    ```
    <ma::emit::output tool="call_00_dMMw39hweiGAR2xNzEoG1240" />
    ```
    Resolves that tool call's raw-output blob from this session's blob store. The id must match the footer exactly.
 
-2. **By filesystem path** — `path="/tmp/render_table.txt"`:
+2. **By filesystem path**: `path="/tmp/render_table.txt"`:
    ```
    <ma::emit::output path="/tmp/render_table.txt" />
    ```
@@ -29,7 +29,7 @@ Good fits:
 Don't reach for it:
 
 - On plain prose or code you can summarize in your own words. Summarize it.
-- On every tool call — the preview truncation is there for a reason. Reserve the tag for output where the verbatim form adds value.
+- On every tool call. The preview truncation is there for a reason. Reserve the tag for output where the verbatim form adds value.
 
 If a blob doesn't exist for a tool call (output was under 4 KiB, not persisted), fall back to `path=` after writing the content to a temp file.
 
