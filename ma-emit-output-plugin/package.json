@@ -1,0 +1,18 @@
+{
+  "name": "ma-emit-output-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Inline renders file/blob content in the response stream, without the model touching the bytes.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  }
+}
