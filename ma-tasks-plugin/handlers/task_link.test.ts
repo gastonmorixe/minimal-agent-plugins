@@ -5,7 +5,6 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import type { EventHandlerContext } from "../lib/host-types.ts"
-
 import { TaskStore } from "../lib/store.ts"
 
 import taskLink from "./task_link.ts"

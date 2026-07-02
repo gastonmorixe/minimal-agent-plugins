@@ -14,7 +14,6 @@
  */
 
 import type { EventHandler } from "../lib/host-types.ts"
-
 import { TaskStore } from "../lib/store.ts"
 
 interface TaskUpdatePayload {
