@@ -34,7 +34,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import { resolveSessionsDir } from "./agent-paths.ts"
-
 import {
   isSubtaskId,
   isTaskId,

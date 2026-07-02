@@ -26,10 +26,9 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
-import type { TUIContext, TUIResult } from "./lib/host-types.ts"
-
 import taskToolHandler from "./handlers/task_tool.ts"
 import { TasksAttachment } from "./lib/attachment.ts"
+import type { TUIContext, TUIResult } from "./lib/host-types.ts"
 import { TaskStore } from "./lib/store.ts"
 
 const MANIFEST = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")) as {

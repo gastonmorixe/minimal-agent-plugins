@@ -46,7 +46,6 @@
 
 import { ANSI_CODES, color } from "./ansi.ts"
 import { PALETTE } from "./palette.ts"
-
 import { localIsoDateTime, type Task, type TaskStatus } from "./parse.ts"
 import type { Stats, View } from "./store.ts"
 
