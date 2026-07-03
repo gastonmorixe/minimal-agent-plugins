@@ -105,10 +105,14 @@ describe("session id", () => {
 // ---------------------------------------------------------------------------
 
 describe("add", () => {
-  test("creates a task and returns the rendered list", async () => {
+  test("creates a task and splits model Markdown from TUI display", async () => {
     const r = await call({ action: "add", title: "hello" })
     expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`<ma::agent::tasks action="add" result="added"`)
+    expect(r.content).toContain("1. todo `#")
     expect(r.content).toContain("hello")
+    expect(r.content).not.toContain("╭")
+    expect(r.content).not.toContain("✔")
     expect(r.display).toContain("hello")
     expect(r.displayHeader).toContain("added")
     expect(r.display).not.toContain("╭")
@@ -119,8 +123,9 @@ describe("add", () => {
     const r2 = await call({ action: "add", title: "child", parent: `#${id}` })
     expect(r2.is_error).toBeUndefined()
     expect(r2.content).toContain("child")
-    // The new subtask id should be the parent id + alpha suffix.
-    expect(r2.content).toMatch(new RegExp(`#${id}a`))
+    // The new subtask id should be the parent id + alpha suffix and should
+    // render as a nested Markdown ordered-list item.
+    expect(r2.content).toContain(`\n   1. todo \`#${id}a\` child`)
   })
   test("returns error for missing parent", async () => {
     const r = await call({ action: "add", title: "x", parent: "#deadbe" })
@@ -167,6 +172,15 @@ describe("add_many", () => {
 // ---------------------------------------------------------------------------
 
 describe("status / start / done", () => {
+  test("model content includes action/result/id attrs for a status transition", async () => {
+    await call({ action: "add", title: "x" })
+    const r = await call({ action: "status", id: 1, status: "doing" })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`action="status"`)
+    expect(r.content).toContain(`result="marked_doing"`)
+    expect(r.content).toContain(`id="`)
+    expect(r.content).toContain("1. doing `#")
+  })
   test("status sets the new state", async () => {
     await call({ action: "add", title: "x" })
     const r = await call({ action: "status", id: 1, status: "doing" })
@@ -184,6 +198,8 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("canceled")
     expect(r.display).toContain("user redirected")
+    expect(r.content).toContain("1. canceled `#")
+    expect(r.content).toContain("   - reason: user redirected")
   })
   test("start enforces single-doing discipline by default", async () => {
     await call({ action: "add", title: "one" })
@@ -324,6 +340,8 @@ describe("clear", () => {
     await call({ action: "add", title: "x", status: "doing" })
     const r = await call({ action: "clear", force: true })
     expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="cleared"`)
+    expect(r.content).toContain("_No tasks._")
   })
 })
 
@@ -345,6 +363,31 @@ describe("list", () => {
     const r = await call({ action: "list" })
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("no tasks")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Model-facing Markdown content
+// ---------------------------------------------------------------------------
+
+describe("model-facing content", () => {
+  test("escapes tag-sensitive title text inside the <ma::agent::tasks> body", async () => {
+    const r = await call({ action: "add", title: 'use <x> & "quotes"' })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain('use &lt;x&gt; &amp; "quotes"')
+    expect(r.content).toContain("</ma::agent::tasks>")
+  })
+
+  test("default text content is not the TUI display without ANSI", async () => {
+    const r = await call({ action: "add_many", titles: ["one", "two"] })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`<ma::agent::tasks action="add_many" result="added_many"`)
+    expect(r.content).toContain("1. todo `#")
+    expect(r.content).toContain("2. todo `#")
+    expect(r.content).not.toContain("+ added")
+    expect(r.content).not.toContain("0 done · 0 doing")
+    expect(r.displayHeader).toContain("added 2 tasks")
+    expect(r.displayFooter).toContain("2 todo")
   })
 })
 
@@ -374,6 +417,8 @@ describe("format: json", () => {
 // ---------------------------------------------------------------------------
 
 function extractFirstHash(content: string): string {
+  const target = /\bid="([0-9a-f]{6,7})"/.exec(content)
+  if (target) return target[1]
   const m = /#([0-9a-f]{6,7})/.exec(content)
   if (!m) throw new Error(`no hash found in: ${content}`)
   return m[1]

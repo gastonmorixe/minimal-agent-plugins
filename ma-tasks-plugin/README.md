@@ -68,8 +68,7 @@ per line, order = display order.
 | `list`      |                    | `filter`, `query`, `format`       |
 | `clear`     |                    | `force` (if any task `doing`)     |
 
-Every action returns the post-mutation rendered list in `display` so the
-user sees the new state after every change.
+Every action returns the post-mutation task state in model-facing `content` as a `<ma::agent::tasks>` Markdown ordered list. It also returns the rendered list in `display` so the TUI shows the new state after every change.
 
 ## Id formats accepted
 
@@ -92,10 +91,7 @@ Reads the same session id (`MINIMAL_AGENT_SESSION_ID` env or
 
 ## Auto-injection
 
-A `<ma::agent::tasks total="…" done="…" doing="…" todo="…" canceled="…">…</ma::agent::tasks>`
-attachment is prepended to the first user message of every `Agent.run`,
-so the model always knows the current plan. Omitted when zero tasks
-exist. No token cost unless tasks are in play.
+A `<ma::agent::tasks total="…" done="…" doing="…" todo="…" canceled="…">…</ma::agent::tasks>` attachment is prepended to the first user message of every `Agent.run`. Its body is a Markdown ordered list, with subtasks nested under their parent. Omitted when zero tasks exist. No token cost unless tasks are in play.
 
 ## Design doc
 
