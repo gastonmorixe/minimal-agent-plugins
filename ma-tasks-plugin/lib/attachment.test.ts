@@ -43,29 +43,29 @@ describe("renderAttachmentBody", () => {
   test("returns empty string for empty list", () => {
     expect(renderAttachmentBody([])).toBe("")
   })
-  test("renders top-level tasks with 1-indexed positions", () => {
+  test("renders top-level tasks as a Markdown ordered list", () => {
     const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
     s.add({ title: "first" })
     s.add({ title: "second" })
     s.add({ title: "third" })
     const body = renderAttachmentBody(s.list())
     const lines = body.split("\n")
-    expect(lines[0]).toMatch(/^1\s+#aaaaaa\s+todo\s+first$/)
-    expect(lines[1]).toMatch(/^2\s+#bbbbbb\s+todo\s+second$/)
-    expect(lines[2]).toMatch(/^3\s+#cccccc\s+todo\s+third$/)
+    expect(lines[0]).toBe("1. todo `#aaaaaa` first")
+    expect(lines[1]).toBe("2. todo `#bbbbbb` second")
+    expect(lines[2]).toBe("3. todo `#cccccc` third")
   })
-  test("subtasks get Na / Nb / Nc positions", () => {
+  test("subtasks render as nested Markdown ordered lists", () => {
     const s = withRand(["aaaaaa", "bbbbbb"])
     const p = s.add({ title: "parent" })
     s.addMany(["c1", "c2", "c3"], { parent: p.id })
     s.add({ title: "after" })
     const body = renderAttachmentBody(s.list())
     const lines = body.split("\n")
-    expect(lines[0]).toMatch(/^1\s+#aaaaaa\s+todo\s+parent$/)
-    expect(lines[1]).toMatch(/^1a\s+#aaaaaaa\s+todo\s+c1$/)
-    expect(lines[2]).toMatch(/^1b\s+#aaaaaab\s+todo\s+c2$/)
-    expect(lines[3]).toMatch(/^1c\s+#aaaaaac\s+todo\s+c3$/)
-    expect(lines[4]).toMatch(/^2\s+#bbbbbb\s+todo\s+after$/)
+    expect(lines[0]).toBe("1. todo `#aaaaaa` parent")
+    expect(lines[1]).toBe("   1. todo `#aaaaaaa` c1")
+    expect(lines[2]).toBe("   2. todo `#aaaaaab` c2")
+    expect(lines[3]).toBe("   3. todo `#aaaaaac` c3")
+    expect(lines[4]).toBe("2. todo `#bbbbbb` after")
   })
   test("statuses are rendered verbatim", () => {
     const s = withRand(["aaaaaa", "bbbbbb", "cccccc", "dddddd"])
@@ -201,10 +201,8 @@ describe("renderAttachmentBody — trailing duration suffix", () => {
     // No `12s` / `1m02s` / etc. patterns.
     expect(body).not.toMatch(/\b\d+s\b/)
     expect(body).not.toMatch(/\b\d+m\d+s\b/)
-    // Title still right after the status column, and rows end at the
-    // title (no trailing whitespace gutter).
-    expect(body).toContain("todo      first")
-    expect(body).toContain("todo      second")
+    expect(body).toContain("todo `#aaaaaa` first")
+    expect(body).toContain("todo `#bbbbbb` second")
     for (const line of body.split("\n")) {
       expect(line).toBe(line.trimEnd())
     }
@@ -229,14 +227,11 @@ describe("renderAttachmentBody — trailing duration suffix", () => {
     const body = renderAttachmentBody(s2.list())
     const lines = body.split("\n")
     expect(lines).toHaveLength(2)
-    // First task's row ends with "first  12s" (trailing suffix).
-    expect(lines[0]).toMatch(/first {2}12s$/)
+    // First task's row ends with an italic Markdown duration token.
+    expect(lines[0]).toMatch(/first _12s_$/)
     // Second task has no duration: row ends at the title, no
     // trailing whitespace gutter.
     expect(lines[1]).toMatch(/second$/)
-    // Title column still aligns horizontally across both rows : the
-    // shape of the leading `pos  #hash  status   ` prefix didn't change.
-    expect(lines[0].indexOf("first")).toBe(lines[1].indexOf("second"))
   })
 
   test("trailing duration uses each task's own value (no global column padding)", () => {
@@ -252,11 +247,8 @@ describe("renderAttachmentBody — trailing duration suffix", () => {
     tasks[1].active_ms = 5_000 // 5s
     const body = renderAttachmentBody(tasks)
     const lines = body.split("\n")
-    // Each row ends with `<title>  <duration>` , no left-padding on the
-    // short value.
-    expect(lines[0]).toMatch(/long {2}1h04m$/)
-    expect(lines[1]).toMatch(/short {2}5s$/)
-    // Title columns still align (leading prefix is unchanged).
-    expect(lines[0].indexOf("long")).toBe(lines[1].indexOf("short"))
+    // Each row ends with `<title> _<duration>_`; no shared duration column.
+    expect(lines[0]).toMatch(/long _1h04m_$/)
+    expect(lines[1]).toMatch(/short _5s_$/)
   })
 })

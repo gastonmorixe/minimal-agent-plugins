@@ -30,6 +30,7 @@
  */
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import { renderTasksAgentBlock, type TaskModelMeta } from "../lib/model-render.ts"
 import { isTaskStatus, type Task, type TaskStatus } from "../lib/parse.ts"
 import { type RenderAction, renderToolDisplay } from "../lib/render.ts"
 import { buildViews, TaskStore, TaskStoreError, type View } from "../lib/store.ts"
@@ -246,11 +247,45 @@ function makeStore(sid: string | null, env: Record<string, string>): TaskStore |
   return new TaskStore(sid, env.HOME ? { home: env.HOME } : {})
 }
 
+function modelMeta(action: RenderAction, inputAction?: string, targetHash?: string): TaskModelMeta {
+  const meta: TaskModelMeta = {}
+  if (inputAction) meta.action = inputAction
+  if (targetHash) meta.id = targetHash
+  switch (action.kind) {
+    case "added":
+    case "started":
+    case "updated":
+    case "removed":
+      meta.result = action.kind
+      meta.id = action.hash
+      break
+    case "marked_done":
+    case "marked_doing":
+    case "marked_todo":
+    case "marked_canceled":
+      meta.result = action.kind
+      meta.id = action.hash
+      break
+    case "added_many":
+    case "reordered":
+    case "cleared":
+    case "all_done":
+    case "list":
+      meta.result = action.kind
+      break
+    default:
+      void (action satisfies never)
+  }
+  return meta
+}
+
 function renderResult(
   store: TaskStore,
   action: RenderAction,
   format: "text" | "json" = "text",
   viewsOverride?: readonly View[],
+  inputAction?: string,
+  targetHash?: string,
 ): { content: string; display: string; displayHeader: string; displayFooter: string } {
   // `viewsOverride` lets the handler inject augmented views (ghost rows
   // for `remove`, diff overlays for `update`) so the user sees WHAT
@@ -259,20 +294,8 @@ function renderResult(
   const views = viewsOverride ?? store.views()
   const stats = store.stats()
   const displayParts = renderToolDisplay(views, stats, { ansi: true, action })
-  const contentParts = renderToolDisplay(views, stats, { ansi: false, action })
-  const content = [contentParts.header, contentParts.body.trimEnd(), contentParts.footer]
-    .filter((part) => part.length > 0)
-    .join("\n")
+  const tasks = store.list()
   if (format === "json") {
-    const tasks = store.list().map((t) => ({
-      id: t.id,
-      parent: t.parent,
-      status: t.status,
-      title: t.title,
-      created_at: t.created_at,
-      done_at: t.done_at,
-      reason: t.reason,
-    }))
     return {
       content: JSON.stringify({ stats, tasks }, null, 2),
       display: displayParts.body,
@@ -281,7 +304,7 @@ function renderResult(
     }
   }
   return {
-    content,
+    content: renderTasksAgentBlock(tasks, stats, modelMeta(action, inputAction, targetHash)),
     display: displayParts.body,
     displayHeader: displayParts.header,
     displayFooter: displayParts.footer,
@@ -293,8 +316,17 @@ function ok(
   action: RenderAction,
   format?: "text" | "json",
   viewsOverride?: readonly View[],
+  inputAction?: string,
+  targetHash?: string,
 ): TUIResult {
-  const rendered = renderResult(store, action, format ?? "text", viewsOverride)
+  const rendered = renderResult(
+    store,
+    action,
+    format ?? "text",
+    viewsOverride,
+    inputAction,
+    targetHash,
+  )
   return {
     kind: "tool_result",
     content: rendered.content,
@@ -419,7 +451,7 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
     store.remove(task.id)
     return err(`parent "${input.parent}" not found`)
   }
-  return ok(store, { kind: "added", hash: task.id }, input.format)
+  return ok(store, { kind: "added", hash: task.id }, input.format, undefined, input.action)
 }
 
 function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
@@ -433,7 +465,13 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
     parentId = parent.id
   }
   const tasks = store.addMany(input.titles!, parentId ? { parent: parentId } : {})
-  return ok(store, { kind: "added_many", count: tasks.length }, input.format)
+  return ok(
+    store,
+    { kind: "added_many", count: tasks.length },
+    input.format,
+    undefined,
+    input.action,
+  )
 }
 
 function doUpdate(store: TaskStore, input: ParsedInput): TUIResult {
@@ -451,7 +489,7 @@ function doUpdate(store: TaskStore, input: ParsedInput): TUIResult {
     oldTitle !== null && oldTitle !== updated.title
       ? views.map((v) => (v.task.id === updated.id ? { ...v, diff: { oldTitle } } : v))
       : views
-  return ok(store, { kind: "updated", hash: updated.id }, input.format, augmented)
+  return ok(store, { kind: "updated", hash: updated.id }, input.format, augmented, input.action)
 }
 
 function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
@@ -464,7 +502,7 @@ function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
   if (input.status === "done" && target.parent === null) {
     const s = store.stats()
     if (s.total > 0 && s.done === s.total) {
-      return ok(store, { kind: "all_done" }, input.format)
+      return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
     }
   }
   const action: RenderAction =
@@ -475,7 +513,7 @@ function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
         : input.status === "canceled"
           ? { kind: "marked_canceled", hash: updated.id }
           : { kind: "marked_todo", hash: updated.id }
-  return ok(store, action, input.format)
+  return ok(store, action, input.format, undefined, input.action)
 }
 
 function doStart(store: TaskStore, input: ParsedInput): TUIResult {
@@ -483,7 +521,7 @@ function doStart(store: TaskStore, input: ParsedInput): TUIResult {
   if (target === null) return err(`id "${input.id}" not found`)
   const updated = store.start(target.id, { parallel: input.parallel })
   if (updated === null) return err(`id "${input.id}" not found`)
-  return ok(store, { kind: "started", hash: updated.id }, input.format)
+  return ok(store, { kind: "started", hash: updated.id }, input.format, undefined, input.action)
 }
 
 function doDone(store: TaskStore, input: ParsedInput): TUIResult {
@@ -494,10 +532,10 @@ function doDone(store: TaskStore, input: ParsedInput): TUIResult {
   if (target.parent === null) {
     const s = store.stats()
     if (s.total > 0 && s.done === s.total) {
-      return ok(store, { kind: "all_done" }, input.format)
+      return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
     }
   }
-  return ok(store, { kind: "marked_done", hash: updated.id }, input.format)
+  return ok(store, { kind: "marked_done", hash: updated.id }, input.format, undefined, input.action)
 }
 
 function doRemove(store: TaskStore, input: ParsedInput): TUIResult {
@@ -511,12 +549,12 @@ function doRemove(store: TaskStore, input: ParsedInput): TUIResult {
   const removed = store.remove(target.id)
   const removedIds = new Set(removed.map((t) => t.id))
   const augmented = viewsWithGhostRemoved(beforeTasks, removedIds)
-  return ok(store, { kind: "removed", hash: target.id }, input.format, augmented)
+  return ok(store, { kind: "removed", hash: target.id }, input.format, augmented, input.action)
 }
 
 function doReorder(store: TaskStore, input: ParsedInput): TUIResult {
   store.reorder(input.order!)
-  return ok(store, { kind: "reordered" }, input.format)
+  return ok(store, { kind: "reordered" }, input.format, undefined, input.action)
 }
 
 function doList(store: TaskStore, input: ParsedInput): TUIResult {
@@ -526,11 +564,11 @@ function doList(store: TaskStore, input: ParsedInput): TUIResult {
   // surprised by silent ignores.
   void input.filter
   void input.query
-  return ok(store, { kind: "list" }, input.format)
+  return ok(store, { kind: "list" }, input.format, undefined, input.action)
 }
 
 function doClear(store: TaskStore, input: ParsedInput): TUIResult {
   const before = store.stats().total
   store.clear(input.force ?? false)
-  return ok(store, { kind: "cleared", count: before }, input.format)
+  return ok(store, { kind: "cleared", count: before }, input.format, undefined, input.action)
 }
