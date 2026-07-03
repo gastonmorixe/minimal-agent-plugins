@@ -63,13 +63,13 @@ import type {
   ImageSource,
   ToolResultBlock,
 } from "./canonical-messages.ts"
+import type { CanonicalRequest } from "./canonical-request.ts"
 import type { CanonicalToolDefinition, ToolChoice } from "./canonical-tools.ts"
 import { CapabilityViolation } from "./errors.ts"
+import type { ModelView } from "./host-types.ts"
 import { modalityViolations, stripUnsupportedModalities } from "./modality-check.ts"
-import type { CanonicalRequest } from "./canonical-request.ts"
 import type { ProviderAuth } from "./provider-auth.ts"
 import type { ProviderValidationResult } from "./provider-plugin.ts"
-import type { ModelView } from "./host-types.ts"
 
 // ---------------------------------------------------------------------------
 // Wire types
