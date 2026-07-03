@@ -3,6 +3,7 @@
   "name": "Chrome CDP",
   "version": "0.1.0",
   "description": "Drive an already-running Chrome/Chromium over the DevTools Protocol through a persistent daemon + unix socket (one macOS Local Network allow, then silent). Tool: ChromeCDP.",
+  "platforms": ["macos"],
   "tuis": [
     {
       "id": "chrome_cdp",

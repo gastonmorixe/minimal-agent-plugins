@@ -3,6 +3,7 @@
   "name": "Computer Use",
   "version": "0.1.0",
   "description": "Full control of the Mac through a signed Swift helper: Accessibility inspect/interact (preferred) and CGEvent mouse/keyboard + ScreenCaptureKit screenshots (last resort). Persistent daemon over a unix socket; TCC grants persist. Tool: Computer.",
+  "platforms": ["macos"],
   "tuis": [
     {
       "id": "computer",
