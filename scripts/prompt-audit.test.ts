@@ -95,10 +95,16 @@ describe("external plugin prompt audit", () => {
   })
 
   test("avoids shout-case prompt directives in prompts and tool descriptions", () => {
+    // Exempt a literal enum VALUE that happens to be all-caps: web-search's
+    // `country` parameter accepts Brave's `"ALL"` sentinel (a wire value, not a
+    // shout-case directive). Mirrors the core audit's `isLiteralEnumValue`.
+    const isLiteralEnumValue = (file: PromptFile, match: RegExpExecArray): boolean =>
+      file.rel === "ma-web-search-plugin/manifest.json" && match[0] === "ALL"
     const bad = violations(
       modelFacingFiles(),
       /\b(?:ALWAYS|NEVER|IMPORTANT|REQUIRED|SHOULD|MUST|BACKGROUND|SAME|GENERIC|NOT|ALL)\b|Do NOT|does NOT|is NOT|are NOT|REFUSES|ANY CDP|ONE connection|TWO layers|RAW INPUT|ACCESSIBILITY|ALL active/g,
       "shout-case directive",
+      isLiteralEnumValue,
     )
     expect(bad).toEqual([])
   })
