@@ -43,29 +43,29 @@ describe("renderAttachmentBody", () => {
   test("returns empty string for empty list", () => {
     expect(renderAttachmentBody([])).toBe("")
   })
-  test("renders top-level tasks as a Markdown ordered list", () => {
+  test("renders top-level tasks as columnar rows", () => {
     const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
     s.add({ title: "first" })
     s.add({ title: "second" })
     s.add({ title: "third" })
     const body = renderAttachmentBody(s.list())
     const lines = body.split("\n")
-    expect(lines[0]).toBe("1. todo `#aaaaaa` first")
-    expect(lines[1]).toBe("2. todo `#bbbbbb` second")
-    expect(lines[2]).toBe("3. todo `#cccccc` third")
+    expect(lines[0]).toBe("1  #aaaaaa   todo      first")
+    expect(lines[1]).toBe("2  #bbbbbb   todo      second")
+    expect(lines[2]).toBe("3  #cccccc   todo      third")
   })
-  test("subtasks render as nested Markdown ordered lists", () => {
+  test("subtasks render with parent-number + suffix letter", () => {
     const s = withRand(["aaaaaa", "bbbbbb"])
     const p = s.add({ title: "parent" })
     s.addMany(["c1", "c2", "c3"], { parent: p.id })
     s.add({ title: "after" })
     const body = renderAttachmentBody(s.list())
     const lines = body.split("\n")
-    expect(lines[0]).toBe("1. todo `#aaaaaa` parent")
-    expect(lines[1]).toBe("   1. todo `#aaaaaaa` c1")
-    expect(lines[2]).toBe("   2. todo `#aaaaaab` c2")
-    expect(lines[3]).toBe("   3. todo `#aaaaaac` c3")
-    expect(lines[4]).toBe("2. todo `#bbbbbb` after")
+    expect(lines[0]).toBe("1   #aaaaaa   todo      parent")
+    expect(lines[1]).toBe("1a  #aaaaaaa  todo      c1")
+    expect(lines[2]).toBe("1b  #aaaaaab  todo      c2")
+    expect(lines[3]).toBe("1c  #aaaaaac  todo      c3")
+    expect(lines[4]).toBe("2   #bbbbbb   todo      after")
   })
   test("statuses are rendered verbatim", () => {
     const s = withRand(["aaaaaa", "bbbbbb", "cccccc", "dddddd"])
@@ -201,8 +201,8 @@ describe("renderAttachmentBody — trailing duration suffix", () => {
     // No `12s` / `1m02s` / etc. patterns.
     expect(body).not.toMatch(/\b\d+s\b/)
     expect(body).not.toMatch(/\b\d+m\d+s\b/)
-    expect(body).toContain("todo `#aaaaaa` first")
-    expect(body).toContain("todo `#bbbbbb` second")
+    expect(body).toContain("todo      first")
+    expect(body).toContain("todo      second")
     for (const line of body.split("\n")) {
       expect(line).toBe(line.trimEnd())
     }
@@ -227,8 +227,8 @@ describe("renderAttachmentBody — trailing duration suffix", () => {
     const body = renderAttachmentBody(s2.list())
     const lines = body.split("\n")
     expect(lines).toHaveLength(2)
-    // First task's row ends with an italic Markdown duration token.
-    expect(lines[0]).toMatch(/first _12s_$/)
+    // First task's row ends with a 2-space gap + duration token.
+    expect(lines[0]).toMatch(/first  12s$/)
     // Second task has no duration: row ends at the title, no
     // trailing whitespace gutter.
     expect(lines[1]).toMatch(/second$/)
@@ -247,8 +247,8 @@ describe("renderAttachmentBody — trailing duration suffix", () => {
     tasks[1].active_ms = 5_000 // 5s
     const body = renderAttachmentBody(tasks)
     const lines = body.split("\n")
-    // Each row ends with `<title> _<duration>_`; no shared duration column.
-    expect(lines[0]).toMatch(/long _1h04m_$/)
-    expect(lines[1]).toMatch(/short _5s_$/)
+    // Each row ends with `<title>  <duration>`; no shared duration column.
+    expect(lines[0]).toMatch(/long  1h04m$/)
+    expect(lines[1]).toMatch(/short  5s$/)
   })
 })

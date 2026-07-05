@@ -21,7 +21,7 @@
         "type": "tool",
         "tool": {
           "name": "Task",
-          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). The user sees a live TODO with real-time status. Every action returns the post-mutation task state in a `<ma::agent::tasks>` Markdown list so you can confirm state. `id` accepts either a 1-indexed position (e.g. `3`) or a hash (`#a7b3c4`). Subtask hashes are parent + alpha suffix (`#a7b3c4a`).",
+          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). The user sees a live TODO with real-time status. Every action returns the post-mutation task state in a `<ma::agent::tasks>` columnar table so you can confirm state. `id` accepts either a 1-indexed position (e.g. `3`) or a hash (`#a7b3c4`). Subtask hashes are parent + alpha suffix (`#a7b3c4a`).",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -87,7 +87,7 @@
                 "type": "string",
                 "enum": ["text", "json"],
                 "default": "text",
-                "description": "Result content format. `text` returns the post-mutation state as a `<ma::agent::tasks>` Markdown list; `json` returns a parseable shape suitable when you need to extract a specific field. `display` always renders ANSI text regardless."
+                "description": "Result content format. `text` returns the post-mutation state as a `<ma::agent::tasks>` columnar table; `json` returns a parseable shape suitable when you need to extract a specific field. `display` always renders ANSI text regardless."
               },
               "parallel": {
                 "type": "boolean",

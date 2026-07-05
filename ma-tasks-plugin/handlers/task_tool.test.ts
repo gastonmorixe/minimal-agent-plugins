@@ -105,12 +105,12 @@ describe("session id", () => {
 // ---------------------------------------------------------------------------
 
 describe("add", () => {
-  test("creates a task and splits model Markdown from TUI display", async () => {
+  test("creates a task and splits model columnar content from TUI display", async () => {
     const r = await call({ action: "add", title: "hello" })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain(`<ma::agent::tasks action="add" result="added"`)
-    expect(r.content).toContain("1. todo `#")
-    expect(r.content).toContain("hello")
+    expect(r.content).toContain("1  #")
+    expect(r.content).toContain("todo      hello")
     expect(r.content).not.toContain("╭")
     expect(r.content).not.toContain("✔")
     expect(r.display).toContain("hello")
@@ -124,8 +124,8 @@ describe("add", () => {
     expect(r2.is_error).toBeUndefined()
     expect(r2.content).toContain("child")
     // The new subtask id should be the parent id + alpha suffix and should
-    // render as a nested Markdown ordered-list item.
-    expect(r2.content).toContain(`\n   1. todo \`#${id}a\` child`)
+    // render in columnar format with parent-number + suffix letter.
+    expect(r2.content).toContain(`1a  #${id}a  todo      child`)
   })
   test("returns error for missing parent", async () => {
     const r = await call({ action: "add", title: "x", parent: "#deadbe" })
@@ -179,7 +179,8 @@ describe("status / start / done", () => {
     expect(r.content).toContain(`action="status"`)
     expect(r.content).toContain(`result="marked_doing"`)
     expect(r.content).toContain(`id="`)
-    expect(r.content).toContain("1. doing `#")
+    expect(r.content).toContain("1  #")
+    expect(r.content).toContain("doing     x")
   })
   test("status sets the new state", async () => {
     await call({ action: "add", title: "x" })
@@ -198,8 +199,8 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("canceled")
     expect(r.display).toContain("user redirected")
-    expect(r.content).toContain("1. canceled `#")
-    expect(r.content).toContain("   - reason: user redirected")
+    expect(r.content).toContain("1  #")
+    expect(r.content).toContain("canceled  x (user redirected)")
   })
   test("start enforces single-doing discipline by default", async () => {
     await call({ action: "add", title: "one" })
@@ -367,7 +368,7 @@ describe("list", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Model-facing Markdown content
+// Model-facing columnar content
 // ---------------------------------------------------------------------------
 
 describe("model-facing content", () => {
@@ -382,8 +383,10 @@ describe("model-facing content", () => {
     const r = await call({ action: "add_many", titles: ["one", "two"] })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain(`<ma::agent::tasks action="add_many" result="added_many"`)
-    expect(r.content).toContain("1. todo `#")
-    expect(r.content).toContain("2. todo `#")
+    expect(r.content).toContain("1  #")
+    expect(r.content).toContain("todo      one")
+    expect(r.content).toContain("2  #")
+    expect(r.content).toContain("todo      two")
     expect(r.content).not.toContain("+ added")
     expect(r.content).not.toContain("0 done · 0 doing")
     expect(r.displayHeader).toContain("added 2 tasks")

@@ -36,56 +36,60 @@ function fmtDur(ms: number): string {
   return `${d}d${rh.toString().padStart(2, "0")}h`
 }
 
-function renderTaskLines(
-  t: Task,
-  n: number,
-  indent: string,
-  lines: string[],
-  childrenByParent: ReadonlyMap<string, readonly Task[]>,
-): void {
-  const marker = `${n}. `
-  const dur = fmtDur(t.active_ms)
-  const durSuffix = dur.length > 0 ? ` _${dur}_` : ""
-  lines.push(`${indent}${marker}${t.status} \`#${t.id}\` ${cleanText(t.title)}${durSuffix}`)
-  if (t.status === "canceled" && t.reason) {
-    lines.push(`${indent}${" ".repeat(marker.length)}- reason: ${cleanText(t.reason)}`)
-  }
-
-  const children = childrenByParent.get(t.id) ?? []
-  const childIndent = `${indent}${" ".repeat(marker.length)}`
-  children.forEach((child, idx) =>
-    renderTaskLines(child, idx + 1, childIndent, lines, childrenByParent),
-  )
-}
-
-/** Render tasks as Markdown-compatible ordered-list content for the model. */
-export function renderTasksMarkdown(tasks: readonly Task[]): string {
+/**
+ * Render tasks as a columnar text table for the model.
+ *
+ * Each row is `POS  #HASH  STATUS  TITLE` with optional `  DURATION` suffix.
+ * Top-level tasks get 1-indexed integer positions; subtasks get the parent's
+ * position plus a suffix letter (e.g. `2a`, `2b`). Columns are padded for
+ * alignment so the status field is visually scannable.
+ *
+ * Named `renderTasksColumnar` (not `renderTasksMarkdown`) because the output
+ * is a fixed-width columnar table, not a Markdown ordered list.
+ */
+export function renderTasksColumnar(tasks: readonly Task[]): string {
   if (tasks.length === 0) return "_No tasks._"
 
-  const ids = new Set(tasks.map((t) => t.id))
-  const childrenByParent = new Map<string, Task[]>()
-  const roots: Task[] = []
-  const orphans: Task[] = []
-
+  // Compute display positions: top-level tasks get 1-indexed numbers,
+  // subtasks get parent's number + suffix letter (a, b, c, ...)
+  const positions = new Map<string, string>()
+  let topN = 0
   for (const t of tasks) {
     if (t.parent === null) {
-      roots.push(t)
-    } else if (!ids.has(t.parent)) {
-      orphans.push(t)
+      topN += 1
+      positions.set(t.id, String(topN))
     } else {
-      const children = childrenByParent.get(t.parent) ?? []
-      children.push(t)
-      childrenByParent.set(t.parent, children)
+      const parentPos = positions.get(t.parent)
+      if (parentPos === undefined) {
+        positions.set(t.id, "?")
+      } else {
+        // Subtask ids are parent-id + single alpha suffix (a-z), enforced by
+        // TaskStore.subtaskId(). The last character IS the suffix letter.
+        const suffix = t.id.slice(-1)
+        positions.set(t.id, `${parentPos}${suffix}`)
+      }
     }
   }
 
+  // Find column widths for clean alignment
+  let posWidth = 0
+  for (const p of positions.values()) posWidth = Math.max(posWidth, p.length)
+
   const lines: string[] = []
-  const top = [...roots, ...orphans]
-  top.forEach((t, idx) => renderTaskLines(t, idx + 1, "", lines, childrenByParent))
+  for (const t of tasks) {
+    const pos = positions.get(t.id) ?? "?"
+    const posCol = pos.padEnd(posWidth)
+    const idCol = `#${t.id}`.padEnd(8)
+    const statusCol = t.status.padEnd(8)
+    const durText = fmtDur(t.active_ms)
+    const durSuffix = durText.length > 0 ? `  ${durText}` : ""
+    const reasonSuffix = t.status === "canceled" && t.reason ? ` (${cleanText(t.reason)})` : ""
+    lines.push(`${posCol}  ${idCol}  ${statusCol}  ${cleanText(t.title)}${reasonSuffix}${durSuffix}`)
+  }
   return lines.join("\n")
 }
 
-/** Wrap the model-facing Markdown task list in a `<ma::agent::tasks>` block. */
+/** Wrap the model-facing columnar task list in a `<ma::agent::tasks>` block. */
 export function renderTasksAgentBlock(
   tasks: readonly Task[],
   stats: Stats,
@@ -102,5 +106,5 @@ export function renderTasksAgentBlock(
     `todo="${stats.todo}"`,
     `canceled="${stats.canceled}"`,
   )
-  return `<ma::agent::tasks ${attrs.join(" ")}>\n${renderTasksMarkdown(tasks)}\n</ma::agent::tasks>`
+  return `<ma::agent::tasks ${attrs.join(" ")}>\n${renderTasksColumnar(tasks)}\n</ma::agent::tasks>`
 }
