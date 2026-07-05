@@ -101,7 +101,7 @@ describe("BraveProvider.search (web)", () => {
       apiKey: "test-key",
       fetch: makeFetch((url, init) => {
         capturedUrl = url
-        capturedHeaders = new Headers(init.headers as HeadersInit)
+        capturedHeaders = new Headers(init.headers as Record<string, string>)
         return jsonResponse(fix("brave-web.json"))
       }),
     })

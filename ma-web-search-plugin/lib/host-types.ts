@@ -25,12 +25,19 @@ export interface TUIContext {
   stdout: NodeJS.WriteStream
   stdin: NodeJS.ReadStream
   stderr: NodeJS.WriteStream
-  log: {
-    debug(scope: string, message: string): void
-    info(scope: string, message: string): void
-    warn(scope: string, message: string): void
-    error(scope: string, message: string): void
-  }
+  log: PluginLogger
+}
+
+/** Structured logger the host injects (syslog-style levels). */
+export interface PluginLogger {
+  emergency(scope: string, message: string): void
+  alert(scope: string, message: string): void
+  critical(scope: string, message: string): void
+  error(scope: string, message: string): void
+  warn(scope: string, message: string): void
+  notice(scope: string, message: string): void
+  info(scope: string, message: string): void
+  debug(scope: string, message: string): void
 }
 
 /** A tool handler's return value. Mirror of the host's TUIResult union subset. */
