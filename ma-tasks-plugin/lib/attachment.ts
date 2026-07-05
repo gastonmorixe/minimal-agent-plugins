@@ -41,12 +41,12 @@
  * the turn; re-emitting on every tool round would balloon context with
  * stale repeats. Tool calls update the file synchronously; the model
  * sees the post-update state via the tool's `tool_result.content`
- * (which is rendered through the same Markdown-compatible task view).
+ * (which is rendered through the same columnar task view).
  *
  * @module tasks/lib/attachment
  */
 
-import { renderTasksMarkdown } from "./model-render.ts"
+import { renderTasksColumnar } from "./model-render.ts"
 import type { Task } from "./parse.ts"
 import { type StoreDeps, TaskStore } from "./store.ts"
 
@@ -72,7 +72,7 @@ interface AttachmentTextBlock {
  * attachment; empty string when there are no tasks (zero token cost).
  */
 export function renderAttachmentBody(tasks: readonly Task[]): string {
-  return tasks.length === 0 ? "" : renderTasksMarkdown(tasks)
+  return tasks.length === 0 ? "" : renderTasksColumnar(tasks)
 }
 
 /**
@@ -116,10 +116,11 @@ export class TasksAttachment {
    * Output shape:
    *
    * ```
-   *     <ma::agent::tasks total="5" done="2" doing="1" todo="2" canceled="0">
-   *     1. done `#a7b3c4` Add contextSize to SessionTokens
-   *     2. doing `#f8e21a` Update src/session-tokens.test.ts
-   *        1. done `#f8e21aa` Zero-state includes contextSize
+   *     <ma::agent::tasks total="5" done="2" doing="1" todo="1" canceled="1">
+   *     1   #a7b3c4   done      Add contextSize to SessionTokens  12s
+   *     2   #f8e21a   doing     Update src/session-tokens.test.ts
+   *     2a  #f8e21aa  done      Zero-state includes contextSize
+   *     3   #c9d4e5   canceled  Drop legacy column (user pivoted)
    *     ...
    *     </ma::agent::tasks>
    * ```

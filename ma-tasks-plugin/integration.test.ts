@@ -143,9 +143,9 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     await dispatch(sid, { action: "add", title: "child B", parent: `#${parentHash}` })
 
     const text = new TasksAttachment(sid, { home: tmpHome }).toText()!
-    // Subtask positions are nested Markdown ordered-list items under parent row 1.
-    expect(text).toContain(`   1. todo \`#${parentHash}a\``)
-    expect(text).toContain(`   2. todo \`#${parentHash}b\``)
+    // Subtask positions are parent-number + suffix letter in columnar format.
+    expect(text).toContain(`1a  #${parentHash}a  todo      child A`)
+    expect(text).toContain(`1b  #${parentHash}b  todo      child B`)
     expect(text).toContain("child A")
     expect(text).toContain("child B")
   })
