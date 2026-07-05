@@ -50,9 +50,13 @@ const baseEnv = (): Record<string, string> =>
   ({
     ...process.env,
     MINIMAL_AGENT_CONFIG: CONFIG,
-    // Point discovery at an empty dir so we don't pick up the repo's plugins
-    // (keeps the field list deterministic = just the static schema).
+    // Keep the field list deterministic = just the static schema. The project
+    // and home discovery roots are pointed at nonexistent dirs, and the
+    // embedded root (this plugin's parent = the plugins-repo root, full of
+    // `ma-*-plugin`s) is suppressed with the skip flag, so navigation indices
+    // in this test stay stable no matter how many plugins the repo ships.
     HOME: "/nonexistent-home-for-test",
+    MINIMAL_AGENT_CONFIG_SKIP_PLUGIN_DISCOVERY: "1",
   }) as Record<string, string>
 
 function cmdCtx(emits: Emit[], argv = ""): Parameters<typeof cmdConfig>[0] {

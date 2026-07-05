@@ -67,6 +67,12 @@ export function discoveryRoots(
   cwd: string,
   env: Record<string, string> = process.env as Record<string, string>,
 ): string[] {
+  // Opt-out: `MINIMAL_AGENT_CONFIG_SKIP_PLUGIN_DISCOVERY=1` returns no roots, so
+  // the overlay shows only the static schema (no per-plugin enable toggles).
+  // Used by the integration test to keep the field list deterministic (it can't
+  // redirect the embedded root, which is this plugin's own parent dir — in a
+  // repo checkout that parent is the plugins repo root, full of `ma-*-plugin`s).
+  if (env.MINIMAL_AGENT_CONFIG_SKIP_PLUGIN_DISCOVERY === "1") return []
   const home = env.HOME || homedir()
   const embeddedRoot = dirname(packageDir) // <repo>/plugins
   return [
