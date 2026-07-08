@@ -18,7 +18,7 @@ Use the foreground `Bash` tool only for quick commands (under ~5 seconds) whose 
 
 ## Timeouts
 
-- Every job has a deadline, 10 minutes by default. Set `timeout` to any duration when you need more or less: `"90s"`, `"30m"`, `"2h"`, `"1d"`. A job that hits its deadline is killed and reported as timed out, with whatever output it produced still readable. Pick a timeout that fits the work. 
+- Every job has a deadline, 10 minutes by default. Set `timeout` to any duration when you need more or less: `"90s"`, `"30m"`, `"2h"`, `"1d"`. A job that hits its deadline is killed and reported as timed out, with whatever output it produced still readable. Pick a timeout that fits the work.
 - Do not set a huge one just in case.
 
 ## Things to know
