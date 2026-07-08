@@ -170,14 +170,14 @@ export function buildMismatchIssue(
       id: `${OPTION_SWITCH_PREFIX}${signer}`,
       label: `Switch back to ${signer}`,
       description:
-        `Keep all thinking blocks intact; this and future turns use ${signer} ` +
+        `Keep all thinking blocks intact. This and future turns use ${signer} ` +
         `instead of ${targetBase} until you change models again.`,
     })
   }
   options.push({
     id: OPTION_CANCEL,
     label: "Cancel",
-    description: "Abort this send. The conversation stays where it is; nothing is modified.",
+    description: "Abort this send. The conversation stays where it is, nothing is modified.",
   })
 
   return {

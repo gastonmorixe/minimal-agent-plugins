@@ -10,7 +10,7 @@
         "type": "tool",
         "tool": {
           "name": "CronCreate",
-          "description": "Schedule a prompt to run on a cron schedule or interval. The prompt is injected as a user turn BETWEEN turns each time the task is due (never mid-response). Use for polling a deploy, babysitting a PR, or one-time reminders ('remind me at 3pm to push'). Provide EITHER `cron` (a 5-field expression, local time) OR `every` (a human interval like '5m', '2h', '1d'). Set `recurs:false` for a one-shot that deletes itself after firing. Times are local. Max 50 tasks/session; recurring tasks auto-expire after 7 days. Cancel with ScheduleCronDelete.",
+          "description": "Schedule a prompt to run on a cron schedule or interval. The prompt is injected as a user turn BETWEEN turns each time the task is due (never mid-response). Use for polling a deploy, babysitting a PR, or one-time reminders ('remind me at 3pm to push'). Provide EITHER `cron` (a 5-field expression, local time) OR `every` (a human interval like '5m', '2h', '1d'). Set `recurs:false` for a one-shot that deletes itself after firing. Times are local. Max 50 tasks/session. Recurring tasks auto-expire after 7 days. Cancel with ScheduleCronDelete.",
           "input_schema": {
             "type": "object",
             "properties": {

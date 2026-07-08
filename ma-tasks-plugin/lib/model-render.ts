@@ -84,7 +84,9 @@ export function renderTasksColumnar(tasks: readonly Task[]): string {
     const durText = fmtDur(t.active_ms)
     const durSuffix = durText.length > 0 ? `  ${durText}` : ""
     const reasonSuffix = t.status === "canceled" && t.reason ? ` (${cleanText(t.reason)})` : ""
-    lines.push(`${posCol}  ${idCol}  ${statusCol}  ${cleanText(t.title)}${reasonSuffix}${durSuffix}`)
+    lines.push(
+      `${posCol}  ${idCol}  ${statusCol}  ${cleanText(t.title)}${reasonSuffix}${durSuffix}`,
+    )
   }
   return lines.join("\n")
 }

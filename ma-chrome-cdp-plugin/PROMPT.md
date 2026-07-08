@@ -1,8 +1,6 @@
+# ChromeCDP
+
 Use `ChromeCDP` to drive an already-running Chrome/Chromium over the DevTools Protocol: read open tabs, run JavaScript in a page or a cross-origin iframe, navigate, open/close/focus tabs, drive/track downloads, and (via the generic `send` passthrough) call any CDP method and inspect the protocol's async event stream. It acts inside the user's real, logged-in browser.
-
-## Prerequisite
-
-Chrome/Chromium must be running with `--remote-debugging-port=9222`. The tool starts a small background daemon on first use that holds one connection to the browser and is reached over a unix socket, so macOS asks for Local Network permission only once.
 
 ## When to use `ChromeCDP` vs `Fetch`
 
@@ -14,7 +12,7 @@ Chrome/Chromium must be running with `--remote-debugging-port=9222`. The tool st
 - `ping` - daemon + browser liveness.
 - `targets` - list open page tabs as `{id,title,url}`. Start here to get a `target` id.
 - `alltargets` - every target including iframes and workers.
-- `eval` - run JS in a tab. Needs `target` + `expr`. Result is returned by value; a thrown error comes back as `{"__error":"..."}` (not a crash).
+- `eval` - run JS in a tab. Needs `target` + `expr`. Result is returned by value. A thrown error comes back as `{"__error":"..."}` (not a crash).
 - `frameeval` - run JS in a cross-origin child frame, matched by `urlSub` against frame URLs. Needs `target` + `urlSub` + `expr`. Use for embedded logins / payment iframes that are separate CDP targets.
 - `nav` - navigate a tab. Needs `target` + `url`.
 - `newtab` - open a tab (optional `url`, defaults about:blank). Returns `{id}`.
@@ -36,9 +34,9 @@ CDP is just JSON-RPC, so `send` forwards any `method`+`params` and gives you the
 - **Emulation:** `send Emulation.setDeviceMetricsOverride {width,height,deviceScaleFactor,mobile}`, `setUserAgentOverride`, `setGeolocationOverride`, `setTimezoneOverride`.
 - **DOM / a11y:** `send DOM.getDocument {depth:-1}`, `send Accessibility.getFullAXTree {}`.
 - **Storage / cookies:** `send Network.getCookies {}`, `send Storage.clearDataForOrigin {...}`.
-- **Profiling:** `send Profiler.enable {}` then `Profiler.start` then `Profiler.stop` (CPU profile in the result); `send HeapProfiler.takeHeapSnapshot {}`.
+- **Profiling:** `send Profiler.enable {}` then `Profiler.start` then `Profiler.stop` (CPU profile in the result). `send HeapProfiler.takeHeapSnapshot {}`.
 
-Scope to a tab by passing `target`; omit it for browser-global methods.
+Scope to a tab by passing `target`, or omit it for browser-global methods.
 
 ## Network / performance inspection (events)
 
@@ -48,30 +46,30 @@ Commands are request/reply, but the interesting network + perf data arrives as *
 2. **Make traffic happen** (`nav`, click, etc.).
 3. **Drain:** `events` `{filter:"Network"}` returns an ordered list of `{seq, ts, method, sessionId, params}`. Key Network events: `Network.requestWillBeSent`, `responseReceived`, `loadingFinished`, `loadingFailed`. Correlate by `params.requestId`.
 4. **Incremental draining:** pass the previous response's `cursor` back as `since` to get only what's new.
-5. **Response bodies:** once you see `loadingFinished` for a `requestId`, `send Network.getResponseBody {requestId:"..."}` returns `{body, base64Encoded}`. Gotcha: the body is only retrievable while Chrome still holds it (call soon after `loadingFinished`); large/evicted bodies may fail.
+5. **Response bodies:** once you see `loadingFinished` for a `requestId`, `send Network.getResponseBody {requestId:"..."}` returns `{body, base64Encoded}`. Gotcha: the body is only retrievable while Chrome still holds it (call soon after `loadingFinished`). Large/evicted bodies may fail.
 
-Other useful event sources: `Log.enable` then `Log.entryAdded`; `Runtime.enable` then `Runtime.consoleAPICalled` / `Runtime.exceptionThrown`; `Page.enable` then lifecycle events. Deep tracing: `Tracing.start {}`, traffic, then `Tracing.end {}`, with `Tracing.dataCollected` / `Tracing.tracingComplete` arriving as events.
+Other useful event sources: `Log.enable` then `Log.entryAdded`, `Runtime.enable` then `Runtime.consoleAPICalled` / `Runtime.exceptionThrown`, `Page.enable` then lifecycle events. Deep tracing: `Tracing.start {}`, traffic, then `Tracing.end {}`, with `Tracing.dataCollected` / `Tracing.tracingComplete` arriving as events.
 
 ## How to call it well
 
-- **Get a `target` first.** Call `targets`, pick the id, then act on it.
-- **Clicking custom widgets.** `el.click()` often isn't enough for React menus. Dispatch a full event sequence in `expr`:
+- **Get a `target` first:** Call `targets`, pick the id, then act on it.
+- **Clicking custom widgets:** `el.click()` often isn't enough for React menus. Dispatch a full event sequence in `expr`:
   ```js
   ["pointerdown","mousedown","pointerup","mouseup","click"].forEach(t =>
     el.dispatchEvent(new MouseEvent(t, {bubbles:true, cancelable:true, view:window})));
   ```
-- **Setting a React-controlled input.** Use the native setter so onChange fires:
+- **Setting a React-controlled input:** Use the native setter so onChange fires:
   ```js
   const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set;
   set.call(input,"text"); input.dispatchEvent(new Event("input",{bubbles:true}));
   ```
-- **Downloads.** Call `setdownload` first, click, then poll `downloads` until `state:"completed"` before assuming the file exists. One-time downloads are consumed even if the save path wasn't set, so verify.
-- **Logins behind a bot check** (Cloudflare Turnstile, etc.) usually can't be scripted. Have the user log in once, then script the same-origin work after.
+- **Downloads:** Call `setdownload` first, click, then poll `downloads` until `state:"completed"` before assuming the file exists. One-time downloads are consumed even if the save path wasn't set, so verify.
+- **Logins behind a bot check:** (Cloudflare Turnstile, etc.) usually can't be scripted. Have the user log in once, then script the same-origin work after.
 
 ## Don't
 
-- Don't use it for a plain public page read; use `Fetch`.
-- Don't assume a tab is scriptable mid-navigation; `nav`, wait, then `eval`.
+- Don't use it for a plain public page read. Use `Fetch`.
+- Don't assume a tab is scriptable mid-navigation. Instead `nav`, wait, then `eval`.
 - Don't `closetarget` the last remaining tab if you need the connection to survive: closing the final tab can quit Chrome and drop the debug socket. Open a keep-alive `newtab` first.
-- Don't expect `events` to show anything before you've enabled the relevant domain. No `*.enable`, no events. The buffer is bounded (oldest evicted; `dropped` tells you how many were lost), so drain with `since` for long captures.
-- Don't paste a raw method without the `Domain.` prefix; `send` validates the `Domain.method` shape and rejects bare names.
+- Don't expect `events` to show anything before you've enabled the relevant domain. No `*.enable`, no events. The buffer is bounded (oldest evicted, `dropped` tells you how many were lost), so drain with `since` for long captures.
+- Don't paste a raw method without the `Domain.` prefix. `send` validates the `Domain.method` shape and rejects bare names.

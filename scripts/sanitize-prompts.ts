@@ -65,9 +65,16 @@ const isListItem = (l: string): boolean => /^\s*([-*+]|\d+[.)])\s+/.test(l)
 const isThematicBreak = (l: string): boolean => /^\s*([-*_])(\s*\1){2,}\s*$/.test(l)
 const isTableRow = (l: string): boolean => /^\s*\|/.test(l)
 const isBlockquote = (l: string): boolean => /^\s*>/.test(l)
+/**
+ * An indented code block line: 4+ leading spaces or a leading tab, and not a
+ * list item (list continuations are indented too, but those are reflowable). In
+ * CommonMark such a line is a code block and its contents are verbatim, so
+ * reflowing it (joining wrapped example rows) corrupts the block.
+ */
+const isIndentedCode = (l: string): boolean => /^(?: {4,}|\t)/.test(l) && !isListItem(l)
 /** A line emitted on its own (never reflowed into an adjacent paragraph). */
 const isStandalone = (l: string): boolean =>
-  isHeading(l) || isThematicBreak(l) || isTableRow(l) || isBlockquote(l)
+  isHeading(l) || isThematicBreak(l) || isTableRow(l) || isBlockquote(l) || isIndentedCode(l)
 
 /**
  * Reflow wrapped paragraphs + list items onto single lines. Produces an array

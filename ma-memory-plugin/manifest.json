@@ -2,7 +2,7 @@
   "id": "memory",
   "name": "Memory",
   "version": "0.4.0",
-  "description": "Persistent cross-session memory plus per-session short-term scratchpad. Saves via the inline <ma::emit::memory> tag (zero-friction, mid-response); reads/edits/removes via the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). Persistent scopes are not injected into the system prompt by default (use `MemoryTool({action: \"list\"})` to query); short-term rides as a per-turn user-message attachment.",
+  "description": "Persistent cross-session memory plus a per-session short-term scratchpad. Saves via the inline <ma::emit::memory> tag (zero-friction, mid-response), reads/edits/removes via the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). Persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`), while short-term rides as a per-turn user-message attachment.",
   "tuis": [
     {
       "id": "memory_save",
@@ -23,7 +23,7 @@
         "type": "tool",
         "tool": {
           "name": "MemoryTool",
-          "description": "List, read, add, edit, or remove saved memories. Memories are not shown in your system prompt by default; use this tool to query them whenever a saved lesson might apply (debugging a familiar symptom, recalling a user's preferences, looking up prior solutions on this codebase). Three scopes: `global` (cross-project, about working with this user), `project` (about this codebase), `short-term` (this session only). For in-flight saves mid-response, prefer the inline <ma::emit::memory> tag (lower friction, save-echo returns the id next turn). `list` is paginated: default returns the most recent 20 entries with body previews clipped to ~160 chars; the header includes a paste-ready `next: MemoryTool({...})` hint for the next page. Use `read` to fetch the full body of a specific bullet by id. `id` is required for read/edit/remove; `body` for add/edit; `query`/`limit`/`offset` are list-only. `clear` is only allowed for scope=short-term.",
+          "description": "List, read, add, edit, or remove saved memories. Memories are not shown in your system prompt by default, so query them whenever a saved lesson might apply (a familiar bug symptom, the user's preferences, a prior solution in this codebase). Three scopes: `global` (about working with this user), `project` (about this codebase), `short-term` (this session only). For in-flight saves mid-response, prefer the inline <ma::emit::memory> tag (lower friction, the save-echo returns the id next turn). `list` is paginated: newest 20 entries, bodies clipped to ~160 chars, with a paste-ready `next:` hint. Use `read` for one bullet's full body by id. `id` is required for read/edit/remove, `body` for add/edit, `query`/`limit`/`offset` are list-only. `clear` is short-term only.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -39,11 +39,11 @@
               },
               "id": {
                 "type": "string",
-                "description": "Bullet id from a prior <memory-saved> echo, list result, or save-echo. Required for read/edit/remove. Persistent ids look like `lwq8tg-a8f3`; short-term ids are integers like `3`."
+                "description": "Bullet id from a prior <memory-saved> echo, list result, or save-echo. Required for read/edit/remove. Persistent ids look like `lwq8tg-a8f3`, short-term ids are integers like `3`."
               },
               "body": {
                 "type": "string",
-                "description": "New body for add or edit. Single-line preferred; multi-line is collapsed to one line."
+                "description": "New body for add or edit. Single-line preferred, multi-line is collapsed to one line."
               },
               "query": {
                 "type": "string",
@@ -57,7 +57,7 @@
               "offset": {
                 "type": "integer",
                 "minimum": 0,
-                "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page; offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page."
+                "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page, offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page."
               },
               "format": {
                 "type": "string",

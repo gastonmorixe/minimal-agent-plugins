@@ -1,3 +1,5 @@
+# Tasks
+
 Use `Task` to plan and track multi-step work the user can watch in real time. The live list is auto-injected into every user turn as a `<ma::agent::tasks ...>` block, so you always see the current plan without re-querying.
 
 ## When to use
@@ -38,14 +40,13 @@ The hash is stable across reorders and deletes. The position shifts. So when reo
 ## Status state machine
 
 ```
-            add
+             add
               │
               ▼
-   ┌─────┐   start    ┌──────┐   complete    ┌──────┐
-   │ todo│ ─────────► │doing │ ────────────► │ done │
-   └──┬──┘            └──┬───┘               └──────┘
-      │                  │
-      └──── cancel ◄─────┘
+   ┌────┐   start    ┌─────┐  complete   ┌────┐
+   │todo│ ─────────► │doing│ ──────────► │done│
+   └──┬─┘            └──┬──┘             └────┘
+      └──── cancel ◄────┘
 ```
 
 - `start` (or `status: "doing"`) on a `todo` or `done` task.
@@ -59,7 +60,7 @@ The hash is stable across reorders and deletes. The position shifts. So when reo
 
 Common confusions:
 
-- **Phase / section headers.** If you add a top-level task like `"PHASE 1: Setup"` and the work under it finishes, the header is `done`, not `canceled`. The phase IS done. Reasoning like "the header itself had no direct work, so it was never going to be done" is wrong. The meaning of the header is the work it represents, and that work happened.
+- **Phase / section headers.** If you add a top-level task like `"PHASE 1: Setup"` and the work under it finishes, the header is `done`, not `canceled`. The phase IS done. Reasoning like "the header itself had no direct work, so it was never going to be done" is wrong. A header means the work under it, and that work happened.
 - **Parents with all-done children.** Same idea. A parent task whose subtasks are all `done` should itself be `done`. The store does not auto-promote, that is on you.
 - **Tasks made moot by a sibling.** If task B made task A's goal unnecessary because the goal already got achieved (just elsewhere), A is `done`. If A's goal was actively rejected, A is `canceled` with a one-line `reason`.
 
@@ -120,6 +121,6 @@ Task({action: "status", id: 6, status: "canceled", reason: "user wants to keep t
 
 - Don't echo the rendered task list back to the user as prose. They see the rich rendering in the transcript already. Restating in markdown is noise.
 - Don't `remove` a task as a way of "cleaning up". That erases the audit trail. Use `status: "canceled"` for anything that materially existed but was later abandoned. Only `remove` tasks you accidentally added or that the user explicitly asks to drop.
-- Don't reach for `canceled` when you mean `done`. If a phase header, parent task, or planning placeholder has no direct work of its own but the work it represents finished, mark it `done`. See "`canceled` is 'abandoned', not 'done'" above.
+- Don't reach for `canceled` when you mean `done`. If a phase header, parent task, or planning placeholder has no direct work of its own but the work under it finished, mark it `done`. See "`canceled` is 'abandoned', not 'done'" above.
 - Don't fight the single-doing discipline with `parallel: true` unless you genuinely have parallel work. The discipline is the point. The user reads the meter as "where is the agent right now".
 - Don't try to nest beyond depth 2 (subtask of a subtask). `Task` refuses it. Flatten the deepest layer into the parent's title or split into a sibling top-level task.

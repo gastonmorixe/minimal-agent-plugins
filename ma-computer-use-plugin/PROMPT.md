@@ -1,7 +1,9 @@
+# Computer
+
 Use `Computer` to control this Mac. It has two layers and you should prefer the first:
 
-1. **Accessibility (AX)** - inspect the real UI tree and act on real elements by a stable handle. Reliable, fast, and survives layout shifts better than pixel-hunting.
-2. **Raw input** - synthesize mouse/keyboard at screen coordinates, plus screenshots. The last resort, for canvas/Electron/web/game UIs where the AX tree is thin or missing.
+1. **Accessibility (AX):** inspect the real UI tree and act on real elements by a stable handle. Reliable, fast, and survives layout shifts better than pixel-hunting.
+2. **Raw input:** - synthesize mouse/keyboard at screen coordinates, plus screenshots. The last resort, for canvas/Electron/web/game UIs where the AX tree is thin or missing.
 
 Behind the tool is a signed background helper (`ComputerUseHelper.app`) that holds the macOS Accessibility + Screen Recording permissions and auto-starts on first use. Because it is signed with a stable identity, the user grants permission **once** and it persists across rebuilds.
 
@@ -19,7 +21,7 @@ The user then enables **ComputerUseHelper** in System Settings > Privacy & Secur
 
 ## Coordinates
 
-All coordinates are **logical points**, **top-left origin**, spanning all displays. AX `bbox` values are `[x, y, width, height]` in this **same** space, so to click an element you can click the center of its bbox directly: `x = bbox[0] + bbox[2]/2`, `y = bbox[1] + bbox[3]/2`. Screenshots report device-pixel `width`/`height` and a `scale`; on a 2x Retina display, halve pixel coordinates from the image before clicking.
+All coordinates are **logical points**, **top-left origin**, spanning all displays. AX `bbox` values are `[x, y, width, height]` in this **same** space, so to click an element you can click the center of its bbox directly: `x = bbox[0] + bbox[2]/2`, `y = bbox[1] + bbox[3]/2`. Screenshots report device-pixel `width`/`height` and a `scale`. On a 2x Retina display, halve pixel coordinates from the image before clicking.
 
 ## The AX-first workflow
 
@@ -46,7 +48,7 @@ Element handles stay valid until the UI changes. If you get a `409` "stale; re-s
 
 - There is **no sandbox**. A click or keystroke goes to whatever is on screen. Be deliberate. Read before you write: `snapshot`/`screenshot` to confirm state, then act.
 - Prefer AX `perform`/`setValue` over coordinate input - it targets a named element, not a guessed pixel.
-- Typing into a **password/secure field is blocked** by macOS; the tool returns a warning rather than silently failing.
+- Typing into a **password/secure field is blocked** by macOS. The tool returns a warning rather than silently failing.
 - Every mutating action is rate-limited and logged to `~/Library/Logs/ma-computer-use/actions.log`. A kill switch (`bun run bin/cud.ts disable`) makes the helper refuse all input until re-enabled.
 - Don't drive destructive flows (delete, erase, log out, purchases, security settings) without the user explicitly asking for that exact action.
 

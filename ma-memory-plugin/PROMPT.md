@@ -33,7 +33,7 @@ Don't query when:
 
 Calls are paginated and bodies are truncated, on purpose, to keep tool results small:
 
-- **Default page size: 20** (max 100; larger values are clamped).
+- **Default page size: 20** (max 100, larger values are clamped).
 - **Default offset: 0** = the most recent page. Offset counts entries FROM THE NEWEST END, so `offset=20` returns the page immediately before the most recent one.
 - **Bodies are clipped to ~160 chars** in list results. The full body is always available via `MemoryTool({action: "read", id})`.
 - The response header always shows `showing N of M entries, offset O`.
@@ -146,7 +146,7 @@ Schema: `{action, scope, id?, body?, query?, limit?, offset?, format?}`. `scope`
 
 - **User-asked recall** ("what do you remember about X?"). List with a `query`. Don't paraphrase from your context, you don't have the data.
 - **Before debugging a known-feeling symptom**. List `project` with the symptom keyword. Saves re-deriving a documented fix.
-- **Curation pass** when you spot overlapping bullets on one subsystem: list, read the worst, edit one to be comprehensive, remove the rest.
+- **Curation pass** when you spot overlapping bullets on one subsystem: list, read the worst, edit one to cover it all, remove the rest.
 - **Onboarding to a new file**. List `project` with the filename or subsystem keyword before reading the file itself.
 
 ## When memories appear in context directly

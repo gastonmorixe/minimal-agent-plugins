@@ -2,7 +2,7 @@
   "id": "ma-computer-use",
   "name": "Computer Use",
   "version": "0.1.0",
-  "description": "Full control of the Mac through a signed Swift helper: Accessibility inspect/interact (preferred) and CGEvent mouse/keyboard + ScreenCaptureKit screenshots (last resort). Persistent daemon over a unix socket; TCC grants persist. Tool: Computer.",
+  "description": "Full control of the Mac through a signed Swift helper: Accessibility inspect/interact (preferred) and CGEvent mouse/keyboard + ScreenCaptureKit screenshots (last resort). Persistent daemon over a unix socket. TCC grants persist. Tool: Computer.",
   "platforms": ["macos"],
   "tuis": [
     {
@@ -11,7 +11,7 @@
         "type": "tool",
         "tool": {
           "name": "Computer",
-          "description": "Control this Mac. Two layers, prefer the first: (1) Accessibility (structured, reliable) - inspect the UI tree and act on real elements by stable handle; (2) raw input (last resort) - synthesize mouse/keyboard at screen coordinates, plus screenshots, for canvas/Electron/web UIs where the AX tree is thin. Backed by a signed background helper (ComputerUseHelper.app) that holds the macOS Accessibility + Screen Recording permissions; it auto-starts on first use. Coordinates are logical points, top-left origin, spanning all displays (AX bbox values are in the same space - click an element's bbox center directly). Element handles like 'e7' come from snapshot/find/elementAtPoint/focused and stay valid until the UI changes (then you get a 409 'stale; re-snapshot'). Always check 'perms' first if anything returns a permission error.",
+          "description": "Control this Mac. Two layers, prefer the first: (1) Accessibility (structured, reliable), inspect the UI tree and act on real elements by stable handle. (2) Raw input (last resort), synthesize mouse/keyboard at screen coordinates plus screenshots, for canvas/Electron/web UIs where the AX tree is thin. Backed by a signed helper (ComputerUseHelper.app) holding macOS Accessibility + Screen Recording permissions, and it auto-starts. Coordinates are logical points, top-left origin, across all displays (AX bbox is the same space, so click an element's bbox center directly). Handles like 'e7' come from snapshot/find/elementAtPoint/focused and stay valid until the UI changes (else 409 'stale; re-snapshot'). Check 'perms' first on any permission error.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -37,7 +37,7 @@
                   "keypress",
                   "screenshot"
                 ],
-                "description": "What to do. ping: daemon liveness + permission status. perms: report (and with prompt:true, request) Accessibility/Screen/Input permissions and open the right Settings pane. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost (pid or bundleId) so keyboard input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree as a flat element list (default) or nested tree, minting handles. find: search an app's tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at screen x,y. focused: the currently focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value (e.g. text field). perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject literal Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen (or an area) to a PNG path or base64."
+                "description": "What to do. ping: daemon liveness + permission status. perms: report (prompt:true also requests) Accessibility/Screen/Input permissions and open Settings. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost so input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree (flat list default, or nested), minting handles. find: search the tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at x,y. focused: the focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value. perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen or an area to PNG path or base64."
               },
               "pid": {
                 "type": "number",
@@ -61,7 +61,7 @@
               },
               "flatten": {
                 "type": "boolean",
-                "description": "snapshot: true (default) returns a flat element list (token-cheap); false returns the nested tree."
+                "description": "snapshot: true (default) returns a flat element list (token-cheap). false returns the nested tree."
               },
               "role": {
                 "type": "string",

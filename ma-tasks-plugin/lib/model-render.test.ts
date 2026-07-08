@@ -14,9 +14,7 @@ describe("renderTasksColumnar", () => {
       task({ id: "bbbbbb", status: "doing", title: "two" }),
     ])
 
-    expect(out).toBe(
-      ["1  #aaaaaa   todo      one", "2  #bbbbbb   doing     two"].join("\n"),
-    )
+    expect(out).toBe(["1  #aaaaaa   todo      one", "2  #bbbbbb   doing     two"].join("\n"))
   })
 
   test("renders subtasks with parent-number + suffix letter", () => {
@@ -38,9 +36,7 @@ describe("renderTasksColumnar", () => {
   })
 
   test("orphaned subtask gets '?' position", () => {
-    const out = renderTasksColumnar([
-      task({ id: "aaaaaaa", parent: "missing", title: "orphan" }),
-    ])
+    const out = renderTasksColumnar([task({ id: "aaaaaaa", parent: "missing", title: "orphan" })])
 
     expect(out).toBe("?  #aaaaaaa  todo      orphan")
   })
@@ -55,9 +51,7 @@ describe("renderTasksColumnar", () => {
   })
 
   test("escapes task text that could break the <ma::agent::tasks> wrapper", () => {
-    const out = renderTasksColumnar([
-      task({ id: "aaaaaa", title: "use <tag> & keep > quotes" }),
-    ])
+    const out = renderTasksColumnar([task({ id: "aaaaaa", title: "use <tag> & keep > quotes" })])
 
     expect(out).toContain("use &lt;tag&gt; &amp; keep &gt; quotes")
     expect(out).not.toContain("<tag>")

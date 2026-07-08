@@ -1,3 +1,5 @@
+# Skills
+
 Use `Skill` to discover and load [Agent Skills][as]: on-demand packs of procedural knowledge. A skill is a folder with a `SKILL.md` (YAML frontmatter + markdown body) plus optional `scripts/`, `references/`, and `assets/`, encoding things like how to cut a release, fill a PDF form, or run a code review. You load one only when a task needs it, instead of carrying every workflow in the prompt.
 
 [as]: https://agentskills.io

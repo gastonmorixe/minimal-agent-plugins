@@ -11,7 +11,7 @@
         "type": "tool",
         "tool": {
           "name": "ChromeCDP",
-          "description": "Control a running Chrome/Chromium over the full DevTools Protocol. Chrome must be launched with --remote-debugging-port=9222. A persistent background daemon holds one connection to the browser and is reached over a unix socket, so macOS prompts for Local Network access only once (at first use), not per command. Convenience actions cover tabs, JS eval, navigation, and downloads. The `send` action is a generic passthrough: it forwards any CDP method (Network.*, Performance.*, Tracing.*, Profiler.*, HeapProfiler.*, DOM.*, Page.*, Emulation.*, CSS.*, Accessibility.*, Storage.*, Fetch.*, Input.*, Log.*, Runtime.*, Target.*) with arbitrary params, optionally scoped to a tab. Because CDP events are async pushes (no reply), the daemon buffers them: enable a domain via `send` (e.g. Network.enable), then drain with `events`. Prefer the Fetch tool for stateless one-shot page reads; use ChromeCDP to act inside the user's real logged-in browser, inspect network/performance, profile, trace, or script anything the protocol exposes.",
+          "description": "Control a running Chrome/Chromium over the full DevTools Protocol. Chrome must be launched with --remote-debugging-port=9222. A background daemon holds one connection over a unix socket, so macOS prompts for Local Network access only once, not per command. Convenience actions cover tabs, JS eval, navigation, and downloads. The `send` action is a generic passthrough for any CDP method (Network.*, Performance.*, Tracing.*, Profiler.*, DOM.*, Page.*, Emulation.*, Storage.*, Fetch.*, Input.*, Runtime.*, Target.*, and the rest) with arbitrary params, optionally scoped to a tab. CDP events are async pushes, so the daemon buffers them: enable a domain via `send` (e.g. Network.enable), then drain with `events`. Prefer Fetch for stateless one-shot page reads. Use ChromeCDP to act inside the user's real logged-in browser, inspect network/performance, profile, trace, or script anything the protocol exposes.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -50,7 +50,7 @@
               },
               "url": {
                 "type": "string",
-                "description": "Destination URL. Required for nav; optional for newtab (defaults to about:blank)."
+                "description": "Destination URL. Required for nav. Optional for newtab (defaults to about:blank)."
               },
               "dir": {
                 "type": "string",

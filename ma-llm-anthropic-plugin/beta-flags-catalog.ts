@@ -110,13 +110,13 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
   },
   {
     id: "fast-mode-2026-02-01",
-    description: 'Enables top-level speed:"fast" — ~2.5x output tok/s at premium pricing',
+    description: 'Enables top-level speed:"fast", ~2.5x output tok/s at premium pricing',
     source: 'cli.patched.cjs L116082 v2.1.154: bUH = qf("speed", "fast-mode-2026-02-01")',
     condition: "Included when speed:'fast' is set on the request body",
   },
   {
     id: "task-budgets-2026-03-13",
-    description: "Enables output_config.task_budget — model self-moderates against a token budget",
+    description: "Enables output_config.task_budget, model self-moderates against a token budget",
     source: 'cli.patched.cjs L116079 v2.1.154: dr_ = qf("task_budgets", "...")',
     condition: "Included when output_config.task_budget is set (min 20_000 total)",
   },
