@@ -14,18 +14,8 @@ function run(label: string, command: string[]): CommandResult {
   return { code }
 }
 
-const fast = run("typecheck:fast", ["bun", "x", "tsgo", "--noEmit"])
-
-if (fast.code === 0) {
-  process.exit(0)
-}
-
-console.error("\ntsgo failed. Running the stable TypeScript compiler as fallback.")
-const fallback = run("typecheck:fallback", ["bun", "x", "tsc", "--noEmit"])
-
-if (fallback.code === 0) {
-  console.error("\ntsc passed after tsgo failed. Treat this as a native preview mismatch.")
-  process.exit(0)
-}
-
-process.exit(fallback.code)
+// As of TypeScript 7 (GA 2026-07-08), `tsc` IS the native Go compiler that the
+// `@typescript/native-preview` `tsgo` binary previewed, so the old
+// tsgo-with-tsc-fallback dance is gone: there is one compiler and one command.
+const result = run("typecheck", ["bun", "x", "tsc", "--noEmit"])
+process.exit(result.code)

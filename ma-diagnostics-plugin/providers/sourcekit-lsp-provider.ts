@@ -6,7 +6,7 @@
  * that speaks the standard LSP protocol over stdio. Covers Swift, Obj-C (.h,
  * .m, .mm), and C/C++ files via clangd which sourcekit-lsp wraps internally.
  *
- * Resilience mirrors {@link TsgoLspProvider}: a {@link CircuitBreaker} guards
+ * Resilience mirrors {@link TsLspProvider}: a {@link CircuitBreaker} guards
  * the child. A crash/timeout records a failure; once the breaker opens, checks
  * return [] (degraded) until a cooldown permits a restart trial. After too many
  * trips the breaker goes `dead` and the provider stays quiet for the session.

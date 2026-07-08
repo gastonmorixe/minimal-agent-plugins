@@ -58,16 +58,28 @@ interface ToolSpec {
  */
 const REGISTRY: ToolSpec[] = [
   {
+    // Legacy `tsgo` binary from the `@typescript/native-preview` package (the
+    // TypeScript 7 preview before GA). Kept for back-compat with projects that
+    // still pin native-preview. As of TypeScript 7 GA the native LSP moved into
+    // the `tsc` binary (see the `tsc` entry below), so on a modern install this
+    // binary is absent and the `tsc` entry provides the persistent LSP instead.
     id: "tsgo",
     kind: "type",
     binName: "tsgo",
     configFiles: ["tsconfig.json", "jsconfig.json"],
-    depNames: ["@typescript/native-preview", "typescript"],
+    depNames: ["@typescript/native-preview"],
     requiresConfig: true,
     requiresAnyOf: ["tsconfig.json", "jsconfig.json"],
     persistent: true,
   },
   {
+    // The stable `tsc` binary. As of TypeScript 7 (GA 2026-07-08) `tsc` IS the
+    // native Go compiler and speaks LSP over `tsc --lsp -stdio` (verified: it
+    // answers an `initialize` handshake, whereas TS<=6 rejects `--lsp` with
+    // TS5023). So on TS>=7 we run it as a PERSISTENT LSP server (fast per-edit
+    // pulls); on TS<=6 it stays a spawn-per-call `tsc --noEmit` fallback. The
+    // `persistent` flag here is the TS<=6 default; detectTools() promotes it to
+    // true when the installed TypeScript major version is >= 7.
     id: "tsc",
     kind: "type",
     binName: "tsc",
@@ -131,10 +143,37 @@ function readDeps(root: string): Record<string, string> {
   }
 }
 
+/**
+ * Read the MAJOR version of the `typescript` package installed at `root` (from
+ * `node_modules/typescript/package.json`). Returns null when it can't be read
+ * (not installed, malformed, unreadable). Used to decide whether the `tsc`
+ * binary is LSP-capable: on TypeScript 7 and later, `tsc` speaks `--lsp -stdio`
+ * so it runs as a persistent server; on TypeScript 6 and earlier it does not,
+ * and stays spawn-per-call.
+ */
+function readTypescriptMajor(root: string): number | null {
+  try {
+    const pkgPath = join(root, "node_modules", "typescript", "package.json")
+    if (!existsSync(pkgPath)) return null
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { version?: unknown }
+    if (typeof pkg.version !== "string") return null
+    const major = Number.parseInt(pkg.version.split(".")[0] ?? "", 10)
+    return Number.isNaN(major) ? null : major
+  } catch {
+    return null
+  }
+}
+
 /** Injectable options for detection (used in tests to control PATH). */
 export interface DetectOptions {
   /** PATH to use when resolving PATH-based tools. Defaults to `process.env.PATH`. */
   path?: string
+  /**
+   * Override the detected TypeScript major version (skips reading
+   * `node_modules/typescript/package.json`). Used in tests to exercise the
+   * TS7-tsc-as-LSP promotion without a real install.
+   */
+  typescriptMajor?: number | null
 }
 
 /**
@@ -248,6 +287,8 @@ export function detectTools(
   options: DetectOptions & { fallback?: boolean } = {},
 ): DetectedTool[] {
   const deps = readDeps(root)
+  const tsMajor =
+    options.typescriptMajor !== undefined ? options.typescriptMajor : readTypescriptMajor(root)
   const out: DetectedTool[] = []
   const detectedIds = new Set<string>()
   for (const spec of REGISTRY) {
@@ -276,8 +317,13 @@ export function detectTools(
     }
     if (spec.requiresConfig && !configFound) continue
 
+    // TypeScript 7+ `tsc` speaks LSP (`tsc --lsp -stdio`), so promote it to a
+    // persistent server. On TS <= 6 (or unknown), it stays spawn-per-call.
+    const persistent =
+      spec.id === "tsc" && tsMajor !== null && tsMajor >= 7 ? true : spec.persistent
+
     detectedIds.add(spec.id)
-    out.push({ id: spec.id, kind: spec.kind, bin, configFound, persistent: spec.persistent })
+    out.push({ id: spec.id, kind: spec.kind, bin, configFound, persistent })
   }
   return out
 }

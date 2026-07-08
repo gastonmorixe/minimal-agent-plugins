@@ -65,7 +65,7 @@ function fakeProvider(
 
 function factories(map: Record<string, Finding[]>): ProviderFactories {
   return {
-    makeTsgo: () => fakeProvider("tsgo", "type", map.tsgo ?? []),
+    makeTsLsp: (_bin, _root, id) => fakeProvider(id, "type", map[id] ?? map.tsgo ?? []),
     makeTsc: () => fakeProvider("tsc", "type", map.tsc ?? []),
     makeTscDirect: () => fakeProvider("tsc-direct", "type", map["tsc-direct"] ?? []),
     makeBiome: () => fakeProvider("biome", "format", map.biome ?? []),
