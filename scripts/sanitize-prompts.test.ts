@@ -30,6 +30,20 @@ describe("sanitize (default: reflow on)", () => {
     const clean = "# Title\n\nA line.\n\n- a\n- b\n"
     expect(sanitize(clean)).toBe(clean)
   })
+  test("preserves 4-space indented code blocks verbatim (no reflow join)", () => {
+    // Regression: an indented code block (CommonMark) must not be reflowed. Two
+    // example rows must stay on separate lines, not join into one corrupt line.
+    const input = "intro line\n\n    row one here\n    row two here\n\nafter\n"
+    expect(sanitize(input)).toBe(input)
+  })
+  test("preserves tab-indented code lines verbatim", () => {
+    const input = "p\n\n\tcode a\n\tcode b\n\nq\n"
+    expect(sanitize(input)).toBe(input)
+  })
+  test("still reflows wrapped prose around an indented code block", () => {
+    const input = "one\ntwo\n\n    codeline\n\nthree\nfour\n"
+    expect(sanitize(input)).toBe("one two\n\n    codeline\n\nthree four\n")
+  })
 })
 
 describe("sanitize (--no-reflow: blank normalize only)", () => {

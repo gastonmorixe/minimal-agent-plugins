@@ -21,4 +21,4 @@ Emit `<ma::emit::interleave-thinking>...</ma::emit::interleave-thinking>` spans 
     Wait, I claimed the retention lives in OPENER_PROBE, but that's just the literal probe string, not the buffer. I should verify the field name in the scanner state before naming it, or soften the claim to what I actually know.
     </ma::emit::interleave-thinking>
 
-The body is dropped from the stream; only your real answer remains.
+The body is dropped from the stream, so only your real answer remains.

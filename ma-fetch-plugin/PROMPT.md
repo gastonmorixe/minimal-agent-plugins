@@ -21,7 +21,7 @@ Use `Fetch` to retrieve a specific web page through a real JavaScript-rendering 
 - **Use `format: "links"`** when you want to crawl - fastest way to enumerate hrefs on a page.
 - **Use `format: "original"`** for JSON APIs, images, JS bundles, CSS, or anything where you specifically don't want the HTML/DOM layer.
 - **Use `format: "text"`** when markdown markup itself is noise - useful for paragraph-heavy reading or text extraction pipelines.
-- **Default `wait_until` is `domcontentloaded`.** It captures the SSR'd initial DOM, which is where article content lives. The fancier `load` default that other tools use waits for *all* subresources (ads, fonts, analytics pixels); on stealth-protected sites that race ends in a nav-only shell because anti-bot scripts rewrite the DOM mid-load. Leave the default alone unless you have a reason.
+- **Default `wait_until` is `domcontentloaded`.** It captures the SSR'd initial DOM, which is where article content lives. The fancier `load` default that other tools use waits for *all* subresources (ads, fonts, analytics pixels). On stealth-protected sites that race ends in a nav-only shell because anti-bot scripts rewrite the DOM mid-load. Leave the default alone unless you have a reason.
 - **Use `wait_until: "networkidle0"`** for SPAs / dashboards that load content *after* the initial paint via fetch/XHR. Slower (waits for ~500ms of network idleness) but reliable for shells that hydrate client-side.
 - **Use `wait_until: "load"`** when you specifically need every subresource (images, fonts, stylesheets) to have arrived, e.g. for screenshot-adjacent workflows. Rarely the right call for text content.
 - **Use `selector`** when you only care about one piece of the page  - the browser waits for that element before dumping. Pairs well with dynamic pages.
@@ -47,9 +47,9 @@ Use `Fetch` to retrieve a specific web page through a real JavaScript-rendering 
   ```
   Fetch({ url: "https://twitter.com/home", session: "twitter", format: "text" })
   ```
-- **Pass `session: ""` to opt out of any config-default session for one call** (rare; only matters if the user configured a `defaults.session`).
+- **Pass `session: ""` to opt out of any config-default session for one call** (rare, only matters if the user configured a `defaults.session`).
 - **The transcript footer shows the session name** when it was used (`session: twitter`), so the user can see which jar the call touched.
-- **Plaintext on disk.** Cookies + tokens land in plain JSON under `~/.minimal-agent/sessions/fetch/<name>/`. Don't pick a session name that includes the user's identity if other people might see the transcript. The directory inherits the user's home permissions; treat it like a browser profile.
+- **Plaintext on disk.** Cookies + tokens land in plain JSON under `~/.minimal-agent/sessions/fetch/<name>/`. Don't pick a session name that includes the user's identity if other people might see the transcript. The directory inherits the user's home permissions, so treat it like a browser profile.
 - **Single-writer.** Two `Fetch` calls hitting the same session at the same time will race. Calls are sequential per-turn, so this rarely bites, but be aware.
 
 ## Output

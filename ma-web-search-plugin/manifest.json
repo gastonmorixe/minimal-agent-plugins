@@ -2,7 +2,7 @@
   "id": "web-search",
   "name": "Web Search",
   "version": "0.1.0",
-  "description": "Search the web from the agent. Provider-pluggable; ships with Brave as the default.",
+  "description": "Search the web from the agent. Provider-pluggable, ships with Brave as the default.",
   "tuis": [
     {
       "id": "web_search",
@@ -10,26 +10,26 @@
         "type": "tool",
         "tool": {
           "name": "WebSearch",
-          "description": "Search the web for current information. Returns ranked hits with title, URL, snippet, age, and source. Use type='news' for time-sensitive queries (recent events, breaking news); default 'web' for general lookups, documentation, and reference material. Use format='json' only when you need to extract specific fields programmatically; the default 'text' is more compact and easier to read inline.",
+          "description": "Search the web for current information. Returns ranked hits with title, URL, snippet, age, and source. Use type='news' for time-sensitive queries (recent events, breaking news). Default 'web' for general lookups, documentation, and reference material. Use format='json' only when you need to extract specific fields programmatically. The default 'text' is more compact and easier to read inline.",
           "input_schema": {
             "type": "object",
             "properties": {
               "query": {
                 "type": "string",
-                "description": "The search query. Max 400 characters. Brevity helps; most providers do better with 2-6 well-chosen keywords than full sentences."
+                "description": "The search query. Max 400 characters. Brevity helps, most providers do better with 2-6 well-chosen keywords than full sentences."
               },
               "type": {
                 "type": "string",
                 "enum": ["web", "news"],
                 "default": "web",
-                "description": "Search vertical. 'web' = general results; 'news' = time-sensitive recent articles."
+                "description": "Search vertical. 'web' = general results, 'news' = time-sensitive recent articles."
               },
               "count": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 20,
                 "default": 10,
-                "description": "How many hits to return. Default 10. Smaller is usually better; top 5 are typically the only ones worth reading."
+                "description": "How many hits to return. Default 10. Smaller is usually better, top 5 are typically the only ones worth reading."
               },
               "offset": {
                 "type": "integer",

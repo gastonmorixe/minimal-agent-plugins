@@ -1,3 +1,5 @@
+# Speak
+
 Use `Speak` to read text aloud to the user through the computer's speakers, in a clear professional voice. It is for your ears-out channel: when the user would rather hear something than read it, or when an audible cue helps.
 
 The plugin adds three tools: `Speak` (start talking), `SpeakStatus` (is it still talking?), and `SpeakStop` (stop talking).
@@ -18,7 +20,7 @@ The plugin adds three tools: `Speak` (start talking), `SpeakStatus` (is it still
 ## How it behaves
 
 - **Speech plays in the background.** `Speak` returns right away with a short job handle like `s1`, and the audio keeps playing while you keep working. You are not blocked.
-- **One utterance, one job.** Each `Speak` call is its own job with its own handle. Call it again for a second utterance; both can be tracked independently.
+- **One utterance, one job.** Each `Speak` call is its own job with its own handle. Call it again for a second utterance, and both can be tracked independently.
 - **`wait: true` blocks for short lines only.** Set `wait: true` when you want a short confirmation fully spoken before you move on. Never use it for long passages: it would stall the turn. The default (`wait: false`) is almost always right.
 
 ## Speaking well

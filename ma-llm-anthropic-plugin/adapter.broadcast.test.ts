@@ -20,7 +20,7 @@
  * @module llm/providers/anthropic/adapter.broadcast.test
  */
 
-import { beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import { anthropicAdapter, bootstrapAnthropic } from "./adapter.ts"
 import { userText } from "./lib/canonical-messages.ts"
@@ -69,6 +69,14 @@ describe("anthropicAdapter.run rate-limit broadcast", () => {
     const reg = makeTestRegistry()
     bootstrapAnthropic(reg.ctx)
     resolveModel = reg.resolveModel
+  })
+
+  // The module-level rate-limit cache is process-global. Without this the
+  // populated cache leaks into OTHER test files (bun shares one module graph
+  // per run), and `session-info.cache.test.ts`'s "cold cache" case fails when
+  // it runs after this one. Clear on the way out too, not just on the way in.
+  afterEach(() => {
+    clearAnthropicRateLimits()
   })
 
   it("broadcasts the chat response's rate-limit headers into the quota cache", async () => {

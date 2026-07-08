@@ -109,6 +109,33 @@ describe("external plugin prompt audit", () => {
     expect(bad).toEqual([])
   })
 
+  test("keeps model-facing prose free of AI-dictionary words", () => {
+    // The writing-style plugin bans a set of AI-tell words. Its own PROMPT.md
+    // and manifest list them AS EXAMPLES, so that plugin is exempt. Everywhere
+    // else, a hit is a real regression. "harness"/"leverage" are verb-only bans
+    // (the noun "the harness" is this runtime's name), so they are checked with
+    // a negative lookbehind for a preceding article/possessive.
+    const isStyleRulesPlugin = (file: PromptFile): boolean =>
+      file.rel.startsWith("ma-agent-writing-style-plugin/")
+    const aiWords = violations(
+      modelFacingFiles(),
+      /\b(?:delve|tapestry|realm|embark|myriad|plethora|streamlines?|resonates?|synergy|groundbreaking|revolutioniz\w*|transformative|testament|pivotal|seamless(?:ly)?|cutting-edge|vibrant|profound|intricate|meticulous|garner\w*|underscore\w*|showcase\w*|exemplif\w*|boasts?|crucial|comprehensive|nuanced|compelling|bolster\w*|overarching|unprecedented)\b/g,
+      "AI-dictionary word",
+      isStyleRulesPlugin,
+    )
+    // "harness"/"leverage" are verb-only bans. The noun "the harness" (this
+    // runtime's name) is fine, so skip a hit preceded by an article/possessive.
+    // The lookbehind is case-insensitive so "The harness" at a sentence start is
+    // also exempt.
+    const aiVerbs = violations(
+      modelFacingFiles(),
+      /(?<![Tt]he\s|[Aa]n?\s|[Tt]his\s|[Tt]hat\s|[Oo]ur\s|[Ii]ts\s|[Yy]our\s|[Tt]heir\s)\b(?:leverages?|leveraging|harnesse?s?|harnessing)\b/g,
+      "AI verb (use plain wording)",
+      isStyleRulesPlugin,
+    )
+    expect([...aiWords, ...aiVerbs]).toEqual([])
+  })
+
   test("does not reintroduce known stale prompt wording", () => {
     const bad = violations(
       modelFacingFiles(),

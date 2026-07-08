@@ -18,8 +18,8 @@ What to do, in order of preference:
 
 ## Don't
 
-- **Don't loop-retry blindly** on a lock error. The acquire path already retried with backoff for 30s; that budget is spent. Wait or inspect, don't immediately re-call `Edit`.
-- **Don't break an active peer's lock.** `clear` on a lock with a live PID is a footgun; use `clear-stale`.
+- **Don't loop-retry blindly** on a lock error. The acquire path already retried with backoff for 30s, so that budget is spent. Wait or inspect, don't immediately re-call `Edit`.
+- **Don't break an active peer's lock.** `clear` on a lock with a live PID is a footgun. Use `clear-stale`.
 - **Don't try to "hold the lock for a whole turn."** Locks are intentionally short (the read-modify-write window only).
 
 ## Bash bypasses locking

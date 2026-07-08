@@ -10,7 +10,7 @@
         "type": "tool",
         "tool": {
           "name": "Speak",
-          "description": "Speak text aloud to the user through the computer's speakers, in a clear professional voice. Use it to read out an answer, announce that a long task finished, deliver a short alert, or narrate anything the user asked to hear instead of read. Speech plays in the background and the tool returns immediately with a short job handle (e.g. `s1`); the user hears it while you keep working. Poll `SpeakStatus` to see whether a job is still talking, and `SpeakStop` to cut it off (for example if the user says \"stop\" or you spoke the wrong thing). Speaking does not interrupt the conversation. Keep spoken text natural: prefer plain sentences over markdown, code blocks, or long URLs, which sound bad read aloud.",
+          "description": "Speak text aloud to the user through the computer's speakers, in a clear professional voice. Use it to read out an answer, announce that a long task finished, deliver a short alert, or narrate anything the user asked to hear instead of read. Speech plays in the background and the tool returns immediately with a short job handle (e.g. `s1`), and the user hears it while you keep working. Poll `SpeakStatus` to see whether a job is still talking, and `SpeakStop` to cut it off (for example if the user says \"stop\" or you spoke the wrong thing). Speaking does not interrupt the conversation. Keep spoken text natural: prefer plain sentences over markdown, code blocks, or long URLs, which sound bad read aloud.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -21,7 +21,7 @@
               "wait": {
                 "type": "boolean",
                 "default": false,
-                "description": "When false (default), return immediately with a job handle and let the speech play in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line you want confirmed as fully spoken before you move on; never for long passages, which would stall the turn."
+                "description": "When false (default), return immediately with a job handle and let the speech play in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line you want confirmed as fully spoken before you move on, never for long passages, which would stall the turn."
               }
             },
             "required": ["text"],

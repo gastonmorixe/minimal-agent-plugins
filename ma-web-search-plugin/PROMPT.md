@@ -1,3 +1,5 @@
+# WebSearch
+
 Use `WebSearch` to find current information on the open web. It returns ranked hits with title, URL, snippet, age, and source.
 
 ## When to use it
@@ -23,4 +25,4 @@ Use `WebSearch` to find current information on the open web. It returns ranked h
 
 ## Provider chain
 
-Results come from a configurable provider chain (Brave by default). Failed or unconfigured providers are skipped silently and the next is tried; empty results are not a failure, they stop the chain. If every provider fails (e.g. no API key configured), the result is an error with a setup hint. The result header shows which provider answered (`WebSearch[brave/web]`); you don't need to choose.
+Results come from a configurable provider chain (Brave by default). Failed or unconfigured providers are skipped silently and the next is tried. Empty results are not a failure, they stop the chain. If every provider fails (e.g. no API key configured), the result is an error with a setup hint. The result header shows which provider answered (`WebSearch[brave/web]`), so you don't need to choose.
