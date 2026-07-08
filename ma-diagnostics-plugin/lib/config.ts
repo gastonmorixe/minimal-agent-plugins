@@ -22,7 +22,7 @@ export interface OutOfScopeConfig {
 
 export interface DiagnosticsConfig {
   enabled: boolean
-  /** Run the persistent type provider (tsgo). */
+  /** Run the persistent type provider (TS7+ `tsc --lsp`, or legacy `tsgo`). */
   type: boolean
   /** Run the formatter provider (biome). */
   format: boolean

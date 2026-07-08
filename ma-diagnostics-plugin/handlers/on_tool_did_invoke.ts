@@ -27,9 +27,9 @@ import { DiagnosticsService, type ProviderFactories } from "../lib/service.ts"
 import { BiomeProvider } from "../providers/biome-provider.ts"
 import { OxlintProvider } from "../providers/oxlint-provider.ts"
 import { SourceKitLspProvider } from "../providers/sourcekit-lsp-provider.ts"
+import { TsLspProvider } from "../providers/ts-lsp-provider.ts"
 import { TscDirectProvider } from "../providers/tsc-direct-provider.ts"
 import { TscSpawnProvider } from "../providers/tsc-provider.ts"
-import { TsgoLspProvider } from "../providers/tsgo-provider.ts"
 
 /** Minimal payload view (structural mirror of the agent's ToolDidInvokePayload). */
 interface ToolDidInvokePayload {
@@ -50,7 +50,7 @@ interface ChainCtx {
 
 /** Real provider factories (spawn / LSP). Swapped for fakes in tests. */
 const REAL_FACTORIES: ProviderFactories = {
-  makeTsgo: (bin, root) => new TsgoLspProvider(bin, root),
+  makeTsLsp: (bin, root, id) => new TsLspProvider(bin, root, id),
   makeTsc: (bin, root) => new TscSpawnProvider(bin, root),
   makeTscDirect: (bin, root) => new TscDirectProvider(bin, root),
   makeBiome: (bin, root) => new BiomeProvider(bin, root),

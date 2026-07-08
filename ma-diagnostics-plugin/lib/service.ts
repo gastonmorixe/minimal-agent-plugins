@@ -25,9 +25,14 @@ import type { Finding } from "./types.ts"
 
 /** Factory hooks injected for testability (real impls spawn processes). */
 export interface ProviderFactories {
-  makeTsgo(bin: string, root: string): DiagnosticProvider
+  /**
+   * Persistent TypeScript LSP provider (`tsgo`, or TS7+ `tsc --lsp`). `id`
+   * labels the finding source + status slot (`"tsgo"` or `"tsc"`).
+   */
+  makeTsLsp(bin: string, root: string, id: string): DiagnosticProvider
   makeBiome(bin: string, root: string): DiagnosticProvider
   makeOxlint(bin: string, root: string): DiagnosticProvider
+  /** Spawn-per-call `tsc --noEmit` provider (TypeScript 6-and-earlier fallback). */
   makeTsc(bin: string, root: string): DiagnosticProvider
   makeTscDirect(bin: string, root: string): DiagnosticProvider
   makeSourceKit(bin: string, root: string): DiagnosticProvider
@@ -67,9 +72,15 @@ export class DiagnosticsService {
     const providers: DiagnosticProvider[] = []
     for (const t of detected) {
       if (t.id === "tsgo" && this.config.type) {
-        providers.push(this.factories.makeTsgo(t.bin, this.root))
+        providers.push(this.factories.makeTsLsp(t.bin, this.root, "tsgo"))
       } else if (t.id === "tsc" && this.config.type) {
-        providers.push(this.factories.makeTsc(t.bin, this.root))
+        // TS7+ `tsc` is LSP-capable (detect.ts sets persistent=true); run it as
+        // a persistent server. TS<=6 `tsc` stays a spawn-per-call fallback.
+        if (t.persistent) {
+          providers.push(this.factories.makeTsLsp(t.bin, this.root, "tsc"))
+        } else {
+          providers.push(this.factories.makeTsc(t.bin, this.root))
+        }
         this.tscBin = t.bin
       } else if (t.id === "biome" && this.config.format) {
         providers.push(this.factories.makeBiome(t.bin, this.root))

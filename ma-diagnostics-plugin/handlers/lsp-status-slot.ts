@@ -20,7 +20,8 @@ import { getActivePersistentProviders } from "./on_tool_did_invoke.ts"
  * Icons for known persistent providers. Falls back to "⚙" for unknown ids.
  */
 const ICONS: Record<string, string> = {
-  tsgo: "\u00b7", // · (TypeScript)
+  tsgo: "\u00b7", // · (TypeScript, native-preview)
+  tsc: "\u00b7", // · (TypeScript 7+ native tsc --lsp)
   "sourcekit-lsp": "\u267b", // ♻ (Swift/Obj-C)
 }
 

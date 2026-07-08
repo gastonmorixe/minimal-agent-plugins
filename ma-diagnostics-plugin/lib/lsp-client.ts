@@ -9,9 +9,10 @@
  * (registerCapability, configuration) are auto-acked so the server doesn't
  * stall.
  *
- * Validated against `tsgo --lsp -stdio`: cold init ~220ms, then per-edit pull
- * 2-3ms. The client is transport-only : the {@link TsgoLspProvider} owns
- * lifecycle, the adapter owns shape.
+ * Validated against `tsc --lsp -stdio` (TS7+) and the legacy
+ * `tsgo --lsp -stdio`: cold init ~220ms, then per-edit pull 2-3ms. The client
+ * is transport-only : the {@link TsLspProvider} owns lifecycle, the adapter
+ * owns shape.
  *
  * @module plugins/diagnostics/lib/lsp-client
  */

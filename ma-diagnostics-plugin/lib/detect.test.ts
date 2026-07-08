@@ -92,16 +92,52 @@ describe("detectTools", () => {
     }
   })
 
-  it("detects tsc (type) when binary + tsconfig exist, no tsgo present", () => {
+  it("detects tsc (type) as spawn-per-call on TypeScript <= 6 (no LSP)", () => {
     const root = scratch()
     try {
       makeBin(root, "tsc")
       writeFileSync(join(root, "tsconfig.json"), "{}")
-      const tools = detectTools(root)
+      // Explicit TS6 → tsc is NOT LSP-capable, stays non-persistent.
+      const tools = detectTools(root, { typescriptMajor: 6 })
       const tsc = byId(tools, "tsc")
       expect(tsc).toBeDefined()
       expect(tsc?.kind).toBe("type")
       expect(tsc?.persistent).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("promotes tsc to a persistent LSP provider on TypeScript >= 7", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "tsc")
+      writeFileSync(join(root, "tsconfig.json"), "{}")
+      // TS7 `tsc` speaks `--lsp -stdio` → detected as persistent.
+      const tools = detectTools(root, { typescriptMajor: 7 })
+      const tsc = byId(tools, "tsc")
+      expect(tsc).toBeDefined()
+      expect(tsc?.kind).toBe("type")
+      expect(tsc?.persistent).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("reads the TypeScript major version from node_modules to gate tsc-as-LSP", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "tsc")
+      writeFileSync(join(root, "tsconfig.json"), "{}")
+      // A real (installed) typescript@7 package.json → tsc promoted to persistent.
+      const tsPkgDir = join(root, "node_modules", "typescript")
+      mkdirSync(tsPkgDir, { recursive: true })
+      writeFileSync(
+        join(tsPkgDir, "package.json"),
+        JSON.stringify({ name: "typescript", version: "7.0.2" }),
+      )
+      const tsc = byId(detectTools(root), "tsc")
+      expect(tsc?.persistent).toBe(true)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

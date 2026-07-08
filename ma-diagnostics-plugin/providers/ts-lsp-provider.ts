@@ -1,10 +1,16 @@
 /**
- * tsgo provider (TypeScript type diagnostics) over a PERSISTENT LSP server.
+ * TypeScript type-diagnostics provider over a PERSISTENT LSP server.
  *
  * This is the highest-value signal : type errors grep and lint can't see. A
- * persistent `tsgo --lsp -stdio` answers per-edit pulls in 2-3ms (vs ~316ms to
- * spawn `tsgo --noEmit` cold), so the server is booted ONCE (lazily, on the
+ * persistent `<bin> --lsp -stdio` answers per-edit pulls in 2-3ms (vs ~316ms to
+ * spawn `tsc --noEmit` cold), so the server is booted ONCE (lazily, on the
  * first TS check) and reused.
+ *
+ * The same invocation serves two binaries, keyed by {@link id}:
+ *  - `"tsgo"` : the `@typescript/native-preview` Go compiler (TS7 preview).
+ *  - `"tsc"`  : the stable `tsc` binary at TypeScript 7+ GA, which IS the
+ *    native compiler and speaks the same `--lsp -stdio` protocol.
+ * Detection ({@link detectTools}) decides which binary + id to construct here.
  *
  * Resilience: a {@link CircuitBreaker} guards the child. A crash/timeout
  * records a failure; once the breaker opens, checks return [] (degraded) until
@@ -12,7 +18,7 @@
  * `dead` and the provider stays quiet for the session : never a crash, never a
  * hot restart loop.
  *
- * @module plugins/diagnostics/providers/tsgo-provider
+ * @module plugins/diagnostics/providers/ts-lsp-provider
  */
 import { adaptLspDiagnostics } from "../adapters/lsp.ts"
 import { CircuitBreaker } from "../lib/circuit-breaker.ts"
@@ -42,24 +48,35 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * Type-checking provider backed by a long-lived `tsgo` LSP server. Boots the
- * server lazily (sharing one boot promise across concurrent checks), pulls
- * diagnostics per file with a timeout, and wraps every interaction in a
- * {@link CircuitBreaker} so a crashing or hung server degrades the provider
- * instead of stalling every Edit/Write.
+ * Type-checking provider backed by a long-lived TypeScript LSP server
+ * (`tsgo` or TS7+ `tsc`). Boots the server lazily (sharing one boot promise
+ * across concurrent checks), pulls diagnostics per file with a timeout, and
+ * wraps every interaction in a {@link CircuitBreaker} so a crashing or hung
+ * server degrades the provider instead of stalling every Edit/Write.
  */
-export class TsgoLspProvider implements DiagnosticProvider {
-  readonly id = "tsgo"
+export class TsLspProvider implements DiagnosticProvider {
+  readonly id: string
   readonly kind = "type" as const
 
   private client: LspClient | null = null
   private booting: Promise<LspClient> | null = null
   private readonly breaker = new CircuitBreaker({ maxFailures: 2, cooldownMs: 10_000, maxTrips: 5 })
 
+  /**
+   * Construct a persistent TypeScript LSP provider over the given binary.
+   *
+   * @param bin - absolute path to the LSP-capable binary (`tsgo` or `tsc`).
+   * @param root - project root (LSP workspace + cwd).
+   * @param id - finding/source id + status label. Defaults to `"tsgo"` for
+   *   back-compat; the service passes `"tsc"` for the TS7 stable compiler.
+   */
   constructor(
     private readonly bin: string,
     private readonly root: string,
-  ) {}
+    id = "tsgo",
+  ) {
+    this.id = id
+  }
 
   handles(path: string): boolean {
     return EXT_RE.test(path)
@@ -83,7 +100,7 @@ export class TsgoLspProvider implements DiagnosticProvider {
       } catch (err) {
         // Init failed (timeout / spawn error): DISPOSE so the spawned child
         // doesn't orphan. Without this, repeated half-open trials would
-        // accumulate zombie tsgo processes.
+        // accumulate zombie server processes.
         try {
           client.dispose()
         } catch {
