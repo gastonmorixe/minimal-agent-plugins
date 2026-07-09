@@ -1,0 +1,8 @@
+{
+  "id": "generic-endpoint",
+  "name": "LLM Provider: Generic Endpoint",
+  "version": "0.1.0",
+  "description": "Generic runtime-configured endpoint provider backed by registered SurfaceCodec implementations.",
+  "entry": "./index.ts",
+  "export": "genericEndpointProviderPlugin"
+}
