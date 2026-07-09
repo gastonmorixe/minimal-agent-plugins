@@ -43,6 +43,7 @@ import {
   translateOpenAIResponsesStream,
 } from "./responses/response-stream.ts"
 import { fetchOpenAISessionInfo, setOpenAIRateLimits } from "./session-info.ts"
+import { openAIChatCompletionsCodec } from "./surface-codecs.ts"
 import { validateOpenAIRequest } from "./validate.ts"
 import {
   CHAT_COMPLETIONS_PATH,
@@ -250,6 +251,7 @@ function taggedHttpError(
 export function bootstrapOpenAI(ctx?: ProviderSetupContext): void {
   if (!ctx?.models || !ctx.providers) return
   registerOpenAIModels(ctx.models)
+  ctx.surfaceCodecs?.register(openAIChatCompletionsCodec)
   ctx.providers.register(openaiAdapter)
 }
 

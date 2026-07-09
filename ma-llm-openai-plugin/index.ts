@@ -51,6 +51,7 @@ export {
   type OpenAIResponsesEvent,
   translateOpenAIResponsesStream,
 } from "./responses/response-stream.ts"
+export { openAIChatCompletionsCodec } from "./surface-codecs.ts"
 export { validateOpenAIRequest } from "./validate.ts"
 export {
   CHAT_COMPLETIONS_URL,
