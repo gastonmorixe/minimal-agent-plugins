@@ -197,35 +197,65 @@ async function captureOpenAIResponseRequest(
 // ---------------------------------------------------------------------------
 
 describe("registerOpenAIModels", () => {
-  it("registers gpt-5.5 on the Responses surface with the live capability + pricing data", () => {
+  it("registers gpt-5.6 Sol on the Responses surface with current capability + pricing data", () => {
     const reg = makeTestRegistry()
     const ids = registerOpenAIModels(reg.models)
 
-    expect(ids).toContain("gpt-5.5")
-    const m = reg.resolveModel("gpt-5.5")
+    expect(ids).toContain("gpt-5.6-sol")
+    const m = reg.resolveModel("gpt-5.6")
+    expect(m.id).toBe("gpt-5.6-sol")
     expect(m.providerId).toBe("openai")
     expect(m.surfaceId).toBe("openai-responses")
     expect(m.capabilities.contextWindow).toBe(1_050_000)
     expect(m.capabilities.maxOutputTokens).toBe(128_000)
-    expect(m.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+    expect(m.capabilities.effort.levels).toEqual(["none", "low", "medium", "high", "xhigh", "max"])
     expect(m.capabilities.thinking.visible).toBe(true)
-    // $5 in / $30 out (NOT $5/$25 — that's Anthropic Opus).
+    expect(m.knowledgeCutoff).toBe("2026-02-16")
     expect(m.pricing.inputUSD).toBe(5)
     expect(m.pricing.outputUSD).toBe(30)
+    expect(m.pricing.cacheWriteUSD).toBe(6.25)
     expect(m.pricing.cacheReadUSD).toBe(0.5)
   })
 
-  it("registers gpt-5.5 a SECOND time on the Chat surface, sending the real model id", () => {
+  it("registers the gpt-5.6 family tiers and maps Chat aliases to real model ids", () => {
+    const reg = makeTestRegistry()
+    const ids = registerOpenAIModels(reg.models)
+
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5-pro",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano",
+      ]),
+    )
+    expect(reg.resolveModel("gpt-5.6-terra").pricing.inputUSD).toBe(2.5)
+    expect(reg.resolveModel("gpt-5.6-terra").pricing.outputUSD).toBe(15)
+    expect(reg.resolveModel("gpt-5.6-luna").pricing.inputUSD).toBe(1)
+    expect(reg.resolveModel("gpt-5.6-luna").pricing.outputUSD).toBe(6)
+
+    const chat = reg.resolveModel("gpt-5.6-chat")
+    expect(chat.id).toBe("gpt-5.6-sol-chat")
+    expect(chat.surfaceId).toBe("openai-chat-completions")
+    expect(chat.vendorIds?.firstParty).toBe("gpt-5.6-sol")
+    expect(chat.capabilities.thinking.visible).toBe(false)
+    expect(chat.capabilities.serverSideHistory).toBe(false)
+  })
+
+  it("keeps gpt-5.5 and gpt-5.5-chat for compatibility", () => {
     const reg = makeTestRegistry()
     registerOpenAIModels(reg.models)
 
+    const responses = reg.resolveModel("gpt-5.5")
+    expect(responses.surfaceId).toBe("openai-responses")
+    expect(responses.pricing.outputUSD).toBe(30)
+
     const chat = reg.resolveModel("gpt-5.5-chat")
     expect(chat.surfaceId).toBe("openai-chat-completions")
-    // The -chat alias-id maps to the real OpenAI model id on the wire.
     expect(chat.vendorIds?.firstParty).toBe("gpt-5.5")
-    // Chat surface can't stream reasoning back.
-    expect(chat.capabilities.thinking.visible).toBe(false)
-    expect(chat.capabilities.serverSideHistory).toBe(false)
   })
 
   it("marks every OpenAI model as sharing one context window for input + output", () => {
@@ -257,6 +287,8 @@ describe("bootstrapOpenAI", () => {
     const adapter = resolveProvider("openai")
     expect(adapter.surfaces).toContain("openai-chat-completions")
     expect(adapter.surfaces).toContain("openai-responses")
+    expect(findModel("gpt-5.6")?.id).toBe("gpt-5.6-sol")
+    expect(findModel("gpt-5.6-chat")?.surfaceId).toBe("openai-chat-completions")
     expect(findModel("gpt-4o")?.surfaceId).toBe("openai-chat-completions")
     expect(findModel("o3")?.surfaceId).toBe("openai-responses")
   })
@@ -455,14 +487,14 @@ describe("validateOpenAIRequest", () => {
     bootstrapOpenAI()
   }
 
-  it("accepts a plain Responses request on gpt-5.5", () => {
+  it("accepts a plain Responses request on gpt-5.6 with the raw none effort", () => {
     setup()
     const adapter = resolveProvider("openai")
-    const model = resolveModel("gpt-5.5")
+    const model = resolveModel("gpt-5.6")
     const req: CanonicalRequest = {
-      modelId: "gpt-5.5",
+      modelId: "gpt-5.6",
       messages: [userText("hi")],
-      effort: "xhigh",
+      effort: "none",
     }
     expect(adapter.validate(req, model).ok).toBe(true)
   })

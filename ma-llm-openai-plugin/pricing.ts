@@ -67,6 +67,36 @@ export const PRICING_GPT_5: MTokRate = {
   reasoningUSD: 20,
 }
 
+/** gpt-5.4 standard pricing. */
+export const PRICING_GPT_5_4: MTokRate = {
+  inputUSD: 2.5,
+  outputUSD: 15,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.25,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 15,
+}
+
+/** gpt-5.4 mini pricing. */
+export const PRICING_GPT_5_4_MINI: MTokRate = {
+  inputUSD: 0.75,
+  outputUSD: 4.5,
+  cacheWriteUSD: 0.75,
+  cacheReadUSD: 0.075,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 4.5,
+}
+
+/** gpt-5.4 nano pricing. */
+export const PRICING_GPT_5_4_NANO: MTokRate = {
+  inputUSD: 0.2,
+  outputUSD: 1.25,
+  cacheWriteUSD: 0.2,
+  cacheReadUSD: 0.02,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 1.25,
+}
+
 /**
  * gpt-5.5 (Responses + Chat) pricing. $5 in / $30 out per MTok; cached
  * input $0.50. Source: developers.openai.com/api/docs/models/gpt-5.5
@@ -82,4 +112,44 @@ export const PRICING_GPT_5_5: MTokRate = {
   cacheReadUSD: 0.5,
   webSearchPerCallUSD: 0,
   reasoningUSD: 30,
+}
+
+/** gpt-5.5 Pro pricing. Pro has no cached input discount. */
+export const PRICING_GPT_5_5_PRO: MTokRate = {
+  inputUSD: 30,
+  outputUSD: 180,
+  cacheWriteUSD: 30,
+  cacheReadUSD: 30,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 180,
+}
+
+/** gpt-5.6 Sol pricing. Explicit cache writes are 1.25x uncached input. */
+export const PRICING_GPT_5_6_SOL: MTokRate = {
+  inputUSD: 5,
+  outputUSD: 30,
+  cacheWriteUSD: 6.25,
+  cacheReadUSD: 0.5,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 30,
+}
+
+/** gpt-5.6 Terra pricing. Explicit cache writes are 1.25x uncached input. */
+export const PRICING_GPT_5_6_TERRA: MTokRate = {
+  inputUSD: 2.5,
+  outputUSD: 15,
+  cacheWriteUSD: 3.125,
+  cacheReadUSD: 0.25,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 15,
+}
+
+/** gpt-5.6 Luna pricing. Explicit cache writes are 1.25x uncached input. */
+export const PRICING_GPT_5_6_LUNA: MTokRate = {
+  inputUSD: 1,
+  outputUSD: 6,
+  cacheWriteUSD: 1.25,
+  cacheReadUSD: 0.1,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 6,
 }

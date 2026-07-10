@@ -23,11 +23,15 @@ export function makeTestRegistry(): {
   resolveProvider(id: string): ProviderAdapter
 } {
   const modelById = new Map<string, ModelEntry>()
+  const aliasById = new Map<string, string>()
   const providerById = new Map<string, ProviderAdapter>()
   return {
     models: {
       register(spec: ProviderModelSpec): void {
         modelById.set(spec.id, spec as unknown as ModelEntry)
+        for (const alias of spec.aliases ?? []) {
+          if (alias !== spec.id) aliasById.set(alias, spec.id)
+        }
       },
       setDefault(): void {},
     },
@@ -37,7 +41,7 @@ export function makeTestRegistry(): {
       },
     },
     resolveModel(id: string): ModelEntry {
-      const m = modelById.get(id)
+      const m = modelById.get(aliasById.get(id) ?? id)
       if (!m) throw new Error(`test registry: no model ${id}`)
       return m
     },

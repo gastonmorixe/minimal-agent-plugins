@@ -40,7 +40,10 @@ export interface OpenAIResponsesRequestBody {
   tools?: OpenAIResponsesTool[]
   tool_choice?: "auto" | "none" | "required" | { type: "function"; name: string }
   parallel_tool_calls?: boolean
-  reasoning?: { effort?: "low" | "medium" | "high"; summary?: "auto" | "concise" | "detailed" }
+  reasoning?: {
+    effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max"
+    summary?: "auto" | "concise" | "detailed"
+  }
   response_format?:
     | { type: "text" }
     | { type: "json_object" }
@@ -143,7 +146,9 @@ export function buildOpenAIResponsesBody(
   if (req.thinking?.mode === "adaptive" || isReasoningModel) {
     const reasoning: NonNullable<OpenAIResponsesRequestBody["reasoning"]> = {}
     if (req.effort && model.capabilities.effort.levels.includes(req.effort)) {
-      reasoning.effort = req.effort as "low" | "medium" | "high"
+      reasoning.effort = req.effort as NonNullable<
+        OpenAIResponsesRequestBody["reasoning"]
+      >["effort"]
     }
     // Visible summary deltas opt-in
     if (
