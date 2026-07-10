@@ -182,8 +182,121 @@ export const CAPS_O3_RESPONSES: Capabilities = {
 export const CAPS_O4_MINI_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
 
 // ---------------------------------------------------------------------------
-// GPT-5.5 (flagship; Responses preferred, also reachable on Chat)
+// GPT-5.6 family (current GPT-5 generation; Responses preferred, Chat also works)
 // ---------------------------------------------------------------------------
+
+/**
+ * GPT-5.6 Sol is the frontier tier. The public docs say the short `gpt-5.6`
+ * alias routes to this model, so the registry exposes `gpt-5.6` as an alias
+ * on the Responses entry and `gpt-5.6-chat` on the Chat entry.
+ *
+ * Sourced from developers.openai.com/api/docs/models/gpt-5.6-sol and the
+ * GPT-5.6 migration guide. The levels are the exact OpenAI API vocabulary
+ * for this model, including `none` and `max`.
+ *
+ * API notes not yet represented in the host capability schema: programmatic
+ * tool calling, beta multi-agent, persisted reasoning, pro mode, and
+ * `text.verbosity`.
+ */
+export const CAPS_GPT_5_6_SOL_RESPONSES: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_050_000,
+  maxOutputTokens: 128_000,
+  outputTokensShareContextWindow: true,
+  maxOutputTokensBatch: null,
+  thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
+  effort: { levels: ["none", "low", "medium", "high", "xhigh", "max"], default: "medium" },
+  acceptsTemperature: false,
+  acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_FULL },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...MODALITIES_TEXT_IMAGE },
+  serverSideHistory: true,
+  serverTools: ["web_search", "file_search", "code_interpreter"],
+}
+
+/** GPT-5.6 Sol on Chat Completions. Reasoning effort is accepted, but summaries are not streamed. */
+export const CAPS_GPT_5_6_SOL_CHAT: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_RESPONSES,
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/** GPT-5.6 Terra is the balanced intelligence/cost tier. */
+export const CAPS_GPT_5_6_TERRA_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_RESPONSES,
+}
+
+/** GPT-5.6 Terra on Chat Completions. */
+export const CAPS_GPT_5_6_TERRA_CHAT: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_CHAT,
+}
+
+/** GPT-5.6 Luna is the high-volume, low-cost tier. */
+export const CAPS_GPT_5_6_LUNA_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_RESPONSES,
+}
+
+/** GPT-5.6 Luna on Chat Completions. */
+export const CAPS_GPT_5_6_LUNA_CHAT: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_CHAT,
+}
+
+// ---------------------------------------------------------------------------
+// GPT-5.5 / GPT-5.4 generation
+// ---------------------------------------------------------------------------
+
+/** GPT-5.5 Pro uses more compute for difficult Responses API work. */
+export const CAPS_GPT_5_5_PRO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_RESPONSES,
+  effort: { levels: ["medium", "high", "xhigh"], default: "high" },
+}
+
+/** GPT-5.4 frontier tier. */
+export const CAPS_GPT_5_4_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_6_SOL_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high", "xhigh"], default: "medium" },
+}
+
+/** GPT-5.4 on Chat Completions. */
+export const CAPS_GPT_5_4_CHAT: Capabilities = {
+  ...CAPS_GPT_5_4_RESPONSES,
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/** GPT-5.4 mini. */
+export const CAPS_GPT_5_4_MINI_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_4_RESPONSES,
+  contextWindow: 400_000,
+}
+
+/** GPT-5.4 mini on Chat Completions. */
+export const CAPS_GPT_5_4_MINI_CHAT: Capabilities = {
+  ...CAPS_GPT_5_4_CHAT,
+  contextWindow: 400_000,
+}
+
+/** GPT-5.4 nano. */
+export const CAPS_GPT_5_4_NANO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_4_RESPONSES,
+  contextWindow: 400_000,
+}
+
+/** GPT-5.4 nano on Chat Completions. */
+export const CAPS_GPT_5_4_NANO_CHAT: Capabilities = {
+  ...CAPS_GPT_5_4_CHAT,
+  contextWindow: 400_000,
+}
 
 /**
  * GPT-5.5 on the Responses API. 1.05M context, 128K max output, adaptive

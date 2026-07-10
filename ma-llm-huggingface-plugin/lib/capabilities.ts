@@ -25,15 +25,12 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Effort/reasoning-depth levels accepted by Anthropic (`output_config.effort`)
- * and OpenAI (`reasoning_effort` on Chat, `reasoning.effort` on Responses).
- *
- * Sorted low → high. `"xhigh"` and `"max"` are Anthropic-only as of
- * 2026-05-28 (opus-4-7+ for xhigh, opus-4-5+ for max).
+ * Provider/model-specific reasoning-effort token. Provider tables declare
+ * exact wire values per model instead of normalizing them into a core enum.
  */
-export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max"
+export type EffortLevel = string
 
-/** All known levels in canonical ascending order. */
+/** Legacy known-level ordering for UIs, not a validation allow-list. */
 export const EFFORT_LEVELS: ReadonlyArray<EffortLevel> = ["low", "medium", "high", "xhigh", "max"]
 
 // ---------------------------------------------------------------------------
@@ -254,11 +251,16 @@ export function defaultCapabilities(): Capabilities {
 }
 
 /**
- * Compare two effort levels by canonical order. Returns negative if
- * `a < b`, zero if equal, positive if `a > b`. Unknown levels sort last.
+ * Compare legacy known levels first, then provider-specific values
+ * lexicographically for deterministic display.
  */
 export function compareEffort(a: EffortLevel, b: EffortLevel): number {
-  return EFFORT_LEVELS.indexOf(a) - EFFORT_LEVELS.indexOf(b)
+  const ai = EFFORT_LEVELS.indexOf(a)
+  const bi = EFFORT_LEVELS.indexOf(b)
+  if (ai >= 0 && bi >= 0) return ai - bi
+  if (ai >= 0) return -1
+  if (bi >= 0) return 1
+  return a.localeCompare(b)
 }
 
 /**

@@ -1,15 +1,14 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the codex `models.json` flagship catalog (the gpt-5.x family,
- * led by `gpt-5.5`) plus the established gpt-4o / o-series on their
- * capability tables in `capabilities.ts`.
+ * Mirrors the current public OpenAI API catalog for the GPT-5.x family plus
+ * the established gpt-4o / o-series tables in `capabilities.ts`.
  *
- * Dual-surface models (reachable on BOTH Chat Completions and the
- * Responses API) are registered TWICE, under distinct ids with different
- * `surfaceId`s. `vendorIds.firstParty` always carries the REAL OpenAI
- * model id sent on the wire, so the `-chat` alias resolves to the same
- * upstream model. `adapter.run()` dispatches by `surfaceId`.
+ * Dual-surface models (reachable on BOTH Chat Completions and the Responses
+ * API) are registered TWICE, under distinct ids with different `surfaceId`s.
+ * `vendorIds.firstParty` always carries the REAL OpenAI model id sent on the
+ * wire, so the `-chat` entry resolves to the same upstream model. The short
+ * `gpt-5.6` alias resolves to `gpt-5.6-sol`, matching the public docs.
  *
  * @module llm/providers/openai/models
  */
@@ -17,8 +16,21 @@
 import {
   CAPS_GPT_4O_CHAT,
   CAPS_GPT_4O_MINI_CHAT,
+  CAPS_GPT_5_4_CHAT,
+  CAPS_GPT_5_4_MINI_CHAT,
+  CAPS_GPT_5_4_MINI_RESPONSES,
+  CAPS_GPT_5_4_NANO_CHAT,
+  CAPS_GPT_5_4_NANO_RESPONSES,
+  CAPS_GPT_5_4_RESPONSES,
   CAPS_GPT_5_5_CHAT,
+  CAPS_GPT_5_5_PRO_RESPONSES,
   CAPS_GPT_5_5_RESPONSES,
+  CAPS_GPT_5_6_LUNA_CHAT,
+  CAPS_GPT_5_6_LUNA_RESPONSES,
+  CAPS_GPT_5_6_SOL_CHAT,
+  CAPS_GPT_5_6_SOL_RESPONSES,
+  CAPS_GPT_5_6_TERRA_CHAT,
+  CAPS_GPT_5_6_TERRA_RESPONSES,
   CAPS_GPT_5_RESPONSES,
   CAPS_GPT_41_CHAT,
   CAPS_O3_RESPONSES,
@@ -30,7 +42,14 @@ import {
   PRICING_GPT_4O,
   PRICING_GPT_4O_MINI,
   PRICING_GPT_5,
+  PRICING_GPT_5_4,
+  PRICING_GPT_5_4_MINI,
+  PRICING_GPT_5_4_NANO,
   PRICING_GPT_5_5,
+  PRICING_GPT_5_5_PRO,
+  PRICING_GPT_5_6_LUNA,
+  PRICING_GPT_5_6_SOL,
+  PRICING_GPT_5_6_TERRA,
   PRICING_GPT_41,
   PRICING_O3,
   PRICING_O4_MINI,
@@ -43,21 +62,6 @@ import {
  */
 const estimateOpenAITokens = makeCharRatioEstimator(4)
 
-/**
- * Populate the canonical model registry with the OpenAI catalog.
- * Idempotent (last-write-wins). Returns the registered ids for tests.
- *
- * Registry seam (Wave D): when the host passes a {@link ModelRegistrar} (the
- * `models:register` capability, threaded through `register(ctx)`), the catalog
- * is contributed through `ctx.models.register` — no `src/` import needed. When
- * no registrar is supplied (the legacy no-arg activation path, or a direct call
- * in a test), it falls back to the imported `registerModel`. This lets the live
- * provider-loader adopt the ctx-driven path provider-by-provider without
- * breaking the no-context callers.
- *
- * @param registrar - Optional host model registrar; defaults to the direct import.
- * @returns The registered model ids.
- */
 /**
  * Local catalog of id + tags captured at registration, so the adapter's
  * `recommendSubagentModels` can pick scout/balanced/deep models from THIS
@@ -80,12 +84,103 @@ export function findOpenAIModelByTags(mustHave: readonly string[]): string | und
  */
 export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   localCatalog.length = 0
+  const ids: string[] = []
   const register = (spec: ProviderModelSpec): void => {
     registrar.register(spec)
     localCatalog.push({ id: spec.id, tags: spec.tags ?? [] })
+    ids.push(spec.id)
   }
-  // GPT-5.5 — flagship. Responses is the preferred surface; the `-chat`
-  // id targets Chat Completions. Both send model id "gpt-5.5".
+
+  // GPT-5.6 family. Responses is preferred; the `-chat` ids target Chat
+  // Completions. The short `gpt-5.6` alias routes to Sol.
+  register({
+    id: "gpt-5.6-sol",
+    aliases: ["gpt-5.6"],
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.6 Sol",
+    knowledgeCutoff: "2026-02-16",
+    tags: ["gpt-5", "flagship", "reasoning", "production"],
+    capabilities: CAPS_GPT_5_6_SOL_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_6_SOL,
+    vendorIds: { firstParty: "gpt-5.6-sol" },
+  })
+  register({
+    id: "gpt-5.6-sol-chat",
+    aliases: ["gpt-5.6-chat"],
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-5.6 Sol (Chat Completions)",
+    knowledgeCutoff: "2026-02-16",
+    tags: ["gpt-5", "flagship", "chat"],
+    capabilities: CAPS_GPT_5_6_SOL_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_6_SOL,
+    vendorIds: { firstParty: "gpt-5.6-sol" },
+  })
+  register({
+    id: "gpt-5.6-terra",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.6 Terra",
+    knowledgeCutoff: "2026-02-16",
+    tags: ["gpt-5", "balanced", "reasoning", "production"],
+    capabilities: CAPS_GPT_5_6_TERRA_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_6_TERRA,
+    vendorIds: { firstParty: "gpt-5.6-terra" },
+  })
+  register({
+    id: "gpt-5.6-terra-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-5.6 Terra (Chat Completions)",
+    knowledgeCutoff: "2026-02-16",
+    tags: ["gpt-5", "balanced", "chat"],
+    capabilities: CAPS_GPT_5_6_TERRA_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_6_TERRA,
+    vendorIds: { firstParty: "gpt-5.6-terra" },
+  })
+  register({
+    id: "gpt-5.6-luna",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.6 Luna",
+    knowledgeCutoff: "2026-02-16",
+    tags: ["gpt-5", "reasoning", "fast", "cheap"],
+    capabilities: CAPS_GPT_5_6_LUNA_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_6_LUNA,
+    vendorIds: { firstParty: "gpt-5.6-luna" },
+  })
+  register({
+    id: "gpt-5.6-luna-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-5.6 Luna (Chat Completions)",
+    knowledgeCutoff: "2026-02-16",
+    tags: ["gpt-5", "chat", "fast", "cheap"],
+    capabilities: CAPS_GPT_5_6_LUNA_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_6_LUNA,
+    vendorIds: { firstParty: "gpt-5.6-luna" },
+  })
+
+  // GPT-5.5 generation.
+  register({
+    id: "gpt-5.5-pro",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.5 Pro",
+    knowledgeCutoff: "2025-12-01",
+    tags: ["gpt-5", "pro", "reasoning"],
+    capabilities: CAPS_GPT_5_5_PRO_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_5_PRO,
+    vendorIds: { firstParty: "gpt-5.5-pro" },
+  })
   register({
     id: "gpt-5.5",
     providerId: "openai",
@@ -111,7 +206,81 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     vendorIds: { firstParty: "gpt-5.5" },
   })
 
-  // GPT-5 (Responses surface).
+  // GPT-5.4 generation.
+  register({
+    id: "gpt-5.4",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.4",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "reasoning", "production"],
+    capabilities: CAPS_GPT_5_4_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4,
+    vendorIds: { firstParty: "gpt-5.4" },
+  })
+  register({
+    id: "gpt-5.4-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-5.4 (Chat Completions)",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "chat"],
+    capabilities: CAPS_GPT_5_4_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4,
+    vendorIds: { firstParty: "gpt-5.4" },
+  })
+  register({
+    id: "gpt-5.4-mini",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.4 mini",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "reasoning", "fast"],
+    capabilities: CAPS_GPT_5_4_MINI_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4_MINI,
+    vendorIds: { firstParty: "gpt-5.4-mini" },
+  })
+  register({
+    id: "gpt-5.4-mini-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-5.4 mini (Chat Completions)",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "chat", "fast"],
+    capabilities: CAPS_GPT_5_4_MINI_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4_MINI,
+    vendorIds: { firstParty: "gpt-5.4-mini" },
+  })
+  register({
+    id: "gpt-5.4-nano",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.4 nano",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "reasoning", "fast", "cheap"],
+    capabilities: CAPS_GPT_5_4_NANO_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4_NANO,
+    vendorIds: { firstParty: "gpt-5.4-nano" },
+  })
+  register({
+    id: "gpt-5.4-nano-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-5.4 nano (Chat Completions)",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "chat", "fast", "cheap"],
+    capabilities: CAPS_GPT_5_4_NANO_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4_NANO,
+    vendorIds: { firstParty: "gpt-5.4-nano" },
+  })
+
+  // GPT-5 legacy Responses surface.
   register({
     id: "gpt-5",
     providerId: "openai",
@@ -183,5 +352,5 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     vendorIds: { firstParty: "gpt-4o-mini" },
   })
 
-  return ["gpt-5.5", "gpt-5.5-chat", "gpt-5", "o3", "o4-mini", "gpt-4.1", "gpt-4o", "gpt-4o-mini"]
+  return ids
 }
