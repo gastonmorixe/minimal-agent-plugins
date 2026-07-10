@@ -1,0 +1,8 @@
+{
+  "id": "grok",
+  "name": "LLM Provider: Grok (xAI)",
+  "version": "0.1.0",
+  "description": "xAI Grok models via api.x.ai (OpenAI Chat Completions-compatible). Reuses the shared OpenAI wire layer; auth via API key (XAI_API_KEY / provider login). Image input, tools, and reasoning effort supported on frontier models.",
+  "entry": "./index.ts",
+  "export": "grokProviderPlugin"
+}
