@@ -61,6 +61,9 @@ export {
   getGrokSessionUsage,
   parseGrokQuotaWindows,
   primeGrokSessionInfo,
+  readGrokOAuthTokenFromAuthStore,
+  refreshGrokBillingQuota,
+  refreshGrokBillingQuotaViaFetch,
   setGrokBillingQuota,
   setGrokRateLimits,
 } from "./session-info.ts"
@@ -68,6 +71,7 @@ export { grokChatCompletionsCodec } from "./surface-codecs.ts"
 export { validateOpenAIRequest as validateGrokRequest } from "./validate.ts"
 export {
   CHAT_COMPLETIONS_URL,
+  CLI_BILLING_URL,
   CLI_CHAT_COMPLETIONS_URL,
   CLI_MODELS_URL,
   CLI_RESPONSES_URL,

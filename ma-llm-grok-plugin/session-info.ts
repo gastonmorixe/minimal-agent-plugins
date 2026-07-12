@@ -1,8 +1,26 @@
 /**
- * Grok session metadata: rate-limit quotas + session usage + optional monthly billing.
+ * Grok session metadata: rate-limit quotas + session usage + monthly billing.
+ *
+ * Implements TWO seams on `ProviderPlugin`:
+ *
+ *   - {@link fetchGrokSessionInfo} → `fetchSessionInfo` (**cache-only**).
+ *   - {@link primeGrokSessionInfo} → `primeSessionInfo` (cold-start warmup).
+ *
+ * Monthly quota comes from cli-chat-proxy `GET /v1/billing` (OAuth/session
+ * tokens). RPM/TPM come from `x-ratelimit-*` response headers on real traffic
+ * and from the optional models probe.
+ *
+ * Credential resolution for the prime path (plugins cannot call host
+ * `getAuth`):
+ *   1. Env API keys (`MINIMAL_AGENT_GROK_API_KEY` / `XAI_API_KEY` / `GROK_API_KEY`)
+ *   2. OAuth access token from `~/.minimal-agent/auth.jsonc` (`grok-oauth`)
  *
  * @module llm/providers/grok/session-info
  */
+
+import { existsSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 
 import type { NetworkClient } from "./lib/net-types.ts"
 import type {
@@ -11,9 +29,16 @@ import type {
   QuotaWindow,
 } from "./lib/provider-plugin.ts"
 import { grokContextWindow, grokModelShortLabel } from "./models.ts"
-import { CLI_BILLING_URL, MODELS_URL } from "./wire-constants.ts"
+import {
+  CLI_BILLING_URL,
+  CLI_MODELS_URL,
+  MODELS_URL,
+  XAI_TOKEN_AUTH_VALUE,
+} from "./wire-constants.ts"
 
 const FRESHNESS_MS = 5 * 60_000
+/** Keep the monthly billing window a bit longer than rate-limit headers. */
+const BILLING_FRESHNESS_MS = FRESHNESS_MS * 12
 
 export interface CachedGrokRateLimits {
   rateLimits: ReadonlyMap<string, string>
@@ -163,7 +188,7 @@ export function parseGrokQuotaWindows(
     "x-ratelimit-reset-tokens",
   )
 
-  if (billingQuota && Date.now() - billingQuota.at < FRESHNESS_MS * 12) {
+  if (billingQuota && Date.now() - billingQuota.at < BILLING_FRESHNESS_MS) {
     out.push({
       id: "month",
       utilization: Math.min(1, Math.max(0, billingQuota.used / billingQuota.limit)),
@@ -197,41 +222,145 @@ export function _resetGrokPrimeInFlight(): void {
   inFlightPrime = null
 }
 
+/** Env var names that may hold a Grok / xAI API key (console key). */
+function resolveEnvApiKey(): string | undefined {
+  return (
+    process.env["MINIMAL_AGENT_GROK_API_KEY"] ??
+    process.env["XAI_API_KEY"] ??
+    process.env["GROK_API_KEY"]
+  )
+}
+
+/**
+ * Best-effort read of the OAuth access token from the host auth store.
+ *
+ * Plugins cannot import host `getAuth`; the store file is JSONC at
+ * `~/.minimal-agent/auth.jsonc` (or `$MINIMAL_AGENT_HOME/auth.jsonc`). We only
+ * need the `grok-oauth` entry's `accessToken`.
+ *
+ * Returns `null` when the file is missing, unreadable, or has no usable token.
+ */
+export function readGrokOAuthTokenFromAuthStore(): string | null {
+  try {
+    const home =
+      process.env["MINIMAL_AGENT_HOME"]?.trim() || join(homedir(), ".minimal-agent")
+    const path = join(home, "auth.jsonc")
+    if (!existsSync(path)) return null
+    const raw = readFileSync(path, "utf8")
+    // Tolerate // comments and trailing commas (JSONC).
+    const stripped = raw
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/[^\n\r]*/g, "$1")
+      .replace(/,(\s*[}\]])/g, "$1")
+    const data = JSON.parse(stripped) as {
+      entries?: Array<{ id?: string; secrets?: { accessToken?: unknown } }>
+    }
+    const entry = data.entries?.find((e) => e?.id === "grok-oauth")
+    const token = entry?.secrets?.accessToken
+    return typeof token === "string" && token.length > 0 ? token : null
+  } catch {
+    return null
+  }
+}
+
+type CredentialKind = "api-key" | "oauth"
+
+interface ResolvedCredential {
+  kind: CredentialKind
+  token: string
+}
+
+function resolvePrimeCredential(): ResolvedCredential | null {
+  const apiKey = resolveEnvApiKey()
+  if (apiKey && apiKey.trim().length > 0) {
+    return { kind: "api-key", token: apiKey.trim() }
+  }
+  const oauth = readGrokOAuthTokenFromAuthStore()
+  if (oauth) return { kind: "oauth", token: oauth }
+  return null
+}
+
+function billingIsFresh(): boolean {
+  return Boolean(billingQuota && Date.now() - billingQuota.at < BILLING_FRESHNESS_MS)
+}
+
+function rateLimitsAreFresh(): boolean {
+  return Boolean(cache && Date.now() - cache.at < FRESHNESS_MS)
+}
+
+/**
+ * Warm rate-limit headers (via GET /models) and, for OAuth, monthly billing
+ * (via GET /v1/billing on cli-chat-proxy).
+ *
+ * Never throws. Self-deduplicates concurrent callers.
+ */
 export function primeGrokSessionInfo(ctx: ProviderSessionContext): Promise<void> {
   if (inFlightPrime) return inFlightPrime
 
   const work = (async () => {
-    const cached = getGrokRateLimits()
-    if (cached && Date.now() - cached.at < FRESHNESS_MS) return
+    const needRateLimits = !rateLimitsAreFresh()
+    const needBilling = !billingIsFresh()
+    if (!needRateLimits && !needBilling) return
 
-    const apiKey =
-      process.env["MINIMAL_AGENT_GROK_API_KEY"] ??
-      process.env["XAI_API_KEY"] ??
-      process.env["GROK_API_KEY"]
-    if (!apiKey) return
+    const cred = resolvePrimeCredential()
+    if (!cred) return
 
     const networkClient = ctx.networkClient as NetworkClient | undefined
-    if (!networkClient) return
+    // Fall back to global fetch when the host did not inject a client (boot
+    // path currently calls prime without networkClient).
+    const probeSignal: AbortSignal = ctx.signal
+      ? AbortSignal.any([ctx.signal, AbortSignal.timeout(15_000)])
+      : AbortSignal.timeout(15_000)
 
-    try {
-      const probeSignal: AbortSignal = ctx.signal
-        ? AbortSignal.any([ctx.signal, AbortSignal.timeout(15_000)])
-        : AbortSignal.timeout(15_000)
+    const tasks: Promise<void>[] = []
 
-      const response = await networkClient.request({
-        label: "grok.quota.probe",
-        method: "GET",
-        url: MODELS_URL,
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          accept: "application/json",
-        },
-        signal: probeSignal,
-      })
-      if (response.ok) setGrokRateLimits(response.headers)
-    } catch {
-      // best-effort
+    if (needRateLimits) {
+      tasks.push(
+        (async () => {
+          try {
+            const url = cred.kind === "oauth" ? CLI_MODELS_URL : MODELS_URL
+            const headers: Record<string, string> = {
+              authorization: `Bearer ${cred.token}`,
+              accept: "application/json",
+            }
+            if (cred.kind === "oauth") {
+              headers["x-xai-token-auth"] = XAI_TOKEN_AUTH_VALUE
+            }
+            if (networkClient) {
+              const response = await networkClient.request({
+                label: "grok.quota.probe",
+                method: "GET",
+                url,
+                headers,
+                signal: probeSignal,
+              })
+              if (response.ok) setGrokRateLimits(response.headers)
+            } else {
+              const response = await fetch(url, { headers, signal: probeSignal })
+              if (response.ok) setGrokRateLimits(response.headers)
+            }
+          } catch {
+            // best-effort
+          }
+        })(),
+      )
     }
+
+    // Monthly billing only applies to cli-chat-proxy (OAuth / session tokens).
+    // Console API keys use api.x.ai, which has no /billing endpoint.
+    if (needBilling && cred.kind === "oauth") {
+      tasks.push(
+        (async () => {
+          if (networkClient) {
+            await refreshGrokBillingQuota(networkClient, cred.token, probeSignal)
+          } else {
+            await refreshGrokBillingQuotaViaFetch(cred.token, probeSignal)
+          }
+        })(),
+      )
+    }
+
+    await Promise.all(tasks)
   })()
 
   inFlightPrime = work.finally(() => {
@@ -240,9 +369,14 @@ export function primeGrokSessionInfo(ctx: ProviderSessionContext): Promise<void>
   return inFlightPrime
 }
 
+/**
+ * Fetch monthly quota from cli-chat-proxy and cache it.
+ * Safe to call from the adapter after an OAuth turn or from prime.
+ */
 export async function refreshGrokBillingQuota(
   networkClient: NetworkClient,
   bearerToken: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   try {
     const res = await networkClient.request({
@@ -251,30 +385,57 @@ export async function refreshGrokBillingQuota(
       url: CLI_BILLING_URL,
       headers: {
         authorization: `Bearer ${bearerToken}`,
-        "x-xai-token-auth": "xai-grok-cli",
+        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
         accept: "application/json",
       },
+      signal,
     })
     if (!res.ok) return
     const text = await res.text()
-    const body = JSON.parse(text) as {
-      config?: {
-        monthlyLimit?: { val?: number }
-        used?: { val?: number }
-        billingPeriodEnd?: string
-      }
-    }
-    const limit = body.config?.monthlyLimit?.val
-    const used = body.config?.used?.val
-    if (typeof limit === "number" && typeof used === "number") {
-      let periodEndMs: number | undefined
-      if (body.config?.billingPeriodEnd) {
-        const t = Date.parse(body.config.billingPeriodEnd)
-        if (Number.isFinite(t)) periodEndMs = t
-      }
-      setGrokBillingQuota({ used, limit, periodEndMs })
-    }
+    applyBillingBody(text)
   } catch {
     // best-effort
   }
+}
+
+/** Same as {@link refreshGrokBillingQuota} but uses global `fetch` (no host client). */
+export async function refreshGrokBillingQuotaViaFetch(
+  bearerToken: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    const res = await fetch(CLI_BILLING_URL, {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${bearerToken}`,
+        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        accept: "application/json",
+      },
+      signal,
+    })
+    if (!res.ok) return
+    const text = await res.text()
+    applyBillingBody(text)
+  } catch {
+    // best-effort
+  }
+}
+
+function applyBillingBody(text: string): void {
+  const body = JSON.parse(text) as {
+    config?: {
+      monthlyLimit?: { val?: number }
+      used?: { val?: number }
+      billingPeriodEnd?: string
+    }
+  }
+  const limit = body.config?.monthlyLimit?.val
+  const used = body.config?.used?.val
+  if (typeof limit !== "number" || typeof used !== "number") return
+  let periodEndMs: number | undefined
+  if (body.config?.billingPeriodEnd) {
+    const t = Date.parse(body.config.billingPeriodEnd)
+    if (Number.isFinite(t)) periodEndMs = t
+  }
+  setGrokBillingQuota({ used, limit, periodEndMs })
 }

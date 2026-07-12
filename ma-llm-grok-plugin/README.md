@@ -48,9 +48,22 @@ Runtime:
 
 ## Quotas (status bar)
 
-- `rpm` / `tpm` from `x-ratelimit-*` response headers  
-- `month` from optional `GET /v1/billing` (`setGrokBillingQuota`)  
-- Session token usage accumulation for cost estimates  
+- `rpm` / `tpm` from `x-ratelimit-*` response headers (captured on every turn)
+- `month` from `GET https://cli-chat-proxy.grok.com/v1/billing` (OAuth / session only)
+- Session token usage accumulation for cost estimates
+
+### How monthly billing is populated
+
+1. **`primeSessionInfo` (boot)** — resolves credentials from env API key *or*
+   `~/.minimal-agent/auth.jsonc` (`grok-oauth` entry). For OAuth, hits
+   `/v1/billing` (and `/v1/models` for rate-limit headers).
+2. **Adapter (OAuth turns)** — if the billing cache is stale/empty after a
+   successful response, fire-and-forget `refreshGrokBillingQuota`.
+3. **`fetchSessionInfo`** — cache-only; merges `rpm`/`tpm` + `month` into
+   neutral `QuotaWindow`s for the status bar.
+
+API-key sessions (console keys on `api.x.ai`) do **not** get a `month` window —
+that endpoint only exists on cli-chat-proxy.
 
 ## Tests
 
