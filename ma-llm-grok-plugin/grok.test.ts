@@ -39,14 +39,19 @@ import {
   readGrokOAuthAuth,
 } from "./oauth-login.ts"
 import {
+  _resetGrokPrimeInFlight,
   clearGrokSessionCaches,
   fetchGrokSessionInfo,
+  getGrokBillingQuota,
   getGrokRateLimits,
   getGrokSessionUsage,
   parseGrokQuotaWindows,
+  primeGrokSessionInfo,
+  refreshGrokBillingQuota,
   setGrokBillingQuota,
   setGrokRateLimits,
 } from "./session-info.ts"
+import { CLI_BILLING_URL, CLI_MODELS_URL, MODELS_URL } from "./wire-constants.ts"
 import { grokChatCompletionsCodec } from "./surface-codecs.ts"
 
 function fakeNetworkClient(status: number, body: string) {
@@ -321,6 +326,195 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(info?.contextWindow).toBe(500_000)
     expect(info?.modelLabel).toBe("xai-4.5")
     expect((info?.quota?.windows?.length ?? 0) > 0).toBe(true)
+  })
+
+  it("refreshGrokBillingQuota parses /billing and caches month window", async () => {
+    clearGrokSessionCaches()
+    const body = JSON.stringify({
+      config: {
+        monthlyLimit: { val: 15_000 },
+        used: { val: 13 },
+        billingPeriodEnd: "2026-08-01T00:00:00+00:00",
+      },
+    })
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = []
+    const networkClient = {
+      async request(input: { url: string; headers?: Record<string, string> }) {
+        calls.push({ url: input.url, headers: input.headers })
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          body: new ReadableStream(),
+          transport: { id: "test" },
+          text: async () => body,
+          json: async () => JSON.parse(body),
+        }
+      },
+    } as unknown as NetworkClient
+
+    await refreshGrokBillingQuota(networkClient, "oauth-token-xyz")
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.url).toBe(CLI_BILLING_URL)
+    expect(calls[0]!.headers?.authorization).toBe("Bearer oauth-token-xyz")
+    expect(calls[0]!.headers?.["x-xai-token-auth"]).toBe("xai-grok-cli")
+
+    const cached = getGrokBillingQuota()
+    expect(cached?.used).toBe(13)
+    expect(cached?.limit).toBe(15_000)
+    expect(cached?.periodEndMs).toBe(Date.parse("2026-08-01T00:00:00+00:00"))
+
+    const windows = parseGrokQuotaWindows(new Map())
+    expect(windows.map((w) => w.id)).toEqual(["month"])
+    expect(windows[0]!.utilization).toBeCloseTo(13 / 15_000, 6)
+  })
+
+  it("primeGrokSessionInfo with API key probes models URL only", async () => {
+    clearGrokSessionCaches()
+    _resetGrokPrimeInFlight()
+    const prev = {
+      a: process.env["MINIMAL_AGENT_GROK_API_KEY"],
+      b: process.env["XAI_API_KEY"],
+      c: process.env["GROK_API_KEY"],
+    }
+    process.env["MINIMAL_AGENT_GROK_API_KEY"] = "xai-test-key"
+    delete process.env["XAI_API_KEY"]
+    delete process.env["GROK_API_KEY"]
+
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = []
+    const networkClient = {
+      async request(input: { url: string; headers?: Record<string, string> }) {
+        calls.push({ url: input.url, headers: input.headers })
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({
+            "x-ratelimit-limit-requests": "60",
+            "x-ratelimit-remaining-requests": "59",
+            "x-ratelimit-reset-requests": "30s",
+          }),
+          body: new ReadableStream(),
+          transport: { id: "test" },
+          text: async () => "{}",
+          json: async () => ({}),
+        }
+      },
+    } as unknown as NetworkClient
+
+    try {
+      await primeGrokSessionInfo({ modelId: "grok-4.5", networkClient })
+      expect(calls.some((c) => c.url === MODELS_URL)).toBe(true)
+      expect(calls.some((c) => c.url === CLI_BILLING_URL)).toBe(false)
+      expect(getGrokRateLimits()?.rateLimits.get("x-ratelimit-limit-requests")).toBe("60")
+      expect(getGrokBillingQuota()).toBeNull()
+    } finally {
+      if (prev.a === undefined) delete process.env["MINIMAL_AGENT_GROK_API_KEY"]
+      else process.env["MINIMAL_AGENT_GROK_API_KEY"] = prev.a
+      if (prev.b === undefined) delete process.env["XAI_API_KEY"]
+      else process.env["XAI_API_KEY"] = prev.b
+      if (prev.c === undefined) delete process.env["GROK_API_KEY"]
+      else process.env["GROK_API_KEY"] = prev.c
+      _resetGrokPrimeInFlight()
+      clearGrokSessionCaches()
+    }
+  })
+
+  it("primeGrokSessionInfo with OAuth hits billing + cli models", async () => {
+    clearGrokSessionCaches()
+    _resetGrokPrimeInFlight()
+    const prev = {
+      a: process.env["MINIMAL_AGENT_GROK_API_KEY"],
+      b: process.env["XAI_API_KEY"],
+      c: process.env["GROK_API_KEY"],
+      home: process.env["MINIMAL_AGENT_HOME"],
+    }
+    delete process.env["MINIMAL_AGENT_GROK_API_KEY"]
+    delete process.env["XAI_API_KEY"]
+    delete process.env["GROK_API_KEY"]
+
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const dir = mkdtempSync(join(tmpdir(), "ma-grok-auth-"))
+    process.env["MINIMAL_AGENT_HOME"] = dir
+    writeFileSync(
+      join(dir, "auth.jsonc"),
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            id: "grok-oauth",
+            name: "Grok",
+            secrets: { tokenType: "oauth", accessToken: "oauth-session-token" },
+          },
+        ],
+      }),
+    )
+
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = []
+    const networkClient = {
+      async request(input: { url: string; headers?: Record<string, string> }) {
+        calls.push({ url: input.url, headers: input.headers })
+        if (input.url === CLI_BILLING_URL) {
+          const body = JSON.stringify({
+            config: {
+              monthlyLimit: { val: 4000 },
+              used: { val: 154 },
+              billingPeriodEnd: "2026-08-01T00:00:00+00:00",
+            },
+          })
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            body: new ReadableStream(),
+            transport: { id: "test" },
+            text: async () => body,
+            json: async () => JSON.parse(body),
+          }
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({
+            "x-ratelimit-limit-tokens": "1000",
+            "x-ratelimit-remaining-tokens": "900",
+            "x-ratelimit-reset-tokens": "60s",
+          }),
+          body: new ReadableStream(),
+          transport: { id: "test" },
+          text: async () => "{}",
+          json: async () => ({}),
+        }
+      },
+    } as unknown as NetworkClient
+
+    try {
+      await primeGrokSessionInfo({ modelId: "grok-4.5", networkClient })
+      expect(calls.some((c) => c.url === CLI_MODELS_URL)).toBe(true)
+      expect(calls.some((c) => c.url === CLI_BILLING_URL)).toBe(true)
+      expect(calls.find((c) => c.url === CLI_BILLING_URL)?.headers?.authorization).toBe(
+        "Bearer oauth-session-token",
+      )
+      expect(getGrokBillingQuota()?.used).toBe(154)
+      expect(getGrokBillingQuota()?.limit).toBe(4000)
+
+      const info = await fetchGrokSessionInfo({ modelId: "grok-4.5" })
+      const ids = info?.quota?.windows?.map((w) => w.id) ?? []
+      expect(ids).toEqual(expect.arrayContaining(["tpm", "month"]))
+    } finally {
+      if (prev.a === undefined) delete process.env["MINIMAL_AGENT_GROK_API_KEY"]
+      else process.env["MINIMAL_AGENT_GROK_API_KEY"] = prev.a
+      if (prev.b === undefined) delete process.env["XAI_API_KEY"]
+      else process.env["XAI_API_KEY"] = prev.b
+      if (prev.c === undefined) delete process.env["GROK_API_KEY"]
+      else process.env["GROK_API_KEY"] = prev.c
+      if (prev.home === undefined) delete process.env["MINIMAL_AGENT_HOME"]
+      else process.env["MINIMAL_AGENT_HOME"] = prev.home
+      rmSync(dir, { recursive: true, force: true })
+      _resetGrokPrimeInFlight()
+      clearGrokSessionCaches()
+    }
   })
 
   it("recommends subagent models by tags", () => {

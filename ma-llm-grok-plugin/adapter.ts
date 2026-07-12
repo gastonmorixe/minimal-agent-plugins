@@ -50,7 +50,9 @@ import {
 import {
   accumulateGrokUsage,
   fetchGrokSessionInfo,
+  getGrokBillingQuota,
   primeGrokSessionInfo,
+  refreshGrokBillingQuota,
   setGrokRateLimits,
 } from "./session-info.ts"
 import { grokChatCompletionsCodec } from "./surface-codecs.ts"
@@ -126,6 +128,7 @@ export const grokAdapter: ProviderAdapter = {
         throw taggedHttpError("Grok Chat API", response.status, await response.text())
       }
       setGrokRateLimits(response.headers)
+      maybeRefreshOAuthBilling(auth, networkClient)
       if (!response.body) throw new Error("Grok Chat API: empty response body for stream")
       for await (const ev of translateOpenAIChatStream(
         parseSse<OpenAIChatChunk>(response.body),
@@ -164,6 +167,7 @@ export const grokAdapter: ProviderAdapter = {
         throw taggedHttpError("Grok Responses API", response.status, await response.text())
       }
       setGrokRateLimits(response.headers)
+      maybeRefreshOAuthBilling(auth, networkClient)
       if (!response.body) throw new Error("Grok Responses API: empty response body for stream")
       for await (const ev of translateOpenAIResponsesStream(
         parseSse<OpenAIResponsesEvent>(response.body),
@@ -192,6 +196,23 @@ export const grokAdapter: ProviderAdapter = {
     }
     return recs
   },
+}
+
+/**
+ * Fire-and-forget monthly billing refresh for OAuth/session tokens.
+ * Skips when billing is already fresh (checked inside prime path via cache
+ * timestamp) or auth is not oauth. Never awaits on the hot path.
+ */
+function maybeRefreshOAuthBilling(auth: ProviderAuth, networkClient: NetworkClient): void {
+  if (auth.kind !== "oauth" || !auth.token) return
+  // Only re-fetch when we have no cached monthly window yet, or it's stale
+  // enough that prime would also re-fetch (60 min). Avoids a GET per turn.
+  const cached = getGrokBillingQuota()
+  const BILLING_FRESHNESS_MS = 5 * 60_000 * 12
+  if (cached && Date.now() - cached.at < BILLING_FRESHNESS_MS) return
+  void refreshGrokBillingQuota(networkClient, auth.token).catch(() => {
+    /* best-effort */
+  })
 }
 
 function parseGrokErrorCode(body: string): string | undefined {
