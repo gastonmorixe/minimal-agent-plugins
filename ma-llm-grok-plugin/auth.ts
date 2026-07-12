@@ -21,10 +21,12 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
 }
 
+/** Encode an API key into the host secret bag shape. */
 export function grokApiKeyToSecrets(apiKey: string): AuthSecretBag {
   return { tokenType: "api-key", apiKey }
 }
 
+/** Build a host-persistable API-key credential write. */
 export function buildGrokApiKeyCredential(apiKey: string) {
   return {
     serviceId: GROK_API_KEY_AUTH.serviceId,
@@ -33,10 +35,12 @@ export function buildGrokApiKeyCredential(apiKey: string) {
   }
 }
 
+/** Read the API key from a stored secret bag, or null when missing. */
 export function readGrokApiKey(secrets: AuthSecretBag): string | null {
   return str(secrets.apiKey) ?? null
 }
 
+/** Safe diagnostics for a stored Grok API-key credential. */
 export function inspectGrokApiKeyCredential(secrets: AuthSecretBag): AuthCredentialInfo {
   const apiKey = readGrokApiKey(secrets)
   return {

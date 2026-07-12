@@ -61,16 +61,13 @@ let billingQuota: {
   at: number
 } | null = null
 
+/** Capture rate-limit headers from a live Grok response into the session cache. */
 export function setGrokRateLimits(headers: Headers): void {
   try {
     const copy = new Map<string, string>()
     headers.forEach((value, key) => {
       const lk = key.toLowerCase()
-      if (
-        lk.startsWith("x-ratelimit-") ||
-        lk.startsWith("ratelimit-") ||
-        lk === "retry-after"
-      ) {
+      if (lk.startsWith("x-ratelimit-") || lk.startsWith("ratelimit-") || lk === "retry-after") {
         copy.set(lk, value)
       }
     })
@@ -81,6 +78,7 @@ export function setGrokRateLimits(headers: Headers): void {
   }
 }
 
+/** Add a turn's token usage into the running session totals. */
 export function accumulateGrokUsage(usage: {
   inputTokens: number
   outputTokens: number
@@ -101,6 +99,7 @@ export function accumulateGrokUsage(usage: {
   }
 }
 
+/** Cache monthly billing quota from cli-chat-proxy `/v1/billing`. */
 export function setGrokBillingQuota(input: {
   used: number
   limit: number
@@ -115,18 +114,22 @@ export function setGrokBillingQuota(input: {
   }
 }
 
+/** Read the cached rate-limit header snapshot, if any. */
 export function getGrokRateLimits(): CachedGrokRateLimits | null {
   return cache
 }
 
+/** Read the running session token totals, if any. */
 export function getGrokSessionUsage(): typeof sessionUsage {
   return sessionUsage
 }
 
+/** Read the cached monthly billing quota, if any. */
 export function getGrokBillingQuota(): typeof billingQuota {
   return billingQuota
 }
 
+/** Drop rate-limit, usage, and billing caches (tests / logout). */
 export function clearGrokSessionCaches(): void {
   cache = null
   sessionUsage = null
@@ -156,9 +159,8 @@ function parseResetMs(s: string): number | undefined {
   return n * (unitMs[unit] ?? 1000)
 }
 
-export function parseGrokQuotaWindows(
-  rateLimits: ReadonlyMap<string, string>,
-): QuotaWindow[] {
+/** Project cached rate-limit headers (+ billing) into provider-neutral quota windows. */
+export function parseGrokQuotaWindows(rateLimits: ReadonlyMap<string, string>): QuotaWindow[] {
   const out: QuotaWindow[] = []
   const now = Date.now()
 
@@ -199,6 +201,7 @@ export function parseGrokQuotaWindows(
   return out
 }
 
+/** Cache-only session metadata for the status bar (never blocks on network). */
 export async function fetchGrokSessionInfo(
   ctx: ProviderSessionContext,
 ): Promise<ProviderSessionInfo | null> {
@@ -218,6 +221,7 @@ export async function fetchGrokSessionInfo(
 
 let inFlightPrime: Promise<void> | null = null
 
+/** Test-only: clear the in-flight prime promise so a new prime can start. */
 export function _resetGrokPrimeInFlight(): void {
   inFlightPrime = null
 }
@@ -242,8 +246,7 @@ function resolveEnvApiKey(): string | undefined {
  */
 export function readGrokOAuthTokenFromAuthStore(): string | null {
   try {
-    const home =
-      process.env["MINIMAL_AGENT_HOME"]?.trim() || join(homedir(), ".minimal-agent")
+    const home = process.env["MINIMAL_AGENT_HOME"]?.trim() || join(homedir(), ".minimal-agent")
     const path = join(home, "auth.jsonc")
     if (!existsSync(path)) return null
     const raw = readFileSync(path, "utf8")
