@@ -1,11 +1,12 @@
 /**
  * Integration: load this plugin through the real host PluginLoader and
- * assert the fragment lands in getPromptBlockAsync().
+ * assert the fragment lands in `getPromptBlocksAsync().afterInstructions`
+ * as plain markdown (no `<ma::sys` wrap).
  *
- * That method is the shared seam for both the legacy `Agent` loop
- * (`sessionContext`) and the modern `AgentCore` SDK
- * (`PromptContributorAdapter.systemPromptBlocks()`), so one integration
- * covers both runtimes without spinning up a full agent.
+ * That dual-block API is the shared seam for both the legacy `Agent`
+ * loop and the modern `AgentCore` SDK once Phase 4 wires consumers.
+ * `getPromptBlockAsync()` stays the sessionContext-only back-compat path
+ * and must NOT contain the AGENTS body after placement.
  *
  * Skipped when the sibling minimal-agent checkout is not present (the
  * plugins repo is independently clonable).
@@ -37,8 +38,8 @@ function tmp(): string {
  */
 function isolatedSiblingRoot(): string {
   const root = tmp()
-  // Copy the package (manifest + handlers + lib + PROMPT.md). Tests write
-  // AGENTS.md into agent-home/cwd separately; we don't need node_modules.
+  // Copy the package (manifest + handlers + lib). Tests write AGENTS.md into
+  // agent-home/cwd separately; we don't need node_modules.
   const dest = join(root, "ma-agents-md-plugin")
   cpSync(THIS_PLUGIN, dest, {
     recursive: true,
@@ -58,8 +59,8 @@ afterEach(() => {
   rmSync(ROOT, { recursive: true, force: true })
 })
 
-describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (legacy + AgentCore seam)", () => {
-  test("getPromptBlockAsync includes global then project AGENTS.md", async () => {
+describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions placement)", () => {
+  test("getPromptBlocksAsync puts AGENTS body in afterInstructions as plain markdown", async () => {
     const { PluginLoader } = await import(CORE_LOADER)
 
     const siblingRoot = isolatedSiblingRoot()
@@ -83,16 +84,37 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (legacy + AgentCore s
         coreToolNames: new Set<string>(),
       })
 
-      const block = await loader.getPromptBlockAsync()
-      expect(typeof block).toBe("string")
-      expect(block).not.toBeNull()
-      // classifyPluginPrompt → context role, name slug of PROMPT.md H1 "AGENTS.md"
-      expect(block!).toContain('<ma::sys::context name="agents-md">')
-      expect(block!).toContain("INT-GLOBAL")
-      expect(block!).toContain("INT-PROJECT")
-      expect(block!.indexOf("INT-GLOBAL")).toBeLessThan(block!.indexOf("INT-PROJECT"))
-      // Framing from PROMPT.md (H1 stripped) + fragment body.
-      expect(block!).toContain("Agent instructions (AGENTS.md)")
+      // Prefer dual API when present (Phase 3+). Fall back fails the suite
+      // intentionally if core is too old for afterInstructions placement.
+      expect(typeof loader.getPromptBlocksAsync).toBe("function")
+      const blocks = await loader.getPromptBlocksAsync()
+      const after = blocks.afterInstructions
+      expect(typeof after).toBe("string")
+      expect(after).not.toBeNull()
+      expect(after!).toContain("INT-GLOBAL")
+      expect(after!).toContain("INT-PROJECT")
+      expect(after!.indexOf("INT-GLOBAL")).toBeLessThan(after!.indexOf("INT-PROJECT"))
+      // Fragment render framing (from lib/load), not PROMPT.md / XML.
+      expect(after!).toContain("Agent instructions (AGENTS.md)")
+      // Plain placement: no ma::sys wrapper around the AGENTS content.
+      expect(after!).not.toContain("<ma::sys")
+      expect(after!).not.toContain('name="agents-md"')
+
+      // sessionContext path must not double-emit the AGENTS body.
+      const session = blocks.sessionContext
+      if (session) {
+        expect(session).not.toContain("INT-GLOBAL")
+        expect(session).not.toContain("INT-PROJECT")
+        expect(session).not.toContain("Agent instructions (AGENTS.md)")
+        expect(session).not.toContain('<ma::sys::context name="agents-md">')
+      }
+
+      // Back-compat getter is sessionContext only.
+      const legacy = await loader.getPromptBlockAsync()
+      if (legacy) {
+        expect(legacy).not.toContain("INT-GLOBAL")
+        expect(legacy).not.toContain("INT-PROJECT")
+      }
     } finally {
       process.chdir(prevCwd)
       if (prevHome === undefined) delete process.env.MINIMAL_AGENT_HOME
@@ -124,10 +146,11 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (legacy + AgentCore s
         disabledPluginIds: new Set(["agents-md"]),
       })
 
-      const block = (await loader.getPromptBlockAsync()) ?? ""
-      expect(block).not.toContain("SHOULD-NOT-APPEAR")
-      expect(block).not.toContain("agents-md")
-      expect(block).not.toContain("Agent instructions (AGENTS.md)")
+      const blocks = await loader.getPromptBlocksAsync()
+      expect(blocks.afterInstructions ?? "").not.toContain("SHOULD-NOT-APPEAR")
+      expect(blocks.sessionContext ?? "").not.toContain("SHOULD-NOT-APPEAR")
+      expect(blocks.afterInstructions ?? "").not.toContain("agents-md")
+      expect(blocks.afterInstructions ?? "").not.toContain("Agent instructions (AGENTS.md)")
     } finally {
       process.chdir(prevCwd)
       if (prevHome === undefined) delete process.env.MINIMAL_AGENT_HOME
@@ -156,13 +179,14 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (legacy + AgentCore s
         coreToolNames: new Set<string>(),
       })
 
-      const block = await loader.getPromptBlockAsync()
-      // PROMPT.md still contributes a context section even with empty fragment.
-      // That is intentional: the framing teaches the model about AGENTS.md.
-      // But the dynamic bodies must be absent.
-      if (block) {
-        expect(block).not.toContain("### Global")
-        expect(block).not.toContain("### Project")
+      const blocks = await loader.getPromptBlocksAsync()
+      // No AGENTS files + no PROMPT.md → nothing in either slot from this plugin.
+      expect(blocks.afterInstructions).toBeNull()
+      if (blocks.sessionContext) {
+        expect(blocks.sessionContext).not.toContain("### Global")
+        expect(blocks.sessionContext).not.toContain("### Project")
+        expect(blocks.sessionContext).not.toContain('<ma::sys::context name="agents-md">')
+        expect(blocks.sessionContext).not.toContain("Agent instructions (AGENTS.md)")
       }
     } finally {
       process.chdir(prevCwd)

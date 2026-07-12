@@ -12,7 +12,8 @@
         "export": "default"
       },
       "timeoutMs": 1000,
-      "order": 50
+      "order": 50,
+      "placement": "afterInstructions"
     }
   ]
 }

@@ -2,10 +2,11 @@
  * Prompt-fragment producer for the `agents-md` plugin.
  *
  * Runs once at session start (via the loader's `promptFragments`
- * mechanism). Returns a chunk of markdown that gets folded into the
- * plugin system-prompt block — the same path both the legacy `Agent`
- * loop and the modern `AgentCore` SDK use (`loader.getPromptBlockAsync`
- * → `sessionContext` / `PromptContributorAdapter.systemPromptBlocks()`).
+ * mechanism). Manifest sets `placement: "afterInstructions"` so the host
+ * emits this as **plain markdown** after the cached instructions block
+ * (no `<ma::sys::…>` wrap, no PROMPT.md merge). Both runtimes consume it
+ * via `loader.getPromptBlocksAsync().afterInstructions` (legacy Agent +
+ * AgentCore `afterInstructionsBlocks` once Phase 4 is wired).
  *
  * Loads:
  *   1. Global: `<MINIMAL_AGENT_HOME>/AGENTS.md`  (user-wide)

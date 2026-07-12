@@ -20,15 +20,20 @@ string and the host loader omits it from the system prompt.
 
 ## System-prompt placement (legacy + modern SDK)
 
-The fragment is a standard `manifest.promptFragments` producer. The host
-loader runs it once, memoizes the text, and folds it into the composed
-plugin block that both runtimes consume:
+The fragment is a standard `manifest.promptFragments` producer with
+`placement: "afterInstructions"`. The host loader runs it once, memoizes the
+text, and emits it as **plain markdown** (no `<ma::sys::…>` wrap, no
+`PROMPT.md` merge) immediately after the cached instructions block:
 
-- **Legacy `Agent`**: `loader.getPromptBlockAsync()` → `sessionContext`
-- **Modern `AgentCore`**: same block via `PromptContributorAdapter.systemPromptBlocks()`
+- **Loader dual API**: `loader.getPromptBlocksAsync().afterInstructions`
+- **Legacy `Agent` / `AgentCore`**: consumers must pass that field into
+  `resolveSystemPromptForModel({ afterInstructions })` (core Phase 4). Until
+  that lands, the body is produced correctly by the loader but not yet
+  assembled into the live system prompt path that still only reads
+  `sessionContext`.
 
-So one implementation covers both SDKs. No core changes are required for the
-injection path itself.
+There is no residual `PROMPT.md` on this package so sessionContext does not
+get a second empty/XML framing section for AGENTS content.
 
 ## Disabling
 
@@ -75,10 +80,9 @@ Or in `~/.minimal-agent/config.jsonc` (or your relocated agent home):
 
 ```
 ma-agents-md-plugin/
-├── manifest.json          # id: agents-md, promptFragments
-├── PROMPT.md              # short framing next to the fragment
+├── manifest.json          # id: agents-md, placement: afterInstructions
 ├── handlers/load.ts       # prompt-fragment producer
-├── lib/load.ts            # pure collect + render
+├── lib/load.ts            # pure collect + render (includes markdown framing)
 ├── lib/config.ts          # plugins["agents-md"] reader
 ├── lib/agent-home.ts      # MINIMAL_AGENT_HOME resolution
 ├── lib/jsonc.ts           # vendored JSONC parser
