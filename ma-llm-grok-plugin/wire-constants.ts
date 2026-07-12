@@ -47,7 +47,7 @@ export const GROK_MODEL_OVERRIDE_HEADER = "x-grok-model-override"
 
 /**
  * Client version header required by cli-chat-proxy.
- * Must be >= 0.1.202 or the proxy rejects the request with 426.
+ * Must be \>= 0.1.202 or the proxy rejects the request with 426.
  * We match the installed grok CLI version so the proxy sees a valid client.
  */
 export const GROK_CLIENT_VERSION_HEADER = "x-grok-client-version"

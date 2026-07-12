@@ -5,7 +5,7 @@
  * frames every ~10s during a long prefill before the first content token. The
  * frame is a valid chat chunk with an empty-content assistant delta:
  *
- *   {"choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+ *   `\{"choices":[\{"index":0,"delta":\{"role":"assistant","content":""\},"finish_reason":null\}]\}`
  *
  * The vendored `translateOpenAIChatStream` MUST surface each such frame as a
  * `ping` canonical event. The transport watchdog resets its idle timer on any

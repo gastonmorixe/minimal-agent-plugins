@@ -143,7 +143,7 @@ export const CAPS_GROK_BUILD_RESPONSES: Capabilities = {
   },
 }
 
-/** @deprecated */
+/** @deprecated Prefer {@link CAPS_GROK_BUILD_RESPONSES}; alias kept for older imports. */
 export const CAPS_GROK_BUILD = CAPS_GROK_BUILD_RESPONSES
 
 // ---------------------------------------------------------------------------

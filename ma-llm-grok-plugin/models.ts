@@ -38,14 +38,17 @@ export interface GrokModelSpec {
   surfaceId?: "openai-chat-completions" | "openai-responses"
 }
 
+/** Find the first registered Grok model id that carries every required tag. */
 export function findGrokModelByTags(mustHave: readonly string[]): string | undefined {
   return localCatalog.find((m) => mustHave.every((t) => m.tags.includes(t)))?.id
 }
 
+/** Context window tokens for a known Grok model id, when present in the catalog. */
 export function grokContextWindow(modelId: string): number | undefined {
   return localCatalog.find((m) => m.id === modelId)?.contextWindow
 }
 
+/** Compact label for status UI (`xai-<token>`), stripped of the `grok` / `-chat` noise. */
 export function grokModelShortLabel(modelId: string): string {
   const m = modelId.replace(/^grok-?/i, "").replace(/-chat$/i, "")
   return m || "grok"
@@ -150,6 +153,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
   return localCatalog.map((m) => m.id)
 }
 
+/** Register one Grok model (static catalog entry or ad-hoc live id). */
 export function registerGrokModel(spec: GrokModelSpec, registrar: ModelRegistrar): void {
   const surface = spec.surfaceId ?? "openai-chat-completions"
   reg(registrar, {
@@ -164,9 +168,6 @@ export function registerGrokModel(spec: GrokModelSpec, registrar: ModelRegistrar
 }
 
 /** Into-style helper used by ad-hoc registration (OpenRouter pattern). */
-export function registerGrokModelInto(
-  registrar: ModelRegistrar,
-  spec: GrokModelSpec,
-): void {
+export function registerGrokModelInto(registrar: ModelRegistrar, spec: GrokModelSpec): void {
   registerGrokModel(spec, registrar)
 }

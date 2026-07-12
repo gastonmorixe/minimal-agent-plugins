@@ -7,8 +7,8 @@
  * @module llm/providers/grok/headers
  */
 
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import { buildOpenAIHeaders } from "./lib/openai-chat.ts"
+import type { ProviderAuth } from "./lib/provider-auth.ts"
 import {
   GROK_CLIENT_IDENTIFIER,
   GROK_CLIENT_IDENTIFIER_HEADER,

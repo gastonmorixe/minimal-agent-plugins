@@ -5,9 +5,9 @@
  * and endpoints proven against auth.x.ai (see grok/api research).
  *
  * Device flow (no localhost callback):
- *   POST {issuer}/oauth2/device/code
+ *   POST `\{issuer\}/oauth2/device/code`
  *   → user_code (PIN) + verification_uri
- *   poll POST {issuer}/oauth2/token grant_type=device_code
+ *   poll POST `\{issuer\}/oauth2/token` grant_type=device_code
  *
  * @module llm/providers/grok/oauth-login
  */
@@ -103,6 +103,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+/** Build the host PKCE/OAuth config for Grok / xAI. */
 export function grokOAuthConfig(): OAuthLoginConfig {
   return {
     clientId: GROK_OIDC_CLIENT_ID,
@@ -141,6 +142,7 @@ export function grokOAuthToSecrets(raw: Record<string, unknown>): AuthSecretBag 
   }
 }
 
+/** Convert a raw token response into a host-persistable credential write. */
 export function buildGrokOAuthCredential(response: Record<string, unknown>): OAuthLoginBuildResult {
   const secrets = grokOAuthToSecrets(response)
   const accessToken = String(secrets.accessToken)
@@ -161,7 +163,7 @@ export function buildGrokOAuthCredential(response: Record<string, unknown>): OAu
       ...(typeof secrets.userId === "string"
         ? {
             account: {
-              uuid: String(secrets.userId),
+              uuid: secrets.userId,
               emailAddress: "unknown",
             },
           }
@@ -170,6 +172,7 @@ export function buildGrokOAuthCredential(response: Record<string, unknown>): OAu
   }
 }
 
+/** Decode a stored Grok OAuth secret bag into runtime provider auth. */
 export function readGrokOAuthAuth(secrets: AuthSecretBag): ProviderAuth | null {
   const accessToken = str(secrets.accessToken)
   if (!accessToken) return null
@@ -185,6 +188,7 @@ export function readGrokOAuthAuth(secrets: AuthSecretBag): ProviderAuth | null {
   }
 }
 
+/** Safe diagnostics for a stored Grok OAuth credential bag. */
 export function inspectGrokOAuthCredential(secrets: AuthSecretBag): AuthCredentialInfo {
   const token = str(secrets.accessToken)
   const exp = num(secrets.expiresAt)
@@ -222,7 +226,9 @@ async function requestGrokDeviceCode(
   const deviceCode = str(raw.device_code)
   const userCode = str(raw.user_code)
   const verificationUri =
-    str(raw.verification_uri_complete) ?? str(raw.verification_uri) ?? "https://accounts.x.ai/oauth2/device"
+    str(raw.verification_uri_complete) ??
+    str(raw.verification_uri) ??
+    "https://accounts.x.ai/oauth2/device"
   const interval = num(raw.interval) ?? 5
   const expiresIn = num(raw.expires_in) ?? 1800
   if (!deviceCode || !userCode) {
@@ -309,6 +315,7 @@ async function completeGrokDeviceCode(
   }
 }
 
+/** Refresh a stored Grok OAuth credential via the OIDC token endpoint. */
 export async function refreshGrokOAuthCredential(
   secrets: AuthSecretBag,
   ctx: OAuthCredentialRefreshContext,

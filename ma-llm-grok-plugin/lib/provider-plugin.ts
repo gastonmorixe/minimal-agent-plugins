@@ -29,6 +29,7 @@ import type { Capabilities } from "./capabilities.ts"
 import type { CapabilityViolation } from "./errors.ts"
 import type { ModelRate, ModelView, SubagentModelRecommendation } from "./host-types.ts"
 import type { ProviderAuth, RunContext } from "./provider-auth.ts"
+import type { SurfaceCodecRegistry } from "./surface-codec.ts"
 import type { TokenEstimator } from "./token-estimate.ts"
 
 /**
@@ -198,6 +199,8 @@ export interface ProviderSetupContext {
   models: ModelRegistrar
   /** Setup-time provider-adapter-registry writer (the `providers:register` capability). */
   providers?: ProviderAdapterRegistrar
+  /** Setup-time generic wire-surface codec registry writer. */
+  surfaceCodecs?: SurfaceCodecRegistry
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +411,8 @@ export interface OAuthLoginBuildResult {
  */
 export interface OAuthCredentialRefreshContext {
   networkClient?: unknown
+  /** Optional abort signal when the host wants to cancel a stuck refresh. */
+  signal?: AbortSignal
 }
 
 /** Provider-owned device-code prompt metadata shown by the host. */

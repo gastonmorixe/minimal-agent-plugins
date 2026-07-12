@@ -32,9 +32,9 @@ import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { registerGrokModels } from "./models.ts"
 import {
+  buildGrokOAuthCredential,
   GROK_OAUTH,
   GROK_OIDC_CLIENT_ID,
-  buildGrokOAuthCredential,
   grokOAuthLogin,
   readGrokOAuthAuth,
 } from "./oauth-login.ts"
@@ -51,8 +51,8 @@ import {
   setGrokBillingQuota,
   setGrokRateLimits,
 } from "./session-info.ts"
-import { CLI_BILLING_URL, CLI_MODELS_URL, MODELS_URL } from "./wire-constants.ts"
 import { grokChatCompletionsCodec } from "./surface-codecs.ts"
+import { CLI_BILLING_URL, CLI_MODELS_URL, MODELS_URL } from "./wire-constants.ts"
 
 function fakeNetworkClient(status: number, body: string) {
   return {
@@ -191,10 +191,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     setup()
     const model = resolveModel("grok-4.5-chat")
     expect(
-      grokAdapter.validate(
-        { modelId: model.id, messages: [userText("hello")] },
-        model,
-      ).ok,
+      grokAdapter.validate({ modelId: model.id, messages: [userText("hello")] }, model).ok,
     ).toBe(true)
 
     const withImage: CanonicalRequest = {
@@ -206,7 +203,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
             { type: "text", text: "describe" },
             {
               type: "image",
-              source: { type: "base64", mediaType: "image/png", data: "iVBORw0KGgo=" },
+              source: { kind: "base64", mediaType: "image/png", data: "iVBORw0KGgo=" },
             },
           ],
         },
@@ -241,6 +238,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
 
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "xai-test" },
+      sessionId: "test-session",
       networkClient: client,
     }
     const events: CanonicalEvent[] = []
@@ -265,6 +263,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     const model = resolveModel("grok-4.5-chat")
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "xai-test" },
+      sessionId: "test-session",
       networkClient: fakeNetworkClient(
         429,
         JSON.stringify({ error: { type: "rate_limit_error" } }),

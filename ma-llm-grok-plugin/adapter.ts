@@ -130,9 +130,7 @@ export const grokAdapter: ProviderAdapter = {
       setGrokRateLimits(response.headers)
       maybeRefreshOAuthBilling(auth, networkClient)
       if (!response.body) throw new Error("Grok Chat API: empty response body for stream")
-      for await (const ev of translateOpenAIChatStream(
-        parseSse<OpenAIChatChunk>(response.body),
-      )) {
+      for await (const ev of translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))) {
         if (isEvent(ev, "message_delta")) accumulateGrokUsage(ev.usage)
         yield ev
       }
@@ -178,9 +176,7 @@ export const grokAdapter: ProviderAdapter = {
       return
     }
 
-    throw new Error(
-      `Grok adapter: model ${model.id} has unsupported surface "${model.surfaceId}"`,
-    )
+    throw new Error(`Grok adapter: model ${model.id} has unsupported surface "${model.surfaceId}"`)
   },
 
   recommendSubagentModels(): SubagentModelRecommendation[] {
@@ -238,6 +234,7 @@ function taggedHttpError(
 
 let capturedModels: ModelRegistrar | undefined
 
+/** Register the Grok adapter, catalog, and chat surface codec with the host. */
 export function bootstrapGrok(ctx?: ProviderSetupContext): void {
   if (!ctx?.models || !ctx.providers) return
   capturedModels = ctx.models
@@ -247,6 +244,7 @@ export function bootstrapGrok(ctx?: ProviderSetupContext): void {
   ctx.surfaceCodecs?.register(grokChatCompletionsCodec)
 }
 
+/** Register a one-off Grok model id that is not in the static catalog. */
 export function registerGrokAdHocModel(modelId: string): void {
   if (!capturedModels) return
   registerGrokModel({ id: modelId }, capturedModels)
