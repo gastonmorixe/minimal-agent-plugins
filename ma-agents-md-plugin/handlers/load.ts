@@ -12,7 +12,8 @@
  *   1. Global: `<MINIMAL_AGENT_HOME>/AGENTS.md`  (user-wide)
  *   2. Project: `<cwd>/AGENTS.md`                (agents.md convention)
  *
- * Global is emitted first; project second. Missing files are silent.
+ * Global is emitted first; project second, as raw file bodies joined with a
+ * blank line (no framing headers or intro prose). Missing files are silent.
  * Disable for a run with `--no-agents-md`, `--disable-plugin agents-md`,
  * or `plugins["agents-md"].enabled = false` in config.
  *

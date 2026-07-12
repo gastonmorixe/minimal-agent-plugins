@@ -181,21 +181,16 @@ describe("renderAgentsMdFragment", () => {
     expect(renderAgentsMdFragment([])).toBe("")
   })
 
-  test("renders global then project with headings and paths", () => {
+  test("joins raw bodies with blank line; no framing", () => {
     const text = renderAgentsMdFragment([
       { scope: "global", path: "/home/me/.minimal-agent/AGENTS.md", body: "G" },
       { scope: "project", path: "/work/proj/AGENTS.md", body: "P" },
     ])
-    expect(text).toContain("## Agent instructions (AGENTS.md)")
-    expect(text).toContain("### Global (`/home/me/.minimal-agent/AGENTS.md`)")
-    expect(text).toContain("### Project (`/work/proj/AGENTS.md`)")
-    // Order: global body appears before project body.
-    const g = text.indexOf("\nG\n")
-    const p = text.indexOf("\nP\n")
-    expect(g).toBeGreaterThan(-1)
-    expect(p).toBeGreaterThan(g)
-    // Prefer-project guidance is stated.
-    expect(text).toContain("prefer the project file")
+    expect(text).toBe("G\n\nP")
+    expect(text).not.toContain("## Agent instructions")
+    expect(text).not.toContain("### Global")
+    expect(text).not.toContain("### Project")
+    expect(text).not.toContain("prefer the project file")
   })
 })
 

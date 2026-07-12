@@ -91,11 +91,8 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
       const after = blocks.afterInstructions
       expect(typeof after).toBe("string")
       expect(after).not.toBeNull()
-      expect(after!).toContain("INT-GLOBAL")
-      expect(after!).toContain("INT-PROJECT")
-      expect(after!.indexOf("INT-GLOBAL")).toBeLessThan(after!.indexOf("INT-PROJECT"))
-      // Fragment render framing (from lib/load), not PROMPT.md / XML.
-      expect(after!).toContain("Agent instructions (AGENTS.md)")
+      // Raw bodies only: global then project, joined with a blank line.
+      expect(after!).toBe("INT-GLOBAL\n\nINT-PROJECT")
       // Plain placement: no ma::sys wrapper around the AGENTS content.
       expect(after!).not.toContain("<ma::sys")
       expect(after!).not.toContain('name="agents-md"')
@@ -105,7 +102,6 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
       if (session) {
         expect(session).not.toContain("INT-GLOBAL")
         expect(session).not.toContain("INT-PROJECT")
-        expect(session).not.toContain("Agent instructions (AGENTS.md)")
         expect(session).not.toContain('<ma::sys::context name="agents-md">')
       }
 
@@ -150,7 +146,6 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
       expect(blocks.afterInstructions ?? "").not.toContain("SHOULD-NOT-APPEAR")
       expect(blocks.sessionContext ?? "").not.toContain("SHOULD-NOT-APPEAR")
       expect(blocks.afterInstructions ?? "").not.toContain("agents-md")
-      expect(blocks.afterInstructions ?? "").not.toContain("Agent instructions (AGENTS.md)")
     } finally {
       process.chdir(prevCwd)
       if (prevHome === undefined) delete process.env.MINIMAL_AGENT_HOME
@@ -183,10 +178,7 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
       // No AGENTS files + no PROMPT.md → nothing in either slot from this plugin.
       expect(blocks.afterInstructions).toBeNull()
       if (blocks.sessionContext) {
-        expect(blocks.sessionContext).not.toContain("### Global")
-        expect(blocks.sessionContext).not.toContain("### Project")
         expect(blocks.sessionContext).not.toContain('<ma::sys::context name="agents-md">')
-        expect(blocks.sessionContext).not.toContain("Agent instructions (AGENTS.md)")
       }
     } finally {
       process.chdir(prevCwd)
