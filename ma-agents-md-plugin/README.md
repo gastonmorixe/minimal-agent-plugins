@@ -15,6 +15,9 @@ resolved home as `MINIMAL_AGENT_HOME` at boot (honoring relocation /
 `MINIMAL_AGENT_HOME` overrides); this plugin reads that env var via a local
 `agentHome()` helper, the same pattern as skills/memory.
 
+Bodies are injected raw (joined with a blank line, global then project). No
+framing headers, intro prose, or path headings are prepended.
+
 When neither file exists (or both are empty), the fragment returns the empty
 string and the host loader omits it from the system prompt.
 
@@ -82,7 +85,7 @@ Or in `~/.minimal-agent/config.jsonc` (or your relocated agent home):
 ma-agents-md-plugin/
 ├── manifest.json          # id: agents-md, placement: afterInstructions
 ├── handlers/load.ts       # prompt-fragment producer
-├── lib/load.ts            # pure collect + render (includes markdown framing)
+├── lib/load.ts            # pure collect + raw body join (no framing)
 ├── lib/config.ts          # plugins["agents-md"] reader
 ├── lib/agent-home.ts      # MINIMAL_AGENT_HOME resolution
 ├── lib/jsonc.ts           # vendored JSONC parser

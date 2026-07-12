@@ -31,7 +31,7 @@ import { DEFAULT_AGENTS_MD_CONFIG } from "./config.ts"
 
 /** One successfully loaded AGENTS.md source. */
 export interface AgentsMdSource {
-  /** Stable scope tag used in the rendered heading. */
+  /** Stable scope tag (load order / diagnostics only; not rendered). */
   scope: "global" | "project"
   /** Absolute path the body was read from. */
   path: string
@@ -136,46 +136,16 @@ export function collectAgentsMdSources(opts: LoadAgentsMdOptions): AgentsMdSourc
 /**
  * Render the system-prompt fragment from loaded sources.
  *
- * Returns `""` when nothing loaded. Otherwise a markdown block:
- *
- * ```
- * ## Agent instructions (AGENTS.md)
- *
- * These files follow the http://agents.md convention. Prefer project
- * guidance when it conflicts with global.
- *
- * ### Global (`/path/to/AGENTS.md`)
- *
- * <body>
- *
- * ### Project (`/path/to/cwd/AGENTS.md`)
- *
- * <body>
- * ```
+ * Returns `""` when nothing loaded. Otherwise the raw file bodies joined
+ * with a blank line between them (global then project). No framing
+ * headers, intro prose, or path headings: the user forbids any
+ * prepend/append around AGENTS.md injection.
  *
  * Pure: no IO. Exported so tests can drive rendering without the fs.
  */
 export function renderAgentsMdFragment(sources: readonly AgentsMdSource[]): string {
   if (sources.length === 0) return ""
-
-  const lines: string[] = []
-  lines.push("## Agent instructions (AGENTS.md)")
-  lines.push("")
-  lines.push(
-    "These files follow the [AGENTS.md](https://agents.md) convention: a README for coding agents. Treat them as authoritative project/user instructions for this session. When global and project guidance conflict, prefer the project file (closer to the work).",
-  )
-  lines.push("")
-
-  for (const src of sources) {
-    const label = src.scope === "global" ? "Global" : "Project"
-    lines.push(`### ${label} (\`${src.path}\`)`)
-    lines.push("")
-    lines.push(src.body)
-    lines.push("")
-  }
-
-  // Trailing blank from the loop; trim end for a clean fragment.
-  return lines.join("\n").replace(/\s+$/, "") + "\n"
+  return sources.map((s) => s.body).join("\n\n")
 }
 
 /**
