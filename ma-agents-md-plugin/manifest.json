@@ -1,0 +1,18 @@
+{
+  "id": "agents-md",
+  "name": "AGENTS.md",
+  "version": "0.1.0",
+  "description": "Loads AGENTS.md (https://agents.md) into the system prompt: user-global from the resolved agent home (MINIMAL_AGENT_HOME/AGENTS.md), then project from <cwd>/AGENTS.md. On by default. Disable with --no-agents-md, --disable-plugin agents-md, MINIMAL_AGENT_NO_AGENTS_MD=1, or plugins[\"agents-md\"].enabled = false.",
+  "promptFragments": [
+    {
+      "id": "agents-md",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/load.ts",
+        "export": "default"
+      },
+      "timeoutMs": 1000,
+      "order": 50
+    }
+  ]
+}
