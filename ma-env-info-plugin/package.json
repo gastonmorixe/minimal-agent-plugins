@@ -5,6 +5,6 @@
   "scripts": {
     "typecheck": "bun run ../scripts/typecheck.ts",
     "check": "bun run ../scripts/check.ts",
-    "test": "bun test"
+    "test": "bun test --pass-with-no-tests"
   }
 }

@@ -5,7 +5,7 @@
   "description": "External user plugin for minimal-agent: inter-session communication and presence. Lets any session see what other sessions are doing (presence, tasks, jobs, fleet) and message them (message, interrupt, broadcast) with durable, pull-delivered, crash-safe queues. Tools: Peers, Send, Inbox.",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

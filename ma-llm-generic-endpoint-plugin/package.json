@@ -5,7 +5,7 @@
   "description": "Generic endpoint provider for arbitrary registered wire surface codecs.",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
