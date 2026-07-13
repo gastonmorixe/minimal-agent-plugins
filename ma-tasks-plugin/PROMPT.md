@@ -17,7 +17,7 @@ Use `Task` to plan and track multi-step work the user can watch in real time. Th
 
 ## Workflow
 
-1. **Plan in one shot.** `Task({action: "add_many", titles: [...]})` at the start. Don't drip-feed tasks one at a time. The user wants to see the whole plan up front.
+1. **Plan in one shot.** `Task({action: "add_many", titles: [...]})` at the start, or `items: [{title, children?}]` when you need subtasks in the same call (`titles` XOR `items`; children are `string[]` only). Don't drip-feed tasks one at a time. The user wants to see the whole plan up front.
 2. **Start before you work.** `Task({action: "start", id: N})` flips the task to `doing` AND demotes any other `doing` task back to `todo` (single-focus discipline). The user's progress meter stays unambiguous. Use `parallel: true` only if you genuinely have two tasks in flight at once (rare).
 3. **Done when materially complete.** `Task({action: "done", id: N})`. Don't pre-mark. Only mark `done` when you've actually finished the work the title described.
 4. **New substeps surface as you work.** If you discover a task is actually 3 substeps, `Task({action: "add", title: "...", parent: "#<hash>"})` for each. Then `start` the first child.

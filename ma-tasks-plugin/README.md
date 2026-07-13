@@ -58,7 +58,7 @@ per line, order = display order.
 | action      | required           | optional                          |
 |-------------|--------------------|----------------------------------|
 | `add`       | `title`            | `parent`, `after`, `status`       |
-| `add_many`  | `titles[]`         | `parent`                          |
+| `add_many`  | `titles[]` **or** `items[]` | `parent` (with flat `titles` only) |
 | `update`    | `id`, `title`      |                                   |
 | `status`    | `id`, `status`     | `reason` (for canceled)           |
 | `start`     | `id`               | `parallel` (allow sibling doing)  |

@@ -78,6 +78,52 @@ describe("validation", () => {
     const r2 = await call({ action: "reorder", order: [] })
     expect(r2.is_error).toBe(true)
   })
+  test("rejects add_many without titles or items", async () => {
+    const r = await call({ action: "add_many" })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/titles.*items|items.*titles/)
+  })
+  test("rejects add_many with both titles and items", async () => {
+    const r = await call({
+      action: "add_many",
+      titles: ["a"],
+      items: [{ title: "b" }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/mutually exclusive/)
+  })
+  test("rejects items combined with parent", async () => {
+    const r = await call({
+      action: "add_many",
+      parent: 1,
+      items: [{ title: "a", children: ["b"] }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/parent.*items|items.*parent/)
+  })
+  test("rejects empty items array", async () => {
+    const r = await call({ action: "add_many", items: [] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/`items`/)
+  })
+  test("rejects items entry without title", async () => {
+    const r = await call({ action: "add_many", items: [{ children: ["x"] }] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/title/)
+  })
+  test("rejects empty children array on items entry", async () => {
+    const r = await call({ action: "add_many", items: [{ title: "a", children: [] }] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/children/)
+  })
+  test("rejects non-string children on items entry", async () => {
+    const r = await call({
+      action: "add_many",
+      items: [{ title: "a", children: [{ title: "nested" }] }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/children/)
+  })
   test("rejects bad status value", async () => {
     const r = await call({ action: "status", id: 1, status: "pending" })
     expect(r.is_error).toBe(true)
@@ -164,6 +210,65 @@ describe("add_many", () => {
     expect(store.list()).toHaveLength(3)
     expect(store.list()[1].parent).toBe(id)
     expect(store.list()[2].parent).toBe(id)
+  })
+  test("items creates parents and children in one call", async () => {
+    const r = await call({
+      action: "add_many",
+      items: [
+        { title: "First task", children: ["Subtask of first"] },
+        { title: "Second task" },
+      ],
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.displayHeader).toContain("added 3 tasks")
+    const store = new TaskStore(sid, { home: tmpHome })
+    const tasks = store.list()
+    expect(tasks).toHaveLength(3)
+    expect(tasks.map((t) => t.title)).toEqual([
+      "First task",
+      "Subtask of first",
+      "Second task",
+    ])
+    const parent = tasks[0]
+    const child = tasks[1]
+    const sibling = tasks[2]
+    expect(parent.parent).toBeNull()
+    expect(child.parent).toBe(parent.id)
+    expect(child.id).toBe(`${parent.id}a`)
+    expect(sibling.parent).toBeNull()
+    // Model content shows nested numbering for the subtask.
+    expect(r.content).toContain("Subtask of first")
+    expect(r.content).toMatch(/1a\s+#\w+a\s+todo\s+Subtask of first/)
+  })
+  test("items with only top-level entries (no children) works like flat titles", async () => {
+    const r = await call({
+      action: "add_many",
+      items: [{ title: "alpha" }, { title: "beta" }],
+    })
+    expect(r.is_error).toBeUndefined()
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(store.list().map((t) => t.title)).toEqual(["alpha", "beta"])
+    expect(store.list().every((t) => t.parent === null)).toBe(true)
+  })
+  test("items can put children under more than one parent", async () => {
+    const r = await call({
+      action: "add_many",
+      items: [
+        { title: "Phase 1", children: ["1a work", "1b work"] },
+        { title: "Phase 2", children: ["2a work"] },
+      ],
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.displayHeader).toContain("added 5 tasks")
+    const store = new TaskStore(sid, { home: tmpHome })
+    const tasks = store.list()
+    expect(tasks).toHaveLength(5)
+    const p1 = tasks.find((t) => t.title === "Phase 1")!
+    const p2 = tasks.find((t) => t.title === "Phase 2")!
+    const kids1 = tasks.filter((t) => t.parent === p1.id).map((t) => t.title)
+    const kids2 = tasks.filter((t) => t.parent === p2.id).map((t) => t.title)
+    expect(kids1).toEqual(["1a work", "1b work"])
+    expect(kids2).toEqual(["2a work"])
   })
 })
 

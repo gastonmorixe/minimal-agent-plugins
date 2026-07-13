@@ -9,7 +9,8 @@
  * ## Actions
  *
  * - `add`         — append a new task (optionally as a subtask via `parent`).
- * - `add_many`    — bulk append (one call, full plan).
+ * - `add_many`    — bulk append (one call, full plan). Accepts flat `titles`
+ *                   or a depth-2 `items` tree (`{title, children?}`).
  * - `update`      — change a task's title.
  * - `status`      — set status to todo/doing/done/canceled.
  * - `start`       — sugar for status=doing, with single-doing discipline.
@@ -67,11 +68,20 @@ const VALID_ACTIONS = new Set<Action>([
 const VALID_FILTERS = new Set(["all", "active", "done", "canceled"])
 const VALID_FORMATS = new Set(["text", "json"])
 
+/** One top-level node for tree-shaped `add_many` (`items`). */
+interface AddManyItem {
+  title: string
+  /** Optional subtask titles (depth 2 only: strings, not nested objects). */
+  children?: string[]
+}
+
 interface ParsedInput {
   action: Action
   id?: string | number
   title?: string
   titles?: string[]
+  /** Tree form for `add_many`. Mutually exclusive with `titles`. */
+  items?: AddManyItem[]
   parent?: string | number
   after?: string | number
   status?: TaskStatus
@@ -126,6 +136,62 @@ function validateInput(raw: Record<string, unknown>): Validation {
       return { ok: false, error: "every entry in `titles` must be a non-empty string" }
     }
     out.titles = raw.titles as string[]
+  }
+
+  // items (tree-shaped add_many: top-level + optional string children)
+  if (raw.items !== undefined) {
+    if (!Array.isArray(raw.items) || raw.items.length === 0) {
+      return { ok: false, error: "`items` must be a non-empty array of objects" }
+    }
+    const items: AddManyItem[] = []
+    for (let i = 0; i < raw.items.length; i++) {
+      const entry = raw.items[i]
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        return { ok: false, error: `every entry in \`items\` must be an object (index ${i})` }
+      }
+      const rec = entry as Record<string, unknown>
+      if (typeof rec.title !== "string" || rec.title.trim().length === 0) {
+        return {
+          ok: false,
+          error: `every entry in \`items\` must have a non-empty string \`title\` (index ${i})`,
+        }
+      }
+      const item: AddManyItem = { title: rec.title }
+      if (rec.children !== undefined) {
+        if (!Array.isArray(rec.children)) {
+          return {
+            ok: false,
+            error: `\`items[${i}].children\` must be an array of strings when present`,
+          }
+        }
+        if (rec.children.length === 0) {
+          return {
+            ok: false,
+            error: `\`items[${i}].children\` must be non-empty when present (omit it instead)`,
+          }
+        }
+        if (!rec.children.every((s) => typeof s === "string" && s.trim().length > 0)) {
+          return {
+            ok: false,
+            error: `every entry in \`items[${i}].children\` must be a non-empty string`,
+          }
+        }
+        // Depth-2 only: children are titles, not nested objects. Reject objects
+        // that would look like a deeper tree so models get a clear error.
+        item.children = rec.children as string[]
+      }
+      // Reject unknown nested keys that look like accidental depth-3 nesting.
+      if ("items" in rec || "parent" in rec) {
+        return {
+          ok: false,
+          error:
+            `\`items[${i}]\` only accepts \`title\` and optional \`children\` (string[]); ` +
+            `depth-2 nesting only`,
+        }
+      }
+      items.push(item)
+    }
+    out.items = items
   }
 
   // parent
@@ -222,12 +288,38 @@ function validateInput(raw: Record<string, unknown>): Validation {
     }
   }
 
+  // add_many: titles XOR items. parent only makes sense with flat titles.
+  if (action === "add_many") {
+    const hasTitles = out.titles !== undefined
+    const hasItems = out.items !== undefined
+    if (!hasTitles && !hasItems) {
+      return {
+        ok: false,
+        error: '`add_many` requires either `titles` (flat) or `items` (tree with optional children)',
+      }
+    }
+    if (hasTitles && hasItems) {
+      return {
+        ok: false,
+        error: "`titles` and `items` are mutually exclusive for action=\"add_many\"",
+      }
+    }
+    if (hasItems && out.parent !== undefined) {
+      return {
+        ok: false,
+        error:
+          "`parent` cannot be combined with `items` (the tree defines parents; use `children` instead)",
+      }
+    }
+  }
+
   return { ok: true, value: out }
 }
 
 const REQUIRED_FIELDS: Record<Action, readonly (keyof ParsedInput)[]> = {
   add: ["title"],
-  add_many: ["titles"],
+  // add_many: custom titles XOR items check above (not a single required field).
+  add_many: [],
   update: ["id", "title"],
   status: ["id", "status"],
   start: ["id"],
@@ -455,6 +547,26 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
 }
 
 function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
+  // Tree form: create each top-level parent, then its string children under it.
+  if (input.items !== undefined) {
+    const created: ReturnType<TaskStore["add"]>[] = []
+    for (const item of input.items) {
+      const parent = store.add({ title: item.title })
+      created.push(parent)
+      if (item.children !== undefined && item.children.length > 0) {
+        created.push(...store.addMany(item.children, { parent: parent.id }))
+      }
+    }
+    return ok(
+      store,
+      { kind: "added_many", count: created.length },
+      input.format,
+      undefined,
+      input.action,
+    )
+  }
+
+  // Flat form: optional shared parent for every title.
   let parentId: string | null = null
   if (input.parent !== undefined) {
     const parent = store.resolve(input.parent)
