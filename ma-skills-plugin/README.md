@@ -7,7 +7,7 @@ prompt + a `Skill` tool for on-demand load).
 
 Implements the open [Agent Skills][as] standard.
 
-[ma]: https://github.com/gastonmorixe/minimal-agent
+[ma]: https://github.com/gastonmorixe/minimal-agent-core
 [as]: https://agentskills.io
 
 ## What's an Agent Skill?

@@ -74,4 +74,6 @@ This plugin codifies the suppression rules as a system-prompt fragment so every 
 
 ## License
 
-MIT.
+Copyright (c) 2025–2026 Gaston Morixe. All rights reserved.
+
+Proprietary. See the repository [LICENSE](../LICENSE).

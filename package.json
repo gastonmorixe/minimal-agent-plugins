@@ -33,5 +33,11 @@
   },
   "overrides": {
     "brace-expansion": "^5.0.6"
+  },
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/gastonmorixe/minimal-agent-plugins",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gastonmorixe/minimal-agent-plugins.git"
   }
 }

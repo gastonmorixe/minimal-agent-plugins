@@ -4,7 +4,7 @@ A [minimal-agent][ma] plugin that lets the model read text aloud to the user
 through a swappable speech backend. The default backend wraps the macOS
 `say` command; the model never learns which engine is behind the tool.
 
-[ma]: https://github.com/gastonmorixe/minimal-agent
+[ma]: https://github.com/gastonmorixe/minimal-agent-core
 
 Three tools:
 

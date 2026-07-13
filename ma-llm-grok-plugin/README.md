@@ -1,6 +1,6 @@
 # ma-llm-grok-plugin
 
-First-class **Grok / xAI** provider for [minimal-agent](https://github.com/gastonmorixe/minimal-agent).
+First-class **Grok / xAI** provider for [minimal-agent](https://github.com/gastonmorixe/minimal-agent-core).
 
 Designed against the host architecture (not a Wafer-only copy): dual wire surfaces
 like OpenAI, device-code OAuth like OpenAI’s device strategy, session quotas like
