@@ -1,0 +1,59 @@
+name: Release
+
+# Stable releases only: push a `v*` tag (e.g. v0.1.0) whose semver matches
+# package.json `version`. Creates a GitHub release with generated notes (no
+# tarball — plugins are consumed as a git checkout / symlink tree).
+#
+#   bun run version -- set 0.1.0 --targets plugins --tag --push
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate tag matches package.json
+        id: meta
+        run: |
+          set -euo pipefail
+          VERSION="$(jq -r '.version' package.json)"
+          TAG="${GITHUB_REF#refs/tags/}"
+          LABEL="${TAG#v}"
+          if [[ -z "${VERSION}" || "${VERSION}" == "null" ]]; then
+            echo "could not read version from package.json" >&2
+            exit 1
+          fi
+          if [[ "${LABEL}" == *"-nightly."* ]]; then
+            echo "plugins repo does not publish nightlies; refusing ${TAG}" >&2
+            exit 1
+          fi
+          if [[ "${LABEL}" != "${VERSION}" ]]; then
+            echo "stable tag ${TAG} does not match package.json version ${VERSION}" >&2
+            exit 1
+          fi
+          {
+            echo "tag=${TAG}"
+            echo "name=minimal-agent-plugins ${TAG}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          generate_release_notes: true
+          prerelease: false
