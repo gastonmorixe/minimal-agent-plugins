@@ -53,10 +53,32 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Multiple task titles, created in order. Use for the initial plan dump at the start of a multi-step change. Required for: add_many."
+                "description": "Flat list of task titles, created in order. For add_many: provide either `titles` OR `items` (not both). Use `titles` for a flat plan; use `items` when some tasks need subtasks in the same call."
+              },
+              "items": {
+                "type": "array",
+                "description": "Tree form for add_many: one-shot plan with optional depth-2 children. Mutually exclusive with `titles`. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Cannot combine with `parent`.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "description": "Top-level task title."
+                    },
+                    "children": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Optional subtask titles under this parent (depth 2 only; strings, not nested objects)."
+                    }
+                  },
+                  "required": ["title"],
+                  "additionalProperties": false
+                }
               },
               "parent": {
-                "description": "Make this task a subtask of the given parent. Accepts the same shapes as `id`. Optional for: add, add_many."
+                "description": "Make this task a subtask of the given parent. Accepts the same shapes as `id`. Optional for: add, and for flat add_many with `titles`. Not allowed with tree `items`."
               },
               "after": {
                 "description": "Insert the new task immediately after this task instead of at the end. Top-level only. Optional for: add."
