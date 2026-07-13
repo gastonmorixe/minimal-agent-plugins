@@ -13,13 +13,41 @@
  *
  * Each test calls _resetForTests() to discard the singleton state.
  */
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import onBufferChanged from "./handlers/on_buffer_changed.ts"
 import onKey from "./handlers/on_key.ts"
 import type { CommandInfo, EventHandlerContext, HookHandlerContext } from "./lib/host-types.ts"
 import { stripSgr } from "./lib/palette.ts"
-import { _resetForTests, getFsmState } from "./lib/state.ts"
+import { _resetForTests, _setSkillsForTests, getFsmState } from "./lib/state.ts"
+import type { Item } from "./lib/types.ts"
+
+/** Hermetic skill fixtures — CI has no ~/.agents/skills. */
+const FIXTURE_SKILLS: Item[] = [
+  {
+    slug: "swiftui-pro",
+    description: "SwiftUI patterns",
+    category: "skl",
+    payload: { skillPath: "/fixture/swiftui-pro/SKILL.md" },
+  },
+  {
+    slug: "swiftui-liquid-glass",
+    description: "Liquid glass materials",
+    category: "skl",
+    payload: { skillPath: "/fixture/swiftui-liquid-glass/SKILL.md" },
+  },
+  {
+    slug: "swift-concurrency-expert",
+    description: "Swift concurrency",
+    category: "skl",
+    payload: { skillPath: "/fixture/swift-concurrency-expert/SKILL.md" },
+  },
+]
+
+beforeEach(() => {
+  _resetForTests()
+  _setSkillsForTests(FIXTURE_SKILLS)
+})
 
 afterEach(() => {
   _resetForTests()

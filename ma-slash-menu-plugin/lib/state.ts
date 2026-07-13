@@ -61,6 +61,17 @@ function skills(): Item[] {
 }
 
 /**
+ * Test hook: inject a fixed skills list (skips disk discovery). Pass `null`
+ * to clear and re-enable discovery on next {@link getItems}.
+ *
+ * Integration tests must not depend on the developer's `~/.agents/skills`
+ * (CI runners have none).
+ */
+export function _setSkillsForTests(items: Item[] | null): void {
+  cachedSkills = items
+}
+
+/**
  * Refresh the action items from the host's live command registry. Called by
  * each handler with `ctx.listCommands?.()` before it runs an FSM transition,
  * so the menu reflects the current command set. A no-op-safe `undefined`
