@@ -12,10 +12,7 @@ const tscBin = join(REPO, "node_modules", ".bin", "tsc")
 // that still pins typescript@6). Override with MA_DIAG_TSC_BIN. Never hardcode
 // a machine-local path.
 const overrideBin = process.env.MA_DIAG_TSC_BIN
-const bin =
-  overrideBin && existsSync(overrideBin)
-    ? overrideBin
-    : tscBin
+const bin = overrideBin && existsSync(overrideBin) ? overrideBin : tscBin
 
 function scratchDir(): string {
   return mkdtempSync(join(tmpdir(), "diag-tsc-direct-"))
@@ -81,21 +78,16 @@ describe("TscDirectProvider (real tsc)", () => {
       writeFileSync(join(dir, "src", "utils.ts"), `export const n = 1\n`)
       // Outside include on purpose — this is the ad-hoc case.
       const file = join(dir, "scratch.tsx")
-      writeFileSync(
-        file,
-        `import { n } from '@/utils'\nexport const el = <div>{n}</div>\n`,
-      )
+      writeFileSync(file, `import { n } from '@/utils'\nexport const el = <div>{n}</div>\n`)
       try {
         const p = new TscDirectProvider(bin, dir)
         const findings = await p.check(file, "")
         // Must not invent "jsx not set" or "cannot find @/utils"
         expect(findings.every((f) => f.code !== "TS17004")).toBe(true)
         expect(findings.every((f) => f.code !== "TS6142")).toBe(true)
-        expect(
-          findings.every(
-            (f) => !(f.code === "TS2307" && f.message.includes("@/utils")),
-          ),
-        ).toBe(true)
+        expect(findings.every((f) => !(f.code === "TS2307" && f.message.includes("@/utils")))).toBe(
+          true,
+        )
         expect(findings.every((f) => f.scope === "ad-hoc")).toBe(true)
       } finally {
         rmSync(dir, { recursive: true, force: true })
