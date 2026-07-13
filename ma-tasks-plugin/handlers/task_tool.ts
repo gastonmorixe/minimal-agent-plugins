@@ -32,7 +32,12 @@
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { renderTasksAgentBlock, type TaskModelMeta } from "../lib/model-render.ts"
-import { isTaskStatus, type Task, type TaskStatus } from "../lib/parse.ts"
+import {
+  isTaskStatus,
+  MAX_SUBTASKS_PER_PARENT,
+  type Task,
+  type TaskStatus,
+} from "../lib/parse.ts"
 import { type RenderAction, renderToolDisplay } from "../lib/render.ts"
 import { buildViews, TaskStore, TaskStoreError, type View } from "../lib/store.ts"
 
@@ -176,17 +181,27 @@ function validateInput(raw: Record<string, unknown>): Validation {
             error: `every entry in \`items[${i}].children\` must be a non-empty string`,
           }
         }
-        // Depth-2 only: children are titles, not nested objects. Reject objects
-        // that would look like a deeper tree so models get a clear error.
+        // Preflight max children (a–z) so we never create a parent then fail mid-write.
+        if (rec.children.length > MAX_SUBTASKS_PER_PARENT) {
+          return {
+            ok: false,
+            error:
+              `\`items[${i}].children\` has ${rec.children.length} entries; ` +
+              `max ${MAX_SUBTASKS_PER_PARENT} subtasks per parent`,
+          }
+        }
+        // Depth-2 only: children are titles, not nested objects.
         item.children = rec.children as string[]
       }
-      // Reject unknown nested keys that look like accidental depth-3 nesting.
-      if ("items" in rec || "parent" in rec) {
-        return {
-          ok: false,
-          error:
-            `\`items[${i}]\` only accepts \`title\` and optional \`children\` (string[]); ` +
-            `depth-2 nesting only`,
+      // Mirror manifest additionalProperties:false — only title + children.
+      for (const key of Object.keys(rec)) {
+        if (key !== "title" && key !== "children") {
+          return {
+            ok: false,
+            error:
+              `\`items[${i}]\` only accepts \`title\` and optional \`children\` (string[]); ` +
+              `unknown key "${key}"`,
+          }
         }
       }
       items.push(item)
@@ -288,7 +303,15 @@ function validateInput(raw: Record<string, unknown>): Validation {
     }
   }
 
-  // add_many: titles XOR items. parent only makes sense with flat titles.
+  // items is only meaningful for add_many (schema is flat; reject misuse).
+  if (out.items !== undefined && action !== "add_many") {
+    return {
+      ok: false,
+      error: `\`items\` is only valid for action="add_many" (got "${action}")`,
+    }
+  }
+
+  // add_many: titles XOR items. parent only with flat titles. after not supported.
   if (action === "add_many") {
     const hasTitles = out.titles !== undefined
     const hasItems = out.items !== undefined
@@ -309,6 +332,12 @@ function validateInput(raw: Record<string, unknown>): Validation {
         ok: false,
         error:
           "`parent` cannot be combined with `items` (the tree defines parents; use `children` instead)",
+      }
+    }
+    if (out.after !== undefined) {
+      return {
+        ok: false,
+        error: '`after` is only valid for action="add" (not add_many)',
       }
     }
   }
@@ -548,6 +577,7 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
 
 function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
   // Tree form: create each top-level parent, then its string children under it.
+  // children.length preflight lives in validateInput (before any write).
   if (input.items !== undefined) {
     const created: ReturnType<TaskStore["add"]>[] = []
     for (const item of input.items) {
@@ -575,6 +605,15 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
       return err(`parent "${input.parent}" is a subtask; depth-2 nesting is not allowed`)
     }
     parentId = parent.id
+    // Preflight: existing kids + new titles must fit a–z (avoid partial write).
+    const existingKids = store.list().filter((t) => t.parent === parentId).length
+    const incoming = input.titles!.length
+    if (existingKids + incoming > MAX_SUBTASKS_PER_PARENT) {
+      return err(
+        `parent "#${parentId}" would have ${existingKids + incoming} subtasks ` +
+          `(${existingKids} existing + ${incoming} new); max ${MAX_SUBTASKS_PER_PARENT}`,
+      )
+    }
   }
   const tasks = store.addMany(input.titles!, parentId ? { parent: parentId } : {})
   return ok(
