@@ -5,7 +5,7 @@
   "description": "Inline renders file/blob content in the response stream, without the model touching the bytes.",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

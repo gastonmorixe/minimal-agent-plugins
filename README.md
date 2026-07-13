@@ -61,8 +61,13 @@ directories; see each package's own `README.md`.
 ```bash
 bun install
 bun run check
-bun test
+bun test                 # whole-tree suite (root)
+bun run test:plugins     # per-package tests in parallel (bun --filter 'ma-*')
 ```
+
+This repo is a Bun workspace: every `ma-*-plugin` package is a workspace member.
+Toolchain versions live in `workspaces.catalog` at the root and are referenced
+as `"catalog:"` from root `devDependencies`. Bump once, `bun install`, done.
 
 Tests live next to the code they exercise (`foo.ts` ↔ `foo.test.ts`).
 

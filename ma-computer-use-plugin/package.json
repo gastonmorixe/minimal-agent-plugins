@@ -5,7 +5,7 @@
   "description": "External user plugin for minimal-agent: full control of the Mac via a signed Swift helper (Accessibility inspect/interact + CGEvent mouse/keyboard + ScreenCaptureKit), driven over a unix socket. Tool: Computer.",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

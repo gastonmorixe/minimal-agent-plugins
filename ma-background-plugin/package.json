@@ -5,7 +5,7 @@
   "description": "External user plugin for minimal-agent: background jobs. Run bash-like commands in the background, check status, read logs, and cancel, with durable logs colocated with session history.",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

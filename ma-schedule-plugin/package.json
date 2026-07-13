@@ -5,7 +5,7 @@
   "description": "Run prompts on a schedule: the ScheduleCron* tools, /loop and /schedule commands, and a heartbeat that injects due tasks between turns.",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

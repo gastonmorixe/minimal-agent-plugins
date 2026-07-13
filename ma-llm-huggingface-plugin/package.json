@@ -5,7 +5,7 @@
   "description": "External provider plugin for minimal-agent: HuggingFace Inference Providers (OpenAI-compatible gateway).",
   "type": "module",
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "bun run ../scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

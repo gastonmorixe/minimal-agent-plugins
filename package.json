@@ -2,13 +2,31 @@
   "name": "minimal-agent-plugins",
   "private": true,
   "version": "0.0.0",
+  "license": "UNLICENSED",
   "description": "External user plugins for minimal-agent. Each subdirectory is one plugin package.",
   "type": "module",
-  "workspaces": [
-    "ma-*-plugin"
-  ],
+  "homepage": "https://github.com/gastonmorixe/minimal-agent-plugins",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gastonmorixe/minimal-agent-plugins.git"
+  },
+  "workspaces": {
+    "packages": [
+      "ma-*-plugin"
+    ],
+    "catalog": {
+      "@biomejs/biome": "^2.5.3",
+      "bun-types": "^1.3.14",
+      "eslint-plugin-jsdoc": "^63.0.12",
+      "eslint-plugin-tsdoc": "^0.5.2",
+      "oxlint": "^1.73.0",
+      "oxlint-tsgolint": "^0.24.0",
+      "typescript": "^7.0.2"
+    }
+  },
   "scripts": {
     "test": "bun test",
+    "test:plugins": "bun run --parallel --elide-lines=20 --filter 'ma-*' test",
     "typecheck": "bun run scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
@@ -17,27 +35,22 @@
     "biome:check": "biome check .",
     "biome:fix": "biome check --write .",
     "imports": "biome check --write --formatter-enabled=false --linter-enabled=false .",
-    "check": "bun run scripts/check.ts"
+    "check": "bun run scripts/check.ts",
+    "workspaces:list": "bun pm ls --all"
   },
   "engines": {
     "bun": ">=1.4.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.3",
-    "bun-types": "^1.3.14",
-    "eslint-plugin-jsdoc": "^63.0.12",
-    "eslint-plugin-tsdoc": "^0.5.2",
-    "oxlint": "^1.73.0",
-    "oxlint-tsgolint": "^0.24.0",
-    "typescript": "^7.0.2"
+    "@biomejs/biome": "catalog:",
+    "bun-types": "catalog:",
+    "eslint-plugin-jsdoc": "catalog:",
+    "eslint-plugin-tsdoc": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:"
   },
   "overrides": {
     "brace-expansion": "^5.0.6"
-  },
-  "license": "UNLICENSED",
-  "homepage": "https://github.com/gastonmorixe/minimal-agent-plugins",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/gastonmorixe/minimal-agent-plugins.git"
   }
 }
