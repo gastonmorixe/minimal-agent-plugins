@@ -69,7 +69,7 @@ Tests live next to the code they exercise (`foo.ts` ↔ `foo.test.ts`).
 ## Related repositories
 
 - Core harness: [minimal-agent-core](https://github.com/gastonmorixe/minimal-agent-core)
-- Monorepo (pinned pair): [minimal-agent](https://github.com/gastonmorixe/minimal-agent-core)
+- Monorepo (pinned pair): [minimal-agent](https://github.com/gastonmorixe/minimal-agent)
 
 ## License
 
