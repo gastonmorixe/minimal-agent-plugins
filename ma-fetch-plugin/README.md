@@ -4,7 +4,7 @@ A [minimal-agent][ma] plugin that provides a `Fetch` tool - fetches web pages
 through a real JS-rendering headless browser and returns the content in your
 chosen format (markdown / text / html / links / raw).
 
-[ma]: https://github.com/gastonmorixe/minimal-agent
+[ma]: https://github.com/gastonmorixe/minimal-agent-core
 
 ## Architecture
 
@@ -150,7 +150,7 @@ A [minimal-agent][ma] plugin that provides a `Fetch` tool - fetches web pages
 through a real JS-rendering headless browser and returns the content in your
 chosen format (markdown / text / html / links / raw).
 
-[ma]: https://github.com/gastonmorixe/minimal-agent
+[ma]: https://github.com/gastonmorixe/minimal-agent-core
 
 ## Architecture
 

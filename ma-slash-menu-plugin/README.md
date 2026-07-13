@@ -320,4 +320,6 @@ menu open if the bus isn't wired).
 
 ## License
 
-MIT. Same as minimal-agent itself.
+Copyright (c) 2025–2026 Gaston Morixe. All rights reserved.
+
+Proprietary. See the repository [LICENSE](../LICENSE).

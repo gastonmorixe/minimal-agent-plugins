@@ -4,7 +4,7 @@ A [minimal-agent][ma] plugin that lets the model run shell commands in the
 **background**, check on them, read their output, and cancel them, without
 blocking the conversation. Logs are durable and colocated with session history.
 
-[ma]: https://github.com/gastonmorixe/minimal-agent
+[ma]: https://github.com/gastonmorixe/minimal-agent-core
 
 Four tools:
 

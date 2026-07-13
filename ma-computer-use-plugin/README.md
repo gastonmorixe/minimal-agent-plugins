@@ -7,7 +7,7 @@ Full control of the Mac for [minimal-agent][ma], in two layers:
 
 Exposes one tool: **`Computer`** (an `action` enum, like `ChromeCDP`).
 
-[ma]: https://github.com/gastonmorixe/minimal-agent
+[ma]: https://github.com/gastonmorixe/minimal-agent-core
 
 ## Architecture
 
