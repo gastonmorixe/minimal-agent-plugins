@@ -29,8 +29,8 @@ See the spec for the full grammar: <https://agentskills.io/specification>.
 ## Install
 
 ```bash
-git clone https://github.com/gastonmorixe/minimal-agent-plugins ~/Projects/minimal-agent-plugins
-ln -s ~/Projects/minimal-agent-plugins/ma-skills-plugin ~/.agents/plugins/ma-skills-plugin
+git clone https://github.com/gastonmorixe/minimal-agent-plugins.git
+ln -sfn "$PWD/ma-skills-plugin" ~/.agents/plugins/ma-skills-plugin
 ```
 
 Next time you launch minimal-agent, the plugin loader picks it up
