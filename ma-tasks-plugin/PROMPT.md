@@ -93,6 +93,18 @@ Task({
 })
 ```
 
+With subtasks in the same call:
+
+```
+Task({
+  action: "add_many",
+  items: [
+    { title: "Phase 1: Setup", children: ["step a", "step b"] },
+    { title: "Phase 2: Ship" }
+  ]
+})
+```
+
 Work through it:
 
 ```

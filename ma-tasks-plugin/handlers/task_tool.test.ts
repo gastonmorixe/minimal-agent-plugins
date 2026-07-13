@@ -124,6 +124,39 @@ describe("validation", () => {
     expect(r.is_error).toBe(true)
     expect(r.content).toMatch(/children/)
   })
+  test("rejects unknown keys on items entry", async () => {
+    const r = await call({
+      action: "add_many",
+      items: [{ title: "a", status: "done" }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/unknown key "status"|only accepts/)
+  })
+  test("rejects after with add_many", async () => {
+    const r = await call({
+      action: "add_many",
+      titles: ["a"],
+      after: 1,
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/`after`/)
+  })
+  test("rejects items on non-add_many actions", async () => {
+    const r = await call({ action: "list", items: [{ title: "x" }] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/items.*add_many|only valid for action="add_many"/)
+  })
+  test("rejects more than 26 children on items before any write", async () => {
+    const kids = Array.from({ length: 27 }, (_, i) => `c${i}`)
+    const r = await call({
+      action: "add_many",
+      items: [{ title: "parent", children: kids }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/max 26|26 subtasks/)
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(store.list()).toEqual([])
+  })
   test("rejects bad status value", async () => {
     const r = await call({ action: "status", id: 1, status: "pending" })
     expect(r.is_error).toBe(true)
@@ -269,6 +302,23 @@ describe("add_many", () => {
     const kids2 = tasks.filter((t) => t.parent === p2.id).map((t) => t.title)
     expect(kids1).toEqual(["1a work", "1b work"])
     expect(kids2).toEqual(["2a work"])
+  })
+  test("flat titles+parent preflight rejects overflow without partial write", async () => {
+    const r1 = await call({ action: "add", title: "parent" })
+    const id = extractFirstHash(r1.content!)
+    // Fill 26 children first.
+    const full = Array.from({ length: 26 }, (_, i) => `k${i}`)
+    const ok = await call({ action: "add_many", titles: full, parent: `#${id}` })
+    expect(ok.is_error).toBeUndefined()
+    const before = new TaskStore(sid, { home: tmpHome }).list().length
+    const overflow = await call({
+      action: "add_many",
+      titles: ["one-too-many"],
+      parent: `#${id}`,
+    })
+    expect(overflow.is_error).toBe(true)
+    expect(overflow.content).toMatch(/max 26|subtasks/)
+    expect(new TaskStore(sid, { home: tmpHome }).list()).toHaveLength(before)
   })
 })
 

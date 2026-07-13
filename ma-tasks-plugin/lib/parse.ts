@@ -185,6 +185,12 @@ export function newTopLevelId(rand: () => Buffer = () => randomBytes(3)): string
 }
 
 /**
+ * Max subtasks per parent (alpha suffix `a`–`z`). Shared by id gen and
+ * handler preflight so bulk `add_many` rejects before any partial write.
+ */
+export const MAX_SUBTASKS_PER_PARENT = 26
+
+/**
  * Generate a subtask id from a parent id and a 0-based child counter.
  * `0` → suffix `a`, `1` → `b`, ..., `25` → `z`. Throws on overflow.
  *
@@ -196,9 +202,9 @@ export function subtaskId(parentId: string, counter: number): string {
   if (!Number.isInteger(counter) || counter < 0) {
     throw new Error(`subtaskId: counter must be a non-negative integer (got ${counter})`)
   }
-  if (counter >= 26) {
+  if (counter >= MAX_SUBTASKS_PER_PARENT) {
     throw new Error(
-      `subtaskId: too many children of #${parentId} (max 26, requested index ${counter})`,
+      `subtaskId: too many children of #${parentId} (max ${MAX_SUBTASKS_PER_PARENT}, requested index ${counter})`,
     )
   }
   if (!/^[0-9a-f]{6}$/.test(parentId)) {
