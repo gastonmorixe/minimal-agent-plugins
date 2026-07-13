@@ -24,6 +24,7 @@ import { adaptLspDiagnostics } from "../adapters/lsp.ts"
 import { CircuitBreaker } from "../lib/circuit-breaker.ts"
 import { LspClient } from "../lib/lsp-client.ts"
 import type { DiagnosticProvider } from "../lib/provider.ts"
+import { isPathInTsconfigScope } from "../lib/tsconfig-scope.ts"
 import type { Finding } from "../lib/types.ts"
 
 const EXT_RE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
@@ -80,6 +81,15 @@ export class TsLspProvider implements DiagnosticProvider {
 
   handles(path: string): boolean {
     return EXT_RE.test(path)
+  }
+
+  /**
+   * True when `path` is listed in the project's tsconfig program. Prevents the
+   * service from treating clean in-project edits as out-of-scope and running
+   * `tsc --ignoreConfig` (which cannot resolve `@/` path aliases).
+   */
+  inScope(path: string): boolean {
+    return isPathInTsconfigScope(this.root, path)
   }
 
   /** Lazily boot (or reuse) the LSP child. Honors the breaker. */

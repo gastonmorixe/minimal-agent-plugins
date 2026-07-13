@@ -17,6 +17,7 @@
  */
 import { adaptTscOutput } from "../adapters/tsc.ts"
 import type { DiagnosticProvider } from "../lib/provider.ts"
+import { isPathInTsconfigScope } from "../lib/tsconfig-scope.ts"
 import type { Finding } from "../lib/types.ts"
 
 import { runCapture } from "./spawn.ts"
@@ -38,6 +39,15 @@ export class TscSpawnProvider implements DiagnosticProvider {
 
   handles(path: string): boolean {
     return EXT_RE.test(path)
+  }
+
+  /**
+   * True when `path` is listed in the project's tsconfig program. Drives the
+   * service's out-of-scope fallback: in-scope files must NOT fall through to
+   * `tsc --ignoreConfig`, which drops `paths` and invents TS2307 on `@/` aliases.
+   */
+  inScope(path: string): boolean {
+    return isPathInTsconfigScope(this.root, path)
   }
 
   async check(path: string, _text: string, signal?: AbortSignal): Promise<Finding[]> {

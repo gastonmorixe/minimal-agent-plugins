@@ -43,6 +43,7 @@ A project with none of these installed gets a silent no-op.
       "format": true,      // biome
       "lint": false,       // oxlint (startup-heavy; opt-in)
       "apple": true,       // sourcekit-lsp for Swift/Obj-C/C/C++
+      "outOfScope": { "enabled": true }, // ad-hoc tsc for files outside tsconfig
       "severityFloor": "warning",  // "error" | "warning" | "info"
       "maxInline": 8,      // cap findings shown/sent
       "timeoutMs": 2000    // per-provider ceiling
@@ -53,6 +54,20 @@ A project with none of these installed gets a silent no-op.
 
 Disable entirely: `plugins.diagnostics.enabled = false`, or
 `MINIMAL_AGENT_DIAGNOSTICS_DISABLED=1`.
+
+### Out-of-scope / path aliases / JSX
+
+When a type check returns clean **and** the file is outside the project's
+`tsconfig` include, the plugin can run an ad-hoc single-file `tsc` fallback
+(tagged `scope: "ad-hoc"`).
+
+That fallback **extends the nearest `tsconfig.json`** (temp config with
+`include: [this file]`) so `jsx`, `paths`, and other project options still
+apply. It does **not** use `--ignoreConfig` (that mode invented false
+TS17004 / TS6142 / TS2307 on React and `@/` imports).
+
+Type providers also implement `inScope()` (via `lib/tsconfig-scope.ts`) so
+in-project files never fall through to ad-hoc when the project check is clean.
 
 ## How it looks
 

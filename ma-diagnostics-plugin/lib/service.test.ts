@@ -59,8 +59,19 @@ function fakeProvider(
     dispose() {},
     // Fake type providers report out of scope by default, so the
     // isInTypeScope gate correctly lets the out-of-scope fallback fire.
+    // Override with opts.inScope when testing the in-scope skip path.
     ...(kind === "type" ? { inScope: () => false } : {}),
   }
+}
+
+function fakeProviderWithScope(
+  id: string,
+  kind: "type" | "lint" | "format" | "apple",
+  out: Finding[],
+  inScope: boolean,
+): DiagnosticProvider {
+  const base = fakeProvider(id, kind, out)
+  return { ...base, inScope: () => inScope }
 }
 
 function factories(map: Record<string, Finding[]>): ProviderFactories {
@@ -319,6 +330,34 @@ describe("DiagnosticsService", () => {
       expect(res.findings.map((d) => d.source)).toEqual(["tsc"])
       // No ad-hoc scope — the fallback never ran
       expect(res.findings.every((d) => d.scope !== "ad-hoc")).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("skips tsc-direct when the type provider reports the file in-scope (clean project file)", async () => {
+    // This is the path-alias regression: clean in-project files must not fall
+    // through to tsc --ignoreConfig, which invents TS2307 on @/ imports.
+    const root = project(["tsc"])
+    try {
+      const svc = new DiagnosticsService(root, DEFAULT_CONFIG, {
+        makeTsLsp: () => fakeProvider("tsgo", "type", []),
+        makeTsc: () => fakeProviderWithScope("tsc", "type", [], true),
+        makeTscDirect: () =>
+          fakeProvider("tsc-direct", "type", [
+            f({
+              source: "tsc-direct",
+              code: "TS2307",
+              message: "Cannot find module '@/lib/utils'",
+              scope: "ad-hoc",
+            }),
+          ]),
+        makeBiome: () => fakeProvider("biome", "format", []),
+        makeOxlint: () => fakeProvider("oxlint", "lint", []),
+        makeSourceKit: () => fakeProvider("sourcekit-lsp", "apple", []),
+      })
+      const res = await svc.check(join(root, "x.ts"), "code")
+      expect(res.findings).toEqual([])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
