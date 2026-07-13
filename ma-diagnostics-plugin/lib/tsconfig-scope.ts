@@ -20,15 +20,7 @@
  */
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { createRequire } from "node:module"
-import {
-  dirname,
-  isAbsolute,
-  join,
-  normalize,
-  relative,
-  resolve,
-  sep,
-} from "node:path"
+import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path"
 
 /** Minimal surface of the classic (TS ≤ 6) TypeScript package we touch. */
 interface ClassicTsModule {
@@ -372,9 +364,9 @@ export function isPathInTsconfigScope(root: string, filePath: string): boolean {
   }
 
   // Lightweight include/exclude (TS 7 / no classic API / classic parse failed).
-  const configPath = findTsconfigUp(dirname(abs), root) ?? (existsSync(join(root, "tsconfig.json"))
-    ? join(root, "tsconfig.json")
-    : null)
+  const configPath =
+    findTsconfigUp(dirname(abs), root) ??
+    (existsSync(join(root, "tsconfig.json")) ? join(root, "tsconfig.json") : null)
   if (!configPath) return false
   const cfgRel = relative(rootAbs, configPath)
   if (cfgRel.startsWith("..")) return false
