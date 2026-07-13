@@ -106,7 +106,7 @@ Backend output:
          "backend": "obscura",
          "storageRoot": "~/.minimal-agent/sessions/fetch",  // optional override
          "obscura": {
-           "bin": "/Users/me/Projects/obscura/target/release/obscura"
+           "bin": "/path/to/obscura"
          },
          "defaults": {
            "format": "markdown",
@@ -320,7 +320,7 @@ MA_FETCH_URL="https://example.com" \
 MA_FETCH_FORMAT="markdown" \
 MA_FETCH_WAIT_UNTIL="domcontentloaded" \
 MA_FETCH_TIMEOUT_SEC="30" \
-MA_FETCH_BIN="/Users/me/Projects/obscura/target/release/obscura" \
+MA_FETCH_BIN="/path/to/obscura" \
 bun backends/obscura.ts
 ```
 
@@ -334,7 +334,7 @@ MA_FETCH_FORMAT="markdown" \
 MA_FETCH_WAIT_UNTIL="domcontentloaded" \
 MA_FETCH_TIMEOUT_SEC="30" \
 MA_FETCH_STORAGE_DIR="$HOME/.minimal-agent/sessions/fetch/smoke" \
-MA_FETCH_BIN="/Users/me/Projects/obscura/target/release/obscura" \
+MA_FETCH_BIN="/path/to/obscura" \
 bun backends/obscura.ts
 ```
 

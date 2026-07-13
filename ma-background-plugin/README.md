@@ -74,7 +74,7 @@ the command actually run, its live state, and the exact follow-up calls:
   │ $ bun run build && ./install.sh && ./run-tvos.sh
   │ “Build + install + run tvOS on real Apple TV”
   │ ● running · 0s · pid 4823 · times out in 10m
-  │ cwd ~/Projects/app
+  │ cwd ~/src/app
   │ log ~/.minimal-agent/sessions/<sid>.bgjobs/j13.log
   │ ▤ BackgroundLogs j13   ◎ BackgroundStatus j13   ■ BackgroundStop j13
   ╰

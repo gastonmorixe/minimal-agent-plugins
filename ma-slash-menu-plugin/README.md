@@ -61,7 +61,7 @@ ma-slash-menu-plugin/
 ## Quick start
 
 ```sh
-cd ~/Projects/minimal-agent-plugins/ma-slash-menu-plugin
+cd /path/to/minimal-agent-plugins/ma-slash-menu-plugin
 bun test                  # 74 tests, < 30ms
 bun run bin/preview.ts    # see every canonical visual state
 ```
