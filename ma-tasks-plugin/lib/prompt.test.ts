@@ -57,14 +57,18 @@ describe("tasks PROMPT.md canceled-vs-done guidance", () => {
   test("notes that parents with all-done children are done, not canceled", () => {
     const block = PROMPT.split(/^##\s/m).find((s) => /canceled[^\n]*abandoned/i.test(s))
     expect(block!).toMatch(/parent/i)
-    expect(block!).toMatch(/subtasks?\s+(?:are\s+)?all\s+`?done`?/i)
+    expect(block!).toMatch(/all-done children|last open child/i)
+    // Auto-promote is store-owned now — the prompt must not claim the model
+    // still has to mark the parent by hand.
+    expect(block!).toMatch(/auto-promot/i)
+    expect(block!).not.toMatch(/does not auto-promote/i)
   })
 
   test("recommends parent/subtask structure for multi-phase plans", () => {
     const block = PROMPT.split(/^##\s/m).find((s) => /canceled[^\n]*abandoned/i.test(s))
     expect(block!).toMatch(/parent\/subtask|parent.*subtask/i)
-    // Code example showing the pattern.
-    expect(block!).toMatch(/parent:\s*`?#\$\{/)
+    // Tree form via items+children (preferred over drip-feed parent: adds).
+    expect(block!).toMatch(/children:\s*\[/)
   })
 
   test('"## Don\'t" section repeats the canceled-vs-done warning', () => {

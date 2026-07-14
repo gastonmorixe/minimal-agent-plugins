@@ -32,12 +32,7 @@
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { renderTasksAgentBlock, type TaskModelMeta } from "../lib/model-render.ts"
-import {
-  isTaskStatus,
-  MAX_SUBTASKS_PER_PARENT,
-  type Task,
-  type TaskStatus,
-} from "../lib/parse.ts"
+import { isTaskStatus, MAX_SUBTASKS_PER_PARENT, type Task, type TaskStatus } from "../lib/parse.ts"
 import { type RenderAction, renderToolDisplay } from "../lib/render.ts"
 import { buildViews, TaskStore, TaskStoreError, type View } from "../lib/store.ts"
 
@@ -318,13 +313,14 @@ function validateInput(raw: Record<string, unknown>): Validation {
     if (!hasTitles && !hasItems) {
       return {
         ok: false,
-        error: '`add_many` requires either `titles` (flat) or `items` (tree with optional children)',
+        error:
+          "`add_many` requires either `titles` (flat) or `items` (tree with optional children)",
       }
     }
     if (hasTitles && hasItems) {
       return {
         ok: false,
-        error: "`titles` and `items` are mutually exclusive for action=\"add_many\"",
+        error: '`titles` and `items` are mutually exclusive for action="add_many"',
       }
     }
     if (hasItems && out.parent !== undefined) {
@@ -648,9 +644,10 @@ function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
   if (target === null) return err(`id "${input.id}" not found`)
   const updated = store.setStatus(target.id, input.status!, input.reason)
   if (updated === null) return err(`id "${input.id}" not found`)
-  // Special "ALL DONE" surface when the user transitions the last todo/doing
-  // top-level task to done. Subtask completion doesn't trigger it.
-  if (input.status === "done" && target.parent === null) {
+  // "ALL DONE" when every row is done. Parent↔child rollup means finishing
+  // the last open child can complete the whole plan too, so check stats
+  // regardless of whether the target was top-level or a subtask.
+  if (input.status === "done") {
     const s = store.stats()
     if (s.total > 0 && s.done === s.total) {
       return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
@@ -680,11 +677,10 @@ function doDone(store: TaskStore, input: ParsedInput): TUIResult {
   if (target === null) return err(`id "${input.id}" not found`)
   const updated = store.done(target.id)
   if (updated === null) return err(`id "${input.id}" not found`)
-  if (target.parent === null) {
-    const s = store.stats()
-    if (s.total > 0 && s.done === s.total) {
-      return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
-    }
+  // Same as doStatus: rollup can complete the plan via a last-child done.
+  const s = store.stats()
+  if (s.total > 0 && s.done === s.total) {
+    return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
   }
   return ok(store, { kind: "marked_done", hash: updated.id }, input.format, undefined, input.action)
 }

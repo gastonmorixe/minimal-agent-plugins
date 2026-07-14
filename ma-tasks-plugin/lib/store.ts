@@ -15,6 +15,14 @@
  * Subtask focus is independent of top-level focus (a subtask being
  * `doing` doesn't demote sibling subtasks unless explicitly asked).
  *
+ * ## Parent ↔ child done cascade / rollup
+ *
+ * `setStatus(id, "done")` (and the `done()` sugar) keeps trees consistent:
+ * parent → done cascades open children; last child → done promotes the
+ * parent when every sibling is also done. Canceled rows are never
+ * rewritten as done, and a canceled parent is never revived. See
+ * {@link TaskStore.setStatus}.
+ *
  * ## Position numbering
  *
  * Top-level tasks get a 1-indexed `n` re-derived on every read. Subtasks
@@ -445,6 +453,23 @@ export class TaskStore {
    *  - stamps `started_at` on FIRST entry into `doing` (preserves on repeat)
    *  - stamps `last_resumed_at` on EVERY entry into `doing`, clears on exit
    *  - accrues `active_ms += now − last_resumed_at` on every `doing → other`
+   *
+   * ## Parent ↔ child done cascade / rollup
+   *
+   * When the new status is `done`, the store keeps parent/child trees
+   * consistent in the same write (one `nowPair` sample for the whole
+   * mutation):
+   *
+   *  - **Parent → done** cascades open children (`todo` / `doing`) to
+   *    `done`. Children already `done` are left alone; `canceled`
+   *    children stay `canceled` (abandoned work is not rewritten as
+   *    finished).
+   *  - **Child → done** auto-promotes the parent to `done` when every
+   *    sibling is also `done`. A `canceled` sibling blocks promote.
+   *    A parent that is itself `canceled` is never revived.
+   *
+   * Other statuses (`todo` / `doing` / `canceled`) do not cascade —
+   * cancel/reopen stay explicit, one-row mutations.
    */
   setStatus(ref: string | number, status: TaskStatus, reason?: string | null): Task | null {
     const tasks = this.list()
@@ -455,8 +480,52 @@ export class TaskStore {
 
     const next = applyStatusTransition(target, status, nowIso, nowMs, reason)
     tasks[idx] = next
+
+    if (status === "done") {
+      this.applyDoneCascade(tasks, next, nowIso, nowMs)
+    }
+
     this.writeAll(tasks)
-    return next
+    // Re-read the target from the (possibly cascaded) array so the
+    // returned Task reflects any parent-side rollup that rewrote it.
+    return tasks.find((t) => t.id === next.id) ?? next
+  }
+
+  /**
+   * In-place parent/child consistency for a just-applied `done`
+   * transition. Mutates `tasks`; caller owns the write. See
+   * {@link setStatus} for the cascade rules.
+   */
+  private applyDoneCascade(tasks: Task[], target: Task, nowIso: string, nowMs: number): void {
+    if (target.parent === null) {
+      // Parent done → cascade open children. Canceled stays canceled.
+      for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i]
+        if (t.parent !== target.id) continue
+        if (t.status === "done" || t.status === "canceled") continue
+        tasks[i] = applyStatusTransition(t, "done", nowIso, nowMs)
+      }
+      return
+    }
+
+    // Child done → promote parent iff every sibling is done and the
+    // parent is not canceled (or already done).
+    const parentIdx = tasks.findIndex((t) => t.id === target.parent)
+    if (parentIdx < 0) return
+    const parent = tasks[parentIdx]
+    if (parent.status === "done" || parent.status === "canceled") return
+
+    let allDone = true
+    for (const t of tasks) {
+      if (t.parent !== parent.id) continue
+      if (t.status !== "done") {
+        allDone = false
+        break
+      }
+    }
+    if (allDone) {
+      tasks[parentIdx] = applyStatusTransition(parent, "done", nowIso, nowMs)
+    }
   }
 
   /**
