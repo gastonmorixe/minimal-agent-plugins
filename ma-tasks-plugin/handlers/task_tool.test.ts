@@ -247,21 +247,14 @@ describe("add_many", () => {
   test("items creates parents and children in one call", async () => {
     const r = await call({
       action: "add_many",
-      items: [
-        { title: "First task", children: ["Subtask of first"] },
-        { title: "Second task" },
-      ],
+      items: [{ title: "First task", children: ["Subtask of first"] }, { title: "Second task" }],
     })
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("added 3 tasks")
     const store = new TaskStore(sid, { home: tmpHome })
     const tasks = store.list()
     expect(tasks).toHaveLength(3)
-    expect(tasks.map((t) => t.title)).toEqual([
-      "First task",
-      "Subtask of first",
-      "Second task",
-    ])
+    expect(tasks.map((t) => t.title)).toEqual(["First task", "Subtask of first", "Second task"])
     const parent = tasks[0]
     const child = tasks[1]
     const sibling = tasks[2]
@@ -392,6 +385,40 @@ describe("status / start / done", () => {
     const r = await call({ action: "done", id: 2 })
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("ALL DONE")
+  })
+
+  test("last child done auto-promotes parent and can trigger ALL DONE", async () => {
+    // Single parent + two children: finishing both children should roll the
+    // parent up and leave the whole plan done → ALL DONE verb.
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["a", "b"] }],
+    })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.parent === null)!
+    await call({ action: "done", id: `#${parent.id}a` })
+    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("todo")
+    const r = await call({ action: "done", id: `#${parent.id}b` })
+    expect(r.is_error).toBeUndefined()
+    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")
+    expect(r.displayHeader).toContain("ALL DONE")
+  })
+
+  test("parent done cascades open children", async () => {
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["a", "b"] }],
+    })
+    // Keep a second top-level task so we don't hit ALL DONE and can assert
+    // the cascade verb is still "marked done".
+    await call({ action: "add", title: "other" })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.title === "Phase")!
+    const r = await call({ action: "done", id: `#${parent.id}` })
+    expect(r.is_error).toBeUndefined()
+    const kids = store.list().filter((t) => t.parent === parent.id)
+    expect(kids).toHaveLength(2)
+    expect(kids.every((t) => t.status === "done")).toBe(true)
   })
 })
 

@@ -386,6 +386,132 @@ describe("done()", () => {
 })
 
 // ---------------------------------------------------------------------------
+// Parent ↔ child done cascade / rollup
+// ---------------------------------------------------------------------------
+
+describe("done cascade + rollup", () => {
+  test("last child done auto-promotes parent when every sibling is done", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Phase 9" })
+    s.addMany(["a", "b", "c"], { parent: p.id })
+    s.done(`${p.id}a`)
+    s.done(`${p.id}b`)
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("todo")
+    s.done(`${p.id}c`)
+    const list = s.list()
+    expect(list.find((t) => t.id === p.id)!.status).toBe("done")
+    expect(list.find((t) => t.id === p.id)!.done_at).not.toBeNull()
+    expect(list.filter((t) => t.parent === p.id).every((t) => t.status === "done")).toBe(true)
+  })
+
+  test("child done does not promote parent while any sibling is still open", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.done(`${p.id}a`)
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("todo")
+    expect(s.list().find((t) => t.id === `${p.id}b`)!.status).toBe("todo")
+  })
+
+  test("a canceled sibling blocks auto-promote (all children must be done)", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.done(`${p.id}a`)
+    s.setStatus(`${p.id}b`, "canceled", "not needed")
+    // Not every child is done → parent stays put. Model marks parent explicitly.
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("todo")
+  })
+
+  test("does not revive a canceled parent when the last child finishes", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Abandoned phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.setStatus(p.id, "canceled", "user redirected")
+    s.done(`${p.id}a`)
+    s.done(`${p.id}b`)
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("canceled")
+  })
+
+  test("parent done cascades open children to done, leaves canceled children alone", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b", "c"], { parent: p.id })
+    s.start(`${p.id}a`)
+    s.setStatus(`${p.id}c`, "canceled", "dropped")
+    s.done(p.id)
+    const list = s.list()
+    expect(list.find((t) => t.id === p.id)!.status).toBe("done")
+    expect(list.find((t) => t.id === `${p.id}a`)!.status).toBe("done")
+    expect(list.find((t) => t.id === `${p.id}b`)!.status).toBe("done")
+    expect(list.find((t) => t.id === `${p.id}c`)!.status).toBe("canceled")
+    // Doing child accrued timing before leaving doing.
+    expect(list.find((t) => t.id === `${p.id}a`)!.last_resumed_at).toBeNull()
+  })
+
+  test("parent done is a no-op cascade when children are already done", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.done(`${p.id}a`)
+    s.done(`${p.id}b`) // auto-promotes parent
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("done")
+    // Explicit parent done again is fine / idempotent.
+    const again = s.done(p.id)
+    expect(again!.status).toBe("done")
+    expect(
+      s
+        .list()
+        .filter((t) => t.parent === p.id)
+        .every((t) => t.status === "done"),
+    ).toBe(true)
+  })
+
+  test("setStatus(_, 'done') on a child uses the same rollup as done()", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.setStatus(`${p.id}a`, "done")
+    s.setStatus(`${p.id}b`, "done")
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("done")
+  })
+
+  test("rollup is a single write (one now() sample for the whole cascade)", () => {
+    // Child b done → parent promote. Both transitions share the same nowPair
+    // sample so timestamps match and we don't re-enter deps.now mid-cascade.
+    const ticks = [
+      new Date(2026, 4, 20, 18, 0, 0), // add parent
+      new Date(2026, 4, 20, 18, 0, 0), // add a
+      new Date(2026, 4, 20, 18, 0, 0), // add b
+      new Date(2026, 4, 20, 18, 0, 5), // done a
+      new Date(2026, 4, 20, 18, 1, 0), // done b (+ parent rollup)
+    ]
+    let i = 0
+    let calls = 0
+    const s = new TaskStore(sid, {
+      home: tmpHome,
+      now: () => {
+        calls++
+        return ticks[Math.min(i++, ticks.length - 1)]
+      },
+      rand: () => Buffer.from([0xaa, 0xaa, 0xaa]),
+    })
+    const p = s.add({ title: "Phase" })
+    s.add({ title: "a", parent: p.id })
+    s.add({ title: "b", parent: p.id })
+    s.done(`${p.id}a`)
+    const before = calls
+    s.done(`${p.id}b`)
+    // One now() for the whole done+rollup mutation, not one per row.
+    expect(calls - before).toBe(1)
+    const parent = s.list().find((t) => t.id === p.id)!
+    const childB = s.list().find((t) => t.id === `${p.id}b`)!
+    expect(parent.status).toBe("done")
+    expect(parent.done_at).toBe(childB.done_at)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // remove()
 // ---------------------------------------------------------------------------
 
