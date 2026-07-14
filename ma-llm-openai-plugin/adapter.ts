@@ -37,6 +37,7 @@ import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import type { ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
 import { parseSse } from "./lib/sse-parser.ts"
 import { findOpenAIModelByTags, registerOpenAIModels } from "./models.ts"
+import { callOpenAIResponsesCompact, compactOutputToMessages } from "./responses/compact.ts"
 import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
 import {
   type OpenAIResponsesEvent,
@@ -190,6 +191,43 @@ export const openaiAdapter: ProviderAdapter = {
       if (modelId) recs.push({ role, modelId })
     }
     return recs
+  },
+
+  /**
+   * Remote history compaction via `POST /responses/compact` (API key) or
+   * ChatGPT-Codex OAuth sibling path. Only meaningful on the Responses
+   * surface; Chat Completions has no compact endpoint.
+   */
+  async compact(input, model, ctx) {
+    if (model.surfaceId !== "openai-responses") {
+      throw new Error(
+        `OpenAI compact: model ${model.id} surface "${model.surfaceId}" has no remote compact API`,
+      )
+    }
+    const auth = ctx.auth
+    if (auth.kind === "api-key" && !auth.key) {
+      throw new Error("OpenAI compact: missing api-key")
+    }
+    if (auth.kind === "oauth" && !auth.token) {
+      throw new Error("OpenAI compact: missing oauth token")
+    }
+    const headers = buildOpenAIHeaders({ auth })
+    const networkClient = ctx.networkClient as NetworkClient | undefined
+    if (!networkClient) {
+      throw new Error("OpenAI compact: missing ctx.networkClient")
+    }
+    const output = await callOpenAIResponsesCompact({
+      req: input.req,
+      model,
+      ctx,
+      headers,
+      networkClient,
+    })
+    return {
+      kind: "remote" as const,
+      replacementMessages: compactOutputToMessages(output),
+      rawOutput: output,
+    }
   },
 }
 

@@ -119,6 +119,27 @@ export interface ModelEntry {
 /** Host `ValidationResult` — identical to the vendored ProviderValidationResult. */
 export type ValidationResult = ProviderValidationResult
 
+/**
+ * Input for optional remote history compaction (OpenAI/Codex
+ * `POST /responses/compact`). Provider-owned; core passes a canonical
+ * request snapshot.
+ */
+export interface CompactInput {
+  req: import("./canonical-request.ts").CanonicalRequest
+}
+
+/** Result of a successful remote compact call. */
+export interface CompactResult {
+  /** Portable messages to replace model-facing history with. */
+  replacementMessages: Array<{
+    role: "user" | "assistant" | "system"
+    content: string
+  }>
+  kind: "remote" | "local"
+  /** Opaque wire items when the provider returned them. */
+  rawOutput?: unknown[]
+}
+
 /** Host `ProviderAdapter` — the adapter interface the provider implements. */
 export interface ProviderAdapter {
   id: string
@@ -134,4 +155,13 @@ export interface ProviderAdapter {
     ctx: import("./provider-auth.ts").RunContext,
   ): AsyncIterable<import("./canonical-events.ts").CanonicalEvent>
   recommendSubagentModels?(): SubagentModelRecommendation[]
+  /**
+   * Optional remote history compaction. OpenAI/Codex implement this via
+   * `POST /responses/compact`. Undefined ⇒ core uses local summarization.
+   */
+  compact?(
+    input: CompactInput,
+    model: ModelEntry,
+    ctx: import("./provider-auth.ts").RunContext,
+  ): Promise<CompactResult>
 }
