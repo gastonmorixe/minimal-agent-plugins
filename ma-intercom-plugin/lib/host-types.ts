@@ -290,11 +290,63 @@ export interface EventHandlerContext<TPayload = unknown> {
   stderr: NodeJS.WriteStream
   /** Boot-time agent identity. Optional only on the legacy back-compat path. */
   agent?: AgentContext
+  /** Frozen capability host (only declared namespaces populated). */
+  host?: PluginHost
 }
 
 export type EventHandler<TPayload = unknown> = (
   ctx: EventHandlerContext<TPayload>,
 ) => void | Promise<void>
+
+// ---------------------------------------------------------------------------
+// Hook handler context (editor.key, turn.willStart, ...)
+// ---------------------------------------------------------------------------
+
+/**
+ * Runtime context passed to a hooks[] handler. Mirror of the host's
+ * `HookHandlerContext`, narrowed to what mention + future intercom hooks use.
+ *
+ * Chain hooks (e.g. `turn.willStart`) receive `(payload, ctx)` and may return
+ * `{payload}` to rewrite or `{halt: true}` to veto. Broadcast-sync hooks
+ * (e.g. `editor.key`) mutate a mutable `result` on the payload in place.
+ */
+export interface HookHandlerContext {
+  /** Channel name being dispatched (e.g. "editor.key", "turn.willStart"). */
+  channel?: string
+  /** Absolute path to the plugin's own directory. */
+  packageDir?: string
+  /** The agent's current working directory. */
+  cwd: string
+  /** Plugin-scoped environment (includes MINIMAL_AGENT_PALETTE when set). */
+  env: Record<string, string>
+  /** Aborts on bus disposal. */
+  abort?: AbortSignal
+  /** Listener priority post-clamping. */
+  priority?: number
+  /**
+   * Emit on the agent bus. Routed by target channel shape (sync / async).
+   * Used by editor.key to fan out to editor.footer.set / editor.buffer.styles /
+   * editor.buffer.set.
+   */
+  emit: (channel: string, payload?: unknown) => void
+  stderr?: NodeJS.WriteStream
+  /** Boot-time agent identity. Optional only on the legacy back-compat path. */
+  agent?: AgentContext
+  /** Frozen capability host (only declared namespaces populated). */
+  host?: PluginHost
+}
+
+/**
+ * Result a chain-hook listener may return. `void` is pass-through.
+ * `{payload}` rewrites the threaded payload; `{halt: true}` short-circuits.
+ */
+export type ChainResult<T> =
+  | void
+  | { payload: T }
+  | { payload: T; halt: true }
+  | { halt: true; reason?: string }
+
+export type HookHandler = (payload: unknown, ctx: HookHandlerContext) => unknown
 
 // ---------------------------------------------------------------------------
 // Turn-attachment context (the `turnAttachments` manifest port)

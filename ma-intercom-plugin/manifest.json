@@ -125,12 +125,51 @@
       "color": "cyan"
     }
   ],
+  "hooks": [
+    {
+      "id": "on_key",
+      "channel": "editor.key",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/on_key.ts",
+        "export": "default"
+      },
+      "priority": 65
+    },
+    {
+      "id": "on_turn_will_start",
+      "channel": "turn.willStart",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/on_turn_will_start.ts",
+        "export": "default"
+      },
+      "priority": 50
+    }
+  ],
   "events": [
     {
       "id": "on_submit",
       "on": "prompt.submitted",
       "handler": { "type": "module", "path": "./handlers/on_submit.ts", "export": "default" }
+    },
+    {
+      "id": "on_buffer_changed",
+      "on": "editor.buffer.changed",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/on_buffer_changed.ts",
+        "export": "default"
+      }
     }
+  ],
+  "permissions": [
+    "hooks:editor.key",
+    "hooks:editor.buffer.changed",
+    "hooks:editor.footer.set",
+    "hooks:editor.buffer.styles",
+    "hooks:editor.buffer.set",
+    "hooks:turn.willStart"
   ],
   "liveAreaSlots": [
     {
