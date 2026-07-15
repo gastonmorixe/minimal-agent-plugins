@@ -350,7 +350,7 @@ describe("status / start / done", () => {
     expect(r.content).toContain("1  #")
     expect(r.content).toContain("canceled  x (user redirected)")
   })
-  test("start enforces single-doing discipline by default", async () => {
+  test("start keeps previously started tasks as doing", async () => {
     await call({ action: "add", title: "one" })
     await call({ action: "add", title: "two" })
     await call({ action: "start", id: 1 })
@@ -358,10 +358,10 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     const store = new TaskStore(sid, { home: tmpHome })
     const doings = store.list().filter((t) => t.status === "doing")
-    expect(doings).toHaveLength(1)
-    expect(doings[0].title).toBe("two")
+    expect(doings).toHaveLength(2)
+    expect(doings.map((t) => t.title).sort()).toEqual(["one", "two"])
   })
-  test("start parallel:true allows multiple doings", async () => {
+  test("start parallel:true still accumulates (compat no-op)", async () => {
     await call({ action: "add", title: "one" })
     await call({ action: "add", title: "two" })
     await call({ action: "start", id: 1 })

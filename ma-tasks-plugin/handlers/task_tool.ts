@@ -13,7 +13,7 @@
  *                   or a depth-2 `items` tree (`{title, children?}`).
  * - `update`      — change a task's title.
  * - `status`      — set status to todo/doing/done/canceled.
- * - `start`       — sugar for status=doing, with single-doing discipline.
+ * - `start`       — sugar for status=doing (keeps other doing tasks as doing).
  * - `done`        — sugar for status=done.
  * - `remove`      — delete a task (cascades to subtasks).
  * - `reorder`     — reorder top-level tasks.

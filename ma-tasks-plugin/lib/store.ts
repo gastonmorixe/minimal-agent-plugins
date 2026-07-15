@@ -7,13 +7,16 @@
  * objects and store-returned views. Below it: {@link parse.ts} is pure
  * (id generation, JSONL).
  *
- * ## Single-doing discipline
+ * ## Accumulating `doing` state
  *
- * `start(id)` flips a task to `doing` AND demotes any other top-level
- * `doing` back to `todo`. This keeps the user's progress meter
- * unambiguous: one focus at a time. Override with `{parallel: true}`.
- * Subtask focus is independent of top-level focus (a subtask being
- * `doing` doesn't demote sibling subtasks unless explicitly asked).
+ * `start(id)` flips a task to `doing` and leaves every other `doing` task
+ * alone. Started work stays started until it is explicitly `done`,
+ * `canceled`, or set back to `todo` via `status`. Multiple top-level tasks
+ * and sibling subtasks can be `doing` at once; the list is the history of
+ * what has been begun, not a single-focus cursor.
+ *
+ * The optional `{parallel}` flag on `start` is accepted for API
+ * compatibility and is a no-op (accumulation is always on).
  *
  * ## Parent ↔ child done cascade / rollup
  *
@@ -529,40 +532,22 @@ export class TaskStore {
   }
 
   /**
-   * Atomic "start working on this task" — flips it to `doing` AND (by
-   * default) demotes any sibling that was already `doing`.
+   * Atomic "start working on this task" — flips it to `doing`.
    *
-   * Discipline scope:
-   *  - target is top-level → demotes other top-level `doing` tasks back to `todo`.
-   *  - target is a subtask → demotes other `doing` SIBLINGS (same parent) back to `todo`.
-   *  - `parallel: true` skips the demotion step.
+   * Other tasks already in `doing` stay `doing`. `start` never demotes
+   * siblings or peers; leave `doing` only via `done`, `canceled`, or an
+   * explicit `status: "todo"`. That way the rendered list keeps every
+   * previously started row as started until it is finished or abandoned.
+   *
+   * `opts.parallel` is accepted for API compatibility and ignored.
    */
-  start(ref: string | number, opts: { parallel?: boolean } = {}): Task | null {
+  start(ref: string | number, _opts: { parallel?: boolean } = {}): Task | null {
     const tasks = this.list()
     const target = this.resolveFrom(ref, tasks)
     if (target === null) return null
     const { nowIso, nowMs } = this.nowPair()
 
-    if (!opts.parallel) {
-      // Demoted siblings: route through applyStatusTransition so their
-      // in-flight `active_ms` chunk gets accrued before flipping back to
-      // `todo`. Pre-v2 this was a plain `{...t, status: "todo"}` which
-      // silently discarded the time the sibling had spent in `doing`.
-      const scope = target.parent // null for top-level scope, parentId for subtask scope
-      for (let i = 0; i < tasks.length; i++) {
-        const t = tasks[i]
-        if (t.id === target.id) continue
-        if (t.parent === scope && t.status === "doing") {
-          tasks[i] = applyStatusTransition(t, "todo", nowIso, nowMs)
-        }
-      }
-    }
-
     const idx = tasks.indexOf(target)
-    // Re-find idx because `target` is the original; the slice that
-    // contains it may have been swapped via the demotion loop above only
-    // if the original was already demoted — which is impossible since we
-    // skip target via id-equality. So idx is still valid.
     const next = applyStatusTransition(target, "doing", nowIso, nowMs)
     tasks[idx] = next
     this.writeAll(tasks)

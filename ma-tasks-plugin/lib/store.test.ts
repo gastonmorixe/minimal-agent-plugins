@@ -338,39 +338,39 @@ describe("setStatus()", () => {
   })
 })
 
-describe("start() / single-doing discipline", () => {
+describe("start() / accumulating doing", () => {
   test("flips target to doing", () => {
     const s = withRand(["aaaaaa"])
     const t = s.add({ title: "x" })
     const u = s.start(t.id)
     expect(u!.status).toBe("doing")
   })
-  test("auto-demotes other top-level doing tasks", () => {
+  test("keeps other top-level doing tasks as doing", () => {
     const s = withRand(["aaaaaa", "bbbbbb"])
     const t1 = s.add({ title: "one", status: "doing" })
     s.add({ title: "two" })
     s.start(2)
     const list = s.list()
-    expect(list.find((t) => t.id === t1.id)!.status).toBe("todo")
+    expect(list.find((t) => t.id === t1.id)!.status).toBe("doing")
     expect(list.find((t) => t.id === "bbbbbb")!.status).toBe("doing")
   })
-  test("parallel: true skips demotion", () => {
+  test("parallel flag is a no-op (still accumulates)", () => {
     const s = withRand(["aaaaaa", "bbbbbb"])
     s.add({ title: "one", status: "doing" })
     s.add({ title: "two" })
     s.start(2, { parallel: true })
     expect(s.list().filter((t) => t.status === "doing")).toHaveLength(2)
   })
-  test("subtask doing demotes sibling doings only, not top-level", () => {
+  test("subtask start keeps sibling and parent doings", () => {
     const s = withRand(["aaaaaa", "bbbbbb"])
     const p = s.add({ title: "parent", status: "doing" })
     s.addMany(["c1", "c2"], { parent: p.id })
-    // Start subtask c1 (suffix a) — should NOT demote the parent
+    // Start subtask c1 (suffix a), then c2 — neither demotes the other or parent
     s.setStatus(`${p.id}a`, "doing")
     s.start(`${p.id}b`)
     const list = s.list()
     expect(list.find((t) => t.id === p.id)!.status).toBe("doing")
-    expect(list.find((t) => t.id === `${p.id}a`)!.status).toBe("todo")
+    expect(list.find((t) => t.id === `${p.id}a`)!.status).toBe("doing")
     expect(list.find((t) => t.id === `${p.id}b`)!.status).toBe("doing")
   })
 })
@@ -854,13 +854,13 @@ describe("TaskStore — duration accrual through public methods", () => {
     expect(done!.last_resumed_at).toBeNull()
   })
 
-  test("start() demotion path accrues sibling's active_ms before flipping to todo", () => {
+  test("start() keeps prior doing tasks doing (no demotion, no accrual pause)", () => {
     // Sequence: add A → add B → start A → start B. Four mutations,
-    // four ticks. start B fires the demote of A which accrues at t3.
+    // four ticks. start B must leave A in doing with its timer running.
     const t0 = new Date(2026, 4, 20, 18, 0, 0) // add A
     const t1 = new Date(2026, 4, 20, 18, 0, 0) // add B
     const t2 = new Date(2026, 4, 20, 18, 0, 0) // start A (A enters doing)
-    const t3 = new Date(2026, 4, 20, 18, 0, 5) // start B (demotes A, +5s)
+    const t3 = new Date(2026, 4, 20, 18, 0, 5) // start B (A stays doing)
     let i = 0
     const ticks = [t0, t1, t2, t3]
     const s = new TaskStore(sid, {
@@ -880,15 +880,13 @@ describe("TaskStore — duration accrual through public methods", () => {
     const a = s.add({ title: "A" })
     const b = s.add({ title: "B" })
     s.start(a.id)
-    s.start(b.id) // demotes A back to todo, accruing its 5s
+    s.start(b.id) // A stays doing; no accrual pause
     const post = s.list()
     const aPost = post.find((t) => t.id === a.id)!
     const bPost = post.find((t) => t.id === b.id)!
-    expect(aPost.status).toBe("todo")
-    expect(aPost.active_ms).toBe(5_000)
-    expect(aPost.last_resumed_at).toBeNull()
-    // started_at on A is preserved across the demote — useful for showing
-    // "this task was first started at 18:00:00" even after a pause.
+    expect(aPost.status).toBe("doing")
+    expect(aPost.active_ms).toBe(0)
+    expect(aPost.last_resumed_at).not.toBeNull()
     expect(aPost.started_at).not.toBeNull()
     expect(bPost.status).toBe("doing")
     expect(bPost.last_resumed_at).not.toBeNull()

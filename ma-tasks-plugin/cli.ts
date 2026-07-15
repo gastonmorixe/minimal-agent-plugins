@@ -32,7 +32,7 @@
  *   --home <path>                     Override the HOME dir (default: $HOME). Tasks file
  *                                     lives at <home>/.minimal-agent/sessions/<sid>.tasks.jsonl.
  *   --parent <id>                     For `add`: make this a subtask of <id>.
- *   --parallel                        For `start`: don't demote sibling doings.
+ *   --parallel                        For `start`: accepted for compatibility (no-op; start accumulates).
  *   --force                           For `clear`: override the doing refusal.
  *   --no-color                        Disable ANSI colors.
  *   -f, --format text|json            Output format for `list`/`status`/etc. (default: text)
@@ -159,7 +159,7 @@ Flags:
   --sid <sid>                       Session id (default: $MINIMAL_AGENT_SESSION_ID)
   --home <path>                     Override HOME (default: $HOME)
   --parent <id>                     For 'add': make this a subtask of <id>.
-  --parallel                        For 'start': don't demote sibling doings.
+  --parallel                        For 'start': accepted for compatibility (no-op; start accumulates).
   --force                           For 'clear': override the doing refusal.
   --no-color                        Disable ANSI colors.
   -f, --format text|json            Output format (default: text)
