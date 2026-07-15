@@ -1,0 +1,8 @@
+{
+  "id": "clinepass",
+  "name": "LLM Provider: ClinePass",
+  "version": "0.1.0",
+  "description": "ClinePass subscription models via Cline's OpenAI-compatible Chat Completions API (api.cline.bot). API key or WorkOS device-code OAuth.",
+  "entry": "./index.ts",
+  "export": "clinepassProviderPlugin"
+}
