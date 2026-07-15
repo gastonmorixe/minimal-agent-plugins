@@ -113,7 +113,7 @@
               },
               "parallel": {
                 "type": "boolean",
-                "description": "For `start`: when true, skip auto-demoting sibling `doing` tasks. Default false (single-doing discipline)."
+                "description": "For `start`: accepted for compatibility. `start` always keeps other `doing` tasks as `doing` (no demotion)."
               },
               "force": {
                 "type": "boolean",

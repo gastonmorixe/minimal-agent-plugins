@@ -61,7 +61,7 @@ per line, order = display order.
 | `add_many`  | `titles[]` **or** `items[]` | `parent` (with flat `titles` only) |
 | `update`    | `id`, `title`      |                                   |
 | `status`    | `id`, `status`     | `reason` (for canceled)           |
-| `start`     | `id`               | `parallel` (allow sibling doing)  |
+| `start`     | `id`               | `parallel` (compat no-op; start always accumulates) |
 | `done`      | `id`               |                                   |
 | `remove`    | `id`               |                                   |
 | `reorder`   | `order[]` (ids)    |                                   |

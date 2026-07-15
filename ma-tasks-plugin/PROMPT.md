@@ -18,7 +18,7 @@ Use `Task` to plan and track multi-step work the user can watch in real time. Th
 ## Workflow
 
 1. **Plan in one shot.** `Task({action: "add_many", titles: [...]})` at the start, or `items: [{title, children?}]` when you need subtasks in the same call (`titles` XOR `items`; children are `string[]` only). Don't drip-feed tasks one at a time. The user wants to see the whole plan up front.
-2. **Start before you work.** `Task({action: "start", id: N})` flips the task to `doing` AND demotes any other `doing` task back to `todo` (single-focus discipline). The user's progress meter stays unambiguous. Use `parallel: true` only if you genuinely have two tasks in flight at once (rare).
+2. **Start before you work.** `Task({action: "start", id: N})` flips the task to `doing` and leaves every previously started task as `doing`. Started work stays started until you mark it `done`, `canceled`, or explicitly set it back to `todo`. Multiple tasks and subtasks can be `doing` at once.
 3. **Done when materially complete.** `Task({action: "done", id: N})`. Don't pre-mark. Only mark `done` when you've actually finished the work the title described. Last open child auto-promotes its parent; parent `done` cascades open children (no second call).
 4. **New substeps surface as you work.** If you discover a task is actually 3 substeps, `Task({action: "add", title: "...", parent: "#<hash>"})` for each. Then `start` the first child.
 5. **Plans change.** If the user redirects, don't silently abandon tasks:
@@ -136,5 +136,5 @@ Task({action: "status", id: 6, status: "canceled", reason: "user wants to keep t
 - Don't echo the rendered task list back to the user as prose. They see the rich rendering in the transcript already. Restating in markdown is noise.
 - Don't `remove` a task as a way of "cleaning up". That erases the audit trail. Use `status: "canceled"` for anything that materially existed but was later abandoned. Only `remove` tasks you accidentally added or that the user explicitly asks to drop.
 - Don't reach for `canceled` when you mean `done`. If a phase header, parent task, or planning placeholder has no direct work of its own but the work under it finished, it is `done` (auto-promoted when the last child finishes). See "`canceled` is 'abandoned', not 'done'" above.
-- Don't fight the single-doing discipline with `parallel: true` unless you genuinely have parallel work. The discipline is the point. The user reads the meter as "where is the agent right now".
+- Don't demote a started task back to `todo` just because you started another one. `start` already accumulates. Only leave `doing` via `done`, `canceled`, or an intentional `status: "todo"`.
 - Don't try to nest beyond depth 2 (subtask of a subtask). `Task` refuses it. Flatten the deepest layer into the parent's title or split into a sibling top-level task.
