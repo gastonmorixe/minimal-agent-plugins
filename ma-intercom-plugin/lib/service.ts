@@ -202,15 +202,32 @@ export type ResolvePeer =
       readonly candidates: string[]
     }
 
+/**
+ * Does a peer's display name match a normalized ref?
+ * Case-insensitive exact or prefix match (same spirit as sidMatchesRef).
+ */
+function nameMatchesRef(name: string | undefined, normalizedRef: string): boolean {
+  if (!name || normalizedRef.length === 0) return false
+  const lower = name.toLowerCase()
+  return lower === normalizedRef || lower.startsWith(normalizedRef)
+}
+
 /** Resolve a peer reference against the live roster. */
 export function resolvePeer(deps: ServiceDeps, ref: string): ResolvePeer {
   const norm = normalizePeerRef(ref)
   if (norm.length === 0) return { ok: false, reason: "not-found", candidates: [] }
   const roster = loadRoster(deps, { excludeSelf: false })
-  const matches = roster.filter((row) => sidMatchesRef(row.record.sid, norm))
+  // Match by full/prefix sid OR by display name (exact or prefix, case-insensitive).
+  const matches = roster.filter(
+    (row) => sidMatchesRef(row.record.sid, norm) || nameMatchesRef(row.record.name, norm),
+  )
   if (matches.length === 0) return { ok: false, reason: "not-found", candidates: [] }
   if (matches.length > 1) {
-    return { ok: false, reason: "ambiguous", candidates: matches.map((m) => m.record.short) }
+    return {
+      ok: false,
+      reason: "ambiguous",
+      candidates: matches.map((m) => m.record.name ?? m.record.short),
+    }
   }
   const row = matches[0] as RosterRow
   if (row.record.sid === deps.self.sid) {
