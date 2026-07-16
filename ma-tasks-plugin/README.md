@@ -70,14 +70,15 @@ per line, order = display order.
 
 Every action returns the post-mutation task state in model-facing `content` as a `<ma::agent::tasks>` columnar table. It also returns the rendered list in `display` so the TUI shows the new state after every change.
 
-### Parent ↔ child done cascade
+### Parent ↔ child lifecycle rollup
 
-`done` / `status: "done"` keeps trees consistent in one write:
+The store keeps trees consistent in one write:
 
+- **Child → doing** auto-starts a `todo` or previously `done` parent.
+- **Child → done** keeps/marks the parent `doing` while siblings remain open.
+- **Last child → done** auto-promotes the parent when every sibling is also `done`. A canceled sibling blocks promote.
 - **Parent → done** cascades open children (`todo` / `doing`) to `done`. `canceled` children stay canceled.
-- **Last child → done** auto-promotes the parent when every sibling is also `done`. A canceled sibling blocks promote; a canceled parent is never revived.
-
-Other statuses do not cascade.
+- A canceled parent is never revived automatically.
 
 ## Id formats accepted
 

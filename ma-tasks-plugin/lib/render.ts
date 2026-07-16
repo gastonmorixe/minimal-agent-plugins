@@ -197,19 +197,26 @@ export function taskActiveMs(t: Task, nowEpochMs: number): number {
 }
 
 /**
- * Compute the duration text for a TOP-LEVEL row, which is the task's
- * own active_ms PLUS the sum of its subtasks' active_ms (each computed
- * live). Subtasks running in parallel inside one parent are SUMMED (no
- * wall-clock clamp): if the user genuinely had two children running
- * concurrently, the parent line shows the work-equivalent, which reads
- * more faithfully than the wall-clock span on a busy phase.
+ * Compute the duration text for a TOP-LEVEL row. A parent may now be
+ * auto-started with its first child, so blindly adding parent + child time
+ * would double-count the same interval. Use the larger of:
+ *
+ *  - the parent's own live active time (phase wall-clock span), and
+ *  - the sum of its children's live active time (work-equivalent when
+ *    children overlap).
+ *
+ * A top-level task without children keeps its normal per-task duration.
  */
 function topLevelTotalMs(v: View, allTasks: readonly Task[], nowEpochMs: number): number {
-  let total = taskActiveMs(v.task, nowEpochMs)
+  const ownMs = taskActiveMs(v.task, nowEpochMs)
+  let childMs = 0
+  let hasChildren = false
   for (const child of allTasks) {
-    if (child.parent === v.task.id) total += taskActiveMs(child, nowEpochMs)
+    if (child.parent !== v.task.id) continue
+    hasChildren = true
+    childMs += taskActiveMs(child, nowEpochMs)
   }
-  return total
+  return hasChildren ? Math.max(ownMs, childMs) : ownMs
 }
 
 /**

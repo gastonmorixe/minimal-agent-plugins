@@ -18,12 +18,12 @@
  * The optional `{parallel}` flag on `start` is accepted for API
  * compatibility and is a no-op (accumulation is always on).
  *
- * ## Parent ↔ child done cascade / rollup
+ * ## Parent ↔ child lifecycle rollup
  *
- * `setStatus(id, "done")` (and the `done()` sugar) keeps trees consistent:
- * parent → done cascades open children; last child → done promotes the
- * parent when every sibling is also done. Canceled rows are never
- * rewritten as done, and a canceled parent is never revived. See
+ * Starting or partially completing a child starts its parent. Finishing
+ * the last open child completes the parent, and completing a parent
+ * cascades to its open children. Canceled rows are never rewritten as
+ * done, and a canceled parent is never revived. See
  * {@link TaskStore.setStatus}.
  *
  * ## Position numbering
@@ -457,22 +457,22 @@ export class TaskStore {
    *  - stamps `last_resumed_at` on EVERY entry into `doing`, clears on exit
    *  - accrues `active_ms += now − last_resumed_at` on every `doing → other`
    *
-   * ## Parent ↔ child done cascade / rollup
+   * ## Parent ↔ child lifecycle rollup
    *
-   * When the new status is `done`, the store keeps parent/child trees
-   * consistent in the same write (one `nowPair` sample for the whole
-   * mutation):
+   * The store keeps parent/child trees consistent in the same write (one
+   * `nowPair` sample for the whole mutation):
    *
    *  - **Parent → done** cascades open children (`todo` / `doing`) to
    *    `done`. Children already `done` are left alone; `canceled`
    *    children stay `canceled` (abandoned work is not rewritten as
    *    finished).
+   *  - **Child → doing** auto-starts a `todo` / `done` parent.
    *  - **Child → done** auto-promotes the parent to `done` when every
-   *    sibling is also `done`. A `canceled` sibling blocks promote.
-   *    A parent that is itself `canceled` is never revived.
+   *    sibling is also `done`; otherwise it auto-starts the parent so a
+   *    partially completed phase reads as in progress.
+   *  - A `canceled` parent is never revived automatically.
    *
-   * Other statuses (`todo` / `doing` / `canceled`) do not cascade —
-   * cancel/reopen stay explicit, one-row mutations.
+   * Child `todo` / `canceled` transitions stay explicit one-row mutations.
    */
   setStatus(ref: string | number, status: TaskStatus, reason?: string | null): Task | null {
     const tasks = this.list()
@@ -486,6 +486,8 @@ export class TaskStore {
 
     if (status === "done") {
       this.applyDoneCascade(tasks, next, nowIso, nowMs)
+    } else if (status === "doing" && next.parent !== null) {
+      this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
     }
 
     this.writeAll(tasks)
@@ -516,7 +518,7 @@ export class TaskStore {
     const parentIdx = tasks.findIndex((t) => t.id === target.parent)
     if (parentIdx < 0) return
     const parent = tasks[parentIdx]
-    if (parent.status === "done" || parent.status === "canceled") return
+    if (parent.status === "canceled") return
 
     let allDone = true
     for (const t of tasks) {
@@ -528,7 +530,18 @@ export class TaskStore {
     }
     if (allDone) {
       tasks[parentIdx] = applyStatusTransition(parent, "done", nowIso, nowMs)
+    } else {
+      this.applyParentDoing(tasks, parent.id, nowIso, nowMs)
     }
+  }
+
+  /** Auto-start a parent unless it is already doing or explicitly canceled. */
+  private applyParentDoing(tasks: Task[], parentId: string, nowIso: string, nowMs: number): void {
+    const parentIdx = tasks.findIndex((t) => t.id === parentId)
+    if (parentIdx < 0) return
+    const parent = tasks[parentIdx]
+    if (parent.status === "doing" || parent.status === "canceled") return
+    tasks[parentIdx] = applyStatusTransition(parent, "doing", nowIso, nowMs)
   }
 
   /**
@@ -550,6 +563,9 @@ export class TaskStore {
     const idx = tasks.indexOf(target)
     const next = applyStatusTransition(target, "doing", nowIso, nowMs)
     tasks[idx] = next
+    if (next.parent !== null) {
+      this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
+    }
     this.writeAll(tasks)
     return next
   }

@@ -134,7 +134,7 @@ describe("renderBlock — trailing duration suffix", () => {
   })
 
   test("top-level row sums children's active_ms into its trailing duration", () => {
-    // Phase total = parent's own active_ms (0) + sum of children = 12 + 30 = 42s.
+    // Phase total = max(parent 0, sum of children 12 + 30) = 42s.
     const parent = task({ id: "p11111", title: "Phase", status: "done" })
     const c1 = task({
       id: "p11111a",
@@ -157,6 +157,28 @@ describe("renderBlock — trailing duration suffix", () => {
     expect(out).toContain("Phase  42s")
     expect(out).toContain("  12s")
     expect(out).toContain("  30s")
+  })
+
+  test("auto-started parent does not double-count time shared with its child", () => {
+    const resumedAt = new Date(FIXED_NOW_MS - 30_000).toISOString()
+    const parent = task({
+      id: "p11111",
+      title: "Phase",
+      status: "doing",
+      started_at: resumedAt,
+      last_resumed_at: resumedAt,
+    })
+    const child = task({
+      id: "p11111a",
+      parent: "p11111",
+      title: "Child",
+      status: "doing",
+      started_at: resumedAt,
+      last_resumed_at: resumedAt,
+    })
+    const out = plain([topView(parent, 1), subView(child, 0, 1)], stats({ total: 2, doing: 2 }))
+    expect(out).toContain("Phase  30s")
+    expect(out).not.toContain("Phase  1m 00s")
   })
 
   test("ANSI: doing-row duration is SKY+BOLD (matches ◐ icon + title family)", () => {
