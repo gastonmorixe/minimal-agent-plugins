@@ -12,7 +12,13 @@
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { livenessLabel } from "../lib/liveness.ts"
-import { renderInspectText, renderRosterDisplay, renderRosterText } from "../lib/render.ts"
+import {
+  renderInspectHeader,
+  renderInspectText,
+  renderPeersListHeader,
+  renderRosterDisplay,
+  renderRosterText,
+} from "../lib/render.ts"
 import { rosterCounts } from "../lib/roster.ts"
 import {
   ALL_INSPECT_SECTIONS,
@@ -22,18 +28,9 @@ import {
   resolvePeer,
   serviceDepsFromAgent,
 } from "../lib/service.ts"
-import { bold, dim, gray } from "../lib/style.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
-}
-
-/** Build the Peers list displayHeader: session count and reachable breakdown. */
-function peersHeader(rowsCount: number, online: number, busy: number, idle: number): string {
-  const parts: string[] = [`${rowsCount} session(s)`]
-  const reachable = online + busy + idle
-  if (reachable > 0 && reachable < rowsCount) parts.push(`${reachable} reachable`)
-  return gray(parts.join(dim(" · ")))
 }
 
 const VALID_SECTIONS = new Set<InspectSection>(ALL_INSPECT_SECTIONS)
@@ -61,6 +58,7 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
     const liveOnly = input.liveOnly === true
     const rows = loadRoster(deps, { excludeSelf: false, ...(liveOnly ? { liveOnly: true } : {}) })
     const counts = rosterCounts(rows)
+    const header = renderPeersListHeader(rows.length, counts.online, counts.busy, counts.idle)
     if (asJson) {
       const payload = rows.map((r) => ({
         short: r.record.short,
@@ -77,14 +75,16 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
       return {
         kind: "tool_result",
         content: JSON.stringify({ peers: payload, counts }, null, 2),
-        displayHeader: peersHeader(rows.length, counts.online, counts.busy, counts.idle),
+        displayHeader: header,
       }
     }
     return {
       kind: "tool_result",
       content: renderRosterText(rows, counts),
-      displayHeader: peersHeader(rows.length, counts.online, counts.busy, counts.idle),
+      displayHeader: header,
       display: renderRosterDisplay(rows),
+      // Empty footer keeps the last roster row as body (`│`), not on `╰`.
+      displayFooter: "",
     }
   }
 
@@ -109,17 +109,20 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
     }
     const include = resolveSections(input.include)
     const bundle = await inspectPeer(deps, res.row.record, include, ctx.host?.sessions)
+    const header = renderInspectHeader(res.row.record.short, res.row.record.name)
     if (asJson) {
       return {
         kind: "tool_result",
         content: JSON.stringify(bundle, null, 2),
-        displayHeader: gray(`inspect ${bold(res.row.record.short)}`),
+        displayHeader: header,
       }
     }
     return {
       kind: "tool_result",
+      // No `display`: the host frames the full model-facing inspect text so the
+      // deep-dive sections stay visible in the transcript (same as before).
       content: renderInspectText(bundle),
-      displayHeader: gray(`inspect ${bold(res.row.record.short)}`),
+      displayHeader: header,
     }
   }
 

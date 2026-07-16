@@ -106,11 +106,15 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
   // the HOST own framing, escaping, routing, and persistence to the session log.
   // This shell decides WHEN to notify; `toArrivalNotice` owns WHAT the notice
   // looks like (icon/title/color/rows/text), so presentation stays out of here.
+  // One toast per message so the header is always a clear `from Name (short)`,
+  // never a batch line like "2 new messages · A, B".
   if (result.fresh.length > 0) {
-    try {
-      ctx.emit?.("notification.emit", toArrivalNotice(result.fresh))
-    } catch {
-      // best-effort
+    for (const env of result.fresh) {
+      try {
+        ctx.emit?.("notification.emit", toArrivalNotice(env))
+      } catch {
+        // best-effort per message
+      }
     }
   }
 

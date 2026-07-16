@@ -7,8 +7,8 @@
 
 import { isMessageKind, type MessageKind } from "../lib/envelope.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import { renderSendDisplay, renderSendHeader } from "../lib/render.ts"
 import { send, serviceDepsFromAgent } from "../lib/service.ts"
-import { bold, cyan, gray, red } from "../lib/style.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
@@ -60,9 +60,6 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
     fromCwd: ctx.cwd,
   })
 
-  const kindGlyph = kind === "interrupt" ? red("◆") : cyan("◇")
-  const header = gray(`send ${kind} → ${outcome.scope}`)
-
   if (outcome.delivered.length === 0) {
     const why =
       outcome.skipped.map((s) => `${s.ref}: ${s.reason}`).join("; ") || "no reachable recipients"
@@ -70,11 +67,30 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
       kind: "tool_result",
       content: `Not delivered (${why}). Tip: run Peers to see who is online.`,
       is_error: true,
-      displayHeader: header,
+      displayHeader: renderSendHeader({
+        kind,
+        scope: outcome.scope,
+        delivered: outcome.delivered,
+        body,
+        isError: true,
+      }),
+      display: renderSendDisplay({
+        kind,
+        scope: outcome.scope,
+        delivered: outcome.delivered,
+        body,
+        isError: true,
+        errorNote: why,
+      }),
+      // Empty footer: host draws bare `╰` and keeps every body line as `│`.
+      // Without this, the last message line is rewritten onto the closer.
+      displayFooter: "",
     }
   }
 
-  const names = outcome.delivered.map((d) => d.short).join(", ")
+  const names = outcome.delivered
+    .map((d) => (d.name ? `${d.name} (${d.short})` : d.short))
+    .join(", ")
   const skipNote =
     outcome.skipped.length > 0
       ? ` (skipped ${outcome.skipped.map((s) => `${s.ref}: ${s.reason}`).join("; ")})`
@@ -86,7 +102,20 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
   return {
     kind: "tool_result",
     content: `Delivered ${kind} to ${outcome.delivered.length} session(s): ${names}.${skipNote}${wake} (envelope ${outcome.envelopeId})`,
-    displayHeader: header,
-    display: `${kindGlyph} ${bold(names)}\n\n${body}`,
+    displayHeader: renderSendHeader({
+      kind,
+      scope: outcome.scope,
+      delivered: outcome.delivered,
+      body,
+    }),
+    display: renderSendDisplay({
+      kind,
+      scope: outcome.scope,
+      delivered: outcome.delivered,
+      body,
+    }),
+    // Empty footer: host draws bare `╰` and keeps every body line as `│`.
+    // Without this, the last message line is rewritten onto the closer.
+    displayFooter: "",
   }
 }

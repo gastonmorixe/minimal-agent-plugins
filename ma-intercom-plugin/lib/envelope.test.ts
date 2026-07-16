@@ -128,6 +128,27 @@ describe("coerceEnvelope", () => {
     expect(back?.from.sid).toBe(FROM.sid)
   })
 
+  it("preserves optional from.name and clamps it; omits blank names", () => {
+    const named = buildEnvelope({
+      from: { ...FROM, name: "Sergio" },
+      to: "c",
+      scope: "c",
+      kind: "message",
+      body: "hi",
+    })
+    const back = coerceEnvelope(JSON.parse(serializeEnvelope(named).trim()))
+    expect(back?.from.name).toBe("Sergio")
+
+    const raw = JSON.parse(serializeEnvelope(named).trim()) as Record<string, unknown>
+    ;(raw.from as Record<string, unknown>).name = `  ${"A".repeat(60)}  `
+    const clamped = coerceEnvelope(raw)
+    expect(clamped?.from.name).toBe("A".repeat(48))
+
+    ;(raw.from as Record<string, unknown>).name = "   "
+    const blank = coerceEnvelope(raw)
+    expect(blank?.from.name).toBeUndefined()
+  })
+
   it("rejects objects missing id / body / kind / from.sid", () => {
     expect(coerceEnvelope({ body: "x", kind: "message", from: { sid: "s" } })).toBeNull() // no id
     expect(coerceEnvelope({ id: "i", kind: "message", from: { sid: "s" } })).toBeNull() // no body

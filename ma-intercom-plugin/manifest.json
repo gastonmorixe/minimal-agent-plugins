@@ -49,7 +49,7 @@
       },
       "handler": { "type": "module", "path": "./handlers/peers.ts", "export": "default" },
       "interactive": false,
-      "icon": "⇆",
+      "icon": "◎",
       "color": "cyan"
     },
     {
@@ -87,8 +87,8 @@
       },
       "handler": { "type": "module", "path": "./handlers/send.ts", "export": "default" },
       "interactive": false,
-      "icon": "⇆",
-      "color": "cyan"
+      "icon": "→",
+      "color": "magenta"
     },
     {
       "id": "inbox",
@@ -121,7 +121,7 @@
       },
       "handler": { "type": "module", "path": "./handlers/inbox.ts", "export": "default" },
       "interactive": false,
-      "icon": "⇆",
+      "icon": "↓",
       "color": "cyan"
     }
   ],

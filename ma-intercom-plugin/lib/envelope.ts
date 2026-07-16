@@ -30,6 +30,12 @@ export interface EnvelopeFrom {
   readonly host: string
   readonly cwd: string
   readonly model: string
+  /**
+   * Opt-in per-session agent display name (e.g. "Sergio"). OPTIONAL + absent when
+   * naming is off. Cosmetic only: arrival notices / inbox renderers prefer
+   * `Name (short)` when present, falling back to the short id alone.
+   */
+  readonly name?: string
 }
 
 /** One message. Appended verbatim (one JSON line) to `inbox/<to-sid>.jsonl`. */
@@ -143,6 +149,8 @@ export function coerceEnvelope(o: unknown): Envelope | null {
   // `from.sid` is identity AND a potential path component (reply addressing),
   // so apply the same path-traversal guard used for presence records.
   if (f === null || typeof f !== "object" || !isSafeSid(f.sid)) return null
+  const fromName =
+    typeof f.name === "string" && f.name.trim().length > 0 ? f.name.trim().slice(0, 48) : undefined
   const from: EnvelopeFrom = {
     sid: f.sid,
     short: typeof f.short === "string" ? f.short : shortId(f.sid),
@@ -150,6 +158,7 @@ export function coerceEnvelope(o: unknown): Envelope | null {
     host: typeof f.host === "string" ? f.host : "",
     cwd: typeof f.cwd === "string" ? f.cwd : "",
     model: typeof f.model === "string" ? f.model : "",
+    ...(fromName ? { name: fromName } : {}),
   }
   return {
     v: typeof r.v === "number" ? r.v : ENVELOPE_V,
