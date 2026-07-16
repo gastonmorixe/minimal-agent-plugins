@@ -13,11 +13,8 @@
  * @module plugins/diagnostics/lib/service
  */
 
-import { existsSync } from "node:fs"
-import { join } from "node:path"
-
 import type { DiagnosticsConfig } from "./config.ts"
-import { detectTools } from "./detect.ts"
+import { detectTools, resolveBinUp } from "./detect.ts"
 import { filterFindings, formatNote } from "./format-notes.ts"
 import type { DiagnosticProvider } from "./provider.ts"
 import { DiagnosticsRunner } from "./runner.ts"
@@ -97,10 +94,10 @@ export class DiagnosticsService {
 
     // Stash tsc bin for the out-of-scope fallback. The detection loop may have
     // skipped tsc when tsgo was present (suppressedBy), so probe the binary
-    // independently of detection.
+    // independently of detection. Walk ancestors so hoisted workspace installs
+    // still feed the ad-hoc fallback.
     if (!this.tscBin) {
-      const tscPath = join(this.root, "node_modules", ".bin", "tsc")
-      if (existsSync(tscPath)) this.tscBin = tscPath
+      this.tscBin = resolveBinUp("tsc", this.root)
     }
 
     return this.runner
