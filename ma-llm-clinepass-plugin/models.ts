@@ -57,6 +57,7 @@ interface BuiltinModel {
 /**
  * Full ClinePass catalog (10 models) as of Cline docs + generated catalog.
  * IDs must be sent exactly as listed.
+ * Kimi K3 not yet on ClinePass as of 2026-07-16 (docs.cline.bot/getting-started/clinepass).
  */
 const BUILTIN_MODELS: BuiltinModel[] = [
   {

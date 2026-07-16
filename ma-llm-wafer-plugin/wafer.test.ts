@@ -136,19 +136,15 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(adapter.displayName).toBe("Wafer")
   })
 
-  it("registers all 10 built-in models", () => {
+  it("registers all 6 built-in models", () => {
     setup()
     const ids = [
       "GLM-5.1",
       "GLM-5.2",
       "Kimi-K2.6",
-      "Kimi-K2.7-Code",
-      "Qwen3.5-397B-A17B",
-      "Qwen3.6-35B-A3B",
-      "qwen3.7-max",
-      "deepseek-v4-flash",
-      "deepseek-v4-pro",
       "MiniMax-M3",
+      "Qwen3.5-397B-A17B",
+      "glm5.2-fast",
     ]
     for (const id of ids) {
       const m = resolveModel(id)
@@ -189,9 +185,9 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     setup()
     const recs = waferAdapter.recommendSubagentModels?.() ?? []
     const byRole = new Map(recs.map((r) => [r.role, r.modelId]))
-    expect(byRole.get("scout")).toBe("deepseek-v4-flash")
+    expect(byRole.get("scout")).toBe("glm5.2-fast")
     expect(byRole.get("balanced")).toBe("GLM-5.1")
-    expect(byRole.get("deep")).toBe("deepseek-v4-pro")
+    expect(byRole.get("deep")).toBe("GLM-5.2")
   })
 
   it("has correct pricing for known models", () => {
@@ -200,26 +196,23 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(glm51.pricing.inputUSD).toBe(1.0) // 100 cents/mil = 1.0 USD/mil
     expect(glm51.pricing.outputUSD).toBe(3.2)
 
-    const dsFlash = resolveModel("deepseek-v4-flash")
-    expect(dsFlash.pricing.inputUSD).toBe(0.09) // 9 cents/mil
-    expect(dsFlash.pricing.outputUSD).toBe(0.18)
+    const glmFast = resolveModel("glm5.2-fast")
+    expect(glmFast.pricing.inputUSD).toBe(3.0) // 300 cents/mil
+    expect(glmFast.pricing.outputUSD).toBe(10.25)
 
-    const qwen37 = resolveModel("qwen3.7-max")
-    expect(qwen37.pricing.inputUSD).toBe(5.0) // 500 cents/mil
-    expect(qwen37.pricing.outputUSD).toBe(15.0)
+    const kimi = resolveModel("Kimi-K2.6")
+    expect(kimi.pricing.inputUSD).toBe(1.14) // 114 cents/mil
+    expect(kimi.pricing.outputUSD).toBe(4.8)
+    expect(kimi.pricing.cacheReadUSD).toBe(0.19)
 
-    // All 10 models pricing
+    // All 6 models pricing (live API 2026-07-16)
     const pricingTable: Record<string, { input: number; output: number }> = {
       "GLM-5.1": { input: 1.0, output: 3.2 },
       "GLM-5.2": { input: 1.2, output: 4.1 },
-      "Kimi-K2.6": { input: 0.68, output: 3.15 },
-      "Kimi-K2.7-Code": { input: 0.95, output: 4.0 },
-      "Qwen3.5-397B-A17B": { input: 0.43, output: 2.6 },
-      "Qwen3.6-35B-A3B": { input: 0.15, output: 1.0 },
-      "qwen3.7-max": { input: 5.0, output: 15.0 },
-      "deepseek-v4-flash": { input: 0.09, output: 0.18 },
-      "deepseek-v4-pro": { input: 1.2, output: 2.4 },
+      "Kimi-K2.6": { input: 1.14, output: 4.8 },
       "MiniMax-M3": { input: 0.33, output: 1.32 },
+      "Qwen3.5-397B-A17B": { input: 0.43, output: 2.6 },
+      "glm5.2-fast": { input: 3.0, output: 10.25 },
     }
     for (const [id, prices] of Object.entries(pricingTable)) {
       const m = resolveModel(id)
@@ -460,7 +453,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   })
 
   // ---------------------------------------------------------------------------
-  // Capability validation for all 10 models
+  // Capability validation for all 6 models
   // ---------------------------------------------------------------------------
 
   it("each model has correct capabilities", () => {
@@ -473,37 +466,31 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(glm51.capabilities.modalities.image).toBe(false)
     expect(glm51.capabilities.speedFast).toBe(false)
 
-    // GLM-5.2 — 1M context
-    expect(resolveModel("GLM-5.2").capabilities.contextWindow).toBe(1_048_576)
+    // GLM-5.2 — 1M context, flagship/deep
+    const glm52 = resolveModel("GLM-5.2")
+    expect(glm52.capabilities.contextWindow).toBe(1_048_576)
+    expect(glm52.tags).toContain("flagship")
+    expect(glm52.tags).toContain("deep")
 
     // Kimi-K2.6 — vision
     expect(resolveModel("Kimi-K2.6").capabilities.modalities.image).toBe(true)
     expect(resolveModel("Kimi-K2.6").capabilities.contextWindow).toBe(262_144)
 
-    // Kimi-K2.7-Code — no vision
-    expect(resolveModel("Kimi-K2.7-Code").capabilities.modalities.image).toBe(false)
+    // glm5.2-fast — cheap scout, speedFast
+    const glmFast = resolveModel("glm5.2-fast")
+    expect(glmFast.capabilities.contextWindow).toBe(1_048_576)
+    expect(glmFast.capabilities.speedFast).toBe(true)
+    expect(glmFast.tags).toContain("cheap")
+    expect(glmFast.tags).toContain("scout")
 
-    // Qwen3.6-35B-A3B — no reasoning
-    const qwen36 = resolveModel("Qwen3.6-35B-A3B")
-    expect(qwen36.capabilities.thinking.adaptive).toBe(false)
-    expect(qwen36.capabilities.effort.levels).toEqual([])
+    // Qwen3.5-397B-A17B — 262K context
+    expect(resolveModel("Qwen3.5-397B-A17B").capabilities.contextWindow).toBe(262_144)
 
-    // deepseek-v4-flash — cheap, 1M context
-    const dsFlash = resolveModel("deepseek-v4-flash")
-    expect(dsFlash.capabilities.contextWindow).toBe(1_000_000)
-    expect(dsFlash.tags).toContain("cheap")
-    expect(dsFlash.tags).toContain("scout")
-
-    // deepseek-v4-pro — flagship
-    const dsPro = resolveModel("deepseek-v4-pro")
-    expect(dsPro.capabilities.contextWindow).toBe(1_000_000)
-    expect(dsPro.tags).toContain("flagship")
-    expect(dsPro.tags).toContain("deep")
-
-    // MiniMax-M3 — interleaved thinking
+    // MiniMax-M3 — interleaved thinking + vision
     const mm3 = resolveModel("MiniMax-M3")
     expect(mm3.capabilities.thinking.interleaved).toBe(true)
     expect(mm3.capabilities.contextWindow).toBe(1_048_576)
+    expect(mm3.capabilities.modalities.image).toBe(true)
   })
 
   // ---------------------------------------------------------------------------
@@ -515,13 +502,9 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(fn("GLM-5.1")).toBe("5.1")
     expect(fn("GLM-5.2")).toBe("5.2")
     expect(fn("Kimi-K2.6")).toBe("K2.6")
-    expect(fn("Kimi-K2.7-Code")).toBe("K2.7-Code")
     expect(fn("Qwen3.5-397B-A17B")).toBe("3.5-397B-A17B")
-    expect(fn("Qwen3.6-35B-A3B")).toBe("3.6-35B-A3B")
-    expect(fn("qwen3.7-max")).toBe("3.7-max")
-    expect(fn("deepseek-v4-flash")).toBe("v4-flash")
-    expect(fn("deepseek-v4-pro")).toBe("v4-pro")
     expect(fn("MiniMax-M3")).toBe("M3")
+    expect(fn("glm5.2-fast")).toBe("5.2-fast")
   })
 
   // ---------------------------------------------------------------------------
@@ -579,7 +562,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
       },
     }
     registerWaferModels(spyModels)
-    expect(captured.length).toBe(10)
+    expect(captured.length).toBe(6)
     expect(captured[0]!.id).toBe("GLM-5.1")
     expect(captured[0]!.providerId).toBe("wafer")
     expect(captured[0]!.surfaceId).toBe("openai-chat-completions")
@@ -609,19 +592,15 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   // Model tags
   // ---------------------------------------------------------------------------
 
-  it("model tags are correct for all 10 models", () => {
+  it("model tags are correct for all 6 models", () => {
     setup()
     const tagChecks: Record<string, string[]> = {
       "GLM-5.1": ["reasoning", "balanced"],
-      "GLM-5.2": ["reasoning", "1m-context"],
+      "GLM-5.2": ["reasoning", "1m-context", "flagship", "deep"],
       "Kimi-K2.6": ["reasoning", "vision", "balanced"],
-      "Kimi-K2.7-Code": ["reasoning", "code"],
+      "MiniMax-M3": ["reasoning", "vision", "1m-context"],
       "Qwen3.5-397B-A17B": ["reasoning", "balanced"],
-      "Qwen3.6-35B-A3B": ["cheap"],
-      "qwen3.7-max": ["reasoning", "flagship"],
-      "deepseek-v4-flash": ["reasoning", "cheap", "scout"],
-      "deepseek-v4-pro": ["reasoning", "flagship", "deep"],
-      "MiniMax-M3": ["reasoning", "1m-context"],
+      "glm5.2-fast": ["reasoning", "cheap", "scout", "fast"],
     }
     for (const [id, expectedTags] of Object.entries(tagChecks)) {
       const m = resolveModel(id)

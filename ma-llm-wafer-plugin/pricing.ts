@@ -4,7 +4,7 @@
  * Wafer returns pricing in cents-per-million-tokens from `GET /v1/models`;
  * we convert to USD-per-million for the canonical `MTokRate` shape.
  * This file holds the statically-known rates for the built-in catalog.
- * Rates are sourced from the live API (2026-06-19 snapshot) and should be
+ * Rates are sourced from the live API (2026-07-16 snapshot) and should be
  * refreshed periodically.
  *
  * @module llm/providers/wafer/pricing
@@ -49,26 +49,26 @@ export const PRICING_GLM_5_2: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** Kimi-K2.6 — sparse MoE, 262K context, vision + tools + reasoning, ZDR: yes. */
-export const PRICING_KIMI_K2_6: MTokRate = {
-  inputUSD: usd(68),
-  outputUSD: usd(315),
-  cacheWriteUSD: usd(68),
-  cacheReadUSD: usd(7),
+/** glm5.2-fast — high-TPS GLM-5.2 SKU (live API 2026-07-16). */
+export const PRICING_GLM_5_2_FAST: MTokRate = {
+  inputUSD: usd(300),
+  outputUSD: usd(1025),
+  cacheWriteUSD: usd(300),
+  cacheReadUSD: usd(50),
   webSearchPerCallUSD: 0,
 }
 
-/** Kimi-K2.7-Code — coding-focused, reasoning always on, 262K context.
- *  ZDR: no, vision: no, tools: yes. */
-export const PRICING_KIMI_K2_7_CODE: MTokRate = {
-  inputUSD: usd(95),
-  outputUSD: usd(400),
-  cacheWriteUSD: usd(95),
+/** Kimi-K2.6 — sparse MoE, 262K context, vision + tools + reasoning. */
+export const PRICING_KIMI_K2_6: MTokRate = {
+  inputUSD: usd(114),
+  outputUSD: usd(480),
+  cacheWriteUSD: usd(114),
   cacheReadUSD: usd(19),
   webSearchPerCallUSD: 0,
 }
 
-/** Qwen3.5-397B-A17B — massive MoE, 262K context, ZDR: yes. */
+/** Qwen3.5-397B-A17B — massive MoE, 262K context.
+ *  Live API (2026-07-16) omitted pricing; keep last known static rates. */
 export const PRICING_QWEN3_5_397B: MTokRate = {
   inputUSD: usd(43),
   outputUSD: usd(260),
@@ -77,43 +77,7 @@ export const PRICING_QWEN3_5_397B: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** Qwen3.6-35B-A3B — small MoE, 256K context, ZDR: no. */
-export const PRICING_QWEN3_6_35B: MTokRate = {
-  inputUSD: usd(15),
-  outputUSD: usd(100),
-  cacheWriteUSD: usd(15),
-  cacheReadUSD: usd(2),
-  webSearchPerCallUSD: 0,
-}
-
-/** Qwen3.7-Max — premium Qwen, 256K context, ZDR: no. */
-export const PRICING_QWEN3_7_MAX: MTokRate = {
-  inputUSD: usd(500),
-  outputUSD: usd(1500),
-  cacheWriteUSD: usd(500),
-  cacheReadUSD: usd(50),
-  webSearchPerCallUSD: 0,
-}
-
-/** DeepSeek V4 Flash — 1M context, cheap + fast, ZDR: yes. */
-export const PRICING_DEEPSEEK_V4_FLASH: MTokRate = {
-  inputUSD: usd(9),
-  outputUSD: usd(18),
-  cacheWriteUSD: usd(9),
-  cacheReadUSD: usd(2),
-  webSearchPerCallUSD: 0,
-}
-
-/** DeepSeek V4 Pro — 1M context, flagship reasoning, ZDR: yes. */
-export const PRICING_DEEPSEEK_V4_PRO: MTokRate = {
-  inputUSD: usd(120),
-  outputUSD: usd(240),
-  cacheWriteUSD: usd(120),
-  cacheReadUSD: usd(10),
-  webSearchPerCallUSD: 0,
-}
-
-/** MiniMax-M3 — 1M context, inline <think> reasoning, ZDR: no. */
+/** MiniMax-M3 — 1M context, vision + inline <think> reasoning, ZDR: no. */
 export const PRICING_MINIMAX_M3: MTokRate = {
   inputUSD: usd(33),
   outputUSD: usd(132),

@@ -168,7 +168,7 @@ export interface CanonicalRequest {
    * `run()` resolves the model via `resolveModelForProvider(modelId, providerId)`
    * instead of the un-scoped global lookup. This disambiguates when two
    * providers register the same bare model ID (e.g. both OpenCode and
-   * Wafer serve `deepseek-v4-flash`).
+   * Wafer serve overlapping gateway slugs).
    */
   providerId?: string
 

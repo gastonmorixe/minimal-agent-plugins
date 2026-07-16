@@ -29,20 +29,38 @@ export const PRICING_HF_GPT_OSS_120B: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** deepseek-ai/DeepSeek-V3 via HuggingFace (representative pricing). */
-export const PRICING_HF_DEEPSEEK_V3: MTokRate = {
-  inputUSD: 0.27,
-  outputUSD: 1.1,
-  cacheWriteUSD: 0.27,
-  cacheReadUSD: 0.07,
+/** deepseek-ai/DeepSeek-V4-Flash via HuggingFace (representative, cheap tier). */
+export const PRICING_HF_DEEPSEEK_V4_FLASH: MTokRate = {
+  inputUSD: 0.1,
+  outputUSD: 0.4,
+  cacheWriteUSD: 0.1,
+  cacheReadUSD: 0.025,
   webSearchPerCallUSD: 0,
 }
 
-/** Qwen/Qwen3-32B via HuggingFace (representative pricing). */
-export const PRICING_HF_QWEN3_32B: MTokRate = {
-  inputUSD: 0.08,
-  outputUSD: 0.28,
-  cacheWriteUSD: 0.08,
-  cacheReadUSD: 0.02,
+/** moonshotai/Kimi-K2.7-Code via HuggingFace (representative pricing). */
+export const PRICING_HF_KIMI_K2_7_CODE: MTokRate = {
+  inputUSD: 0.5,
+  outputUSD: 2.0,
+  cacheWriteUSD: 0.5,
+  cacheReadUSD: 0.125,
+  webSearchPerCallUSD: 0,
+}
+
+/** zai-org/GLM-5.2 via HuggingFace (representative, flagship tier). */
+export const PRICING_HF_GLM_5_2: MTokRate = {
+  inputUSD: 0.8,
+  outputUSD: 3.2,
+  cacheWriteUSD: 0.8,
+  cacheReadUSD: 0.2,
+  webSearchPerCallUSD: 0,
+}
+
+/** MiniMaxAI/MiniMax-M3 via HuggingFace (representative pricing). */
+export const PRICING_HF_MINIMAX_M3: MTokRate = {
+  inputUSD: 0.3,
+  outputUSD: 1.2,
+  cacheWriteUSD: 0.3,
+  cacheReadUSD: 0.075,
   webSearchPerCallUSD: 0,
 }

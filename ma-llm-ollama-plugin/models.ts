@@ -111,6 +111,7 @@ const CATALOG_SPECS: OllamaModelSpec[] = [
   { id: "minimax-m2.5", name: "MiniMax M2.5", ctx: 192 * K, caps: ["thinking", "tools"] },
   { id: "minimax-m2.1", name: "MiniMax M2.1", ctx: 200 * K, caps: ["thinking", "tools"] },
   // Kimi (Moonshot) — native multimodal agentic: vision + thinking + tools.
+  // Kimi K3 not yet on Ollama Cloud as of 2026-07-16.
   {
     id: "kimi-k2.7-code",
     name: "Kimi K2.7 Code",
