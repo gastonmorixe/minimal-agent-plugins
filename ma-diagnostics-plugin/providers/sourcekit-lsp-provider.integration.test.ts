@@ -3,9 +3,14 @@
  * sourcekit-lsp in the Xcode toolchain. Proves the persistent-server path
  * end to end: boot once, then warm per-edit diagnostics with correct codes.
  * Skipped when sourcekit-lsp is absent.
+ *
+ * Workspace root MUST contain the probe files. sourcekit-lsp only answers
+ * `textDocument/diagnostic` for documents under the initialize rootUri /
+ * workspaceFolders, so using `/tmp` while probes live under macOS
+ * `os.tmpdir()` (`/var/folders/...`) silently times out and returns [].
  */
 
-import { existsSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -25,6 +30,11 @@ function resolveSourceKitLsp(): string | null {
   return null
 }
 
+/** Fresh workspace under os.tmpdir() so probes sit inside the LSP root. */
+function makeWorkspace(): string {
+  return mkdtempSync(join(tmpdir(), "ma-sourcekit-"))
+}
+
 const SRCKIT_BIN = resolveSourceKitLsp()
 const IS_CI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true"
 
@@ -32,14 +42,13 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
   it.skipIf(!SRCKIT_BIN)(
     "boots and returns clean diagnostics for a well-formed Swift file",
     async () => {
-      const probe = join(tmpdir(), "__diag_swift_clean.swift")
+      const root = makeWorkspace()
+      const probe = join(root, "clean.swift")
       writeFileSync(probe, "let x = 42\n")
       try {
-        const provider = new SourceKitLspProvider(SRCKIT_BIN!, "/tmp")
+        const provider = new SourceKitLspProvider(SRCKIT_BIN!, root)
         try {
-          // Wait for the server to warm up (first boot is slow)
           const findings = await provider.check(probe, "let x = 42\n")
-          // A clean file should produce no errors
           expect(Array.isArray(findings)).toBe(true)
           const errors = findings.filter((f) => f.severity === "error")
           expect(errors).toEqual([])
@@ -47,7 +56,7 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
           provider.dispose()
         }
       } finally {
-        rmSync(probe, { force: true })
+        rmSync(root, { recursive: true, force: true })
       }
     },
     30_000,
@@ -56,10 +65,11 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
   it.skipIf(!SRCKIT_BIN || IS_CI)(
     "detects a type error in a Swift file",
     async () => {
-      const probe = join(tmpdir(), "__diag_swift_error.swift")
+      const root = makeWorkspace()
+      const probe = join(root, "error.swift")
       writeFileSync(probe, "let x: String = 42\n")
       try {
-        const provider = new SourceKitLspProvider(SRCKIT_BIN!, "/tmp")
+        const provider = new SourceKitLspProvider(SRCKIT_BIN!, root)
         try {
           const findings = await provider.check(probe, "let x: String = 42\n")
           expect(findings.some((f) => f.severity === "error")).toBe(true)
@@ -68,7 +78,7 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
           provider.dispose()
         }
       } finally {
-        rmSync(probe, { force: true })
+        rmSync(root, { recursive: true, force: true })
       }
     },
     30_000,
@@ -77,11 +87,12 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
   it.skipIf(!SRCKIT_BIN)(
     "handles Obj-C files without crashing",
     async () => {
-      const probe = join(tmpdir(), "__diag_objc_simple.m")
+      const root = makeWorkspace()
+      const probe = join(root, "simple.m")
       // Plain C function inside a .m file to verify Obj-C file handling
       writeFileSync(probe, "int add(int a, int b) { return a + b; }\n")
       try {
-        const provider = new SourceKitLspProvider(SRCKIT_BIN!, "/tmp")
+        const provider = new SourceKitLspProvider(SRCKIT_BIN!, root)
         try {
           const findings = await provider.check(probe, "int add(int a, int b) { return a + b; }\n")
           expect(Array.isArray(findings)).toBe(true)
@@ -89,7 +100,7 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
           provider.dispose()
         }
       } finally {
-        rmSync(probe, { force: true })
+        rmSync(root, { recursive: true, force: true })
       }
     },
     30_000,
@@ -98,10 +109,11 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
   it.skipIf(!SRCKIT_BIN)(
     "returns diagnostics for a clean C file (no crashes)",
     async () => {
-      const probe = join(tmpdir(), "__diag_c_clean.c")
+      const root = makeWorkspace()
+      const probe = join(root, "clean.c")
       writeFileSync(probe, "int main(void) { return 0; }\n")
       try {
-        const provider = new SourceKitLspProvider(SRCKIT_BIN!, "/tmp")
+        const provider = new SourceKitLspProvider(SRCKIT_BIN!, root)
         try {
           const findings = await provider.check(probe, "int main(void) { return 0; }\n")
           expect(Array.isArray(findings)).toBe(true)
@@ -109,7 +121,7 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
           provider.dispose()
         }
       } finally {
-        rmSync(probe, { force: true })
+        rmSync(root, { recursive: true, force: true })
       }
     },
     30_000,
@@ -118,10 +130,11 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
   it.skipIf(!SRCKIT_BIN)(
     "warm loop is reasonably fast (sub-second after first boot)",
     async () => {
-      const probe = join(tmpdir(), "__diag_swift_warm.swift")
+      const root = makeWorkspace()
+      const probe = join(root, "warm.swift")
       writeFileSync(probe, 'let y = "hello"\n')
       try {
-        const provider = new SourceKitLspProvider(SRCKIT_BIN!, "/tmp")
+        const provider = new SourceKitLspProvider(SRCKIT_BIN!, root)
         try {
           // First call to boot the server
           await provider.check(probe, 'let y = "hello"\n')
@@ -135,7 +148,7 @@ describe("SourceKitLspProvider (real sourcekit-lsp)", () => {
           provider.dispose()
         }
       } finally {
-        rmSync(probe, { force: true })
+        rmSync(root, { recursive: true, force: true })
       }
     },
     30_000,
