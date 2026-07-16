@@ -16,7 +16,7 @@
  */
 
 import type { HookHandlerContext } from "../lib/host-types.ts"
-import { type Effect, type KeyName, transition } from "../lib/mention/overlay.ts"
+import { type Effect, type KeyName, offsetToRowCol, transition } from "../lib/mention/overlay.ts"
 import { configureSgr } from "../lib/mention/palette.ts"
 import { getFsmState, getPeers, setFsmState } from "../lib/mention/state.ts"
 
@@ -106,14 +106,15 @@ function applyEffects(effects: Effect[], payload: EditorKeyPayload, ctx: HookHan
         // Same-tick: editor reads result.buffer right after the hook returns.
         payload.result.buffer = eff.text
         if (typeof eff.cursor === "number") {
-          // Cursor is a flat offset into the (single-line) buffer for mentions.
-          payload.result.cursor = { row: 0, col: eff.cursor }
+          // FSM cursor is a flat offset (newlines count as 1). Map to the
+          // editor's logical {row, col} so multiline Tab-complete keeps the
+          // caret after the inserted handle (BUG #29501).
+          const rc = offsetToRowCol(eff.text, eff.cursor)
+          payload.result.cursor = rc
+          ctx.emit?.("editor.buffer.set", { text: eff.text, cursor: rc })
+        } else {
+          ctx.emit?.("editor.buffer.set", { text: eff.text })
         }
-        // Also fan out via the bus for hosts that listen async.
-        ctx.emit?.("editor.buffer.set", {
-          text: eff.text,
-          ...(typeof eff.cursor === "number" ? { cursor: { row: 0, col: eff.cursor } } : {}),
-        })
         break
       case "paint-footer":
         ctx.emit?.("editor.footer.set", { lines: eff.lines })

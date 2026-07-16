@@ -242,6 +242,28 @@ export function completeIntoBuffer(
   return { text: next, cursor: before.length + insert.length }
 }
 
+/**
+ * Map a flat code-unit offset into multiline buffer `{row, col}` for the
+ * editor. Mentions FSM tracks a single absolute offset (newlines count as
+ * 1); the editor's `result.cursor` is logical row/col. BUG #29501: always
+ * writing `{row: 0, col: offset}` after Tab-complete parked the caret on
+ * line 1 of a multiline prompt.
+ */
+export function offsetToRowCol(text: string, offset: number): { row: number; col: number } {
+  const clamped = Math.max(0, Math.min(offset, text.length))
+  if (clamped === 0) return { row: 0, col: 0 }
+  const lines = text.split("\n")
+  let remaining = clamped
+  for (let row = 0; row < lines.length; row++) {
+    const lineLen = lines[row]!.length
+    if (remaining <= lineLen) return { row, col: remaining }
+    // Consume this line plus the `\n` that joined it to the next.
+    remaining -= lineLen + 1
+  }
+  const last = Math.max(0, lines.length - 1)
+  return { row: last, col: lines[last]?.length ?? 0 }
+}
+
 // ---------------------------------------------------------------------------
 // Scoring / filter
 // ---------------------------------------------------------------------------
