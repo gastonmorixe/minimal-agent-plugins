@@ -11,7 +11,7 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
-import { type DetectedTool, detectTools, findAppleProjectRoot } from "./detect.ts"
+import { type DetectedTool, detectTools, findAppleProjectRoot, resolveBinUp } from "./detect.ts"
 
 function scratch(): string {
   return mkdtempSync(join(tmpdir(), "diag-detect-"))
@@ -308,6 +308,98 @@ describe("detectTools", () => {
       const biome = byId(tools, "biome")
       expect(biome).toBeDefined()
       expect(biome?.kind).toBe("format")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("resolves hoisted bins: package tsconfig + parent node_modules/.bin/tsc", () => {
+    // Mirrors ma-*-plugin packages: local tsconfig, bins at workspace root.
+    const workspace = scratch()
+    try {
+      makeBin(workspace, "tsc")
+      makeBin(workspace, "biome")
+      const tsPkgDir = join(workspace, "node_modules", "typescript")
+      mkdirSync(tsPkgDir, { recursive: true })
+      writeFileSync(
+        join(tsPkgDir, "package.json"),
+        JSON.stringify({ name: "typescript", version: "7.0.2" }),
+      )
+      writeFileSync(join(workspace, "biome.json"), "{}")
+
+      const pkg = join(workspace, "ma-foo-plugin")
+      mkdirSync(pkg, { recursive: true })
+      writeFileSync(join(pkg, "tsconfig.json"), JSON.stringify({ extends: "../tsconfig.json" }))
+      writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "ma-foo-plugin" }))
+
+      const tools = detectTools(pkg)
+      const tsc = byId(tools, "tsc")
+      expect(tsc).toBeDefined()
+      expect(tsc?.bin).toBe(join(workspace, "node_modules", ".bin", "tsc"))
+      expect(tsc?.binRoot).toBe(workspace)
+      expect(tsc?.persistent).toBe(true)
+      // biome config is on the workspace, not the package — package root alone
+      // should not claim biome unless bin walk finds it AND config/dep at pkg.
+      // With requiresConfig false, biome activates from hoisted bin alone.
+      expect(byId(tools, "biome")).toBeDefined()
+      expect(byId(tools, "biome")?.bin).toBe(join(workspace, "node_modules", ".bin", "biome"))
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it("does NOT activate tsc when only an ancestor has the bin but no local tsconfig", () => {
+    const workspace = scratch()
+    try {
+      makeBin(workspace, "tsc")
+      const orphan = join(workspace, "scripts")
+      mkdirSync(orphan, { recursive: true })
+      // No tsconfig at orphan — requiresAnyOf / requiresConfig must fail.
+      const tools = detectTools(orphan, { typescriptMajor: 7 })
+      expect(byId(tools, "tsc")).toBeUndefined()
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it("promotes tsc to LSP using hoisted node_modules/typescript major", () => {
+    const workspace = scratch()
+    try {
+      makeBin(workspace, "tsc")
+      const tsPkgDir = join(workspace, "node_modules", "typescript")
+      mkdirSync(tsPkgDir, { recursive: true })
+      writeFileSync(
+        join(tsPkgDir, "package.json"),
+        JSON.stringify({ name: "typescript", version: "7.1.0" }),
+      )
+      const pkg = join(workspace, "pkg")
+      mkdirSync(pkg, { recursive: true })
+      writeFileSync(join(pkg, "tsconfig.json"), "{}")
+      const tsc = byId(detectTools(pkg), "tsc")
+      expect(tsc?.persistent).toBe(true)
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("resolveBinUp", () => {
+  it("finds a bin in an ancestor node_modules/.bin", () => {
+    const workspace = scratch()
+    try {
+      makeBin(workspace, "tsc")
+      const nested = join(workspace, "a", "b")
+      mkdirSync(nested, { recursive: true })
+      expect(resolveBinUp("tsc", nested)).toBe(join(workspace, "node_modules", ".bin", "tsc"))
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it("returns null when the bin is absent", () => {
+    const root = scratch()
+    try {
+      expect(resolveBinUp("tsc", root)).toBeNull()
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

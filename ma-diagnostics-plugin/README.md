@@ -12,13 +12,14 @@ discovering it a build later.
 
 ## What it detects (no installs)
 
-Probes `node_modules/.bin` + config files + `package.json` devDeps. Uses
-whatever is present:
+Probes config files + `package.json` devDeps at the **file's project root**, and
+resolves binaries from that root's `node_modules/.bin` **or an ancestor's**
+(hoisted workspaces). Uses whatever is already present. Never installs.
 
 | tool | signal | how it runs | speed |
 |---|---|---|---|
 | **tsgo** (type) | tsconfig + bin | persistent `tsgo --lsp` (reused) | ~2-3ms warm |
-| **tsc** (type) | tsconfig + bin, no tsgo | spawn `tsc --noEmit` per edit | ~300-800ms |
+| **tsc** (type) | tsconfig + bin, no tsgo | `tsc --lsp` when TS≥7, else spawn `--noEmit` | ~2-3ms / ~300-800ms |
 | **biome** (format) | bin / biome.json | spawn `check --reporter=json` | ~55ms |
 | **oxlint** (lint) | bin / .oxlintrc | spawn `-f json` (opt-in) | ~400ms |
 | **sourcekit-lsp** (apple) | Package.swift / .xcodeproj | persistent LSP (reused) | ~2-5ms warm |
@@ -29,6 +30,26 @@ whatever is present:
 `config.type: false`.
 
 A project with none of these installed gets a silent no-op.
+
+### Config root vs install root (hoisted monorepos)
+
+After each Edit/Write the plugin walks up from the **edited file** to find a
+project signal (`tsconfig.json`, `biome.json`, …). That directory is the
+**config root** (LSP `rootUri` / tool `cwd`). Binaries may live higher up when
+the package manager hoists deps, e.g.:
+
+```
+plugins/
+  node_modules/.bin/tsc          ← install root (bin)
+  ma-foo-plugin/
+    tsconfig.json                ← config root for files under ma-foo-plugin/
+    lib/service.ts
+```
+
+Detection keeps `cwd`/config at `ma-foo-plugin/` and resolves `tsc` via
+ancestor walk. A bare ancestor bin **without** a local project signal does
+**not** activate type tools (so monorepo `scripts/` with only a root `tsc` stay
+quiet).
 
 ## Config
 

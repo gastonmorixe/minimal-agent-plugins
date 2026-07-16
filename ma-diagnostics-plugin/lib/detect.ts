@@ -2,8 +2,16 @@
  * Project tool detection — "use whatever the project already has".
  *
  * We NEVER install anything. We probe the project root for tools that are
- * already present: a binary in `node_modules/.bin` or on `PATH`, and check
- * for known config files that signal the tool is configured for the project.
+ * already present: a binary in `node_modules/.bin` (or an ancestor's, for
+ * hoisted workspaces) or on `PATH`, and check for known config files that
+ * signal the tool is configured for the project.
+ *
+ * Config root vs install root are deliberately separate:
+ * - `root` passed to {@link detectTools} is the **configRoot** (nearest
+ *   tsconfig/biome/… for the file being edited).
+ * - Binaries may live higher up (`resolveBinUp`) when package managers hoist
+ *   `node_modules` to a workspace root. Providers still run with
+ *   `cwd = configRoot` so project config applies.
  *
  * Pure + synchronous: detection is a function of the filesystem at `root`, with
  * no spawning, so it unit-tests against temp fixtures. The returned
@@ -24,6 +32,12 @@ export interface DetectedTool {
   kind: ToolKind
   /** Absolute path to the resolved binary. */
   bin: string
+  /**
+   * Directory that owns the `node_modules/.bin` entry the binary came from
+   * (may be an ancestor of the config root when deps are hoisted). Undefined
+   * for PATH-resolved tools.
+   */
+  binRoot?: string
   /** True when a config file or devDependency named this tool (a strong signal). */
   configFound: boolean
   /** True for tools we run as a long-lived LSP server (tsgo) vs spawn-per-call. */
@@ -144,24 +158,69 @@ function readDeps(root: string): Record<string, string> {
 }
 
 /**
- * Read the MAJOR version of the `typescript` package installed at `root` (from
- * `node_modules/typescript/package.json`). Returns null when it can't be read
- * (not installed, malformed, unreadable). Used to decide whether the `tsc`
- * binary is LSP-capable: on TypeScript 7 and later, `tsc` speaks `--lsp -stdio`
- * so it runs as a persistent server; on TypeScript 6 and earlier it does not,
- * and stays spawn-per-call.
+ * Walk ancestors of `startDir` looking for `node_modules/.bin/<binName>`.
+ * Supports hoisted workspaces where the package has config (tsconfig, biome)
+ * but binaries live at the workspace root.
+ *
+ * Returns the absolute binary path, or null when nothing is found within
+ * `maxDepth` steps (or the filesystem root).
  */
-function readTypescriptMajor(root: string): number | null {
-  try {
-    const pkgPath = join(root, "node_modules", "typescript", "package.json")
-    if (!existsSync(pkgPath)) return null
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { version?: unknown }
-    if (typeof pkg.version !== "string") return null
-    const major = Number.parseInt(pkg.version.split(".")[0] ?? "", 10)
-    return Number.isNaN(major) ? null : major
-  } catch {
-    return null
+export function resolveBinUp(binName: string, startDir: string, maxDepth = 12): string | null {
+  let dir = startDir
+  for (let depth = 0; depth < maxDepth; depth++) {
+    const candidate = join(dir, "node_modules", ".bin", binName)
+    if (existsSync(candidate)) return candidate
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
   }
+  return null
+}
+
+/**
+ * Directory that owns a `node_modules/.bin/<name>` path (the install root),
+ * or undefined when the path does not look like one.
+ */
+function binRootFromBinPath(bin: string): string | undefined {
+  // .../node_modules/.bin/<name> → ...
+  const binDir = dirname(bin)
+  const norm = binDir.replace(/\\/g, "/")
+  if (!norm.endsWith("node_modules/.bin")) return undefined
+  return dirname(dirname(binDir))
+}
+
+/**
+ * Read the MAJOR version of the `typescript` package installed at `root` or an
+ * ancestor (from `node_modules/typescript/package.json`). Returns null when it
+ * can't be read (not installed, malformed, unreadable). Used to decide whether
+ * the `tsc` binary is LSP-capable: on TypeScript 7 and later, `tsc` speaks
+ * `--lsp -stdio` so it runs as a persistent server; on TypeScript 6 and earlier
+ * it does not, and stays spawn-per-call.
+ *
+ * Walks up so hoisted installs (workspace root `node_modules/typescript`) still
+ * promote `tsc` correctly when the config root is a nested package.
+ */
+function readTypescriptMajor(root: string, maxDepth = 12): number | null {
+  let dir = root
+  for (let depth = 0; depth < maxDepth; depth++) {
+    try {
+      const pkgPath = join(dir, "node_modules", "typescript", "package.json")
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { version?: unknown }
+        if (typeof pkg.version === "string") {
+          const major = Number.parseInt(pkg.version.split(".")[0] ?? "", 10)
+          if (!Number.isNaN(major)) return major
+        }
+        // Malformed package at this level: keep walking for a hoisted install.
+      }
+    } catch {
+      // Unreadable intermediate node_modules: keep walking.
+    }
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return null
 }
 
 /** Injectable options for detection (used in tests to control PATH). */
@@ -270,9 +329,15 @@ export function findAppleProjectRoot(filePath: string): string | null {
 }
 
 /**
- * Detect the diagnostic tools available in the project at `root`. Returns an
- * ordered list of {@link DetectedTool} descriptors (type, then lint, then
- * format). Empty when nothing is installed.
+ * Detect the diagnostic tools available in the project at `root` (the
+ * **configRoot**). Returns an ordered list of {@link DetectedTool} descriptors
+ * (type, then lint, then format). Empty when nothing is installed.
+ *
+ * Binaries are resolved with {@link resolveBinUp}: first `root/node_modules/.bin`,
+ * then ancestor directories. That is required for hoisted monorepos where a
+ * package has its own `tsconfig.json` but `tsc`/`biome` live at the workspace
+ * root. Config / `requiresAnyOf` signals still must exist at `root` itself so a
+ * bare ancestor bin without a local project does not activate tools.
  *
  * When `options.fallback` is true, PATH-based tools are included even when
  * their required project signals are absent. This is useful for ad-hoc files
@@ -296,11 +361,12 @@ export function detectTools(
     if (spec.suppressedBy?.some((id) => detectedIds.has(id))) continue
 
     let bin: string | null
+    let binRoot: string | undefined
     if (spec.fromPath) {
       bin = resolveFromPath(spec.binName, options.path)
     } else {
-      bin = join(root, "node_modules", ".bin", spec.binName)
-      if (!existsSync(bin)) bin = null
+      bin = resolveBinUp(spec.binName, root)
+      if (bin) binRoot = binRootFromBinPath(bin)
     }
     if (bin === null) continue
 
@@ -323,7 +389,14 @@ export function detectTools(
       spec.id === "tsc" && tsMajor !== null && tsMajor >= 7 ? true : spec.persistent
 
     detectedIds.add(spec.id)
-    out.push({ id: spec.id, kind: spec.kind, bin, configFound, persistent })
+    out.push({
+      id: spec.id,
+      kind: spec.kind,
+      bin,
+      ...(binRoot !== undefined ? { binRoot } : {}),
+      configFound,
+      persistent,
+    })
   }
   return out
 }
