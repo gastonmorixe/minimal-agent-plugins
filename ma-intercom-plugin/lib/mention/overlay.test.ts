@@ -6,6 +6,7 @@ import {
   CLOSED,
   completeIntoBuffer,
   findActiveToken,
+  offsetToRowCol,
   peerSlug,
   scorePeer,
   transition,
@@ -136,5 +137,42 @@ describe("peerSlug / scorePeer / completeIntoBuffer", () => {
     const r = completeIntoBuffer("hey @Mi now", state, "Michelle", true)
     expect(r.text).toBe("hey @Michelle  now")
     expect(r.cursor).toBe("hey @Michelle ".length)
+  })
+
+  it("completeIntoBuffer on a later line keeps a flat cursor past prior newlines", () => {
+    const text = "line0\ntry @Ra"
+    const state = {
+      kind: "open" as const,
+      query: "Ra",
+      tokenStart: "line0\ntry ".length,
+      tokenEnd: text.length,
+      selectedIndex: 0,
+      scrollOffset: 0,
+    }
+    const r = completeIntoBuffer(text, state, "Rachel", true)
+    expect(r.text).toBe("line0\ntry @Rachel ")
+    expect(r.cursor).toBe("line0\ntry @Rachel ".length)
+  })
+})
+
+describe("offsetToRowCol (BUG #29501)", () => {
+  it("maps offset 0 to row 0 col 0", () => {
+    expect(offsetToRowCol("a\nb", 0)).toEqual({ row: 0, col: 0 })
+  })
+
+  it("stays on row 0 for offsets within the first line", () => {
+    expect(offsetToRowCol("hello\nworld", 5)).toEqual({ row: 0, col: 5 })
+  })
+
+  it("crosses the newline onto row 1", () => {
+    // "hello\n" is 6 code units; offset 6 is col 0 of "world".
+    expect(offsetToRowCol("hello\nworld", 6)).toEqual({ row: 1, col: 0 })
+    expect(offsetToRowCol("hello\nworld", 8)).toEqual({ row: 1, col: 2 })
+  })
+
+  it("places the caret after a multiline Tab-complete insert", () => {
+    const completed = "line0\ntry @Rachel "
+    const offset = completed.length
+    expect(offsetToRowCol(completed, offset)).toEqual({ row: 1, col: "try @Rachel ".length })
   })
 })

@@ -40,11 +40,7 @@ const handler = async (ctx: EventHandlerContext): Promise<void> => {
   refreshPeers(ctx)
 
   const text = ctx.payload.text
-  // Cursor: prefer col on the current row. Mentions treat the buffer as a
-  // flat string; when multi-line, approximate with col only if row is 0,
-  // otherwise rebuild an absolute offset from prior newlines if needed.
-  // Host currently sends single-line editor text for the prompt, so col
-  // is the absolute offset.
+  // Mentions FSM uses a flat code-unit offset; editor sends {row, col}.
   const cursor = absoluteCursor(text, ctx.payload.cursor)
 
   const state = getFsmState()
