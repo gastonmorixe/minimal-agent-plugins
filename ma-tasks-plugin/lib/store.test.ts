@@ -361,17 +361,29 @@ describe("start() / accumulating doing", () => {
     s.start(2, { parallel: true })
     expect(s.list().filter((t) => t.status === "doing")).toHaveLength(2)
   })
-  test("subtask start keeps sibling and parent doings", () => {
+  test("subtask start auto-starts its parent and keeps sibling doings", () => {
     const s = withRand(["aaaaaa", "bbbbbb"])
-    const p = s.add({ title: "parent", status: "doing" })
+    const p = s.add({ title: "parent" })
     s.addMany(["c1", "c2"], { parent: p.id })
-    // Start subtask c1 (suffix a), then c2 — neither demotes the other or parent
+    // setStatus(doing) and start() both auto-start the parent. Starting c2
+    // leaves c1 and the parent doing.
     s.setStatus(`${p.id}a`, "doing")
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("doing")
     s.start(`${p.id}b`)
     const list = s.list()
     expect(list.find((t) => t.id === p.id)!.status).toBe("doing")
     expect(list.find((t) => t.id === `${p.id}a`)!.status).toBe("doing")
     expect(list.find((t) => t.id === `${p.id}b`)!.status).toBe("doing")
+  })
+
+  test("subtask start does not revive a canceled parent", () => {
+    const s = withRand(["aaaaaa"])
+    const p = s.add({ title: "parent" })
+    s.addMany(["child"], { parent: p.id })
+    s.setStatus(p.id, "canceled", "abandoned")
+    s.start(`${p.id}a`)
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("canceled")
+    expect(s.list().find((t) => t.id === `${p.id}a`)!.status).toBe("doing")
   })
 })
 
@@ -386,7 +398,7 @@ describe("done()", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Parent ↔ child done cascade / rollup
+// Parent ↔ child lifecycle cascade / rollup
 // ---------------------------------------------------------------------------
 
 describe("done cascade + rollup", () => {
@@ -396,7 +408,7 @@ describe("done cascade + rollup", () => {
     s.addMany(["a", "b", "c"], { parent: p.id })
     s.done(`${p.id}a`)
     s.done(`${p.id}b`)
-    expect(s.list().find((t) => t.id === p.id)!.status).toBe("todo")
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("doing")
     s.done(`${p.id}c`)
     const list = s.list()
     expect(list.find((t) => t.id === p.id)!.status).toBe("done")
@@ -404,12 +416,12 @@ describe("done cascade + rollup", () => {
     expect(list.filter((t) => t.parent === p.id).every((t) => t.status === "done")).toBe(true)
   })
 
-  test("child done does not promote parent while any sibling is still open", () => {
+  test("child done auto-starts parent while any sibling is still open", () => {
     const s = withRand(["aaaaaa"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.done(`${p.id}a`)
-    expect(s.list().find((t) => t.id === p.id)!.status).toBe("todo")
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("doing")
     expect(s.list().find((t) => t.id === `${p.id}b`)!.status).toBe("todo")
   })
 
@@ -419,8 +431,9 @@ describe("done cascade + rollup", () => {
     s.addMany(["a", "b"], { parent: p.id })
     s.done(`${p.id}a`)
     s.setStatus(`${p.id}b`, "canceled", "not needed")
-    // Not every child is done → parent stays put. Model marks parent explicitly.
-    expect(s.list().find((t) => t.id === p.id)!.status).toBe("todo")
+    // The first completed child started the parent. Canceling the last open
+    // sibling does not implicitly finish the phase.
+    expect(s.list().find((t) => t.id === p.id)!.status).toBe("doing")
   })
 
   test("does not revive a canceled parent when the last child finishes", () => {

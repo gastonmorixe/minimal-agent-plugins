@@ -361,6 +361,20 @@ describe("status / start / done", () => {
     expect(doings).toHaveLength(2)
     expect(doings.map((t) => t.title).sort()).toEqual(["one", "two"])
   })
+  test("starting a subtask auto-starts its parent in tool output", async () => {
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["child"] }],
+    })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.parent === null)!
+    const r = await call({ action: "start", id: `#${parent.id}a` })
+    expect(r.is_error).toBeUndefined()
+    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("doing")
+    expect(r.content).toContain(`1   #${parent.id}   doing`)
+    expect(r.content).toContain(`1a  #${parent.id}a  doing`)
+  })
+
   test("start parallel:true still accumulates (compat no-op)", async () => {
     await call({ action: "add", title: "one" })
     await call({ action: "add", title: "two" })
@@ -397,7 +411,7 @@ describe("status / start / done", () => {
     const store = new TaskStore(sid, { home: tmpHome })
     const parent = store.list().find((t) => t.parent === null)!
     await call({ action: "done", id: `#${parent.id}a` })
-    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("todo")
+    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("doing")
     const r = await call({ action: "done", id: `#${parent.id}b` })
     expect(r.is_error).toBeUndefined()
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")

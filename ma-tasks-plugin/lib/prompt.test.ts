@@ -64,6 +64,11 @@ describe("tasks PROMPT.md canceled-vs-done guidance", () => {
     expect(block!).not.toMatch(/does not auto-promote/i)
   })
 
+  test("documents parent auto-start and partial-completion rollup", () => {
+    expect(PROMPT).toMatch(/auto-starts its parent/i)
+    expect(PROMPT).toMatch(/siblings remain open[^\n]*parent `doing`/i)
+  })
+
   test("recommends parent/subtask structure for multi-phase plans", () => {
     const block = PROMPT.split(/^##\s/m).find((s) => /canceled[^\n]*abandoned/i.test(s))
     expect(block!).toMatch(/parent\/subtask|parent.*subtask/i)
