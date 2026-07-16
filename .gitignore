@@ -24,3 +24,6 @@ tmp/
 # Build output (no plugin needs this today, but keep the door open)
 dist/
 build/
+
+# Local private workspace (never commit)
+private/
