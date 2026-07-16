@@ -8,9 +8,9 @@
  * rendering; this handler only supplies data.
  *
  * DECOUPLING: imports nothing from the agent's `src/`. The payload is a
- * structural contract (`findings`/`notes` accumulators). All heavy state (the
- * persistent tsgo LSP) lives in a per-root {@link DiagnosticsService} memoized
- * across calls, disposed when the process exits.
+ * structural contract (`findings`/`notes` accumulators). Heavy state (persistent
+ * LSPs) lives in a session {@link DiagnosticsServicePool} keyed by workspace
+ * root, disposed when the process exits.
  *
  * Defensive throughout: any failure returns the payload unchanged (the HookBus
  * also absorbs throws), so diagnostics can never break a tool result.
@@ -22,8 +22,11 @@ import { join } from "node:path"
 
 import { resolveAgentHome } from "../lib/agent-paths.ts"
 import { loadConfig } from "../lib/config.ts"
-import { findProjectRoot } from "../lib/detect.ts"
-import { DiagnosticsService, type ProviderFactories } from "../lib/service.ts"
+import {
+  type ActivePersistentProvider,
+  DiagnosticsServicePool,
+  type ProviderFactories,
+} from "../lib/service.ts"
 import { BiomeProvider } from "../providers/biome-provider.ts"
 import { OxlintProvider } from "../providers/oxlint-provider.ts"
 import { SourceKitLspProvider } from "../providers/sourcekit-lsp-provider.ts"
@@ -58,21 +61,26 @@ const REAL_FACTORIES: ProviderFactories = {
   makeSourceKit: (bin, root) => new SourceKitLspProvider(bin, root),
 }
 
-/** Per-root service cache so the persistent tsgo LSP is reused across edits. */
-const services = new Map<string, DiagnosticsService>()
+/** Session pool: multi-root services + LRU (Phase 3). */
+let pool: DiagnosticsServicePool | null = null
+let exitHookInstalled = false
 
 /**
- * Collect active persistent LSP provider ids across all cached roots.
+ * Collect active persistent LSP providers across all pooled roots.
  * Used by the live-area slot to render the LSP indicator in the TUI.
  */
 export function getActivePersistentProviders(): string[] {
   const seen = new Set<string>()
-  for (const svc of services.values()) {
-    for (const id of svc.getActivePersistentProviders()) seen.add(id)
-  }
+  for (const p of getActivePersistentProvidersDetailed()) seen.add(p.id)
   return [...seen].sort()
 }
-let exitHookInstalled = false
+
+/**
+ * Active persistent providers with workspace roots (Phase 3 footer).
+ */
+export function getActivePersistentProvidersDetailed(): ActivePersistentProvider[] {
+  return pool?.getActivePersistentProvidersDetailed() ?? []
+}
 
 /** Tolerant JSONC-ish parse (strip // and /* *​/ comments) without a dependency. */
 function parseJsoncish(raw: string): unknown {
@@ -90,18 +98,16 @@ function configPath(): string {
   return join(resolveAgentHome(), "config.jsonc")
 }
 
-function serviceFor(root: string): DiagnosticsService {
-  let svc = services.get(root)
-  if (!svc) {
+function ensurePool(): DiagnosticsServicePool {
+  if (!pool) {
     const cfg = loadConfig(configPath(), parseJsoncish)
-    svc = new DiagnosticsService(root, cfg, REAL_FACTORIES)
-    services.set(root, svc)
+    pool = new DiagnosticsServicePool(cfg, REAL_FACTORIES)
   }
   if (!exitHookInstalled) {
     exitHookInstalled = true
     const dispose = () => {
-      for (const s of services.values()) s.dispose()
-      services.clear()
+      pool?.dispose()
+      pool = null
     }
     // Bare signal handlers would DISABLE default termination when the host
     // app has none of its own (Ctrl-C swallowed by a cleanup hook). So:
@@ -117,7 +123,7 @@ function serviceFor(root: string): DiagnosticsService {
     process.once("SIGINT", onSignal("SIGINT"))
     process.once("SIGTERM", onSignal("SIGTERM"))
   }
-  return svc
+  return pool
 }
 
 /** Tools whose results carry a file we should diagnose. */
@@ -144,16 +150,7 @@ export default async function onToolDidInvoke(
         : undefined)
     if (!filePath || !existsSync(filePath)) return
 
-    const root = ctx.cwd || payload.cwd || process.cwd()
-
-    // Auto-detect project root from the file's location so that
-    // diagnostics work even when the agent's cwd is not the project
-    // directory (e.g. editing a .swift file from a different workspace).
-    const projectRoot = findProjectRoot(filePath)
-    const effectiveRoot = projectRoot && projectRoot !== root ? projectRoot : root
-
-    const svc = serviceFor(effectiveRoot)
-    if (!svc.handles(filePath)) return
+    const fallbackRoot = ctx.cwd || payload.cwd || process.cwd()
 
     // The Edit/Write already wrote the file: disk == proposed text.
     let text: string
@@ -163,7 +160,9 @@ export default async function onToolDidInvoke(
       return
     }
 
-    const result = await svc.check(filePath, text)
+    const p = ensurePool()
+    // Phase 2+3: per-tool config roots via detectToolsForFile, multi-root pool.
+    const result = await p.checkFile(filePath, text, fallbackRoot)
     if (result.findings.length === 0 && result.notes.length === 0) return
 
     // Push onto the accumulators the agent reads back. The agent renders

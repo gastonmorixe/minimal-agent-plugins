@@ -11,7 +11,16 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
-import { type DetectedTool, detectTools, findAppleProjectRoot, resolveBinUp } from "./detect.ts"
+import {
+  type DetectedTool,
+  detectTools,
+  detectToolsForFile,
+  FORMAT_CONFIG_SIGNALS,
+  findAppleProjectRoot,
+  findConfigRoot,
+  resolveBinUp,
+  TYPE_CONFIG_SIGNALS,
+} from "./detect.ts"
 
 function scratch(): string {
   return mkdtempSync(join(tmpdir(), "diag-detect-"))
@@ -402,6 +411,78 @@ describe("resolveBinUp", () => {
       expect(resolveBinUp("tsc", root)).toBeNull()
     } finally {
       rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("findConfigRoot + detectToolsForFile (Phase 2)", () => {
+  it("finds tool-specific roots independently", () => {
+    const workspace = scratch()
+    try {
+      writeFileSync(join(workspace, "biome.json"), "{}")
+      const pkg = join(workspace, "pkg")
+      mkdirSync(pkg, { recursive: true })
+      writeFileSync(join(pkg, "tsconfig.json"), "{}")
+      const file = join(pkg, "lib", "a.ts")
+      mkdirSync(join(pkg, "lib"), { recursive: true })
+      writeFileSync(file, "export {}\n")
+
+      expect(findConfigRoot(file, TYPE_CONFIG_SIGNALS)).toBe(pkg)
+      expect(findConfigRoot(file, FORMAT_CONFIG_SIGNALS)).toBe(workspace)
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it("detectToolsForFile assigns different configRoots per tool", () => {
+    const workspace = scratch()
+    try {
+      makeBin(workspace, "tsc")
+      makeBin(workspace, "biome")
+      writeFileSync(join(workspace, "biome.json"), "{}")
+      const tsPkgDir = join(workspace, "node_modules", "typescript")
+      mkdirSync(tsPkgDir, { recursive: true })
+      writeFileSync(
+        join(tsPkgDir, "package.json"),
+        JSON.stringify({ name: "typescript", version: "7.0.0" }),
+      )
+
+      const pkg = join(workspace, "ma-foo")
+      mkdirSync(pkg, { recursive: true })
+      writeFileSync(join(pkg, "tsconfig.json"), "{}")
+      const file = join(pkg, "src", "x.ts")
+      mkdirSync(join(pkg, "src"), { recursive: true })
+      writeFileSync(file, "export {}\n")
+
+      const tools = detectToolsForFile(file)
+      const tsc = byId(tools, "tsc")
+      const biome = byId(tools, "biome")
+      expect(tsc?.configRoot).toBe(pkg)
+      expect(tsc?.bin).toBe(join(workspace, "node_modules", ".bin", "tsc"))
+      expect(biome?.configRoot).toBe(workspace)
+      expect(biome?.bin).toBe(join(workspace, "node_modules", ".bin", "biome"))
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it("does not activate biome without a biome config on the walk", () => {
+    // Phase 2: package tsconfig alone must not force biome from hoisted bin.
+    const workspace = scratch()
+    try {
+      makeBin(workspace, "tsc")
+      makeBin(workspace, "biome")
+      const pkg = join(workspace, "pkg")
+      mkdirSync(pkg, { recursive: true })
+      writeFileSync(join(pkg, "tsconfig.json"), "{}")
+      const file = join(pkg, "a.ts")
+      writeFileSync(file, "export {}\n")
+
+      const tools = detectToolsForFile(file, { typescriptMajor: 7 })
+      expect(byId(tools, "tsc")).toBeDefined()
+      expect(byId(tools, "biome")).toBeUndefined()
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
     }
   })
 })
