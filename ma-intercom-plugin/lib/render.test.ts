@@ -96,7 +96,7 @@ describe("renderSendHeader / renderSendDisplay", () => {
     expect(h).not.toContain("message")
   })
 
-  test("send display is the body only (no recipient glyph), padded", () => {
+  test("send display is the body only (no recipient glyph), trailing pad only", () => {
     const d = noAnsi(
       renderSendDisplay({
         kind: "message",
@@ -105,9 +105,10 @@ describe("renderSendHeader / renderSendDisplay", () => {
         body: "hello there",
       }),
     )
-    expect(d.startsWith("\n")).toBe(true)
+    // Host already draws a blank │ after the header — no leading pad.
+    expect(d.startsWith("\n")).toBe(false)
+    expect(d.startsWith("hello there")).toBe(true)
     expect(d.endsWith("\n")).toBe(true)
-    expect(d).toContain("hello there")
     expect(d).not.toContain("◇")
     expect(d).not.toContain("3782589f")
   })

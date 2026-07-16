@@ -111,8 +111,8 @@ describe("Send", () => {
       // Bare closer: host must not promote the last message line onto `╰`.
       expect(res.displayFooter).toBe("")
       expect(res.display).toContain("hi")
-      // Body is padded so host draws blank `│` gutters around the message.
-      expect(res.display?.startsWith("\n")).toBe(true)
+      // Trailing pad only (host already blanks after the header).
+      expect(res.display?.startsWith("\n")).toBe(false)
       expect(res.display?.endsWith("\n")).toBe(true)
     }
   })
