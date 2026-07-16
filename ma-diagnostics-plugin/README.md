@@ -33,23 +33,31 @@ A project with none of these installed gets a silent no-op.
 
 ### Config root vs install root (hoisted monorepos)
 
-After each Edit/Write the plugin walks up from the **edited file** to find a
-project signal (`tsconfig.json`, `biome.json`, …). That directory is the
-**config root** (LSP `rootUri` / tool `cwd`). Binaries may live higher up when
-the package manager hoists deps, e.g.:
+After each Edit/Write the plugin walks up from the **edited file** with
+**per-tool** signals (type → `tsconfig`/`jsconfig`, format → `biome.json`,
+lint → oxlint configs, apple → `Package.swift` / Xcode). That directory is the
+tool's **config root** (LSP `rootUri` / tool `cwd`). Binaries may live higher
+up when the package manager hoists deps, e.g.:
 
 ```
 plugins/
+  biome.json                     ← format config root
   node_modules/.bin/tsc          ← install root (bin)
   ma-foo-plugin/
-    tsconfig.json                ← config root for files under ma-foo-plugin/
+    tsconfig.json                ← type config root for package files
     lib/service.ts
 ```
 
-Detection keeps `cwd`/config at `ma-foo-plugin/` and resolves `tsc` via
-ancestor walk. A bare ancestor bin **without** a local project signal does
-**not** activate type tools (so monorepo `scripts/` with only a root `tsc` stay
-quiet).
+`detectToolsForFile` may return different `configRoot`s for tsc vs biome on the
+same file. A bare ancestor bin **without** a matching config signal does
+**not** activate that tool (so monorepo `scripts/` with only a root `tsc` stay
+quiet for typecheck).
+
+### Multi-root LSP pool
+
+Persistent servers are pooled by workspace root (LRU cap 4). Editing core then
+plugins keeps separate `tsc --lsp` instances. The live-area footer shows
+`· tsc`, `· tsc×2`, or short basenames when two roots are active.
 
 ## Config
 

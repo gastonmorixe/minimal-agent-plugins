@@ -10,11 +10,18 @@
  * server and subsequent edits reuse it. All construction is driven by
  * {@link detectTools}, so a project with no tools yields a no-op service.
  *
+ * Phase 3: the session also keeps a {@link DiagnosticsServicePool} keyed by
+ * workspace root so multi-package monorepos can host N persistent LSPs with an
+ * LRU cap.
+ *
  * @module plugins/diagnostics/lib/service
  */
 
+import { realpathSync } from "node:fs"
+import { basename } from "node:path"
+
 import type { DiagnosticsConfig } from "./config.ts"
-import { detectTools, resolveBinUp } from "./detect.ts"
+import { type DetectedTool, detectTools, detectToolsForFile, resolveBinUp } from "./detect.ts"
 import { filterFindings, formatNote } from "./format-notes.ts"
 import type { DiagnosticProvider } from "./provider.ts"
 import { DiagnosticsRunner } from "./runner.ts"
@@ -44,6 +51,14 @@ export interface ServiceCheckResult {
   degraded: string[]
 }
 
+/** Active persistent LSP descriptor for the live-area footer. */
+export interface ActivePersistentProvider {
+  /** Provider id (`tsc`, `tsgo`, `sourcekit-lsp`, …). */
+  id: string
+  /** Workspace / config root the server was booted for. */
+  root: string
+}
+
 /**
  * Session-scoped facade over the diagnostics pipeline: lazily detects which
  * tools (biome/oxlint/tsgo) exist in the workspace, builds the provider
@@ -54,37 +69,48 @@ export class DiagnosticsService {
   private runner: DiagnosticsRunner | null = null
   private built = false
   private tscBin: string | null = null
+  /** Last time this service was used (for pool LRU). */
+  lastUsedMs = 0
 
   constructor(
     private readonly root: string,
     private readonly config: DiagnosticsConfig,
     private readonly factories: ProviderFactories,
+    /** Optional pre-detected tools (from {@link detectToolsForFile}). */
+    private readonly preDetected?: DetectedTool[],
   ) {}
+
+  /** Workspace root this service was constructed for. */
+  get workspaceRoot(): string {
+    return this.root
+  }
 
   /** Build the runner from detected tools, honoring config gates. Memoized. */
   private ensureRunner(): DiagnosticsRunner | null {
     if (this.built) return this.runner
     this.built = true
-    const detected = detectTools(this.root)
+    const detected = this.preDetected ?? detectTools(this.root)
     const providers: DiagnosticProvider[] = []
     for (const t of detected) {
+      // Prefer tool-specific configRoot when present (Phase 2 multi-root detect).
+      const cwd = t.configRoot ?? this.root
       if (t.id === "tsgo" && this.config.type) {
-        providers.push(this.factories.makeTsLsp(t.bin, this.root, "tsgo"))
+        providers.push(this.factories.makeTsLsp(t.bin, cwd, "tsgo"))
       } else if (t.id === "tsc" && this.config.type) {
         // TS7+ `tsc` is LSP-capable (detect.ts sets persistent=true); run it as
         // a persistent server. TS<=6 `tsc` stays a spawn-per-call fallback.
         if (t.persistent) {
-          providers.push(this.factories.makeTsLsp(t.bin, this.root, "tsc"))
+          providers.push(this.factories.makeTsLsp(t.bin, cwd, "tsc"))
         } else {
-          providers.push(this.factories.makeTsc(t.bin, this.root))
+          providers.push(this.factories.makeTsc(t.bin, cwd))
         }
         this.tscBin = t.bin
       } else if (t.id === "biome" && this.config.format) {
-        providers.push(this.factories.makeBiome(t.bin, this.root))
+        providers.push(this.factories.makeBiome(t.bin, cwd))
       } else if (t.id === "oxlint" && this.config.lint) {
-        providers.push(this.factories.makeOxlint(t.bin, this.root))
+        providers.push(this.factories.makeOxlint(t.bin, cwd))
       } else if (t.id === "sourcekit-lsp" && this.config.apple) {
-        providers.push(this.factories.makeSourceKit(t.bin, this.root))
+        providers.push(this.factories.makeSourceKit(t.bin, cwd))
       }
     }
     this.runner =
@@ -115,6 +141,7 @@ export class DiagnosticsService {
    * applies. Never throws.
    */
   async check(path: string, text: string): Promise<ServiceCheckResult> {
+    this.lastUsedMs = Date.now()
     if (!this.config.enabled) return { findings: [], notes: [], degraded: [] }
     const runner = this.ensureRunner()
     if (!runner || !runner.handles(path)) return { findings: [], notes: [], degraded: [] }
@@ -160,5 +187,138 @@ export class DiagnosticsService {
   /** Returns ids of persistent LSP providers whose server is currently booted and alive. */
   getActivePersistentProviders(): string[] {
     return this.runner?.getActivePersistentProviders() ?? []
+  }
+
+  /** Active persistent providers with this service's workspace root. */
+  getActivePersistentProvidersDetailed(): ActivePersistentProvider[] {
+    return this.getActivePersistentProviders().map((id) => ({ id, root: this.root }))
+  }
+}
+
+/** Default max concurrent workspace services (each may hold a persistent LSP). */
+export const DEFAULT_SERVICE_POOL_MAX = 4
+
+function workspaceKey(root: string): string {
+  try {
+    return realpathSync(root)
+  } catch {
+    return root
+  }
+}
+
+/**
+ * LRU pool of {@link DiagnosticsService} instances keyed by workspace root.
+ * Caps concurrent persistent LSP servers for multi-package sessions.
+ */
+export class DiagnosticsServicePool {
+  private readonly map = new Map<string, DiagnosticsService>()
+
+  constructor(
+    private readonly config: DiagnosticsConfig,
+    private readonly factories: ProviderFactories,
+    private readonly maxServices: number = DEFAULT_SERVICE_POOL_MAX,
+  ) {}
+
+  /**
+   * Get or create a service for `root`. Touches LRU. Evicts least-recently-used
+   * when over capacity.
+   */
+  get(root: string, preDetected?: DetectedTool[]): DiagnosticsService {
+    const key = workspaceKey(root)
+    let svc = this.map.get(key)
+    if (!svc) {
+      this.evictIfNeeded()
+      svc = new DiagnosticsService(root, this.config, this.factories, preDetected)
+      this.map.set(key, svc)
+    }
+    svc.lastUsedMs = Date.now()
+    return svc
+  }
+
+  /**
+   * Resolve services for a file via {@link detectToolsForFile}, group tools by
+   * configRoot, and run every applicable service. Merges findings.
+   */
+  async checkFile(
+    filePath: string,
+    text: string,
+    fallbackRoot: string,
+  ): Promise<ServiceCheckResult> {
+    if (!this.config.enabled) return { findings: [], notes: [], degraded: [] }
+
+    const detected = detectToolsForFile(filePath, { fallbackRoot })
+    if (detected.length === 0) {
+      // Last resort: single service at fallback / nearest project-ish root.
+      const svc = this.get(fallbackRoot)
+      if (!svc.handles(filePath)) return { findings: [], notes: [], degraded: [] }
+      return svc.check(filePath, text)
+    }
+
+    // Group tools by configRoot so one DiagnosticsService per workspace.
+    const byRoot = new Map<string, DetectedTool[]>()
+    for (const t of detected) {
+      const r = t.configRoot ?? fallbackRoot
+      const list = byRoot.get(r) ?? []
+      list.push(t)
+      byRoot.set(r, list)
+    }
+
+    const findings: Finding[] = []
+    const degraded: string[] = []
+    let anyHandled = false
+
+    for (const [root, tools] of byRoot) {
+      const svc = this.get(root, tools)
+      if (!svc.handles(filePath)) continue
+      anyHandled = true
+      const res = await svc.check(filePath, text)
+      for (const f of res.findings) findings.push(f)
+      for (const d of res.degraded) degraded.push(d)
+    }
+
+    if (!anyHandled) return { findings: [], notes: [], degraded: [] }
+
+    const kept = filterFindings(findings, {
+      severityFloor: this.config.severityFloor,
+      max: this.config.maxInline,
+    })
+    return { findings: kept, notes: kept.map(formatNote), degraded }
+  }
+
+  getActivePersistentProvidersDetailed(): ActivePersistentProvider[] {
+    const out: ActivePersistentProvider[] = []
+    for (const svc of this.map.values()) {
+      for (const p of svc.getActivePersistentProvidersDetailed()) out.push(p)
+    }
+    // Stable sort: by id then root basename.
+    out.sort((a, b) => a.id.localeCompare(b.id) || basename(a.root).localeCompare(basename(b.root)))
+    return out
+  }
+
+  dispose(): void {
+    for (const s of this.map.values()) s.dispose()
+    this.map.clear()
+  }
+
+  /** Test helper: number of live services. */
+  get size(): number {
+    return this.map.size
+  }
+
+  private evictIfNeeded(): void {
+    while (this.map.size >= this.maxServices) {
+      let oldestKey: string | null = null
+      let oldestMs = Number.POSITIVE_INFINITY
+      for (const [k, s] of this.map) {
+        if (s.lastUsedMs < oldestMs) {
+          oldestMs = s.lastUsedMs
+          oldestKey = k
+        }
+      }
+      if (oldestKey === null) break
+      const victim = this.map.get(oldestKey)
+      victim?.dispose()
+      this.map.delete(oldestKey)
+    }
   }
 }

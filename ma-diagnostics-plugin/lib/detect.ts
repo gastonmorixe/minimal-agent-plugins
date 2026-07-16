@@ -38,6 +38,12 @@ export interface DetectedTool {
    * for PATH-resolved tools.
    */
   binRoot?: string
+  /**
+   * Project directory whose config applies for this tool (LSP rootUri / spawn cwd).
+   * May differ per tool for the same file (e.g. package tsconfig + workspace biome.json).
+   * Set by {@link detectTools} / {@link detectToolsForFile}.
+   */
+  configRoot?: string
   /** True when a config file or devDependency named this tool (a strong signal). */
   configFound: boolean
   /** True for tools we run as a long-lived LSP server (tsgo) vs spawn-per-call. */
@@ -288,19 +294,31 @@ const PROJECT_SIGNALS = [
   "oxlint.json",
 ]
 
+/** TypeScript / JS project signals (type providers). */
+export const TYPE_CONFIG_SIGNALS = ["tsconfig.json", "jsconfig.json"] as const
+/** Biome config signals (format provider). */
+export const FORMAT_CONFIG_SIGNALS = ["biome.json", "biome.jsonc"] as const
+/** Oxlint config signals (lint provider). */
+export const LINT_CONFIG_SIGNALS = [".oxlintrc.json", "oxlint.json", ".oxlintrc"] as const
+/** Apple / Xcode project signals. */
+export const APPLE_CONFIG_SIGNALS = ["Package.swift", "*.xcodeproj", "*.xcworkspace"] as const
+
 /**
- * Walk up from a file's directory looking for a project root.
- * Checks known project signals at each ancestor directory.
- * Stops at the first match or when max depth is reached.
+ * Walk up from a file's directory looking for any of `signals`.
+ * Stops at the first matching ancestor (or maxDepth / filesystem root).
  *
- * Returns the first ancestor directory that contains any known
- * project signal, or null when none is found within maxDepth steps.
+ * Per-tool config roots use this with tool-specific signal lists so a
+ * package-local `tsconfig.json` does not claim the biome/oxlint root.
  */
-export function findProjectRoot(filePath: string, maxDepth = 10): string | null {
+export function findConfigRoot(
+  filePath: string,
+  signals: readonly string[],
+  maxDepth = 10,
+): string | null {
   let dir = dirname(filePath)
   let depth = 0
   while (depth < maxDepth) {
-    for (const signal of PROJECT_SIGNALS) {
+    for (const signal of signals) {
       if (!signal.includes("*")) {
         if (existsSync(join(dir, signal))) return dir
       } else {
@@ -313,7 +331,7 @@ export function findProjectRoot(filePath: string, maxDepth = 10): string | null 
       }
     }
     const parent = dirname(dir)
-    if (parent === dir) return null // hit filesystem root
+    if (parent === dir) return null
     dir = parent
     depth++
   }
@@ -321,11 +339,25 @@ export function findProjectRoot(filePath: string, maxDepth = 10): string | null 
 }
 
 /**
+ * Walk up from a file's directory looking for a project root.
+ * Checks known project signals at each ancestor directory.
+ * Stops at the first match or when max depth is reached.
+ *
+ * Returns the first ancestor directory that contains any known
+ * project signal, or null when none is found within maxDepth steps.
+ *
+ * Prefer {@link findConfigRoot} / {@link detectToolsForFile} when tool-specific
+ * roots matter (Phase 2+).
+ */
+export function findProjectRoot(filePath: string, maxDepth = 10): string | null {
+  return findConfigRoot(filePath, PROJECT_SIGNALS, maxDepth)
+}
+
+/**
  * Walk up from a file's directory looking for an Apple/Xcode project root.
- * Convenience wrapper around {@link findProjectRoot}.
  */
 export function findAppleProjectRoot(filePath: string): string | null {
-  return findProjectRoot(filePath)
+  return findConfigRoot(filePath, APPLE_CONFIG_SIGNALS)
 }
 
 /**
@@ -394,9 +426,70 @@ export function detectTools(
       kind: spec.kind,
       bin,
       ...(binRoot !== undefined ? { binRoot } : {}),
+      configRoot: root,
       configFound,
       persistent,
     })
   }
+  return out
+}
+
+/**
+ * Detect tools for a specific file using **per-tool** config roots.
+ *
+ * Type / format / lint / apple each walk up for their own signals, so a
+ * package-local `tsconfig.json` does not force biome/oxlint to use that
+ * directory as cwd when `biome.json` lives at the workspace root (and vice
+ * versa). Binaries still resolve via {@link resolveBinUp} from each tool's
+ * config root.
+ *
+ * Falls back to `options.fallbackRoot` (typically agent cwd) only when no
+ * tool-specific root is found for a PATH-based tool that can run without
+ * project context (sourcekit-lsp).
+ */
+export function detectToolsForFile(
+  filePath: string,
+  options: DetectOptions & { fallback?: boolean; fallbackRoot?: string } = {},
+): DetectedTool[] {
+  const typeRoot = findConfigRoot(filePath, TYPE_CONFIG_SIGNALS)
+  const formatRoot = findConfigRoot(filePath, FORMAT_CONFIG_SIGNALS)
+  const lintRoot = findConfigRoot(filePath, LINT_CONFIG_SIGNALS)
+  const appleRoot = findConfigRoot(filePath, APPLE_CONFIG_SIGNALS)
+
+  const out: DetectedTool[] = []
+  const seen = new Set<string>()
+
+  const take = (
+    root: string | null,
+    kind: ToolKind,
+    extra?: DetectOptions & { fallback?: boolean },
+  ) => {
+    if (!root) return
+    for (const t of detectTools(root, { ...options, ...extra })) {
+      if (t.kind !== kind) continue
+      if (seen.has(t.id)) continue
+      seen.add(t.id)
+      out.push({ ...t, configRoot: root })
+    }
+  }
+
+  take(typeRoot, "type")
+  take(formatRoot, "format")
+  take(lintRoot, "lint")
+  take(appleRoot, "apple")
+
+  // sourcekit-lsp can still help without a project signal (basic syntax).
+  if (!seen.has("sourcekit-lsp")) {
+    const fallbackRoot = options.fallbackRoot ?? typeRoot ?? formatRoot ?? dirname(filePath)
+    for (const t of detectTools(fallbackRoot, { ...options, fallback: true })) {
+      if (t.id !== "sourcekit-lsp") continue
+      out.push({ ...t, configRoot: appleRoot ?? fallbackRoot })
+      break
+    }
+  }
+
+  // Preserve registry order: type → lint → format → apple.
+  const order = new Map(REGISTRY.map((s, i) => [s.id, i]))
+  out.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99))
   return out
 }
