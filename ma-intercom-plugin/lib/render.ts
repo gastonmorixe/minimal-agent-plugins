@@ -80,19 +80,21 @@ export function peerLabelDisplay(short: string, name?: string | null): string {
 }
 
 /**
- * Pad a multi-line body with blank rows so the host frame draws empty `│`
- * gutters above and below the content (matches arrival-notice spacing).
+ * Trailing blank row only so the host frame draws one empty `│` gutter under
+ * the content (before `displayFooter: ""` owns the bare `╰`).
+ *
+ * Do NOT lead with a blank: the host already emits an empty `│` after the header
+ * (`formatToolHeaderRows`), so a leading `\n` here doubles the top gap.
  *
  * Pair with `displayFooter: ""` on the tool result. Without a defined footer,
- * the host rewrites the last body line onto the `╰` closer — the trailing
- * blank from this pad is not enough on its own (it gets stripped when footer
- * is absent). Empty footer keeps every body line as `│` and draws a bare `╰`.
+ * the host rewrites the last body line onto the `╰` closer. Empty footer keeps
+ * every body line as `│` and draws a bare `╰`.
  *
  * Empty input stays empty (no phantom padding for empty results).
  */
 export function padDisplayBody(body: string): string {
   if (!body) return body
-  return `\n${body}\n`
+  return `${body}\n`
 }
 
 /** Scope text for send headers: all / project / team / peer ref. */
