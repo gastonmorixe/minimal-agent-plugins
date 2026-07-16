@@ -22,10 +22,12 @@ import type { Finding } from "../lib/types.ts"
 const EXT_RE = /\.(swift|h|m|mm|c|cpp|cc|cxx|hpp|hxx)$/
 
 /**
- * Per-pull ceiling. SourceKit-LSP init can be slow (~3-5s first time), but
- * warm pulls are fast. The circuit breaker handles the slow init.
+ * Per-pull ceiling. SourceKit cold analysis on a fresh workspace can sit
+ * well above a few seconds; warm pulls are near-instant. Keep this above
+ * the observed cold path so a first check records success instead of
+ * tripping the breaker and restarting the child.
  */
-const PULL_TIMEOUT_MS = 5000
+const PULL_TIMEOUT_MS = 20_000
 
 /** Race `p` against a deadline. Rejects with `lsp pull timeout` on expiry. */
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
