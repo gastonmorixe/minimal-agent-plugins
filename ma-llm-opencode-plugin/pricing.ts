@@ -76,6 +76,22 @@ export const PRICING_KIMI_K2_6: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
+export const PRICING_KIMI_K3: MTokRate = {
+  inputUSD: 3.0,
+  outputUSD: 15.0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.3,
+  webSearchPerCallUSD: 0,
+}
+
+export const PRICING_GROK_4_5: MTokRate = {
+  inputUSD: 2.0,
+  outputUSD: 6.0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.5,
+  webSearchPerCallUSD: 0,
+}
+
 export const PRICING_MIMO_V2_5: MTokRate = {
   inputUSD: 0.14,
   outputUSD: 0.28,

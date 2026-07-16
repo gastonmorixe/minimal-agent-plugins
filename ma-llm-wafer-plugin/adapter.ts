@@ -114,8 +114,8 @@ export const waferAdapter: ProviderAdapter = {
   /**
    * Recommend Wafer models per abstract sub-agent role, from THIS
    * provider's own catalog by tag. scout → a `cheap` + `scout` model
-   * (deepseek-v4-flash); balanced → a `balanced` model (GLM-5.1);
-   * deep → a `flagship` + `deep` reasoning model (deepseek-v4-pro).
+   * (glm5.2-fast); balanced → a `balanced` model (GLM-5.1);
+   * deep → a `flagship` + `deep` reasoning model (GLM-5.2).
    */
   recommendSubagentModels(): SubagentModelRecommendation[] {
     const byTier: Array<{ role: string; tags: string[] }> = [
@@ -206,13 +206,13 @@ export const waferProviderPlugin: ProviderPlugin = {
    * stripped of vendor prefixes and suffixes.
    *
    * - `GLM-5.1` → `5.1`
-   * - `deepseek-v4-pro` → `v4-pro`
-   * - `Qwen3.6-35B-A3B` → `3.6-35B`
-   * - `Kimi-K2.7-Code` → `K2.7-Code`
+   * - `glm5.2-fast` → `5.2-fast`
+   * - `Qwen3.5-397B-A17B` → `3.5-397B-A17B`
+   * - `Kimi-K2.6` → `K2.6`
    */
   modelVersionToken(modelId: string): string | undefined {
-    // Wafer model IDs are flat strings like "GLM-5.1" or "deepseek-v4-pro".
+    // Wafer model IDs are flat strings like "GLM-5.1" or "glm5.2-fast".
     // Return them directly for label building.
-    return modelId.replace(/^(GLM|Kimi|Qwen|qwen|deepseek|MiniMax)-?/, "")
+    return modelId.replace(/^(GLM|glm|Kimi|Qwen|qwen|deepseek|MiniMax)-?/, "")
   },
 }

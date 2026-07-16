@@ -114,6 +114,8 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
       "glm-5",
       "kimi-k2.7-code",
       "kimi-k2.6",
+      "kimi-k3",
+      "grok-4.5",
       "mimo-v2.5",
       "mimo-v2.5-pro",
       "minimax-m3",

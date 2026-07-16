@@ -36,7 +36,11 @@ import {
 import type { RunContext } from "./lib/provider-auth.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
 import { parseSse } from "./lib/sse-parser.ts"
-import { registerOpenRouterModelInto, registerOpenRouterModels } from "./models.ts"
+import {
+  findOpenRouterModelByTags,
+  registerOpenRouterModelInto,
+  registerOpenRouterModels,
+} from "./models.ts"
 import {
   accumulateOpenRouterUsage,
   fetchOpenRouterSessionInfo,
@@ -110,9 +114,8 @@ export const openrouterAdapter: ProviderAdapter = {
   /**
    * Recommend OpenRouter models per abstract sub-agent role, from THIS
    * provider's own (representative) catalog by tag. scout → a `cheap` model;
-   * balanced → an openai-compatible non-cheap model. `deep` is intentionally
-   * left unmapped here (the thin built-in catalog has no clear flagship), so
-   * the caller falls back to the lead's own model for deep work.
+   * balanced → a non-cheap openai-compatible model; deep → flagship when
+   * present (else the caller falls back to the lead's model).
    */
   recommendSubagentModels(): SubagentModelRecommendation[] {
     const recs: SubagentModelRecommendation[] = []
@@ -120,6 +123,9 @@ export const openrouterAdapter: ProviderAdapter = {
     // prefer a DIFFERENT model than scout for balanced when possible
     if (catalogBalancedId && catalogBalancedId !== catalogScoutId) {
       recs.push({ role: "balanced", modelId: catalogBalancedId })
+    }
+    if (catalogDeepId && catalogDeepId !== catalogScoutId && catalogDeepId !== catalogBalancedId) {
+      recs.push({ role: "deep", modelId: catalogDeepId })
     }
     return recs
   },
@@ -163,6 +169,7 @@ function taggedHttpError(
 // provider's OWN catalog without a host registry round-trip (findModelByTags).
 let catalogScoutId: string | undefined
 let catalogBalancedId: string | undefined
+let catalogDeepId: string | undefined
 // The registrar captured at register(ctx), so the ad-hoc hook (called WITHOUT
 // a ctx) can still register a live-only slug the static catalog doesn't know.
 let capturedModels: ModelRegistrar | undefined
@@ -178,9 +185,16 @@ export function bootstrapOpenRouter(ctx?: ProviderSetupContext): void {
   if (!ctx?.models || !ctx.providers) return
   capturedModels = ctx.models
   const ids = registerOpenRouterModels(ctx.models)
-  // scout → the `cheap` model; balanced → a different openai-compatible one.
-  catalogScoutId = ids.find((id) => id === "openai/gpt-4o-mini") ?? ids[0]
-  catalogBalancedId = ids.find((id) => id !== catalogScoutId)
+  // scout → first `cheap` tag, else deepseek-v4-flash, else first id.
+  catalogScoutId =
+    findOpenRouterModelByTags(["cheap"]) ??
+    ids.find((id) => id === "deepseek/deepseek-v4-flash") ??
+    ids[0]
+  // balanced → first non-scout openai-compatible model (skip other cheap ones).
+  catalogBalancedId =
+    ids.find((id) => id !== catalogScoutId && id !== "openai/gpt-4o-mini") ??
+    ids.find((id) => id !== catalogScoutId)
+  catalogDeepId = findOpenRouterModelByTags(["flagship"]) ?? ids[0]
   ctx.providers.register(openrouterAdapter)
 }
 

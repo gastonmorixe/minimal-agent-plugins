@@ -2,7 +2,7 @@
  * HuggingFace model registry entries.
  *
  * HuggingFace Inference Providers uses namespaced model ids
- * (`openai/gpt-oss-120b`, `deepseek-ai/DeepSeek-V3`, etc.) with an
+ * (`openai/gpt-oss-120b`, `deepseek-ai/DeepSeek-V4-Flash`, etc.) with an
  * optional `:provider` suffix for backend selection. All register on
  * the `openai-chat-completions` surface — HuggingFace normalizes every
  * upstream model to the OpenAI Chat Completions wire format.
@@ -19,10 +19,12 @@ import type { Capabilities } from "./lib/capabilities.ts"
 import type { ModelRegistrar } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
-  PRICING_HF_DEEPSEEK_V3,
+  PRICING_HF_DEEPSEEK_V4_FLASH,
   PRICING_HF_GENERIC,
+  PRICING_HF_GLM_5_2,
   PRICING_HF_GPT_OSS_120B,
-  PRICING_HF_QWEN3_32B,
+  PRICING_HF_KIMI_K2_7_CODE,
+  PRICING_HF_MINIMAX_M3,
 } from "./pricing.ts"
 
 /**
@@ -52,29 +54,49 @@ const localCatalog = new Map<string, readonly string[]>()
  * @returns The registered model ids.
  */
 export function registerHuggingFaceModels(registrar: ModelRegistrar): string[] {
-  // openai/gpt-oss-120b: flagship open-weights model
+  // deepseek-ai/DeepSeek-V4-Flash: cheap / scout tier
+  registerHuggingFaceModelInto(registrar, {
+    id: "deepseek-ai/DeepSeek-V4-Flash",
+    displayName: "DeepSeek V4 Flash (HuggingFace)",
+    tags: ["huggingface", "openai-compatible", "cheap"],
+    pricing: PRICING_HF_DEEPSEEK_V4_FLASH,
+  })
+  // moonshotai/Kimi-K2.7-Code: reasoning / code
+  registerHuggingFaceModelInto(registrar, {
+    id: "moonshotai/Kimi-K2.7-Code",
+    displayName: "Kimi K2.7 Code (HuggingFace)",
+    tags: ["huggingface", "openai-compatible", "reasoning", "code"],
+    pricing: PRICING_HF_KIMI_K2_7_CODE,
+  })
+  // zai-org/GLM-5.2: flagship / reasoning
+  registerHuggingFaceModelInto(registrar, {
+    id: "zai-org/GLM-5.2",
+    displayName: "GLM 5.2 (HuggingFace)",
+    tags: ["huggingface", "openai-compatible", "flagship", "reasoning"],
+    pricing: PRICING_HF_GLM_5_2,
+  })
+  // openai/gpt-oss-120b: open-weights reference model
   registerHuggingFaceModelInto(registrar, {
     id: "openai/gpt-oss-120b",
     displayName: "GPT-OSS 120B (HuggingFace)",
-    tags: ["huggingface", "openai-compatible", "flagship"],
+    tags: ["huggingface", "openai-compatible"],
     pricing: PRICING_HF_GPT_OSS_120B,
   })
-  // deepseek-ai/DeepSeek-V3
+  // MiniMaxAI/MiniMax-M3
   registerHuggingFaceModelInto(registrar, {
-    id: "deepseek-ai/DeepSeek-V3",
-    displayName: "DeepSeek V3 (HuggingFace)",
-    tags: ["huggingface", "openai-compatible", "reasoning"],
-    pricing: PRICING_HF_DEEPSEEK_V3,
-  })
-  // Qwen/Qwen3-32B
-  registerHuggingFaceModelInto(registrar, {
-    id: "Qwen/Qwen3-32B",
-    displayName: "Qwen3 32B (HuggingFace)",
-    tags: ["huggingface", "openai-compatible", "cheap"],
-    pricing: PRICING_HF_QWEN3_32B,
+    id: "MiniMaxAI/MiniMax-M3",
+    displayName: "MiniMax M3 (HuggingFace)",
+    tags: ["huggingface", "openai-compatible"],
+    pricing: PRICING_HF_MINIMAX_M3,
   })
 
-  return ["openai/gpt-oss-120b", "deepseek-ai/DeepSeek-V3", "Qwen/Qwen3-32B"]
+  return [
+    "deepseek-ai/DeepSeek-V4-Flash",
+    "moonshotai/Kimi-K2.7-Code",
+    "zai-org/GLM-5.2",
+    "openai/gpt-oss-120b",
+    "MiniMaxAI/MiniMax-M3",
+  ]
 }
 
 export interface HuggingFaceModelSpec {

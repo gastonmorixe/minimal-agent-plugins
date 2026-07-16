@@ -255,7 +255,7 @@ export function primeWaferSessionInfo(ctx: ProviderSessionContext): Promise<void
           "user-agent": "minimal-agent-wafer/0.1",
         },
         body: JSON.stringify({
-          model: ctx.modelId || "deepseek-v4-flash",
+          model: ctx.modelId || "GLM-5.1",
           messages: [{ role: "user", content: "quota" }],
           max_tokens: 1,
           temperature: 0,

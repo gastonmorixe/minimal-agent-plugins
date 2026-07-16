@@ -201,6 +201,24 @@ export const CAPS_KIMI_K2_6: Capabilities = {
   ...thinkExtended(["medium"], "medium"),
 }
 
+/**
+ * Kimi K3 — flagship, 1M ctx, 65K output, text+image+video.
+ * Thinking is always on. Moonshot currently exposes reasoning_effort "max" only.
+ */
+export const CAPS_KIMI_K3: Capabilities = {
+  ...chatBase(1_000_000, 65_535, M_TIV),
+  ...thinkExtended(["max"], "max"),
+}
+
+/**
+ * Grok 4.5 — 500K ctx, 65K output, text+image, extended thinking.
+ * Chat Completions surface via OpenCode Go.
+ */
+export const CAPS_GROK_4_5: Capabilities = {
+  ...chatBase(500_000, 65_536, M_TI),
+  ...thinkExtended(["medium", "high", "max"], "medium"),
+}
+
 /** MiMo V2.5 — 310B/15B MoE, 1M ctx, 131K output, omni-modal + extended thinking. */
 export const CAPS_MIMO_V2_5: Capabilities = {
   ...chatBase(1_000_000, 131_072, M_TIVA),

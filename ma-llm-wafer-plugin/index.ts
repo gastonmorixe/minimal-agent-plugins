@@ -18,16 +18,12 @@ export {
   waferApiKeyToSecrets,
 } from "./auth.ts"
 export {
-  CAPS_DEEPSEEK_V4_FLASH,
-  CAPS_DEEPSEEK_V4_PRO,
   CAPS_GLM_5_1,
   CAPS_GLM_5_2,
+  CAPS_GLM_5_2_FAST,
   CAPS_KIMI_K2_6,
-  CAPS_KIMI_K2_7_CODE,
   CAPS_MINIMAX_M3,
   CAPS_QWEN3_5_397B,
-  CAPS_QWEN3_6_35B,
-  CAPS_QWEN3_7_MAX,
 } from "./capabilities.ts"
 export {
   findWaferModelByTags,
@@ -37,16 +33,12 @@ export {
   waferModelShortLabel,
 } from "./models.ts"
 export {
-  PRICING_DEEPSEEK_V4_FLASH,
-  PRICING_DEEPSEEK_V4_PRO,
   PRICING_GLM_5_1,
   PRICING_GLM_5_2,
+  PRICING_GLM_5_2_FAST,
   PRICING_KIMI_K2_6,
-  PRICING_KIMI_K2_7_CODE,
   PRICING_MINIMAX_M3,
   PRICING_QWEN3_5_397B,
-  PRICING_QWEN3_6_35B,
-  PRICING_QWEN3_7_MAX,
   PRICING_WAFER_GENERIC,
 } from "./pricing.ts"
 export {

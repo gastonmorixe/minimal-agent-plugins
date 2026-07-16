@@ -96,7 +96,34 @@ export const CAPS_GLM_5_2: Capabilities = {
 }
 
 // ---------------------------------------------------------------------------
-// Kimi-K2.6 — 262K context, vision + tools + reasoning, ZDR
+// glm5.2-fast — same family as GLM-5.2, high-TPS / speed-oriented SKU
+// ---------------------------------------------------------------------------
+
+export const CAPS_GLM_5_2_FAST: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_048_576,
+  maxOutputTokens: 8_192,
+  maxOutputTokensBatch: null,
+  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
+  effort: { levels: ["low", "medium", "high"], default: "medium" },
+  acceptsTemperature: true,
+  acceptsTopP: true,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: true,
+  speedFast: true,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_FULL },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...MODALITIES_TEXT },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+// ---------------------------------------------------------------------------
+// Kimi-K2.6 — 262K context, vision + tools + reasoning
 // ---------------------------------------------------------------------------
 
 export const CAPS_KIMI_K2_6: Capabilities = {
@@ -118,33 +145,6 @@ export const CAPS_KIMI_K2_6: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { image: true, audio: false, pdf: false, video: false },
-  serverSideHistory: false,
-  serverTools: [],
-}
-
-// ---------------------------------------------------------------------------
-// Kimi-K2.7-Code — 262K context, reasoning ALWAYS ON, coding-focused
-// ---------------------------------------------------------------------------
-
-export const CAPS_KIMI_K2_7_CODE: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 262_144,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
   serverSideHistory: false,
   serverTools: [],
 }
@@ -177,115 +177,7 @@ export const CAPS_QWEN3_5_397B: Capabilities = {
 }
 
 // ---------------------------------------------------------------------------
-// Qwen3.6-35B-A3B — 256K context, small MoE, cheap
-// ---------------------------------------------------------------------------
-
-export const CAPS_QWEN3_6_35B: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 256_000,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
-  effort: { levels: [], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
-
-// ---------------------------------------------------------------------------
-// Qwen3.7-Max — premium Qwen, 256K context
-// ---------------------------------------------------------------------------
-
-export const CAPS_QWEN3_7_MAX: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 256_000,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
-
-// ---------------------------------------------------------------------------
-// DeepSeek V4 Flash — 1M context, cheap reasoning
-// ---------------------------------------------------------------------------
-
-export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 1_000_000,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
-
-// ---------------------------------------------------------------------------
-// DeepSeek V4 Pro — 1M context, flagship reasoning
-// ---------------------------------------------------------------------------
-
-export const CAPS_DEEPSEEK_V4_PRO: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 1_000_000,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
-
-// ---------------------------------------------------------------------------
-// MiniMax-M3 — 1M context, inline <think> reasoning
+// MiniMax-M3 — 1M context, vision + inline <think> reasoning
 // ---------------------------------------------------------------------------
 
 export const CAPS_MINIMAX_M3: Capabilities = {
@@ -306,7 +198,7 @@ export const CAPS_MINIMAX_M3: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
+  modalities: { image: true, audio: false, pdf: false, video: false },
   serverSideHistory: false,
   serverTools: [],
 }
