@@ -50,6 +50,62 @@ export function shortComputerId(computerId: string | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
+// Peer labels (Name (short) when named, else short)
+// ---------------------------------------------------------------------------
+
+/**
+ * Plain peer label for headers / model text.
+ *
+ * Prefer `Name (short)` when a display name is present, else the short id alone.
+ * Keeps the short id always addressable while making named sessions readable.
+ */
+export function peerLabel(short: string, name?: string | null): string {
+  const s = (short || "").trim()
+  const n = typeof name === "string" ? name.trim() : ""
+  if (n && s) return `${n} (${s})`
+  if (n) return n
+  return s || "?"
+}
+
+/**
+ * ANSI peer label for the transcript body / header slots.
+ * Name is bold, short id is dim inside parens when both are present.
+ */
+export function peerLabelDisplay(short: string, name?: string | null): string {
+  const s = (short || "").trim()
+  const n = typeof name === "string" ? name.trim() : ""
+  if (n && s) return `${bold(n)} ${dim(`(${s})`)}`
+  if (n) return bold(n)
+  return bold(s || "?")
+}
+
+/**
+ * Pad a multi-line body with blank rows so the host frame draws empty `│`
+ * gutters above and below the content (matches arrival-notice spacing).
+ *
+ * Pair with `displayFooter: ""` on the tool result. Without a defined footer,
+ * the host rewrites the last body line onto the `╰` closer — the trailing
+ * blank from this pad is not enough on its own (it gets stripped when footer
+ * is absent). Empty footer keeps every body line as `│` and draws a bare `╰`.
+ *
+ * Empty input stays empty (no phantom padding for empty results).
+ */
+export function padDisplayBody(body: string): string {
+  if (!body) return body
+  return `\n${body}\n`
+}
+
+/** Scope text for send headers: all / project / team / peer ref. */
+export function scopeLabel(scope: string): string {
+  const s = scope.trim()
+  const lower = s.toLowerCase()
+  if (lower === "all" || lower === "*" || lower === "broadcast") return "all"
+  if (lower === "project" || lower === "project:.") return "project"
+  if (lower.startsWith("team:")) return s
+  return s
+}
+
+// ---------------------------------------------------------------------------
 // Roster (Peers list)
 // ---------------------------------------------------------------------------
 
@@ -65,10 +121,11 @@ export function renderRosterText(rows: readonly RosterRow[], counts: RosterCount
     const r = row.record
     const verdict = livenessLabel(row.liveness)
     const self = row.isSelf ? " (you)" : ""
-    // Opt-in agent name (peer-reported); sanitize before model-facing text. Only
-    // shown when the peer carries one (naming off ⇒ omitted), so the model sees
-    // "Jerry" beside the short id when a session is named.
-    const name = r.name ? ` "${sanitizePeerLine(r.name)}"` : ""
+    // Prefer Name (short) when named; short alone when not.
+    const label = peerLabel(
+      sanitizePeerLine(r.short),
+      r.name ? sanitizePeerLine(r.name) : undefined,
+    )
     // model / cwd / activity are peer-reported; sanitize before model-facing text.
     const where = sanitizePeerLine(baseName(r.cwd)) || "?"
     const model = r.model ? sanitizePeerLine(r.model) : "?"
@@ -78,9 +135,7 @@ export function renderRosterText(rows: readonly RosterRow[], counts: RosterCount
     // peer is on another machine and which one. Local peers render unchanged.
     const cid = shortComputerId(r.computerId)
     const remote = row.isRemote ? ` (Remote${cid ? ` ${sanitizePeerLine(cid)}` : ""})` : ""
-    lines.push(
-      `  ${sanitizePeerLine(r.short)}${name}${self}${remote}  [${verdict}]  ${model}  ${where}${act}${seen}`,
-    )
+    lines.push(`  ${label}${self}${remote}  [${verdict}]  ${model}  ${where}${act}${seen}`)
   }
   return lines.join("\n")
 }
@@ -95,25 +150,24 @@ const VERDICT_COLOR: Record<Liveness["status"], (s: string) => string> = {
 
 /** ANSI roster for the transcript. */
 export function renderRosterDisplay(rows: readonly RosterRow[]): string {
-  if (rows.length === 0) return dim("no other sessions")
+  if (rows.length === 0) return padDisplayBody(dim("no other sessions"))
   const lines: string[] = []
   for (const row of rows) {
     const r = row.record
     const paint = VERDICT_COLOR[row.liveness.status]
     const verdict = paint(`●`)
     const self = row.isSelf ? dim(" (you)") : ""
-    // Opt-in agent name beside the short id, when the peer carries one.
-    const name = r.name ? cyan(` "${r.name}"`) : ""
+    const label = peerLabelDisplay(r.short, r.name)
     const where = gray(baseName(r.cwd) || "?")
     const act = r.activity ? dim(` · ${r.activity}`) : ""
     const seen = row.liveness.status === "online" ? "" : dim(` · ${ago(row.liveness.ageMs)}`)
     const cid = shortComputerId(r.computerId)
     const remote = row.isRemote ? dim(` (Remote${cid ? ` ${cid}` : ""})`) : ""
     lines.push(
-      `  ${verdict} ${bold(r.short)}${name}${self}${remote}  ${paint(livenessLabel(row.liveness).padEnd(7))} ${dim(r.model || "?")}  ${where}${act}${seen}`,
+      `  ${verdict} ${label}${self}${remote}  ${paint(livenessLabel(row.liveness).padEnd(7))} ${dim(r.model || "?")}  ${where}${act}${seen}`,
     )
   }
-  return lines.join("\n")
+  return padDisplayBody(lines.join("\n"))
 }
 
 /**
@@ -138,11 +192,6 @@ export function renderFooter(counts: RosterCounts): string | null {
 // Inbox (received messages)
 // ---------------------------------------------------------------------------
 
-const KIND_GLYPH: Record<Envelope["kind"], string> = {
-  message: "◇",
-  interrupt: "◆",
-}
-
 /** Body of the `<ma::agent::intercom-inbox>` attachment (plain, model-facing). */
 export function renderInboxBody(envs: readonly Envelope[]): string {
   const lines: string[] = []
@@ -153,9 +202,11 @@ export function renderInboxBody(envs: readonly Envelope[]): string {
     const reply = e.replyTo ? ` reply-to=${sanitizePeerLine(e.replyTo)}` : ""
     const where = e.from.cwd ? ` cwd=${sanitizePeerLine(baseName(e.from.cwd))}` : ""
     const short = sanitizePeerLine(e.from.short)
+    const name = e.from.name ? sanitizePeerLine(e.from.name) : undefined
+    const who = peerLabel(short, name)
     const model = e.from.model ? sanitizePeerLine(e.from.model) : "?"
     lines.push(
-      `[${e.kind}] from ${short} (${model}${where}) id=${sanitizePeerLine(e.id)}${reply} at ${e.ts}`,
+      `[${e.kind}] from ${who} (${model}${where}) id=${sanitizePeerLine(e.id)}${reply} at ${e.ts}`,
     )
     for (const bl of sanitizePeerText(e.body).split("\n")) lines.push(`    ${bl}`)
   }
@@ -164,15 +215,96 @@ export function renderInboxBody(envs: readonly Envelope[]): string {
 
 /** ANSI inbox for the transcript (Inbox tool display). */
 export function renderInboxDisplay(envs: readonly Envelope[]): string {
-  if (envs.length === 0) return dim("inbox empty")
+  if (envs.length === 0) return padDisplayBody(dim("inbox empty"))
+  // Single message: body only (who/when live in the tool header when useful).
+  // Multi: a dim from-line before each body so messages stay attributable
+  // without stuffing model/time chrome into the frame.
   const lines: string[] = []
   for (const e of envs) {
-    const glyph = e.kind === "interrupt" ? red(KIND_GLYPH[e.kind]) : cyan(KIND_GLYPH[e.kind])
-    lines.push(
-      `  ${glyph} ${bold(e.from.short)} ${dim(e.ts.slice(11, 19))}  ${e.body.split("\n")[0]}`,
-    )
+    if (envs.length > 1) {
+      const who = peerLabelDisplay(
+        sanitizeTerminalLine(e.from.short),
+        e.from.name ? sanitizeTerminalLine(e.from.name) : undefined,
+      )
+      const ts = e.ts.length >= 19 ? dim(e.ts.slice(11, 19)) : ""
+      const tag = e.kind === "interrupt" ? `${red("interrupt")} ${dim("·")} ` : ""
+      lines.push(`${tag}${who}${ts ? ` ${dim("·")} ${ts}` : ""}`)
+    }
+    for (const bl of sanitizeTerminalText(e.body).split("\n")) lines.push(bl)
+    if (envs.length > 1 && e !== envs[envs.length - 1]) lines.push("")
   }
-  return lines.join("\n")
+  return padDisplayBody(lines.join("\n"))
+}
+
+// ---------------------------------------------------------------------------
+// Send tool presentation (displayHeader / display body)
+// ---------------------------------------------------------------------------
+
+/** Inputs for the Send tool's TUI presentation. */
+export interface SendDisplayInput {
+  readonly kind: Envelope["kind"]
+  readonly scope: string
+  readonly delivered: readonly { short: string; sid: string; name?: string }[]
+  readonly body: string
+  readonly isError?: boolean
+  readonly errorNote?: string
+}
+
+/**
+ * Header content slot for IntercomSend (after host icon + tool label).
+ *
+ * Host already paints `→ IntercomSend`. This slot is the destination only so the
+ * row reads:
+ *
+ *   ╭ → IntercomSend → Sergio (3782589f) · 09:19:26
+ *
+ * Interrupt keeps a palette-red urgency word; the default "message" kind is
+ * silent (the send tool itself is the action).
+ */
+export function renderSendHeader(input: SendDisplayInput): string {
+  const scope = scopeLabel(input.scope)
+  const lower = scope.toLowerCase()
+  const isBroadcast = lower === "all" || lower === "project" || lower.startsWith("team:")
+
+  let dest: string
+  if (isBroadcast) {
+    const n = input.delivered.length
+    const peerWord = n === 1 ? "peer" : "peers"
+    dest = n > 0 ? `${cyan(scope)} ${dim(`· ${n} ${peerWord}`)}` : cyan(scope)
+  } else if (input.delivered.length === 1) {
+    const d = input.delivered[0]!
+    dest = peerLabelDisplay(d.short, d.name)
+  } else if (input.delivered.length > 1) {
+    dest = input.delivered.map((d) => peerLabel(d.short, d.name)).join(", ")
+  } else {
+    // Failed / no delivery: still show the addressed scope so the header is useful.
+    dest = dim(scope)
+  }
+
+  const arrow = dim("→")
+  const err = input.isError ? ` ${red("failed")}` : ""
+  // `red()` is palette-aware (MINIMAL_AGENT_PALETTE), not a hardcoded SGR.
+  if (input.kind === "interrupt") {
+    return `${red("interrupt")} ${dim("·")} ${arrow} ${dest}${err}`
+  }
+  return `${arrow} ${dest}${err}`
+}
+
+/**
+ * Body for IntercomSend: padded message text (and optional error note).
+ * Host owns the frame; we only supply bare ANSI rows with blank padding.
+ */
+export function renderSendDisplay(input: SendDisplayInput): string {
+  const parts: string[] = []
+  if (input.isError && input.errorNote) {
+    parts.push(red(input.errorNote))
+    if (input.body) parts.push("")
+  }
+  if (input.body) {
+    for (const bl of sanitizeTerminalText(input.body).split("\n")) parts.push(bl)
+  }
+  if (parts.length === 0) return padDisplayBody(dim("(empty)"))
+  return padDisplayBody(parts.join("\n"))
 }
 
 // ---------------------------------------------------------------------------
@@ -196,10 +328,9 @@ export interface InspectBundle {
 export function renderInspectText(b: InspectBundle): string {
   const r = b.record
   const lines: string[] = []
-  lines.push(`Peer ${r.short} (${r.sid})`)
-  // Opt-in agent name (peer-reported); sanitize before model-facing text. Only
-  // shown when the peer carries one (naming off ⇒ line omitted).
-  if (r.name) lines.push(`  name: ${sanitizePeerLine(r.name)}`)
+  const label = peerLabel(sanitizePeerLine(r.short), r.name ? sanitizePeerLine(r.name) : undefined)
+  lines.push(`Peer ${label}`)
+  lines.push(`  sid: ${sanitizePeerLine(r.sid)}`)
   lines.push(
     `  liveness: ${livenessLabel(b.liveness)}${b.liveness.status === "online" ? "" : ` · ${ago(b.liveness.ageMs)}`}`,
   )
@@ -273,21 +404,90 @@ export function renderInspectText(b: InspectBundle): string {
 export function renderInspectDisplay(b: InspectBundle): string {
   const r = b.record
   const paint = VERDICT_COLOR[b.liveness.status]
-  const head = `${paint("●")} ${bold(r.short)} ${dim(r.model || "?")} ${gray(baseName(r.cwd) || "?")}`
+  const who = peerLabelDisplay(r.short, r.name)
+  const head = `${paint("●")} ${who}  ${dim(r.model || "?")}  ${gray(baseName(r.cwd) || "?")}`
   const bits: string[] = []
   if (b.tasks) bits.push(`${b.tasks.summary.doing}▸/${b.tasks.summary.total} tasks`)
   if (b.jobs && b.jobs.length) bits.push(`${b.jobs.length} jobs`)
   if (b.fleet && b.fleet.length) bits.push(`${b.fleet.length} workers`)
-  return bits.length ? `${head}  ${dim(bits.join(" · "))}` : head
+  const line = bits.length ? `${head}  ${dim(bits.join(" · "))}` : head
+  return padDisplayBody(line)
 }
 
 /**
- * The "N new message(s)" label for the arrival notice header.
- *
- * Goes into the host notice block's `info` slot, beside the ⇆/intercom title.
+ * Header content slot for IntercomPeers inspect (after host icon + tool label).
+ * e.g. `inspect · Sergio (3782589f)`
+ */
+export function renderInspectHeader(short: string, name?: string | null): string {
+  return `${dim("inspect")} ${dim("·")} ${peerLabelDisplay(short, name)}`
+}
+
+/**
+ * Header content slot for IntercomPeers list.
+ * e.g. `3 sessions · 2 reachable`
+ */
+export function renderPeersListHeader(
+  rowsCount: number,
+  online: number,
+  busy: number,
+  idle: number,
+): string {
+  const parts: string[] = [`${rowsCount} session${rowsCount === 1 ? "" : "s"}`]
+  const reachable = online + busy + idle
+  if (reachable > 0 && reachable < rowsCount) parts.push(`${reachable} reachable`)
+  else if (reachable > 0 && reachable === rowsCount) parts.push(`${reachable} reachable`)
+  if (busy > 0) parts.push(`${busy} busy`)
+  return dim(parts.join(" · "))
+}
+
+/**
+ * Header content slot for IntercomInbox.
+ * e.g. `unread · 2/5` or `recent · 3/3`
+ */
+export function renderInboxHeader(scope: string, selected: number, total: number): string {
+  const s = scope === "recent" ? "recent" : "unread"
+  return `${dim(s)} ${dim("·")} ${dim(`${selected}/${total}`)}`
+}
+
+/**
+ * The "N new message(s)" label (plain). Used by persistence text and as a
+ * multi-arrival header fallback when no single peer is the subject.
  */
 export function arrivalLabel(count: number): string {
   return count === 1 ? "1 new message" : `${count} new messages`
+}
+
+/**
+ * Header `info` slot for one arrival notice (after icon + "Intercom" title).
+ *
+ * Always one envelope per toast (the beat emits one notice per message):
+ *   `from Sergio (3782589f)`
+ *   `interrupt · from Sergio (3782589f)`  — "interrupt" is palette-red ANSI
+ *
+ * Note: host `info` is dimmed as a whole by `renderCommandNoticeBlock`, which
+ * would wash out red. For interrupt we put the urgency word in the title instead
+ * when building the block (see {@link toArrivalNotice}).
+ */
+export function renderArrivalInfo(e: Envelope): string {
+  const who = peerLabel(
+    sanitizeTerminalLine(e.from.short),
+    e.from.name ? sanitizeTerminalLine(e.from.name) : undefined,
+  )
+  return `from ${who}`
+}
+
+/** Optional host `timestamp` slot (HH:MM:SS) for one arrival. */
+export function renderArrivalTimestamp(e: Envelope): string | undefined {
+  const ts = e.ts
+  return ts.length >= 19 ? ts.slice(11, 19) : undefined
+}
+
+/**
+ * Optional host `footer` slot: model name. Empty string means "no footer"
+ * (host draws a bare `╰`).
+ */
+export function renderArrivalFooter(e: Envelope): string {
+  return e.from.model ? sanitizeTerminalLine(e.from.model) : ""
 }
 
 /**
@@ -297,6 +497,11 @@ export function arrivalLabel(count: number): string {
  * ANSI rows). `text` is the plain record the host persists to the session log.
  * This is the plugin↔host contract DTO; the host validates it at the boundary
  * (`coerceNoticeBlock`) before rendering.
+ *
+ * Presentation contract:
+ *   header  = icon + "Intercom" + who/action (+ time for single)
+ *   body    = message text only
+ *   footer  = model (single) or count (multi)
  */
 export interface ArrivalNotice {
   readonly source: "intercom"
@@ -306,82 +511,78 @@ export interface ArrivalNotice {
     readonly info: string
     readonly color: string
     readonly body: string[]
+    readonly footer?: string
+    readonly timestamp?: string
   }
   readonly text: string
 }
 
 /**
- * Build the full `notification.emit` payload for a batch of fresh messages.
+ * Build the full `notification.emit` payload for ONE fresh message.
  *
- * This is the single home for the arrival notice's PRESENTATION decisions (icon,
- * title, accent color, the styled rows, the plain persistence text). Keeping it
- * here, beside the renderers it composes, keeps the beat handler a thin
- * orchestration shell: it decides WHEN to notify, not WHAT the notice looks
- * like. Pure.
+ * One toast per envelope (the beat loops). That keeps the header always
+ * `from Name (short)` — never a vague "2 new messages · …" batch line.
+ *
+ * Interrupt urgency: host dims the entire `info` slot, so "interrupt" would
+ * lose its red. Put the urgency word in `title` instead (`Intercom interrupt`),
+ * with palette-red ANSI on that word only; normal arrivals stay `Intercom`.
+ *
+ * Pure. The beat handler decides WHEN to notify; this owns WHAT it looks like.
  */
-export function toArrivalNotice(fresh: readonly Envelope[]): ArrivalNotice {
+export function toArrivalNotice(e: Envelope): ArrivalNotice {
+  const footer = renderArrivalFooter(e)
+  const timestamp = renderArrivalTimestamp(e)
+  const isIrq = e.kind === "interrupt"
+  // Title is host-accented (magenta). For interrupt, append a palette-red word
+  // after the accented title so urgency survives host chrome.
+  const title = isIrq ? `Intercom ${red("interrupt")}` : "Intercom"
   return {
     source: "intercom",
     block: {
-      icon: "⇆",
-      title: "intercom",
-      info: arrivalLabel(fresh.length),
+      // ↓ = receive (matches Inbox tool icon).
+      icon: "↓",
+      title,
+      info: renderArrivalInfo(e),
       color: "magenta",
-      body: renderArrivalLines(fresh),
+      body: renderArrivalLines(e),
+      ...(footer ? { footer } : {}),
+      ...(timestamp ? { timestamp } : {}),
     },
-    text: renderArrivalText(fresh),
+    text: renderArrivalText(e),
   }
+}
+
+/**
+ * Build one notice per envelope. Prefer this at the beat so each message gets
+ * its own framed toast with a clear `from …` header.
+ */
+export function toArrivalNotices(fresh: readonly Envelope[]): ArrivalNotice[] {
+  return fresh.map((e) => toArrivalNotice(e))
 }
 
 /**
  * Styled body rows for the arrival notice, for a HUMAN terminal.
  *
- * Returns the BARE content rows only: no `╭│╰` frame, no per-row `│ ` prefix,
- * no header line. The host's `renderCommandNoticeBlock` owns all of that chrome
- * (it draws the box, pads with blank `│` rows, and prefixes each body line). We
- * supply just the ANSI-styled inner lines.
+ * Message text ONLY for one envelope. Who / when / model live in header/footer.
  *
- * Crucially this path does NOT html-escape peer text (the `&lt;/&gt;` bug):
- * these rows never enter a model context. Peer-sourced fields are run through
- * {@link sanitizeTerminalText}/{@link sanitizeTerminalLine} instead, which strip
- * smuggled escape/control sequences but leave `<`/`>` and normal text intact.
+ * Returns the BARE content rows only: no `╭│╰` frame. The host owns chrome.
+ * Does NOT html-escape peer text (the `&lt;/&gt;` bug) — terminal sanitize only.
  */
-export function renderArrivalLines(fresh: readonly Envelope[]): string[] {
-  const lines: string[] = []
-  for (const e of fresh) {
-    const glyph = e.kind === "interrupt" ? red("◆") : cyan("◇")
-    const verdict = e.kind === "interrupt" ? red(" INTERRUPT ") : ""
-    const short = sanitizeTerminalLine(e.from.short)
-    const model = e.from.model ? sanitizeTerminalLine(e.from.model) : "?"
-    const ts = e.ts.slice(11, 19)
-    lines.push(`${magenta("⇆")} ${verdict}${glyph} ${bold(short)} (${dim(model)}) at ${ts}`)
-    for (const bl of sanitizeTerminalText(e.body).split("\n")) lines.push(bl)
-    // blank separator between messages when there are multiple
-    if (fresh.length > 1 && e !== fresh[fresh.length - 1]) lines.push("")
-  }
-  return lines
+export function renderArrivalLines(e: Envelope): string[] {
+  return sanitizeTerminalText(e.body).split("\n")
 }
 
 /**
- * Plain-text rendering of the arrival notice, for JSONL persistence + resume.
- *
- * No ANSI, no frame. Mirrors the styled rows' information so a resumed session
- * can replay what the user saw. Peer text is terminal-sanitized (escape/control
- * stripped) but not html-escaped — this is a faithful human-readable record,
- * not model-facing context.
+ * Plain-text rendering of one arrival notice, for JSONL persistence + resume.
  */
-export function renderArrivalText(fresh: readonly Envelope[]): string {
-  const label = arrivalLabel(fresh.length)
-  const lines: string[] = [`⇆ intercom · ${label}`]
-  for (const e of fresh) {
-    const kind = e.kind === "interrupt" ? "INTERRUPT " : ""
-    const glyph = e.kind === "interrupt" ? "◆" : "◇"
-    const short = sanitizeTerminalLine(e.from.short)
-    const model = e.from.model ? sanitizeTerminalLine(e.from.model) : "?"
-    const ts = e.ts.slice(11, 19)
-    lines.push(`⇆ ${kind}${glyph} ${short} (${model}) at ${ts}`)
-    for (const bl of sanitizeTerminalText(e.body).split("\n")) lines.push(`  ${bl}`)
-    if (fresh.length > 1 && e !== fresh[fresh.length - 1]) lines.push("")
-  }
+export function renderArrivalText(e: Envelope): string {
+  const lines: string[] = [
+    `↓ Intercom${e.kind === "interrupt" ? " interrupt" : ""} · ${renderArrivalInfo(e)}`,
+  ]
+  const ts = renderArrivalTimestamp(e)
+  if (ts) lines[0] = `${lines[0]} · ${ts}`
+  for (const bl of sanitizeTerminalText(e.body).split("\n")) lines.push(`  ${bl}`)
+  const footer = renderArrivalFooter(e)
+  if (footer) lines.push(footer)
   return lines.join("\n")
 }

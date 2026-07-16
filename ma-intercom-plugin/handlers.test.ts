@@ -108,6 +108,12 @@ describe("Send", () => {
     if (res.kind === "tool_result") {
       expect(res.is_error).toBeFalsy()
       expect(res.content).toContain("Delivered")
+      // Bare closer: host must not promote the last message line onto `╰`.
+      expect(res.displayFooter).toBe("")
+      expect(res.display).toContain("hi")
+      // Body is padded so host draws blank `│` gutters around the message.
+      expect(res.display?.startsWith("\n")).toBe(true)
+      expect(res.display?.endsWith("\n")).toBe(true)
     }
   })
 

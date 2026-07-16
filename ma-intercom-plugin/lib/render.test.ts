@@ -14,12 +14,17 @@ import type { PresenceRecord } from "./presence.ts"
 import {
   arrivalLabel,
   type InspectBundle,
+  peerLabel,
+  peerLabelDisplay,
   renderArrivalLines,
   renderArrivalText,
   renderInspectText,
   renderRosterDisplay,
   renderRosterText,
+  renderSendDisplay,
+  renderSendHeader,
   toArrivalNotice,
+  toArrivalNotices,
 } from "./render.ts"
 import type { RosterCounts, RosterRow } from "./roster.ts"
 
@@ -47,9 +52,87 @@ describe("arrivalLabel", () => {
   })
 })
 
+describe("peerLabel", () => {
+  test("Name (short) when named, short alone when not", () => {
+    expect(peerLabel("3782589f", "Sergio")).toBe("Sergio (3782589f)")
+    expect(peerLabel("3782589f")).toBe("3782589f")
+    expect(peerLabel("3782589f", "")).toBe("3782589f")
+    expect(peerLabel("", "Sergio")).toBe("Sergio")
+  })
+
+  test("display form keeps short dimmed in parens", () => {
+    const out = noAnsi(peerLabelDisplay("3782589f", "Sergio"))
+    expect(out).toBe("Sergio (3782589f)")
+  })
+})
+
+describe("renderSendHeader / renderSendDisplay", () => {
+  test("send header is destination only (no 'message' word)", () => {
+    const h = noAnsi(
+      renderSendHeader({
+        kind: "message",
+        scope: "3782589f",
+        delivered: [{ short: "3782589f", sid: "3782589f-full", name: "Sergio" }],
+        body: "hi",
+      }),
+    )
+    expect(h).toBe("→ Sergio (3782589f)")
+    expect(h).not.toContain("message")
+    expect(h).not.toContain("◇")
+  })
+
+  test("interrupt keeps urgency word, still destination-first", () => {
+    const h = noAnsi(
+      renderSendHeader({
+        kind: "interrupt",
+        scope: "3782589f",
+        delivered: [{ short: "3782589f", sid: "x", name: "Sergio" }],
+        body: "stop",
+      }),
+    )
+    expect(h).toContain("interrupt")
+    expect(h).toContain("→")
+    expect(h).toContain("Sergio (3782589f)")
+    expect(h).not.toContain("message")
+  })
+
+  test("send display is the body only (no recipient glyph), padded", () => {
+    const d = noAnsi(
+      renderSendDisplay({
+        kind: "message",
+        scope: "3782589f",
+        delivered: [{ short: "3782589f", sid: "x" }],
+        body: "hello there",
+      }),
+    )
+    expect(d.startsWith("\n")).toBe(true)
+    expect(d.endsWith("\n")).toBe(true)
+    expect(d).toContain("hello there")
+    expect(d).not.toContain("◇")
+    expect(d).not.toContain("3782589f")
+  })
+
+  test("broadcast header shows scope + peer count", () => {
+    const h = noAnsi(
+      renderSendHeader({
+        kind: "message",
+        scope: "all",
+        delivered: [
+          { short: "aaaa", sid: "a" },
+          { short: "bbbb", sid: "b" },
+        ],
+        body: "hi all",
+      }),
+    )
+    expect(h).toContain("→")
+    expect(h).toContain("all")
+    expect(h).toContain("2 peers")
+  })
+})
+
 describe("renderArrivalLines (human terminal)", () => {
   test("does NOT html-escape angle brackets in the body (the &lt; bug)", () => {
-    const lines = renderArrivalLines([env({ body: "use <ma::foo> and a < b > c" })]).map(noAnsi)
+    const lines = renderArrivalLines(env({ body: "use <ma::foo> and a < b > c" })).map(noAnsi)
     const joined = lines.join("\n")
     expect(joined).toContain("use <ma::foo> and a < b > c")
     expect(joined).not.toContain("&lt;")
@@ -58,7 +141,7 @@ describe("renderArrivalLines (human terminal)", () => {
   })
 
   test("returns bare rows: no box frame glyphs (host owns chrome)", () => {
-    const lines = renderArrivalLines([env()])
+    const lines = renderArrivalLines(env())
     for (const l of lines) {
       expect(l).not.toContain("╭")
       expect(l).not.toContain("│")
@@ -68,7 +151,7 @@ describe("renderArrivalLines (human terminal)", () => {
 
   test("strips smuggled ANSI/control sequences from peer body", () => {
     const evil = "safe\x1b[31mRED\x1b[0m\x1b]0;title\x07tail"
-    const out = noAnsi(renderArrivalLines([env({ body: evil })]).join("\n"))
+    const out = noAnsi(renderArrivalLines(env({ body: evil })).join("\n"))
     expect(out).toContain("safe")
     expect(out).toContain("RED")
     expect(out).toContain("tail")
@@ -76,13 +159,23 @@ describe("renderArrivalLines (human terminal)", () => {
     expect(out).not.toContain("\x07")
   })
 
-  test("interrupt is marked, separates multiple messages with a blank row", () => {
-    const lines = renderArrivalLines([
-      env({ id: "a", kind: "interrupt", body: "first" }),
-      env({ id: "b", body: "second" }),
-    ]).map(noAnsi)
-    expect(lines.join("\n")).toContain("INTERRUPT")
-    expect(lines).toContain("")
+  test("body is message text only — who/when live in header/footer", () => {
+    const lines = renderArrivalLines(
+      env({
+        kind: "interrupt",
+        body: "hi from sergio",
+        from: {
+          sid: "s-aaaaaa",
+          short: "aaaaaa",
+          model: "opus",
+          cwd: "/x/proj",
+          pid: 1,
+          host: "h",
+          name: "Sergio",
+        },
+      }),
+    ).map(noAnsi)
+    expect(lines).toEqual(["hi from sergio"])
   })
 })
 
@@ -94,10 +187,7 @@ describe("renderArrivalLines bare-row contract (host frames per-row)", () => {
   // And we must never emit our own frame glyphs — the host owns the chrome.
 
   test("every row is a single physical line (no embedded newline)", () => {
-    const rows = renderArrivalLines([
-      env({ body: "line one\nline two\nline three" }),
-      env({ id: "b", body: "second message\nwith its own break" }),
-    ])
+    const rows = renderArrivalLines(env({ body: "line one\nline two\nline three" }))
     expect(rows.length).toBeGreaterThan(0)
     for (const r of rows) {
       expect(r).not.toContain("\n")
@@ -106,18 +196,12 @@ describe("renderArrivalLines bare-row contract (host frames per-row)", () => {
   })
 
   test("a multi-line body is split into one row per source line", () => {
-    const rows = renderArrivalLines([env({ body: "a\nb\nc" })]).map(noAnsi)
-    // header row + 3 body rows
-    expect(rows).toContain("a")
-    expect(rows).toContain("b")
-    expect(rows).toContain("c")
+    const rows = renderArrivalLines(env({ body: "a\nb\nc" })).map(noAnsi)
+    expect(rows).toEqual(["a", "b", "c"])
   })
 
   test("no row carries a frame glyph (╭ │ ╰) — host draws the box", () => {
-    const rows = renderArrivalLines([
-      env({ kind: "interrupt", body: "x\ny" }),
-      env({ id: "b", body: "z" }),
-    ])
+    const rows = renderArrivalLines(env({ kind: "interrupt", body: "x\ny" }))
     for (const r of rows) {
       expect(r).not.toContain("╭")
       expect(r).not.toContain("│")
@@ -130,7 +214,7 @@ describe("renderArrivalLines bare-row contract (host frames per-row)", () => {
     // path with no spaces stays a single row here; the host wordWrap hard-breaks
     // it (and re-gutters each fragment) at paint time.
     const longTok = `/Users/x/${"a".repeat(200)}/sid.blobs/id.raw`
-    const rows = renderArrivalLines([env({ body: longTok })])
+    const rows = renderArrivalLines(env({ body: longTok }))
     const bodyRows = rows.filter((r) => noAnsi(r).includes("a".repeat(50)))
     expect(bodyRows.length).toBe(1)
     expect(bodyRows[0]).not.toContain("\n")
@@ -139,21 +223,33 @@ describe("renderArrivalLines bare-row contract (host frames per-row)", () => {
 
 describe("toArrivalNotice (the notification.emit payload contract)", () => {
   test("assembles the full payload: source, framed block, plain text", () => {
-    const n = toArrivalNotice([env({ body: "hi" })])
+    const e = env({
+      body: "hi",
+      from: {
+        sid: "s-aaaaaa",
+        short: "aaaaaa",
+        model: "opus",
+        cwd: "/x/proj",
+        pid: 1,
+        host: "h",
+        name: "Sergio",
+      },
+    })
+    const n = toArrivalNotice(e)
     expect(n.source).toBe("intercom")
-    expect(n.block.icon).toBe("⇆")
-    expect(n.block.title).toBe("intercom") // non-empty: survives host coerceNoticeBlock drop-guard
-    expect(n.block.info).toBe("1 new message")
+    expect(n.block.icon).toBe("↓")
+    expect(n.block.title).toBe("Intercom") // capitalized, survives host coerceNoticeBlock drop-guard
+    expect(n.block.info).toBe("from Sergio (aaaaaa)")
+    expect(n.block.footer).toBe("opus")
+    expect(n.block.timestamp).toBe("13:00:04")
     expect(n.block.color).toBe("magenta") // real host palette key, not the gold fallback
-    expect(n.block.body).toEqual(renderArrivalLines([env({ body: "hi" })]))
-    expect(n.text).toBe(renderArrivalText([env({ body: "hi" })]))
+    expect(n.block.body).toEqual(["hi"])
+    expect(n.text).toBe(renderArrivalText(e))
   })
 
-  test("block.body carries no frame glyphs (host owns chrome)", () => {
-    const n = toArrivalNotice([
-      env({ kind: "interrupt", body: "a\nb" }),
-      env({ id: "b", body: "c" }),
-    ])
+  test("block.body is message-only and carries no frame glyphs (host owns chrome)", () => {
+    const n = toArrivalNotice(env({ kind: "interrupt", body: "a\nb" }))
+    expect(n.block.body).toEqual(["a", "b"])
     for (const r of n.block.body) {
       expect(r).not.toContain("╭")
       expect(r).not.toContain("│")
@@ -162,17 +258,43 @@ describe("toArrivalNotice (the notification.emit payload contract)", () => {
     }
   })
 
-  test("info pluralizes with the batch size", () => {
-    expect(toArrivalNotice([env(), env({ id: "b" })]).block.info).toBe("2 new messages")
+  test("interrupt puts palette-red urgency in the title; info stays from-who only", () => {
+    const irq = toArrivalNotice(
+      env({
+        kind: "interrupt",
+        from: { ...env().from, short: "aaaaaa", name: "Sergio" },
+      }),
+    )
+    expect(irq.block.info).toBe("from Sergio (aaaaaa)")
+    // Title carries the red word (host dims info, so red would wash out there).
+    expect(noAnsi(irq.block.title)).toBe("Intercom interrupt")
+    expect(irq.block.title).not.toBe(noAnsi(irq.block.title)) // has ANSI
+    expect(irq.block.title).toContain("interrupt")
+  })
+
+  test("toArrivalNotices emits one toast per envelope", () => {
+    const notices = toArrivalNotices([
+      env({ id: "a", from: { ...env().from, short: "aaaaaa", name: "Sergio" } }),
+      env({ id: "b", from: { ...env().from, short: "bbbbbb", name: "Karen" } }),
+    ])
+    expect(notices).toHaveLength(2)
+    expect(notices[0]!.block.info).toBe("from Sergio (aaaaaa)")
+    expect(notices[1]!.block.info).toBe("from Karen (bbbbbb)")
   })
 })
 
 describe("renderArrivalText (persistence)", () => {
-  test("plain, no ANSI, no html-escape, carries label + body", () => {
-    const text = renderArrivalText([env({ body: "x < y" })])
+  test("plain, no ANSI, no html-escape, carries who + body", () => {
+    const text = renderArrivalText(
+      env({
+        body: "x < y",
+        from: { ...env().from, short: "aaaaaa", name: "Sergio", model: "opus" },
+      }),
+    )
     expect(text).toBe(noAnsi(text)) // already plain
-    expect(text).toContain("1 new message")
+    expect(text).toContain("from Sergio (aaaaaa)")
     expect(text).toContain("x < y")
+    expect(text).toContain("opus")
     expect(text).not.toContain("&lt;")
   })
 })
@@ -204,16 +326,18 @@ describe("renderInspectText — name line", () => {
     ageMs: 1000,
   }
 
-  test("renders a name line right after the Peer header when set", () => {
+  test("header uses Name (short) when set, with sid on its own line", () => {
     const out = renderInspectText({ record: rec({ name: "Camila" }), liveness } as InspectBundle)
-    expect(out).toContain("  name: Camila")
-    expect(out.indexOf("  name: Camila")).toBeGreaterThan(out.indexOf("Peer 939749b9"))
-    expect(out.indexOf("  name: Camila")).toBeLessThan(out.indexOf("  liveness:"))
+    expect(out).toContain("Peer Camila (939749b9)")
+    expect(out).toContain("  sid: 939749b9-ff79-492b-8951-f73112fcb519")
+    expect(out.indexOf("Peer Camila")).toBeLessThan(out.indexOf("  liveness:"))
   })
 
-  test("omits the name line when the peer carries no name", () => {
+  test("header is short alone when the peer carries no name", () => {
     const out = renderInspectText({ record: rec(), liveness } as InspectBundle)
-    expect(out).not.toContain("  name:")
+    expect(out).toContain("Peer 939749b9")
+    expect(out).not.toContain("Peer 939749b9 (")
+    expect(out).toContain("  sid:")
   })
 })
 
@@ -252,18 +376,20 @@ describe("renderRoster — agent name in the list", () => {
   }
   const counts: RosterCounts = { total: 1, online: 0, busy: 0, idle: 1, other: 0 }
 
-  test("text roster shows the name beside the short id when set", () => {
+  test("text roster shows Name (short) when set", () => {
     const out = renderRosterText([row({ name: "Jerry" })], counts)
-    expect(out).toContain(`939749b9 "Jerry"`)
+    expect(out).toContain(`Jerry (939749b9)`)
   })
 
-  test("text roster omits the name when the peer is unnamed", () => {
+  test("text roster is short alone when the peer is unnamed", () => {
     const out = noAnsi(renderRosterText([row()], counts))
+    expect(out).toContain("939749b9")
+    expect(out).not.toContain("Jerry")
     expect(out).not.toContain(`"`)
   })
 
-  test("display roster shows the name beside the short id when set", () => {
+  test("display roster shows Name (short) when set", () => {
     const out = noAnsi(renderRosterDisplay([row({ name: "Jerry" })]))
-    expect(out).toContain(`939749b9 "Jerry"`)
+    expect(out).toContain(`Jerry (939749b9)`)
   })
 })

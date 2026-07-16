@@ -14,8 +14,7 @@ import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { selfIdentity } from "../lib/identity.ts"
 import { readInbox } from "../lib/inbox.ts"
 import { cursorPath, inboxPath } from "../lib/paths.ts"
-import { renderInboxDisplay } from "../lib/render.ts"
-import { gray } from "../lib/style.ts"
+import { peerLabel, renderInboxDisplay, renderInboxHeader } from "../lib/render.ts"
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
@@ -50,12 +49,14 @@ export default async function inboxHandler(ctx: TUIContext): Promise<TUIResult> 
   // this tool can't suppress automatic per-turn delivery.
   advanceCursor(cursorPath(self.sid, ctx.env), { read: all.length })
 
-  const header = gray(`${selected.length}/${all.length}`)
+  const header = renderInboxHeader(scope, selected.length, all.length)
   if (selected.length === 0) {
     return {
       kind: "tool_result",
       content: scope === "recent" ? "Inbox empty." : "No unread intercom messages.",
       displayHeader: header,
+      display: renderInboxDisplay([]),
+      displayFooter: "",
     }
   }
 
@@ -65,12 +66,14 @@ export default async function inboxHandler(ctx: TUIContext): Promise<TUIResult> 
       content: JSON.stringify(selected, null, 2),
       displayHeader: header,
       display: renderInboxDisplay(selected),
+      displayFooter: "",
     }
   }
 
   const lines: string[] = [`${selected.length} message(s)${scope === "unread" ? " (unread)" : ""}:`]
   for (const e of selected) {
-    lines.push(`[${e.kind}] from ${e.from.short} (${e.from.model || "?"}) id=${e.id} at ${e.ts}`)
+    const who = peerLabel(e.from.short, e.from.name)
+    lines.push(`[${e.kind}] from ${who} (${e.from.model || "?"}) id=${e.id} at ${e.ts}`)
     for (const bl of e.body.split("\n")) lines.push(`    ${bl}`)
   }
   return {
@@ -78,5 +81,6 @@ export default async function inboxHandler(ctx: TUIContext): Promise<TUIResult> 
     content: lines.join("\n"),
     displayHeader: header,
     display: renderInboxDisplay(selected),
+    displayFooter: "",
   }
 }

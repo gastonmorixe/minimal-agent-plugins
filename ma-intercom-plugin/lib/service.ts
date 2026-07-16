@@ -245,12 +245,21 @@ export function selfFrom(deps: ServiceDeps): EnvelopeFrom {
     host: deps.self.host,
     cwd: deps.env.PWD ?? "",
     model: deps.self.model,
+    ...(deps.self.name ? { name: deps.self.name } : {}),
   }
+}
+
+/** One recipient a send landed on (short id + optional agent name for TUI). */
+export interface DeliveredPeer {
+  readonly short: string
+  readonly sid: string
+  /** Opt-in agent display name from the peer's presence record, when set. */
+  readonly name?: string
 }
 
 /** The outcome of a send. */
 export interface SendOutcome {
-  readonly delivered: { short: string; sid: string }[]
+  readonly delivered: DeliveredPeer[]
   readonly skipped: { ref: string; reason: string }[]
   readonly scope: string
   readonly kind: MessageKind
@@ -277,7 +286,7 @@ export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
   const from: EnvelopeFrom = { ...selfFrom(deps), ...(input.fromCwd ? { cwd: input.fromCwd } : {}) }
   const toRaw = input.to.trim()
   const scope = toRaw
-  const delivered: { short: string; sid: string }[] = []
+  const delivered: DeliveredPeer[] = []
   const skipped: { ref: string; reason: string }[] = []
 
   // Resolve recipients.
@@ -355,7 +364,11 @@ export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
       // `inbox/<sid>.jsonl` exactly as before; a composite routes a remote sid
       // to the cloud transport instead. The service never branches on origin.
       transport.deliver(row.record.sid, env)
-      delivered.push({ short: row.record.short, sid: row.record.sid })
+      delivered.push({
+        short: row.record.short,
+        sid: row.record.sid,
+        ...(row.record.name ? { name: row.record.name } : {}),
+      })
     } catch {
       skipped.push({ ref: row.record.short, reason: "inbox write failed" })
     }
