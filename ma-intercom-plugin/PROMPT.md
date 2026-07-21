@@ -28,7 +28,9 @@ A session that died without cleaning up still reads correctly (stale, then dead)
 `IntercomSend({to, body, kind})` delivers a message to one peer or a group.
 
 - `to` is a peer's short id or full session id, or `"all"` to reach every reachable session, or `"project"` to reach sessions in your project directory.
-- `body` is the message text. Keep it short and self-contained.
+- `body` is the message text. Prefer short, self-contained messages; the system
+  only clamps absurdly large bodies (safety ceiling ~256k chars) so runaway
+  dumps cannot flood peers.
 - `kind` is `"message"` (default) or `"interrupt"`:
   - `message`: queued if the recipient is mid-turn, wakes them between turns
     if idle. Use it for everything: coordination, handoffs, results, questions.
@@ -71,5 +73,5 @@ Two things to keep in mind:
 
 - Before you broadcast, run `IntercomPeers list` so you know who will actually receive it.
 - Run `IntercomPeers inspect` on a peer before you ask something its task list already answers.
-- Keep messages short and self-contained. The recipient is a different session with none of your context, so say who you are and what you need.
+- Prefer short, self-contained messages. The recipient is a different session with none of your context, so say who you are and what you need. Long plans and reviews are fine; multi-megabyte dumps will be clipped at the safety ceiling.
 - Do not chatter. Use intercom for coordination that matters: handing off a result, claiming a shared resource, flagging a blocker, asking a peer to stop. It is not a place for running commentary.

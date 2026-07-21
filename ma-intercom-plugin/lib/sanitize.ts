@@ -27,8 +27,16 @@
  * @module lib/sanitize
  */
 
-/** Max length we keep for a single peer-sourced field before clipping. */
-const MAX_FIELD = 4_000
+import { MAX_BODY_LEN } from "./envelope.ts"
+
+/**
+ * Max length we keep for a single peer-sourced field before clipping.
+ *
+ * Tied to {@link MAX_BODY_LEN} so a delivered body that survived the send clamp
+ * is not re-clipped on the reader side. Safety ceiling against a hostile/
+ * corrupt peer record, not a UX limit.
+ */
+const MAX_FIELD = MAX_BODY_LEN
 
 /**
  * Make one line of peer-controlled text safe to embed in model-facing output.

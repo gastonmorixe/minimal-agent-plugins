@@ -30,9 +30,16 @@ describe("sanitizePeerText — prompt-injection defense", () => {
     expect(sanitizePeerText("hello world, ship it")).toBe("hello world, ship it")
   })
 
-  it("clips absurdly long input", () => {
-    const safe = sanitizePeerText("z".repeat(10_000))
-    expect(safe.length).toBeLessThan(10_000)
+  it("does not clip large-but-reasonable bodies (matches envelope ceiling)", () => {
+    // Delivery-side sanitize must not re-clip a body that already passed
+    // the send clamp (MAX_BODY_LEN = 256_000). 50k is a realistic plan body.
+    const large = "z".repeat(50_000)
+    expect(sanitizePeerText(large)).toBe(large)
+  })
+
+  it("clips only absurdly long input (safety ceiling)", () => {
+    const safe = sanitizePeerText("z".repeat(300_000))
+    expect(safe.length).toBeLessThan(300_000)
     expect(safe).toContain("[clipped]")
   })
 })

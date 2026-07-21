@@ -68,7 +68,7 @@
               },
               "body": {
                 "type": "string",
-                "description": "The message text. Keep it short and self-contained: the recipient has none of your context, so say who you are and what you need."
+                "description": "The message text. Keep it self-contained: the recipient has none of your context, so say who you are and what you need. Long coordination payloads are fine (safety ceiling ~256 KiB)."
               },
               "kind": {
                 "type": "string",
