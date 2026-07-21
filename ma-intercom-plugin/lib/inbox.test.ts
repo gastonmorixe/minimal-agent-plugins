@@ -79,4 +79,78 @@ describe("append + read + drainInbox (io)", () => {
       cleanup()
     }
   })
+
+  it("preserves large bodies well over PIPE_BUF without truncation", () => {
+    const { dir, cleanup } = tmp()
+    try {
+      const path = join(dir, "inbox.jsonl")
+      // 50k body >> PIPE_BUF (4096). Must round-trip intact now that append
+      // is lock-serialized rather than size-clamped to atomic O_APPEND.
+      const body = `plan\n${"x".repeat(50_000)}\nend`
+      appendEnvelope(path, env(body))
+      const all = readInbox(path)
+      expect(all.length).toBe(1)
+      expect(all[0]?.body).toBe(body)
+      expect(all[0]?.body).not.toContain("truncated")
+    } finally {
+      cleanup()
+    }
+  })
+
+  it("concurrent large-body appends stay whole JSONL lines (append lock)", async () => {
+    // Real multi-process writers: single-thread Promise.all would not stress the
+    // exclusive .appendlock. Each child writes a body >> PIPE_BUF so a torn line
+    // would make parseInbox drop messages or mangle bodies.
+    const { dir, cleanup } = tmp()
+    try {
+      const path = join(dir, "inbox.jsonl")
+      const n = 12
+      const bodyLen = 12_000
+      const inboxMod = join(import.meta.dir, "inbox.ts")
+      const envelopeMod = join(import.meta.dir, "envelope.ts")
+
+      const exits = await Promise.all(
+        Array.from({ length: n }, (_, i) => {
+          const marker = `W${i}-`
+          const code = `
+import { appendEnvelope } from ${JSON.stringify(inboxMod)};
+import { buildEnvelope } from ${JSON.stringify(envelopeMod)};
+const body = ${JSON.stringify(marker)} + "x".repeat(${bodyLen});
+const env = buildEnvelope({
+  from: {
+    sid: ${JSON.stringify(`s${i}`)},
+    short: ${JSON.stringify(`s${String(i).padStart(6, "0")}`)},
+    pid: ${i + 1},
+    host: "h",
+    cwd: "/",
+    model: "m",
+  },
+  to: "x",
+  scope: "x",
+  kind: "message",
+  body,
+});
+appendEnvelope(${JSON.stringify(path)}, env);
+`
+          return Bun.spawn(["bun", "-e", code], {
+            stdout: "ignore",
+            stderr: "pipe",
+          }).exited
+        }),
+      )
+      expect(exits.every((code) => code === 0)).toBe(true)
+
+      const all = readInbox(path)
+      expect(all.length).toBe(n)
+      const markers = new Set(all.map((e) => e.body.slice(0, e.body.indexOf("-") + 1)))
+      expect(markers.size).toBe(n)
+      for (const e of all) {
+        expect(e.body.length).toBe(bodyLen + e.body.indexOf("-") + 1)
+        expect(e.body).toMatch(/^W\d+-x+$/)
+        expect(e.body).not.toContain("truncated")
+      }
+    } finally {
+      cleanup()
+    }
+  })
 })

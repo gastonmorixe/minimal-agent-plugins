@@ -19,6 +19,7 @@ host hands the plugin via `MINIMAL_AGENT_HOME` (see "Storage path" below):
 <home>/intercom/
   presence/<sid>.json   one record per session, rewritten each heartbeat (atomic)
   inbox/<sid>.jsonl     per-RECIPIENT append-only message queue
+  inbox/<sid>.jsonl.appendlock   short exclusive lock during large appends
   cursors/<sid>.json    recipient-owned high-water marks {seen, woken, read}
   self/<sid>.json       this session's own activity label (internal)
 ```
@@ -57,6 +58,16 @@ events.
 - **Wake** rides `prompt.inject`: the heartbeat slot, on seeing a new
   `ping`/`interrupt` past the `woken` cursor, injects one nudge so an idle REPL
   wakes between turns (never mid-response). `note` messages never wake.
+
+### Message size
+
+Bodies are clamped only at a high **safety ceiling** (`MAX_BODY_LEN` =
+256_000 chars in `lib/envelope.ts`) so a runaway model cannot flood peers with
+multi-megabyte dumps. Normal plans/reviews fit with room to spare. Concurrent
+inbox appends use a short exclusive sibling lock (`.appendlock`) so large JSONL
+lines stay whole-line atomic without relying on `PIPE_BUF` (the old ~3.5k
+limit). Reader-side sanitization clips at the same ceiling so a delivered body
+is never re-truncated on render.
 
 ### Inter-plugin inspection
 

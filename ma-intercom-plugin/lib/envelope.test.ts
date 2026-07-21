@@ -87,12 +87,22 @@ describe("buildEnvelope", () => {
     expect(e.replyTo).toBe("abc-1-0000")
   })
 
-  it("clamps an oversized body so the JSONL line stays append-atomic", () => {
-    const huge = "x".repeat(10_000)
+  it("clamps only absurdly oversized bodies (safety ceiling, not PIPE_BUF)", () => {
+    // A large-but-reasonable body (well under the safety ceiling) must pass
+    // through intact — coordination messages routinely exceed the old 3.5k
+    // PIPE_BUF-era limit.
+    const large = "x".repeat(50_000)
+    const ok = buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: large })
+    expect(ok.body).toBe(large)
+    expect(ok.body).not.toContain("truncated")
+
+    // Only the runaway multi-megabyte case is clipped, with a visible marker.
+    const huge = "x".repeat(300_000)
     const e = buildEnvelope({ from: FROM, to: "c", scope: "c", kind: "message", body: huge })
     expect(e.body.length).toBeLessThan(huge.length)
     expect(e.body).toContain("truncated")
-    expect(serializeEnvelope(e).length).toBeLessThan(4096)
+    // Safety ceiling is 256_000 body chars + a short truncation notice.
+    expect(e.body.length).toBeLessThan(256_000 + 64)
   })
 
   it("does not throw on a non-finite nowMs", () => {
