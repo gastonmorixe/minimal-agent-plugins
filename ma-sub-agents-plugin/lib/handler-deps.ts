@@ -53,6 +53,51 @@ function resolveLeadModel(ctx: TUIContext): string {
 }
 
 /**
+ * Resolve the LEAD's live provider id (e.g. `"grok"`), or `""` when unknown.
+ *
+ * Comes only from `ctx.queryModelInfo()?.providerId` — the same live snapshot
+ * the host already scopes with `getLiveProviderId()`. We do NOT re-derive the
+ * provider from an unscoped model-registry lookup: bare model ids can be
+ * dual-registered (e.g. `grok-4.5` under both `grok` and `opencode`), and
+ * last-write-wins would silently hand workers the wrong gateway (Lisa bug:
+ * lead on Grok, workers on OpenCode Go → CreditsError 401).
+ */
+function resolveLeadProvider(ctx: TUIContext): string {
+  return ctx.queryModelInfo?.()?.providerId?.trim() || ""
+}
+
+/**
+ * Build `resolveProvider` for the service layer.
+ *
+ * When the worker reuses the LEAD's LIVE model id, pin the lead's live
+ * provider so dual-registered bare ids stay on the gateway the user selected.
+ * Comparison is against the live snapshot model id (not `defaultModel`), so an
+ * env model override to a *different* SKU does not inherit the lead provider.
+ * For any other model id (per-spawn override, role recommendation, env
+ * override that differs from the live model), fall back to the unscoped host
+ * registry `models.find` (best-effort; may still be ambiguous, but that path
+ * is an explicit different model pick).
+ */
+function makeResolveProvider(
+  ctx: TUIContext,
+): ((modelId: string) => string | undefined) | undefined {
+  const leadProvider = resolveLeadProvider(ctx)
+  // Live model only — not env override / defaultModel — so a forced different
+  // SKU does not get the lead's provider stamped on it.
+  const liveModelId = ctx.queryModelInfo?.()?.modelId?.trim() || ctx.agent?.model?.trim() || ""
+  const hasRegistry = Boolean(ctx.host?.models?.find)
+  if (!leadProvider && !hasRegistry) return undefined
+
+  return (modelId: string): string | undefined => {
+    const id = modelId.trim()
+    if (id.length === 0) return undefined
+    // Inherit the lead provider only for the lead's own live model id.
+    if (leadProvider && liveModelId && id === liveModelId) return leadProvider
+    return ctx.host?.models?.find(id)?.providerId?.trim() || undefined
+  }
+}
+
+/**
  * Map an abstract role → the ACTIVE provider's recommended model + settings,
  * via `ctx.recommendSubagentModels` ONLY (no registry/provider import, so the
  * plugin stays decoupled). Returns `undefined` (so the caller inherits the
@@ -91,6 +136,8 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   if (!leadSid) return null
   const sessionsDir = resolveSessionsDir(ctx.env)
   const recommendForRole = makeRecommendForRole(ctx)
+  const defaultModel = resolveLeadModel(ctx)
+  const resolveProvider = makeResolveProvider(ctx)
   return {
     store: new SubagentStore(leadSid, { dir: sessionsDir }),
     spawnDeps: realSpawnDeps(),
@@ -99,12 +146,12 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
     depth: resolveDepth(ctx.env),
     cwd: ctx.cwd,
     sessionsDir,
-    defaultModel: resolveLeadModel(ctx),
+    defaultModel,
     newSid: () => randomUUID(),
     now: () => new Date(),
     resolveDefinition,
     ...(recommendForRole ? { recommendForRole } : {}),
-    resolveProvider: (modelId: string) => ctx.host?.models?.find(modelId)?.providerId,
+    ...(resolveProvider ? { resolveProvider } : {}),
     policy: resolvePolicy(ctx.env),
     // Pass the lead's own plugin-disable list through so the spawn plan unions
     // it with the worker-only disables (intercom) rather than dropping it.
