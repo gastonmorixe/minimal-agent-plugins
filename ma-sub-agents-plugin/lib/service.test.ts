@@ -111,6 +111,36 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--model") + 1]).toBe("gpt-5.5")
   })
 
+  it("passes --provider from resolveProvider when inheriting the lead model (Lisa/grok dual-id)", () => {
+    // Regression: bare `grok-4.5` is dual-registered (grok + opencode). The
+    // host must pin the LEAD provider so the child does not last-write-win to
+    // OpenCode Go and 401 on empty credits.
+    const deps = makeDeps(dir, {
+      defaultModel: "grok-4.5",
+      resolveProvider: (modelId) => (modelId === "grok-4.5" ? "grok" : undefined),
+    })
+    const r = spawnAgent({ task: "scan pii", agent: undefined }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.model).toBe("grok-4.5")
+    const argv = deps.launched[0] ?? []
+    expect(argv[argv.indexOf("--model") + 1]).toBe("grok-4.5")
+    expect(argv).toContain("--provider")
+    expect(argv[argv.indexOf("--provider") + 1]).toBe("grok")
+  })
+
+  it("omits --provider when resolveProvider returns undefined", () => {
+    const deps = makeDeps(dir, {
+      defaultModel: "grok-4.5",
+      resolveProvider: () => undefined,
+    })
+    const r = spawnAgent({ task: "no provider known" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv).toContain("--model")
+    expect(argv).not.toContain("--provider")
+  })
+
   it("OMITS --model when no model is knowable (model-agnostic; child self-resolves)", () => {
     const deps = makeDeps(dir, { defaultModel: "" })
     const r = spawnAgent({ task: "no model anywhere" }, deps)

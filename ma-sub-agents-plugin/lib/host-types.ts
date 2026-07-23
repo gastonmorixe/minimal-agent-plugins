@@ -32,9 +32,16 @@ export interface PluginLogger {
   debug(msg: string): void
 }
 
-/** Live model snapshot. Mirror of the slice of `ModelInfoSnapshot` we read. */
+/**
+ * Live model snapshot. Mirror of the slice of `ModelInfoSnapshot` we read.
+ * `providerId` is required on the host's full snapshot; optional here so
+ * partial test fakes stay valid, but when present it is the lead's live
+ * provider and MUST win over unscoped registry last-write-wins for the
+ * lead's own model id (dual-registered SKUs like `grok-4.5`).
+ */
 export interface ModelInfoSnapshot {
   modelId: string
+  providerId?: string
 }
 
 /** Provider role→model recommendation. Mirror of `SubagentModelRecommendation`. */
