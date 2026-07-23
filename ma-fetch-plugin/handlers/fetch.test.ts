@@ -90,6 +90,28 @@ describe("validateInput - format", () => {
   })
 })
 
+describe("validateInput - binary", () => {
+  test("accepts boolean true/false", () => {
+    const t = validateInput({ url: "https://x", binary: true })
+    expect(t.ok).toBe(true)
+    if (t.ok) expect(t.value.binary).toBe(true)
+    const f = validateInput({ url: "https://x", binary: false })
+    expect(f.ok).toBe(true)
+    if (f.ok) expect(f.value.binary).toBe(false)
+  })
+
+  test("rejects non-boolean", () => {
+    expect(validateInput({ url: "https://x", binary: "true" }).ok).toBe(false)
+    expect(validateInput({ url: "https://x", binary: 1 }).ok).toBe(false)
+  })
+
+  test("undefined leaves binary unset", () => {
+    const v = validateInput({ url: "https://x" })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.value.binary).toBeUndefined()
+  })
+})
+
 describe("validateInput - wait_until", () => {
   test("accepts each valid value", () => {
     for (const w of ["load", "domcontentloaded", "networkidle0"]) {
