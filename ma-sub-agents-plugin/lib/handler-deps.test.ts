@@ -27,28 +27,36 @@ interface MakeCtxOpts {
   model?: string
   /** Live provider id from the lead (what `queryModelInfo` should report). */
   providerId?: string
+  /** Live effort levels from queryModelInfo (lead model). */
+  effortLevels?: string[]
   /**
    * What the unscoped host registry `models.find` returns for a model id.
    * Simulates last-write-wins when two providers register the same bare id.
    */
   registryProviderByModel?: Record<string, string>
 }
+/** True when `opts` looks like a bare env map (legacy makeCtx(env) calls). */
+function isBareEnvMap(opts: object): opts is Record<string, string> {
+  return (
+    !("env" in opts) &&
+    !("model" in opts) &&
+    !("providerId" in opts) &&
+    !("effortLevels" in opts) &&
+    !("registryProviderByModel" in opts)
+  )
+}
 
 /** A minimal TUIContext good enough for `serviceDepsFromCtx`. */
 function makeCtx(opts: MakeCtxOpts | Record<string, string> = {}, modelArg?: string): TUIContext {
   // Back-compat: older call shape was makeCtx(env, model?).
-  const normalized: MakeCtxOpts =
-    opts &&
-    typeof opts === "object" &&
-    !("env" in opts) &&
-    !("model" in opts) &&
-    !("providerId" in opts)
-      ? { env: opts as Record<string, string>, model: modelArg }
-      : (opts as MakeCtxOpts)
+  const normalized: MakeCtxOpts = isBareEnvMap(opts)
+    ? { env: opts, model: modelArg }
+    : (opts as MakeCtxOpts)
 
   const model = normalized.model ?? modelArg ?? "claude-opus-4-8"
   const env = normalized.env ?? {}
   const providerId = normalized.providerId
+  const effortLevels = normalized.effortLevels
   const registry = normalized.registryProviderByModel ?? {}
 
   return {
@@ -65,6 +73,7 @@ function makeCtx(opts: MakeCtxOpts | Record<string, string> = {}, modelArg?: str
     queryModelInfo: () => ({
       modelId: model,
       ...(providerId ? { providerId } : {}),
+      ...(effortLevels ? { effort: { levels: effortLevels, default: effortLevels[0] } } : {}),
     }),
     host: {
       models: {
@@ -174,5 +183,29 @@ describe("serviceDepsFromCtx provider inheritance (dual-registered model ids)", 
     expect(deps?.resolveProvider?.("deepseek-v4-pro")).toBe("opencode")
     // Live lead model still pins to grok if someone resolves that id.
     expect(deps?.resolveProvider?.("grok-4.5")).toBe("grok")
+  })
+})
+
+describe("serviceDepsFromCtx effortLevelsForModel", () => {
+  it("exposes the lead live effort levels for the lead model id", () => {
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "grok-4.5",
+        providerId: "grok",
+        effortLevels: ["medium", "high", "max"],
+      }),
+    )
+    expect(deps?.effortLevelsForModel?.("grok-4.5")).toEqual(["medium", "high", "max"])
+  })
+
+  it("returns undefined for an unknown model when no registry caps exist", () => {
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "grok-4.5",
+        providerId: "grok",
+        effortLevels: ["medium", "high", "max"],
+      }),
+    )
+    expect(deps?.effortLevelsForModel?.("totally-unknown-model")).toBeUndefined()
   })
 })

@@ -130,6 +130,39 @@ function makeRecommendForRole(
   }
 }
 
+/**
+ * Effort levels known for a model id, for pre-launch validation.
+ *
+ * Prefers the LEAD live snapshot (`queryModelInfo().effort.levels`) when the
+ * worker reuses the lead model id — that snapshot is already scoped to the
+ * lead provider, so dual-registered bare ids (grok vs opencode `grok-4.5`)
+ * don't pick the wrong catalog. Falls back to the host registry entry's
+ * capabilities for a different model id. Returns `undefined` when nothing
+ * is known so spawn stays forward-compatible.
+ */
+function makeEffortLevelsForModel(
+  ctx: TUIContext,
+): ((modelId: string) => readonly string[] | undefined) | undefined {
+  const live = ctx.queryModelInfo?.()
+  const liveModelId = live?.modelId?.trim() || ctx.agent?.model?.trim() || ""
+  const liveLevels = live?.effort?.levels
+  const hasRegistry = Boolean(ctx.host?.models?.find)
+  if ((!liveLevels || liveLevels.length === 0) && !hasRegistry) return undefined
+
+  return (modelId: string): readonly string[] | undefined => {
+    const id = modelId.trim()
+    if (id.length === 0) return undefined
+    if (liveModelId && id === liveModelId && liveLevels && liveLevels.length > 0) {
+      return liveLevels
+    }
+    const entry = ctx.host?.models?.find(id) as
+      | { capabilities?: { effort?: { levels?: readonly string[] } } }
+      | undefined
+    const levels = entry?.capabilities?.effort?.levels
+    return levels && levels.length > 0 ? levels : undefined
+  }
+}
+
 /** Build {@link ServiceDeps} for a tool handler, or `null` when no session id is plumbed. */
 export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   const leadSid = ctx.agent?.sessionId
@@ -138,6 +171,7 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   const recommendForRole = makeRecommendForRole(ctx)
   const defaultModel = resolveLeadModel(ctx)
   const resolveProvider = makeResolveProvider(ctx)
+  const effortLevelsForModel = makeEffortLevelsForModel(ctx)
   return {
     store: new SubagentStore(leadSid, { dir: sessionsDir }),
     spawnDeps: realSpawnDeps(),
@@ -152,6 +186,7 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
     resolveDefinition,
     ...(recommendForRole ? { recommendForRole } : {}),
     ...(resolveProvider ? { resolveProvider } : {}),
+    ...(effortLevelsForModel ? { effortLevelsForModel } : {}),
     policy: resolvePolicy(ctx.env),
     // Pass the lead's own plugin-disable list through so the spawn plan unions
     // it with the worker-only disables (intercom) rather than dropping it.

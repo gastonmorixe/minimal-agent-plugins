@@ -33,7 +33,7 @@
               },
               "effort": {
                 "type": "string",
-                "description": "Reasoning effort for the worker (low|medium|high|xhigh|max), if the model supports it."
+                "description": "Optional reasoning effort for the worker. ONLY pass a value the TARGET model actually accepts (check ModelInfo for the lead/worker model: effort.levels). Do NOT invent levels from a universal menu: models differ (e.g. some accept low/medium/high, others medium/high/max only). Prefer OMITTING effort so the model default applies — safer than guessing. An unsupported value fails the spawn (or used to crash the child at boot)."
               },
               "isolation": {
                 "type": "string",

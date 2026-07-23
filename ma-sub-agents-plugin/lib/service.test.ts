@@ -141,6 +141,44 @@ describe("spawnAgent", () => {
     expect(argv).not.toContain("--provider")
   })
 
+  it("rejects unsupported effort before launch (Carlos/schema-vs-runtime)", () => {
+    // Manifest used to advertise low|medium|high|xhigh|max; leads then passed
+    // effort=low on models that only accept medium|high|max and the child died
+    // at boot. Refuse at the tool boundary with a teaching error instead.
+    const deps = makeDeps(dir, {
+      defaultModel: "grok-4.5",
+      effortLevelsForModel: (id) => (id === "grok-4.5" ? ["medium", "high", "max"] : undefined),
+    })
+    const r = spawnAgent({ task: "scan news", effort: "low" }, deps)
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toMatch(/effort "low"/i)
+      expect(r.error).toMatch(/medium, high, max/)
+      expect(r.error).toMatch(/Omit/)
+    }
+    expect(deps.launched).toHaveLength(0)
+  })
+
+  it("allows a supported effort and passes --effort through", () => {
+    const deps = makeDeps(dir, {
+      defaultModel: "grok-4.5",
+      effortLevelsForModel: () => ["medium", "high", "max"],
+    })
+    const r = spawnAgent({ task: "scan news", effort: "medium" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv[argv.indexOf("--effort") + 1]).toBe("medium")
+  })
+
+  it("passes effort through when effort levels are unknown", () => {
+    // Forward-compatible: no levels wired → don't invent a veto.
+    const deps = makeDeps(dir, { defaultModel: "grok-4.5" })
+    const r = spawnAgent({ task: "scan", effort: "ultra" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv[argv.indexOf("--effort") + 1]).toBe("ultra")
+  })
+
   it("OMITS --model when no model is knowable (model-agnostic; child self-resolves)", () => {
     const deps = makeDeps(dir, { defaultModel: "" })
     const r = spawnAgent({ task: "no model anywhere" }, deps)
