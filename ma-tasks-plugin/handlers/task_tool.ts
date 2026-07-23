@@ -390,6 +390,10 @@ function modelMeta(action: RenderAction, inputAction?: string, targetHash?: stri
     case "list":
       meta.result = action.kind
       break
+    case "already_done":
+      meta.result = action.kind
+      meta.id = action.hash
+      break
     default:
       void (action satisfies never)
   }
@@ -642,6 +646,12 @@ function doUpdate(store: TaskStore, input: ParsedInput): TUIResult {
 function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
   const target = store.resolve(input.id!)
   if (target === null) return err(`id "${input.id}" not found`)
+  // Idempotent done: same short path as doDone. Avoid a second full board
+  // + ALL DONE celebration when the model re-marks an already-done id
+  // (common after last-child auto-promote of a parent).
+  if (input.status === "done" && target.status === "done") {
+    return okAlreadyDone(store, target.id, input.format, input.action)
+  }
   const updated = store.setStatus(target.id, input.status!, input.reason)
   if (updated === null) return err(`id "${input.id}" not found`)
   // "ALL DONE" when every row is done. Parent↔child rollup means finishing
@@ -675,6 +685,12 @@ function doStart(store: TaskStore, input: ParsedInput): TUIResult {
 function doDone(store: TaskStore, input: ParsedInput): TUIResult {
   const target = store.resolve(input.id!)
   if (target === null) return err(`id "${input.id}" not found`)
+  // Short-circuit before store.done: re-done of an already-done task is a
+  // no-op for state but used to re-render the full board (and re-shout
+  // ALL DONE). Compact ack saves tokens and kills the double frame.
+  if (target.status === "done") {
+    return okAlreadyDone(store, target.id, input.format, input.action)
+  }
   const updated = store.done(target.id)
   if (updated === null) return err(`id "${input.id}" not found`)
   // Same as doStatus: rollup can complete the plan via a last-child done.
@@ -683,6 +699,67 @@ function doDone(store: TaskStore, input: ParsedInput): TUIResult {
     return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
   }
   return ok(store, { kind: "marked_done", hash: updated.id }, input.format, undefined, input.action)
+}
+
+/**
+ * Compact model-facing result for an already-done task.
+ *
+ * Deliberately does NOT call {@link renderResult}'s full-board path:
+ * every Task action used to return the entire columnar table, so a
+ * redundant parent `done` after last-child auto-promote printed a
+ * second identical ALL DONE frame and re-injected ~a full board into
+ * the next model request. Here we return:
+ *  - `content`: one-line `<ma::agent::tasks …>` shell (no body rows)
+ *  - `display`: empty body (header/footer carry the quiet "already done")
+ */
+function okAlreadyDone(
+  store: TaskStore,
+  hash: string,
+  format: "text" | "json" | undefined,
+  inputAction?: string,
+): TUIResult {
+  const action: RenderAction = { kind: "already_done", hash }
+  const stats = store.stats()
+  const displayParts = renderToolDisplay(store.views(), stats, { ansi: true, action })
+  if (format === "json") {
+    return {
+      kind: "tool_result",
+      content: JSON.stringify(
+        {
+          result: "already_done",
+          id: hash,
+          stats,
+        },
+        null,
+        2,
+      ),
+      display: "",
+      displayHeader: displayParts.header,
+      displayFooter: "",
+      suppressToolTime: true,
+    }
+  }
+  const meta = modelMeta(action, inputAction, hash)
+  // Compact block: attrs only, empty body. No full columnar table.
+  const attrs: string[] = []
+  if (meta.action) attrs.push(`action="${meta.action}"`)
+  attrs.push(`result="already_done"`)
+  attrs.push(`id="${hash}"`)
+  attrs.push(
+    `total="${stats.total}"`,
+    `done="${stats.done}"`,
+    `doing="${stats.doing}"`,
+    `todo="${stats.todo}"`,
+    `canceled="${stats.canceled}"`,
+  )
+  return {
+    kind: "tool_result",
+    content: `<ma::agent::tasks ${attrs.join(" ")} />`,
+    display: "",
+    displayHeader: displayParts.header,
+    displayFooter: "",
+    suppressToolTime: true,
+  }
 }
 
 function doRemove(store: TaskStore, input: ParsedInput): TUIResult {

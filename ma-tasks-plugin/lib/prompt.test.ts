@@ -69,6 +69,15 @@ describe("tasks PROMPT.md canceled-vs-done guidance", () => {
     expect(PROMPT).toMatch(/siblings remain open[^\n]*parent `doing`/i)
   })
 
+  test("warns against redundant parent done after last-child auto-promote", () => {
+    // Lisa dual-ALL-DONE: models often done(last child) + done(parent) in
+    // one turn. Prompt must forbid the second call by name.
+    expect(PROMPT).toMatch(
+      /Never also `done` the parent|do not also done the parent|Don't `done` a parent after/i,
+    )
+    expect(PROMPT).toMatch(/already_done/)
+  })
+
   test("recommends parent/subtask structure for multi-phase plans", () => {
     const block = PROMPT.split(/^##\s/m).find((s) => /canceled[^\n]*abandoned/i.test(s))
     expect(block!).toMatch(/parent\/subtask|parent.*subtask/i)

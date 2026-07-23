@@ -128,6 +128,13 @@ describe("renderBlock — header verbs", () => {
     expect(out.split("\n")[0]).toContain(`${GLYPHS.done} ALL DONE`)
     expect(out.split("\n")[0]).toContain("1/1")
   })
+  test("already_done is a quiet dim ack with hash, no N/M, no ALL DONE shout", () => {
+    const out = plain([v], s, { action: { kind: "already_done", hash: "a7b3c4" } })
+    const head = out.split("\n")[0]
+    expect(head).toContain(`${GLYPHS.done} already done #a7b3c4`)
+    expect(head).not.toContain("ALL DONE")
+    expect(head).not.toContain("1/1")
+  })
   test("removed shows ✘ removed #<hash>", () => {
     const out = plain([v], s, { action: { kind: "removed", hash: "a7b3c4" } })
     expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} removed #a7b3c4`)
@@ -379,6 +386,19 @@ describe("renderBlock — closer", () => {
     expect(headerLine).toContain("✔ ALL DONE")
     expect(headerLine).not.toContain("✦ ALL DONE")
   })
+
+  test("ALL DONE suffix is NOT appended on already_done (idempotent re-done stays quiet)", () => {
+    // Even when the whole plan is finished, re-done of an already-done
+    // id must not re-shout ALL DONE (Lisa dual-frame bug).
+    const t = task({ id: "aaaaaa", status: "done" })
+    const out = plain([topView(t, 1)], stats({ total: 1, done: 1 }), {
+      action: { kind: "already_done", hash: "aaaaaa" },
+    })
+    const headerLine = out.split("\n")[0]
+    expect(headerLine).toContain("already done #aaaaaa")
+    expect(headerLine).not.toContain("ALL DONE")
+    expect(headerLine).not.toContain("✦")
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -524,7 +544,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
     expect(out).toMatch(new RegExp(RED + BOLD + STRIKE + nonEsc + "just removed" + nonEsc + RESET))
   })
 
-  test("list / added_many / reordered / cleared / all_done: NO row gets bolded", () => {
+  test("list / added_many / reordered / cleared / all_done / already_done: NO row gets bolded", () => {
     // Bulk / non-targeting actions never highlight a specific row.
     // Use a done row that WOULD pick up LIME+BOLD+STRIKE if targeted.
     const t = task({ id: "aaaaaa", status: "done", title: "definitely not bolded" })
@@ -534,6 +554,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
       { kind: "reordered" as const },
       { kind: "cleared" as const, count: 5 },
       { kind: "all_done" as const },
+      { kind: "already_done" as const, hash: "aaaaaa" },
     ]) {
       const out = renderBlock([topView(t, 1)], stats({ total: 1, done: 1 }), {
         ansi: true,

@@ -123,6 +123,13 @@ export type RenderAction =
   | { kind: "reordered" }
   | { kind: "cleared"; count: number }
   | { kind: "all_done" }
+  /**
+   * Idempotent re-`done` of a task that was already `done` (e.g. model
+   * also marks a parent after last-child auto-promote). Quiet header —
+   * never a second ALL DONE celebration, never a full-board re-print
+   * from the handler's compact path.
+   */
+  | { kind: "already_done"; hash: string }
   | { kind: "list" }
 
 export interface RenderOptions {
@@ -516,6 +523,12 @@ function renderHeaderText(
       // carries the bold so the row doesn't feel SHOUTY-SHOUTY).
       middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} ${color(ansi, ANSI.LIME, "ALL DONE")}`
       break
+    case "already_done":
+      // Quiet idempotent ack — dim, no lime shout, no second ALL DONE.
+      // Models often re-`done` a parent after last-child auto-promote;
+      // celebrating again double-frames the transcript and burns tokens.
+      middle = `${color(ansi, ANSI.DIM, GLYPHS.done)} ${color(ansi, ANSI.DIM, "already done")} ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      break
     case "list":
       if (stats.total === 0) {
         middle = color(ansi, `${ANSI.DIM}${ANSI.ITALIC}`, "no tasks")
@@ -529,11 +542,12 @@ function renderHeaderText(
   // section when the resulting state has nothing left to work on AND
   // at least one task got finished. Skipped for `all_done` itself
   // (that action's header is already `✔ ALL DONE`, double-celebration
-  // would read as a stutter) and for the empty `list` (already says
-  // "no tasks" or "N tasks", but with 0 done — won't satisfy isAllDone
-  // anyway). Reads as `… · ✦ ALL DONE` and uses the same LIME+BOLD
-  // identity as the closer's celebration prefix.
-  if (action.kind !== "all_done" && isAllDone(stats)) {
+  // would read as a stutter), for `already_done` (idempotent re-done —
+  // must stay quiet even when the plan is fully finished), and for the
+  // empty `list` (already says "no tasks" or "N tasks", but with 0 done
+  // — won't satisfy isAllDone anyway). Reads as `… · ✦ ALL DONE` and
+  // uses the same LIME+BOLD identity as the closer's celebration prefix.
+  if (action.kind !== "all_done" && action.kind !== "already_done" && isAllDone(stats)) {
     middle += ` ${dot} ${allDoneTag(ansi)}`
   }
 
@@ -541,7 +555,9 @@ function renderHeaderText(
   // N/M trailer when it would be redundant with the verb (cleared, list,
   // all_done already convey the count). Keep it for mutating actions.
   let suffix = trail
-  if (action.kind === "list" || action.kind === "cleared") suffix = ""
+  if (action.kind === "list" || action.kind === "cleared" || action.kind === "already_done") {
+    suffix = ""
+  }
   if (action.kind === "all_done") {
     // Bold lime N/M for the satisfying "5/5" reveal.
     suffix = ` ${dot} ${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, String(stats.done))}${color(ansi, ANSI.DIM, `/${stats.total}`)}`
@@ -813,8 +829,11 @@ function allDoneTag(ansi: boolean): string {
  * For actions that mutate ONE specific task (added, started,
  * marked_done, marked_doing, marked_todo, marked_canceled, updated,
  * removed), return that task's hash. Bulk or non-targeting actions
- * (added_many, reordered, cleared, list, all_done) return null and no
- * row gets emphasized.
+ * (added_many, reordered, cleared, list, all_done, already_done)
+ * return null and no row gets emphasized. `already_done` is
+ * intentionally non-targeting: the compact handler path often
+ * suppresses the body, and bolding a "no-op" row would still look
+ * like a fresh completion.
  *
  * The row whose `task.id` matches this hash is rendered with BOLD on
  * every column (number / icon-where-applicable / id / title), so the
@@ -841,6 +860,7 @@ function targetHashFromAction(action: RenderAction): string | null {
     case "cleared":
     case "list":
     case "all_done":
+    case "already_done":
       return null
     default: {
       // Exhaustiveness check — fail closed (no emphasis) on a new kind.
