@@ -40,6 +40,7 @@ import {
   SESSION_NAME_PATTERN,
   type WaitUntil,
 } from "../lib/config.ts"
+import { stripDataUris } from "../lib/data-uri.ts"
 import { classifyBackendFailure, FetchError, writeTraceLog } from "../lib/errors.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
@@ -551,7 +552,13 @@ export async function runWithDeps(
   //
   // Pass-through for `html` / `links` / `original` regardless of level
   // (newlines are syntactically significant in those). See `lib/cleanup.ts`.
-  const content = maybeCleanup(result.stdout, input.format, cleanup)
+  //
+  // Then strip oversized `data:*;base64,…` URIs (L0 producer scrub). Core
+  // re-scrubs as a safety net; doing it here keeps plugin `display` clean.
+  let content = maybeCleanup(result.stdout, input.format, cleanup)
+  if (input.format === "markdown" || input.format === "text" || input.format === "html") {
+    content = stripDataUris(content)
+  }
   const size = Buffer.byteLength(content, "utf-8")
   const lineCount =
     content.length === 0 ? 0 : content.split("\n").length - (content.endsWith("\n") ? 1 : 0)
