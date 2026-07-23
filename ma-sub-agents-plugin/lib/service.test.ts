@@ -170,6 +170,77 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--effort") + 1]).toBe("medium")
   })
 
+  it("inherits lead effort when the worker model supports it", () => {
+    const deps = makeDeps(dir, {
+      defaultModel: "gpt-5.6-sol",
+      resolveProvider: () => "openai",
+      leadProvider: "openai",
+      defaultEffort: "high",
+      effortLevelsForModel: () => ["none", "low", "medium", "high", "xhigh", "max"],
+    })
+    const r = spawnAgent({ task: "inherit effort" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv[argv.indexOf("--effort") + 1]).toBe("high")
+  })
+
+  it("drops unsupported lead effort and still launches (Nathan xhigh→grok)", () => {
+    // Lead on OpenAI xhigh; retry worker on grok-4.5 which only accepts
+    // medium|high|max. Must NOT fail the spawn — omit --effort + scrub env.
+    const deps = makeDeps(dir, {
+      defaultModel: "grok-4.5",
+      resolveProvider: () => "grok",
+      leadProvider: "openai",
+      defaultEffort: "xhigh",
+      effortLevelsForModel: (id) =>
+        id === "grok-4.5" ? ["medium", "high", "max"] : ["none", "low", "medium", "high", "xhigh"],
+    })
+    const r = spawnAgent({ task: "retry with grok", model: "grok-4.5" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const argv = deps.launched[0] ?? []
+    expect(argv).not.toContain("--effort")
+    // Credential must NOT follow a cross-provider model pick.
+    expect(argv).not.toContain("--credential-name")
+  })
+
+  it("passes lead --credential-name when worker reuses lead provider (Brittany)", () => {
+    // Lead: --provider openai --model gpt-5.6-sol --credential-name openai-chatgpt-oauth-2
+    // Worker must keep the same credential or Codex rejects gpt-5.6-sol on the
+    // default OAuth account.
+    const deps = makeDeps(dir, {
+      defaultModel: "gpt-5.6-sol",
+      resolveProvider: (id) => (id === "gpt-5.6-sol" ? "openai" : undefined),
+      leadProvider: "openai",
+      defaultCredentialName: "openai-chatgpt-oauth-2",
+      defaultEffort: "high",
+      effortLevelsForModel: () => ["none", "low", "medium", "high", "xhigh", "max"],
+    })
+    const r = spawnAgent({ task: "crossref docs" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv[argv.indexOf("--model") + 1]).toBe("gpt-5.6-sol")
+    expect(argv[argv.indexOf("--provider") + 1]).toBe("openai")
+    expect(argv[argv.indexOf("--credential-name") + 1]).toBe("openai-chatgpt-oauth-2")
+    expect(argv[argv.indexOf("--effort") + 1]).toBe("high")
+  })
+
+  it("omits lead credential when worker switches provider", () => {
+    const deps = makeDeps(dir, {
+      defaultModel: "gpt-5.6-sol",
+      resolveProvider: (id) => (id === "grok-4.5" ? "grok" : "openai"),
+      leadProvider: "openai",
+      defaultCredentialName: "openai-chatgpt-oauth-2",
+      defaultEffort: "high",
+      effortLevelsForModel: (id) =>
+        id === "grok-4.5" ? ["medium", "high", "max"] : ["high", "xhigh"],
+    })
+    const r = spawnAgent({ task: "use grok", model: "grok-4.5" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv).not.toContain("--credential-name")
+  })
+
   it("passes effort through when effort levels are unknown", () => {
     // Forward-compatible: no levels wired → don't invent a veto.
     const deps = makeDeps(dir, { defaultModel: "grok-4.5" })

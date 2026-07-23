@@ -16,7 +16,9 @@ import { presenceDir } from "./presence.ts"
 import {
   resolveAgentBin,
   resolveAutoTier,
+  resolveCredentialName,
   resolveDepth,
+  resolveLeadEffort,
   resolveModelOverride,
   resolvePolicy,
   resolveSessionsDir,
@@ -172,6 +174,11 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   const defaultModel = resolveLeadModel(ctx)
   const resolveProvider = makeResolveProvider(ctx)
   const effortLevelsForModel = makeEffortLevelsForModel(ctx)
+  // Lead identity for child spawn: credential + effort + provider. Argv is the
+  // lead process's own process.argv (workers re-invoke via resolveAgentBin).
+  const leadProvider = resolveLeadProvider(ctx)
+  const defaultCredentialName = resolveCredentialName(ctx.env, process.argv)
+  const defaultEffort = resolveLeadEffort(ctx.env, process.argv)
   return {
     store: new SubagentStore(leadSid, { dir: sessionsDir }),
     spawnDeps: realSpawnDeps(),
@@ -187,6 +194,9 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
     ...(recommendForRole ? { recommendForRole } : {}),
     ...(resolveProvider ? { resolveProvider } : {}),
     ...(effortLevelsForModel ? { effortLevelsForModel } : {}),
+    ...(defaultEffort ? { defaultEffort } : {}),
+    ...(defaultCredentialName ? { defaultCredentialName } : {}),
+    ...(leadProvider ? { leadProvider } : {}),
     policy: resolvePolicy(ctx.env),
     // Pass the lead's own plugin-disable list through so the spawn plan unions
     // it with the worker-only disables (intercom) rather than dropping it.

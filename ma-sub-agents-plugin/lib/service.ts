@@ -151,6 +151,28 @@ export interface ServiceDeps {
    * means "unknown — pass effort through" (forward-compatible).
    */
   readonly effortLevelsForModel?: (modelId: string) => readonly string[] | undefined
+  /**
+   * Lead's resolved reasoning effort (from its CLI/env/config). When the spawn
+   * request omits `effort`, the worker inherits this so it matches the lead's
+   * wire effort — BUT only when it is supported by the worker model (validated
+   * via {@link effortLevelsForModel}). When unsupported or unknown, effort is
+   * omitted and the spawn plan scrubs `MINIMAL_AGENT_EFFORT` so the lead's
+   * published env cannot kill the child at boot.
+   */
+  readonly defaultEffort?: string
+  /**
+   * Lead's `--credential-name` (named multi-account auth). Passed through to
+   * the child so dual ChatGPT OAuth entries keep the same account as the lead.
+   * When the worker uses a *different* provider than the lead, this is omitted
+   * (credential names are provider-local).
+   */
+  readonly defaultCredentialName?: string
+  /**
+   * Lead's live provider id (from `queryModelInfo`). Used with
+   * {@link defaultCredentialName} to decide whether the named credential
+   * still applies to the resolved worker provider.
+   */
+  readonly leadProvider?: string
   readonly policy?: GuardPolicy
 }
 
@@ -192,25 +214,53 @@ export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<Subagen
   // provider yields `undefined`, which means we omit `--provider` — the child
   // will fail at boot if it can't self-resolve, surfacing the real error.
   const provider = model ? deps.resolveProvider?.(model)?.trim() : undefined
-  // Effort follows the same source as the model: an explicit request/def effort
-  // wins, else the role recommendation's effort (only when we actually took the
-  // recommended model), else unset (the model's own default applies).
-  const effort =
+  // Effort precedence: explicit request/def → role recommendation (when we took
+  // that model) → the LEAD's live effort (so workers match the parent wire
+  // setting) → unset. Unsupported values are refused for EXPLICIT request/def
+  // effort (teaching error); for inherited lead effort we DROP it and scrub
+  // the env instead of failing the spawn (a lead on xhigh must still be able
+  // to launch a grok explorer).
+  const explicitEffort =
     req.effort ?? def?.effort ?? (rec && !req.model && !def?.model ? rec.effort : undefined)
-  // Refuse unsupported effort BEFORE launch. The SpawnAgent schema used to list
-  // a universal (low|medium|high|xhigh|max) menu; leads then passed `low` on
-  // models that only accept medium|high|max and the child fatally exited at
-  // boot. When we know the model's levels, teach at the tool boundary instead.
-  if (effort && deps.effortLevelsForModel) {
-    const levels = deps.effortLevelsForModel(model)
-    if (levels && levels.length > 0 && !levels.includes(effort)) {
+  const levels = deps.effortLevelsForModel && model ? deps.effortLevelsForModel(model) : undefined
+  let effort: string | undefined = explicitEffort
+  if (effort && levels && levels.length > 0 && !levels.includes(effort)) {
+    // Explicit request/def effort that the model rejects → refuse at the tool
+    // boundary (Carlos/schema-vs-runtime). Do NOT fall through to lead effort.
+    if (req.effort !== undefined || def?.effort !== undefined) {
       return err(
         `effort "${effort}" is not supported by model "${model || "(inherited)"}" ` +
           `(supported: ${levels.join(", ")}). Omit \`effort\` to use the model default, ` +
           `or pass one of the supported levels.`,
       )
     }
+    // Role-recommendation effort unsupported → drop it (model default).
+    effort = undefined
   }
+  if (effort === undefined && deps.defaultEffort) {
+    const leadEffort = deps.defaultEffort.trim()
+    if (leadEffort.length > 0) {
+      if (!levels || levels.length === 0 || levels.includes(leadEffort)) {
+        effort = leadEffort
+      }
+      // else: lead effort unsupported on worker model → omit + scrub env below
+    }
+  }
+  // Credential: only when the worker stays on the lead's provider (or the
+  // provider is unknown and we're inheriting the lead model). A different
+  // provider's credential name would be meaningless / wrong.
+  const credentialName = (() => {
+    const name = deps.defaultCredentialName?.trim()
+    if (!name) return undefined
+    const leadProv = deps.leadProvider?.trim()
+    if (!provider) {
+      // No resolved provider: still pass credential when inheriting the lead
+      // model id (same bag the lead would pick by default name).
+      return model === deps.defaultModel.trim() ? name : undefined
+    }
+    if (leadProv && provider !== leadProv) return undefined
+    return name
+  })()
   const isolation: Isolation = req.isolation ?? def?.isolation ?? "fresh"
   const systemPreamble = req.system ?? def?.systemPrompt
   const budget = req.budget ?? def?.budget
@@ -245,6 +295,11 @@ export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<Subagen
     model,
     ...(provider ? { provider } : {}),
     ...(effort ? { effort } : {}),
+    // Always scrub when we did not pin an effort flag: the lead's
+    // publishResolvedRequestEnv would otherwise leak MINIMAL_AGENT_EFFORT into
+    // the child and fail boot on models that reject that level (Nathan xhigh→grok).
+    scrubInheritedEffort: !effort,
+    ...(credentialName ? { credentialName } : {}),
     // A read-only specialist (explorer/planner/reviewer/log-miner) carries
     // mode:"ask" so the harness denies Edit/Write at dispatch; an implementer
     // leaves it unset and defaults to "none" (writable). This is the enforcement

@@ -209,3 +209,33 @@ describe("serviceDepsFromCtx effortLevelsForModel", () => {
     expect(deps?.effortLevelsForModel?.("totally-unknown-model")).toBeUndefined()
   })
 })
+
+describe("serviceDepsFromCtx lead credential + effort", () => {
+  it("wires leadProvider from queryModelInfo", () => {
+    const deps = serviceDepsFromCtx(makeCtx({ model: "gpt-5.6-sol", providerId: "openai" }))
+    expect(deps?.leadProvider).toBe("openai")
+  })
+
+  it("wires defaultEffort from MINIMAL_AGENT_EFFORT env", () => {
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        env: { MINIMAL_AGENT_EFFORT: "high" },
+        model: "gpt-5.6-sol",
+        providerId: "openai",
+      }),
+    )
+    expect(deps?.defaultEffort).toBe("high")
+  })
+
+  it("wires defaultCredentialName from MINIMAL_AGENT_CREDENTIAL_NAME env", () => {
+    // Env path (argv is process.argv of the test runner, not the lead).
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        env: { MINIMAL_AGENT_CREDENTIAL_NAME: "openai-chatgpt-oauth-2" },
+        model: "gpt-5.6-sol",
+        providerId: "openai",
+      }),
+    )
+    expect(deps?.defaultCredentialName).toBe("openai-chatgpt-oauth-2")
+  })
+})
