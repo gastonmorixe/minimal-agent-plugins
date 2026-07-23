@@ -37,7 +37,18 @@ export interface BackendCallResult {
   /** True iff exit code is 0 and the process wasn't aborted. */
   ok: boolean
   exitCode: number
+  /**
+   * stdout decoded as UTF-8. Prefer {@link stdoutBytes} when classifying
+   * binary / writing blobs — the string form can lose information if the
+   * body was not valid UTF-8 (replacement chars).
+   */
   stdout: string
+  /**
+   * Raw stdout bytes before any text decode. Present on every successful
+   * drain so callers can sniff mime / persist binary without re-encoding.
+   * Empty when the stream was null.
+   */
+  stdoutBytes: Uint8Array
   stderr: string
   /** Backend filename used (e.g. "obscura.ts"). Useful for transcript footers. */
   backend: string
@@ -351,6 +362,7 @@ export async function callBackend(
       ok: false,
       exitCode: -1,
       stdout: "",
+      stdoutBytes: new Uint8Array(),
       stderr: `backend script not found: ${scriptPath}`,
       backend: `${config.backend}.ts`,
       scriptMissing: true,
@@ -367,6 +379,7 @@ export async function callBackend(
       ok: false,
       exitCode: -1,
       stdout: "",
+      stdoutBytes: new Uint8Array(),
       stderr: `no managed binary resolved for backend "${config.backend}"`,
       backend: `${config.backend}.ts`,
       binUnavailable: true,
@@ -390,6 +403,7 @@ export async function callBackend(
       ok: false,
       exitCode: -1,
       stdout: "",
+      stdoutBytes: new Uint8Array(),
       stderr: `failed to spawn backend: ${(err as Error).message}`,
       backend: `${config.backend}.ts`,
     }
@@ -443,9 +457,9 @@ export async function callBackend(
   })
 
   try {
-    const [stdoutText, stderrText, exitCode] = await Promise.all([
-      drainStream(proc.stdout),
-      drainStream(proc.stderr),
+    const [stdoutDrain, stderrText, exitCode] = await Promise.all([
+      drainStreamBytes(proc.stdout),
+      drainStreamText(proc.stderr),
       proc.exited,
     ])
     const watchdogAnnotation =
@@ -455,7 +469,8 @@ export async function callBackend(
     return {
       ok: exitCode === 0 && !aborted,
       exitCode,
-      stdout: stdoutText,
+      stdout: new TextDecoder("utf-8").decode(stdoutDrain),
+      stdoutBytes: stdoutDrain,
       stderr: stderrText + watchdogAnnotation,
       backend: `${config.backend}.ts`,
       aborted: aborted || undefined,
@@ -469,9 +484,9 @@ export async function callBackend(
   }
 }
 
-/** Drain a readable byte stream to a UTF-8 string. Empty string on null. */
-async function drainStream(stream: ReadableStream<Uint8Array> | null): Promise<string> {
-  if (!stream) return ""
+/** Drain a readable byte stream to raw bytes. Empty buffer on null. */
+async function drainStreamBytes(stream: ReadableStream<Uint8Array> | null): Promise<Uint8Array> {
+  if (!stream) return new Uint8Array()
   const reader = stream.getReader()
   const chunks: Uint8Array[] = []
   let total = 0
@@ -489,5 +504,11 @@ async function drainStream(stream: ReadableStream<Uint8Array> | null): Promise<s
     buf.set(c, off)
     off += c.byteLength
   }
+  return buf
+}
+
+/** Drain a readable byte stream to a UTF-8 string. Empty string on null. */
+async function drainStreamText(stream: ReadableStream<Uint8Array> | null): Promise<string> {
+  const buf = await drainStreamBytes(stream)
   return new TextDecoder("utf-8").decode(buf)
 }

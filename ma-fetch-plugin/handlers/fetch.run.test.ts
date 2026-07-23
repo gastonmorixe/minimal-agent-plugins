@@ -366,9 +366,87 @@ describe("runWithDeps - normalizer is format-gated", () => {
     expect(r.content).toBe(noisyStdout)
   })
 
-  test("original: passthrough (raw byte stream from backend)", async () => {
+  test("original: passthrough for text (raw byte stream from backend)", async () => {
     const r = await runWithFormat("original")
     expect(r.content).toBe(noisyStdout)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// runWithDeps - binary body withheld unless binary=true
+// ---------------------------------------------------------------------------
+
+describe("runWithDeps - binary body guard", () => {
+  // NUL after the PDF magic so classifyBinaryBytes is decisive even if the
+  // rest of the body is printable.
+  const pdfStdout = "%PDF-1.6\n" + "x".repeat(80) + "\n" + String.fromCharCode(0, 1, 2, 3, 4)
+
+  test("PDF body is withheld by default (no mojibake in content)", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const home = mkdtempSync(join(tmpdir(), "ma-fetch-pdf-"))
+    try {
+      const spawnFn: SpawnFn = () => fakeProc({ stdout: pdfStdout, exitCode: 0 })
+      const ctx = fakeCtx({ url: "https://example.com/spec.pdf", format: "original" })
+      ctx.env = { ...ctx.env, MINIMAL_AGENT_HOME: home, MINIMAL_AGENT_SESSION_ID: "test-sid" }
+      const r = await runWithDeps(
+        ctx,
+        defaultConfig(),
+        {
+          url: "https://example.com/spec.pdf",
+          format: "original",
+          waitUntil: "load",
+          timeoutSec: 30,
+        },
+        { spawnFn, existsFn: () => true },
+        "basic",
+        false,
+      )
+      expectToolResult(r)
+      expect(r.content).toContain("<ma::agent::binary-result")
+      expect(r.content).toContain("application/pdf")
+      expect(r.content).toContain("Binary body withheld")
+      expect(r.content).not.toContain("%PDF-1.6\nx")
+      expect(r.display ?? "").toMatch(/application\/pdf/)
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  test("binary=true inlines small PDF as base64", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const home = mkdtempSync(join(tmpdir(), "ma-fetch-pdf2-"))
+    try {
+      const small = "%PDF-1.4 small"
+      const spawnFn: SpawnFn = () => fakeProc({ stdout: small, exitCode: 0 })
+      const ctx = fakeCtx({
+        url: "https://example.com/s.pdf",
+        format: "original",
+        binary: true,
+      })
+      ctx.env = { ...ctx.env, MINIMAL_AGENT_HOME: home, MINIMAL_AGENT_SESSION_ID: "test-sid2" }
+      const r = await runWithDeps(
+        ctx,
+        defaultConfig(),
+        {
+          url: "https://example.com/s.pdf",
+          format: "original",
+          waitUntil: "load",
+          timeoutSec: 30,
+        },
+        { spawnFn, existsFn: () => true },
+        "basic",
+        true,
+      )
+      expectToolResult(r)
+      expect(r.content).toContain('encoding="base64"')
+      expect(r.content).toContain(Buffer.from(small).toString("base64"))
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 })
 

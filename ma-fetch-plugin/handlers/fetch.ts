@@ -21,6 +21,13 @@ import { join } from "node:path"
 
 import { type BackendCallInput, type BackendDeps, callBackend } from "../lib/backend.ts"
 import {
+  classifyBinaryBytes,
+  formatBinaryOptedIn,
+  formatBytes as formatBinarySize,
+  formatBinaryWithheld,
+  persistBinaryBody,
+} from "../lib/binary.ts"
+import {
   applyCleanup,
   CLEANUP_LEVELS,
   type CleanupLevel,
@@ -61,6 +68,14 @@ export interface ParsedInput {
    * empty string opts out. Same pattern as a Python `None` vs `""`.
    */
   session?: string
+  /**
+   * Opt-in to receive binary bodies (base64 when small enough). Default
+   * false: binary responses are withheld and replaced with a
+   * `<ma::agent::binary-result …/>` summary. Injected into the tool schema
+   * by core when the plugin declares `mayReturnBinary`, and also accepted
+   * here if the model/plugin already listed the property.
+   */
+  binary?: boolean
 }
 
 export type ValidateResult = { ok: true; value: ParsedInput } | { ok: false; error: string }
@@ -153,6 +168,13 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
       }
     }
     out.session = raw.session
+  }
+
+  if (raw.binary !== undefined) {
+    if (typeof raw.binary !== "boolean") {
+      return { ok: false, error: "`binary` must be a boolean" }
+    }
+    out.binary = raw.binary
   }
 
   return { ok: true, value: out }
@@ -365,7 +387,7 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
 
   const input = mergeInputs(v.value, config)
   const cleanup = resolveCleanup(v.value, config)
-  return await runWithDeps(ctx, config, input, {}, cleanup)
+  return await runWithDeps(ctx, config, input, {}, cleanup, v.value.binary === true)
 }
 
 /**
@@ -383,6 +405,7 @@ export async function runWithDeps(
   input: BackendCallInput,
   deps: BackendDeps,
   cleanup: CleanupLevel = "basic",
+  binaryOptIn: boolean = false,
 ): Promise<TUIResult> {
   configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
 
@@ -463,10 +486,66 @@ export async function runWithDeps(
     return fetchErrorResult(err, input.url, input.format)
   }
 
-  // Success. Run the cleanup pass on `markdown`/`text` BEFORE building
-  // `display` + `content`. HTML→markdown converters (notably obscura on
-  // Wikipedia / GitHub / Bloomberg) emit massive runs of blank or
-  // whitespace-only lines that bloat the model's view of the page
+  // Binary guard: never dump PDF/image/octet-stream bodies into model
+  // context as UTF-8 mojibake. Sniff the raw stdout bytes; when binary,
+  // persist them and return a structured `<ma::agent::binary-result …/>`
+  // summary unless the model set `binary: true` (then base64 under a
+  // size cap). Core also has a defense-in-depth rewrite for other tools;
+  // the tag shape is shared so core will not double-wrap our message.
+  const rawBytes = result.stdoutBytes
+  const binaryVerdict = classifyBinaryBytes(rawBytes)
+  if (binaryVerdict.binary) {
+    const toolUseId =
+      ctx.trigger.type === "tool" && "tool_use_id" in ctx.trigger
+        ? ((ctx.trigger as { tool_use_id?: string }).tool_use_id ?? "")
+        : ""
+    const sessionId = ctx.env.MINIMAL_AGENT_SESSION_ID
+    let saved: { path: string; sha256: string } | undefined
+    try {
+      saved = persistBinaryBody({
+        bytes: rawBytes,
+        toolUseId: toolUseId || undefined,
+        sessionId,
+        env: ctx.env,
+      })
+    } catch {
+      // Persistence is best-effort; the model still gets the mime/size summary.
+    }
+    const content = binaryOptIn
+      ? formatBinaryOptedIn({
+          bytes: rawBytes,
+          mime: binaryVerdict.mime,
+          path: saved?.path,
+          sha256: saved?.sha256,
+        })
+      : formatBinaryWithheld({
+          mime: binaryVerdict.mime,
+          sizeBytes: rawBytes.byteLength,
+          path: saved?.path,
+          sha256: saved?.sha256,
+        })
+    return {
+      kind: "tool_result",
+      content,
+      display: dim(
+        `${binaryVerdict.mime} · ${formatBinarySize(rawBytes.byteLength)} (binary; ${
+          binaryOptIn ? "opted-in" : "withheld from model"
+        })`,
+      ),
+      displayHeader: input.url,
+      displayFooter: buildDisplayFooter({
+        format: input.format,
+        size: rawBytes.byteLength,
+        lineCount: 0,
+        sessionName: sessionLeafName(input.storageDir),
+      }),
+    }
+  }
+
+  // Success (text). Run the cleanup pass on `markdown`/`text` BEFORE
+  // building `display` + `content`. HTML→markdown converters (notably
+  // obscura on Wikipedia / GitHub / Bloomberg) emit massive runs of blank
+  // or whitespace-only lines that bloat the model's view of the page
   // without adding signal. Level is set by the caller (per-call param,
   // falling back to config default, falling back to "basic").
   //
