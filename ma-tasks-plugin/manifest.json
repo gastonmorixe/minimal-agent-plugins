@@ -21,7 +21,7 @@
         "type": "tool",
         "tool": {
           "name": "Task",
-          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). The user sees a live TODO with real-time status. Every action returns the post-mutation task state in a `<ma::agent::tasks>` columnar table so you can confirm state. `id` accepts either a 1-indexed position (e.g. `3`) or a hash (`#a7b3c4`). Subtask hashes are parent + alpha suffix (`#a7b3c4a`).",
+          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). The user sees a live TODO with real-time status. Mutating actions return the post-mutation task state in a `<ma::agent::tasks>` columnar table so you can confirm state. Last open child auto-promotes its parent (and may return `all_done`); do not also `done` the parent. Re-`done` on an already-done id returns a compact `already_done` ack (no full board). `id` accepts either a 1-indexed position (e.g. `3`) or a hash (`#a7b3c4`). Subtask hashes are parent + alpha suffix (`#a7b3c4a`).",
           "input_schema": {
             "type": "object",
             "properties": {

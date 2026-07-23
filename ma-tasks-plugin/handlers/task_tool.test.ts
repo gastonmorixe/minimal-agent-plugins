@@ -434,6 +434,86 @@ describe("status / start / done", () => {
     expect(kids).toHaveLength(2)
     expect(kids.every((t) => t.status === "done")).toBe(true)
   })
+
+  test("re-done of already-done id returns compact already_done (no full board)", async () => {
+    await call({ action: "add", title: "solo" })
+    const first = await call({ action: "done", id: 1 })
+    expect(first.is_error).toBeUndefined()
+    expect(first.content).toContain(`result="all_done"`)
+    expect(first.content).toContain("solo")
+
+    const store = new TaskStore(sid, { home: tmpHome })
+    const before = store.list()[0]!
+    const second = await call({ action: "done", id: 1 })
+    expect(second.is_error).toBeUndefined()
+    expect(second.content).toContain(`result="already_done"`)
+    // Compact shell: self-closing tag, no columnar body rows.
+    expect(second.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(second.content).not.toContain("solo")
+    expect(second.content).not.toMatch(/\n1\s+#/)
+    expect(second.displayHeader).toContain("already done")
+    expect(second.displayHeader).not.toContain("ALL DONE")
+    expect(second.display).toBe("")
+    expect(second.displayFooter).toBe("")
+    expect(second.suppressToolTime).toBe(true)
+
+    const after = new TaskStore(sid, { home: tmpHome }).list()[0]!
+    expect(after.done_at).toBe(before.done_at)
+    expect(after.active_ms).toBe(before.active_ms)
+    expect(after.status).toBe("done")
+  })
+
+  test("Lisa path: last-child all_done then parent re-done is already_done (no second ALL DONE)", async () => {
+    // Repro of acee5759 dual ALL DONE frames: model done last child then
+    // also done the parent in the same turn. Parent was already promoted.
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["a", "b"] }],
+    })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.parent === null)!
+    await call({ action: "done", id: `#${parent.id}a` })
+    const lastChild = await call({ action: "done", id: `#${parent.id}b` })
+    expect(lastChild.displayHeader).toContain("ALL DONE")
+    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")
+
+    const parentAgain = await call({ action: "done", id: `#${parent.id}` })
+    expect(parentAgain.is_error).toBeUndefined()
+    expect(parentAgain.content).toContain(`result="already_done"`)
+    expect(parentAgain.content).toContain(`id="${parent.id}"`)
+    expect(parentAgain.displayHeader).toContain("already done")
+    expect(parentAgain.displayHeader).not.toContain("ALL DONE")
+    // Must not re-emit the full plan board into model context.
+    expect(parentAgain.content).not.toContain("Phase")
+    expect(parentAgain.content!.length).toBeLessThan(lastChild.content!.length)
+  })
+
+  test("status→done on already-done id is the same compact already_done path", async () => {
+    await call({ action: "add", title: "x" })
+    await call({ action: "done", id: 1 })
+    const r = await call({ action: "status", id: 1, status: "done" })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="already_done"`)
+    expect(r.content).toContain(`action="status"`)
+    expect(r.displayHeader).not.toContain("ALL DONE")
+  })
+
+  test("already_done format:json returns stats without full tasks array", async () => {
+    await call({ action: "add", title: "x" })
+    await call({ action: "done", id: 1 })
+    const r = await call({ action: "done", id: 1, format: "json" })
+    expect(r.is_error).toBeUndefined()
+    const parsed = JSON.parse(r.content!) as {
+      result: string
+      id: string
+      stats: { total: number; done: number }
+      tasks?: unknown
+    }
+    expect(parsed.result).toBe("already_done")
+    expect(parsed.stats.total).toBe(1)
+    expect(parsed.stats.done).toBe(1)
+    expect(parsed.tasks).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
