@@ -14,7 +14,7 @@
         "type": "tool",
         "tool": {
           "name": "Fetch",
-          "description": "Fetch a webpage and return its rendered content. Runs the page through a real headless browser (JS executes, dynamic content loads) and returns the result in the requested format. Prefer this over Bash+curl when the page needs JavaScript to render or when you need clean markdown for reading. Returns page text in `content`. Binary responses (PDF, images, …) are withheld by default and summarized as `<ma::agent::binary-result …/>` unless you pass `binary: true`.",
+          "description": "Fetch a webpage and return its rendered content. Runs the page through a real headless browser (JS executes, dynamic content loads) and returns the result in the requested format. Prefer this over Bash+curl when the page needs JavaScript to render or when you need clean markdown for reading. Returns page text in `content`. Binary responses (PDF, images, etc.) are withheld by default and summarized as `<ma::agent::binary-result .../>` unless you pass `binary: true`.",
           "mayReturnBinary": true,
           "input_schema": {
             "type": "object",
@@ -27,7 +27,7 @@
                 "type": "string",
                 "enum": ["markdown", "text", "html", "links", "original"],
                 "default": "markdown",
-                "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text (no markup). 'html' is the rendered HTML. 'links' returns just the page's links. 'original' streams the raw response body (JSON/JS/CSS/text resources). Binary bodies (PDF, images, zip) are never dumped as text: without binary=true they become a <ma::agent::binary-result …/> summary with an on-disk path."
+                "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text (no markup). 'html' is the rendered HTML. 'links' returns just the page's links. 'original' streams the raw response body (JSON/JS/CSS/text resources). Binary bodies (PDF, images, zip) are never dumped as text: without binary=true they become a <ma::agent::binary-result .../> summary with an on-disk path."
               },
               "selector": {
                 "type": "string",
