@@ -4,7 +4,9 @@ import { DEFAULT_POLICY } from "./guard.ts"
 import {
   resolveAgentBin,
   resolveAutoTier,
+  resolveCredentialName,
   resolveDepth,
+  resolveLeadEffort,
   resolveModelOverride,
   resolvePolicy,
   resolveTokenBudget,
@@ -46,6 +48,49 @@ describe("resolveModelOverride", () => {
   })
   it("treats whitespace-only as unset", () => {
     expect(resolveModelOverride({ MINIMAL_AGENT_SUBAGENT_MODEL: "   " })).toBe("")
+  })
+})
+
+describe("resolveCredentialName", () => {
+  it("is empty with no env and no argv flag", () => {
+    expect(resolveCredentialName({}, ["bun", "index.ts"])).toBe("")
+  })
+  it("prefers MINIMAL_AGENT_CREDENTIAL_NAME env", () => {
+    expect(
+      resolveCredentialName({ MINIMAL_AGENT_CREDENTIAL_NAME: "openai-chatgpt-oauth-2" }, [
+        "bun",
+        "index.ts",
+        "--credential-name",
+        "other",
+      ]),
+    ).toBe("openai-chatgpt-oauth-2")
+  })
+  it("reads --credential-name from argv (Brittany lead)", () => {
+    expect(
+      resolveCredentialName({}, [
+        "bun",
+        "index.ts",
+        "--provider",
+        "openai",
+        "--credential-name",
+        "openai-chatgpt-oauth-2",
+      ]),
+    ).toBe("openai-chatgpt-oauth-2")
+  })
+  it("ignores a bare --credential-name with no value", () => {
+    expect(resolveCredentialName({}, ["bun", "index.ts", "--credential-name"])).toBe("")
+  })
+})
+
+describe("resolveLeadEffort", () => {
+  it("reads MINIMAL_AGENT_EFFORT from env (publishResolvedRequestEnv)", () => {
+    expect(resolveLeadEffort({ MINIMAL_AGENT_EFFORT: "xhigh" }, [])).toBe("xhigh")
+  })
+  it("falls back to --effort on argv", () => {
+    expect(resolveLeadEffort({}, ["bun", "index.ts", "--effort", "high"])).toBe("high")
+  })
+  it("is empty when neither is set", () => {
+    expect(resolveLeadEffort({}, ["bun", "index.ts"])).toBe("")
   })
 })
 

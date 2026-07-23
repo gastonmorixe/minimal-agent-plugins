@@ -75,6 +75,63 @@ export function resolveModelOverride(env: NodeJS.ProcessEnv = process.env): stri
 }
 
 /**
+ * Lead's named auth credential (`--credential-name`), or `""` when unset.
+ *
+ * Multi-account providers (two ChatGPT OAuth entries, multiple Grok OAuth
+ * logins) select by display name. The lead process was started with
+ * `--credential-name <name>`; that flag is NOT published into process.env by
+ * core today, so we recover it from the lead's own argv (and an optional env
+ * override for tests / future publish). Without this, workers fall back to the
+ * provider's default displayName and can authenticate as a different account
+ * than the lead (Brittany/Nathan Codex 400 on the wrong ChatGPT account).
+ *
+ * Precedence: `MINIMAL_AGENT_CREDENTIAL_NAME` env → `--credential-name` on
+ * `argv` (typically `process.argv` of the lead).
+ */
+export function resolveCredentialName(
+  env: NodeJS.ProcessEnv = process.env,
+  argv: readonly string[] = process.argv,
+): string {
+  const fromEnv = env.MINIMAL_AGENT_CREDENTIAL_NAME?.trim()
+  if (fromEnv) return fromEnv
+  const idx = argv.indexOf("--credential-name")
+  if (idx >= 0) {
+    const v = argv[idx + 1]?.trim()
+    if (v && !v.startsWith("-")) return v
+  }
+  return ""
+}
+
+/**
+ * Lead's resolved reasoning effort, or `""` when unset.
+ *
+ * Core publishes `MINIMAL_AGENT_EFFORT` after boot via
+ * `publishResolvedRequestEnv` (the wire value the lead is actually using). We
+ * also accept an explicit `--effort` on argv as a fallback when env was cleared.
+ * Used so workers can inherit the lead's effort when the worker model supports
+ * it — and so the spawn plan can scrub the env when it does not.
+ */
+export function resolveLeadEffort(
+  env: NodeJS.ProcessEnv = process.env,
+  argv: readonly string[] = process.argv,
+): string {
+  const fromEnv = env.MINIMAL_AGENT_EFFORT?.trim()
+  if (fromEnv) return fromEnv
+  const idx = argv.indexOf("--effort")
+  if (idx >= 0) {
+    const v = argv[idx + 1]?.trim()
+    if (v && !v.startsWith("-")) return v
+  }
+  // short form `-e` used by some launchers
+  const short = argv.indexOf("-e")
+  if (short >= 0) {
+    const v = argv[short + 1]?.trim()
+    if (v && !v.startsWith("-")) return v
+  }
+  return ""
+}
+
+/**
  * Whether to let the active provider auto-pick a per-role model for built-in
  * specialists (scout/balanced/deep tiers), instead of inheriting the lead's
  * model. OFF by default, and that default is deliberate.

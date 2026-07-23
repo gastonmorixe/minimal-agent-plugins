@@ -64,6 +64,24 @@ export interface SpawnInput {
   readonly provider?: string
   /** Optional reasoning effort. */
   readonly effort?: string
+  /**
+   * Named auth credential the child must use (the lead's `--credential-name`).
+   * Multi-account providers (e.g. two ChatGPT OAuth entries) resolve by display
+   * name; without this flag a worker falls back to the provider default and can
+   * hit a different account than the lead (Brittany/Nathan: lead on
+   * `openai-chatgpt-oauth-2`, workers on the first `OpenAI ChatGPT (OAuth)` entry
+   * → Codex 400 "gpt-5.6-sol not supported").
+   */
+  readonly credentialName?: string
+  /**
+   * When true, the plan clears inherited `MINIMAL_AGENT_EFFORT` in the child env
+   * so a lead's published effort (see core `publishResolvedRequestEnv`) cannot
+   * leak into a worker that intentionally has no `--effort`. Without this, a
+   * lead on `xhigh` (OpenAI) spawns a grok/OpenCode child that dies at boot:
+   * `effort "xhigh" is not supported by this model (supported: medium, high, max)`.
+   * Default true when `effort` is unset; callers may force it.
+   */
+  readonly scrubInheritedEffort?: boolean
   /** Writable mode for the child. Non-interactive defaults to read-only ASK, so workers that edit need `"none"` (or another writable mode). */
   readonly mode: string
   /** Context isolation tier. */
@@ -174,12 +192,24 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
       flags.push("--provider", input.provider.trim())
     }
   }
-  if (input.effort && input.effort.trim().length > 0) {
-    flags.push("--effort", input.effort.trim())
+  const effort = input.effort?.trim() ?? ""
+  if (effort.length > 0) {
+    flags.push("--effort", effort)
+  }
+  const credentialName = input.credentialName?.trim() ?? ""
+  if (credentialName.length > 0) {
+    flags.push("--credential-name", credentialName)
   }
   // `--prompt` last so the text can't be mistaken for a flag value.
   flags.push("--prompt", prompt)
 
+  // Env overlay. The launcher merges this OVER process.env, so empty-string
+  // values here blank keys the lead published (MINIMAL_AGENT_EFFORT etc.) that
+  // would otherwise win on the child when we intentionally omit the matching
+  // CLI flag. Core `resolveEffort` treats empty as unset.
+  const scrubEffort =
+    input.scrubInheritedEffort === true ||
+    (input.scrubInheritedEffort !== false && effort.length === 0)
   const env: Record<string, string> = {
     [ENV_DEPTH]: String(input.depth),
     [ENV_LEAD]: input.leadSid,
@@ -190,6 +220,20 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
     // already disabled) off. Spread LAST so the worker-disable contract can't be
     // accidentally clobbered by an extraEnv entry for the same key.
     [ENV_DISABLE_PLUGINS]: mergeDisabledPlugins(input.inheritedDisabledPlugins),
+    // Pin model/provider env to the plan so a lead's MINIMAL_AGENT_MODEL /
+    // MINIMAL_AGENT_PROVIDER cannot outrank the worker's flags on any reader
+    // that prefers env over argv (or when --model is omitted).
+    ...(input.model.trim().length > 0
+      ? { MINIMAL_AGENT_MODEL: input.model.trim() }
+      : { MINIMAL_AGENT_MODEL: "" }),
+    ...(input.provider && input.provider.trim().length > 0
+      ? { MINIMAL_AGENT_PROVIDER: input.provider.trim() }
+      : { MINIMAL_AGENT_PROVIDER: "" }),
+    ...(effort.length > 0
+      ? { MINIMAL_AGENT_EFFORT: effort }
+      : scrubEffort
+        ? { MINIMAL_AGENT_EFFORT: "" }
+        : {}),
   }
 
   return ok({

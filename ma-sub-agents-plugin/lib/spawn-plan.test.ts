@@ -151,6 +151,37 @@ describe("buildSpawnPlan — fresh", () => {
     expect(r.ok && r.value.argv.includes("--effort")).toBe(false)
   })
 
+  it("scrubs MINIMAL_AGENT_EFFORT when effort is omitted (Nathan xhigh leak)", () => {
+    // Lead publishResolvedRequestEnv sets MINIMAL_AGENT_EFFORT=xhigh; without
+    // blanking it here the child inherits env and dies on models that reject it.
+    const r = buildSpawnPlan(input())
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env.MINIMAL_AGENT_EFFORT).toBe("")
+    expect(r.value.argv).not.toContain("--effort")
+  })
+
+  it("pins MINIMAL_AGENT_EFFORT when --effort is set", () => {
+    const r = buildSpawnPlan(input({ effort: "high" }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env.MINIMAL_AGENT_EFFORT).toBe("high")
+  })
+
+  it("passes --credential-name for multi-account OAuth (Brittany/Nathan)", () => {
+    const r = buildSpawnPlan(input({ credentialName: "openai-chatgpt-oauth-2" }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const { argv } = r.value
+    expect(argv).toContain("--credential-name")
+    expect(argv[argv.indexOf("--credential-name") + 1]).toBe("openai-chatgpt-oauth-2")
+  })
+
+  it("omits --credential-name when not given", () => {
+    const r = buildSpawnPlan(input())
+    expect(r.ok && r.value.argv.includes("--credential-name")).toBe(false)
+  })
+
   it("OMITS --model when model is empty (model-agnostic; child self-resolves)", () => {
     const r = buildSpawnPlan(input({ model: "" }))
     expect(r.ok).toBe(true)
