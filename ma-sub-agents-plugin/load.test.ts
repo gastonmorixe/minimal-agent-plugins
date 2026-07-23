@@ -68,6 +68,17 @@ describe("sub-agents manifest contract", () => {
     const prompt = readFileSync(join(import.meta.dir, "PROMPT.md"), "utf-8")
     expect(prompt).toContain("SpawnAgent")
   })
+
+  it("does NOT advertise a universal low|medium|high effort menu on SpawnAgent", () => {
+    // Carlos bug: listing (low|medium|high|xhigh|max) taught leads to pass
+    // effort=low on models that only accept medium|high|max. Schema must not
+    // invent a cross-model menu.
+    const raw = readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")
+    expect(raw).not.toMatch(/low\|medium\|high\|xhigh\|max/)
+    expect(raw).not.toMatch(/\(low\|medium\|high/)
+    const effortDesc = raw.match(/"effort"\s*:\s*\{[^}]*"description"\s*:\s*"([^"]+)"/)
+    expect(effortDesc?.[1] ?? "").toMatch(/Omit|omit|default|ModelInfo|actually accepts/i)
+  })
 })
 
 describe("ReportResult availability gate", () => {

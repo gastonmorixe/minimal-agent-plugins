@@ -38,10 +38,18 @@ export interface PluginLogger {
  * partial test fakes stay valid, but when present it is the lead's live
  * provider and MUST win over unscoped registry last-write-wins for the
  * lead's own model id (dual-registered SKUs like `grok-4.5`).
+ *
+ * `effort.levels` (when present) is the lead model's declared reasoning
+ * levels — used to reject per-spawn `effort` values the worker would die
+ * on at boot, instead of advertising a universal low|medium|high menu.
  */
 export interface ModelInfoSnapshot {
   modelId: string
   providerId?: string
+  effort?: {
+    levels: string[]
+    default?: string
+  }
 }
 
 /** Provider role→model recommendation. Mirror of `SubagentModelRecommendation`. */

@@ -143,6 +143,14 @@ export interface ServiceDeps {
    * the real error (same as today for an unknown model).
    */
   readonly resolveProvider?: (modelId: string) => string | undefined
+  /**
+   * Reasoning-effort levels the resolved worker model accepts (e.g.
+   * `["medium","high","max"]`). When set and the spawn names an `effort`
+   * outside this list, {@link spawnAgent} fails with a teaching error
+   * instead of launching a child that dies at boot. `undefined` / empty
+   * means "unknown — pass effort through" (forward-compatible).
+   */
+  readonly effortLevelsForModel?: (modelId: string) => readonly string[] | undefined
   readonly policy?: GuardPolicy
 }
 
@@ -189,6 +197,20 @@ export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<Subagen
   // recommended model), else unset (the model's own default applies).
   const effort =
     req.effort ?? def?.effort ?? (rec && !req.model && !def?.model ? rec.effort : undefined)
+  // Refuse unsupported effort BEFORE launch. The SpawnAgent schema used to list
+  // a universal (low|medium|high|xhigh|max) menu; leads then passed `low` on
+  // models that only accept medium|high|max and the child fatally exited at
+  // boot. When we know the model's levels, teach at the tool boundary instead.
+  if (effort && deps.effortLevelsForModel) {
+    const levels = deps.effortLevelsForModel(model)
+    if (levels && levels.length > 0 && !levels.includes(effort)) {
+      return err(
+        `effort "${effort}" is not supported by model "${model || "(inherited)"}" ` +
+          `(supported: ${levels.join(", ")}). Omit \`effort\` to use the model default, ` +
+          `or pass one of the supported levels.`,
+      )
+    }
+  }
   const isolation: Isolation = req.isolation ?? def?.isolation ?? "fresh"
   const systemPreamble = req.system ?? def?.systemPrompt
   const budget = req.budget ?? def?.budget
