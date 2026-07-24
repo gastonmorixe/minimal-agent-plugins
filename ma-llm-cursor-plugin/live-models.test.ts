@@ -148,6 +148,32 @@ describe("Cursor AvailableModels decoder", () => {
     expect(capabilities.effort.levels).not.toContain("2")
   })
 
+  it("ignores non-effort field-29 parameter definitions (no false ladder levels)", () => {
+    // parameter id "verbosity" with enum values must not become effort levels
+    const verbosityDef = concat(
+      encString(1, "verbosity"),
+      encString(2, "verbosity"),
+      encMsg(
+        4,
+        encMsg(
+          2,
+          concat(
+            encMsg(1, concat(encString(1, "terse"))),
+            encMsg(1, concat(encString(1, "verbose"))),
+          ),
+        ),
+      ),
+    )
+    const model = decodeAvailableModel(
+      concat(encString(1, "no-false-effort"), encBool(9, true), encMsg(29, verbosityDef)),
+    )
+    // thinking fallback ladder only — not terse/verbose
+    expect(extractCursorEffortLevels(model)).toEqual([])
+    expect(deriveCursorCapabilities(model).effort.levels).toEqual(["low", "medium", "high", "max"])
+    expect(deriveCursorCapabilities(model).effort.levels).not.toContain("terse")
+    expect(deriveCursorCapabilities(model).effort.levels).not.toContain("verbose")
+  })
+
   it("variant caps prefer variant effort + max-mode context", () => {
     const model = decodeAvailableModel(syntheticModel())
     const variant = model.variants![0]!
@@ -191,10 +217,17 @@ describe("registerCursorLiveCatalog", () => {
     expect(primary!.capabilities.tools.userDefined).toBe(true)
     expect(primary!.capabilities.modalities.image).toBe(true)
 
+    const alias = entries.get("cursor-composer-test-alias")
+    expect(alias!.tags).toContain("alias")
+    expect(alias!.tags?.some((t) => t.startsWith("canonical:"))).toBe(true)
+
     const variant = entries.get("cursor-composer-test-high")
     expect(variant!.capabilities.contextWindow).toBe(400_000)
     expect(variant!.capabilities.effort.levels).toEqual(["high"])
     expect(variant!.vendorIds?.cursor).toBe("composer-test-high")
+    expect(variant!.tags).toContain("variant")
+    expect(variant!.tags).toContain("max-mode")
+    expect(variant!.tags).toContain("parent:composer-test")
 
     const legacy = entries.get("cursor-legacy-only")
     expect(legacy!.capabilities.contextWindow).toBe(128_000)

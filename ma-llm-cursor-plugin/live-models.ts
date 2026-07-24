@@ -117,27 +117,41 @@ export function registerCursorLiveCatalog(
     })
 
     // Aliases / legacy slugs: separate host ids with parent caps (not registry aliases).
+    // Prefer canonical `model.name` when an alias host id would collide with it
+    // (registerOne de-dupes); tags mark alias rows for dispatch diagnostics.
     for (const alias of unique([...(model.idAliases ?? []), ...(model.legacySlugs ?? [])])) {
       if (!alias || alias === model.name) continue
+      const aliasHostId = cursorHostModelId(alias)
+      // Skip if alias maps to the same host id as the canonical name.
+      if (aliasHostId === cursorHostModelId(model.name)) continue
       registerOne({
-        id: cursorHostModelId(alias),
+        id: aliasHostId,
         wireId: alias,
         displayName: parentDisplay,
         capabilities: parentCaps,
-        tags: tagsForModel(model, ["alias"]),
+        tags: tagsForModel(model, ["alias", `canonical:${model.name}`]),
       })
     }
 
     for (const variant of model.variants ?? []) {
       const wire = variant.variantStringRepresentation ?? variant.legacySlug
       if (!wire) continue
+      // Tag max-mode + parent so Jack's wire encode can recover flags later
+      // (RequestedModel is_variant_string_representation / max_mode).
+      const vTags = tagsForModel(model, [
+        "variant",
+        `parent:${model.name}`,
+        ...(variant.isMaxMode ? ["max-mode"] : []),
+        ...(variant.isDefaultMaxConfig ? ["default-max"] : []),
+        ...(variant.isDefaultNonMaxConfig ? ["default-non-max"] : []),
+      ])
       registerOne({
         id: cursorHostModelId(wire),
         wireId: wire,
         displayName:
           variant.displayNameOutsidePicker ?? variant.displayName ?? `${parentDisplay} variant`,
         capabilities: deriveCursorVariantCapabilities(model, variant),
-        tags: tagsForModel(model, ["variant", ...(variant.isMaxMode ? ["max-mode"] : [])]),
+        tags: vTags,
       })
     }
   }
