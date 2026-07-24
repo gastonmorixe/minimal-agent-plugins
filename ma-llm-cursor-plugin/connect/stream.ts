@@ -9,6 +9,8 @@
 
 import { gunzipSync, gzipSync } from "node:zlib"
 
+import type { NetworkClient, NetworkResponse } from "../lib/net-types.ts"
+
 /** Build one Connect envelope frame. */
 export function connectFrame(flags: number, payload: Uint8Array): Uint8Array {
   const out = new Uint8Array(5 + payload.length)
@@ -100,27 +102,136 @@ export class ConnectFrameReader {
   }
 }
 
-/**
- * POST a framed Connect+proto request and yield response body chunks.
- *
- * Product path: Node `http2` client (Bun fetch is malformed on this bidi stream).
- * Dev fallback: curl --http2 when `MA_CURSOR_STREAM_TRANSPORT=curl`.
- */
-export async function* connectStreamPost(opts: {
+export type ConnectStreamPostOptions = {
   url: string
   headers: Record<string, string>
   body: Uint8Array
   signal?: AbortSignal
-}): AsyncGenerator<Uint8Array> {
-  const transport = process.env.MA_CURSOR_STREAM_TRANSPORT ?? "http2"
-  if (transport === "curl") {
+  networkClient?: NetworkClient
+}
+
+/**
+ * POST a framed Connect+proto request and yield response body chunks.
+ *
+ * Why this is not raw `node:http2` by default: Fable/Cursor sessions with
+ * `MINIMAL_AGENT_NET_DBG=1` previously produced zero net-dbg artifacts for
+ * AgentService/Run because the plugin dialed its own session and skipped the
+ * host NetworkClient observers. Why this is not Bun fetch: that path
+ * malformed this Connect stream during MVP. The host Http2Transport is also
+ * node:http2, so we reuse it and keep pool/policies/activity/net-dbg.
+ *
+ * `MA_CURSOR_STREAM_TRANSPORT=http2|curl` is an explicit developer escape hatch
+ * only. Default product behavior requires the injected host client.
+ */
+export async function* connectStreamPost(
+  opts: ConnectStreamPostOptions,
+): AsyncGenerator<Uint8Array> {
+  const override = process.env.MA_CURSOR_STREAM_TRANSPORT?.trim().toLowerCase()
+  if (override === "curl") {
     yield* connectStreamViaCurl(opts)
     return
   }
-  yield* connectStreamViaHttp2(opts)
+  if (override === "http2") {
+    yield* connectStreamViaHttp2(opts)
+    return
+  }
+  if (override && override !== "network") {
+    throw new Error(
+      `cursor connect stream: unsupported MA_CURSOR_STREAM_TRANSPORT=${JSON.stringify(override)}`,
+    )
+  }
+  // Fail closed: a missing client would reintroduce the private-http2 gap.
+  if (!opts.networkClient) {
+    throw new Error("cursor connect stream: host NetworkClient is required")
+  }
+  yield* connectStreamViaNetworkClient(opts, opts.networkClient)
 }
 
-/** HTTP/2 client stream via node:http2. */
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return
+  throw signal.reason ?? new Error("cursor connect stream: aborted")
+}
+
+/**
+ * Host-observed HTTP/2 stream for AgentService/Run.
+ *
+ * Do not "simplify" by dropping `protocol: "h2"` or allowing fetch fallback:
+ * under MINIMAL_AGENT_TRANSPORT=fetch the pin is what keeps us on node:http2,
+ * and Bun fetch is the transport known to break this stream.
+ */
+async function* connectStreamViaNetworkClient(
+  opts: ConnectStreamPostOptions,
+  networkClient: NetworkClient,
+): AsyncGenerator<Uint8Array> {
+  // Match the raw-http2 path: refuse work that was already canceled before dial.
+  throwIfAborted(opts.signal)
+  const response = await networkClient.request({
+    label: "cursor-agent-run",
+    method: "POST",
+    url: opts.url,
+    headers: opts.headers,
+    body: opts.body,
+    signal: opts.signal,
+    protocol: "h2",
+    allowFetchFallback: false,
+    capture: {
+      // Connect/protobuf is arbitrary binary; UTF-8 decode would be lossy and
+      // would also make net-dbg redaction look "successful" while destroying
+      // the bytes. Base64 is exact for replay; it is opaque to redactBody.
+      requestBody: `base64:${Buffer.from(opts.body).toString("base64")}`,
+      // Response frames are long-lived model output. Status/headers still land
+      // in net-dbg; duplicating the stream body on disk is noise for audits.
+      responseBody: false,
+    },
+  })
+  if (!response.ok) {
+    // Cancel so the NetworkClient tap can settle observers even when we never
+    // pull response chunks (non-2xx often has an empty/error body).
+    await cancelResponseBody(response, `cursor AgentService/Run returned HTTP ${response.status}`)
+    throw new Error(`cursor AgentService/Run failed (${response.status})`)
+  }
+  yield* readResponseBody(response.body)
+}
+
+/**
+ * Drain the host body stream chunk-by-chunk.
+ *
+ * Important: pull through NetworkClient's tapped body so onChunk/onEnd fire.
+ * Always cancel in `finally` so an early `turn_ended` return from the Cursor
+ * translator does not leave the h2 stream and net-dbg handle open.
+ */
+async function* readResponseBody(body: ReadableStream<Uint8Array>): AsyncGenerator<Uint8Array> {
+  const reader = body.getReader()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) return
+      if (value && value.byteLength > 0) yield value
+    }
+  } finally {
+    try {
+      await reader.cancel()
+    } catch {
+      // The stream may already be closed or errored.
+    }
+    reader.releaseLock()
+  }
+}
+
+async function cancelResponseBody(response: NetworkResponse, reason: string): Promise<void> {
+  try {
+    await response.body.cancel(reason)
+  } catch {
+    // Preserve the HTTP status error when cancellation itself fails.
+  }
+}
+
+/**
+ * Developer-only raw HTTP/2 fallback via node:http2.
+ *
+ * Kept for offline debugging when the host client is unavailable. Not the
+ * product path: no observers, no pool reuse, no net-dbg.
+ */
 async function* connectStreamViaHttp2(opts: {
   url: string
   headers: Record<string, string>

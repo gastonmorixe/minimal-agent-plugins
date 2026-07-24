@@ -18,6 +18,7 @@ import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { NetworkClient } from "./lib/net-types.ts"
 import type { RunContext } from "./lib/provider-auth.ts"
 import type {
   ModelView,
@@ -51,8 +52,9 @@ export const cursorAdapter: ProviderAdapterView = {
     model: ModelView,
     ctx: RunContext,
   ): AsyncIterable<CanonicalEvent> {
+    const networkClient = ctx.networkClient as NetworkClient | undefined
     const token = await resolveCursorAccessToken(ctx.auth, {
-      networkClient: ctx.networkClient as never,
+      networkClient,
       signal: req.signal,
     })
     const ids = await loadClientIds()
@@ -81,6 +83,7 @@ export const cursorAdapter: ProviderAdapterView = {
       headers,
       body: framed,
       signal: req.signal,
+      networkClient,
     })
 
     yield* translateCursorStream(chunks, { modelId: model.id })
