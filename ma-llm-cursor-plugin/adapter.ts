@@ -1,0 +1,146 @@
+/**
+ * Cursor `ProviderAdapter` — self-contained custom-wire provider plugin.
+ *
+ * Speaks Cursor's AgentService/Run (connect+proto) surface `cursor-agent-run`.
+ * MVP: ASK-mode token + thinking stream only; MA owns tools.
+ *
+ * Auth: MA provider store only (apiKeyAuth exchange / oauthLogin deviceCode).
+ * No env tokens or keychain.
+ *
+ * @module llm/providers/cursor/adapter
+ */
+
+import { cursorApiKeyAuth, resolveCursorAccessToken } from "./auth.ts"
+import { agentRunUrl } from "./connect/hosts.ts"
+import { connectFrameProto, connectStreamPost } from "./connect/stream.ts"
+import { buildCursorHeaders } from "./headers.ts"
+import { loadClientIds } from "./ids.ts"
+import type { CanonicalEvent } from "./lib/canonical-events.ts"
+import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { RunContext } from "./lib/provider-auth.ts"
+import type {
+  ModelView,
+  ProviderAdapterView,
+  ProviderPlugin,
+  ProviderSetupContext,
+  ProviderValidationResult,
+  SubagentModelRecommendation,
+} from "./lib/provider-plugin.ts"
+import { listCursorLiveModels } from "./live-models.ts"
+import { registerCursorAdHocModelInto, registerCursorModels } from "./models.ts"
+import { cursorOAuthLogin } from "./oauth-login.ts"
+import { buildCursorAgentRunBody } from "./request-body.ts"
+import { translateCursorStream } from "./response-stream.ts"
+import { fetchCursorSessionInfo } from "./session-info.ts"
+import { validateCursorRequest } from "./validate.ts"
+import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
+
+/** Cursor adapter. Speaks AgentService/Run (custom surface). */
+export const cursorAdapter: ProviderAdapterView = {
+  id: "cursor",
+  displayName: "Cursor",
+  surfaces: [CURSOR_SURFACE_AGENT_RUN],
+
+  validate(req: CanonicalRequest, model: ModelView): ProviderValidationResult {
+    return validateCursorRequest(req, model)
+  },
+
+  async *run(
+    req: CanonicalRequest,
+    model: ModelView,
+    ctx: RunContext,
+  ): AsyncIterable<CanonicalEvent> {
+    const token = await resolveCursorAccessToken(ctx.auth, {
+      networkClient: ctx.networkClient as never,
+      signal: req.signal,
+    })
+    const ids = await loadClientIds()
+    // Align session id with host session when available.
+    ids.sessionId = ctx.sessionId || ids.sessionId
+
+    const headers = buildCursorHeaders({
+      token,
+      ids,
+      streaming: true,
+      clientType: "cli",
+    })
+
+    const protoBody = buildCursorAgentRunBody(req, model)
+    const framed = connectFrameProto(protoBody)
+    const url = agentRunUrl()
+
+    ctx.debug?.header(`POST ${url}`)
+    ctx.debug?.kv("model", model.id)
+    ctx.debug?.kv("surface", CURSOR_SURFACE_AGENT_RUN)
+    ctx.debug?.kv("bodyBytes", String(framed.length))
+    ctx.debug?.headers(headers)
+
+    const chunks = connectStreamPost({
+      url,
+      headers,
+      body: framed,
+      signal: req.signal,
+    })
+
+    yield* translateCursorStream(chunks, { modelId: model.id })
+  },
+
+  /**
+   * Recommend Cursor models per abstract sub-agent role from the static seed.
+   * Live catalog (2.2) can refine picks later.
+   */
+  recommendSubagentModels(): SubagentModelRecommendation[] {
+    const recs: SubagentModelRecommendation[] = []
+    if (catalogScoutId) recs.push({ role: "scout", modelId: catalogScoutId })
+    if (catalogBalancedId && catalogBalancedId !== catalogScoutId) {
+      recs.push({ role: "balanced", modelId: catalogBalancedId })
+    }
+    return recs
+  },
+}
+
+// Role picks captured at registration for recommendSubagentModels.
+let catalogScoutId: string | undefined
+let catalogBalancedId: string | undefined
+
+// Registrar captured at bootstrap for ad-hoc model hook (no ctx).
+let capturedModels: ProviderSetupContext["models"] | undefined
+
+/**
+ * Register the Cursor catalog + adapter through the setup context.
+ * No-op when ctx is absent (legacy no-arg activation path).
+ */
+export function bootstrapCursor(ctx?: ProviderSetupContext): void {
+  if (!ctx?.models || !ctx.providers) return
+  capturedModels = ctx.models
+  const ids = registerCursorModels(ctx.models)
+  catalogScoutId = ids.find((id) => id.includes("fast")) ?? ids[0]
+  catalogBalancedId = ids.find((id) => id === "cursor-composer-2") ?? ids[0]
+  ctx.providers.register(cursorAdapter)
+}
+
+/** Register a one-off Cursor slug the static seed does not know. */
+export function registerCursorAdHocModel(modelId: string): void {
+  if (!capturedModels) return
+  registerCursorAdHocModelInto(capturedModels, modelId)
+}
+
+/**
+ * Cursor provider packaged for the {@link ProviderPlugin} registry.
+ *
+ * Auth/catalog hooks (Christina 2.1/2.2):
+ * - {@link cursorApiKeyAuth} (auth.ts)
+ * - {@link cursorOAuthLogin} (oauth-login.ts)
+ * - {@link listCursorLiveModels} (live-models.ts)
+ */
+export const cursorProviderPlugin: ProviderPlugin = {
+  id: "cursor",
+  displayName: "Cursor",
+  shortCode: "cur",
+  register: bootstrapCursor,
+  registerAdHocModel: registerCursorAdHocModel,
+  listLiveModels: listCursorLiveModels,
+  apiKeyAuth: cursorApiKeyAuth,
+  oauthLogin: cursorOAuthLogin,
+  fetchSessionInfo: fetchCursorSessionInfo,
+}

@@ -1,0 +1,69 @@
+/**
+ * Wire constants for the Cursor provider (MVP).
+ *
+ * Hosts and content-types from the live spike + PLAN.md. Env overrides let
+ * operators point at staging without rebuilding.
+ *
+ * @module llm/providers/cursor/wire-constants
+ */
+
+/**
+ * Env policy (Gaston):
+ * - Auth tokens/keys: NEVER read process.env for secrets. Only MA auth store via
+ *   apiKeyAuth / oauthLogin (core manages credentials).
+ * - Optional non-secret overrides: MA_CURSOR_* only (not bare CURSOR_*).
+ */
+
+/** Unary AiService base (AvailableModels, GetMe, auth exchange, …). */
+export const CURSOR_API_BASE =
+  process.env.MA_CURSOR_API_ENDPOINT?.replace(/\/$/, "") ?? "https://api2.cursor.sh"
+
+/** AgentService base (Run, GetUsableModels). */
+export const CURSOR_AGENT_BASE =
+  process.env.MA_CURSOR_AGENT_ENDPOINT?.replace(/\/$/, "") ?? "https://agentn.api5.cursor.sh"
+
+/** Website origin for loginDeepControl URLs. */
+export const CURSOR_WEBSITE_URL =
+  process.env.MA_CURSOR_WEBSITE_URL?.replace(/\/$/, "") ?? "https://cursor.com"
+
+/** Connect unary content-type. */
+export const CURSOR_UNARY_CONTENT_TYPE = "application/proto"
+
+/** Connect streaming content-type (AgentService/Run). */
+export const CURSOR_STREAM_CONTENT_TYPE = "application/connect+proto"
+
+/** Connect protocol version header value. */
+export const CURSOR_CONNECT_PROTOCOL_VERSION = "1"
+
+/**
+ * User-Agent accepted by Cursor's Connect stack in the spike.
+ * Prefer this over inventing a new UA until server acceptance is confirmed.
+ */
+export const CURSOR_USER_AGENT = "connect-es/1.6.1"
+
+/** Client type advertised to Cursor for MA sessions. */
+export const CURSOR_CLIENT_TYPE = "cli"
+
+/** Ghost mode default (no remote indexing / privacy-friendly). */
+export const CURSOR_GHOST_MODE_DEFAULT = process.env.MA_CURSOR_GHOST_MODE !== "false"
+
+/** Surface id for the AgentService/Run adapter path. */
+export const CURSOR_SURFACE_AGENT_RUN = "cursor-agent-run"
+
+/** AiService AvailableModels RPC path. */
+export const CURSOR_RPC_AVAILABLE_MODELS = "aiserver.v1.AiService/AvailableModels"
+
+/** AgentService GetUsableModels RPC path. */
+export const CURSOR_RPC_GET_USABLE_MODELS = "agent.v1.AgentService/GetUsableModels"
+
+/** AgentService Run (bidi stream; MVP uses unary request body + response stream). */
+export const CURSOR_RPC_AGENT_RUN = "agent.v1.AgentService/Run"
+
+/** Auth: exchange user API key for access token. */
+export const CURSOR_RPC_EXCHANGE_API_KEY_PATH = "/auth/exchange_user_api_key"
+
+/** Auth: device-code style poll. */
+export const CURSOR_AUTH_POLL_PATH = "/auth/poll"
+
+/** Plugin display version for diagnostics (not the Connect UA). */
+export const CURSOR_PLUGIN_VERSION = "0.1.0"
