@@ -6,9 +6,49 @@ import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
+import { cursorCaps } from "./capabilities.ts"
 import { connectFrameProto, parseConnectFrames } from "./connect/stream.ts"
 import { encodeAgentClientMessageRun, extractServerTextEvents } from "./proto/agent-run.ts"
+import { decodeFields, fieldBytes } from "./proto/wire.ts"
+import { buildCursorAgentRunBody } from "./request-body.ts"
 import { translateCursorStreamBuffer } from "./response-stream.ts"
+import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
+
+describe("AgentRunRequest MVP body", () => {
+  test("omits field 8 (customSystemPrompt) and field 12 (excludeWorkspaceContext)", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        system: [{ type: "text", text: "You are a helpful assistant." }],
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      {
+        id: "cursor-composer-2.5-fast",
+        providerId: "cursor",
+        surfaceId: CURSOR_SURFACE_AGENT_RUN,
+        displayName: "Composer 2.5 Fast (Cursor)",
+        capabilities: cursorCaps({ thinking: true }),
+        pricing: {
+          inputUSD: 0,
+          outputUSD: 0,
+          cacheWriteUSD: 0,
+          cacheReadUSD: 0,
+          webSearchPerCallUSD: 0,
+        },
+        vendorIds: { cursor: "composer-2.5-fast", firstParty: "composer-2.5-fast" },
+      },
+    )
+    // AgentClientMessage field 1 = AgentRunRequest
+    const outer = decodeFields(body)
+    const run = fieldBytes(outer.find((f) => f.no === 1)!)
+    expect(run).toBeTruthy()
+    const nos = new Set(decodeFields(run!).map((f) => f.no))
+    expect(nos.has(8)).toBe(false) // customSystemPrompt rejected live
+    expect(nos.has(12)).toBe(false) // excludeWorkspaceContext rejected live
+    expect(nos.has(2)).toBe(true) // conversation action present
+    expect(nos.has(9)).toBe(true) // requested model present
+  })
+})
 
 describe("connect frames", () => {
   test("round-trip frame header", () => {
