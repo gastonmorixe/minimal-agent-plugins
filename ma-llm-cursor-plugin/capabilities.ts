@@ -21,7 +21,24 @@ const DEFAULT_EFFORT_LEVELS = ["low", "medium", "high", "max"] as const
  */
 const KNOWN_EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max", "standard", "grind"] as const
 
-const EFFORT_PARAM_IDS = new Set(["effort", "thinking", "reasoning", "reasoning_effort"])
+/**
+ * Parameter definition / parameterValue ids that carry the product effort ladder.
+ * Christina review: do **not** treat arbitrary field-29 enums as effort
+ * (false levels). Only effort/reasoning families.
+ */
+const EFFORT_PARAM_IDS = new Set(["effort", "reasoning", "reasoning_effort", "reasoningeffort"])
+
+/** True when a parameter id is an effort/reasoning knob (exact or known alias). */
+export function isCursorEffortParamId(id: string | undefined): boolean {
+  if (!id) return false
+  const n = id.trim().toLowerCase()
+  if (!n) return false
+  if (EFFORT_PARAM_IDS.has(n)) return true
+  // Allow `foo_effort` / `effort_bar` but not bare `thinking` (thinking is a
+  // separate capability flag; its enum values are not always effort levels).
+  if (n === "thinking" || n === "think") return false
+  return n.endsWith("_effort") || n.startsWith("effort_") || n.includes("reasoning_effort")
+}
 
 function normalizeEffortLabel(raw: string): string | undefined {
   const v = raw.trim().toLowerCase()
@@ -34,7 +51,23 @@ function normalizeEffortLabel(raw: string): string | undefined {
     .replace(/^prompt_effort_level_/, "")
     .replace(/^effort_/, "")
   if (!stripped || /^\d+$/.test(stripped)) return undefined
-  return stripped
+  // Only keep known ladder labels + a few Cursor cloud labels — reject
+  // random enum strings from non-effort parameters that slipped through.
+  const known = new Set<string>(KNOWN_EFFORT_ORDER)
+  if (known.has(stripped)) return stripped
+  // Allow simple effort-like tokens (e.g. "extra_high") without open-ended junk.
+  if (
+    /^[a-z][a-z0-9_]{0,31}$/.test(stripped) &&
+    (stripped.includes("high") ||
+      stripped.includes("low") ||
+      stripped.includes("med") ||
+      stripped.includes("max") ||
+      stripped.includes("grind") ||
+      stripped.includes("standard"))
+  ) {
+    return stripped
+  }
+  return undefined
 }
 
 function sortEffortLevels(levels: Iterable<string>): string[] {
@@ -57,25 +90,17 @@ export function extractCursorEffortLevels(model: DecodedCursorModel): string[] {
   const found = new Set<string>()
 
   for (const def of model.parameterDefinitions ?? []) {
-    const id = (def.id ?? def.name ?? "").toLowerCase()
-    const looksEffort = EFFORT_PARAM_IDS.has(id) || id.includes("effort") || id.includes("thinking")
-    if (!looksEffort && (def.enumValues?.length ?? 0) === 0) continue
-    // Prefer enum values when present; if id is effort-like accept them.
-    if (def.enumValues?.length) {
-      if (!looksEffort && !def.enumValues.some((v) => normalizeEffortLabel(v.value ?? ""))) {
-        continue
-      }
-      for (const entry of def.enumValues) {
-        const label = normalizeEffortLabel(entry.value ?? entry.displayName ?? "")
-        if (label) found.add(label)
-      }
+    // Strict: only effort/reasoning parameter ids — not arbitrary field-29 enums.
+    if (!isCursorEffortParamId(def.id) && !isCursorEffortParamId(def.name)) continue
+    for (const entry of def.enumValues ?? []) {
+      const label = normalizeEffortLabel(entry.value ?? entry.displayName ?? "")
+      if (label) found.add(label)
     }
   }
 
   for (const variant of model.variants ?? []) {
     for (const pv of variant.parameterValues ?? []) {
-      const pid = (pv.id ?? "").toLowerCase()
-      if (!EFFORT_PARAM_IDS.has(pid) && !pid.includes("effort")) continue
+      if (!isCursorEffortParamId(pv.id)) continue
       const label = normalizeEffortLabel(pv.value ?? "")
       if (label) found.add(label)
     }
@@ -183,8 +208,7 @@ export function deriveCursorVariantCapabilities(
   const parent = deriveCursorCapabilities(model)
   const variantEffort = new Set<string>()
   for (const pv of variant.parameterValues ?? []) {
-    const pid = (pv.id ?? "").toLowerCase()
-    if (!EFFORT_PARAM_IDS.has(pid) && !pid.includes("effort")) continue
+    if (!isCursorEffortParamId(pv.id)) continue
     const label = normalizeEffortLabel(pv.value ?? "")
     if (label) variantEffort.add(label)
   }
