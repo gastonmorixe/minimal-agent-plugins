@@ -1,0 +1,8 @@
+{
+  "id": "cursor",
+  "name": "LLM Provider: Cursor",
+  "version": "0.1.0",
+  "description": "Cursor (api2/agentn) — AgentService/Run connect+proto streaming as a self-contained provider plugin. MVP is ASK-mode token + thinking stream only (MA owns tools). Imports only vendored plugin-api type shims and registers through the agent-loop setup context.",
+  "entry": "./index.ts",
+  "export": "cursorProviderPlugin"
+}
