@@ -16,17 +16,23 @@ Volatile values like the current time and terminal size won't refresh.
 
 The fragment's handler is the bundled `gather.sh` script (a subprocess
 producer): the loader runs it once during the first async prompt
-assembly, captures stdout, and embeds the result inside the plugin's
-`<plugin id="env-info">` block.
+assembly, captures stdout, and injects it as **plain markdown** via
+`placement: "afterInstructions"`.
+
+That placement is intentional: the absolute `cwd=` (and the rest of the
+snapshot) must survive `--no-system-session-context` /
+`systemPrompt.sessionContext` omit. Plugin PROMPT.md / sessionContext
+XML is still optional framing; the snapshot itself is not sessionContext.
 
 ## Files
 
-- `manifest.json`: declares the prompt fragment + subprocess command.
-- `gather.sh`: collects the host facts. Designed to be fast, never
+- `manifest.json`: declares the prompt fragment + subprocess command
+  (`placement: "afterInstructions"`).
+- `gather.sh`: collects the host facts and emits the full `# Environment`
+  markdown (heading + note + fenced `ini`). Designed to be fast, never
   network-touching, and to fail closed (empty output, never a crash).
-- `PROMPT.md`: short framing the model reads alongside the snapshot
-  ("captured at session start, re-query via `Bash` if you need a fresh
-  value").
+- `PROMPT.md`: intentionally empty. Framing lives in the fragment so the
+  snapshot does not depend on sessionContext / PROMPT.md composition.
 
 ## Format
 
