@@ -216,6 +216,7 @@ export async function completeCursorLogin(
       if (consecutiveErrors >= 3) {
         // Generic message only — never interpolate error.message or attach cause
         // (fetch errors may embed the secret poll URL with verifier).
+        // oxlint-disable-next-line eslint/preserve-caught-error -- security: cause may contain verifier URL
         throw new Error("Cursor login polling failed after 3 errors")
       }
       await delay(sleepMs(attempt), ctx.signal)
