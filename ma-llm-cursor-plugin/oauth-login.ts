@@ -214,7 +214,8 @@ export async function completeCursorLogin(
         throw error
       consecutiveErrors++
       if (consecutiveErrors >= 3) {
-        // Do not retain raw error text/cause (it may include a URL with verifier).
+        // Generic message only — never interpolate error.message or attach cause
+        // (fetch errors may embed the secret poll URL with verifier).
         throw new Error("Cursor login polling failed after 3 errors")
       }
       await delay(sleepMs(attempt), ctx.signal)

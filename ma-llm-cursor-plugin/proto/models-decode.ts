@@ -78,6 +78,10 @@ function decodeVariant(buf: Uint8Array): CursorModelVariant {
   const variant: CursorModelVariant = {}
   const parameterValues: CursorModelParameterValue[] = []
   for (const field of decodeFields(buf)) {
+    const boolean = () => {
+      const value = fieldVarint(field)
+      return value === null ? undefined : value !== 0
+    }
     switch (field.no) {
       case 1: {
         const bytes = fieldBytes(field)
@@ -88,13 +92,13 @@ function decodeVariant(buf: Uint8Array): CursorModelVariant {
         variant.displayName = fieldString(field) ?? undefined
         break
       case 3:
-        variant.isMaxMode = fieldVarint(field) !== 0
+        variant.isMaxMode = boolean()
         break
       case 4:
-        variant.isDefaultMaxConfig = fieldVarint(field) !== 0
+        variant.isDefaultMaxConfig = boolean()
         break
       case 5:
-        variant.isDefaultNonMaxConfig = fieldVarint(field) !== 0
+        variant.isDefaultNonMaxConfig = boolean()
         break
       case 7:
         variant.tagline = fieldString(field) ?? undefined
@@ -120,7 +124,10 @@ export function decodeAvailableModel(buf: Uint8Array): DecodedCursorModel {
   const variants: CursorModelVariant[] = []
   const effortModes: number[] = []
   for (const field of decodeFields(buf)) {
-    const boolean = () => fieldVarint(field) !== 0
+    const boolean = () => {
+      const value = fieldVarint(field)
+      return value === null ? undefined : value !== 0
+    }
     switch (field.no) {
       case 1:
         model.name = fieldString(field) ?? ""
