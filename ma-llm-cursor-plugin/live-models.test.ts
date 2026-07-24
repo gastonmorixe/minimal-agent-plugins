@@ -169,9 +169,10 @@ describe("Cursor AvailableModels decoder", () => {
     const model = decodeAvailableModel(
       concat(encString(1, "no-false-effort"), encBool(9, true), encMsg(29, verbosityDef)),
     )
-    // thinking fallback ladder only — not terse/verbose
+    // No effort-param id → levels empty (not terse/verbose, not default ladder)
     expect(extractCursorEffortLevels(model)).toEqual([])
-    expect(deriveCursorCapabilities(model).effort.levels).toEqual(["low", "medium", "high", "max"])
+    expect(deriveCursorCapabilities(model).thinking.visible).toBe(true)
+    expect(deriveCursorCapabilities(model).effort.levels).toEqual([])
     expect(deriveCursorCapabilities(model).effort.levels).not.toContain("terse")
     expect(deriveCursorCapabilities(model).effort.levels).not.toContain("verbose")
   })
@@ -184,11 +185,13 @@ describe("Cursor AvailableModels decoder", () => {
     expect(caps.effort.levels).toEqual(["high"])
   })
 
-  it("falls back to default effort ladder when thinking but no parameter defs", () => {
+  it("does not advertise effort levels when thinking but no effort-param id (closed)", () => {
     const model = decodeAvailableModel(
       concat(encString(1, "think-only"), encBool(9, true), encVarintField(15, 128_000)),
     )
-    expect(deriveCursorCapabilities(model).effort.levels).toEqual(["low", "medium", "high", "max"])
+    expect(deriveCursorCapabilities(model).thinking.visible).toBe(true)
+    expect(deriveCursorCapabilities(model).effort.levels).toEqual([])
+    expect(resolveCursorEffortParamId(model)).toBeUndefined()
     expect(resolveCursorContextWindow(model)).toBe(128_000)
   })
 
@@ -238,6 +241,9 @@ describe("registerCursorLiveCatalog", () => {
     expect(variant!.capabilities.effort.levels).toEqual(["high"])
     expect(variant!.vendorIds?.cursor).toBe("composer-test-high")
     expect(variant!.tags).toContain("variant")
+    // f8 gate: real variantStringRepresentation (synthetic field 9)
+    expect(variant!.tags).toContain("variant-string")
+    expect(variant!.tags).not.toContain("variant-legacy-slug")
     // Selected max only on max variants (variant.isMaxMode)
     expect(variant!.tags).toContain("max-mode")
     expect(variant!.tags).toContain("supports-max-mode")
@@ -246,7 +252,27 @@ describe("registerCursorLiveCatalog", () => {
 
     const legacy = entries.get("cursor-legacy-only")
     expect(legacy!.capabilities.contextWindow).toBe(128_000)
+    expect(legacy!.capabilities.effort.levels).toEqual([])
     expect(effortParamIdFromTags(legacy!.tags)).toBeUndefined()
+  })
+
+  it("tags legacySlug-only variants as variant-legacy-slug not variant-string", () => {
+    // variant with only legacy_slug (field 11), no variant_string_representation (field 9)
+    const legacyOnlyVariant = concat(encString(2, "Legacy"), encString(11, "composer-legacy-wire"))
+    const modelBytes = concat(
+      encString(1, "composer-legacy-parent"),
+      encBool(9, true),
+      encMsg(29, parameterDefinition("effort", ["low", "high"])),
+      encMsg(30, legacyOnlyVariant),
+    )
+    const decoded = decodeAvailableModelsResponse(encMsg(2, modelBytes))
+    const { registrar, entries } = makeRegistrar()
+    registerCursorLiveCatalog(registrar, decoded)
+    const row = entries.get("cursor-composer-legacy-wire")
+    expect(row).toBeDefined()
+    expect(row!.tags).toContain("variant")
+    expect(row!.tags).toContain("variant-legacy-slug")
+    expect(row!.tags).not.toContain("variant-string")
   })
 })
 
