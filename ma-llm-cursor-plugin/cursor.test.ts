@@ -218,10 +218,33 @@ describe("auth helpers", () => {
 })
 
 describe("capabilities seed", () => {
-  test("thinking model advertises effort levels", () => {
+  test("cursorCaps(thinking) defaults still advertise effort levels (helper API)", () => {
     const caps = cursorCaps({ thinking: true, contextWindow: 200_000 })
     expect(caps.contextWindow).toBe(200_000)
     expect(caps.thinking.visible).toBe(true)
     expect(caps.effort.levels.length).toBeGreaterThan(0)
+  })
+
+  test("static catalog / ad-hoc seed use empty effort levels until live enrich", async () => {
+    const { registerCursorModels, registerCursorAdHocModelInto } = await import("./models.ts")
+    const entries = new Map<
+      string,
+      { capabilities: { effort: { levels: string[] }; thinking: { visible: boolean } } }
+    >()
+    const models = {
+      register(spec: {
+        id: string
+        capabilities: { effort: { levels: string[] }; thinking: { visible: boolean } }
+      }) {
+        entries.set(spec.id, spec)
+      },
+      setDefault() {},
+    }
+    registerCursorModels(models as never)
+    const seed = entries.get("cursor-composer-2.5-fast")
+    expect(seed?.capabilities.thinking.visible).toBe(true)
+    expect(seed?.capabilities.effort.levels).toEqual([])
+    registerCursorAdHocModelInto(models as never, "cursor-adhoc-test")
+    expect(entries.get("cursor-adhoc-test")?.capabilities.effort.levels).toEqual([])
   })
 })
