@@ -35,6 +35,12 @@ export const AGENT_MODE = {
 /** Alias used by request-body. */
 export const AGENT_MODE_ASK = AGENT_MODE.ASK
 
+/** One `agent.v1.RequestedModel.ModelParameterValue` (`{id,value}`). */
+export type CursorModelParameterValue = {
+  id: string
+  value: string
+}
+
 /** Options for encoding a minimal Run request. */
 export type AgentRunEncodeOpts = {
   text: string
@@ -48,6 +54,10 @@ export type AgentRunEncodeOpts = {
   timeZone?: string
   maxMode?: boolean
   builtInModel?: boolean
+  /** When true, set RequestedModel.is_variant_string_representation (field 8). */
+  isVariantStringRepresentation?: boolean
+  /** Effort/reasoning knobs as ModelParameterValue list (RequestedModel.parameters f3). */
+  parameters?: ReadonlyArray<CursorModelParameterValue>
   excludeWorkspaceContext?: boolean
   customSystemPrompt?: string
 }
@@ -82,15 +92,34 @@ function encConversationAction(opts: AgentRunEncodeOpts): Uint8Array {
   return encMsg(1, encUserMessageAction(opts))
 }
 
-function encRequestedModel(opts: AgentRunEncodeOpts): Uint8Array {
-  return concat(
+/** Encode one ModelParameterValue message `{id, value}`. */
+export function encModelParameterValue(param: CursorModelParameterValue): Uint8Array {
+  return concat(encString(1, param.id), encString(2, param.value))
+}
+
+/**
+ * Encode `agent.v1.RequestedModel`.
+ * Fields: 1 model_id, 2 max_mode, 3 parameters*, 7 built_in_model, 8 is_variant_string_representation.
+ */
+export function encRequestedModel(opts: AgentRunEncodeOpts): Uint8Array {
+  const parts: Uint8Array[] = [
     encString(1, opts.modelId),
+    // Always send max_mode (including false) — matches spike explicit false.
     encBoolExplicit(2, opts.maxMode ?? false),
-    encBool(7, opts.builtInModel ?? true),
-  )
+  ]
+  for (const p of opts.parameters ?? []) {
+    if (!p.id || !p.value) continue
+    parts.push(encMsg(3, encModelParameterValue(p)))
+  }
+  parts.push(encBool(7, opts.builtInModel ?? true))
+  if (opts.isVariantStringRepresentation) {
+    parts.push(encBoolExplicit(8, true))
+  }
+  return concat(...parts)
 }
 
 function encModelDetails(opts: AgentRunEncodeOpts): Uint8Array {
+  // ModelDetails: 1 model_id, 7 max_mode (opt)
   return concat(encString(1, opts.modelId), encBool(7, opts.maxMode ?? false))
 }
 
