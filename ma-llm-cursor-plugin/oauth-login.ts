@@ -164,28 +164,35 @@ export async function completeCursorLogin(
   const verifier = str(challenge.providerData?.verifier)
   if (!uuid || !verifier) throw new Error("Cursor login challenge missing uuid or verifier")
 
+  // Build poll URL with secrets, but **never** pass it through NetworkClient:
+  // host net-dbg / activity observers log `req.url` verbatim, and
+  // `capture.requestBody` cannot redact query strings. Use raw fetch so the
+  // PKCE verifier does not land in NET_DBG traces.
   const pollUrl = new URL(CURSOR_AUTH_POLL_PATH, CURSOR_API_BASE)
   pollUrl.searchParams.set("uuid", uuid)
   pollUrl.searchParams.set("verifier", verifier)
   let consecutiveErrors = 0
 
+  // Require a network client on the context (host always provides one) even
+  // though the secret poll itself uses fetch to avoid URL logging.
+  network(ctx)
+
+  const sleepMs = (attempt: number) =>
+    typeof challenge.pollIntervalMs === "number"
+      ? challenge.pollIntervalMs
+      : cursorPollDelayMs(attempt)
+
   for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
     throwIfAborted(ctx.signal)
     try {
-      const response = await network(ctx).request({
-        label: "cursor.oauth.poll",
+      const response = await fetch(pollUrl.toString(), {
         method: "GET",
-        url: pollUrl.toString(),
         headers: { accept: "application/json" },
         signal: ctx.signal,
-        capture: {
-          requestBody: "[REDACTED CURSOR LOGIN POLL QUERY]",
-          responseBody: false,
-        },
       })
       if (response.status === 404) {
         consecutiveErrors = 0
-        await delay(cursorPollDelayMs(attempt), ctx.signal)
+        await delay(sleepMs(attempt), ctx.signal)
         continue
       }
       if (!response.ok) {
@@ -195,10 +202,10 @@ export async function completeCursorLogin(
             `Cursor login polling failed after 3 errors (last status ${response.status})`,
           )
         }
-        await delay(cursorPollDelayMs(attempt), ctx.signal)
+        await delay(sleepMs(attempt), ctx.signal)
         continue
       }
-      const raw = await response.json<Record<string, unknown>>()
+      const raw = (await response.json()) as Record<string, unknown>
       return buildCursorOAuthCredential(raw)
     } catch (error) {
       if (ctx.signal?.aborted || (error instanceof Error && error.name === "AbortError"))
@@ -207,12 +214,10 @@ export async function completeCursorLogin(
         throw error
       consecutiveErrors++
       if (consecutiveErrors >= 3) {
-        const message = error instanceof Error ? error.message : String(error)
-        throw new Error(`Cursor login polling failed after 3 errors: ${message}`, {
-          cause: error,
-        })
+        // Do not retain raw error text/cause (it may include a URL with verifier).
+        throw new Error("Cursor login polling failed after 3 errors")
       }
-      await delay(cursorPollDelayMs(attempt), ctx.signal)
+      await delay(sleepMs(attempt), ctx.signal)
     }
   }
   throw new Error("Cursor browser login expired. Run login again.")

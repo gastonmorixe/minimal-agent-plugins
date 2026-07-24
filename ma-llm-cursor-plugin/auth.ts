@@ -99,40 +99,23 @@ export async function exchangeCursorApiKey(
   } = {},
 ): Promise<CursorTokenPair> {
   const url = `${(options.apiBase ?? CURSOR_API_BASE).replace(/\/$/, "")}${CURSOR_RPC_EXCHANGE_API_KEY_PATH}`
-  const client = options.networkClient
-  let response: Response | Awaited<ReturnType<NetworkClient["request"]>>
-  if (client) {
-    response = await client.request({
-      label: "cursor.auth.exchange-api-key",
-      method: "POST",
-      url,
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-      },
-      body: "{}",
-      signal: options.signal,
-      capture: {
-        requestBody: "[REDACTED CURSOR API KEY EXCHANGE BODY]",
-        responseBody: false,
-      },
-    })
-  } else {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-      },
-      body: "{}",
-      signal: options.signal,
-    })
-  }
+  // Always raw fetch: NetworkClient observers may log Authorization headers.
+  // options.networkClient is accepted for API symmetry but intentionally unused.
+  void options.networkClient
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: "{}",
+    signal: options.signal,
+  })
   if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`Cursor API-key exchange failed (${response.status}): ${body}`)
+    // Never copy response bodies into error strings (tokens / diagnostics).
+    throw new Error(`Cursor API-key exchange failed (${response.status})`)
   }
-  const raw = await response.json<Record<string, unknown>>()
+  const raw = (await response.json()) as Record<string, unknown>
   const parsed = record(raw)
   if (!parsed) throw new Error("Cursor API-key exchange returned a non-object response")
   return parseCursorTokenPair(parsed)

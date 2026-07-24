@@ -40,18 +40,28 @@ describe("Cursor API-key auth", () => {
     })
   })
 
-  it("exchanges an API key for a Cursor bearer pair through the injected client", async () => {
+  it("exchanges an API key for a Cursor bearer pair via fetch (not NetworkClient)", async () => {
     let sawAuthorization = ""
-    const client: NetworkClient = {
-      async request(input) {
-        sawAuthorization = input.headers?.authorization ?? ""
-        return response(200, { accessToken: "access-redacted", refreshToken: "refresh-redacted" })
-      },
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      const headers = new Headers(init?.headers)
+      sawAuthorization = headers.get("authorization") ?? ""
+      return new Response(
+        JSON.stringify({ accessToken: "access-redacted", refreshToken: "refresh-redacted" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }) as unknown as typeof fetch
+    try {
+      // networkClient is ignored for the secret call (must not log Authorization).
+      const pair = await exchangeCursorApiKey("api-redacted", {
+        networkClient: { async request() { throw new Error("should not use NetworkClient") } },
+      })
+      expect(sawAuthorization).toBe("Bearer api-redacted")
+      expect(pair.accessToken).toBe("access-redacted")
+      expect(pair.refreshToken).toBe("refresh-redacted")
+    } finally {
+      globalThis.fetch = realFetch
     }
-    const pair = await exchangeCursorApiKey("api-redacted", { networkClient: client })
-    expect(sawAuthorization).toBe("Bearer api-redacted")
-    expect(pair.accessToken).toBe("access-redacted")
-    expect(pair.refreshToken).toBe("refresh-redacted")
   })
 
   it("rejects incomplete token responses", () => {
@@ -74,30 +84,45 @@ describe("Cursor browser login", () => {
     expect(challenge.providerData?.verifier).toBeTruthy()
   })
 
-  it("polls 404 then builds an OAuth credential", async () => {
+  it("polls 404 then builds an OAuth credential via fetch (verifier never on NetworkClient)", async () => {
     let calls = 0
-    const client: NetworkClient = {
-      async request() {
-        calls++
-        return calls === 1
-          ? response(404, {})
-          : response(200, { accessToken: "access-redacted", refreshToken: "refresh-redacted" })
-      },
+    let sawVerifierInUrl = false
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      calls++
+      const href = typeof url === "string" ? url : url instanceof URL ? url.href : url.url
+      if (href.includes("verifier=")) sawVerifierInUrl = true
+      if (calls === 1) return new Response("{}", { status: 404 })
+      return new Response(
+        JSON.stringify({ accessToken: "access-redacted", refreshToken: "refresh-redacted" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }) as unknown as typeof fetch
+    try {
+      const challenge = createCursorLoginChallenge({
+        verifierBytes: new Uint8Array(32).fill(1),
+        uuid: "00000000-0000-4000-8000-000000000002",
+      })
+      challenge.pollIntervalMs = 0
+      // Dummy client required by completeCursorLogin; must not receive the poll URL.
+      const client: NetworkClient = {
+        async request() {
+          throw new Error("poll must not use NetworkClient (verifier URL leak)")
+        },
+      }
+      const built = await completeCursorLogin(challenge, { networkClient: client })
+      expect(calls).toBe(2)
+      expect(sawVerifierInUrl).toBe(true) // real request has verifier; not logged via NC
+      expect(built.credential.serviceId).toBe("cursor-oauth")
+      expect(built.result.accessToken).toBe("access-redacted")
+      expect(cursorOAuthLogin.readAuth?.(built.credential.secrets)).toEqual({
+        kind: "oauth",
+        token: "access-redacted",
+        baseUrl: "https://api2.cursor.sh",
+      })
+    } finally {
+      globalThis.fetch = realFetch
     }
-    const challenge = createCursorLoginChallenge({
-      verifierBytes: new Uint8Array(32).fill(1),
-      uuid: "00000000-0000-4000-8000-000000000002",
-    })
-    challenge.pollIntervalMs = 0
-    const built = await completeCursorLogin(challenge, { networkClient: client })
-    expect(calls).toBe(2)
-    expect(built.credential.serviceId).toBe("cursor-oauth")
-    expect(built.result.accessToken).toBe("access-redacted")
-    expect(cursorOAuthLogin.readAuth?.(built.credential.secrets)).toEqual({
-      kind: "oauth",
-      token: "access-redacted",
-      baseUrl: "https://api2.cursor.sh",
-    })
   })
 
   it("uses bounded exponential polling delay", () => {
