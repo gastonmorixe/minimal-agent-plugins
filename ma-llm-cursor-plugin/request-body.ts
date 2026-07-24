@@ -7,6 +7,7 @@
  * @module llm/providers/cursor/request-body
  */
 
+import { effortParamIdFromTags } from "./capabilities.ts"
 import type { CanonicalBlock, CanonicalMessage } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelView } from "./lib/provider-plugin.ts"
@@ -14,8 +15,42 @@ import { cursorWireModelId } from "./models.ts"
 import {
   AGENT_MODE_ASK,
   type AgentRunEncodeOpts,
+  type CursorModelParameterValue,
   encodeAgentClientMessageRun,
 } from "./proto/agent-run.ts"
+
+/** True when model registration tags mark this as a variant string representation. */
+export function modelIsCursorVariant(model: Pick<ModelView, "tags">): boolean {
+  return (model.tags ?? []).includes("variant")
+}
+
+/** True when tags include max-mode (variant or parent supports max). */
+export function modelIsCursorMaxMode(model: Pick<ModelView, "tags">): boolean {
+  return (model.tags ?? []).includes("max-mode")
+}
+
+/**
+ * Build ModelParameterValue list for RequestedModel.parameters (field 3).
+ *
+ * Only when CanonicalRequest.effort is set AND model tags carry `effort-param:<id>`
+ * (live registration). No hardcoded `effort` fallback — missing tag means catalog
+ * metadata is incomplete; omit the parameter rather than invent an id.
+ */
+export function buildCursorModelParameters(
+  req: CanonicalRequest,
+  model: ModelView,
+): CursorModelParameterValue[] {
+  const effort = req.effort
+  if (!effort) return []
+  const paramId = effortParamIdFromTags(model.tags)
+  if (!paramId) return []
+  const levels = model.capabilities.effort.levels
+  if (levels.length > 0 && !levels.includes(effort)) {
+    // Cap validation should have caught this; omit rather than send invalid.
+    return []
+  }
+  return [{ id: paramId, value: effort }]
+}
 
 /**
  * Build the protobuf body for AgentService/Run (AgentClientMessage).
@@ -37,11 +72,19 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
     systemParts.length > 0
       ? `${systemParts.join("\n\n")}\n\n${userText || "(empty)"}`
       : userText || "(empty)"
+
+  const maxMode = modelIsCursorMaxMode(model)
+  const isVariant = modelIsCursorVariant(model)
+  const parameters = buildCursorModelParameters(req, model)
+
   const opts: AgentRunEncodeOpts = {
     // Bare Cursor API slug (not host-namespaced id).
     modelId: cursorWireModelId(model),
     text,
     mode: AGENT_MODE_ASK,
+    maxMode,
+    isVariantStringRepresentation: isVariant,
+    parameters: parameters.length > 0 ? parameters : undefined,
   }
   return encodeAgentClientMessageRun(opts)
 }

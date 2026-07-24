@@ -14,39 +14,153 @@ import { buildCursorAgentRunBody } from "./request-body.ts"
 import { translateCursorStreamBuffer } from "./response-stream.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
+const ZERO_PRICING = {
+  inputUSD: 0,
+  outputUSD: 0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0,
+  webSearchPerCallUSD: 0,
+} as const
+
+function baseModel(
+  over: Partial<{
+    id: string
+    tags: string[]
+    vendorIds: Record<string, string>
+    capabilities: ReturnType<typeof cursorCaps>
+  }> = {},
+) {
+  return {
+    id: over.id ?? "cursor-composer-2.5-fast",
+    providerId: "cursor",
+    surfaceId: CURSOR_SURFACE_AGENT_RUN,
+    displayName: "Composer 2.5 Fast (Cursor)",
+    capabilities: over.capabilities ?? cursorCaps({ thinking: true }),
+    pricing: ZERO_PRICING,
+    tags: over.tags,
+    vendorIds: over.vendorIds ?? { cursor: "composer-2.5-fast", firstParty: "composer-2.5-fast" },
+  }
+}
+
+function runRequestFields(body: Uint8Array) {
+  const outer = decodeFields(body)
+  const run = fieldBytes(outer.find((f) => f.no === 1)!)
+  expect(run).toBeTruthy()
+  return decodeFields(run!)
+}
+
+function requestedModelFields(body: Uint8Array) {
+  const runFields = runRequestFields(body)
+  const rm = fieldBytes(runFields.find((f) => f.no === 9)!)
+  expect(rm).toBeTruthy()
+  return decodeFields(rm!)
+}
+
+function modelDetailsFields(body: Uint8Array) {
+  const runFields = runRequestFields(body)
+  const md = fieldBytes(runFields.find((f) => f.no === 3)!)
+  expect(md).toBeTruthy()
+  return decodeFields(md!)
+}
+
 describe("AgentRunRequest MVP body", () => {
-  test("omits field 8 (customSystemPrompt) and field 12 (excludeWorkspaceContext)", () => {
+  test("omits AgentRunRequest field 8 (customSystemPrompt) and field 12 (excludeWorkspaceContext)", () => {
     const body = buildCursorAgentRunBody(
       {
         modelId: "cursor-composer-2.5-fast",
         system: [{ type: "text", text: "You are a helpful assistant." }],
         messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
       },
-      {
-        id: "cursor-composer-2.5-fast",
-        providerId: "cursor",
-        surfaceId: CURSOR_SURFACE_AGENT_RUN,
-        displayName: "Composer 2.5 Fast (Cursor)",
-        capabilities: cursorCaps({ thinking: true }),
-        pricing: {
-          inputUSD: 0,
-          outputUSD: 0,
-          cacheWriteUSD: 0,
-          cacheReadUSD: 0,
-          webSearchPerCallUSD: 0,
-        },
-        vendorIds: { cursor: "composer-2.5-fast", firstParty: "composer-2.5-fast" },
-      },
+      baseModel(),
     )
-    // AgentClientMessage field 1 = AgentRunRequest
-    const outer = decodeFields(body)
-    const run = fieldBytes(outer.find((f) => f.no === 1)!)
-    expect(run).toBeTruthy()
-    const nos = new Set(decodeFields(run!).map((f) => f.no))
+    const nos = new Set(runRequestFields(body).map((f) => f.no))
     expect(nos.has(8)).toBe(false) // customSystemPrompt rejected live
     expect(nos.has(12)).toBe(false) // excludeWorkspaceContext rejected live
     expect(nos.has(2)).toBe(true) // conversation action present
     expect(nos.has(9)).toBe(true) // requested model present
+  })
+
+  test("base model: no variant f8; max_mode false on RequestedModel f2; no parameters without effort", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({ tags: ["cursor", "live", "thinking", "effort-param:effort"] }),
+    )
+    const rm = requestedModelFields(body)
+    const nos = new Set(rm.map((f) => f.no))
+    expect(nos.has(8)).toBe(false) // not a variant
+    expect(nos.has(3)).toBe(false) // no req.effort → no parameters
+    // f2 max_mode explicit false is present as bool varint 0
+    const maxField = rm.find((f) => f.no === 2)
+    expect(maxField).toBeTruthy()
+    expect(maxField!.wire).toBe(0)
+    expect(maxField!.value).toBe(0)
+  })
+
+  test("explicit effort encodes RequestedModel.parameters f3 with effort-param tag id", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        effort: "high",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        tags: ["cursor", "live", "thinking", "effort-param:reasoning_effort"],
+        capabilities: cursorCaps({
+          thinking: true,
+          effortLevels: ["low", "medium", "high", "max"],
+        }),
+      }),
+    )
+    const rm = requestedModelFields(body)
+    const paramMsgs = rm.filter((f) => f.no === 3)
+    expect(paramMsgs.length).toBe(1)
+    const pv = decodeFields(fieldBytes(paramMsgs[0]!)!)
+    expect(pv.find((f) => f.no === 1 && f.wire === 2)).toBeTruthy()
+    // id string
+    const idBytes = fieldBytes(pv.find((f) => f.no === 1)!)
+    const valBytes = fieldBytes(pv.find((f) => f.no === 2)!)
+    expect(new TextDecoder().decode(idBytes!)).toBe("reasoning_effort")
+    expect(new TextDecoder().decode(valBytes!)).toBe("high")
+  })
+
+  test("effort omitted when effort-param tag missing (no inventing id)", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        effort: "high",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({ tags: ["cursor", "live", "thinking"] }),
+    )
+    const rm = requestedModelFields(body)
+    expect(rm.some((f) => f.no === 3)).toBe(false)
+  })
+
+  test("variant tag sets RequestedModel f8; max-mode sets f2 and ModelDetails f7", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-high",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        id: "cursor-composer-high",
+        tags: ["cursor", "live", "variant", "parent:composer", "max-mode", "effort-param:effort"],
+        vendorIds: { cursor: "composer-high", firstParty: "composer-high" },
+      }),
+    )
+    const rm = requestedModelFields(body)
+    const f8 = rm.find((f) => f.no === 8)
+    expect(f8).toBeTruthy()
+    expect(f8!.value).toBe(1)
+    const f2 = rm.find((f) => f.no === 2)
+    expect(f2!.value).toBe(1)
+    const md = modelDetailsFields(body)
+    const mdMax = md.find((f) => f.no === 7)
+    expect(mdMax).toBeTruthy()
+    expect(mdMax!.value).toBe(1)
   })
 })
 
