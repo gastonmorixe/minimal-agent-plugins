@@ -24,7 +24,7 @@ const K = 1_000
 
 const estimateCursorTokens = makeCharRatioEstimator(3.8)
 
-interface CursorCatalogEntry {
+export interface CursorCatalogEntry {
   /** Host registry id — must not collide with other providers' ids/aliases. */
   id: string
   displayName: string
