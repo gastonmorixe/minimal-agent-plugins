@@ -165,16 +165,23 @@ export function registerCursorLiveCatalog(
     }
 
     for (const variant of model.variants ?? []) {
+      const hasVariantString = Boolean(variant.variantStringRepresentation)
       const wire = variant.variantStringRepresentation ?? variant.legacySlug
       if (!wire) continue
-      // Tag max-mode + parent so Jack's wire encode can recover flags later
-      // (RequestedModel is_variant_string_representation / max_mode).
+      // Tag contract for Jack RequestedModel encode:
+      // - `variant` — diagnostic: exploded variant row (any wire source)
+      // - `variant-string` — wire came from variantStringRepresentation → f8
+      //   is_variant_string_representation (NOT for legacySlug-only rows)
+      // - `max-mode` — selected max only (variant.isMaxMode)
       // Prefer variant-local effort param id when present, else parent field 29.
       const variantEffortParamId = resolveCursorEffortParamId(model, variant) ?? parentEffortParamId
       const vTags = tagsForModel(
         model,
         [
           "variant",
+          ...(hasVariantString
+            ? (["variant-string"] as const)
+            : (["variant-legacy-slug"] as const)),
           `parent:${model.name}`,
           ...(variant.isMaxMode ? ["max-mode"] : []),
           ...(variant.isDefaultMaxConfig ? ["default-max"] : []),

@@ -256,12 +256,22 @@ export function cursorCaps(options: CursorCapsOptions = {}): Capabilities {
   }
 }
 
-/** Map AvailableModels capability flags into minimal-agent's provider-neutral table. */
+/**
+ * Map AvailableModels capability flags into minimal-agent's provider-neutral table.
+ *
+ * **Closed effort semantics (Christina):** only advertise effort.levels when the
+ * catalog resolves an effort/reasoning parameter id (`resolveCursorEffortParamId`).
+ * A bare `supportsThinking` without field-29/variant param ids still sets
+ * thinking=true but **levels=[]** so the host cannot select a knob Jack cannot
+ * encode (no inventing `effort` wire id). Static seed via {@link cursorCaps}
+ * is unchanged and may still use DEFAULT_EFFORT_LEVELS.
+ */
 export function deriveCursorCapabilities(model: DecodedCursorModel): Capabilities {
   const fromCatalog = extractCursorEffortLevels(model)
+  const effortParamId = resolveCursorEffortParamId(model)
   const thinking = Boolean(model.supportsThinking) || fromCatalog.length > 0
-  const effortLevels =
-    fromCatalog.length > 0 ? fromCatalog : thinking ? [...DEFAULT_EFFORT_LEVELS] : []
+  // No fallback ladder without a resolved param id — selectable but unsendable is worse.
+  const effortLevels = effortParamId && fromCatalog.length > 0 ? fromCatalog : []
 
   return cursorCaps({
     contextWindow: resolveCursorContextWindow(model),
@@ -301,12 +311,18 @@ export function deriveCursorVariantCapabilities(
     contextWindow = model.contextTokenLimit
   }
 
+  const effortParamId = resolveCursorEffortParamId(model, variant)
+  // Same closed rule as parent: levels only when we can name the wire param id.
   const effortLevels =
-    variantEffort.size > 0 ? sortEffortLevels(variantEffort) : parent.effort.levels
+    effortParamId && variantEffort.size > 0
+      ? sortEffortLevels(variantEffort)
+      : effortParamId
+        ? parent.effort.levels
+        : []
 
   return cursorCaps({
     contextWindow,
-    thinking: parent.thinking.visible || effortLevels.length > 0,
+    thinking: parent.thinking.visible || effortLevels.length > 0 || Boolean(model.supportsThinking),
     vision: parent.modalities.image,
     effortLevels,
     maxMode: Boolean(variant.isMaxMode ?? model.supportsMaxMode),
