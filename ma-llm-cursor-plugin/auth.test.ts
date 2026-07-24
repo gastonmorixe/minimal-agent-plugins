@@ -8,26 +8,13 @@ import {
   readCursorApiKey,
 } from "./auth.ts"
 import { buildCursorHeaders } from "./headers.ts"
-import type { NetworkClient, NetworkResponse } from "./lib/net-types.ts"
+import type { NetworkClient } from "./lib/net-types.ts"
 import {
   completeCursorLogin,
   createCursorLoginChallenge,
   cursorOAuthLogin,
   cursorPollDelayMs,
 } from "./oauth-login.ts"
-
-function response(status: number, body: unknown): NetworkResponse {
-  const text = JSON.stringify(body)
-  return {
-    status,
-    ok: status >= 200 && status < 300,
-    headers: new Headers({ "content-type": "application/json" }),
-    body: new Response(text).body as ReadableStream<Uint8Array>,
-    transport: { id: "test" },
-    text: async () => text,
-    json: async <T>() => body as T,
-  }
-}
 
 describe("Cursor API-key auth", () => {
   it("encodes API keys without exposing them through inspection", () => {
@@ -54,7 +41,11 @@ describe("Cursor API-key auth", () => {
     try {
       // networkClient is ignored for the secret call (must not log Authorization).
       const pair = await exchangeCursorApiKey("api-redacted", {
-        networkClient: { async request() { throw new Error("should not use NetworkClient") } },
+        networkClient: {
+          async request() {
+            throw new Error("should not use NetworkClient")
+          },
+        },
       })
       expect(sawAuthorization).toBe("Bearer api-redacted")
       expect(pair.accessToken).toBe("access-redacted")
