@@ -118,15 +118,20 @@ probe() {
 sort /tmp/env-info-$$.out > /tmp/env-info-$$.sorted
 rm -f /tmp/env-info-$$.out
 
-# Emit a fenced ini-ish block so the model sees it as structured data. The
-# loader composes this fragment into a <ma::sys::context name="environment">
-# section, so we do NOT add our own wrapper tag here (a bare <env> would be
-# the lone tag in the whole prompt outside the <ma::*> namespace).
+# Emit plain markdown (placement: afterInstructions) so the snapshot survives
+# `--no-system-session-context` / sessionContext overrides that strip the
+# XML-wrapped plugin sessionContext block. Include a short heading + note
+# (formerly only in PROMPT.md under sessionContext) and a fenced ini block.
+# No <ma::sys::…> / <env> wrapper — afterInstructions is unwrapped plain text.
 # stderr is redirected for the whole emit so a closed pipe (test cancellation,
 # loader teardown) doesn't print "broken pipe" diagnostics.
 {
+  echo '# Environment'
+  echo
+  echo 'Host snapshot at session start (frozen for the session; re-query with `Bash` for fresh values). Prefer relative paths from `cwd=`; do not invent sibling absolute project roots.'
+  echo
   echo '```ini'
-  cat /tmp/env-info-$$.sorted
+  cat "/tmp/env-info-$$.sorted"
   echo '```'
 } 2>/dev/null
-rm -f /tmp/env-info-$$.sorted
+rm -f "/tmp/env-info-$$.sorted"
