@@ -99,6 +99,25 @@ describe("AgentRunRequest MVP body", () => {
     expect(maxField!.value).toBe(0)
   })
 
+  test("canonical supports-max-mode does NOT select max on wire (f2 false)", () => {
+    // Parent capability only — George 5cc6bde: supports-max-mode ≠ selected max-mode
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        tags: ["cursor", "live", "thinking", "supports-max-mode", "effort-param:effort"],
+      }),
+    )
+    const rm = requestedModelFields(body)
+    expect(rm.find((f) => f.no === 2)!.value).toBe(0)
+    expect(rm.some((f) => f.no === 8)).toBe(false)
+    const md = modelDetailsFields(body)
+    // ModelDetails max_mode field 7 uses encBool (omit when false)
+    expect(md.some((f) => f.no === 7 && f.value === 1)).toBe(false)
+  })
+
   test("explicit effort encodes RequestedModel.parameters f3 with effort-param tag id", () => {
     const body = buildCursorAgentRunBody(
       {
@@ -139,7 +158,7 @@ describe("AgentRunRequest MVP body", () => {
     expect(rm.some((f) => f.no === 3)).toBe(false)
   })
 
-  test("variant tag sets RequestedModel f8; max-mode sets f2 and ModelDetails f7", () => {
+  test("variant+max-mode tags set RequestedModel f8, f2, and ModelDetails f7", () => {
     const body = buildCursorAgentRunBody(
       {
         modelId: "cursor-composer-high",
@@ -147,7 +166,16 @@ describe("AgentRunRequest MVP body", () => {
       },
       baseModel({
         id: "cursor-composer-high",
-        tags: ["cursor", "live", "variant", "parent:composer", "max-mode", "effort-param:effort"],
+        tags: [
+          "cursor",
+          "live",
+          "variant",
+          "variant-string",
+          "parent:composer",
+          "max-mode",
+          "supports-max-mode",
+          "effort-param:effort",
+        ],
         vendorIds: { cursor: "composer-high", firstParty: "composer-high" },
       }),
     )
@@ -161,6 +189,46 @@ describe("AgentRunRequest MVP body", () => {
     const mdMax = md.find((f) => f.no === 7)
     expect(mdMax).toBeTruthy()
     expect(mdMax!.value).toBe(1)
+  })
+
+  test("legacySlug-only variant (variant + variant-legacy-slug, no variant-string) does not set f8", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-legacy-var",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        id: "cursor-legacy-var",
+        tags: [
+          "cursor",
+          "live",
+          "variant",
+          "variant-legacy-slug",
+          "parent:composer",
+          "effort-param:effort",
+        ],
+        vendorIds: { cursor: "legacy-var", firstParty: "legacy-var" },
+      }),
+    )
+    const rm = requestedModelFields(body)
+    expect(rm.some((f) => f.no === 8)).toBe(false)
+    expect(rm.find((f) => f.no === 2)!.value).toBe(0)
+  })
+
+  test("variant-string tag alone sets f8", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-rep-var",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        id: "cursor-rep-var",
+        tags: ["cursor", "live", "variant-string", "parent:composer", "effort-param:effort"],
+        vendorIds: { cursor: "rep-var", firstParty: "rep-var" },
+      }),
+    )
+    const rm = requestedModelFields(body)
+    expect(rm.find((f) => f.no === 8)?.value).toBe(1)
   })
 })
 

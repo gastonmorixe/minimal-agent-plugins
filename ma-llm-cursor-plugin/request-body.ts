@@ -19,9 +19,13 @@ import {
   encodeAgentClientMessageRun,
 } from "./proto/agent-run.ts"
 
-/** True when model registration tags mark this as a variant string representation. */
+/**
+ * True when registration marks a **string-representation** variant for wire f8.
+ * Requires `variant-string` (George: wire from variantStringRepresentation).
+ * Bare `variant` / `variant-legacy-slug` alone do not set f8.
+ */
 export function modelIsCursorVariant(model: Pick<ModelView, "tags">): boolean {
-  return (model.tags ?? []).includes("variant")
+  return (model.tags ?? []).includes("variant-string")
 }
 
 /** True when tags include max-mode (variant or parent supports max). */
