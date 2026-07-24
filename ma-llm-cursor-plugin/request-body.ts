@@ -34,7 +34,9 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
     text: userText || "(empty)",
     mode: AGENT_MODE_ASK,
     customSystemPrompt: systemParts.length > 0 ? systemParts.join("\n\n") : undefined,
-    excludeWorkspaceContext: true,
+    // Do NOT set excludeWorkspaceContext: live API returns
+    // invalid_argument "Workspace context exclusion is not allowed for this
+    // user, team, or selected model" for typical MA accounts (E2E 2026-07-23).
   }
   return encodeAgentClientMessageRun(opts)
 }
