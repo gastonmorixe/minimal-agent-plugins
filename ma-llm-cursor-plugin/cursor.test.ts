@@ -41,6 +41,22 @@ describe("cursor provider plugin shape", () => {
     expect(cursorAdapter.surfaces).toEqual([CURSOR_SURFACE_AGENT_RUN])
   })
 
+  test("stream headers advertise spike client version + connect-accept-encoding", async () => {
+    const { buildClientIds } = await import("./ids.ts")
+    const { CURSOR_CLIENT_VERSION_DEFAULT } = await import("./wire-constants.ts")
+    const ids = await buildClientIds({ machineId: "a".repeat(64), sessionId: "s" })
+    const headers = buildCursorHeaders({
+      token: "t",
+      ids,
+      streaming: true,
+      clientType: "cli",
+    })
+    expect(headers["x-cursor-client-version"]).toBe(CURSOR_CLIENT_VERSION_DEFAULT)
+    expect(headers["x-cursor-client-version"]).toBe("3.12.30")
+    expect(headers["connect-accept-encoding"]).toBe("gzip")
+    expect(headers["user-agent"]).toBe("connect-es/1.6.1")
+  })
+
   test("listLiveModels is wired (may reject without network/auth)", async () => {
     expect(typeof cursorProviderPlugin.listLiveModels).toBe("function")
     // Offline unit test: either returns rows or rejects — must not hang.

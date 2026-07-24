@@ -33,6 +33,33 @@ describe("connect frames", () => {
   })
 })
 
+describe("end-stream trailer → stream_error", () => {
+  test("surfaces Connect JSON as Error.cause so host can print message", async () => {
+    const trailer = new TextEncoder().encode(
+      JSON.stringify({ error: { code: "invalid_argument", message: "bad model id" } }),
+    )
+    // flags bit1 = end-stream
+    const frame = new Uint8Array(5 + trailer.length)
+    frame[0] = 0x02
+    new DataView(frame.buffer).setUint32(1, trailer.length, false)
+    frame.set(trailer, 5)
+
+    const events = []
+    for await (const ev of translateCursorStreamBuffer(frame, { modelId: "composer-2.5-fast" })) {
+      events.push(ev)
+    }
+    expect(events).toHaveLength(1)
+    const errEv = events[0]!
+    expect(errEv.type).toBe("stream_error")
+    if (errEv.type !== "stream_error") return
+    expect(errEv.category).toBe("api")
+    expect(errEv.upstreamType).toBe("invalid_argument")
+    expect(errEv.cause).toBeInstanceOf(Error)
+    expect((errEv.cause as Error).message).toContain("invalid_argument")
+    expect((errEv.cause as Error).message).toContain("bad model id")
+  })
+})
+
 describe("spike run-resp.bin fixture", () => {
   test("parses frames and emits text_delta events", async () => {
     const path = join(import.meta.dir, "__fixtures__/run-resp.bin")

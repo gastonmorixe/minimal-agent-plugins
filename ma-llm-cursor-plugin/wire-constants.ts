@@ -65,5 +65,13 @@ export const CURSOR_RPC_EXCHANGE_API_KEY_PATH = "/auth/exchange_user_api_key"
 /** Auth: device-code style poll. */
 export const CURSOR_AUTH_POLL_PATH = "/auth/poll"
 
-/** Plugin display version for diagnostics (not the Connect UA). */
+/**
+ * Value for `x-cursor-client-version`. Must look like a real Cursor client —
+ * the live spike uses `3.12.30`. Do **not** send the plugin package version
+ * (`0.1.0`); the agent gateway may reject unknown client versions with a
+ * Connect end-stream error.
+ */
+export const CURSOR_CLIENT_VERSION_DEFAULT = "3.12.30"
+
+/** Plugin display version for diagnostics (not the Connect client version). */
 export const CURSOR_PLUGIN_VERSION = "0.1.0"

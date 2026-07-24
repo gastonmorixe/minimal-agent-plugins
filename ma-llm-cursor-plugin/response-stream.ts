@@ -12,8 +12,8 @@ import { ConnectFrameReader, parseConnectFrames } from "./connect/stream.ts"
 import type { CanonicalEvent, CanonicalUsage } from "./lib/canonical-events.ts"
 import {
   type CursorServerEvent,
-  extractEndStreamError,
   extractServerTextEvents,
+  parseConnectEndStreamError,
 } from "./proto/agent-run.ts"
 
 export type TranslateCursorStreamOpts = {
@@ -127,20 +127,36 @@ function* handleFrame(
   handleEvents: (events: CursorServerEvent[]) => Generator<CanonicalEvent>,
 ): Generator<CanonicalEvent> {
   if (frame.endStream) {
-    const err = extractEndStreamError(frame.payload)
-    if (err) {
+    const parsed = parseConnectEndStreamError(frame.payload)
+    if (parsed) {
+      // Host only surfaces `cause` when it is an Error instance
+      // (adapter-legacy taggedStreamError). Keep message free of secrets.
+      const cause = new Error(parsed.message)
       yield {
         type: "stream_error",
         retryable: false,
-        category: "api",
-        upstreamType: err.slice(0, 200),
-        cause: err,
+        category: categoryFromConnectCode(parsed.code),
+        upstreamType: (parsed.code ?? "connect_end_stream").slice(0, 200),
+        cause,
       }
     }
     return
   }
   if (frame.payload.length === 0) return
   yield* handleEvents(extractServerTextEvents(frame.payload))
+}
+
+/** Map Connect error codes onto canonical stream_error categories. */
+function categoryFromConnectCode(
+  code: string | undefined,
+): NonNullable<Extract<CanonicalEvent, { type: "stream_error" }>["category"]> {
+  if (!code) return "api"
+  const c = code.toLowerCase()
+  if (c.includes("unauth") || c.includes("permission") || c.includes("forbidden")) return "auth"
+  if (c.includes("resource_exhausted") || c.includes("rate")) return "rate_limit"
+  if (c.includes("unavailable") || c.includes("overloaded")) return "overloaded"
+  if (c.includes("deadline") || c.includes("timeout") || c.includes("canceled")) return "timeout"
+  return "api"
 }
 
 /**
