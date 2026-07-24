@@ -2,7 +2,8 @@
  * Cursor `ProviderAdapter` — self-contained custom-wire provider plugin.
  *
  * Speaks Cursor's AgentService/Run (connect+proto) surface `cursor-agent-run`.
- * MVP: ASK-mode token + thinking stream only; MA owns tools.
+ * MVP: token + thinking stream; wire mode defaults to AGENT (not ASK).
+ * MA tools are not yet encoded on the wire (Cursor may still advertise its own).
  *
  * Auth: MA provider store only (apiKeyAuth exchange / oauthLogin deviceCode).
  * No env tokens or keychain.
@@ -117,8 +118,10 @@ export function bootstrapCursor(ctx?: ProviderSetupContext): void {
   // for every AvailableModels row — host list-models only enriches from registry.
   setCursorLiveModelRegistrar(ctx.models)
   const ids = registerCursorModels(ctx.models)
-  catalogScoutId = ids.find((id) => id.includes("fast")) ?? ids[0]
-  catalogBalancedId = ids.find((id) => id === "cursor-composer-2") ?? ids[0]
+  catalogScoutId =
+    ids.find((id) => id.includes("fast")) ?? ids.find((id) => id === "cursor-auto") ?? ids[0]
+  catalogBalancedId =
+    ids.find((id) => id === "cursor-composer-2") ?? ids.find((id) => id === "cursor-auto") ?? ids[0]
   ctx.providers.register(cursorAdapter)
 }
 

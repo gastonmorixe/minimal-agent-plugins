@@ -11,6 +11,7 @@ import { cursorCaps } from "./capabilities.ts"
 import { buildCursorChecksum, scrambleTimestampBytes, timestampBytes } from "./checksum.ts"
 import { bearerToken, buildCursorHeaders } from "./headers.ts"
 import { buildClientIds, toHex } from "./ids.ts"
+import { cursorWireModelId, registerCursorAdHocModelInto, resolveCursorWireId } from "./models.ts"
 import { cursorOAuthLogin } from "./oauth-login.ts"
 import {
   concat,
@@ -24,6 +25,33 @@ import {
   getFirstVarint,
 } from "./proto/wire.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
+
+describe("cursor wire model id aliases", () => {
+  test("auto display slug resolves to default for AgentService/Run", () => {
+    expect(resolveCursorWireId("auto")).toBe("default")
+    expect(resolveCursorWireId("cursor-auto")).toBe("default")
+    expect(resolveCursorWireId("default")).toBe("default")
+    expect(resolveCursorWireId("composer-2.5-fast")).toBe("composer-2.5-fast")
+  })
+
+  test("ad-hoc cursor-auto stores vendorIds.cursor=default", () => {
+    const entries = new Map<string, { id: string; vendorIds?: Record<string, string> }>()
+    const registrar = {
+      register(spec: { id: string; vendorIds?: Record<string, string> }) {
+        entries.set(spec.id, spec)
+      },
+      setDefault() {},
+    }
+    registerCursorAdHocModelInto(registrar as never, "cursor-auto")
+    const entry = entries.get("cursor-auto")
+    expect(entry?.vendorIds?.cursor).toBe("default")
+    expect(cursorWireModelId(entry!)).toBe("default")
+  })
+
+  test("cursorWireModelId still maps bare auto vendor id", () => {
+    expect(cursorWireModelId({ id: "cursor-auto", vendorIds: { cursor: "auto" } })).toBe("default")
+  })
+})
 
 describe("cursor provider plugin shape", () => {
   test("plugin id and hooks", () => {

@@ -202,6 +202,32 @@ describe("Cursor AvailableModels decoder", () => {
 })
 
 describe("registerCursorLiveCatalog", () => {
+  it("maps Cursor Auto alias host id to wire id default (not auto)", () => {
+    // AvailableModels: name=default, display Auto, idAliases=[auto]
+    // GetUsableModels: modelId=default, displayModelId=auto
+    const autoModel = concat(
+      encString(1, "default"),
+      encBool(2, true),
+      encBool(5, true),
+      encString(17, "Auto"),
+      encString(18, "default"),
+      encString(19, "Auto"),
+      encRepeatedString(37, ["auto"]),
+    )
+    const decoded = decodeAvailableModelsResponse(encMsg(2, autoModel))
+    const { registrar, entries } = makeRegistrar()
+    registerCursorLiveCatalog(registrar, decoded)
+
+    const primary = entries.get("cursor-default")
+    expect(primary?.vendorIds?.cursor).toBe("default")
+
+    const alias = entries.get("cursor-auto")
+    expect(alias).toBeDefined()
+    expect(alias!.vendorIds?.cursor).toBe("default")
+    expect(alias!.tags).toContain("alias")
+    expect(alias!.tags).toContain("canonical:default")
+  })
+
   it("registers full ModelEntry caps for primary, alias, variant, and legacy names", () => {
     const { registrar, entries } = makeRegistrar()
     const decoded = decodeAvailableModelsResponse(syntheticResponse())
@@ -232,6 +258,9 @@ describe("registerCursorLiveCatalog", () => {
     const alias = entries.get("cursor-composer-test-alias")
     expect(alias!.tags).toContain("alias")
     expect(alias!.tags?.some((t) => t.startsWith("canonical:"))).toBe(true)
+    // Alias host id keeps the display slug, but Run wire id is the parent name.
+    // (Cursor Auto: host cursor-auto, wire default — not the alias "auto".)
+    expect(alias!.vendorIds?.cursor).toBe("composer-test")
     expect(alias!.tags).toContain("effort-param:effort")
     expect(alias!.tags).toContain("supports-max-mode")
     expect(alias!.tags).not.toContain("max-mode")

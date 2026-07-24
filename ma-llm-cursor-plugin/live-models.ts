@@ -9,7 +9,7 @@ import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type { LiveModelRow, ModelRegistrar } from "./lib/provider-plugin.ts"
-import { registerCursorModelInto } from "./models.ts"
+import { registerCursorModelInto, resolveCursorWireId } from "./models.ts"
 import {
   type DecodedAvailableModelsResponse,
   type DecodedCursorModel,
@@ -148,6 +148,10 @@ export function registerCursorLiveCatalog(
     // Aliases / legacy slugs: separate host ids with parent caps (not registry aliases).
     // Prefer canonical `model.name` when an alias host id would collide with it
     // (registerOne de-dupes); tags mark alias rows for dispatch diagnostics.
+    //
+    // CRITICAL: wireId must be the **canonical** parent `model.name`, not the
+    // display alias. Cursor Auto is host id `cursor-auto` but AgentService/Run
+    // only accepts model_id `default` — sending `auto` yields connect not_found.
     for (const alias of unique([...(model.idAliases ?? []), ...(model.legacySlugs ?? [])])) {
       if (!alias || alias === model.name) continue
       const aliasHostId = cursorHostModelId(alias)
@@ -155,7 +159,7 @@ export function registerCursorLiveCatalog(
       if (aliasHostId === cursorHostModelId(model.name)) continue
       registerOne({
         id: aliasHostId,
-        wireId: alias,
+        wireId: model.name,
         displayName: parentDisplay,
         capabilities: parentCaps,
         tags: tagsForModel(model, ["alias", `canonical:${model.name}`], {
@@ -205,12 +209,19 @@ export function registerCursorLiveCatalog(
     if (!modelName) continue
     const id = cursorHostModelId(modelName)
     if (seen.has(id)) continue
+    const bare = modelName.replace(/^cursor-/, "")
+    const wireId = resolveCursorWireId(bare)
     registerOne({
       id,
-      wireId: modelName.replace(/^cursor-/, ""),
+      wireId,
       displayName: modelName,
       capabilities: deriveCursorCapabilities({ name: modelName }),
-      tags: ["cursor", "live", "legacy-name"],
+      tags: [
+        "cursor",
+        "live",
+        "legacy-name",
+        ...(wireId !== bare ? (["alias", `canonical:${wireId}`] as const) : []),
+      ],
     })
   }
 
