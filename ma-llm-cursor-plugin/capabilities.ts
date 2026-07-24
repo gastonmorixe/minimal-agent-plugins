@@ -110,6 +110,82 @@ export function extractCursorEffortLevels(model: DecodedCursorModel): string[] {
 }
 
 /**
+ * Preferential order when multiple effort-like parameter ids appear.
+ * Lower index = preferred for RequestedModel.parameters wire id.
+ */
+const EFFORT_PARAM_ID_PREFERENCE = [
+  "effort",
+  "reasoning_effort",
+  "reasoningeffort",
+  "reasoning",
+] as const
+
+/**
+ * Resolve the wire parameter **id** to send in RequestedModel.parameters
+ * (do not hardcode `"effort"` — catalog may use reasoning_effort etc.).
+ *
+ * Preference: field 29 definition id/name → first matching variant
+ * parameterValue id → undefined (caller falls back to host effort only).
+ *
+ * Exported so registration can tag `effort-param:<id>` for Jack's encode.
+ */
+export function resolveCursorEffortParamId(
+  model: DecodedCursorModel,
+  variant?: CursorModelVariant,
+): string | undefined {
+  const candidates: string[] = []
+
+  for (const def of model.parameterDefinitions ?? []) {
+    for (const raw of [def.id, def.name]) {
+      if (!raw || !isCursorEffortParamId(raw)) continue
+      candidates.push(raw.trim())
+    }
+  }
+
+  if (variant) {
+    for (const pv of variant.parameterValues ?? []) {
+      if (!pv.id || !isCursorEffortParamId(pv.id)) continue
+      candidates.push(pv.id.trim())
+    }
+  } else {
+    for (const v of model.variants ?? []) {
+      for (const pv of v.parameterValues ?? []) {
+        if (!pv.id || !isCursorEffortParamId(pv.id)) continue
+        candidates.push(pv.id.trim())
+      }
+    }
+  }
+
+  if (candidates.length === 0) return undefined
+
+  const rank = (id: string): number => {
+    const n = id.toLowerCase()
+    const i = EFFORT_PARAM_ID_PREFERENCE.indexOf(n as (typeof EFFORT_PARAM_ID_PREFERENCE)[number])
+    return i === -1 ? 100 : i
+  }
+
+  return [...candidates].sort((a, b) => {
+    const d = rank(a) - rank(b)
+    if (d !== 0) return d
+    return a.localeCompare(b)
+  })[0]
+}
+
+/**
+ * Read `effort-param:<id>` from registered model tags (Jack encode path).
+ * Returns undefined when the catalog never advertised an effort parameter id.
+ */
+export function effortParamIdFromTags(tags: ReadonlyArray<string> | undefined): string | undefined {
+  if (!tags) return undefined
+  for (const tag of tags) {
+    if (tag.startsWith("effort-param:") && tag.length > "effort-param:".length) {
+      return tag.slice("effort-param:".length)
+    }
+  }
+  return undefined
+}
+
+/**
  * Prefer non-max context for default listing; fall back to max-mode limit,
  * then package default. Live catalog often omits both — defaults still show.
  */

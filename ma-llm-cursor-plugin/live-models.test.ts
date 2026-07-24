@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it } from "bun:test"
 import {
   deriveCursorCapabilities,
   deriveCursorVariantCapabilities,
+  effortParamIdFromTags,
   extractCursorEffortLevels,
   resolveCursorContextWindow,
+  resolveCursorEffortParamId,
 } from "./capabilities.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import {
@@ -216,10 +218,15 @@ describe("registerCursorLiveCatalog", () => {
     expect(primary!.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
     expect(primary!.capabilities.tools.userDefined).toBe(true)
     expect(primary!.capabilities.modalities.image).toBe(true)
+    // Jack bridge: real parameter id, not hardcoded "effort" assumption only
+    expect(primary!.tags).toContain("effort-param:effort")
+    expect(effortParamIdFromTags(primary!.tags)).toBe("effort")
+    expect(resolveCursorEffortParamId(decodeAvailableModel(syntheticModel()))).toBe("effort")
 
     const alias = entries.get("cursor-composer-test-alias")
     expect(alias!.tags).toContain("alias")
     expect(alias!.tags?.some((t) => t.startsWith("canonical:"))).toBe(true)
+    expect(alias!.tags).toContain("effort-param:effort")
 
     const variant = entries.get("cursor-composer-test-high")
     expect(variant!.capabilities.contextWindow).toBe(400_000)
@@ -228,9 +235,11 @@ describe("registerCursorLiveCatalog", () => {
     expect(variant!.tags).toContain("variant")
     expect(variant!.tags).toContain("max-mode")
     expect(variant!.tags).toContain("parent:composer-test")
+    expect(variant!.tags).toContain("effort-param:effort")
 
     const legacy = entries.get("cursor-legacy-only")
     expect(legacy!.capabilities.contextWindow).toBe(128_000)
+    expect(effortParamIdFromTags(legacy!.tags)).toBeUndefined()
   })
 })
 

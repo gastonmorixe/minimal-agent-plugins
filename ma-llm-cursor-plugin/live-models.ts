@@ -1,5 +1,9 @@
 import { resolveCursorAccessToken } from "./auth.ts"
-import { deriveCursorCapabilities, deriveCursorVariantCapabilities } from "./capabilities.ts"
+import {
+  deriveCursorCapabilities,
+  deriveCursorVariantCapabilities,
+  resolveCursorEffortParamId,
+} from "./capabilities.ts"
 import { availableModelsUrl } from "./connect/hosts.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
@@ -30,13 +34,19 @@ export function cursorHostModelId(wireId: string): string {
   return bare.startsWith("cursor-") ? bare : `cursor-${bare}`
 }
 
-function tagsForModel(model: DecodedCursorModel, extra: string[] = []): string[] {
+function tagsForModel(
+  model: DecodedCursorModel,
+  extra: string[] = [],
+  options?: { effortParamId?: string },
+): string[] {
   const tags = new Set<string>(["cursor", "live", ...extra])
   if (model.supportsThinking) tags.add("thinking")
   if (model.supportsImages) tags.add("vision")
   if (model.supportsMaxMode) tags.add("max-mode")
   if (model.supportsAgent) tags.add("agent")
   if (model.isLongContextOnly) tags.add("long-context")
+  // Bridge for Jack wire encode: real RequestedModel.parameters id (not hardcoded "effort").
+  if (options?.effortParamId) tags.add(`effort-param:${options.effortParamId}`)
   return [...tags]
 }
 
@@ -84,7 +94,14 @@ export function mapCursorLiveModels(decoded: DecodedAvailableModelsResponse): Li
  * Safe to call repeatedly: same (id, providerId) is last-write-wins.
  * Never registers bare wire ids as aliases (Grok collision risk).
  *
- * @returns host ids that were registered
+ * **Lifecycle limitation (known):** `ModelRegistrar` has no `unregister`.
+ * Rows from a previous AvailableModels snapshot (including models that later
+ * become hidden/removed) stay in the host registry until process restart.
+ * Live list rows still come from the latest `mapCursorLiveModels` only; stale
+ * registry entries may still appear via static enrichment. Documented — not
+ * closed until the host registrar grows a remove/replace-catalog API.
+ *
+ * @returns host ids that were registered on this call
  */
 export function registerCursorLiveCatalog(
   models: ModelRegistrar,
@@ -106,7 +123,8 @@ export function registerCursorLiveCatalog(
 
     const parentCaps = deriveCursorCapabilities(model)
     const parentDisplay = cursorModelDisplayName(model)
-    const parentTags = tagsForModel(model)
+    const parentEffortParamId = resolveCursorEffortParamId(model)
+    const parentTags = tagsForModel(model, [], { effortParamId: parentEffortParamId })
 
     registerOne({
       id: cursorHostModelId(model.name),
@@ -129,7 +147,9 @@ export function registerCursorLiveCatalog(
         wireId: alias,
         displayName: parentDisplay,
         capabilities: parentCaps,
-        tags: tagsForModel(model, ["alias", `canonical:${model.name}`]),
+        tags: tagsForModel(model, ["alias", `canonical:${model.name}`], {
+          effortParamId: parentEffortParamId,
+        }),
       })
     }
 
@@ -138,13 +158,19 @@ export function registerCursorLiveCatalog(
       if (!wire) continue
       // Tag max-mode + parent so Jack's wire encode can recover flags later
       // (RequestedModel is_variant_string_representation / max_mode).
-      const vTags = tagsForModel(model, [
-        "variant",
-        `parent:${model.name}`,
-        ...(variant.isMaxMode ? ["max-mode"] : []),
-        ...(variant.isDefaultMaxConfig ? ["default-max"] : []),
-        ...(variant.isDefaultNonMaxConfig ? ["default-non-max"] : []),
-      ])
+      // Prefer variant-local effort param id when present, else parent field 29.
+      const variantEffortParamId = resolveCursorEffortParamId(model, variant) ?? parentEffortParamId
+      const vTags = tagsForModel(
+        model,
+        [
+          "variant",
+          `parent:${model.name}`,
+          ...(variant.isMaxMode ? ["max-mode"] : []),
+          ...(variant.isDefaultMaxConfig ? ["default-max"] : []),
+          ...(variant.isDefaultNonMaxConfig ? ["default-non-max"] : []),
+        ],
+        { effortParamId: variantEffortParamId },
+      )
       registerOne({
         id: cursorHostModelId(wire),
         wireId: wire,
