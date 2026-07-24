@@ -222,18 +222,25 @@ describe("registerCursorLiveCatalog", () => {
     expect(primary!.tags).toContain("effort-param:effort")
     expect(effortParamIdFromTags(primary!.tags)).toBe("effort")
     expect(resolveCursorEffortParamId(decodeAvailableModel(syntheticModel()))).toBe("effort")
+    // Capability vs selected max: parent supports max but is NOT selected max-mode
+    expect(primary!.tags).toContain("supports-max-mode")
+    expect(primary!.tags).not.toContain("max-mode")
 
     const alias = entries.get("cursor-composer-test-alias")
     expect(alias!.tags).toContain("alias")
     expect(alias!.tags?.some((t) => t.startsWith("canonical:"))).toBe(true)
     expect(alias!.tags).toContain("effort-param:effort")
+    expect(alias!.tags).toContain("supports-max-mode")
+    expect(alias!.tags).not.toContain("max-mode")
 
     const variant = entries.get("cursor-composer-test-high")
     expect(variant!.capabilities.contextWindow).toBe(400_000)
     expect(variant!.capabilities.effort.levels).toEqual(["high"])
     expect(variant!.vendorIds?.cursor).toBe("composer-test-high")
     expect(variant!.tags).toContain("variant")
+    // Selected max only on max variants (variant.isMaxMode)
     expect(variant!.tags).toContain("max-mode")
+    expect(variant!.tags).toContain("supports-max-mode")
     expect(variant!.tags).toContain("parent:composer-test")
     expect(variant!.tags).toContain("effort-param:effort")
 
