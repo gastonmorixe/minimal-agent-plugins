@@ -174,15 +174,66 @@ export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[
   return events
 }
 
-/** Decode end-stream trailer JSON if present. */
-export function extractEndStreamError(payload: Uint8Array): string | undefined {
+/** Parsed Connect end-stream trailer (sanitized for logs / Error.message). */
+export type ConnectEndStreamError = {
+  /** Short host-facing message (no tokens/headers). */
+  message: string
+  /** Optional Connect/provider code when present. */
+  code?: string
+  /** Raw JSON text, truncated (may still contain provider details). */
+  raw?: string
+}
+
+/**
+ * Decode Connect end-stream trailer JSON into a safe diagnostic shape.
+ * Connect trailers often look like `{"error":{"code":"…","message":"…"}}`.
+ */
+export function parseConnectEndStreamError(payload: Uint8Array): ConnectEndStreamError | undefined {
+  let text: string
   try {
-    const t = new TextDecoder().decode(payload)
-    if (t.startsWith("{")) return t.slice(0, 2000)
+    text = new TextDecoder().decode(payload).trim()
   } catch {
-    /* ignore */
+    return undefined
   }
-  return undefined
+  if (!text) return undefined
+
+  // Prefer structured Connect error JSON.
+  if (text.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(text) as {
+        error?: { code?: unknown; message?: unknown; details?: unknown }
+        code?: unknown
+        message?: unknown
+      }
+      const errObj = parsed.error && typeof parsed.error === "object" ? parsed.error : undefined
+      const codeRaw = errObj?.code ?? parsed.code
+      const msgRaw = errObj?.message ?? parsed.message
+      const code = typeof codeRaw === "string" ? codeRaw : undefined
+      const msg = typeof msgRaw === "string" ? msgRaw : undefined
+      const parts = ["cursor connect end-stream"]
+      if (code) parts.push(code)
+      if (msg) parts.push(msg)
+      else parts.push(text.slice(0, 400))
+      return {
+        message: parts.join(": ").slice(0, 800),
+        code,
+        raw: text.slice(0, 2000),
+      }
+    } catch {
+      return {
+        message: `cursor connect end-stream: ${text.slice(0, 400)}`,
+        raw: text.slice(0, 2000),
+      }
+    }
+  }
+
+  // Non-JSON trailer (rare).
+  return { message: `cursor connect end-stream: ${text.slice(0, 400)}`, raw: text.slice(0, 2000) }
+}
+
+/** Decode end-stream trailer JSON if present (legacy string form). */
+export function extractEndStreamError(payload: Uint8Array): string | undefined {
+  return parseConnectEndStreamError(payload)?.raw ?? parseConnectEndStreamError(payload)?.message
 }
 
 /**

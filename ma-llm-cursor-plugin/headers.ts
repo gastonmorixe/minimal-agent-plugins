@@ -13,9 +13,9 @@ import type { ClientIds } from "./ids.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import {
   CURSOR_CLIENT_TYPE,
+  CURSOR_CLIENT_VERSION_DEFAULT,
   CURSOR_CONNECT_PROTOCOL_VERSION,
   CURSOR_GHOST_MODE_DEFAULT,
-  CURSOR_PLUGIN_VERSION,
   CURSOR_STREAM_CONTENT_TYPE,
   CURSOR_UNARY_CONTENT_TYPE,
   CURSOR_USER_AGENT,
@@ -71,12 +71,18 @@ export function buildCursorHeaders(options: CursorHeaderOptions): Record<string,
     "x-cursor-client-device-type": "desktop",
     "x-cursor-client-os": process.platform === "darwin" ? "darwin" : process.platform,
     "x-cursor-client-type": options.clientType ?? CURSOR_CLIENT_TYPE,
-    "x-cursor-client-version": process.env.MA_CURSOR_CLIENT_VERSION ?? CURSOR_PLUGIN_VERSION,
+    // Spike-proven client version (not package 0.1.0). Override via MA_CURSOR_CLIENT_VERSION.
+    "x-cursor-client-version":
+      process.env.MA_CURSOR_CLIENT_VERSION ?? CURSOR_CLIENT_VERSION_DEFAULT,
     "x-cursor-streaming": options.streaming === false ? "false" : "true",
     "x-cursor-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
     "x-ghost-mode": String(options.ghostMode ?? CURSOR_GHOST_MODE_DEFAULT),
     "x-request-id": requestId,
     "x-session-id": options.ids.sessionId,
+  }
+  // Match spike probe-run headers for AgentService/Run (harmless on unary).
+  if (options.streaming !== false) {
+    headers["connect-accept-encoding"] = "gzip"
   }
   if (options.clientLayout) headers["x-cursor-client-layout"] = options.clientLayout
   if (options.ids.configVersion) {
