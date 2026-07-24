@@ -63,6 +63,11 @@ describe("Cursor AvailableModels decoder", () => {
     expect(model.variants?.[0]?.variantStringRepresentation).toBe("composer-test-high")
   })
 
+  it("ignores malformed boolean fields with the wrong protobuf wire type", () => {
+    const model = decodeAvailableModel(concat(encString(1, "malformed"), encString(9, "true")))
+    expect(model.supportsThinking).toBeUndefined()
+  })
+
   it("maps the response to deterministic live rows including aliases and variants", () => {
     const decoded = decodeAvailableModelsResponse(syntheticResponse())
     expect(decoded.useModelParameters).toBe(true)
