@@ -22,21 +22,26 @@ import {
  * Caller wraps with Connect frame via connectFrameProto.
  */
 export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView): Uint8Array {
+  // MVP: spike-proven shape is a single user UserMessage.text only.
+  // Do NOT send MA system blocks as Cursor customSystemPrompt — live API
+  // returned invalid_argument "unknown option '--system-prompt'" (2026-07-23).
+  // Do NOT set excludeWorkspaceContext — rejected for typical accounts.
+  // Fold system into the user text for context instead.
   const systemParts: string[] = []
   for (const block of req.system ?? []) {
     const t = blockText(block)
     if (t) systemParts.push(t)
   }
   const userText = summarizeMessages(req.messages)
+  const text =
+    systemParts.length > 0
+      ? `${systemParts.join("\n\n")}\n\n${userText || "(empty)"}`
+      : userText || "(empty)"
   const opts: AgentRunEncodeOpts = {
     // Bare Cursor API slug (not host-namespaced id).
     modelId: cursorWireModelId(model),
-    text: userText || "(empty)",
+    text,
     mode: AGENT_MODE_ASK,
-    customSystemPrompt: systemParts.length > 0 ? systemParts.join("\n\n") : undefined,
-    // Do NOT set excludeWorkspaceContext: live API returns
-    // invalid_argument "Workspace context exclusion is not allowed for this
-    // user, team, or selected model" for typical MA accounts (E2E 2026-07-23).
   }
   return encodeAgentClientMessageRun(opts)
 }
