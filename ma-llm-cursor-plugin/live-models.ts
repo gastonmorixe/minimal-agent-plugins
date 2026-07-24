@@ -34,6 +34,17 @@ export function cursorHostModelId(wireId: string): string {
   return bare.startsWith("cursor-") ? bare : `cursor-${bare}`
 }
 
+/**
+ * Registration tags for Jack RequestedModel encode + list diagnostics.
+ *
+ * **max-mode vs supports-max-mode** (Christina review):
+ * - `supports-max-mode` — catalog capability: this model *can* use max mode
+ *   (from AvailableModel.supportsMaxMode). Safe on parent/alias/variant.
+ * - `max-mode` — **selected** max configuration only (variant.isMaxMode).
+ *   Jack's encoder treats `max-mode` as RequestedModel.max_mode=true.
+ *   Never stamp `max-mode` from parent.supportsMaxMode alone — that forced
+ *   canonical selections onto max=true incorrectly.
+ */
 function tagsForModel(
   model: DecodedCursorModel,
   extra: string[] = [],
@@ -42,7 +53,7 @@ function tagsForModel(
   const tags = new Set<string>(["cursor", "live", ...extra])
   if (model.supportsThinking) tags.add("thinking")
   if (model.supportsImages) tags.add("vision")
-  if (model.supportsMaxMode) tags.add("max-mode")
+  if (model.supportsMaxMode) tags.add("supports-max-mode")
   if (model.supportsAgent) tags.add("agent")
   if (model.isLongContextOnly) tags.add("long-context")
   // Bridge for Jack wire encode: real RequestedModel.parameters id (not hardcoded "effort").
