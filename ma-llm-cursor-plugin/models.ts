@@ -34,6 +34,10 @@ export interface CursorCatalogEntry {
   tags: string[]
 }
 
+/**
+ * Static offline seed. Thinking=true but effortLevels=[] until live catalog
+ * enriches with effort-param:<id> (Christina: no selectable knobs without wire id).
+ */
 const CATALOG: CursorCatalogEntry[] = [
   {
     id: "cursor-composer-2.5-fast",
@@ -43,6 +47,7 @@ const CATALOG: CursorCatalogEntry[] = [
       contextWindow: 200 * K,
       thinking: true,
       vision: false,
+      effortLevels: [],
     }),
     tags: ["cursor", "composer", "fast", "thinking"],
   },
@@ -54,6 +59,7 @@ const CATALOG: CursorCatalogEntry[] = [
       contextWindow: 200 * K,
       thinking: true,
       vision: false,
+      effortLevels: [],
     }),
     tags: ["cursor", "composer", "thinking"],
   },
@@ -95,7 +101,8 @@ export function registerCursorAdHocModelInto(models: ModelRegistrar, modelId: st
     id: hostId,
     wireId: bare,
     displayName: `${bare} (Cursor)`,
-    capabilities: cursorCaps({ contextWindow: 128 * K, thinking: true }),
+    // Ad-hoc: thinking ok, no effort levels without catalog effort-param tag.
+    capabilities: cursorCaps({ contextWindow: 128 * K, thinking: true, effortLevels: [] }),
     tags: ["cursor", "ad-hoc"],
   })
 }
