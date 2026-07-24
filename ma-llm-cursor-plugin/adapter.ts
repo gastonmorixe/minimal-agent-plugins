@@ -26,7 +26,7 @@ import type {
   ProviderValidationResult,
   SubagentModelRecommendation,
 } from "./lib/provider-plugin.ts"
-import { listCursorLiveModels } from "./live-models.ts"
+import { listCursorLiveModels, setCursorLiveModelRegistrar } from "./live-models.ts"
 import { registerCursorAdHocModelInto, registerCursorModels } from "./models.ts"
 import { cursorOAuthLogin } from "./oauth-login.ts"
 import { buildCursorAgentRunBody } from "./request-body.ts"
@@ -113,6 +113,9 @@ let capturedModels: ProviderSetupContext["models"] | undefined
 export function bootstrapCursor(ctx?: ProviderSetupContext): void {
   if (!ctx?.models || !ctx.providers) return
   capturedModels = ctx.models
+  // So listLiveModels can register full ModelEntry caps (ctx/effort/think/tools)
+  // for every AvailableModels row — host list-models only enriches from registry.
+  setCursorLiveModelRegistrar(ctx.models)
   const ids = registerCursorModels(ctx.models)
   catalogScoutId = ids.find((id) => id.includes("fast")) ?? ids[0]
   catalogBalancedId = ids.find((id) => id === "cursor-composer-2") ?? ids[0]

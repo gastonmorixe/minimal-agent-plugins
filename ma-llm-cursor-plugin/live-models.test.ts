@@ -1,7 +1,18 @@
 import { afterEach, describe, expect, it } from "bun:test"
 
-import { deriveCursorCapabilities } from "./capabilities.ts"
-import { listCursorLiveModels, mapCursorLiveModels } from "./live-models.ts"
+import {
+  deriveCursorCapabilities,
+  deriveCursorVariantCapabilities,
+  extractCursorEffortLevels,
+  resolveCursorContextWindow,
+} from "./capabilities.ts"
+import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
+import {
+  listCursorLiveModels,
+  mapCursorLiveModels,
+  registerCursorLiveCatalog,
+  setCursorLiveModelRegistrar,
+} from "./live-models.ts"
 import { decodeAvailableModel, decodeAvailableModelsResponse } from "./proto/models-decode.ts"
 import {
   concat,
@@ -11,6 +22,26 @@ import {
   encString,
   encVarintField,
 } from "./proto/wire.ts"
+
+/** EnumParameterValue: value=high */
+function enumValue(value: string, displayName?: string): Uint8Array {
+  return concat(encString(1, value), ...(displayName ? [encString(2, displayName)] : []))
+}
+
+/** EnumParameterDefinition: repeated values at field 1 */
+function enumParameter(values: string[]): Uint8Array {
+  return concat(...values.map((v) => encMsg(1, enumValue(v))))
+}
+
+/** ModelParameterType oneof: field 2 = enum_parameter */
+function parameterTypeEnum(values: string[]): Uint8Array {
+  return encMsg(2, enumParameter(values))
+}
+
+/** ModelParameterDefinition: id + parameter_type */
+function parameterDefinition(id: string, values: string[]): Uint8Array {
+  return concat(encString(1, id), encString(2, id), encMsg(4, parameterTypeEnum(values)))
+}
 
 function syntheticModel(): Uint8Array {
   const parameterValue = concat(encString(1, "effort"), encString(2, "high"))
@@ -30,10 +61,12 @@ function syntheticModel(): Uint8Array {
     encVarintField(15, 200_000),
     encVarintField(16, 400_000),
     encString(17, "Composer Test"),
+    encMsg(29, parameterDefinition("effort", ["low", "medium", "high", "xhigh", "max"])),
     encMsg(30, variant),
     encRepeatedString(37, ["composer-test-alias"]),
+    // CloudAgentEffortMode ordinals must NOT become effort ladder labels.
+    encVarintField(44, 1),
     encVarintField(44, 2),
-    encVarintField(44, 3),
   )
 }
 
@@ -45,8 +78,19 @@ function syntheticResponse(): Uint8Array {
   )
 }
 
+function makeRegistrar(): { registrar: ModelRegistrar; entries: Map<string, ProviderModelSpec> } {
+  const entries = new Map<string, ProviderModelSpec>()
+  const registrar: ModelRegistrar = {
+    register(spec) {
+      entries.set(spec.id, spec)
+    },
+    setDefault() {},
+  }
+  return { registrar, entries }
+}
+
 describe("Cursor AvailableModels decoder", () => {
-  it("decodes rich model flags, aliases, variants, and effort modes", () => {
+  it("decodes rich model flags, aliases, variants, parameter defs, and effort modes", () => {
     const model = decodeAvailableModel(syntheticModel())
     expect(model).toMatchObject({
       name: "composer-test",
@@ -58,9 +102,17 @@ describe("Cursor AvailableModels decoder", () => {
       contextTokenLimit: 200_000,
       contextTokenLimitForMaxMode: 400_000,
       idAliases: ["composer-test-alias"],
-      cloudAgentEffortModes: [2, 3],
+      cloudAgentEffortModes: [1, 2],
     })
     expect(model.variants?.[0]?.variantStringRepresentation).toBe("composer-test-high")
+    expect(model.parameterDefinitions?.[0]?.id).toBe("effort")
+    expect(model.parameterDefinitions?.[0]?.enumValues?.map((v) => v.value)).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
   })
 
   it("ignores malformed boolean fields with the wrong protobuf wire type", () => {
@@ -80,13 +132,72 @@ describe("Cursor AvailableModels decoder", () => {
     ])
   })
 
-  it("derives context, thinking, image, and effort capability data", () => {
-    const capabilities = deriveCursorCapabilities(decodeAvailableModel(syntheticModel()))
-    expect(capabilities.contextWindow).toBe(400_000)
+  it("derives context, thinking, image, and effort from parameter defs (not cloud ordinals)", () => {
+    const model = decodeAvailableModel(syntheticModel())
+    expect(extractCursorEffortLevels(model)).toEqual(["low", "medium", "high", "xhigh", "max"])
+    expect(resolveCursorContextWindow(model)).toBe(200_000)
+
+    const capabilities = deriveCursorCapabilities(model)
+    expect(capabilities.contextWindow).toBe(200_000)
     expect(capabilities.thinking.visible).toBe(true)
     expect(capabilities.modalities.image).toBe(true)
-    expect(capabilities.effort.levels).toEqual(["2", "3"])
+    expect(capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
     expect(capabilities.tools.userDefined).toBe(true)
+    // Must not leak CloudAgentEffortMode "1"/"2"
+    expect(capabilities.effort.levels).not.toContain("1")
+    expect(capabilities.effort.levels).not.toContain("2")
+  })
+
+  it("variant caps prefer variant effort + max-mode context", () => {
+    const model = decodeAvailableModel(syntheticModel())
+    const variant = model.variants![0]!
+    const caps = deriveCursorVariantCapabilities(model, variant)
+    expect(caps.contextWindow).toBe(400_000)
+    expect(caps.effort.levels).toEqual(["high"])
+  })
+
+  it("falls back to default effort ladder when thinking but no parameter defs", () => {
+    const model = decodeAvailableModel(
+      concat(encString(1, "think-only"), encBool(9, true), encVarintField(15, 128_000)),
+    )
+    expect(deriveCursorCapabilities(model).effort.levels).toEqual(["low", "medium", "high", "max"])
+    expect(resolveCursorContextWindow(model)).toBe(128_000)
+  })
+
+  it("uses default context when catalog omits token limits", () => {
+    const model = decodeAvailableModel(concat(encString(1, "no-ctx"), encBool(9, true)))
+    expect(resolveCursorContextWindow(model)).toBe(128_000)
+  })
+})
+
+describe("registerCursorLiveCatalog", () => {
+  it("registers full ModelEntry caps for primary, alias, variant, and legacy names", () => {
+    const { registrar, entries } = makeRegistrar()
+    const decoded = decodeAvailableModelsResponse(syntheticResponse())
+    const ids = registerCursorLiveCatalog(registrar, decoded)
+
+    expect(ids).toContain("cursor-composer-test")
+    expect(ids).toContain("cursor-composer-test-alias")
+    expect(ids).toContain("cursor-composer-test-high")
+    expect(ids).toContain("cursor-legacy-only")
+
+    const primary = entries.get("cursor-composer-test")
+    expect(primary).toBeDefined()
+    expect(primary!.providerId).toBe("cursor")
+    expect(primary!.vendorIds?.cursor).toBe("composer-test")
+    expect(primary!.capabilities.contextWindow).toBe(200_000)
+    expect(primary!.capabilities.thinking.visible).toBe(true)
+    expect(primary!.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
+    expect(primary!.capabilities.tools.userDefined).toBe(true)
+    expect(primary!.capabilities.modalities.image).toBe(true)
+
+    const variant = entries.get("cursor-composer-test-high")
+    expect(variant!.capabilities.contextWindow).toBe(400_000)
+    expect(variant!.capabilities.effort.levels).toEqual(["high"])
+    expect(variant!.vendorIds?.cursor).toBe("composer-test-high")
+
+    const legacy = entries.get("cursor-legacy-only")
+    expect(legacy!.capabilities.contextWindow).toBe(128_000)
   })
 })
 
@@ -94,9 +205,10 @@ describe("listCursorLiveModels", () => {
   const realFetch = globalThis.fetch
   afterEach(() => {
     globalThis.fetch = realFetch
+    setCursorLiveModelRegistrar(undefined)
   })
 
-  it("fetches the authenticated protobuf catalog", async () => {
+  it("fetches the authenticated protobuf catalog and registers caps when registrar is set", async () => {
     let sawAuthorization = ""
     globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
       const headers = new Headers(init?.headers)
@@ -106,15 +218,32 @@ describe("listCursorLiveModels", () => {
         headers: { "content-type": "application/proto" },
       })
     }) as unknown as typeof fetch
+
+    const { registrar, entries } = makeRegistrar()
+    setCursorLiveModelRegistrar(registrar)
+
     const rows = await listCursorLiveModels({ kind: "oauth", token: "access-redacted" })
     expect(sawAuthorization).toBe("Bearer access-redacted")
     expect(rows.some((row) => row.id === "cursor-composer-test")).toBe(true)
+    expect(entries.get("cursor-composer-test")?.capabilities.effort.levels).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
   })
 
-  it("returns [] on network or protocol failure", async () => {
+  it("returns [] on network or protocol failure without throwing", async () => {
     globalThis.fetch = (async () => {
       throw new Error("offline")
     }) as unknown as typeof fetch
+    expect(await listCursorLiveModels({ kind: "oauth", token: "access-redacted" })).toEqual([])
+  })
+
+  it("returns [] on HTTP 401 without throwing (unlike Anthropic Models API shape)", async () => {
+    globalThis.fetch = (async () =>
+      new Response("authentication_error", { status: 401 })) as unknown as typeof fetch
     expect(await listCursorLiveModels({ kind: "oauth", token: "access-redacted" })).toEqual([])
   })
 })
