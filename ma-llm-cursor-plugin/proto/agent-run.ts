@@ -32,8 +32,10 @@ export const AGENT_MODE = {
   CUSTOM: 8,
 } as const
 
-/** Alias used by request-body. */
+/** Alias used by request-body / tests. */
 export const AGENT_MODE_ASK = AGENT_MODE.ASK
+/** Default wire mode for AgentService/Run (full agent, not read-only ask). */
+export const AGENT_MODE_AGENT = AGENT_MODE.AGENT
 
 /** One `agent.v1.RequestedModel.ModelParameterValue` (`{id,value}`). */
 export type CursorModelParameterValue = {
@@ -80,7 +82,8 @@ function encRequestContext(opts: AgentRunEncodeOpts): Uint8Array {
 
 function encUserMessage(opts: AgentRunEncodeOpts): Uint8Array {
   const mid = opts.messageId ?? crypto.randomUUID()
-  const mode = opts.mode ?? AGENT_MODE.ASK
+  // Default AGENT — never ASK. Callers that need ask must pass mode explicitly.
+  const mode = opts.mode ?? AGENT_MODE.AGENT
   return concat(encString(1, opts.text), encString(2, mid), encEnum(4, mode))
 }
 

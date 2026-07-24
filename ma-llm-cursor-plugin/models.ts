@@ -35,10 +35,51 @@ export interface CursorCatalogEntry {
 }
 
 /**
- * Static offline seed. Thinking=true but effortLevels=[] until live catalog
- * enriches with effort-param:<id> (Christina: no selectable knobs without wire id).
+ * Known display-slug → AgentService/Run wire id.
+ * Cursor's Auto picker id is `auto`, but Run rejects it with connect
+ * `not_found`; the API model_id is `default` (AvailableModels / GetUsableModels).
+ * Ad-hoc registration and offline seed must use these, not the bare slug.
+ */
+export const CURSOR_WIRE_ID_ALIASES: Readonly<Record<string, string>> = {
+  auto: "default",
+}
+
+/** Map a user/host slug to the bare Cursor wire model id for Run. */
+export function resolveCursorWireId(slug: string): string {
+  const bare = slug.replace(/^cursor-/, "")
+  return CURSOR_WIRE_ID_ALIASES[bare] ?? bare
+}
+
+/**
+ * Static offline seed. Thinking/effort empty until live catalog enriches with
+ * effort-param:<id> (Christina: no selectable knobs without wire id).
  */
 const CATALOG: CursorCatalogEntry[] = [
+  {
+    // Auto: host id uses the display slug users type (`cursor-auto`); wire is `default`.
+    id: "cursor-auto",
+    displayName: "Auto (Cursor)",
+    wireId: "default",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: false,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "auto", "default", "agent"],
+  },
+  {
+    id: "cursor-default",
+    displayName: "Auto (Cursor)",
+    wireId: "default",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: false,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "auto", "default", "agent", "canonical:default"],
+  },
   {
     id: "cursor-composer-2.5-fast",
     displayName: "Composer 2.5 Fast (Cursor)",
@@ -83,27 +124,40 @@ export function registerCursorModelInto(models: ModelRegistrar, entry: CursorCat
   return entry.id
 }
 
-/** Populate the host registry with the static Cursor seed. Default = first. */
+/** Populate the host registry with the static Cursor seed. Default = Auto. */
 export function registerCursorModels(models: ModelRegistrar): string[] {
   const ids = CATALOG.map((entry) => registerCursorModelInto(models, entry))
-  if (ids[0]) models.setDefault(ids[0])
+  // Prefer Auto (`cursor-auto`) when present; else first seed entry.
+  const defaultId = ids.find((id) => id === "cursor-auto") ?? ids[0]
+  if (defaultId) models.setDefault(defaultId)
   return ids
 }
 
 /**
  * Register a one-off Cursor slug.
  * Namespaces host id as `cursor-<slug>` when the caller passes a bare API id.
+ * Wire id resolves known display aliases (e.g. `auto` → `default`).
  */
 export function registerCursorAdHocModelInto(models: ModelRegistrar, modelId: string): string {
   const bare = modelId.replace(/^cursor-/, "")
   const hostId = modelId.startsWith("cursor-") ? modelId : `cursor-${bare}`
+  const wireId = resolveCursorWireId(bare)
+  const tags = ["cursor", "ad-hoc"]
+  if (wireId !== bare) {
+    tags.push("alias", `canonical:${wireId}`)
+  }
   return registerCursorModelInto(models, {
     id: hostId,
-    wireId: bare,
-    displayName: `${bare} (Cursor)`,
+    wireId,
+    displayName: bare === "auto" || bare === "default" ? "Auto (Cursor)" : `${bare} (Cursor)`,
     // Ad-hoc: thinking ok, no effort levels without catalog effort-param tag.
-    capabilities: cursorCaps({ contextWindow: 128 * K, thinking: true, effortLevels: [] }),
-    tags: ["cursor", "ad-hoc"],
+    // Auto/default: match catalog (no thinking advertised on Auto).
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: bare !== "auto" && bare !== "default",
+      effortLevels: [],
+    }),
+    tags,
   })
 }
 
@@ -112,5 +166,7 @@ export function cursorWireModelId(model: {
   id: string
   vendorIds?: Record<string, string>
 }): string {
-  return model.vendorIds?.cursor ?? model.vendorIds?.firstParty ?? model.id.replace(/^cursor-/, "")
+  const fromVendor = model.vendorIds?.cursor ?? model.vendorIds?.firstParty
+  if (fromVendor) return resolveCursorWireId(fromVendor)
+  return resolveCursorWireId(model.id)
 }
