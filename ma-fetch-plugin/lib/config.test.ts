@@ -1,6 +1,26 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { defaultConfig, parseFetchConfig } from "./config.ts"
+
+type ManifestProperty = { default?: unknown }
+type FetchManifest = {
+  tuis: Array<{
+    trigger: { tool: { input_schema: { properties: Record<string, ManifestProperty> } } }
+  }>
+}
+
+describe("manifest defaults", () => {
+  test("wait_until stays aligned with the runtime built-in default", () => {
+    const path = join(import.meta.dir, "..", "manifest.json")
+    const manifest = JSON.parse(readFileSync(path, "utf8")) as FetchManifest
+    const schemaDefault = manifest.tuis[0]?.trigger.tool.input_schema.properties.wait_until?.default
+
+    expect(schemaDefault).toBe(defaultConfig().defaults.waitUntil)
+  })
+})
 
 describe("defaultConfig", () => {
   test("returns sensible built-in defaults", () => {
@@ -283,7 +303,6 @@ describe("parseFetchConfig - per-backend blocks", () => {
 // ---------------------------------------------------------------------------
 
 import { homedir } from "node:os"
-import { join } from "node:path"
 
 import { configPath, defaultStorageRoot, expandHome, SESSION_NAME_PATTERN } from "./config.ts"
 
