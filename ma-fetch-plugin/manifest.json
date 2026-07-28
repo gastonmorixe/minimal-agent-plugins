@@ -40,8 +40,8 @@
               "wait_until": {
                 "type": "string",
                 "enum": ["load", "domcontentloaded", "networkidle0"],
-                "default": "load",
-                "description": "When to consider navigation complete. 'load' = window load event (default). 'domcontentloaded' = HTML parsed (faster, may miss async content). 'networkidle0' = no network activity for 500ms (slowest, best for SPAs/dynamic pages)."
+                "default": "domcontentloaded",
+                "description": "When to consider navigation complete. If omitted, the plugin uses its configured default, which is 'domcontentloaded' unless overridden. 'load' waits for the window load event. 'domcontentloaded' captures the parsed document sooner. 'networkidle0' waits for 500ms without network activity and is best for SPAs that load content asynchronously."
               },
               "timeout_sec": {
                 "type": "integer",
