@@ -30,6 +30,7 @@ const CACHING_AUTO = {
   ttls: [] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
+  promptCacheAccounting: "subset" as const,
 }
 
 const TOOLS_FULL = {

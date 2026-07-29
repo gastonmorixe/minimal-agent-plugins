@@ -179,6 +179,36 @@ describe("validateInput - selector and eval", () => {
     expect(validateInput({ url: "https://x", selector: 42 }).ok).toBe(false)
     expect(validateInput({ url: "https://x", eval: {} }).ok).toBe(false)
   })
+
+  test("eval_mode accepts value and page only when eval is present", () => {
+    for (const mode of ["value", "page"]) {
+      const v = validateInput({ url: "https://x", eval: "document.title", eval_mode: mode })
+      expect(v.ok).toBe(true)
+      if (v.ok) expect(v.value.evalMode).toBe(mode as "value" | "page")
+    }
+    expect(validateInput({ url: "https://x", eval: "document.title", eval_mode: "raw" }).ok).toBe(
+      false,
+    )
+    expect(validateInput({ url: "https://x", eval_mode: "value" }).ok).toBe(false)
+  })
+
+  test("explicit value mode rejects selector; omitted mode leaves inference to mergeInputs", () => {
+    expect(
+      validateInput({
+        url: "https://x",
+        selector: "#result",
+        eval: "document.body.dataset.ready = '1'",
+        eval_mode: "value",
+      }).ok,
+    ).toBe(false)
+    expect(
+      validateInput({
+        url: "https://x",
+        selector: "#result",
+        eval: "document.body.dataset.ready = '1'",
+      }).ok,
+    ).toBe(true)
+  })
 })
 
 describe("validateInput - cleanup", () => {
@@ -250,6 +280,18 @@ describe("mergeInputs", () => {
     )
     expect(merged.selector).toBe("main")
     expect(merged.evalExpr).toBe("document.title")
+    expect(merged.evalMode).toBe("page")
+  })
+
+  test("eval without selector defaults to value mode and explicit mode wins", () => {
+    const merged = mergeInputs({ url: "https://x", evalExpr: "document.title" }, defaultConfig())
+    expect(merged.evalMode).toBe("value")
+    expect(
+      mergeInputs(
+        { url: "https://x", evalExpr: "document.title", evalMode: "page" },
+        defaultConfig(),
+      ).evalMode,
+    ).toBe("page")
   })
 })
 
@@ -316,6 +358,17 @@ describe("buildDisplayFooter", () => {
     expect(footer.toLowerCase()).not.toContain("obscura")
     expect(footer).not.toContain("via ")
     expect(footer).not.toContain(".ts")
+  })
+
+  test("includes operator-visible persistent worker PID without naming the engine", () => {
+    const footer = buildDisplayFooter({
+      format: "markdown",
+      size: 100,
+      lineCount: 1,
+      workerPid: 4321,
+    })
+    expect(footer).toContain("worker pid: 4321")
+    expect(footer.toLowerCase()).not.toContain("obscura")
   })
 
   test("includes 'preview truncated' marker when set", () => {

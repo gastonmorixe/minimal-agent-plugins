@@ -25,9 +25,9 @@
               },
               "format": {
                 "type": "string",
-                "enum": ["markdown", "text", "html", "links", "original"],
+                "enum": ["markdown", "text", "html", "links", "accessibility", "original"],
                 "default": "markdown",
-                "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text (no markup). 'html' is the rendered HTML. 'links' returns just the page's links. 'original' streams the raw response body (JSON/JS/CSS/text resources). Binary bodies (PDF, images, zip) are never dumped as text: without binary=true they become a <ma::agent::binary-result .../> summary with an on-disk path."
+                "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text. 'html' is rendered HTML. 'links' lists links. 'accessibility' returns a CDP-compatible accessibility tree with document-scoped node IDs and explicitly synthetic bounds for agent inspection. 'original' streams the raw response body. Binary bodies are withheld unless binary=true."
               },
               "selector": {
                 "type": "string",
@@ -35,7 +35,12 @@
               },
               "eval": {
                 "type": "string",
-                "description": "Optional JavaScript expression to evaluate in the page context. When set, the eval result is what gets returned instead of the page body. Power-user feature - most callers don't need this."
+                "description": "Optional JavaScript expression to evaluate in the page context. By default its value is returned instead of the page body. Use eval_mode='page' to evaluate first and then return the resulting page dump."
+              },
+              "eval_mode": {
+                "type": "string",
+                "enum": ["value", "page"],
+                "description": "Optional return mode for eval. When omitted, eval alone returns its value while selector plus eval implies 'page'. 'value' returns the expression result. 'page' evaluates, settles page work, then returns the requested format."
               },
               "wait_until": {
                 "type": "string",

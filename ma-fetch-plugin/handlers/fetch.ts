@@ -19,7 +19,12 @@
 
 import { join } from "node:path"
 
-import { type BackendCallInput, type BackendDeps, callBackend } from "../lib/backend.ts"
+import {
+  type BackendCallInput,
+  type BackendDeps,
+  callBackend,
+  type EvalMode,
+} from "../lib/backend.ts"
 import {
   classifyBinaryBytes,
   formatBinaryOptedIn,
@@ -42,11 +47,20 @@ import {
 } from "../lib/config.ts"
 import { stripDataUris } from "../lib/data-uri.ts"
 import { classifyBackendFailure, FetchError, writeTraceLog } from "../lib/errors.ts"
+import { callPersistentBackend, type PersistentCallResult } from "../lib/persistent-worker.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
-const VALID_FORMATS = new Set<FetchFormat>(["markdown", "text", "html", "links", "original"])
+const VALID_FORMATS = new Set<FetchFormat>([
+  "markdown",
+  "text",
+  "html",
+  "links",
+  "accessibility",
+  "original",
+])
 const VALID_WAIT_UNTIL = new Set<WaitUntil>(["load", "domcontentloaded", "networkidle0"])
 const VALID_CLEANUP = new Set<CleanupLevel>(CLEANUP_LEVELS)
+const VALID_EVAL_MODES = new Set<EvalMode>(["value", "page"])
 
 const PREVIEW_LINES = 12
 const PREVIEW_LINE_WIDTH = 300
@@ -56,6 +70,9 @@ export interface ParsedInput {
   format?: FetchFormat
   selector?: string
   evalExpr?: string
+  /** What a call containing `eval` returns. Defaults to the expression value.
+   *  `page` evaluates first, settles page work, then returns the requested dump. */
+  evalMode?: EvalMode
   waitUntil?: WaitUntil
   timeoutSec?: number
   cleanup?: CleanupLevel
@@ -120,6 +137,22 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
       return { ok: false, error: "`eval` must be a string" }
     }
     if (raw.eval.length > 0) out.evalExpr = raw.eval
+  }
+
+  if (raw.eval_mode !== undefined) {
+    if (typeof raw.eval_mode !== "string" || !VALID_EVAL_MODES.has(raw.eval_mode as EvalMode)) {
+      return { ok: false, error: "`eval_mode` must be one of: value, page" }
+    }
+    if (!out.evalExpr) {
+      return { ok: false, error: "`eval_mode` requires a non-empty `eval` expression" }
+    }
+    if (raw.eval_mode === "value" && out.selector) {
+      return {
+        ok: false,
+        error: "`eval_mode: value` cannot be combined with `selector`; use `eval_mode: page`",
+      }
+    }
+    out.evalMode = raw.eval_mode as EvalMode
   }
 
   if (raw.wait_until !== undefined) {
@@ -219,6 +252,9 @@ export function mergeInputs(parsed: ParsedInput, config: FetchConfig): BackendCa
     timeoutSec: parsed.timeoutSec ?? config.defaults.timeoutSec,
     selector: parsed.selector,
     evalExpr: parsed.evalExpr,
+    evalMode: parsed.evalExpr
+      ? (parsed.evalMode ?? (parsed.selector ? "page" : "value"))
+      : undefined,
     storageDir: resolveSessionDir(parsed, config),
   }
 }
@@ -346,10 +382,15 @@ export function buildDisplayFooter(opts: {
   /** When set, the call wrote to / read from this session. The footer
    *  shows just the leaf name (`twitter`), not the full path. */
   sessionName?: string
+  /** Operator-visible process identity for a reused render worker. */
+  workerPid?: number
 }): string {
   const parts = [opts.format, formatBytes(opts.size), `${opts.lineCount} lines`]
   if (opts.sessionName && opts.sessionName.length > 0) {
     parts.push(`session: ${opts.sessionName}`)
+  }
+  if (typeof opts.workerPid === "number") {
+    parts.push(`worker pid: ${opts.workerPid}`)
   }
   const main = parts.map(dim).join(dim(" · "))
   if (opts.truncated) {
@@ -400,17 +441,76 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
  * supplied — keeps existing tests that call `runWithDeps` directly
  * without a level passing.
  */
+export interface FetchRunDeps extends BackendDeps {
+  /** Test seam for the persistent transport. Defaults to the module-owned client. */
+  persistentCall?: (
+    config: FetchConfig,
+    input: BackendCallInput,
+    signal: AbortSignal,
+  ) => Promise<PersistentCallResult>
+}
+
+/** Whether a call can use the private persistent worker transport. */
+export function persistentEligible(config: FetchConfig, input: BackendCallInput): boolean {
+  return (
+    config.backend === "obscura" &&
+    config.backends.obscura?.persistent !== false &&
+    input.format !== "original" &&
+    (!input.evalExpr || input.evalMode === "page")
+  )
+}
+
+/** Execute a validated Fetch call with injectable backend transports. */
 export async function runWithDeps(
   ctx: TUIContext,
   config: FetchConfig,
   input: BackendCallInput,
-  deps: BackendDeps,
+  deps: FetchRunDeps,
   cleanup: CleanupLevel = "basic",
   binaryOptIn: boolean = false,
 ): Promise<TUIResult> {
   configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
 
-  const result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
+  let result
+  let workerPid: number | undefined
+
+  if (input.format === "accessibility" && !persistentEligible(config, input)) {
+    return fetchErrorResult(
+      new FetchError(
+        "engine-unavailable",
+        "Fetch: accessibility output requires the persistent render worker for this call.",
+      ),
+      input.url,
+      input.format,
+    )
+  }
+  // An injected one-shot spawn without a persistent seam is an explicit test or
+  // caller override. Keep that path one-shot so the generic backend abstraction
+  // remains independently testable.
+  if (persistentEligible(config, input) && (deps.persistentCall || !deps.spawnFn)) {
+    const persistent = await (deps.persistentCall ?? callPersistentBackend)(
+      config,
+      input,
+      ctx.abort,
+    )
+    if (persistent.kind === "result") {
+      result = persistent.result
+      workerPid = persistent.workerPid
+    } else if (input.format === "accessibility") {
+      return fetchErrorResult(
+        new FetchError(
+          "engine-unavailable",
+          "Fetch: accessibility output requires a compatible render worker, which is unavailable.",
+        ),
+        input.url,
+        input.format,
+      )
+    } else {
+      result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
+    }
+  } else {
+    result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
+  }
 
   if (result.scriptMissing || result.binUnavailable) {
     // Plugin-misconfiguration path. Generic by design: the model must not
@@ -539,6 +639,7 @@ export async function runWithDeps(
         size: rawBytes.byteLength,
         lineCount: 0,
         sessionName: sessionLeafName(input.storageDir),
+        workerPid,
       }),
     }
   }
@@ -571,6 +672,7 @@ export async function runWithDeps(
     lineCount,
     truncated,
     sessionName: sessionLeafName(input.storageDir),
+    workerPid,
   })
 
   return {

@@ -12,8 +12,13 @@
  *
  * Credential resolution for the prime path (plugins cannot call host
  * `getAuth`):
- *   1. Env API keys (`MINIMAL_AGENT_GROK_API_KEY` / `XAI_API_KEY` / `GROK_API_KEY`)
- *   2. OAuth access token from `~/.minimal-agent/auth.jsonc` (`grok-oauth`)
+ *   1. Honor `ctx.authKind` / `ctx.credentialName` from the host session.
+ *   2. Else env API keys (`MINIMAL_AGENT_GROK_API_KEY` / `XAI_API_KEY` /
+ *      `GROK_API_KEY`), then the matching `grok-oauth` auth.jsonc entry.
+ *
+ * Weekly `creditUsagePercent` (Grok CLI unified billing) is **not** on the
+ * raw `/v1/billing` JSON; until that path is wired, the status bar only
+ * surfaces `rpm` / `tpm` / `month` / `ondemand`.
  *
  * @module llm/providers/grok/session-info
  */
@@ -29,6 +34,7 @@ import type {
   QuotaWindow,
 } from "./lib/provider-plugin.ts"
 import { grokContextWindow, grokModelShortLabel } from "./models.ts"
+import { GROK_OAUTH } from "./oauth-login.ts"
 import {
   CLI_BILLING_URL,
   CLI_MODELS_URL,
@@ -58,6 +64,8 @@ let billingQuota: {
   used: number
   limit: number
   periodEndMs?: number
+  onDemandCap?: number
+  onDemandUsed?: number
   at: number
 } | null = null
 
@@ -99,17 +107,29 @@ export function accumulateGrokUsage(usage: {
   }
 }
 
-/** Cache monthly billing quota from cli-chat-proxy `/v1/billing`. */
+/**
+ * Cache billing quota from cli-chat-proxy `/v1/billing`.
+ *
+ * `limit === 0` is allowed (Free / no included pool) so we mark the probe
+ * fresh and avoid re-fetching every OAuth turn. The status bar only emits a
+ * `month` window when `limit > 0`.
+ */
 export function setGrokBillingQuota(input: {
   used: number
   limit: number
   periodEndMs?: number
+  onDemandCap?: number
+  onDemandUsed?: number
 }): void {
-  if (!(input.limit > 0) || input.used < 0) return
+  if (input.limit < 0 || input.used < 0) return
+  if (input.onDemandCap != null && input.onDemandCap < 0) return
+  if (input.onDemandUsed != null && input.onDemandUsed < 0) return
   billingQuota = {
     used: input.used,
     limit: input.limit,
     periodEndMs: input.periodEndMs,
+    onDemandCap: input.onDemandCap,
+    onDemandUsed: input.onDemandUsed,
     at: Date.now(),
   }
 }
@@ -191,11 +211,22 @@ export function parseGrokQuotaWindows(rateLimits: ReadonlyMap<string, string>): 
   )
 
   if (billingQuota && Date.now() - billingQuota.at < BILLING_FRESHNESS_MS) {
-    out.push({
-      id: "month",
-      utilization: Math.min(1, Math.max(0, billingQuota.used / billingQuota.limit)),
-      resetAtMs: billingQuota.periodEndMs,
-    })
+    if (billingQuota.limit > 0) {
+      out.push({
+        id: "month",
+        utilization: Math.min(1, Math.max(0, billingQuota.used / billingQuota.limit)),
+        resetAtMs: billingQuota.periodEndMs,
+      })
+    }
+    const odCap = billingQuota.onDemandCap
+    if (odCap != null && odCap > 0) {
+      const odUsed = billingQuota.onDemandUsed ?? 0
+      out.push({
+        id: "ondemand",
+        utilization: Math.min(1, Math.max(0, odUsed / odCap)),
+        resetAtMs: billingQuota.periodEndMs,
+      })
+    }
   }
 
   return out
@@ -239,12 +270,12 @@ function resolveEnvApiKey(): string | undefined {
  * Best-effort read of the OAuth access token from the host auth store.
  *
  * Plugins cannot import host `getAuth`; the store file is JSONC at
- * `~/.minimal-agent/auth.jsonc` (or `$MINIMAL_AGENT_HOME/auth.jsonc`). We only
- * need the `grok-oauth` entry's `accessToken`.
+ * `~/.minimal-agent/auth.jsonc` (or `$MINIMAL_AGENT_HOME/auth.jsonc`).
  *
- * Returns `null` when the file is missing, unreadable, or has no usable token.
+ * When `credentialName` is set, selects that entry's `name`. Otherwise prefers
+ * the default {@link GROK_OAUTH.displayName}, then the first `grok-oauth` entry.
  */
-export function readGrokOAuthTokenFromAuthStore(): string | null {
+export function readGrokOAuthTokenFromAuthStore(credentialName?: string): string | null {
   try {
     const home = process.env["MINIMAL_AGENT_HOME"]?.trim() || join(homedir(), ".minimal-agent")
     const path = join(home, "auth.jsonc")
@@ -256,9 +287,12 @@ export function readGrokOAuthTokenFromAuthStore(): string | null {
       .replace(/(^|[^:])\/\/[^\n\r]*/g, "$1")
       .replace(/,(\s*[}\]])/g, "$1")
     const data = JSON.parse(stripped) as {
-      entries?: Array<{ id?: string; secrets?: { accessToken?: unknown } }>
+      entries?: Array<{ id?: string; name?: string; secrets?: { accessToken?: unknown } }>
     }
-    const entry = data.entries?.find((e) => e?.id === "grok-oauth")
+    const entries = (data.entries ?? []).filter((e) => e?.id === "grok-oauth")
+    const entry = credentialName
+      ? entries.find((e) => e?.name === credentialName)
+      : (entries.find((e) => e?.name === GROK_OAUTH.displayName) ?? entries[0])
     const token = entry?.secrets?.accessToken
     return typeof token === "string" && token.length > 0 ? token : null
   } catch {
@@ -273,12 +307,30 @@ interface ResolvedCredential {
   token: string
 }
 
-function resolvePrimeCredential(): ResolvedCredential | null {
-  const apiKey = resolveEnvApiKey()
-  if (apiKey && apiKey.trim().length > 0) {
-    return { kind: "api-key", token: apiKey.trim() }
+/**
+ * Resolve which credential the prime path should use.
+ *
+ * Honors host `authKind` / `credentialName` so `--credential-name grok-oauth-3`
+ * cannot be overridden by a stray `XAI_API_KEY`, and OAuth sessions never
+ * silently prime with the first auth.jsonc entry.
+ */
+function resolvePrimeCredential(ctx: ProviderSessionContext): ResolvedCredential | null {
+  const apiKey = resolveEnvApiKey()?.trim()
+  const oauth = readGrokOAuthTokenFromAuthStore(ctx.credentialName)
+
+  if (ctx.authKind === "oauth") {
+    return oauth ? { kind: "oauth", token: oauth } : null
   }
-  const oauth = readGrokOAuthTokenFromAuthStore()
+  if (ctx.authKind === "api-key") {
+    return apiKey ? { kind: "api-key", token: apiKey } : null
+  }
+
+  // Legacy / unset authKind: named credential ⇒ OAuth by name; else env key, then default OAuth.
+  if (ctx.credentialName) {
+    if (oauth) return { kind: "oauth", token: oauth }
+    return null
+  }
+  if (apiKey) return { kind: "api-key", token: apiKey }
   if (oauth) return { kind: "oauth", token: oauth }
   return null
 }
@@ -305,7 +357,7 @@ export function primeGrokSessionInfo(ctx: ProviderSessionContext): Promise<void>
     const needBilling = !billingIsFresh()
     if (!needRateLimits && !needBilling) return
 
-    const cred = resolvePrimeCredential()
+    const cred = resolvePrimeCredential(ctx)
     if (!cred) return
 
     const networkClient = ctx.networkClient as NetworkClient | undefined
@@ -429,6 +481,8 @@ function applyBillingBody(text: string): void {
     config?: {
       monthlyLimit?: { val?: number }
       used?: { val?: number }
+      onDemandCap?: { val?: number }
+      onDemandUsed?: { val?: number }
       billingPeriodEnd?: string
     }
   }
@@ -440,5 +494,13 @@ function applyBillingBody(text: string): void {
     const t = Date.parse(body.config.billingPeriodEnd)
     if (Number.isFinite(t)) periodEndMs = t
   }
-  setGrokBillingQuota({ used, limit, periodEndMs })
+  const onDemandCap = body.config?.onDemandCap?.val
+  const onDemandUsed = body.config?.onDemandUsed?.val
+  setGrokBillingQuota({
+    used,
+    limit,
+    periodEndMs,
+    ...(typeof onDemandCap === "number" ? { onDemandCap } : {}),
+    ...(typeof onDemandUsed === "number" ? { onDemandUsed } : {}),
+  })
 }

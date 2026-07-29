@@ -111,10 +111,15 @@ describe("validation", () => {
     expect(r.is_error).toBe(true)
     expect(r.content).toMatch(/title/)
   })
-  test("rejects empty children array on items entry", async () => {
+  test("accepts empty children array on items entry (treated as absent)", async () => {
     const r = await call({ action: "add_many", items: [{ title: "a", children: [] }] })
-    expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/children/)
+    expect(r.is_error).toBeFalsy()
+    // Should create one task (the parent) with no children.
+    const store = new TaskStore(sid, { home: tmpHome })
+    const tasks = store.list()
+    expect(tasks.length).toBe(1)
+    expect(tasks[0].title).toBe("a")
+    expect(tasks[0].parent).toBeNull()
   })
   test("rejects non-string children on items entry", async () => {
     const r = await call({

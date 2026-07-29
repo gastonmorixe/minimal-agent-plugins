@@ -20,6 +20,14 @@ describe("manifest defaults", () => {
 
     expect(schemaDefault).toBe(defaultConfig().defaults.waitUntil)
   })
+
+  test("eval_mode has no schema default because runtime inference depends on selector", () => {
+    const path = join(import.meta.dir, "..", "manifest.json")
+    const manifest = JSON.parse(readFileSync(path, "utf8")) as FetchManifest
+    const evalMode = manifest.tuis[0]?.trigger.tool.input_schema.properties.eval_mode
+
+    expect(evalMode?.default).toBeUndefined()
+  })
 })
 
 describe("defaultConfig", () => {
@@ -33,10 +41,14 @@ describe("defaultConfig", () => {
     expect(c.defaults.waitUntil).toBe("domcontentloaded")
     expect(c.defaults.timeoutSec).toBe(30)
     expect(c.defaults.cleanup).toBe("basic")
+    expect(c.backends.obscura?.persistent).toBe(true)
+    expect(c.backends.obscura?.workerIdleSec).toBe(300)
   })
 
-  test("defaults.backends is empty (no per-backend overrides by default)", () => {
-    expect(defaultConfig().backends).toEqual({})
+  test("defaults.backends enables the persistent obscura worker", () => {
+    expect(defaultConfig().backends).toEqual({
+      obscura: { persistent: true, workerIdleSec: 300 },
+    })
   })
 })
 
@@ -118,6 +130,13 @@ describe("parseFetchConfig - valid top-level fields", () => {
 })
 
 describe("parseFetchConfig - defaults block", () => {
+  test("accessibility format override", () => {
+    const c = parseFetchConfig({
+      plugins: { "ma-fetch": { defaults: { format: "accessibility" } } },
+    })
+    expect(c.defaults.format).toBe("accessibility")
+  })
+
   test("format override", () => {
     const c = parseFetchConfig({
       plugins: { "ma-fetch": { defaults: { format: "text" } } },
@@ -213,6 +232,25 @@ describe("parseFetchConfig - per-backend blocks", () => {
     expect(c.backends.obscura?.bin).toBe("/opt/obscura/bin/obscura")
   })
 
+  test("persistent worker settings are parsed and bounded", () => {
+    const c = parseFetchConfig({
+      plugins: {
+        "ma-fetch": {
+          obscura: { persistent: false, workerIdleSec: 45.8 },
+        },
+      },
+    })
+    expect(c.backends.obscura?.persistent).toBe(false)
+    expect(c.backends.obscura?.workerIdleSec).toBe(45)
+
+    for (const bad of [9, 3601, Number.NaN]) {
+      const invalid = parseFetchConfig({
+        plugins: { "ma-fetch": { obscura: { workerIdleSec: bad } } },
+      })
+      expect(invalid.backends.obscura?.workerIdleSec).toBe(300)
+    }
+  })
+
   test("multiple backends coexist", () => {
     const c = parseFetchConfig({
       plugins: {
@@ -232,7 +270,7 @@ describe("parseFetchConfig - per-backend blocks", () => {
         "ma-fetch": { obscura: "/path/obscura" },
       },
     })
-    expect(c.backends.obscura).toBeUndefined()
+    expect(c.backends.obscura).toEqual({ persistent: true, workerIdleSec: 300 })
   })
 
   test("known top-level keys are NOT treated as backend blocks", () => {

@@ -108,16 +108,31 @@ describe("buildArgv - optional flags", () => {
     expect(argv[idx + 1]).toBe("article > h1")
   })
 
-  test("--eval appears only when provided", () => {
+  test("value-mode eval appears without --dump so Obscura returns the expression", () => {
     const argv = buildArgv({
       url: "https://example.com",
       format: "markdown",
       waitUntil: "load",
       timeoutSec: 30,
       evalExpr: "document.querySelector('h1').textContent",
+      evalMode: "value",
     })
     const idx = argv.indexOf("--eval")
     expect(argv[idx + 1]).toBe("document.querySelector('h1').textContent")
+    expect(argv).not.toContain("--dump")
+  })
+
+  test("page-mode eval keeps --dump and its requested format", () => {
+    const argv = buildArgv({
+      url: "https://example.com",
+      format: "text",
+      waitUntil: "load",
+      timeoutSec: 30,
+      evalExpr: "document.body.dataset.ready = '1'",
+      evalMode: "page",
+    })
+    const idx = argv.indexOf("--dump")
+    expect(argv[idx + 1]).toBe("text")
   })
 
   test("--user-agent appears only when provided", () => {
@@ -316,9 +331,23 @@ describe("parseEnv - optional fields", () => {
       timeoutSec: 60,
       selector: "main",
       evalExpr: "document.title",
+      evalMode: "value",
       userAgent: "Mozilla/5.0 (Test)",
       proxy: "socks5://127.0.0.1:1080",
     })
+  })
+
+  test("invalid MA_FETCH_EVAL_MODE is rejected", () => {
+    expect(() =>
+      parseEnv({
+        MA_FETCH_URL: "https://example.com",
+        MA_FETCH_FORMAT: "markdown",
+        MA_FETCH_WAIT_UNTIL: "load",
+        MA_FETCH_TIMEOUT_SEC: "30",
+        MA_FETCH_EVAL: "document.title",
+        MA_FETCH_EVAL_MODE: "raw",
+      }),
+    ).toThrow(BackendInputError)
   })
 
   test("eval expression preserves leading/trailing whitespace (JS may want it)", () => {

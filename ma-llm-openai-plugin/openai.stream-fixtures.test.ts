@@ -317,6 +317,29 @@ describe("multimodal request encoding", () => {
     )
   })
 
+  it("Responses: stamps prompt_cache_key from metadata.sessionId", () => {
+    bootstrap()
+    const req: CanonicalRequest = {
+      modelId: "gpt-5.5",
+      messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      metadata: { sessionId: "613555b1-0000-4000-8000-5b18750829fe" },
+    }
+    const body = buildOpenAIResponsesBody(req, resolveModel("gpt-5.5"))
+    expect(body.prompt_cache_key).toBe("613555b1-0000-4000-8000-5b18750829fe")
+  })
+
+  it("Responses: vendor.promptCacheKey wins over metadata.sessionId", () => {
+    bootstrap()
+    const req: CanonicalRequest = {
+      modelId: "gpt-5.5",
+      messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      metadata: { sessionId: "session-default" },
+      vendor: { openai: { promptCacheKey: "custom-shard-key" } },
+    }
+    const body = buildOpenAIResponsesBody(req, resolveModel("gpt-5.5"))
+    expect(body.prompt_cache_key).toBe("custom-shard-key")
+  })
+
   it("Responses: url image → input_image; file_id → input_file", () => {
     bootstrap()
     const req: CanonicalRequest = {

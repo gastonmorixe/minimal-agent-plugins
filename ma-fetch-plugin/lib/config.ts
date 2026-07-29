@@ -20,7 +20,9 @@
  *         "proxy": null,                  // optional proxy URL  (plugin-wide)
  *         "storageRoot": "~/...",         // optional override for session sandbox root
  *         "obscura": {                    // per-backend config
- *           "bin": "/Users/.../obscura"   // path to obscura binary (else `obscura` on PATH)
+ *           "bin": "/Users/.../obscura",  // path to obscura binary
+ *           "persistent": true,            // reuse obscura-worker for rendered calls
+ *           "workerIdleSec": 300           // worker idle shutdown, 10..3600 seconds
  *         },
  *         "defaults": {                   // per-call defaults
  *           "format": "markdown",
@@ -45,7 +47,7 @@ import { CLEANUP_LEVELS } from "./cleanup.ts"
 import { parseJsonc } from "./jsonc.ts"
 import { agentHome } from "./paths.ts"
 
-export type FetchFormat = "markdown" | "text" | "html" | "links" | "original"
+export type FetchFormat = "markdown" | "text" | "html" | "links" | "accessibility" | "original"
 export type WaitUntil = "load" | "domcontentloaded" | "networkidle0"
 
 export interface FetchDefaults {
@@ -64,9 +66,12 @@ export interface FetchDefaults {
 }
 
 export interface BackendConfig {
-  /** Absolute path to the backend's binary. When unset, the backend script
-   *  falls back to its default (e.g. `obscura` on PATH). */
+  /** Absolute path to the backend's binary. */
   bin?: string
+  /** Reuse the backend's persistent worker for eligible rendered calls. */
+  persistent?: boolean
+  /** Persistent worker idle shutdown in seconds. */
+  workerIdleSec?: number
   /** Optional list of WebExtension bundle paths (`.crx`, `.xpi`, `.zip`, or
    *  unpacked dir). Obscura-specific today: forwarded as `--extension <PATH>`
    *  per entry. Other backends ignore this field. Obscura currently honors
@@ -96,7 +101,14 @@ export interface FetchConfig {
   defaults: FetchDefaults
 }
 
-const VALID_FORMATS = new Set<FetchFormat>(["markdown", "text", "html", "links", "original"])
+const VALID_FORMATS = new Set<FetchFormat>([
+  "markdown",
+  "text",
+  "html",
+  "links",
+  "accessibility",
+  "original",
+])
 const VALID_WAIT_UNTIL = new Set<WaitUntil>(["load", "domcontentloaded", "networkidle0"])
 const VALID_CLEANUP = new Set<CleanupLevel>(CLEANUP_LEVELS)
 
@@ -145,7 +157,7 @@ export function defaultConfig(): FetchConfig {
     userAgent: null,
     proxy: null,
     storageRoot: defaultStorageRoot(),
-    backends: {},
+    backends: { obscura: { persistent: true, workerIdleSec: 300 } },
     defaults: {
       format: "markdown",
       waitUntil: "domcontentloaded",
@@ -245,16 +257,24 @@ export function parseFetchConfig(raw: unknown): FetchConfig {
   }
 
   // Per-backend blocks: any object-valued key under cfg (other than known
-  // top-level keys) is treated as a backend config block. Currently the
-  // only field we look at inside one is `bin`.
+  // top-level keys) is treated as a backend config block.
   const knownTop = new Set(["enabled", "backend", "userAgent", "proxy", "storageRoot", "defaults"])
-  const backends: Record<string, BackendConfig> = {}
+  const backends: Record<string, BackendConfig> = { ...out.backends }
   for (const [k, v] of Object.entries(cfg)) {
     if (knownTop.has(k)) continue
     if (!isPlainObject(v)) continue
-    const block: BackendConfig = {}
+    const block: BackendConfig = { ...backends[k] }
     if (typeof v.bin === "string" && v.bin.trim().length > 0) {
       block.bin = v.bin.trim()
+    }
+    if (typeof v.persistent === "boolean") block.persistent = v.persistent
+    if (
+      typeof v.workerIdleSec === "number" &&
+      Number.isFinite(v.workerIdleSec) &&
+      v.workerIdleSec >= 10 &&
+      v.workerIdleSec <= 3600
+    ) {
+      block.workerIdleSec = Math.floor(v.workerIdleSec)
     }
     if (Array.isArray(v.extensions)) {
       const exts = v.extensions

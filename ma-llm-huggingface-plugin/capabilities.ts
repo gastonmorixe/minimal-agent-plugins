@@ -70,6 +70,7 @@ export const CAPS_HUGGINGFACE_CHAT: Capabilities = {
     ttls: [],
     minPrefixTokens: 1024,
     reportsCacheHits: true,
+    promptCacheAccounting: "subset" as const,
   },
   tools: {
     userDefined: true,

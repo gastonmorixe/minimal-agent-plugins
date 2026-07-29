@@ -1,6 +1,10 @@
 /**
  * Grok / xAI model registry — dual-surface where appropriate.
  *
+ * Catalog aligned to live probes (2026-07-27):
+ * - Subscription cli-chat-proxy `/v1/models`: `grok-4.5` only (Responses)
+ * - `api.x.ai/v1/models`: full text catalog + price micros
+ *
  * Pattern from `ma-llm-openai-plugin/models.ts`: preferred surface is
  * Responses for frontier models (`grok-4.5`); Chat Completions variants use
  * a `-chat` suffix. `vendorIds.firstParty` is always the wire model id.
@@ -9,11 +13,14 @@
  */
 
 import {
+  CAPS_GROK_420_MULTI_AGENT,
+  CAPS_GROK_420_NON_REASONING,
+  CAPS_GROK_43_CHAT,
+  CAPS_GROK_43_RESPONSES,
   CAPS_GROK_45_CHAT,
   CAPS_GROK_45_RESPONSES,
   CAPS_GROK_BUILD_CHAT,
   CAPS_GROK_BUILD_RESPONSES,
-  CAPS_GROK_COMPOSER_25_FAST,
   CAPS_GROK_GENERIC,
 } from "./capabilities.ts"
 import type { Capabilities } from "./lib/capabilities.ts"
@@ -21,9 +28,10 @@ import type { MTokRate } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
+  PRICING_GROK_420,
+  PRICING_GROK_43,
   PRICING_GROK_45,
   PRICING_GROK_BUILD,
-  PRICING_GROK_COMPOSER_25_FAST,
   PRICING_GROK_GENERIC,
 } from "./pricing.ts"
 
@@ -95,16 +103,17 @@ function reg(
 export function registerGrokModels(registrar: ModelRegistrar): string[] {
   localCatalog.length = 0
 
-  // --- grok-4.5: Responses preferred (matches cli-chat-proxy / catalog api_backend)
+  // --- grok-4.5: Responses preferred (cli-chat-proxy + api.x.ai)
   reg(registrar, {
     id: "grok-4.5",
     surfaceId: "openai-responses",
     displayName: "Grok 4.5",
     wireId: "grok-4.5",
-    aliases: ["grok-4", "grok4.5"],
+    aliases: ["grok-4", "grok4.5", "grok-4.5-latest", "grok-build-latest"],
     tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_45_RESPONSES,
     pricing: PRICING_GROK_45,
+    knowledgeCutoff: "2026-02-01",
   })
   reg(registrar, {
     id: "grok-4.5-chat",
@@ -114,15 +123,16 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     tags: ["grok", "xai", "flagship", "reasoning", "vision", "tools", "chat"],
     capabilities: CAPS_GROK_45_CHAT,
     pricing: PRICING_GROK_45,
+    knowledgeCutoff: "2026-02-01",
   })
 
-  // --- grok-build
+  // --- grok-build-0.1 (wire); local id keeps `grok-build`
   reg(registrar, {
     id: "grok-build",
     surfaceId: "openai-responses",
     displayName: "Grok Build",
-    wireId: "grok-build",
-    aliases: ["grok-code", "grok-build-latest"],
+    wireId: "grok-build-0.1",
+    aliases: ["grok-build-0.1", "grok-code", "grok-code-fast", "grok-code-fast-1", "grok-code-fast-1-0825"],
     tags: ["grok", "xai", "balanced", "code", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_BUILD_RESPONSES,
     pricing: PRICING_GROK_BUILD,
@@ -131,22 +141,63 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     id: "grok-build-chat",
     surfaceId: "openai-chat-completions",
     displayName: "Grok Build (Chat)",
-    wireId: "grok-build",
+    wireId: "grok-build-0.1",
     tags: ["grok", "xai", "balanced", "code", "vision", "tools", "chat"],
     capabilities: CAPS_GROK_BUILD_CHAT,
     pricing: PRICING_GROK_BUILD,
   })
 
-  // --- composer: chat-only (fast coding)
+  // --- grok-4.3
   reg(registrar, {
-    id: "grok-composer-2.5-fast",
+    id: "grok-4.3",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.3",
+    wireId: "grok-4.3",
+    aliases: ["grok-4.3-latest", "grok-latest"],
+    tags: ["grok", "xai", "balanced", "fast", "reasoning", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_43_RESPONSES,
+    pricing: PRICING_GROK_43,
+  })
+  reg(registrar, {
+    id: "grok-4.3-chat",
     surfaceId: "openai-chat-completions",
-    displayName: "Composer 2.5 Fast",
-    wireId: "grok-composer-2.5-fast",
-    aliases: ["composer-2.5-fast", "grok-composer"],
-    tags: ["grok", "xai", "cheap", "scout", "code", "fast", "vision", "tools", "chat"],
-    capabilities: CAPS_GROK_COMPOSER_25_FAST,
-    pricing: PRICING_GROK_COMPOSER_25_FAST,
+    displayName: "Grok 4.3 (Chat)",
+    wireId: "grok-4.3",
+    tags: ["grok", "xai", "balanced", "fast", "reasoning", "vision", "tools", "chat"],
+    capabilities: CAPS_GROK_43_CHAT,
+    pricing: PRICING_GROK_43,
+  })
+
+  // --- grok-4.20 family (api.x.ai)
+  reg(registrar, {
+    id: "grok-4.20-reasoning",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.20 Reasoning",
+    wireId: "grok-4.20-0309-reasoning",
+    aliases: ["grok-4.20", "grok-4.20-0309-reasoning", "grok-4.20-reasoning-latest"],
+    tags: ["grok", "xai", "reasoning", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_43_RESPONSES,
+    pricing: PRICING_GROK_420,
+  })
+  reg(registrar, {
+    id: "grok-4.20-non-reasoning",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.20 Non-Reasoning",
+    wireId: "grok-4.20-0309-non-reasoning",
+    aliases: ["grok-4.20-0309-non-reasoning", "grok-4.20-non-reasoning-latest"],
+    tags: ["grok", "xai", "fast", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_420_NON_REASONING,
+    pricing: PRICING_GROK_420,
+  })
+  reg(registrar, {
+    id: "grok-4.20-multi-agent",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.20 Multi-Agent",
+    wireId: "grok-4.20-multi-agent-0309",
+    aliases: ["grok-4.20-multi-agent-0309", "grok-4.20-multi-agent-latest"],
+    tags: ["grok", "xai", "multi-agent", "reasoning", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_420_MULTI_AGENT,
+    pricing: PRICING_GROK_420,
   })
 
   registrar.setDefault("grok-4.5")

@@ -56,6 +56,15 @@ export interface OpenAIResponsesRequestBody {
   include?: string[]
   metadata?: Record<string, string>
   user?: string
+  /**
+   * Routes requests that share a long common prefix onto the same cache
+   * shard. Required for reliable matching on GPT-5.6+; without it, hits
+   * are best-effort and intermittent zeros are common under tool-loop RPM.
+   * See https://developers.openai.com/api/docs/guides/prompt-caching
+   */
+  prompt_cache_key?: string
+  /** Retention hint (`in-memory` | `24h`). Optional; server default applies. */
+  prompt_cache_retention?: string
 }
 
 /**
@@ -196,6 +205,19 @@ export function buildOpenAIResponsesBody(
   if (vendor?.include) body.include = vendor.include
   if (vendor?.user) body.user = vendor.user
   if (req.metadata?.custom) body.metadata = { ...req.metadata.custom }
+
+  // Prompt-cache routing key. GPT-5.6+ needs this for reliable matching;
+  // session id is the natural sticky key for an agent tool loop (stable
+  // prefix across turns of one conversation). Prefer an explicit vendor
+  // override when a host wants to shard high-RPM traffic.
+  const cacheKey =
+    (typeof vendor?.promptCacheKey === "string" && vendor.promptCacheKey) ||
+    req.metadata?.sessionId ||
+    undefined
+  if (cacheKey) body.prompt_cache_key = cacheKey
+  if (typeof vendor?.promptCacheRetention === "string" && vendor.promptCacheRetention) {
+    body.prompt_cache_retention = vendor.promptCacheRetention
+  }
 
   // Provider-neutral service tier -> OpenAI `service_tier`. Validate against
   // the accepted set; drop (don't send) anything else. `vendor.serviceTier`

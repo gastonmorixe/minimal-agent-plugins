@@ -28,6 +28,13 @@ export interface ModelRate {
   cacheReadUSD: number
   webSearchPerCallUSD: number
   reasoningUSD?: number
+  longContext?: {
+    thresholdTokens: number
+    inputUSD: number
+    outputUSD: number
+    cacheWriteUSD: number
+    cacheReadUSD: number
+  }
 }
 
 /**

@@ -60,6 +60,215 @@ function expectToolResult(r: TUIResult): asserts r is Extract<TUIResult, { kind:
   expect(r.kind).toBe("tool_result")
 }
 
+describe("runWithDeps - persistent routing", () => {
+  test("uses persistent transport only for eligible obscura rendered calls", async () => {
+    let persistentCalls = 0
+    let oneShotCalls = 0
+    const spawnFn: SpawnFn = () => {
+      oneShotCalls++
+      return fakeProc({ stdout: "one-shot", exitCode: 0 })
+    }
+    const persistentCall = async () => {
+      persistentCalls++
+      return {
+        kind: "result" as const,
+        workerPid: 777,
+        result: {
+          ok: true,
+          exitCode: 0,
+          stdout: "persistent",
+          stdoutBytes: new TextEncoder().encode("persistent"),
+          stderr: "",
+          backend: "obscura.ts",
+        },
+      }
+    }
+    const r = await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      defaultConfig(),
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    expectToolResult(r)
+    expect(r.content).toBe("persistent")
+    expect(r.displayFooter).toContain("worker pid: 777")
+    expect(persistentCalls).toBe(1)
+    expect(oneShotCalls).toBe(0)
+  })
+
+  test("startup fallback and original format preserve one-shot backend", async () => {
+    let persistentCalls = 0
+    let oneShotCalls = 0
+    const spawnFn: SpawnFn = () => {
+      oneShotCalls++
+      return fakeProc({ stdout: "one-shot", exitCode: 0 })
+    }
+    const persistentCall = async () => {
+      persistentCalls++
+      return { kind: "fallback" as const, reason: "unsupported worker protocol" }
+    }
+    const rendered = await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      defaultConfig(),
+      { url: "https://example.com", format: "text", waitUntil: "load", timeoutSec: 30 },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    const original = await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      defaultConfig(),
+      { url: "https://example.com", format: "original", waitUntil: "load", timeoutSec: 30 },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    expectToolResult(rendered)
+    expectToolResult(original)
+    expect(rendered.content).toBe("one-shot")
+    expect(original.content).toBe("one-shot")
+    expect(persistentCalls).toBe(1)
+    expect(oneShotCalls).toBe(2)
+  })
+
+  test("accessibility never falls back to an incompatible one-shot CLI", async () => {
+    let oneShotCalls = 0
+    const spawnFn: SpawnFn = () => {
+      oneShotCalls++
+      return fakeProc({ stdout: "wrong", exitCode: 0 })
+    }
+    const persistentCall = async () => ({
+      kind: "fallback" as const,
+      reason: "old worker",
+    })
+    const r = await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      defaultConfig(),
+      {
+        url: "https://example.com",
+        format: "accessibility",
+        waitUntil: "load",
+        timeoutSec: 30,
+      },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    expectToolResult(r)
+    expect(r.is_error).toBe(true)
+    expect(r.content).toContain("compatible render worker")
+    expect(oneShotCalls).toBe(0)
+  })
+
+  test("eval value uses one-shot while eval page remains worker-compatible", async () => {
+    let persistentCalls = 0
+    let oneShotCalls = 0
+    const spawnFn: SpawnFn = () => {
+      oneShotCalls++
+      return fakeProc({ stdout: "value", exitCode: 0 })
+    }
+    const persistentCall = async () => {
+      persistentCalls++
+      return {
+        kind: "result" as const,
+        result: {
+          ok: true,
+          exitCode: 0,
+          stdout: "page",
+          stdoutBytes: new TextEncoder().encode("page"),
+          stderr: "",
+          backend: "obscura.ts",
+        },
+      }
+    }
+    await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      defaultConfig(),
+      {
+        url: "https://example.com",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        evalExpr: "document.title",
+        evalMode: "value",
+      },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      defaultConfig(),
+      {
+        url: "https://example.com",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        evalExpr: "document.title",
+        evalMode: "page",
+      },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    expect(oneShotCalls).toBe(1)
+    expect(persistentCalls).toBe(1)
+  })
+
+  test("configured extensions remain eligible for the persistent worker", async () => {
+    let persistentCalls = 0
+    const config = defaultConfig()
+    config.backends.obscura = { ...config.backends.obscura, extensions: ["/ext.zip"] }
+    const result = await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      config,
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      {
+        persistentCall: async () => {
+          persistentCalls++
+          return {
+            kind: "result" as const,
+            result: {
+              ok: true,
+              exitCode: 0,
+              stdout: "persistent-with-extension",
+              stdoutBytes: new TextEncoder().encode("persistent-with-extension"),
+              stderr: "",
+              backend: "obscura.ts",
+            },
+          }
+        },
+        existsFn: () => true,
+      },
+    )
+    expectToolResult(result)
+    expect(result.content).toBe("persistent-with-extension")
+    expect(persistentCalls).toBe(1)
+  })
+
+  test("non-obscura backend and persistent=false stay one-shot", async () => {
+    let persistentCalls = 0
+    let oneShotCalls = 0
+    const spawnFn: SpawnFn = () => {
+      oneShotCalls++
+      return fakeProc({ stdout: "one-shot", exitCode: 0 })
+    }
+    const persistentCall = async () => {
+      persistentCalls++
+      throw new Error("must not run")
+    }
+    const disabled = defaultConfig()
+    disabled.backends.obscura = { persistent: false, bin: "/managed/bin/obscura" }
+    await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      disabled,
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    const other = defaultConfig()
+    other.backend = "playwright"
+    other.backends.playwright = { bin: "/managed/bin/playwright" }
+    await runWithDeps(
+      fakeCtx({ url: "https://example.com" }),
+      other,
+      { url: "https://example.com", format: "markdown", waitUntil: "load", timeoutSec: 30 },
+      { persistentCall, spawnFn, existsFn: () => true },
+    )
+    expect(persistentCalls).toBe(0)
+    expect(oneShotCalls).toBe(2)
+  })
+})
+
 describe("runWithDeps - happy path", () => {
   test("success: content = stdout, is_error unset, display populated", async () => {
     const spawnFn: SpawnFn = () =>

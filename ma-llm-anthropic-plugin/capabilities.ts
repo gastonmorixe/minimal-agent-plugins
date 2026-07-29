@@ -49,6 +49,7 @@ const CACHING_FULL = {
   ttls: ["5m", "1h"] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
+  promptCacheAccounting: "disjoint" as const,
 }
 
 const TOOLS_FULL = {
@@ -262,6 +263,7 @@ export const CAPS_SONNET_45: Capabilities = {
     ttls: ["5m"],
     minPrefixTokens: 1024,
     reportsCacheHits: true,
+    promptCacheAccounting: "disjoint" as const,
   },
   tools: { ...TOOLS_BASIC },
   midConversationSystem: false,
@@ -299,6 +301,7 @@ export const CAPS_HAIKU_45: Capabilities = {
     // The capability is now the single source (cache.ts reads it).
     minPrefixTokens: 2048,
     reportsCacheHits: true,
+    promptCacheAccounting: "disjoint" as const,
   },
   tools: { ...TOOLS_BASIC },
   midConversationSystem: false,

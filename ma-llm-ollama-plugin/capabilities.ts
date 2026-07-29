@@ -44,6 +44,7 @@ function baseOllamaCaps(): Capabilities {
       ttls: [],
       minPrefixTokens: 0,
       reportsCacheHits: false,
+      promptCacheAccounting: "disjoint" as const,
     },
     tools: {
       userDefined: true,

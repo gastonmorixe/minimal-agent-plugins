@@ -28,7 +28,7 @@ import type {
   QuotaWindow,
 } from "./lib/provider-plugin.ts"
 import { clinepassContextWindow, clinepassModelShortLabel } from "./models.ts"
-import { formatClinepassBearerToken } from "./oauth-login.ts"
+import { CLINEPASS_OAUTH, formatClinepassBearerToken } from "./oauth-login.ts"
 import { CLINE_ACCOUNT, CLINEPASS_DEFAULT_HEADERS, CLINEPASS_USER_AGENT } from "./wire-constants.ts"
 
 /** How long a rate-limit header snapshot stays fresh. */
@@ -284,8 +284,11 @@ interface ResolvedBearer {
  * Best-effort OAuth access token from the host auth store
  * (`~/.minimal-agent/auth.jsonc` or `$MINIMAL_AGENT_HOME/auth.jsonc`).
  * Same pattern as Grok's prime path (plugins cannot import host getAuth).
+ *
+ * When `credentialName` is set, selects that entry's `name`. Otherwise prefers
+ * {@link CLINEPASS_OAUTH.displayName}, then the first `clinepass-oauth` entry.
  */
-export function readClinepassOAuthTokenFromAuthStore(): string | null {
+export function readClinepassOAuthTokenFromAuthStore(credentialName?: string): string | null {
   try {
     const home = process.env["MINIMAL_AGENT_HOME"]?.trim() || join(homedir(), ".minimal-agent")
     const path = join(home, "auth.jsonc")
@@ -296,9 +299,12 @@ export function readClinepassOAuthTokenFromAuthStore(): string | null {
       .replace(/(^|[^:])\/\/[^\n\r]*/g, "$1")
       .replace(/,(\s*[}\]])/g, "$1")
     const data = JSON.parse(stripped) as {
-      entries?: Array<{ id?: string; secrets?: { accessToken?: unknown } }>
+      entries?: Array<{ id?: string; name?: string; secrets?: { accessToken?: unknown } }>
     }
-    const entry = data.entries?.find((e) => e?.id === "clinepass-oauth")
+    const entries = (data.entries ?? []).filter((e) => e?.id === "clinepass-oauth")
+    const entry = credentialName
+      ? entries.find((e) => e?.name === credentialName)
+      : (entries.find((e) => e?.name === CLINEPASS_OAUTH.displayName) ?? entries[0])
     const token = entry?.secrets?.accessToken
     return typeof token === "string" && token.length > 0 ? token : null
   } catch {
@@ -306,14 +312,25 @@ export function readClinepassOAuthTokenFromAuthStore(): string | null {
   }
 }
 
-function resolvePrimeBearer(): ResolvedBearer | null {
+function resolvePrimeBearer(ctx: ProviderSessionContext): ResolvedBearer | null {
   const apiKey =
     process.env["MINIMAL_AGENT_CLINEPASS_API_KEY"]?.trim() ||
     process.env["CLINE_API_KEY"]?.trim() ||
     ""
+  const oauthRaw = readClinepassOAuthTokenFromAuthStore(ctx.credentialName)
+  const oauth = oauthRaw ? formatClinepassBearerToken(oauthRaw) : null
+
+  if (ctx.authKind === "oauth") {
+    return oauth ? { kind: "oauth", token: oauth } : null
+  }
+  if (ctx.authKind === "api-key") {
+    return apiKey ? { kind: "api-key", token: apiKey } : null
+  }
+  if (ctx.credentialName) {
+    return oauth ? { kind: "oauth", token: oauth } : null
+  }
   if (apiKey) return { kind: "api-key", token: apiKey }
-  const oauth = readClinepassOAuthTokenFromAuthStore()
-  if (oauth) return { kind: "oauth", token: formatClinepassBearerToken(oauth) }
+  if (oauth) return { kind: "oauth", token: oauth }
   return null
 }
 
@@ -376,7 +393,7 @@ export function primeClinepassSessionInfo(ctx: ProviderSessionContext): Promise<
   const work = (async () => {
     if (passQuota && Date.now() - passQuota.at < PASS_FRESHNESS_MS) return
 
-    const cred = resolvePrimeBearer()
+    const cred = resolvePrimeBearer(ctx)
     if (!cred) return
 
     const networkClient = ctx.networkClient as NetworkClient | undefined

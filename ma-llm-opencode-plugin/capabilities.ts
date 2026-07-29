@@ -27,6 +27,7 @@ const CACHING_AUTO = {
   ttls: [] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
+  promptCacheAccounting: "subset" as const,
 } as const
 
 const TOOLS_FULL = {
@@ -212,11 +213,12 @@ export const CAPS_KIMI_K3: Capabilities = {
 
 /**
  * Grok 4.5 — 500K ctx, 65K output, text+image, extended thinking.
- * Chat Completions surface via OpenCode Go.
+ * Chat Completions surface via OpenCode Go. Efforts match native xAI:
+ * low | medium | high (default high).
  */
 export const CAPS_GROK_4_5: Capabilities = {
   ...chatBase(500_000, 65_536, M_TI),
-  ...thinkExtended(["medium", "high", "max"], "medium"),
+  ...thinkExtended(["low", "medium", "high"], "high"),
 }
 
 /** MiMo V2.5 — 310B/15B MoE, 1M ctx, 131K output, omni-modal + extended thinking. */

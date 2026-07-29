@@ -19,6 +19,8 @@ import { isAbsolute, join } from "node:path"
 
 import type { FetchConfig, FetchFormat, WaitUntil } from "./config.ts"
 
+export type EvalMode = "value" | "page"
+
 export interface BackendCallInput {
   url: string
   format: FetchFormat
@@ -26,6 +28,8 @@ export interface BackendCallInput {
   timeoutSec: number
   selector?: string
   evalExpr?: string
+  /** `value` returns the expression result. `page` returns the post-eval dump. */
+  evalMode?: EvalMode
   /** Absolute directory under which the backend persists this call's
    *  session (cookies + localStorage). Already resolved + sandboxed by
    *  the handler — backends receive it verbatim, no further validation.
@@ -281,7 +285,10 @@ export function buildBackendEnv(
   env.MA_FETCH_TIMEOUT_SEC = String(input.timeoutSec)
   // Optional per-call fields.
   if (input.selector && input.selector.length > 0) env.MA_FETCH_SELECTOR = input.selector
-  if (input.evalExpr && input.evalExpr.length > 0) env.MA_FETCH_EVAL = input.evalExpr
+  if (input.evalExpr && input.evalExpr.length > 0) {
+    env.MA_FETCH_EVAL = input.evalExpr
+    env.MA_FETCH_EVAL_MODE = input.evalMode ?? "value"
+  }
   if (input.storageDir && input.storageDir.length > 0) {
     env.MA_FETCH_STORAGE_DIR = input.storageDir
   }
