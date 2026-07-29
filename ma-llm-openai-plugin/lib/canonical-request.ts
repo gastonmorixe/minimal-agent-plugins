@@ -119,6 +119,15 @@ export interface OpenAIVendorOpts {
   include?: string[]
   /** Chat + Responses: opaque user id for abuse tracking. */
   user?: string
+  /**
+   * Prompt-cache routing key (Responses + Chat). Combined with the prompt
+   * prefix hash to stick related requests on the same cache shard. GPT-5.6+
+   * needs this for reliable matching; hosts usually leave it unset and let
+   * the adapter default to `metadata.sessionId`.
+   */
+  promptCacheKey?: string
+  /** Optional retention hint (`in-memory` | `24h`). */
+  promptCacheRetention?: string
 }
 
 /**

@@ -124,6 +124,11 @@ export const openaiAdapter: ProviderAdapter = {
 
     if (model.surfaceId === "openai-responses") {
       const body = buildOpenAIResponsesBody(req, model)
+      // Defense in depth: if request-body couldn't resolve a key (no
+      // metadata.sessionId / vendor override), fall back to RunContext.
+      if (!body.prompt_cache_key && ctx.sessionId) {
+        body.prompt_cache_key = ctx.sessionId
+      }
       if (auth.kind === "oauth") {
         body.store = false
         delete body.max_output_tokens

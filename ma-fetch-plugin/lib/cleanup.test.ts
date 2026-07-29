@@ -171,6 +171,10 @@ describe("isCleanableFormat", () => {
   test("links: no (one-per-line is the contract)", () => {
     expect(isCleanableFormat("links")).toBe(false)
   })
+  test("accessibility: no (structured JSON)", () => {
+    expect(isCleanableFormat("accessibility")).toBe(false)
+  })
+
   test("original: no (raw byte stream)", () => {
     expect(isCleanableFormat("original")).toBe(false)
   })

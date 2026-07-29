@@ -161,7 +161,7 @@ export function applyCleanup(input: string, level: CleanupLevel): string {
 
 /** True iff the given format should be cleaned (markdown / text only). */
 export function isCleanableFormat(
-  format: "markdown" | "text" | "html" | "links" | "original",
+  format: "markdown" | "text" | "html" | "links" | "accessibility" | "original",
 ): boolean {
   return format === "markdown" || format === "text"
 }

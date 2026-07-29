@@ -80,6 +80,6 @@ export const PRICING_OR_GROK_45: MTokRate = {
   inputUSD: 2,
   outputUSD: 6,
   cacheWriteUSD: 2,
-  cacheReadUSD: 0.5,
+  cacheReadUSD: 0.3,
   webSearchPerCallUSD: 0,
 }

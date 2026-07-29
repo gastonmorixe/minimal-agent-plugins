@@ -181,7 +181,7 @@ export const grokAdapter: ProviderAdapter = {
 
   recommendSubagentModels(): SubagentModelRecommendation[] {
     const byTier: Array<{ role: string; tags: string[] }> = [
-      { role: "scout", tags: ["cheap", "scout"] },
+      { role: "scout", tags: ["fast"] },
       { role: "balanced", tags: ["balanced", "code"] },
       { role: "deep", tags: ["flagship", "deep"] },
     ]

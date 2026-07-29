@@ -178,6 +178,23 @@ describe("buildBackendEnv - optional fields", () => {
       {},
     )
     expect(env.MA_FETCH_EVAL).toBe("document.title")
+    expect(env.MA_FETCH_EVAL_MODE).toBe("value")
+  })
+
+  test("MA_FETCH_EVAL_MODE preserves explicit page mode", () => {
+    const env = buildBackendEnv(
+      defaultConfig(),
+      {
+        url: "https://x",
+        format: "markdown",
+        waitUntil: "load",
+        timeoutSec: 30,
+        evalExpr: "document.querySelector('form').submit()",
+        evalMode: "page",
+      },
+      {},
+    )
+    expect(env.MA_FETCH_EVAL_MODE).toBe("page")
   })
 
   test("empty-string optional fields are NOT set", () => {
@@ -195,6 +212,7 @@ describe("buildBackendEnv - optional fields", () => {
     )
     expect(env).not.toHaveProperty("MA_FETCH_SELECTOR")
     expect(env).not.toHaveProperty("MA_FETCH_EVAL")
+    expect(env).not.toHaveProperty("MA_FETCH_EVAL_MODE")
   })
 })
 

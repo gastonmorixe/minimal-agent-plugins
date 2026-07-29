@@ -25,6 +25,8 @@
  *   MA_FETCH_TIMEOUT_SEC  (required)  integer seconds
  *   MA_FETCH_SELECTOR     (optional)  CSS selector to wait for / scope output
  *   MA_FETCH_EVAL         (optional)  JS expression to evaluate
+ *   MA_FETCH_EVAL_MODE    (optional)  value (default) returns the expression;
+ *                                     page evaluates then returns the dump
  *   MA_FETCH_USER_AGENT   (optional)  override UA (plugin-config provided)
  *   MA_FETCH_PROXY        (optional)  HTTP/SOCKS5 proxy URL (plugin-config provided)
  *   MA_FETCH_STORAGE_DIR  (optional)  absolute path; forwarded as
@@ -79,6 +81,8 @@ export interface BuildArgvOptions {
   selector?: string
   /** Optional JS expression to evaluate. */
   evalExpr?: string
+  /** Whether eval returns its value or the post-eval page dump. */
+  evalMode?: "value" | "page"
   /** Optional User-Agent override (from plugin config). */
   userAgent?: string
   /** Optional proxy URL (from plugin config). */
@@ -102,17 +106,20 @@ export interface BuildArgvOptions {
  *     (no empty-string `--selector ""` artifacts).
  */
 export function buildArgv(opts: BuildArgvOptions): string[] {
-  const argv: string[] = [
-    "fetch",
-    "--dump",
-    opts.format,
+  const evalReturnsValue =
+    Boolean(opts.evalExpr && opts.evalExpr.length > 0) && (opts.evalMode ?? "value") === "value"
+  const argv: string[] = ["fetch"]
+  if (!evalReturnsValue) {
+    argv.push("--dump", opts.format)
+  }
+  argv.push(
     "--wait-until",
     opts.waitUntil,
     "--timeout",
     String(opts.timeoutSec),
     "--stealth",
     "--quiet",
-  ]
+  )
   if (opts.selector && opts.selector.length > 0) {
     argv.push("--selector", opts.selector)
   }
@@ -189,6 +196,13 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
 
   const selector = env.MA_FETCH_SELECTOR?.trim() || undefined
   const evalExpr = env.MA_FETCH_EVAL || undefined // don't trim - JS may want leading/trailing ws
+  const evalModeRaw = env.MA_FETCH_EVAL_MODE?.trim()
+  if (evalModeRaw && evalModeRaw !== "value" && evalModeRaw !== "page") {
+    throw new BackendInputError(
+      `MA_FETCH_EVAL_MODE must be one of: value, page (got: ${evalModeRaw})`,
+    )
+  }
+  const evalMode = evalExpr ? ((evalModeRaw || "value") as BuildArgvOptions["evalMode"]) : undefined
   const userAgent = env.MA_FETCH_USER_AGENT?.trim() || undefined
   const proxy = env.MA_FETCH_PROXY?.trim() || undefined
   const storageDir = env.MA_FETCH_STORAGE_DIR?.trim() || undefined
@@ -211,6 +225,7 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
     timeoutSec: Math.floor(timeoutSec),
     selector,
     evalExpr,
+    evalMode,
     userAgent,
     proxy,
     extensions: extensions && extensions.length > 0 ? extensions : undefined,

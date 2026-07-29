@@ -164,29 +164,26 @@ function validateInput(raw: Record<string, unknown>): Validation {
             error: `\`items[${i}].children\` must be an array of strings when present`,
           }
         }
-        if (rec.children.length === 0) {
-          return {
-            ok: false,
-            error: `\`items[${i}].children\` must be non-empty when present (omit it instead)`,
+        // Silently ignore empty children arrays (treat as absent).
+        if (rec.children.length > 0) {
+          if (!rec.children.every((s) => typeof s === "string" && s.trim().length > 0)) {
+            return {
+              ok: false,
+              error: `every entry in \`items[${i}].children\` must be a non-empty string`,
+            }
           }
-        }
-        if (!rec.children.every((s) => typeof s === "string" && s.trim().length > 0)) {
-          return {
-            ok: false,
-            error: `every entry in \`items[${i}].children\` must be a non-empty string`,
+          // Preflight max children (a–z) so we never create a parent then fail mid-write.
+          if (rec.children.length > MAX_SUBTASKS_PER_PARENT) {
+            return {
+              ok: false,
+              error:
+                `\`items[${i}].children\` has ${rec.children.length} entries; ` +
+                `max ${MAX_SUBTASKS_PER_PARENT} subtasks per parent`,
+            }
           }
+          // Depth-2 only: children are titles, not nested objects.
+          item.children = rec.children as string[]
         }
-        // Preflight max children (a–z) so we never create a parent then fail mid-write.
-        if (rec.children.length > MAX_SUBTASKS_PER_PARENT) {
-          return {
-            ok: false,
-            error:
-              `\`items[${i}].children\` has ${rec.children.length} entries; ` +
-              `max ${MAX_SUBTASKS_PER_PARENT} subtasks per parent`,
-          }
-        }
-        // Depth-2 only: children are titles, not nested objects.
-        item.children = rec.children as string[]
       }
       // Mirror manifest additionalProperties:false — only title + children.
       for (const key of Object.keys(rec)) {

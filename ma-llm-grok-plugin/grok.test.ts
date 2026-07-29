@@ -16,11 +16,7 @@ import {
   grokApiKeyAuth,
   readGrokApiKey,
 } from "./auth.ts"
-import {
-  CAPS_GROK_45_CHAT,
-  CAPS_GROK_45_RESPONSES,
-  CAPS_GROK_COMPOSER_25_FAST,
-} from "./capabilities.ts"
+import { CAPS_GROK_45_CHAT, CAPS_GROK_45_RESPONSES } from "./capabilities.ts"
 import { buildGrokHeaders } from "./headers.ts"
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import { userText } from "./lib/canonical-messages.ts"
@@ -47,6 +43,7 @@ import {
   getGrokSessionUsage,
   parseGrokQuotaWindows,
   primeGrokSessionInfo,
+  readGrokOAuthTokenFromAuthStore,
   refreshGrokBillingQuota,
   setGrokBillingQuota,
   setGrokRateLimits,
@@ -152,6 +149,14 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(flagship.capabilities.contextWindow).toBe(500_000)
     expect(flagship.capabilities.modalities.image).toBe(true)
     expect(flagship.capabilities.thinking.visible).toBe(true)
+    expect(flagship.capabilities.effort.levels).toEqual(["low", "medium", "high"])
+    expect(flagship.capabilities.effort.default).toBe("high")
+    expect(flagship.capabilities.acceptsStopSequences).toBe(false)
+    expect(flagship.capabilities.caching.promptCacheAccounting).toBe("subset")
+    expect(flagship.pricing.inputUSD).toBe(2)
+    expect(flagship.pricing.outputUSD).toBe(6)
+    expect(flagship.pricing.cacheReadUSD).toBe(0.3)
+    expect(flagship.pricing.longContext?.thresholdTokens).toBe(200_000)
     expect(flagship.capabilities).toEqual(CAPS_GROK_45_RESPONSES)
 
     const chat = resolveModel("grok-4.5-chat")
@@ -160,28 +165,33 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(chat.capabilities.thinking.visible).toBe(false)
     expect(chat.capabilities.contextWindow).toBe(CAPS_GROK_45_CHAT.contextWindow)
 
+    const build = resolveModel("grok-build")
+    expect(build.vendorIds?.firstParty).toBe("grok-build-0.1")
+    expect(build.capabilities.contextWindow).toBe(256_000)
+
     const adapter = resolveProvider("grok")
     expect(adapter.surfaces).toContain("openai-chat-completions")
     expect(adapter.surfaces).toContain("openai-responses")
   })
 
-  it("registers composer on chat with vision + speed", () => {
+  it("registers grok-4.3 as the fast scout tier (1M ctx)", () => {
     setup()
-    const m = resolveModel("grok-composer-2.5-fast")
-    expect(m.surfaceId).toBe("openai-chat-completions")
+    const m = resolveModel("grok-4.3")
+    expect(m.surfaceId).toBe("openai-responses")
     expect(m.capabilities.speedFast).toBe(true)
+    expect(m.capabilities.contextWindow).toBe(1_000_000)
     expect(m.capabilities.modalities.image).toBe(true)
-    expect(m.capabilities.contextWindow).toBe(CAPS_GROK_COMPOSER_25_FAST.contextWindow)
   })
 
-  it("enables image modality on every catalog model", () => {
+  it("enables image modality on every catalog text model", () => {
     setup()
     for (const id of [
       "grok-4.5",
       "grok-4.5-chat",
       "grok-build",
       "grok-build-chat",
-      "grok-composer-2.5-fast",
+      "grok-4.3",
+      "grok-4.3-chat",
     ]) {
       expect(resolveModel(id).capabilities.modalities.image).toBe(true)
     }
@@ -368,6 +378,204 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(windows[0]!.utilization).toBeCloseTo(13 / 15_000, 6)
   })
 
+  it("caches Free monthlyLimit=0 without emitting a month window", async () => {
+    clearGrokSessionCaches()
+    const body = JSON.stringify({
+      config: {
+        monthlyLimit: { val: 0 },
+        used: { val: 8524 },
+        onDemandCap: { val: 0 },
+        billingPeriodEnd: "2026-08-01T00:00:00+00:00",
+      },
+    })
+    const networkClient = {
+      async request() {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          body: new ReadableStream(),
+          transport: { id: "test" },
+          text: async () => body,
+          json: async () => JSON.parse(body),
+        }
+      },
+    } as unknown as NetworkClient
+
+    await refreshGrokBillingQuota(networkClient, "oauth-free")
+    expect(getGrokBillingQuota()?.limit).toBe(0)
+    expect(getGrokBillingQuota()?.used).toBe(8524)
+    expect(parseGrokQuotaWindows(new Map()).map((w) => w.id)).toEqual([])
+  })
+
+  it("emits ondemand window when onDemandCap > 0", async () => {
+    clearGrokSessionCaches()
+    const body = JSON.stringify({
+      config: {
+        monthlyLimit: { val: 4000 },
+        used: { val: 100 },
+        onDemandCap: { val: 2000 },
+        onDemandUsed: { val: 500 },
+        billingPeriodEnd: "2026-08-01T00:00:00+00:00",
+      },
+    })
+    const networkClient = {
+      async request() {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          body: new ReadableStream(),
+          transport: { id: "test" },
+          text: async () => body,
+          json: async () => JSON.parse(body),
+        }
+      },
+    } as unknown as NetworkClient
+
+    await refreshGrokBillingQuota(networkClient, "oauth-od")
+    const ids = parseGrokQuotaWindows(new Map()).map((w) => w.id)
+    expect(ids).toEqual(["month", "ondemand"])
+    expect(
+      parseGrokQuotaWindows(new Map()).find((w) => w.id === "ondemand")?.utilization,
+    ).toBeCloseTo(0.25, 5)
+  })
+
+  it("readGrokOAuthTokenFromAuthStore selects credentialName among multiple entries", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const prev = process.env["MINIMAL_AGENT_HOME"]
+    const dir = mkdtempSync(join(tmpdir(), "ma-grok-auth-multi-"))
+    process.env["MINIMAL_AGENT_HOME"] = dir
+    writeFileSync(
+      join(dir, "auth.jsonc"),
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            id: "grok-oauth",
+            name: "Grok / xAI (OAuth)",
+            secrets: { accessToken: "token-default" },
+          },
+          {
+            id: "grok-oauth",
+            name: "grok-oauth-3",
+            secrets: { accessToken: "token-three" },
+          },
+        ],
+      }),
+    )
+    try {
+      expect(readGrokOAuthTokenFromAuthStore()).toBe("token-default")
+      expect(readGrokOAuthTokenFromAuthStore("grok-oauth-3")).toBe("token-three")
+      expect(readGrokOAuthTokenFromAuthStore("missing")).toBeNull()
+    } finally {
+      if (prev === undefined) delete process.env["MINIMAL_AGENT_HOME"]
+      else process.env["MINIMAL_AGENT_HOME"] = prev
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("prime with authKind=oauth ignores env API key and uses named credential", async () => {
+    clearGrokSessionCaches()
+    _resetGrokPrimeInFlight()
+    const prev = {
+      a: process.env["MINIMAL_AGENT_GROK_API_KEY"],
+      b: process.env["XAI_API_KEY"],
+      c: process.env["GROK_API_KEY"],
+      home: process.env["MINIMAL_AGENT_HOME"],
+    }
+    process.env["XAI_API_KEY"] = "should-not-be-used"
+    delete process.env["MINIMAL_AGENT_GROK_API_KEY"]
+    delete process.env["GROK_API_KEY"]
+
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const dir = mkdtempSync(join(tmpdir(), "ma-grok-auth-named-"))
+    process.env["MINIMAL_AGENT_HOME"] = dir
+    writeFileSync(
+      join(dir, "auth.jsonc"),
+      JSON.stringify({
+        version: 1,
+        entries: [
+          {
+            id: "grok-oauth",
+            name: "Grok / xAI (OAuth)",
+            secrets: { accessToken: "token-default" },
+          },
+          {
+            id: "grok-oauth",
+            name: "grok-oauth-3",
+            secrets: { accessToken: "token-three" },
+          },
+        ],
+      }),
+    )
+
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = []
+    const networkClient = {
+      async request(input: { url: string; headers?: Record<string, string> }) {
+        calls.push({ url: input.url, headers: input.headers })
+        if (input.url === CLI_BILLING_URL) {
+          const body = JSON.stringify({
+            config: { monthlyLimit: { val: 100 }, used: { val: 1 } },
+          })
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            body: new ReadableStream(),
+            transport: { id: "test" },
+            text: async () => body,
+            json: async () => JSON.parse(body),
+          }
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({
+            "x-ratelimit-limit-tokens": "1000",
+            "x-ratelimit-remaining-tokens": "900",
+            "x-ratelimit-reset-tokens": "60s",
+          }),
+          body: new ReadableStream(),
+          transport: { id: "test" },
+          text: async () => "{}",
+          json: async () => ({}),
+        }
+      },
+    } as unknown as NetworkClient
+
+    try {
+      await primeGrokSessionInfo({
+        modelId: "grok-4.5",
+        networkClient,
+        authKind: "oauth",
+        credentialName: "grok-oauth-3",
+      })
+      expect(calls.some((c) => c.url === MODELS_URL)).toBe(false)
+      expect(calls.some((c) => c.url === CLI_MODELS_URL)).toBe(true)
+      expect(calls.find((c) => c.url === CLI_BILLING_URL)?.headers?.authorization).toBe(
+        "Bearer token-three",
+      )
+      expect(getGrokBillingQuota()?.limit).toBe(100)
+    } finally {
+      if (prev.a === undefined) delete process.env["MINIMAL_AGENT_GROK_API_KEY"]
+      else process.env["MINIMAL_AGENT_GROK_API_KEY"] = prev.a
+      if (prev.b === undefined) delete process.env["XAI_API_KEY"]
+      else process.env["XAI_API_KEY"] = prev.b
+      if (prev.c === undefined) delete process.env["GROK_API_KEY"]
+      else process.env["GROK_API_KEY"] = prev.c
+      if (prev.home === undefined) delete process.env["MINIMAL_AGENT_HOME"]
+      else process.env["MINIMAL_AGENT_HOME"] = prev.home
+      rmSync(dir, { recursive: true, force: true })
+      _resetGrokPrimeInFlight()
+      clearGrokSessionCaches()
+    }
+  })
+
   it("primeGrokSessionInfo with API key probes models URL only", async () => {
     clearGrokSessionCaches()
     _resetGrokPrimeInFlight()
@@ -520,7 +728,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     setup()
     const recs = grokAdapter.recommendSubagentModels?.() ?? []
     expect(recs.find((r) => r.role === "deep")?.modelId).toBe("grok-4.5")
-    expect(recs.find((r) => r.role === "scout")?.modelId).toBe("grok-composer-2.5-fast")
+    expect(recs.find((r) => r.role === "scout")?.modelId).toBe("grok-4.3")
     expect(recs.find((r) => r.role === "balanced")?.modelId).toBe("grok-build")
   })
 
@@ -533,8 +741,8 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
   it("registerGrokModels returns dual-surface catalog size", () => {
     setup()
     const ids = registerGrokModels(reg.models)
-    // 2× frontier + 2× build + 1 composer = 5
-    expect(ids.length).toBe(5)
+    // 2×4.5 + 2×build + 2×4.3 + 3×4.20 = 9
+    expect(ids.length).toBe(9)
     registerGrokModels(reg.models) // idempotent
   })
 

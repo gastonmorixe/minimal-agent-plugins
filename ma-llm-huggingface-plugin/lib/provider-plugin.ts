@@ -311,6 +311,17 @@ export interface ProviderSessionContext {
   signal?: AbortSignal
   /** Network client to reuse (defaults to the shared one). Untyped to keep this port dependency-light. */
   networkClient?: unknown
+  /**
+   * Stored credential display name (`--credential-name` / config) when the
+   * provider has multiple auth.jsonc entries. Prime paths that read the
+   * store directly should select this entry instead of the first match.
+   */
+  credentialName?: string
+  /**
+   * Resolved session auth kind. When `"oauth"`, prime must not fall back to
+   * an env API key; when `"api-key"`, it must not use a stored OAuth token.
+   */
+  authKind?: "api-key" | "oauth"
 }
 
 // ---------------------------------------------------------------------------

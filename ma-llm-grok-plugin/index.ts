@@ -23,13 +23,16 @@ export {
   refreshGrokOAuthCredential,
 } from "./auth.ts"
 export {
+  CAPS_GROK_420_MULTI_AGENT,
+  CAPS_GROK_420_NON_REASONING,
+  CAPS_GROK_43_CHAT,
+  CAPS_GROK_43_RESPONSES,
   CAPS_GROK_45,
   CAPS_GROK_45_CHAT,
   CAPS_GROK_45_RESPONSES,
   CAPS_GROK_BUILD,
   CAPS_GROK_BUILD_CHAT,
   CAPS_GROK_BUILD_RESPONSES,
-  CAPS_GROK_COMPOSER_25_FAST,
   CAPS_GROK_GENERIC,
 } from "./capabilities.ts"
 export { buildGrokHeaders } from "./headers.ts"
@@ -47,9 +50,10 @@ export {
   grokOAuthConfig,
 } from "./oauth-login.ts"
 export {
+  PRICING_GROK_420,
+  PRICING_GROK_43,
   PRICING_GROK_45,
   PRICING_GROK_BUILD,
-  PRICING_GROK_COMPOSER_25_FAST,
   PRICING_GROK_GENERIC,
 } from "./pricing.ts"
 export {

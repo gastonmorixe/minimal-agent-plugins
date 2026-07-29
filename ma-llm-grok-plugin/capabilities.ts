@@ -1,10 +1,13 @@
 /**
  * Capability tables per Grok / xAI model + surface.
  *
- * Sources:
- * - Live `GET /v1/models` (context_window, reasoning_efforts, api_backend)
- * - Grok Build harness (image attachments, tools, reasoning streaming)
- * - OpenAI dual-surface pattern (chat vs responses thinking visibility)
+ * Sources (2026-07-27 live probe):
+ * - `GET https://cli-chat-proxy.grok.com/v1/models` (subscription): grok-4.5
+ *   only — context_window 500000, api_backend responses, efforts
+ *   high|medium|low (default high), auto_compact_threshold_percent 80
+ * - `GET https://api.x.ai/v1/models` (full catalog + price fields)
+ * - https://docs.x.ai/developers/model-capabilities/text/reasoning
+ *   (`stop` / presencePenalty / frequencyPenalty error on reasoning models)
  *
  * Image modality is ON for catalog models so host attachments
  * (`[Image #N]`, screenshots) pass {@link validateOpenAIRequest}.
@@ -20,6 +23,7 @@ const CACHING_AUTO = {
   ttls: [] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
+  promptCacheAccounting: "subset" as const,
 } as const
 
 const TOOLS_FULL = {
@@ -38,6 +42,15 @@ const MODALITIES_TEXT_IMAGE = {
   video: false,
 } as const
 
+/** Reasoning models reject stop / presence / frequency penalties (xAI docs). */
+const REASONING_SAMPLING = {
+  acceptsTemperature: true,
+  acceptsTopP: true,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+} as const
+
 // ---------------------------------------------------------------------------
 // Shared frontier base (grok-4.5 family)
 // ---------------------------------------------------------------------------
@@ -49,11 +62,7 @@ const CAPS_GROK_45_BASE: Capabilities = {
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
   effort: { levels: ["low", "medium", "high"], default: "high" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
+  ...REASONING_SAMPLING,
   speedFast: false,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
@@ -92,8 +101,6 @@ export const CAPS_GROK_45_RESPONSES: Capabilities = {
     visible: true,
     interleaved: true,
   },
-  // Responses can chain via previous_response_id when store=true; default store
-  // false on many paths, so keep serverSideHistory false until we opt in.
   serverSideHistory: false,
 }
 
@@ -101,7 +108,7 @@ export const CAPS_GROK_45_RESPONSES: Capabilities = {
 export const CAPS_GROK_45 = CAPS_GROK_45_RESPONSES
 
 // ---------------------------------------------------------------------------
-// grok-build
+// grok-build-0.1 (256k) — live api.x.ai id; aliases grok-code-fast-*
 // ---------------------------------------------------------------------------
 
 export const CAPS_GROK_BUILD_CHAT: Capabilities = {
@@ -117,11 +124,7 @@ export const CAPS_GROK_BUILD_CHAT: Capabilities = {
     interleaved: false,
   },
   effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
+  ...REASONING_SAMPLING,
   speedFast: false,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
@@ -147,27 +150,17 @@ export const CAPS_GROK_BUILD_RESPONSES: Capabilities = {
 export const CAPS_GROK_BUILD = CAPS_GROK_BUILD_RESPONSES
 
 // ---------------------------------------------------------------------------
-// composer fast
+// grok-4.3 / grok-4.20 family — 1M ctx (live api.x.ai)
 // ---------------------------------------------------------------------------
 
-export const CAPS_GROK_COMPOSER_25_FAST: Capabilities = {
+const CAPS_GROK_43_BASE: Capabilities = {
   ...defaultCapabilities(),
-  contextWindow: 200_000,
-  maxOutputTokens: 32_768,
+  contextWindow: 1_000_000,
+  maxOutputTokens: 65_536,
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
-  thinking: {
-    adaptive: false,
-    extended: false,
-    visible: false,
-    interleaved: false,
-  },
-  effort: { levels: [], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
+  effort: { levels: ["low", "medium", "high"], default: "high" },
+  ...REASONING_SAMPLING,
   speedFast: true,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
@@ -177,6 +170,47 @@ export const CAPS_GROK_COMPOSER_25_FAST: Capabilities = {
   modalities: { ...MODALITIES_TEXT_IMAGE },
   serverSideHistory: false,
   serverTools: [],
+}
+
+export const CAPS_GROK_43_RESPONSES: Capabilities = {
+  ...CAPS_GROK_43_BASE,
+  thinking: {
+    adaptive: true,
+    extended: false,
+    visible: true,
+    interleaved: true,
+  },
+}
+
+export const CAPS_GROK_43_CHAT: Capabilities = {
+  ...CAPS_GROK_43_BASE,
+  thinking: {
+    adaptive: true,
+    extended: false,
+    visible: false,
+    interleaved: false,
+  },
+}
+
+/** Multi-agent: effort controls agent count (low/medium/high/xhigh). */
+export const CAPS_GROK_420_MULTI_AGENT: Capabilities = {
+  ...CAPS_GROK_43_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh"], default: "high" },
+}
+
+/** Non-reasoning 4.20 variant — no effort knob. */
+export const CAPS_GROK_420_NON_REASONING: Capabilities = {
+  ...CAPS_GROK_43_CHAT,
+  thinking: {
+    adaptive: false,
+    extended: false,
+    visible: false,
+    interleaved: false,
+  },
+  effort: { levels: [], default: "medium" },
+  acceptsTemperature: true,
+  acceptsTopP: true,
+  acceptsStopSequences: true,
 }
 
 /** Ad-hoc models: vision + tools so images/tools are not rejected. */

@@ -2,7 +2,7 @@
 
 A [minimal-agent][ma] plugin that provides a `Fetch` tool - fetches web pages
 through a real JS-rendering headless browser and returns the content in your
-chosen format (markdown / text / html / links / raw).
+chosen format (markdown / text / html / links / accessibility / raw).
 
 [ma]: https://github.com/gastonmorixe/minimal-agent-core
 
@@ -43,8 +43,8 @@ stays unchanged.
 
 **Tool API** (what the model controls):
 - `url` (required)
-- `format` (markdown | text | html | links | original)
-- `selector`, `eval`, `wait_until`, `timeout_sec`, `cleanup`
+- `format` (markdown | text | html | links | accessibility | original)
+- `selector`, `eval`, `eval_mode`, `wait_until`, `timeout_sec`, `cleanup`
 - `session` (persistent cookies + `localStorage`; see *Persistent sessions* below)
 
 ### Backend env-var contract
@@ -54,18 +54,19 @@ The handler spawns `<plugin>/backends/<backend>.ts` with these env vars:
 | Var | Required | Notes |
 |---|---|---|
 | `MA_FETCH_URL` | yes | |
-| `MA_FETCH_FORMAT` | yes | `markdown\|text\|html\|links\|original` |
+| `MA_FETCH_FORMAT` | yes | `markdown\|text\|html\|links\|accessibility\|original` |
 | `MA_FETCH_WAIT_UNTIL` | yes | `load\|domcontentloaded\|networkidle0` |
 | `MA_FETCH_TIMEOUT_SEC` | yes | integer seconds |
 | `MA_FETCH_SELECTOR` | no | |
-| `MA_FETCH_EVAL` | no | |
+| `MA_FETCH_EVAL` | no | JavaScript expression evaluated in the page context |
+| `MA_FETCH_EVAL_MODE` | no | `value` returns the expression result; `page` evaluates then returns the requested dump |
 | `MA_FETCH_USER_AGENT` | no | from plugin config |
 | `MA_FETCH_PROXY` | no | from plugin config |
 | `MA_FETCH_STORAGE_DIR` | no | absolute path resolved from `session` + `storageRoot`; backends that support persistence (obscura) forward as `--storage-dir <DIR>` |
 | `MA_FETCH_BIN` | yes (set by dispatcher) | absolute path to the backend binary. Resolved by `lib/backend.ts:resolveBackendBin`: operator override (`plugins["ma-fetch"].<backend>.bin`) wins, else `<MINIMAL_AGENT_BIN_DIR>/<backend>` (the agent-managed dir, `~/.minimal-agent/bin`). **No PATH fallback**: if it can't be resolved the backend refuses to run (exit 2) and the tool reports an engine-unavailable error. |
 
 Backend output:
-- **stdout** → page content (verbatim, becomes `tool_result.content`)
+- **stdout** → the eval value for `eval_mode: "value"`, otherwise page content; becomes `tool_result.content`
 - **stderr** → diagnostics (shown to the user on errors)
 - **exit code** → 0 on success, non-zero on failure
 
@@ -144,105 +145,7 @@ the model can never reach outside it:
   ...
 ```
 
-Session names match `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}# ma-fetch-plugin
-
-A [minimal-agent][ma] plugin that provides a `Fetch` tool - fetches web pages
-through a real JS-rendering headless browser and returns the content in your
-chosen format (markdown / text / html / links / raw).
-
-[ma]: https://github.com/gastonmorixe/minimal-agent-core
-
-## Architecture
-
-```
-ma-fetch-plugin/
-├── manifest.json           Plugin manifest (tool name, schema, icon)
-├── PROMPT.md               When/how the model should use this tool
-├── handlers/
-│   ├── fetch.ts            Backend-agnostic handler: validate → dispatch → ToolResult
-│   └── fetch.test.ts
-├── lib/
-│   ├── types.ts            Local TUIContext/TUIResult stubs (standalone type-check)
-│   ├── jsonc.ts            Tiny JSONC parser (zero-dep config reader)
-│   ├── config.ts           Reads plugins["ma-fetch"] from ~/.minimal-agent/config.jsonc
-│   ├── config.test.ts
-│   ├── backend.ts          Backend dispatcher: builds env, spawns script, captures I/O
-│   └── backend.test.ts
-└── backends/
-    ├── obscura.ts          Default backend (wraps obscura CLI)
-    └── obscura.test.ts
-```
-
-### Backend decoupling
-
-The handler doesn't know obscura exists. It builds a `BackendCallInput`
-from validated tool input + config defaults, then asks `lib/backend.ts`
-to invoke the configured backend script with an `MA_FETCH_*` env block.
-The backend script (today `backends/obscura.ts`) is the *only* place
-that knows about a specific browser's CLI. Tomorrow's
-`backends/playwright.ts` honors the same env contract and the handler
-stays unchanged.
-
-**Always-on backend invariants** (NOT exposed as tool API):
-- Anti-detection / stealth (always on - hygiene)
-- Suppress backend banner (always on - clean stdout)
-
-**Tool API** (what the model controls):
-- `url` (required)
-- `format` (markdown | text | html | links | original)
-- `selector`, `eval`, `wait_until`, `timeout_sec`, `cleanup`
-- `session` (persistent cookies + `localStorage`; see *Persistent sessions* below)
-
-### Backend env-var contract
-
-The handler spawns `<plugin>/backends/<backend>.ts` with these env vars:
-
-| Var | Required | Notes |
-|---|---|---|
-| `MA_FETCH_URL` | yes | |
-| `MA_FETCH_FORMAT` | yes | `markdown\|text\|html\|links\|original` |
-| `MA_FETCH_WAIT_UNTIL` | yes | `load\|domcontentloaded\|networkidle0` |
-| `MA_FETCH_TIMEOUT_SEC` | yes | integer seconds |
-| `MA_FETCH_SELECTOR` | no | |
-| `MA_FETCH_EVAL` | no | |
-| `MA_FETCH_USER_AGENT` | no | from plugin config |
-| `MA_FETCH_PROXY` | no | from plugin config |
-| `MA_FETCH_STORAGE_DIR` | no | absolute path resolved from `session` + `storageRoot`; backends that support persistence (obscura) forward as `--storage-dir <DIR>` |
-| `MA_FETCH_BIN` | yes (set by dispatcher) | absolute path to the backend binary. Resolved by `lib/backend.ts:resolveBackendBin`: operator override (`plugins["ma-fetch"].<backend>.bin`) wins, else `<MINIMAL_AGENT_BIN_DIR>/<backend>` (the agent-managed dir, `~/.minimal-agent/bin`). **No PATH fallback**: if it can't be resolved the backend refuses to run (exit 2) and the tool reports an engine-unavailable error. |
-
-Backend output:
-- **stdout** → page content (verbatim, becomes `tool_result.content`)
-- **stderr** → diagnostics (shown to the user on errors)
-- **exit code** → 0 on success, non-zero on failure
-
-## Install
-
-1. Clone this repo (you probably already did):
-
-   ```bash
-   git clone git@github.com:gastonmorixe/minimal-agent-plugins.git ~/minimal-agent-plugins
-   ```
-
-2. Symlink the plugin into your minimal-agent home plugin root:
-
-   ```bash
-   mkdir -p ~/.agents/plugins
-   ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
-   ```
-
-3. Get obscura (the default backend). **Normally you do nothing here:** on
-   an interactive start the host provisions the pinned obscura build into the
-   agent-managed dir (`~/.minimal-agent/bin`) automatically (see `setup.ts` plus
-   minimal-agent's `binaries/` subsystem) and advertises that dir to the plugin
-   via `MINIMAL_AGENT_BIN_DIR`. The plugin runs ONLY that managed copy.
-
-   The plugin does **not** look on your `PATH`. A `obscura` you drop into
-   `/usr/local/bin` is ignored on purpose (it's not the build this plugin
-   pins, and silently running a user's binary is a supply-chain hazard). If you
-   want to point at your own build, set an absolute path via the `obscura.bin`
-   operator override in config (see below). That wins over the managed copy.
-
-. Anything with
+Session names match `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`. Anything with
 `/`, `\`, `..`, dots, or spaces is rejected by the input validator
 before it reaches the backend.
 
@@ -251,8 +154,33 @@ before it reaches the backend.
 (requires obscura ≥ v0.1.6). Backends that don't recognise
 `MA_FETCH_STORAGE_DIR` ignore it; the plugin doesn't fail.
 
+### Persistent worker
+
+Rendered Obscura calls lazily start one parent-bound `obscura-worker` process
+and reuse it for later calls. The model still sees only the generic `Fetch`
+tool; the engine name and private protocol are not part of the tool contract.
+Calls are serialized because Obscura keeps one live V8 isolate at a time.
+Named sessions remain resident in a bounded LRU pool and flush cookies plus
+`localStorage` after every request and during close, eviction, idle exit, or
+graceful shutdown.
+
+The one-shot backend remains the compatibility path for `original`, non-Obscura
+backends, disabled persistence, and `eval_mode: "value"`. The worker loads the
+first configured WebExtension, matching the one-shot CLI's current behavior.
+Worker startup or protocol skew falls back only before a fetch is
+dispatched; a dispatched request is never replayed automatically.
+
+The transcript footer may show `worker pid: N` for operator visibility. Model
+content remains backend-agnostic. The process exits after its idle timeout and
+is also killed as a process group on caller abort, outer watchdog, or parent
+exit.
+
 **Config knobs**:
 
+- `obscura.persistent` (`boolean`, default `true`). Set `false` to force the
+  existing one-shot backend.
+- `obscura.workerIdleSec` (`number`, default `300`, range `10..3600`). Idle
+  worker shutdown delay.
 - `storageRoot` (`string`, default `~/.minimal-agent/sessions/fetch`).
   Where session subdirectories live. Tilde is expanded. Absolute paths
   only — relative paths are silently rejected.

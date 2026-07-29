@@ -1,7 +1,7 @@
 ---
 title: Fetch persistent sessions and the X case study
 created_at: "2026-07-28T18:18:58.999698000-0400"
-updated_at: "2026-07-28T18:41:28.346704000-0400"
+updated_at: "2026-07-29T00:24:11.467886000-0400"
 session_id: 0d186838-8d92-4f91-b46e-54e012cddd98
 host_info:
   hostname: macbookpro.home.arpa
@@ -15,19 +15,21 @@ audit:
   document_status: living
   evidence_policy: distinguish-implementation-observation-and-inference
   plugin_version: 0.1.0
-  source_revision: 35a4c15ee0ddc94821ffd0dffdd5c15e1ac53b7f
+  source_revision: 92f131860d5941c233c66d2bde83b36e56800c5e
   test_session: x-search
   tested_urls:
+    - https://x.com/
     - https://x.com/i/flow/login
     - https://twitter.com/login
     - https://x.com/search?q=minimal-agent&src=typed_query&f=live
   credentials_entered: false
   secrets_recorded: false
-  last_verified_at: "2026-07-28T18:41:28.346704000-0400"
+  last_verified_at: "2026-07-29T00:24:11.467886000-0400"
 taillog:
   - "2026-07-28T18:18:58.999698000-0400 | Created living Fetch session guide and recorded the first X/Twitter login and search experiment"
   - "2026-07-28T18:20:33.739484000-0400 | Reviewed implementation claims and added the tested plugin version and source revision"
   - "2026-07-28T18:41:28.346704000-0400 | Aligned the manifest wait_until default with runtime and added a regression test against future drift"
+  - "2026-07-29T00:24:11.467886000-0400 | Corrected the X diagnosis: root login renders, eval executes, and old fallback text came from inert noscript content"
 ---
 
 # Fetch persistent sessions and the X case study
@@ -119,8 +121,9 @@ A persistent jar guarantees browser state reuse. It does not guarantee:
 - that a saved session remains valid after server-side expiry or revocation
 - that two concurrent writers can safely share one session
 
-This difference is central to the X experiment below. Persistence worked. X
-access did not.
+This difference is central to the X experiment below. Persistence worked, and
+a later Obscura build also rendered X's current root login form. Authentication
+itself has not yet been attempted.
 
 ## Security and operational constraints
 
@@ -196,35 +199,49 @@ The test session was `x-search`. No credentials were entered.
 
 ### Experiment log
 
-#### 1. Open the X login flow
+#### 1. Initial legacy-route observation
 
-**Observed.** A request to `https://x.com/i/flow/login` with
-`wait_until: "networkidle0"` returned X's fallback page:
+**Observed, later reinterpreted.** A text dump of
+`https://x.com/i/flow/login` contained:
 
 > JavaScript is not available.
 
-The same page also suggested enabling JavaScript or using a supported browser.
+That text came from an inert `<noscript>` subtree included by the old text
+extractor. It was not proof that X detected disabled JavaScript. Runtime probes
+and Obscura diagnostics showed that X's core bundles executed. The old route
+also exercised a large dynamic webpack graph that did not always settle before
+the bounded watchdog.
 
 #### 2. Verify Fetch's JavaScript environment
 
-**Observed.** A second call in the same `x-search` session evaluated JavaScript
-successfully and reported:
+**Observed.** Calls in the `x-search` session established that:
 
-- JavaScript execution succeeded
-- `navigator.cookieEnabled` was `true`
-- a `localStorage` write and delete succeeded
-- the browser exposed a Chrome-like user agent
+- JavaScript expressions execute
+- `navigator.cookieEnabled` is `true`
+- `localStorage` reads and writes succeed
+- the browser exposes a Chrome-like user agent
 
-Therefore, X's message was not a literal report that Fetch had disabled
-JavaScript.
+A direct eval probe on the updated Obscura build returned a generated marker and
+`1 + 1 === 2`, confirming page-context execution independently of text
+extraction.
 
-#### 3. Try the legacy Twitter entry point
+#### 3. Render the current root login application
 
-**Observed.** `https://twitter.com/login` redirected to
-`https://x.com/login` and returned the same fallback. DOM inspection found only
-a hidden `failedScript` input and a `Try again` button, not a usable login form.
+**Observed.** `https://x.com/` reaches `document.readyState === "complete"` and
+renders the current X authentication application. The live DOM contains one
+form with:
 
-There was no safe authentication step to perform.
+```html
+<input id="jf-input-username_or_email" name="username_or_email" type="text">
+<input name="password" type="password" inert>
+```
+
+The page also exposes phone, Google, and Apple authentication controls. The
+password input is initially inert, which is consistent with a staged flow where
+the username step must advance first.
+
+This disproves the earlier broad claim that X blocks Fetch or withholds every
+login form. Route and backend version matter.
 
 #### 4. Prove persistence independently of login
 
@@ -233,14 +250,9 @@ There was no safe authentication step to perform.
 the same `x-search` session read the same value. The later call also observed X
 guest cookies in `document.cookie`.
 
-This isolates the result:
-
-- Fetch session persistence worked.
-- X still rejected or degraded the browser environment.
-
 The marker contains no secret and may be deleted during later cleanup.
 
-#### 5. Try X search
+#### 5. Try X search before authentication
 
 **Observed.** A request to:
 
@@ -248,31 +260,31 @@ The marker contains no secret and may be deleted during later cleanup.
 https://x.com/search?q=minimal-agent&src=typed_query&f=live
 ```
 
-reused the persisted marker but returned the same fallback page. No `article`
-elements were present, so no posts were available to extract.
+reused the persisted marker but produced no posts while unauthenticated. This
+result does not establish that authenticated search is unavailable.
 
 ### Current conclusion
 
-**Observed.** Fetch can execute JavaScript and persist X-origin cookies and
-`localStorage` across calls. In this environment, X did not expose its login or
-search application to the Fetch backend.
+**Observed.** Fetch can load X, execute page JavaScript, render the current root
+login form, and persist X-origin cookies and `localStorage` across calls. No real
+credentials have been entered, so username-step submission, password entry,
+challenges, successful authentication, and authenticated search remain unproven.
 
-**Inferred.** X likely rejected some property of the automated browser or
-request environment and used a generic "JavaScript is not available" fallback.
-The experiment did not identify the exact signal. Do not document the cause as
-proven browser fingerprinting until diagnostics establish it.
-
-Always-on stealth is a useful baseline, not a promise that every site's checks
-will pass.
+The legacy-route failure and old no-JavaScript text were diagnostic traps, not
+evidence of a site-wide automation block. Always-on stealth remains useful
+hygiene, but no anti-bot bypass claim is needed to explain the current result.
 
 ## Recommended fallback for X
 
-Use `ChromeCDP` when the task requires actual X login or search. It operates in
-the user's real Chrome profile, so it can reuse a login the user completed in a
-normal browser and can handle challenges Fetch cannot safely automate.
+Fetch is now a viable path for continuing the login investigation. Use a fresh
+named session, advance one form step at a time, and inspect the resulting page
+before supplying the next value. CAPTCHA, device verification, and 2FA may still
+require a human handoff.
 
-Use `WebSearch` with `site:x.com` only for publicly indexed discovery. It is not
-a replacement for X's own live or complete search results.
+Use `ChromeCDP` when an existing real-browser login is preferable or when the
+Fetch flow reaches a challenge it cannot complete. Use `WebSearch` with
+`site:x.com` only for publicly indexed discovery, not as a replacement for X's
+own authenticated search.
 
 ## Reproduction recipe
 
@@ -283,11 +295,10 @@ to present a real login form.
 
 ```json
 {
-  "url": "https://x.com/i/flow/login",
+  "url": "https://x.com/",
   "format": "text",
-  "selector": "body",
   "wait_until": "networkidle0",
-  "timeout_sec": 45,
+  "timeout_sec": 60,
   "session": "x-search"
 }
 ```
@@ -296,12 +307,13 @@ to present a real login form.
 
 ```json
 {
-  "url": "https://x.com/login",
+  "url": "https://x.com/",
   "format": "text",
-  "wait_until": "load",
-  "timeout_sec": 45,
+  "wait_until": "networkidle0",
+  "timeout_sec": 60,
   "session": "x-search",
-  "eval": "(() => ({ jsRuns: true, url: location.href, cookieEnabled: navigator.cookieEnabled, localStorageAvailable: (() => { try { localStorage.setItem('__ma_test','1'); localStorage.removeItem('__ma_test'); return true } catch { return false } })(), text: document.body.innerText.slice(0,1000) }))()"
+  "eval": "(() => ({ jsRuns: true, url: location.href, readyState: document.readyState, cookieEnabled: navigator.cookieEnabled, localStorageAvailable: (() => { try { localStorage.setItem('__ma_test','1'); localStorage.removeItem('__ma_test'); return true } catch { return false } })(), inputs: [...document.querySelectorAll('input')].map(({type,name,id}) => ({type,name,id})) }))()",
+  "eval_mode": "value"
 }
 ```
 
@@ -311,11 +323,12 @@ Write:
 
 ```json
 {
-  "url": "https://x.com/login",
+  "url": "https://x.com/",
   "format": "text",
   "wait_until": "domcontentloaded",
   "session": "x-search",
-  "eval": "(() => { localStorage.setItem('__minimal_agent_session_test', 'persisted'); return localStorage.getItem('__minimal_agent_session_test') })()"
+  "eval": "(() => { localStorage.setItem('__minimal_agent_session_test', 'persisted'); return localStorage.getItem('__minimal_agent_session_test') })()",
+  "eval_mode": "value"
 }
 ```
 
@@ -323,19 +336,27 @@ Read in a later call:
 
 ```json
 {
-  "url": "https://x.com/login",
+  "url": "https://x.com/",
   "format": "text",
   "wait_until": "domcontentloaded",
   "session": "x-search",
-  "eval": "(() => ({ persisted: localStorage.getItem('__minimal_agent_session_test'), url: location.href }))()"
+  "eval": "(() => ({ persisted: localStorage.getItem('__minimal_agent_session_test'), url: location.href }))()",
+  "eval_mode": "value"
 }
 ```
 
-### D. Stop before credential entry when blocked
+### D. Distinguish eval return modes
 
-If DOM inspection shows only the fallback and no real username input, do not
-attempt to inject credentials. Record the observation and move to a real
-browser session.
+`eval_mode: "value"` returns the JavaScript expression's value. This is the
+default when `eval` is present. Use `eval_mode: "page"` when the expression
+mutates or submits the page and the useful result is the post-evaluation dump.
+A `selector` belongs to page mode because it scopes that dump.
+
+### E. Stop before credential entry when blocked
+
+If DOM inspection shows no usable username input, do not inject credentials.
+Record the observation and move to a real browser session or a newer backend
+build.
 
 ## Maintenance checklist
 
@@ -370,8 +391,9 @@ These paths are the current sources of truth:
 
 ## Open questions
 
-- Which browser-environment signal causes X to serve the fallback?
-- Can a newer Obscura build or backend configuration reach X's login form?
+- Can Fetch advance X's username step and activate the staged password input?
+- Which additional verification or anti-abuse challenge appears for a real or
+  disposable test account?
 - Should Fetch support a safe, explicit import of browser storage rather than
   scripted credential entry?
 - Should the plugin add cooperative locking or a clear single-writer error for

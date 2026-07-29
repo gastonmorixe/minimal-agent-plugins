@@ -21,13 +21,21 @@ HuggingFace/OpenRouter, and a surface codec for generic-endpoint reuse.
 
 ## Models
 
+Live sources: subscription `cli-chat-proxy` `/v1/models` (grok-4.5 only) and
+`api.x.ai/v1/models` (full text catalog + price micros).
+
 | Local id | Wire id | Surface | Context | Vision | Notes |
 |----------|---------|---------|---------|--------|-------|
-| `grok-4.5` (default) | `grok-4.5` | **Responses** | 500k | yes | Flagship / deep |
+| `grok-4.5` (default) | `grok-4.5` | **Responses** | 500k | yes | Flagship; efforts low/medium/**high** |
 | `grok-4.5-chat` | `grok-4.5` | Chat | 500k | yes | Same SKU, chat surface |
-| `grok-build` | `grok-build` | Responses | 256k | yes | Coding agent |
-| `grok-build-chat` | `grok-build` | Chat | 256k | yes | |
-| `grok-composer-2.5-fast` | `grok-composer-2.5-fast` | Chat | 200k | yes | Scout / fast |
+| `grok-4.3` | `grok-4.3` | Responses | 1M | yes | Fast / balanced |
+| `grok-build` | `grok-build-0.1` | Responses | 256k | yes | Coding; aliases `grok-code-fast*` |
+| `grok-4.20-reasoning` | `grok-4.20-0309-reasoning` | Responses | 1M | yes | |
+| `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses | 1M | yes | No effort knob |
+| `grok-4.20-multi-agent` | `grok-4.20-multi-agent-0309` | Responses | 1M | yes | Effort = agent count |
+
+Pricing (under 200k prompt): grok-4.5 **$2 / $0.30 cached / $6** per 1M; doubles at ≥200k.
+Prompt-cache accounting is **subset** (OpenAI/xAI): `cached_tokens ⊆ input_tokens`.
 
 ## Auth
 
@@ -49,18 +57,25 @@ Runtime:
 ## Quotas (status bar)
 
 - `rpm` / `tpm` from `x-ratelimit-*` response headers (captured on every turn)
-- `month` from `GET https://cli-chat-proxy.grok.com/v1/billing` (OAuth / session only)
+- `month` from `GET https://cli-chat-proxy.grok.com/v1/billing` (OAuth / session only), when `monthlyLimit > 0`
+- `ondemand` from the same `/billing` payload when `onDemandCap > 0`
 - Session token usage accumulation for cost estimates
+
+Free / no-included-pool accounts return `monthlyLimit: 0`. We still cache that
+response (so we do not re-probe every turn) but omit the `month` bar. Grok CLI’s
+weekly `creditUsagePercent` meter is a separate unified-billing shape that is
+**not** present on raw `/v1/billing`; it is not shown here yet.
 
 ### How monthly billing is populated
 
-1. **`primeSessionInfo` (boot)** — resolves credentials from env API key *or*
-   `~/.minimal-agent/auth.jsonc` (`grok-oauth` entry). For OAuth, hits
-   `/v1/billing` (and `/v1/models` for rate-limit headers).
+1. **`primeSessionInfo` (boot)** — uses the host’s `authKind` + `credentialName`
+   (so `--credential-name grok-oauth-3` hits that auth.jsonc entry, not the
+   first `grok-oauth`). Falls back to env API key only for api-key sessions.
+   For OAuth, hits `/v1/billing` (and `/v1/models` for rate-limit headers).
 2. **Adapter (OAuth turns)** — if the billing cache is stale/empty after a
    successful response, fire-and-forget `refreshGrokBillingQuota`.
-3. **`fetchSessionInfo`** — cache-only; merges `rpm`/`tpm` + `month` into
-   neutral `QuotaWindow`s for the status bar.
+3. **`fetchSessionInfo`** — cache-only; merges `rpm`/`tpm` + `month` /
+   `ondemand` into neutral `QuotaWindow`s for the status bar.
 
 API-key sessions (console keys on `api.x.ai`) do **not** get a `month` window —
 that endpoint only exists on cli-chat-proxy.

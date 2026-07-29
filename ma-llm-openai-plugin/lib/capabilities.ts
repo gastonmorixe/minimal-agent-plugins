@@ -77,13 +77,18 @@ export interface EffortSupport {
  * - `minPrefixTokens`: shortest cacheable prefix. Below this, caching
  *   silently doesn't trigger.
  * - `reportsCacheHits`: provider returns cache-read/write tokens in usage.
+ * - `promptCacheAccounting`: whether cache counters are additive (`disjoint`)
+ *   or a subset of `input_tokens` (`subset`).
  */
+export type PromptCacheAccounting = "disjoint" | "subset"
+
 export interface CachingSupport {
   explicit: boolean
   automatic: boolean
   ttls: ReadonlyArray<"5m" | "1h">
   minPrefixTokens: number
   reportsCacheHits: boolean
+  promptCacheAccounting: PromptCacheAccounting
 }
 
 /**
@@ -233,6 +238,7 @@ export function defaultCapabilities(): Capabilities {
       ttls: [],
       minPrefixTokens: 0,
       reportsCacheHits: false,
+      promptCacheAccounting: "disjoint",
     },
     tools: {
       userDefined: false,
