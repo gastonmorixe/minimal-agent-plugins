@@ -1,14 +1,16 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the current public OpenAI API catalog for the GPT-5.x family plus
- * the established gpt-4o / o-series tables in `capabilities.ts`.
+ * Mirrors the public OpenAI API catalog (refreshed 2026-07-30) for the
+ * GPT-5.6 family plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
+ * tables in `capabilities.ts` and `pricing.ts`.
  *
  * Dual-surface models (reachable on BOTH Chat Completions and the Responses
  * API) are registered TWICE, under distinct ids with different `surfaceId`s.
  * `vendorIds.firstParty` always carries the REAL OpenAI model id sent on the
  * wire, so the `-chat` entry resolves to the same upstream model. The short
  * `gpt-5.6` alias resolves to `gpt-5.6-sol`, matching the public docs.
+ * Pro SKUs (`gpt-5.5-pro`, `gpt-5.4-pro`) are Responses-only.
  *
  * @module llm/providers/openai/models
  */
@@ -21,6 +23,7 @@ import {
   CAPS_GPT_5_4_MINI_RESPONSES,
   CAPS_GPT_5_4_NANO_CHAT,
   CAPS_GPT_5_4_NANO_RESPONSES,
+  CAPS_GPT_5_4_PRO_RESPONSES,
   CAPS_GPT_5_4_RESPONSES,
   CAPS_GPT_5_5_CHAT,
   CAPS_GPT_5_5_PRO_RESPONSES,
@@ -45,6 +48,7 @@ import {
   PRICING_GPT_5_4,
   PRICING_GPT_5_4_MINI,
   PRICING_GPT_5_4_NANO,
+  PRICING_GPT_5_4_PRO,
   PRICING_GPT_5_5,
   PRICING_GPT_5_5_PRO,
   PRICING_GPT_5_6_LUNA,
@@ -186,7 +190,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-responses",
     displayName: "GPT-5.5",
-    knowledgeCutoff: "2025-12",
+    knowledgeCutoff: "2025-12-01",
     tags: ["gpt-5", "flagship", "reasoning", "production"],
     capabilities: CAPS_GPT_5_5_RESPONSES,
     estimateTokens: estimateOpenAITokens,
@@ -198,7 +202,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-chat-completions",
     displayName: "GPT-5.5 (Chat Completions)",
-    knowledgeCutoff: "2025-12",
+    knowledgeCutoff: "2025-12-01",
     tags: ["gpt-5", "flagship", "chat"],
     capabilities: CAPS_GPT_5_5_CHAT,
     estimateTokens: estimateOpenAITokens,
@@ -207,6 +211,18 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   })
 
   // GPT-5.4 generation.
+  register({
+    id: "gpt-5.4-pro",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-5.4 Pro",
+    knowledgeCutoff: "2025-08-31",
+    tags: ["gpt-5", "pro", "reasoning"],
+    capabilities: CAPS_GPT_5_4_PRO_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_5_4_PRO,
+    vendorIds: { firstParty: "gpt-5.4-pro" },
+  })
   register({
     id: "gpt-5.4",
     providerId: "openai",
@@ -286,6 +302,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-responses",
     displayName: "GPT-5",
+    knowledgeCutoff: "2024-09-30",
     tags: ["gpt-5", "reasoning"],
     capabilities: CAPS_GPT_5_RESPONSES,
     estimateTokens: estimateOpenAITokens,
@@ -299,6 +316,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-responses",
     displayName: "OpenAI o3",
+    knowledgeCutoff: "2024-06-01",
     tags: ["o-series", "reasoning"],
     capabilities: CAPS_O3_RESPONSES,
     estimateTokens: estimateOpenAITokens,
@@ -310,6 +328,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-responses",
     displayName: "OpenAI o4-mini",
+    knowledgeCutoff: "2024-06-01",
     tags: ["o-series", "reasoning", "fast"],
     capabilities: CAPS_O4_MINI_RESPONSES,
     estimateTokens: estimateOpenAITokens,
@@ -323,6 +342,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-chat-completions",
     displayName: "GPT-4.1",
+    knowledgeCutoff: "2024-06-01",
     tags: ["gpt-4", "chat", "long-context"],
     capabilities: CAPS_GPT_41_CHAT,
     estimateTokens: estimateOpenAITokens,
@@ -334,6 +354,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-chat-completions",
     displayName: "GPT-4o",
+    knowledgeCutoff: "2023-10-01",
     tags: ["gpt-4", "chat", "multimodal"],
     capabilities: CAPS_GPT_4O_CHAT,
     estimateTokens: estimateOpenAITokens,
@@ -345,6 +366,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     providerId: "openai",
     surfaceId: "openai-chat-completions",
     displayName: "GPT-4o mini",
+    knowledgeCutoff: "2023-10-01",
     tags: ["gpt-4", "chat", "fast", "cheap"],
     capabilities: CAPS_GPT_4O_MINI_CHAT,
     estimateTokens: estimateOpenAITokens,

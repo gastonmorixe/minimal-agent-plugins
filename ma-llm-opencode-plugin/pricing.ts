@@ -6,7 +6,7 @@
  * limits. We record the Go list prices so cost estimates reflect real
  * quota burn.
  *
- * Rates sourced from opencode.ai/docs/go (June 2026 snapshot).
+ * Rates sourced from opencode.ai/docs/go and models.dev (2026-07-30 snapshot).
  *
  * @module llm/providers/opencode/pricing
  */
@@ -25,10 +25,10 @@ export const PRICING_OPENCODE_GENERIC: MTokRate = {
 // OpenAI Chat Completions surface
 
 export const PRICING_DEEPSEEK_V4_PRO: MTokRate = {
-  inputUSD: 1.74,
-  outputUSD: 3.48,
+  inputUSD: 0.435,
+  outputUSD: 0.87,
   cacheWriteUSD: 0, // no explicit cache writes on Chat surface
-  cacheReadUSD: 0.0145,
+  cacheReadUSD: 0.003625,
   webSearchPerCallUSD: 0,
 }
 
@@ -57,7 +57,11 @@ export const PRICING_GLM_5_1: MTokRate = {
 }
 
 export const PRICING_GLM_5: MTokRate = {
-  ...PRICING_GLM_5_1, // same pricing tier
+  inputUSD: 1.0,
+  outputUSD: 3.2,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.2,
+  webSearchPerCallUSD: 0,
 }
 
 export const PRICING_KIMI_K2_7_CODE: MTokRate = {
@@ -73,6 +77,14 @@ export const PRICING_KIMI_K2_6: MTokRate = {
   outputUSD: 4.0,
   cacheWriteUSD: 0,
   cacheReadUSD: 0.16,
+  webSearchPerCallUSD: 0,
+}
+
+export const PRICING_KIMI_K2_5: MTokRate = {
+  inputUSD: 0.6,
+  outputUSD: 3.0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.1,
   webSearchPerCallUSD: 0,
 }
 
@@ -92,6 +104,19 @@ export const PRICING_GROK_4_5: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
+export const PRICING_HY3: MTokRate = {
+  inputUSD: 0.14,
+  outputUSD: 0.58,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.035,
+  webSearchPerCallUSD: 0,
+}
+
+/** Preview slug — same list price as Hy3 until docs publish a distinct rate. */
+export const PRICING_HY3_PREVIEW: MTokRate = {
+  ...PRICING_HY3,
+}
+
 export const PRICING_MIMO_V2_5: MTokRate = {
   inputUSD: 0.14,
   outputUSD: 0.28,
@@ -101,10 +126,26 @@ export const PRICING_MIMO_V2_5: MTokRate = {
 }
 
 export const PRICING_MIMO_V2_5_PRO: MTokRate = {
-  inputUSD: 1.74,
-  outputUSD: 3.48,
+  inputUSD: 0.435,
+  outputUSD: 0.87,
   cacheWriteUSD: 0,
-  cacheReadUSD: 0.0145,
+  cacheReadUSD: 0.003625,
+  webSearchPerCallUSD: 0,
+}
+
+export const PRICING_MIMO_V2_PRO: MTokRate = {
+  inputUSD: 1.0,
+  outputUSD: 3.0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.2,
+  webSearchPerCallUSD: 0,
+}
+
+export const PRICING_MIMO_V2_OMNI: MTokRate = {
+  inputUSD: 0.4,
+  outputUSD: 2.0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.08,
   webSearchPerCallUSD: 0,
 }
 
@@ -155,5 +196,13 @@ export const PRICING_QWEN3_6_PLUS: MTokRate = {
   outputUSD: 3.0,
   cacheWriteUSD: 0.625,
   cacheReadUSD: 0.05,
+  webSearchPerCallUSD: 0,
+}
+
+export const PRICING_QWEN3_5_PLUS: MTokRate = {
+  inputUSD: 0.2,
+  outputUSD: 1.2,
+  cacheWriteUSD: 0.25,
+  cacheReadUSD: 0.02,
   webSearchPerCallUSD: 0,
 }

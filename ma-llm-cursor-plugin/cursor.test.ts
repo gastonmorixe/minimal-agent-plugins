@@ -32,6 +32,17 @@ describe("cursor wire model id aliases", () => {
     expect(resolveCursorWireId("cursor-auto")).toBe("default")
     expect(resolveCursorWireId("default")).toBe("default")
     expect(resolveCursorWireId("composer-2.5-fast")).toBe("composer-2.5-fast")
+    expect(resolveCursorWireId("cursor-composer-2.5-fast")).toBe("composer-2.5-fast")
+  })
+
+  test("Cursor Grok wire ids keep the cursor- prefix", () => {
+    expect(resolveCursorWireId("cursor-grok-4.5-high-fast")).toBe("cursor-grok-4.5-high-fast")
+    expect(
+      cursorWireModelId({
+        id: "cursor-grok-4.5-high-fast",
+        vendorIds: { cursor: "cursor-grok-4.5-high-fast" },
+      }),
+    ).toBe("cursor-grok-4.5-high-fast")
   })
 
   test("ad-hoc cursor-auto stores vendorIds.cursor=default", () => {

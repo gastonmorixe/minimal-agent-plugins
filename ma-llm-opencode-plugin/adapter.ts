@@ -5,7 +5,7 @@
  * models. It exposes two wire formats depending on the model:
  *
  * - **OpenAI Chat Completions** (`/v1/chat/completions`) — DeepSeek, GLM,
- *   Kimi, MiMo.
+ *   Kimi, MiMo, Hy, Grok.
  * - **Anthropic Messages** (`/v1/messages`) — MiniMax, Qwen.
  *
  * This adapter REUSES `plugins/llm-openai`'s wire layer for the Chat

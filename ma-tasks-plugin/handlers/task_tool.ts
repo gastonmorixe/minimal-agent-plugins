@@ -11,7 +11,8 @@
  * - `add`         — append a new task (optionally as a subtask via `parent`).
  * - `add_many`    — bulk append (one call, full plan). Accepts flat `titles`
  *                   or a depth-2 `items` tree (`{title, children?}`).
- * - `update`      — change a task's title.
+ * - `update`      — change a task's title and/or status. At least one of
+ *                   `title` or `status` must be provided.
  * - `status`      — set status to todo/doing/done/canceled.
  * - `start`       — sugar for status=doing (keeps other doing tasks as doing).
  * - `done`        — sugar for status=done.
@@ -295,6 +296,16 @@ function validateInput(raw: Record<string, unknown>): Validation {
     }
   }
 
+  // update: at least one of title or status must be provided.
+  if (action === "update" && out.title === undefined && out.status === undefined) {
+    return {
+      ok: false,
+      error:
+        "`update` requires at least one of `title` or `status` " +
+        '(did you mean `action="status"`?)',
+    }
+  }
+
   // items is only meaningful for add_many (schema is flat; reject misuse).
   if (out.items !== undefined && action !== "add_many") {
     return {
@@ -342,7 +353,7 @@ const REQUIRED_FIELDS: Record<Action, readonly (keyof ParsedInput)[]> = {
   add: ["title"],
   // add_many: custom titles XOR items check above (not a single required field).
   add_many: [],
-  update: ["id", "title"],
+  update: ["id"],
   status: ["id", "status"],
   start: ["id"],
   done: ["id"],
@@ -623,21 +634,47 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
 }
 
 function doUpdate(store: TaskStore, input: ParsedInput): TUIResult {
-  // Capture the old title BEFORE the mutation so the renderer can show
-  // `<old struck through>  →  <new>` inline instead of silently swapping
-  // the title.
+  // Status-only: delegate to doStatus so we get the right render action
+  // (marked_done / marked_doing / marked_canceled / all_done) and the
+  // already_done short-circuit, with `input.action` = "update" in meta.
+  if (input.title === undefined) {
+    return doStatus(store, input)
+  }
+
+  // Title update, possibly with a concurrent status change.
   const before = store.resolve(input.id!)
-  const oldTitle = before?.title ?? null
+  if (before === null) return err(`id "${input.id}" not found`)
+  const oldTitle = before.title
   const updated = store.update(input.id!, input.title!)
   if (updated === null) return err(`id "${input.id}" not found`)
+
+  // Status change alongside title.
+  if (input.status !== undefined) {
+    const target = store.resolve(input.id!)!
+    // Skip idempotent done (title change is the real mutation here).
+    if (!(input.status === "done" && target.status === "done")) {
+      store.setStatus(target.id, input.status!, input.reason)
+    }
+  }
+
+  const after = store.resolve(input.id!)!
+  const titleChanged = oldTitle !== after.title
   const views = store.views()
   // Skip the diff overlay when nothing actually changed (whitespace-only
   // edit, or update to the same string) — showing `x  →  x` is noise.
-  const augmented: readonly View[] =
-    oldTitle !== null && oldTitle !== updated.title
-      ? views.map((v) => (v.task.id === updated.id ? { ...v, diff: { oldTitle } } : v))
-      : views
-  return ok(store, { kind: "updated", hash: updated.id }, input.format, augmented, input.action)
+  const augmented: readonly View[] = titleChanged
+    ? views.map((v) => (v.task.id === after.id ? { ...v, diff: { oldTitle } } : v))
+    : views
+
+  // ALL DONE when a status→done alongside the title change completes the plan.
+  if (input.status === "done") {
+    const s = store.stats()
+    if (s.total > 0 && s.done === s.total) {
+      return ok(store, { kind: "all_done" }, input.format, augmented, input.action, after.id)
+    }
+  }
+
+  return ok(store, { kind: "updated", hash: after.id }, input.format, augmented, input.action)
 }
 
 function doStatus(store: TaskStore, input: ParsedInput): TUIResult {

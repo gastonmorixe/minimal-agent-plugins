@@ -10,6 +10,10 @@
  *
  * Wire slug for AgentService/Run is stored in `vendorIds.cursor` (bare API id).
  *
+ * Static seed aligned to AvailableModels `defaultOn` + Composer siblings
+ * (live probe 2026-07-30 via Cursor Browser Login / `cursor-oauth`). Full
+ * catalog (~196 visible rows) still comes from live enrichment.
+ *
  * @module llm/providers/cursor/models
  */
 
@@ -44,15 +48,27 @@ export const CURSOR_WIRE_ID_ALIASES: Readonly<Record<string, string>> = {
   auto: "default",
 }
 
-/** Map a user/host slug to the bare Cursor wire model id for Run. */
+/**
+ * Map a user/host slug to the Cursor wire model id for Run.
+ *
+ * Strips one host `cursor-` namespace except when the API wire id itself starts
+ * with `cursor-` (Cursor Grok SKUs: `cursor-grok-4.5-high-fast`). Those share
+ * host id === wire id; stripping would send a not_found slug.
+ */
 export function resolveCursorWireId(slug: string): string {
-  const bare = slug.replace(/^cursor-/, "")
-  return CURSOR_WIRE_ID_ALIASES[bare] ?? bare
+  if (CURSOR_WIRE_ID_ALIASES[slug]) return CURSOR_WIRE_ID_ALIASES[slug]!
+  if (!slug.startsWith("cursor-")) return slug
+  const bare = slug.slice("cursor-".length)
+  if (CURSOR_WIRE_ID_ALIASES[bare]) return CURSOR_WIRE_ID_ALIASES[bare]!
+  // First-party Cursor product wires keep the `cursor-` prefix on the wire.
+  if (bare.startsWith("grok-")) return slug
+  return bare
 }
 
 /**
- * Static offline seed. Thinking/effort empty until live catalog enriches with
- * effort-param:<id> (Christina: no selectable knobs without wire id).
+ * Static offline seed (2026-07-30). Thinking/effort empty until live catalog
+ * enriches with effort-param:<id> (Christina: no selectable knobs without wire id).
+ * Caps mirror AvailableModels flags where the RPC omits token limits (128K default).
  */
 const CATALOG: CursorCatalogEntry[] = [
   {
@@ -85,7 +101,7 @@ const CATALOG: CursorCatalogEntry[] = [
     displayName: "Composer 2.5 Fast (Cursor)",
     wireId: "composer-2.5-fast",
     capabilities: cursorCaps({
-      contextWindow: 200 * K,
+      contextWindow: 128 * K,
       thinking: true,
       vision: false,
       effortLevels: [],
@@ -93,16 +109,89 @@ const CATALOG: CursorCatalogEntry[] = [
     tags: ["cursor", "composer", "fast", "thinking"],
   },
   {
-    id: "cursor-composer-2",
-    displayName: "Composer 2 (Cursor)",
-    wireId: "composer-2",
+    id: "cursor-composer-2.5",
+    displayName: "Composer 2.5 (Cursor)",
+    wireId: "composer-2.5",
     capabilities: cursorCaps({
-      contextWindow: 200 * K,
+      contextWindow: 128 * K,
       thinking: true,
       vision: false,
       effortLevels: [],
     }),
     tags: ["cursor", "composer", "thinking"],
+  },
+  {
+    // Wire id already starts with `cursor-`; host id stays the same namespace.
+    id: "cursor-grok-4.5-high-fast",
+    displayName: "Grok 4.5 Fast (Cursor)",
+    wireId: "cursor-grok-4.5-high-fast",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: false,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "grok", "fast", "thinking"],
+  },
+  {
+    id: "cursor-claude-opus-5-thinking-high",
+    displayName: "Opus 5 (Cursor)",
+    wireId: "claude-opus-5-thinking-high",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "claude", "opus", "thinking", "vision"],
+  },
+  {
+    id: "cursor-claude-sonnet-5-thinking-high",
+    displayName: "Sonnet 5 (Cursor)",
+    wireId: "claude-sonnet-5-thinking-high",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "claude", "sonnet", "thinking", "vision"],
+  },
+  {
+    id: "cursor-claude-fable-5-thinking-high",
+    displayName: "Fable 5 (Cursor)",
+    wireId: "claude-fable-5-thinking-high",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "claude", "fable", "thinking", "vision"],
+  },
+  {
+    id: "cursor-gpt-5.6-sol-medium",
+    displayName: "GPT-5.6 Sol (Cursor)",
+    wireId: "gpt-5.6-sol-medium",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "gpt", "sol", "thinking", "vision"],
+  },
+  {
+    id: "cursor-gpt-5.6-terra-medium",
+    displayName: "GPT-5.6 Terra (Cursor)",
+    wireId: "gpt-5.6-terra-medium",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "gpt", "terra", "thinking", "vision"],
   },
 ]
 
@@ -139,22 +228,25 @@ export function registerCursorModels(models: ModelRegistrar): string[] {
  * Wire id resolves known display aliases (e.g. `auto` → `default`).
  */
 export function registerCursorAdHocModelInto(models: ModelRegistrar, modelId: string): string {
-  const bare = modelId.replace(/^cursor-/, "")
-  const hostId = modelId.startsWith("cursor-") ? modelId : `cursor-${bare}`
-  const wireId = resolveCursorWireId(bare)
+  const hostId = modelId.startsWith("cursor-") ? modelId : `cursor-${modelId}`
+  const wireId = resolveCursorWireId(hostId)
+  const hostBare = hostId.slice("cursor-".length)
   const tags = ["cursor", "ad-hoc"]
-  if (wireId !== bare) {
+  if (CURSOR_WIRE_ID_ALIASES[hostBare]) {
     tags.push("alias", `canonical:${wireId}`)
   }
   return registerCursorModelInto(models, {
     id: hostId,
     wireId,
-    displayName: bare === "auto" || bare === "default" ? "Auto (Cursor)" : `${bare} (Cursor)`,
+    displayName:
+      hostId === "cursor-auto" || hostId === "cursor-default"
+        ? "Auto (Cursor)"
+        : `${hostBare} (Cursor)`,
     // Ad-hoc: thinking ok, no effort levels without catalog effort-param tag.
     // Auto/default: match catalog (no thinking advertised on Auto).
     capabilities: cursorCaps({
       contextWindow: 128 * K,
-      thinking: bare !== "auto" && bare !== "default",
+      thinking: hostId !== "cursor-auto" && hostId !== "cursor-default",
       effortLevels: [],
     }),
     tags,
@@ -167,6 +259,9 @@ export function cursorWireModelId(model: {
   vendorIds?: Record<string, string>
 }): string {
   const fromVendor = model.vendorIds?.cursor ?? model.vendorIds?.firstParty
-  if (fromVendor) return resolveCursorWireId(fromVendor)
+  if (fromVendor) {
+    // vendorIds.cursor is the Run model_id (exact), except Auto display aliases.
+    return CURSOR_WIRE_ID_ALIASES[fromVendor] ?? fromVendor
+  }
   return resolveCursorWireId(model.id)
 }

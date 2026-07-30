@@ -24,6 +24,7 @@ dashboard subscribe URL).
 | Model             | ID                             |
 | ----------------- | ------------------------------ |
 | GLM 5.2           | `cline-pass/glm-5.2`           |
+| Kimi K3           | `cline-pass/kimi-k3`           |
 | Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    |
 | Kimi K2.6         | `cline-pass/kimi-k2.6`         |
 | DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   |

@@ -7,6 +7,10 @@
  * registered slugs; per-model differences (context window, true
  * modalities) vary upstream and are best-effort here.
  *
+ * Snapshot aligned with live GET https://openrouter.ai/api/v1/models
+ * as of 2026-07-30 (most curated frontier slugs advertise ~1M context
+ * and up to 128k max completion).
+ *
  * @module llm/providers/openrouter/capabilities
  */
 
@@ -15,8 +19,8 @@ import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
 /** Generic OpenRouter chat capability (text + image in, sampling-friendly). */
 export const CAPS_OPENROUTER_CHAT: Capabilities = {
   ...defaultCapabilities(),
-  contextWindow: 128_000,
-  maxOutputTokens: 16_384,
+  contextWindow: 1_000_000,
+  maxOutputTokens: 128_000,
   maxOutputTokensBatch: null,
   thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
   effort: { levels: [], default: "medium" },

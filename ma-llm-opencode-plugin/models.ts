@@ -1,11 +1,13 @@
 /**
  * OpenCode Go model registry entries.
  *
- * Dual-surface: OpenAI Chat Completions models (DeepSeek, GLM, Kimi, MiMo)
- * and Anthropic Messages models (MiniMax, Qwen) share the same provider id
- * but dispatch through their respective wire translators.
+ * Dual-surface: OpenAI Chat Completions models (DeepSeek, GLM, Kimi, MiMo,
+ * Hy, Grok) and Anthropic Messages models (MiniMax, Qwen) share the same
+ * provider id but dispatch through their respective wire translators.
  *
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
+ * Catalog synced from https://opencode.ai/zen/go/v1/models + docs/models.dev
+ * (2026-07-30).
  *
  * @module llm/providers/opencode/models
  */
@@ -17,14 +19,20 @@ import {
   CAPS_GLM_5_1,
   CAPS_GLM_5_2,
   CAPS_GROK_4_5,
+  CAPS_HY3,
+  CAPS_HY3_PREVIEW,
+  CAPS_KIMI_K2_5,
   CAPS_KIMI_K2_6,
   CAPS_KIMI_K2_7_CODE,
   CAPS_KIMI_K3,
   CAPS_MIMO_V2_5,
   CAPS_MIMO_V2_5_PRO,
+  CAPS_MIMO_V2_OMNI,
+  CAPS_MIMO_V2_PRO,
   CAPS_MINIMAX_M2_5,
   CAPS_MINIMAX_M2_7,
   CAPS_MINIMAX_M3,
+  CAPS_QWEN3_5_PLUS,
   CAPS_QWEN3_6_PLUS,
   CAPS_QWEN3_7_MAX,
   CAPS_QWEN3_7_PLUS,
@@ -40,14 +48,20 @@ import {
   PRICING_GLM_5_1,
   PRICING_GLM_5_2,
   PRICING_GROK_4_5,
+  PRICING_HY3,
+  PRICING_HY3_PREVIEW,
+  PRICING_KIMI_K2_5,
   PRICING_KIMI_K2_6,
   PRICING_KIMI_K2_7_CODE,
   PRICING_KIMI_K3,
   PRICING_MIMO_V2_5,
   PRICING_MIMO_V2_5_PRO,
+  PRICING_MIMO_V2_OMNI,
+  PRICING_MIMO_V2_PRO,
   PRICING_MINIMAX_M2_5,
   PRICING_MINIMAX_M2_7,
   PRICING_MINIMAX_M3,
+  PRICING_QWEN3_5_PLUS,
   PRICING_QWEN3_6_PLUS,
   PRICING_QWEN3_7_MAX,
   PRICING_QWEN3_7_PLUS,
@@ -160,6 +174,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_KIMI_K2_6,
       surfaceId: "openai-chat-completions",
     }),
+    makeSpec("kimi-k2.5", {
+      displayName: "Kimi K2.5",
+      tags: ["opencode", "openai-compatible", "kimi"],
+      capabilities: CAPS_KIMI_K2_5,
+      pricing: PRICING_KIMI_K2_5,
+      surfaceId: "openai-chat-completions",
+    }),
     makeSpec("kimi-k3", {
       displayName: "Kimi K3",
       tags: ["opencode", "openai-compatible", "kimi", "flagship"],
@@ -174,6 +195,20 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_GROK_4_5,
       surfaceId: "openai-chat-completions",
     }),
+    makeSpec("hy3", {
+      displayName: "Hy3",
+      tags: ["opencode", "openai-compatible", "hy"],
+      capabilities: CAPS_HY3,
+      pricing: PRICING_HY3,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("hy3-preview", {
+      displayName: "Hy3 Preview",
+      tags: ["opencode", "openai-compatible", "hy"],
+      capabilities: CAPS_HY3_PREVIEW,
+      pricing: PRICING_HY3_PREVIEW,
+      surfaceId: "openai-chat-completions",
+    }),
     makeSpec("mimo-v2.5", {
       displayName: "MiMo-V2.5",
       tags: ["opencode", "openai-compatible", "mimo"],
@@ -186,6 +221,20 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "openai-compatible", "mimo"],
       capabilities: CAPS_MIMO_V2_5_PRO,
       pricing: PRICING_MIMO_V2_5_PRO,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("mimo-v2-pro", {
+      displayName: "MiMo-V2-Pro",
+      tags: ["opencode", "openai-compatible", "mimo"],
+      capabilities: CAPS_MIMO_V2_PRO,
+      pricing: PRICING_MIMO_V2_PRO,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("mimo-v2-omni", {
+      displayName: "MiMo-V2-Omni",
+      tags: ["opencode", "openai-compatible", "mimo"],
+      capabilities: CAPS_MIMO_V2_OMNI,
+      pricing: PRICING_MIMO_V2_OMNI,
       surfaceId: "openai-chat-completions",
     }),
 
@@ -230,6 +279,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "anthropic-compatible", "qwen"],
       capabilities: CAPS_QWEN3_6_PLUS,
       pricing: PRICING_QWEN3_6_PLUS,
+      surfaceId: "anthropic-messages",
+    }),
+    makeSpec("qwen3.5-plus", {
+      displayName: "Qwen3.5 Plus",
+      tags: ["opencode", "anthropic-compatible", "qwen"],
+      capabilities: CAPS_QWEN3_5_PLUS,
+      pricing: PRICING_QWEN3_5_PLUS,
       surfaceId: "anthropic-messages",
     }),
   ]

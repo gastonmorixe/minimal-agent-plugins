@@ -3,7 +3,8 @@
  *
  * Model IDs use the full gateway slug (`cline-pass/...`) because that is what
  * `POST /api/v1/chat/completions` expects in the `model` field. Catalog is
- * static (live `/models` is unreliable for Pass-only third parties).
+ * static (live `/models` returns 404 for third-party OAuth as of 2026-07-30;
+ * Pass list comes from docs + Cline `catalog.generated.ts` `"cline-pass"`).
  *
  * @module llm/providers/clinepass/models
  */
@@ -14,6 +15,7 @@ import {
   CAPS_GLM_5_2,
   CAPS_KIMI_K2_6,
   CAPS_KIMI_K2_7_CODE,
+  CAPS_KIMI_K3,
   CAPS_MIMO_V2_5,
   CAPS_MIMO_V2_5_PRO,
   CAPS_MINIMAX_M3,
@@ -31,6 +33,7 @@ import {
   PRICING_GLM_5_2,
   PRICING_KIMI_K2_6,
   PRICING_KIMI_K2_7_CODE,
+  PRICING_KIMI_K3,
   PRICING_MIMO_V2_5,
   PRICING_MIMO_V2_5_PRO,
   PRICING_MINIMAX_M3,
@@ -55,9 +58,11 @@ interface BuiltinModel {
 }
 
 /**
- * Full ClinePass catalog (10 models) as of Cline docs + generated catalog.
- * IDs must be sent exactly as listed.
- * Kimi K3 not yet on ClinePass as of 2026-07-16 (docs.cline.bot/getting-started/clinepass).
+ * Full ClinePass catalog (11 models) as of 2026-07-30.
+ * Sources: docs.cline.bot/getting-started/clinepass + Cline SDK
+ * `catalog.generated.ts` `"cline-pass"` (caps). IDs must be sent exactly as listed.
+ * Non-`cline-pass/*` rows sometimes appear under that provider section in the
+ * generated catalog; those are omitted here.
  */
 const BUILTIN_MODELS: BuiltinModel[] = [
   {
@@ -66,6 +71,21 @@ const BUILTIN_MODELS: BuiltinModel[] = [
     tags: ["clinepass", "openai-compatible", "reasoning", "1m-context", "flagship", "deep"],
     capabilities: CAPS_GLM_5_2,
     pricing: PRICING_GLM_5_2,
+  },
+  {
+    id: "cline-pass/kimi-k3",
+    displayName: "Kimi K3 (ClinePass)",
+    tags: [
+      "clinepass",
+      "openai-compatible",
+      "reasoning",
+      "1m-context",
+      "vision",
+      "flagship",
+      "deep",
+    ],
+    capabilities: CAPS_KIMI_K3,
+    pricing: PRICING_KIMI_K3,
   },
   {
     id: "cline-pass/kimi-k2.7-code",

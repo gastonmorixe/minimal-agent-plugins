@@ -63,15 +63,16 @@ describe("registerOpenAIModels", () => {
         "gpt-5.6-terra",
         "gpt-5.6-luna",
         "gpt-5.5-pro",
+        "gpt-5.4-pro",
         "gpt-5.4",
         "gpt-5.4-mini",
         "gpt-5.4-nano",
       ]),
     )
-    expect(reg.resolveModel("gpt-5.6-terra").pricing.inputUSD).toBe(2.5)
-    expect(reg.resolveModel("gpt-5.6-terra").pricing.outputUSD).toBe(15)
-    expect(reg.resolveModel("gpt-5.6-luna").pricing.inputUSD).toBe(1)
-    expect(reg.resolveModel("gpt-5.6-luna").pricing.outputUSD).toBe(6)
+    expect(reg.resolveModel("gpt-5.6-terra").pricing.inputUSD).toBe(2)
+    expect(reg.resolveModel("gpt-5.6-terra").pricing.outputUSD).toBe(12)
+    expect(reg.resolveModel("gpt-5.6-luna").pricing.inputUSD).toBe(0.2)
+    expect(reg.resolveModel("gpt-5.6-luna").pricing.outputUSD).toBe(1.2)
 
     const chat = reg.resolveModel("gpt-5.6-chat")
     expect(chat.id).toBe("gpt-5.6-sol-chat")
@@ -79,6 +80,12 @@ describe("registerOpenAIModels", () => {
     expect(chat.vendorIds?.firstParty).toBe("gpt-5.6-sol")
     expect(chat.capabilities.thinking.visible).toBe(false)
     expect(chat.capabilities.serverSideHistory).toBe(false)
+
+    const pro = reg.resolveModel("gpt-5.4-pro")
+    expect(pro.surfaceId).toBe("openai-responses")
+    expect(pro.pricing.inputUSD).toBe(30)
+    expect(pro.pricing.outputUSD).toBe(180)
+    expect(pro.capabilities.effort.levels).toEqual(["medium", "high", "xhigh"])
   })
 
   it("keeps gpt-5.5 and gpt-5.5-chat for compatibility", () => {

@@ -4,6 +4,7 @@
  * Cursor billing is subscription/usage on the Cursor account, not transparent
  * per-1M rates on the wire. Rates are zero so the footer shows token counts
  * without a misleading USD figure until (if) public rates appear.
+ * Confirmed still opaque on AvailableModels (2026-07-30).
  *
  * @module llm/providers/cursor/pricing
  */

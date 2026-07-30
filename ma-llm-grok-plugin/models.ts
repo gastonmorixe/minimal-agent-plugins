@@ -1,9 +1,15 @@
 /**
  * Grok / xAI model registry — dual-surface where appropriate.
  *
- * Catalog aligned to live probes (2026-07-27):
- * - Subscription cli-chat-proxy `/v1/models`: `grok-4.5` only (Responses)
- * - `api.x.ai/v1/models`: full text catalog + price micros
+ * Catalog reconciled 2026-07-30:
+ * - Subscription OAuth (`cli-chat-proxy` `/v1/models`, cred grok-oauth-8):
+ *   `grok-4.5` only — context_window 500000, api_backend responses,
+ *   reasoning_efforts high|medium|low (default high). Narrow subscription
+ *   list; do **not** drop API-catalog entries solely because OAuth omits them.
+ * - Public API catalog (docs.x.ai/developers/models + pricing, same date):
+ *   keep `grok-4.5`, `grok-build-0.1`, `grok-4.3`, and the `grok-4.20-*`
+ *   dated SKUs. No console API-key cred available this refresh to re-probe
+ *   `api.x.ai/v1/models` micros; rates match docs (and prior 2026-07-27 live).
  *
  * Pattern from `ma-llm-openai-plugin/models.ts`: preferred surface is
  * Responses for frontier models (`grok-4.5`); Chat Completions variants use
@@ -180,7 +186,12 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-responses",
     displayName: "Grok 4.20 Reasoning",
     wireId: "grok-4.20-0309-reasoning",
-    aliases: ["grok-4.20", "grok-4.20-0309-reasoning", "grok-4.20-reasoning-latest"],
+    aliases: [
+      "grok-4.20",
+      "grok-4.20-0309",
+      "grok-4.20-0309-reasoning",
+      "grok-4.20-reasoning-latest",
+    ],
     tags: ["grok", "xai", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_43_RESPONSES,
     pricing: PRICING_GROK_420,

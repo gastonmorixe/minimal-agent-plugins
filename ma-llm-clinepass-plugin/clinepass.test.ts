@@ -81,13 +81,14 @@ describe("clinepass plugin shape", () => {
     expect(clinepassProviderPlugin.oauthLogin?.deviceCode).toBeDefined()
   })
 
-  it("registers all 10 Pass models", () => {
+  it("registers all 11 Pass models", () => {
     const r = makeTestRegistry()
     const ids = registerClinepassModels(r.models)
-    expect(ids).toHaveLength(10)
+    expect(ids).toHaveLength(11)
     expect(ids).toContain("cline-pass/glm-5.2")
+    expect(ids).toContain("cline-pass/kimi-k3")
     expect(ids).toContain("cline-pass/qwen3.7-max")
-    expect(listClinepassBuiltinModelIds()).toHaveLength(10)
+    expect(listClinepassBuiltinModelIds()).toHaveLength(11)
   })
 
   it("bootstrap registers adapter + models", () => {
