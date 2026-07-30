@@ -95,6 +95,11 @@ describe("translateOpenAIChatStream (fixtures)", () => {
     const thinkingStops = events.filter((e) => isEvent(e, "thinking_stop"))
     expect(thinkingStops).toHaveLength(1)
     expect(joinedText(events)).toBe("The answer is 42")
+    // Transition chunk carries content + reasoning_content:null together —
+    // thinking_stop must precede text_start or the REPL orphans the first
+    // content token on its own row (session a37f1f39: "Pre" / "Plug" / "All").
+    const types = events.map((e) => e.type)
+    expect(types.indexOf("thinking_stop")).toBeLessThan(types.indexOf("text_start"))
   })
 })
 
