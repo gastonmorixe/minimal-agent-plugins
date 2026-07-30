@@ -205,7 +205,7 @@ export function resolveCursorContextWindow(model: DecodedCursorModel): number {
   return DEFAULT_CONTEXT_WINDOW
 }
 
-/** Capabilities for the `cursor-agent-run` surface. MA owns tools; Cursor supplies text/thinking. */
+/** Capabilities for the `cursor-agent-run` surface. MA tools via MCP (`mcp_tools`). */
 export function cursorCaps(options: CursorCapsOptions = {}): Capabilities {
   const thinking = options.thinking ?? false
   const effortLevels = options.effortLevels ?? (thinking ? DEFAULT_EFFORT_LEVELS : [])

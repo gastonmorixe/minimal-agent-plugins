@@ -162,6 +162,69 @@ describe("validation", () => {
     const store = new TaskStore(sid, { home: tmpHome })
     expect(store.list()).toEqual([])
   })
+  test("treats titles:null as absent (add_many fires XOR error, not titles-type error)", async () => {
+    const r = await call({ action: "add_many", titles: null })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/titles.*items|items.*titles/)
+    expect(r.content).not.toMatch(/non-empty array/)
+  })
+  test("treats items:null as absent (add_many fires XOR error, not items-type error)", async () => {
+    const r = await call({ action: "add_many", items: null })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/titles.*items|items.*titles/)
+    expect(r.content).not.toMatch(/non-empty array/)
+  })
+  test("treats id:null as absent on done (fires required-field error, not id-type error)", async () => {
+    const r = await call({ action: "done", id: null })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/`id` is required/)
+    expect(r.content).not.toMatch(/non-empty string/)
+  })
+  test("treats title:null as absent on add (fires required-field error, not title-type error)", async () => {
+    const r = await call({ action: "add", title: null })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/`title` is required/)
+    expect(r.content).not.toMatch(/non-empty string/)
+  })
+  test("treats order:null as absent on reorder (fires required-field error, not order-type error)", async () => {
+    const r = await call({ action: "reorder", order: null })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/`order` is required/)
+    expect(r.content).not.toMatch(/non-empty array/)
+  })
+  test("rejects titles with non-string element (number)", async () => {
+    const r = await call({ action: "add_many", titles: [1] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/every entry in `titles` must be a non-empty string/)
+  })
+  test("rejects titles with non-string element (object)", async () => {
+    const r = await call({ action: "add_many", titles: [{ title: "x" }] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/every entry in `titles` must be a non-empty string/)
+  })
+  test("rejects titles with empty string element", async () => {
+    const r = await call({ action: "add_many", titles: [""] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/every entry in `titles` must be a non-empty string/)
+  })
+  test("rejects titles with whitespace-only element", async () => {
+    const r = await call({ action: "add_many", titles: ["   "] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/every entry in `titles` must be a non-empty string/)
+  })
+  test("rejects items entry that is null", async () => {
+    const r = await call({ action: "add_many", items: [null] })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/items.*object/)
+  })
+  test("rejects items with null children array", async () => {
+    const r = await call({
+      action: "add_many",
+      items: [{ title: "a", children: null }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/children/)
+  })
   test("rejects bad status value", async () => {
     const r = await call({ action: "status", id: 1, status: "pending" })
     expect(r.is_error).toBe(true)
@@ -225,6 +288,20 @@ describe("add", () => {
     expect(lines[0]).toContain("first")
     expect(lines[1]).toContain("middle")
     expect(lines[2]).toContain("second")
+  })
+  test("after: null is treated as absent (no error)", async () => {
+    await call({ action: "add", title: "first" })
+    const r = await call({ action: "add", title: "second", after: null })
+    expect(r.is_error).toBeUndefined()
+  })
+  test("after accepts a hash string", async () => {
+    const r1 = await call({ action: "add", title: "first" })
+    const id = extractFirstHash(r1.content!)
+    const r2 = await call({ action: "add", title: "second", after: `#${id}` })
+    expect(r2.is_error).toBeUndefined()
+    const lines = r2.content!.split("\n").filter((l) => l.includes("#"))
+    expect(lines[0]).toContain("first")
+    expect(lines[1]).toContain("second")
   })
 })
 

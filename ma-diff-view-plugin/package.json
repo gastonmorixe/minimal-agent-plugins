@@ -1,7 +1,7 @@
 {
   "name": "ma-diff-view-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Renders unified diffs with ANSI colors and exposes a ShowDiff tool.",
   "type": "module",
   "scripts": {

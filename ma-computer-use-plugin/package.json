@@ -1,7 +1,7 @@
 {
   "name": "ma-computer-use-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: full control of the Mac via a signed Swift helper (Accessibility inspect/interact + CGEvent mouse/keyboard + ScreenCaptureKit), driven over a unix socket. Tool: Computer.",
   "type": "module",
   "scripts": {

@@ -35,19 +35,31 @@ describe("parseDuration", () => {
 
 describe("durationToCron — clean cadences", () => {
   it("maps exact minute divisors", () => {
-    expect(intervalToCron("5m")).toMatchObject({ cron: "*/5 * * * *", rounded: false, label: "5m" })
+    expect(intervalToCron("5m")).toMatchObject({
+      cron: "*/5 * * * *",
+      rounded: false,
+      label: "5m",
+    })
     expect(intervalToCron("30m")).toMatchObject({ cron: "*/30 * * * *", rounded: false })
     expect(intervalToCron("1m")).toMatchObject({ cron: "*/1 * * * *", rounded: false })
   })
 
   it("maps hourly + hour divisors", () => {
     expect(intervalToCron("60m")).toMatchObject({ cron: "0 * * * *", rounded: false })
-    expect(intervalToCron("2h")).toMatchObject({ cron: "0 */2 * * *", rounded: false, label: "2h" })
+    expect(intervalToCron("2h")).toMatchObject({
+      cron: "0 */2 * * *",
+      rounded: false,
+      label: "2h",
+    })
     expect(intervalToCron("every 2 hours")).toMatchObject({ cron: "0 */2 * * *" })
   })
 
   it("maps days", () => {
-    expect(intervalToCron("1d")).toMatchObject({ cron: "0 0 */1 * *", rounded: false, label: "1d" })
+    expect(intervalToCron("1d")).toMatchObject({
+      cron: "0 0 */1 * *",
+      rounded: false,
+      label: "1d",
+    })
     expect(intervalToCron("3d")).toMatchObject({ cron: "0 0 */3 * *", rounded: false })
   })
 })
@@ -88,6 +100,10 @@ describe("durationToCron — rounding", () => {
 
   it("rounds >1 day spans to whole days", () => {
     // 36h → round(36/24)=2 days
-    expect(intervalToCron("36h")).toMatchObject({ cron: "0 0 */2 * *", rounded: true, label: "2d" })
+    expect(intervalToCron("36h")).toMatchObject({
+      cron: "0 0 */2 * *",
+      rounded: true,
+      label: "2d",
+    })
   })
 })

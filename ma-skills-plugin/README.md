@@ -39,24 +39,24 @@ automatically. The startup tree's `tools` row will include
 
 ## Discovery roots (precedence highest → lowest)
 
-| Tier | Path | Scope |
-|---|---|---|
-| 1 | `<cwd>/.agents/skills/` | project, this repo |
-| 2 | `<cwd>/.claude/skills/` | project, Claude Code interop (opt-in) |
-| 3 | `~/.agents/skills/` | home, shared with other agents |
-| 4 | `~/.minimal-agent/skills/` | user, agent-specific |
-| 5 | extras from config | lowest |
+| Tier | Path                       | Scope                                 |
+| ---- | -------------------------- | ------------------------------------- |
+| 1    | `<cwd>/.agents/skills/`    | project, this repo                    |
+| 2    | `<cwd>/.claude/skills/`    | project, Claude Code interop (opt-in) |
+| 3    | `~/.agents/skills/`        | home, shared with other agents        |
+| 4    | `~/.minimal-agent/skills/` | user, agent-specific                  |
+| 5    | extras from config         | lowest                                |
 
 Collisions resolved by skill `name`. Closer-to-user wins. Lower-precedence
 collisions are listed under "Shadowed" in the catalog (and `Skill list`).
 
 ## Progressive disclosure
 
-| Spec level | Mechanism in minimal-agent |
-|---|---|
-| **L1** Metadata | `promptFragments` injects `name`+`description`+`scope`+`path` at session start. |
-| **L2** Instructions | `Skill {action: "read", name}` returns the full SKILL.md body. |
-| **L3** Resources | Use `Read` / `Bash` on `scripts/`, `references/`, `assets/`. |
+| Spec level          | Mechanism in minimal-agent                                                      |
+| ------------------- | ------------------------------------------------------------------------------- |
+| **L1** Metadata     | `promptFragments` injects `name`+`description`+`scope`+`path` at session start. |
+| **L2** Instructions | `Skill {action: "read", name}` returns the full SKILL.md body.                  |
+| **L3** Resources    | Use `Read` / `Bash` on `scripts/`, `references/`, `assets/`.                    |
 
 ## The `Skill` tool
 
@@ -79,16 +79,16 @@ User config at `~/.minimal-agent/config.jsonc` under `plugins["ma-skills"]`:
     "ma-skills": {
       "enabled": true,
       "roots": {
-        "project":            true,
-        "projectClaudeCode":  false,   // .claude/skills/ interop
-        "homeShared":         true,
-        "userAgent":          true
+        "project": true,
+        "projectClaudeCode": false, // .claude/skills/ interop
+        "homeShared": true,
+        "userAgent": true,
       },
-      "extraRoots":            [],
-      "maxSkills":             64,
-      "allowReservedNames":    false   // permit `claude`/`anthropic` in names
-    }
-  }
+      "extraRoots": [],
+      "maxSkills": 64,
+      "allowReservedNames": false, // permit `claude`/`anthropic` in names
+    },
+  },
 }
 ```
 

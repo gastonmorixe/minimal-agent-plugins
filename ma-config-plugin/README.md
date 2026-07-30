@@ -47,12 +47,12 @@ same registry through `ctx.listCommands()`.
 The plugin never imports another plugin or reaches into the agent's editor.
 It paints + reads input purely over the shared bus:
 
-| channel | direction | use |
-| --- | --- | --- |
-| `editor.overlay.open` | plugin → host | take MODAL ownership: hide prompt + cursor, block submit, route every key here |
-| `editor.overlay.close` | plugin → host | release ownership; restore the prompt |
-| `editor.footer.set` | plugin → host | paint / clear the overlay band |
-| `editor.key` (hook) | host → plugin | ALL keystrokes while owned: nav, printables (as single-char keys), Backspace, Enter, Esc |
+| channel                | direction     | use                                                                                      |
+| ---------------------- | ------------- | ---------------------------------------------------------------------------------------- |
+| `editor.overlay.open`  | plugin → host | take MODAL ownership: hide prompt + cursor, block submit, route every key here           |
+| `editor.overlay.close` | plugin → host | release ownership; restore the prompt                                                    |
+| `editor.footer.set`    | plugin → host | paint / clear the overlay band                                                           |
+| `editor.key` (hook)    | host → plugin | ALL keystrokes while owned: nav, printables (as single-char keys), Backspace, Enter, Esc |
 
 Because `/config` takes modal ownership, the prompt is hidden and the field
 edit draft lives entirely in the FSM (`phase.draft`) — it never shares the
@@ -92,7 +92,7 @@ that maps host context to the core and applies the resulting effects.
 
 Append a `Field` to `SCHEMA` in `lib/schema.ts` (id, label, help, `kind`,
 `path`, `section`, optional `choices` / `defaultHint`). That's the whole
-edit surface. For the value to actually *do* something, add the matching
+edit surface. For the value to actually _do_ something, add the matching
 reader to the agent's `src/config.ts` (the host owns parsing). A field the
 host doesn't read is simply ignored, so the two can drift safely.
 

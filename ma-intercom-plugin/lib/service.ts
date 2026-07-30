@@ -283,7 +283,10 @@ export interface SendInput {
  * read, both via injected paths.
  */
 export function send(deps: ServiceDeps, input: SendInput): SendOutcome {
-  const from: EnvelopeFrom = { ...selfFrom(deps), ...(input.fromCwd ? { cwd: input.fromCwd } : {}) }
+  const from: EnvelopeFrom = {
+    ...selfFrom(deps),
+    ...(input.fromCwd ? { cwd: input.fromCwd } : {}),
+  }
   const toRaw = input.to.trim()
   const scope = toRaw
   const delivered: DeliveredPeer[] = []

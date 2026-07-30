@@ -1,7 +1,7 @@
 {
   "name": "ma-llm-generic-endpoint-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Generic endpoint provider for arbitrary registered wire surface codecs.",
   "type": "module",
   "scripts": {

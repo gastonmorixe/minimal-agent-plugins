@@ -65,10 +65,7 @@ export type AnthropicBetaFlag = (typeof ANTHROPIC_BETA_FLAGS)[keyof typeof ANTHR
 // gateway). Re-exported here so this plugin's other importers (headers,
 // quota-probe, index, tests) keep the same import path. The registry-coupled
 // `buildBetaFlags` below stays local.
-export {
-  type AnthropicRequestKind,
-  classifyRequest,
-} from "./lib/anthropic-request.ts"
+export { type AnthropicRequestKind, classifyRequest } from "./lib/anthropic-request.ts"
 
 function hasAny1hTtl(req: CanonicalRequest): boolean {
   const checkBlocks = (blocks?: { cache?: { ttl?: string } }[]) =>

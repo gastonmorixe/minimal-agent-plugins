@@ -7,12 +7,7 @@
  * @module usage/lib/host-types
  */
 
-export type {
-  UsageBreakdownRow,
-  UsagePeriod,
-  UsageReport,
-  UsageTotals,
-} from "./usage-report.ts"
+export type { UsageBreakdownRow, UsagePeriod, UsageReport, UsageTotals } from "./usage-report.ts"
 
 import type { UsagePeriod, UsageReport } from "./usage-report.ts"
 

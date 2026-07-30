@@ -24,7 +24,10 @@ describe("parseSpawnRequest — expectArtifacts (FIX 4 contract)", () => {
   })
 
   it("trims entries and drops empty / non-string ones", () => {
-    const r = parseSpawnRequest({ task: "x", expectArtifacts: ["  /a.md  ", "", 7, "  ", "/b.md"] })
+    const r = parseSpawnRequest({
+      task: "x",
+      expectArtifacts: ["  /a.md  ", "", 7, "  ", "/b.md"],
+    })
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.expectArtifacts).toEqual(["/a.md", "/b.md"])
   })

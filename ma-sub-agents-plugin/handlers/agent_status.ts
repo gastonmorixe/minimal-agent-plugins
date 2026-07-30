@@ -21,7 +21,11 @@ export default async function agentStatus(ctx: TUIContext): Promise<TUIResult> {
   }
   const store = storeFromCtx(ctx)
   if (!store)
-    return { kind: "tool_result", content: "AgentStatus: no session id available.", is_error: true }
+    return {
+      kind: "tool_result",
+      content: "AgentStatus: no session id available.",
+      is_error: true,
+    }
 
   const id = parseIdArg(ctx.trigger.input)
   const now = Date.now()

@@ -10,8 +10,8 @@ Injects `PROMPT.md` into the system prompt at session start. The model reads it 
 - Semicolons. Almost-ban. Think ten times, then write a period or a comma.
 - Curly quotes. Use straight `"` and `'`.
 - Mechanical boldface. Bold only what a careful editor would.
-- AI dictionary: *delve, tapestry, landscape* (figurative), *leverage, harness, navigate* (figurative), *streamline, resonate, synergy, paradigm shift, groundbreaking, transformative, testament, pivotal, robust, seamless, vibrant, intricate, fostering, garner, underscore, showcase, exemplify, boast, align with, crucial, comprehensive, nuanced*, and the rest of the tier-1 and tier-2 list in PROMPT.md.
-- Copula avoidance. Write *is* and *has*, not *serves as* and *boasts*.
+- AI dictionary: _delve, tapestry, landscape_ (figurative), _leverage, harness, navigate_ (figurative), _streamline, resonate, synergy, paradigm shift, groundbreaking, transformative, testament, pivotal, robust, seamless, vibrant, intricate, fostering, garner, underscore, showcase, exemplify, boast, align with, crucial, comprehensive, nuanced_, and the rest of the tier-1 and tier-2 list in PROMPT.md.
+- Copula avoidance. Write _is_ and _has_, not _serves as_ and _boasts_.
 - Superficial -ing tails ("...highlighting the importance of").
 - "Not just X, but Y" as a structural crutch.
 - Sycophancy ("Great question!", "I hope this helps!").
@@ -23,7 +23,7 @@ Injects `PROMPT.md` into the system prompt at session start. The model reads it 
 
 ## What it asks for
 
-- Plain words. *Use, change, big, new, has, is, show.*
+- Plain words. _Use, change, big, new, has, is, show._
 - Varied sentence length. Throw in fragments. Start with "But", "And", "So".
 - A position. An opinion. One rough edge.
 - A read-it-aloud test before sending.
@@ -58,7 +58,7 @@ satisfy a now-removed validator gate; it is no longer needed.)
 
 ## Why
 
-LLM writing has a fingerprint. Em-dashes injecting dramatic asides, "not just X, but Y" parallelisms, "the system serves as a foundation for innovation", "delve into the intricate tapestry", "Despite its challenges, the project continues to thrive". The patterns are now well-documented across peer-reviewed studies (Kobak et al. 2025 in *Science Advances*, Reinhart et al. 2025 in *PNAS*, Juzek and Ward 2025 at ACL) and big-corpus journalism (Washington Post analyzed 328,744 ChatGPT messages in November 2025).
+LLM writing has a fingerprint. Em-dashes injecting dramatic asides, "not just X, but Y" parallelisms, "the system serves as a foundation for innovation", "delve into the intricate tapestry", "Despite its challenges, the project continues to thrive". The patterns are now well-documented across peer-reviewed studies (Kobak et al. 2025 in _Science Advances_, Reinhart et al. 2025 in _PNAS_, Juzek and Ward 2025 at ACL) and big-corpus journalism (Washington Post analyzed 328,744 ChatGPT messages in November 2025).
 
 This plugin codifies the suppression rules as a system-prompt fragment so every session inherits them.
 
@@ -67,10 +67,10 @@ This plugin codifies the suppression rules as a system-prompt fragment so every 
 - [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup. The canonical field guide.
 - [`jpeggdev/humanize-writing`](https://github.com/jpeggdev/humanize-writing). 8-pass editing workflow, full vocab list.
 - [`blader/humanizer`](https://github.com/blader/humanizer). 24-pattern catalog derived from Wikipedia.
-- Kobak et al., "Delving into LLM-assisted writing in biomedical publications through excess vocabulary", *Science Advances*, July 2025.
-- Reinhart et al., "Do LLMs write like humans? Variation in grammatical and rhetorical styles", *PNAS*, February 2025.
+- Kobak et al., "Delving into LLM-assisted writing in biomedical publications through excess vocabulary", _Science Advances_, July 2025.
+- Reinhart et al., "Do LLMs write like humans? Variation in grammatical and rhetorical styles", _PNAS_, February 2025.
 - Juzek and Ward, "Why Does ChatGPT 'Delve' So Much?", ACL 2025.
-- Merrill, Chen, Kumer, "What are the clues that ChatGPT wrote something? We analyzed its style", *Washington Post*, November 2025.
+- Merrill, Chen, Kumer, "What are the clues that ChatGPT wrote something? We analyzed its style", _Washington Post_, November 2025.
 
 ## License
 

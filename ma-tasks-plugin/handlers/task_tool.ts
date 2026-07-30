@@ -112,7 +112,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
   const out: ParsedInput = { action }
 
   // id (string or integer position)
-  if (raw.id !== undefined) {
+  if (raw.id !== undefined && raw.id !== null) {
     if (!isIdRef(raw.id)) {
       return { ok: false, error: "`id` must be a non-empty string or positive integer" }
     }
@@ -120,7 +120,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
   }
 
   // title
-  if (raw.title !== undefined) {
+  if (raw.title !== undefined && raw.title !== null) {
     if (typeof raw.title !== "string" || raw.title.trim().length === 0) {
       return { ok: false, error: "`title` must be a non-empty string" }
     }
@@ -128,7 +128,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
   }
 
   // titles
-  if (raw.titles !== undefined) {
+  if (raw.titles !== undefined && raw.titles !== null) {
     if (!Array.isArray(raw.titles) || raw.titles.length === 0) {
       return { ok: false, error: "`titles` must be a non-empty array of strings" }
     }
@@ -139,7 +139,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
   }
 
   // items (tree-shaped add_many: top-level + optional string children)
-  if (raw.items !== undefined) {
+  if (raw.items !== undefined && raw.items !== null) {
     if (!Array.isArray(raw.items) || raw.items.length === 0) {
       return { ok: false, error: "`items` must be a non-empty array of objects" }
     }
@@ -210,7 +210,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
   }
 
   // after
-  if (raw.after !== undefined) {
+  if (raw.after !== undefined && raw.after !== null) {
     if (!isIdRef(raw.after)) {
       return { ok: false, error: "`after` must be a non-empty string or positive integer" }
     }
@@ -234,7 +234,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
   }
 
   // order
-  if (raw.order !== undefined) {
+  if (raw.order !== undefined && raw.order !== null) {
     if (!Array.isArray(raw.order) || raw.order.length === 0) {
       return { ok: false, error: "`order` must be a non-empty array of ids" }
     }

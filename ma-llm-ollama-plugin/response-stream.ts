@@ -211,7 +211,11 @@ export async function* translateOllamaStream(
           const id = `call_${toolCallSeq++}`
           const args = normalizeArgs(tc.function?.arguments)
           yield { type: "tool_use_start", index: blockIdx, id, name }
-          yield { type: "tool_use_input_delta", index: blockIdx, partialJson: JSON.stringify(args) }
+          yield {
+            type: "tool_use_input_delta",
+            index: blockIdx,
+            partialJson: JSON.stringify(args),
+          }
           yield { type: "tool_use_stop", index: blockIdx, input: args }
         }
       }

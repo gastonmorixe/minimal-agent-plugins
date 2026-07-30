@@ -7,6 +7,7 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 ## [Unreleased]
 
 ### Added
+
 - 2026-07-23 (this session): `ma-llm-cursor-plugin` landed as a self-contained Cursor provider on the custom `cursor-agent-run` Connect/protobuf surface. Authentication stays in the minimal-agent provider store: pasted API keys are exchanged at request time, while browser login uses Cursor's `loginDeepControl` challenge/poll flow; credentials never fall back to environment variables or macOS Keychain. Request identity includes Cursor-compatible checksum, machine/client IDs, and Connect headers with only non-secret `MA_CURSOR_*` overrides. The authenticated `AvailableModels` catalog decoder maps aliases, variants, context windows, thinking/image support, and effort levels into the live model refresher, with a namespaced offline static seed. ASK-mode streaming translates Cursor token/thinking/usage/error events into canonical events while minimal-agent retains tool ownership.
 - 2026-07-15 (this session): `ma-llm-clinepass-plugin` landed. ClinePass provider (OpenAI-compatible open-weight catalog via `api.cline.bot`). API key + WorkOS device-code OAuth, 10 `cline-pass/*` models, session quota windows from rate-limit headers, package-local `tsdoc.json`. 14 unit tests.
 - 2026-07-15 01:45:31 -0400 (this session): `ma-intercom-plugin` `@`-mention peer autocomplete + dual representation. Typing `@` opens a slash-menu-style fuzzy peer list (footer overlay) sorted online-first with status colors, name/short sid/pid/model/cwd. Matching `@tokens` paint live via `editor.buffer.styles` (violet/purple bold). On the model path, `turn.willStart` rewrites uniquely resolved tokens to peer XML while scrollback/queue keep the styled `@token`. Wire form in `lib/mention/PROMPTS.ts`. `resolvePeer` matches display names. Handlers: `on_key` (prio 65), `on_buffer_changed`, `on_turn_will_start`. Package-local `tsdoc.json`. 41 pure-lib tests. README section.
@@ -17,6 +18,7 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 - 2026-06-03 22:57:38 -0400 (this session): `ma-speak-plugin` landed. Three tools (`Speak`, `SpeakStatus`, `SpeakStop`) that read text aloud through a swappable speech backend (default `macos-say`, wrapping `/usr/bin/say`). The model controls only `text` + `wait`. Voice, rate, and binary are operator config, so the tool is backend-agnostic and the model never learns which engine speaks. Lifecycle is the inverse of a normal tool: speech OUTLIVES the call. The handler spawns the backend detached (own process group), registers the job in an in-process module-singleton registry, and returns a short handle (`s1`) immediately while audio plays in the background. A reaper settles the job on exit. `SpeakStop` group-kills (SIGTERM then SIGKILL after a grace window) so the underlying speech CLI dies with the wrapper, and a parent-exit hook SIGKILLs any in-flight utterance if the agent exits (macOS does not propagate parent death). Backend-agnostic failure taxonomy keeps raw stderr and engine identity off every model-facing surface. 80 tests across config / registry / backend / render / macos-say / three handlers, all injecting a fake `spawnFn` so no real `say` runs (fast, offline, silent).
 
 ### Fixed
+
 - 2026-07-29 03:20:00 -0400 (this session): `ma-tasks-plugin` `add_many` no longer rejects `children: []` on an `items` entry. Empty arrays are now silently ignored (treated as absent) instead of returning `` `items[N].children` must be non-empty ``. Models often emit `children: []` on leaf items, and killing the whole plan for a vacuous field was gratuitous.
 - 2026-07-29 01:52:03 -0400 (this session): Grok (and ClinePass) session-info prime no longer picks the first `auth.jsonc` OAuth entry or a stray env API key when the session used `--credential-name` / OAuth. Host now forwards `credentialName` + `authKind` into `primeSessionInfo`. Free accounts with `monthlyLimit: 0` cache billing without painting a bogus `month` bar (and stop re-GETting `/billing` every turn); `ondemand` window when `onDemandCap > 0`. Weekly CLI `creditUsagePercent` still not on raw `/v1/billing`.
 - 2026-07-24 (this session): `ma-env-info-plugin` host snapshot (`cwd=`, os, git, session id, …) no longer disappears when the operator launches with `--no-system-session-context` / omits `systemPrompt.sessionContext`. The `snapshot` fragment now uses `placement: "afterInstructions"` (plain markdown, with a short `# Environment` heading + fenced `ini` block from `gather.sh`) instead of riding only in the XML-wrapped sessionContext slot that that flag strips. Framing moved out of `PROMPT.md` into the fragment so GPT/Claude sessions do not get a duplicate empty Environment section. Root cause observed on Grok monorepo sessions (e.g. Leon `67ab8ffe`) that grepped a stale `~/Projects/minimal-agent` symlink into `minimal-agent-core` because absolute `cwd=` was never in the system prompt.
@@ -43,24 +45,29 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   - `ma-slash-menu` `lib/tokens.ts`: token estimate counted UTF-16 code units instead of UTF-8 bytes, contradicting its documented `bytes / 4` heuristic; now measures bytes.
 
 ### Changed
+
 - 2026-05-22 (this session): `.gitignore` extended with `.*-dbg/`, `.*-debug/`, `.*.dbg/` patterns. Catches debugger scratch folders like `.net-dbg/` without per-folder rules.
 
 ## 2026-05-22
 
 ### Added
+
 - 15:11:44 -0400 `2bc53eb`: `ma-agent-writing-style-plugin` landed. Pure prompt fragment, no tools. Hard bans em-dashes and semicolons, kills the AI vocabulary, suppresses sycophancy and significance inflation.
 
 ### Changed
+
 - 15:12:05 -0400 `aff2598`: `ma-skills-plugin` PROMPT.md and README scrubbed of em-dashes and prose semicolons.
 
 ## 2026-05-20
 
 ### Fixed
+
 - 10:54:07 -0400 `d1abcc1`: `ma-skills-plugin` SKILL.md frontmatter parser now accepts multi-line scalars.
 
 ## 2026-05-19
 
 ### Added
+
 - 18:07:35 -0400 `31ddf2f`: `ma-skills-plugin` phase 7. Registered in parent README. Final wrap.
 - 18:03:38 -0400 `bd0f65f`: `ma-skills-plugin` phase 6. Manifest, PROMPT.md, README.md.
 - 18:00:41 -0400 `e027017`: `ma-skills-plugin` phase 5. `Skill` tool handler (`list` / `info` / `read`).
@@ -72,4 +79,5 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 ## 2026-05-18
 
 ### Added
+
 - 17:43:24 -0400 `bb77eae`: Initial commit. `ma-fetch-plugin` with the `Fetch` tool and a headless-browser backend (default: [obscura](https://github.com/h4ckf0r0day/obscura)).

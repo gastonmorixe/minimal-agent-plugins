@@ -10,8 +10,8 @@ Volatile values like the current time and terminal size won't refresh.
 
 ## What it contributes
 
-| Surface | Value |
-|---|---|
+| Surface                    | Value                       |
+| -------------------------- | --------------------------- |
 | `manifest.promptFragments` | one entry, `id: "snapshot"` |
 
 The fragment's handler is the bundled `gather.sh` script (a subprocess
@@ -47,10 +47,10 @@ The snapshot includes the agent-process identity via the
 `agentContextToEnv` (see `src/plugins/agent-context.ts`):
 
 - `session_id` ← `MINIMAL_AGENT_SESSION_ID` (UUID v4, per-process)
-- `pid`        ← `MINIMAL_AGENT_PID` (agent's Bun process id;
+- `pid` ← `MINIMAL_AGENT_PID` (agent's Bun process id;
   falls back to `$PPID` when run outside the agent)
-- `model`      ← `MINIMAL_AGENT_MODEL` (resolved model id)
-- `version`    ← `MINIMAL_AGENT_VERSION` (agent semver)
+- `model` ← `MINIMAL_AGENT_MODEL` (resolved model id)
+- `version` ← `MINIMAL_AGENT_VERSION` (agent semver)
 
 ## Disabling
 

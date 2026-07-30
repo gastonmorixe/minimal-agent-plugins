@@ -11,7 +11,7 @@ Controlling Chrome via CDP means connecting to its debug port
 (`--remote-debugging-port=9222`). Two things make the naive approach painful on
 macOS:
 
-1. **Local Network privacy.** Every *new process* that opens a TCP socket to
+1. **Local Network privacy.** Every _new process_ that opens a TCP socket to
    that port triggers an "allow" prompt. A short-lived client per command = a
    prompt per command.
 2. **DNS-rebind protection.** Newer Chrome/Chromium return `404` for the `/json`
@@ -82,6 +82,7 @@ Convenience:
 `ping · targets · alltargets · eval · frameeval · nav · newtab · setdownload · downloads · closetarget · activatetarget · getinfo`
 
 Full-protocol:
+
 - `send`: generic passthrough. Forward ANY CDP method (`method` in `Domain.method` form) with arbitrary `params`, optionally scoped to a tab via `target` (or an explicit `sessionId`). This is what unlocks Network, Performance, Tracing, Profiler, HeapProfiler, DOM, Emulation, CSS, Accessibility, Storage, Fetch, Input, Log (the entire protocol) without the daemon hand-coding each domain.
 - `events`: drain the async event stream. CDP events (e.g. `Network.responseReceived`) are unsolicited pushes with no reply id. The long-lived daemon buffers them in a bounded ring so a later poll can read them. Filter by `filter`/`sessionId`, page with a `since` cursor, cap with `limit`, drop with `clear`.
 - `record`: toggle event buffering (auto-enabled whenever you `send` a `*.enable`).
@@ -102,12 +103,12 @@ widgets, setting React inputs, download verification, iframe/login caveats, the
 
 ## Config (env)
 
-| Var        | Default                 | Meaning                                  |
-| ---------- | ----------------------- | ---------------------------------------- |
-| `CDP_PORT` | `9222`                  | Chrome remote-debugging port             |
-| `CDP_SOCK` | `/tmp/cdp.sock`         | unix socket the daemon listens on        |
-| `CDP_DTAP` | auto-detected           | path to `DevToolsActivePort` (override)  |
-| `CDP_LOG`  | `/tmp/cdp-server.log`   | daemon log file                          |
+| Var        | Default               | Meaning                                 |
+| ---------- | --------------------- | --------------------------------------- |
+| `CDP_PORT` | `9222`                | Chrome remote-debugging port            |
+| `CDP_SOCK` | `/tmp/cdp.sock`       | unix socket the daemon listens on       |
+| `CDP_DTAP` | auto-detected         | path to `DevToolsActivePort` (override) |
+| `CDP_LOG`  | `/tmp/cdp-server.log` | daemon log file                         |
 
 ## Tests
 

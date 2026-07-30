@@ -101,7 +101,11 @@ export interface AnthropicRequestBody {
   tool_choice?: { type: "auto" | "any" | "none" | "tool"; name?: string }
   metadata?: { user_id?: string }
   max_tokens: number
-  thinking?: { type: "adaptive" | "enabled" | "disabled"; budget_tokens?: number; display?: string }
+  thinking?: {
+    type: "adaptive" | "enabled" | "disabled"
+    budget_tokens?: number
+    display?: string
+  }
   temperature?: number | null
   top_p?: number | null
   top_k?: number | null

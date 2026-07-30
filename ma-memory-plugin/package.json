@@ -1,7 +1,7 @@
 {
   "name": "ma-memory-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "scripts": {
     "typecheck": "bun run ../scripts/typecheck.ts",
     "check": "bun run ../scripts/check.ts",

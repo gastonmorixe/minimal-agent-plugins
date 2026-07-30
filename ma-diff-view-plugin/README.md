@@ -11,10 +11,10 @@ Both paths share the same renderer.
 
 ## What it contributes
 
-| Surface | Trigger | Handler |
-|---|---|---|
-| Tool | `ShowDiff` (alias: `show_diff`) | `handlers/show_diff.ts` |
-| Inline tag | `<ma::emit::diff>` | `handlers/inline_diff.ts` |
+| Surface    | Trigger                         | Handler                   |
+| ---------- | ------------------------------- | ------------------------- |
+| Tool       | `ShowDiff` (alias: `show_diff`) | `handlers/show_diff.ts`   |
+| Inline tag | `<ma::emit::diff>`              | `handlers/inline_diff.ts` |
 
 ## Files
 

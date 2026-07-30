@@ -2,8 +2,9 @@
  * Cursor `ProviderAdapter` — self-contained custom-wire provider plugin.
  *
  * Speaks Cursor's AgentService/Run (connect+proto) surface `cursor-agent-run`.
- * MVP: token + thinking stream; wire mode defaults to AGENT (not ASK).
- * MA tools are not yet encoded on the wire (Cursor may still advertise its own).
+ * MA tools ride MCP (`mcp_tools` + exclude native oneofs); text/thinking stream
+ * maps to canonical events. With tools enabled, uses bidi h2: one stream per user
+ * turn; tool results are written as exec_client_message on the same connection.
  *
  * Auth: MA provider store only (apiKeyAuth exchange / oauthLogin deviceCode).
  * No env tokens or keychain.
@@ -12,6 +13,7 @@
  */
 
 import { cursorApiKeyAuth, resolveCursorAccessToken } from "./auth.ts"
+import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
 import { agentRunUrl } from "./connect/hosts.ts"
 import { connectFrameProto, connectStreamPost } from "./connect/stream.ts"
 import { buildCursorHeaders } from "./headers.ts"
@@ -31,11 +33,25 @@ import type {
 import { listCursorLiveModels, setCursorLiveModelRegistrar } from "./live-models.ts"
 import { registerCursorAdHocModelInto, registerCursorModels } from "./models.ts"
 import { cursorOAuthLogin } from "./oauth-login.ts"
-import { buildCursorAgentRunBody } from "./request-body.ts"
+import { buildCursorAgentRunBody, buildCursorToolHeaders } from "./request-body.ts"
 import { translateCursorStream } from "./response-stream.ts"
 import { fetchCursorSessionInfo } from "./session-info.ts"
 import { validateCursorRequest } from "./validate.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
+
+/**
+ * Stable bidi session key when the host passes an empty sessionId.
+ * loadClientIds() mints a fresh UUID each call — that must not key the
+ * open AgentService/Run stream or tool continuations never find pendingExec.
+ */
+let fallbackBidiSessionKey: string | undefined
+
+function resolveBidiSessionKey(hostSessionId: string | undefined): string {
+  const host = hostSessionId?.trim()
+  if (host) return host
+  fallbackBidiSessionKey ??= crypto.randomUUID()
+  return fallbackBidiSessionKey
+}
 
 /** Cursor adapter. Speaks AgentService/Run (custom surface). */
 export const cursorAdapter: ProviderAdapterView = {
@@ -58,25 +74,52 @@ export const cursorAdapter: ProviderAdapterView = {
       signal: req.signal,
     })
     const ids = await loadClientIds()
-    // Align session id with host session when available.
-    ids.sessionId = ctx.sessionId || ids.sessionId
+    const bidiSessionKey = resolveBidiSessionKey(ctx.sessionId)
+    // Align Cursor wire session id with host (or stable fallback) for bidi.
+    ids.sessionId = bidiSessionKey
 
     const headers = buildCursorHeaders({
       token,
       ids,
       streaming: true,
       clientType: "cli",
+      extra: buildCursorToolHeaders(req),
     })
 
     const protoBody = buildCursorAgentRunBody(req, model)
-    const framed = connectFrameProto(protoBody)
     const url = agentRunUrl()
 
     ctx.debug?.header(`POST ${url}`)
     ctx.debug?.kv("model", model.id)
     ctx.debug?.kv("surface", CURSOR_SURFACE_AGENT_RUN)
-    ctx.debug?.kv("bodyBytes", String(framed.length))
+    ctx.debug?.kv("bidi", String(shouldUseCursorBidi(req, networkClient)))
+    ctx.debug?.kv("bidiSession", bidiSessionKey)
     ctx.debug?.headers(headers)
+
+    if (shouldUseCursorBidi(req, networkClient)) {
+      if (!networkClient) {
+        yield {
+          type: "stream_error",
+          retryable: false,
+          category: "api",
+          cause: new Error("cursor bidi: host NetworkClient is required when tools are enabled"),
+        }
+        return
+      }
+      yield* runCursorBidi(req, model, {
+        url,
+        headers,
+        initialRunBody: protoBody,
+        signal: req.signal,
+        sessionId: bidiSessionKey,
+        modelId: model.id,
+        networkClient,
+      })
+      return
+    }
+
+    const framed = connectFrameProto(protoBody)
+    ctx.debug?.kv("bodyBytes", String(framed.length))
 
     const chunks = connectStreamPost({
       url,

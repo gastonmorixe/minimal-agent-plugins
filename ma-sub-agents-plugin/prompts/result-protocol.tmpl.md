@@ -9,9 +9,9 @@ Finish in two steps, in order:
 2. As your final action, call the `ReportResult` tool to hand your work back:
 
    ReportResult({
-     "summary": "<your findings: a dense, self-contained paragraph or two>",
-     "artifacts": ["<absolute path of each file you created or changed>"],
-     "incomplete": false
+   "summary": "<your findings: a dense, self-contained paragraph or two>",
+   "artifacts": ["<absolute path of each file you created or changed>"],
+   "incomplete": false
    })
 
 `ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads.
@@ -20,7 +20,7 @@ If you could not finish, still call `ReportResult` with `"incomplete": true` and
 
 Fallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:
 
-   %%resultPath%%
+%%resultPath%%
 
-   {"short": "<your findings>", "tokens": 0, "tools": 0,
-    "artifacts": ["<absolute path of each file you wrote>"]}
+{"short": "<your findings>", "tokens": 0, "tools": 0,
+"artifacts": ["<absolute path of each file you wrote>"]}

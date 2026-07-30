@@ -43,7 +43,11 @@ describe("due — fixed recurring", () => {
   })
 
   it("fires again on the next matching minute", () => {
-    const e = entry({ id: "aaaa1111", cron: "*/5 * * * *", lastFiredAt: ms(2026, 5, 30, 10, 0, 5) })
+    const e = entry({
+      id: "aaaa1111",
+      cron: "*/5 * * * *",
+      lastFiredAt: ms(2026, 5, 30, 10, 0, 5),
+    })
     const r = due([e], ms(2026, 5, 30, 10, 5, 1))
     expect(r.fire.map((x) => x.id)).toEqual(["aaaa1111"])
   })

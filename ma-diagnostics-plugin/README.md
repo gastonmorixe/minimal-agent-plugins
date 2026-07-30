@@ -16,13 +16,13 @@ Probes config files + `package.json` devDeps at the **file's project root**, and
 resolves binaries from that root's `node_modules/.bin` **or an ancestor's**
 (hoisted workspaces). Uses whatever is already present. Never installs.
 
-| tool | signal | how it runs | speed |
-|---|---|---|---|
-| **tsgo** (type) | tsconfig + bin | persistent `tsgo --lsp` (reused) | ~2-3ms warm |
-| **tsc** (type) | tsconfig + bin, no tsgo | `tsc --lsp` when TS≥7, else spawn `--noEmit` | ~2-3ms / ~300-800ms |
-| **biome** (format) | bin / biome.json | spawn `check --reporter=json` | ~55ms |
-| **oxlint** (lint) | bin / .oxlintrc | spawn `-f json` (opt-in) | ~400ms |
-| **sourcekit-lsp** (apple) | Package.swift / .xcodeproj | persistent LSP (reused) | ~2-5ms warm |
+| tool                      | signal                     | how it runs                                  | speed               |
+| ------------------------- | -------------------------- | -------------------------------------------- | ------------------- |
+| **tsgo** (type)           | tsconfig + bin             | persistent `tsgo --lsp` (reused)             | ~2-3ms warm         |
+| **tsc** (type)            | tsconfig + bin, no tsgo    | `tsc --lsp` when TS≥7, else spawn `--noEmit` | ~2-3ms / ~300-800ms |
+| **biome** (format)        | bin / biome.json           | spawn `check --reporter=json`                | ~55ms               |
+| **oxlint** (lint)         | bin / .oxlintrc            | spawn `-f json` (opt-in)                     | ~400ms              |
+| **sourcekit-lsp** (apple) | Package.swift / .xcodeproj | persistent LSP (reused)                      | ~2-5ms warm         |
 
 **Type provider priority**: `tsgo` wins when both `tsgo` and `tsc` are present.
 `tsc` is the fallback for projects that have the standard `typescript` package
@@ -68,16 +68,16 @@ plugins keeps separate `tsc --lsp` instances. The live-area footer shows
   "plugins": {
     "diagnostics": {
       "enabled": true,
-      "type": true,        // tsgo or tsc (type errors)
-      "format": true,      // biome
-      "lint": false,       // oxlint (startup-heavy; opt-in)
-      "apple": true,       // sourcekit-lsp for Swift/Obj-C/C/C++
+      "type": true, // tsgo or tsc (type errors)
+      "format": true, // biome
+      "lint": false, // oxlint (startup-heavy; opt-in)
+      "apple": true, // sourcekit-lsp for Swift/Obj-C/C/C++
       "outOfScope": { "enabled": true }, // ad-hoc tsc for files outside tsconfig
-      "severityFloor": "warning",  // "error" | "warning" | "info"
-      "maxInline": 8,      // cap findings shown/sent
-      "timeoutMs": 2000    // per-provider ceiling
-    }
-  }
+      "severityFloor": "warning", // "error" | "warning" | "info"
+      "maxInline": 8, // cap findings shown/sent
+      "timeoutMs": 2000, // per-provider ceiling
+    },
+  },
 }
 ```
 
@@ -173,7 +173,6 @@ the structural `tool.didInvoke` payload shape (`findings`/`notes` accumulators).
   Respects config.type / config.lint / config.format / config.apple gates
 ```
 
-
 ```
 handlers/on_tool_did_invoke.ts              single attach point (chain listener)
 lib/detect.ts                               probe the project for available tools
@@ -255,14 +254,14 @@ DiagnosticsService.check(path, text)
 
 ### Per-provider fallback table
 
-| Normal provider | Out-of-scope fallback | Notes |
-|---|---|---|
-| tsgo LSP | `tsc --noEmit --strict <file>` | Spawns inline; ~300-500ms |
-| tsc spawn | `tsc --noEmit --strict <file>` | Already spawn-based; same path |
-| sourcekit-lsp (Swift) | None needed | Already syntax-checks ad-hoc .swift files |
-| sourcekit-lsp (C/ObjC/C++) | `clang -fsyntax-only <file>` | Bypasses need for compile_commands.json |
-| biome | None needed | Always checks whatever file you pass |
-| oxlint | None needed | Same |
+| Normal provider            | Out-of-scope fallback          | Notes                                     |
+| -------------------------- | ------------------------------ | ----------------------------------------- |
+| tsgo LSP                   | `tsc --noEmit --strict <file>` | Spawns inline; ~300-500ms                 |
+| tsc spawn                  | `tsc --noEmit --strict <file>` | Already spawn-based; same path            |
+| sourcekit-lsp (Swift)      | None needed                    | Already syntax-checks ad-hoc .swift files |
+| sourcekit-lsp (C/ObjC/C++) | `clang -fsyntax-only <file>`   | Bypasses need for compile_commands.json   |
+| biome                      | None needed                    | Always checks whatever file you pass      |
+| oxlint                     | None needed                    | Same                                      |
 
 Biome and oxlint are "always-scope" tools — they check whatever path you
 hand them and don't have include/exclude concepts tied to project structure.

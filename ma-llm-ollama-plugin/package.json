@@ -1,7 +1,7 @@
 {
   "name": "ma-llm-ollama-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External provider plugin for minimal-agent: Ollama Cloud (native /api/chat NDJSON streaming).",
   "type": "module",
   "scripts": {

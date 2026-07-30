@@ -14,7 +14,10 @@ describe("isRoute", () => {
 
 describe("validateBody", () => {
   test("eval requires target + expr", () => {
-    expect(validateBody("eval", { target: "T", expr: "1+1" })).toEqual({ target: "T", expr: "1+1" })
+    expect(validateBody("eval", { target: "T", expr: "1+1" })).toEqual({
+      target: "T",
+      expr: "1+1",
+    })
     expect(() => validateBody("eval", { target: "T" })).toThrow(/expr/)
     expect(() => validateBody("eval", { expr: "1" })).toThrow(/target/)
   })

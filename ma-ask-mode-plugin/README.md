@@ -14,8 +14,8 @@ safe boundary).
 
 ## What it contributes
 
-| Surface | Value |
-|---|---|
+| Surface          | Value                  |
+| ---------------- | ---------------------- |
 | `manifest.modes` | one entry, `id: "ask"` |
 
 No tools, no inline tags, no event/hook subscriptions. The mode
@@ -92,12 +92,12 @@ User config at `~/.minimal-agent/config.jsonc`:
         "ask": {
           "permissions": {
             // Tighten further: also block Bash.
-            "deny": ["Edit", "Write", "Bash"]
-          }
-        }
-      }
-    }
-  }
+            "deny": ["Edit", "Write", "Bash"],
+          },
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -110,12 +110,12 @@ Or to relax (allow Edit but keep Write blocked):
       "modes": {
         "ask": {
           "permissions": {
-            "deny": ["Write"]
-          }
-        }
-      }
-    }
-  }
+            "deny": ["Write"],
+          },
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -132,7 +132,7 @@ remove the plugin entirely:
 ```jsonc
 {
   "plugins": {
-    "ask-mode": { "enabled": false }
-  }
+    "ask-mode": { "enabled": false },
+  },
 }
 ```

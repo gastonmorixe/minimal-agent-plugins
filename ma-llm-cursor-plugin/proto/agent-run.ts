@@ -6,6 +6,9 @@
  * @module llm/providers/cursor/proto/agent-run
  */
 
+import { type CursorMcpExecRequest, decodeExecServerMcpRequest } from "./exec-mcp.ts"
+import { type CursorMcpToolWire, encMcpTools } from "./mcp-tools.ts"
+import { decodeToolCallUpdate } from "./tool-call-decode.ts"
 import {
   concat,
   decodeFields,
@@ -62,6 +65,8 @@ export type AgentRunEncodeOpts = {
   parameters?: ReadonlyArray<CursorModelParameterValue>
   excludeWorkspaceContext?: boolean
   customSystemPrompt?: string
+  /** MA tools as agent.v1.McpTools (field 4). Omitted when empty. */
+  mcpTools?: readonly CursorMcpToolWire[]
 }
 
 function encRequestContextEnv(opts: AgentRunEncodeOpts): Uint8Array {
@@ -137,6 +142,9 @@ export function encodeAgentRunRequest(opts: AgentRunEncodeOpts): Uint8Array {
     encMsg(9, encRequestedModel(opts)),
   ]
   if (opts.customSystemPrompt) parts.push(encString(8, opts.customSystemPrompt))
+  if (opts.mcpTools && opts.mcpTools.length > 0) {
+    parts.push(encMsg(4, encMcpTools(opts.mcpTools)))
+  }
   if (opts.excludeWorkspaceContext) parts.push(encBool(12, true))
   return concat(...parts)
 }
@@ -156,11 +164,16 @@ function msgTextField1(body: Uint8Array): string | undefined {
   return undefined
 }
 
+/** Parsed MCP exec request attached to exec_server_message events. */
+export type { CursorMcpExecRequest } from "./exec-mcp.ts"
+
 /** Coarse server event extracted from one AgentServerMessage payload. */
 export type CursorServerEvent = {
   kind: string
   text?: string
   rawField?: number
+  toolCall?: ReturnType<typeof decodeToolCallUpdate>
+  execMcp?: CursorMcpExecRequest
 }
 
 /**
@@ -183,18 +196,35 @@ export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[
           events.push({ kind: "turn_ended", rawField: 14 })
         } else if (u.no === 13) {
           events.push({ kind: "heartbeat", rawField: 13 })
-        } else if (u.no === 2) {
-          events.push({ kind: "tool_call_started", rawField: 2 })
-        } else if (u.no === 3) {
-          events.push({ kind: "tool_call_completed", rawField: 3 })
+        } else if (u.no === 2 && body) {
+          events.push({
+            kind: "tool_call_started",
+            rawField: 2,
+            toolCall: decodeToolCallUpdate(body),
+          })
+        } else if (u.no === 3 && body) {
+          events.push({
+            kind: "tool_call_completed",
+            rawField: 3,
+            toolCall: decodeToolCallUpdate(body),
+          })
         } else if (u.no === 6) {
           events.push({ kind: "user_message_appended", rawField: 6 })
         } else {
           events.push({ kind: `interaction_${u.no}`, rawField: u.no })
         }
       }
-    } else if (f.no === 2) {
-      events.push({ kind: "exec_server_message", rawField: 2 })
+    } else if (f.no === 2 && f.wire === 2) {
+      const execBody = fieldBytes(f)
+      if (execBody) {
+        events.push({
+          kind: "exec_server_message",
+          rawField: 2,
+          execMcp: decodeExecServerMcpRequest(execBody),
+        })
+      } else {
+        events.push({ kind: "exec_server_message", rawField: 2 })
+      }
     } else if (f.no === 3) {
       events.push({ kind: "conversation_checkpoint_update", rawField: 3 })
     } else if (f.no === 7) {

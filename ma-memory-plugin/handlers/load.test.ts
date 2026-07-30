@@ -500,7 +500,9 @@ describe("loadMemories: inject='latest'", () => {
     process.env.MINIMAL_AGENT_MEMORY_NAMESPACE = "loadtest"
     const home = makeTempDir()
     const cwd = "/Users/x/proj"
-    primeNamespaced(home, cwd, { global: bulletLine("g-001", "2026-06-20T10:00:00-04:00", "test") })
+    primeNamespaced(home, cwd, {
+      global: bulletLine("g-001", "2026-06-20T10:00:00-04:00", "test"),
+    })
 
     let called = false
     const fakeRefresh: typeof refreshAndRender = async () => {
@@ -518,7 +520,9 @@ describe("loadMemories: inject='latest'", () => {
     process.env.MINIMAL_AGENT_MEMORY_NAMESPACE = "loadtest"
     const home = makeTempDir()
     const cwd = "/Users/x/proj"
-    primeNamespaced(home, cwd, { global: bulletLine("g-001", "2026-06-20T10:00:00-04:00", "test") })
+    primeNamespaced(home, cwd, {
+      global: bulletLine("g-001", "2026-06-20T10:00:00-04:00", "test"),
+    })
 
     const out = await loadMemories(makeCtx(home, cwd), {
       loadConfig: () => cfgWith("latest"),

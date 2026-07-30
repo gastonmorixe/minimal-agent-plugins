@@ -1,7 +1,7 @@
 {
   "name": "ma-chrome-cdp-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: drive a running Chrome over CDP through a persistent daemon + unix socket. Tool: ChromeCDP.",
   "type": "module",
   "scripts": {

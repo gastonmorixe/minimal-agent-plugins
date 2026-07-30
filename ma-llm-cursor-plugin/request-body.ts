@@ -12,6 +12,7 @@
  */
 
 import { effortParamIdFromTags } from "./capabilities.ts"
+import { buildCursorToolWirePolicy } from "./cursor-tool-policy.ts"
 import type { CanonicalBlock, CanonicalMessage } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelView } from "./lib/provider-plugin.ts"
@@ -113,6 +114,7 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
   const maxMode = modelIsCursorMaxMode(model)
   const isVariant = modelIsCursorVariant(model)
   const parameters = buildCursorModelParameters(req, model)
+  const toolPolicy = buildCursorToolWirePolicy(req)
 
   const opts: AgentRunEncodeOpts = {
     // Bare Cursor API slug (not host-namespaced id).
@@ -123,8 +125,14 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
     maxMode,
     isVariantStringRepresentation: isVariant,
     parameters: parameters.length > 0 ? parameters : undefined,
+    mcpTools: toolPolicy.mcpTools.length > 0 ? toolPolicy.mcpTools : undefined,
   }
   return encodeAgentClientMessageRun(opts)
+}
+
+/** Tool-filter HTTP headers for AgentService/Run (exclude native oneofs). */
+export function buildCursorToolHeaders(req: CanonicalRequest): Record<string, string> {
+  return buildCursorToolWirePolicy(req).headers
 }
 
 /** Best-effort text flatten for diagnostics / encoding. */

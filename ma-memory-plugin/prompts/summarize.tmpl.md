@@ -5,10 +5,12 @@ The id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent 
 Output format: markdown, organized by topic cluster:
 
 ## <Cluster name>
+
 - <one-sentence takeaway>. Sources: #id1, #id2, #id3
 - <one-sentence takeaway>. Sources: #id4
 
 Rules:
+
 - Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.
 - Cite the source bullet ids in a trailing "Sources: ..." list so the agent can drill down for full text.
 - Each takeaway must be specific and actionable. "Be careful with X" is noise. "X has invariant Y at file:line because Z" is signal.

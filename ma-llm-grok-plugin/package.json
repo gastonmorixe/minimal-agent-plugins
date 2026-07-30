@@ -1,7 +1,7 @@
 {
   "name": "ma-llm-grok-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External provider plugin for minimal-agent: Grok / xAI (OpenAI-compatible Chat Completions).",
   "type": "module",
   "scripts": {

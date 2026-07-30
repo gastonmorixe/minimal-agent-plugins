@@ -8,12 +8,12 @@ blocking the conversation. Logs are durable and colocated with session history.
 
 Four tools:
 
-| Tool | Purpose |
-|---|---|
-| `BackgroundRun` | Start a `bash -c` command in the background. Returns a handle (`j1`) and pid immediately, and the job runs concurrently. |
-| `BackgroundStatus` | Cheap glance at one job or all jobs: state, elapsed, exit code, a short tail. |
-| `BackgroundLogs` | The full read of a job's output: tail / line range / grep / `since` byte cursor, ANSI stripped by default. |
-| `BackgroundStop` | Cancel one job or every running job. SIGTERM by default, escalates to SIGKILL. |
+| Tool               | Purpose                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `BackgroundRun`    | Start a `bash -c` command in the background. Returns a handle (`j1`) and pid immediately, and the job runs concurrently. |
+| `BackgroundStatus` | Cheap glance at one job or all jobs: state, elapsed, exit code, a short tail.                                            |
+| `BackgroundLogs`   | The full read of a job's output: tail / line range / grep / `since` byte cursor, ANSI stripped by default.               |
+| `BackgroundStop`   | Cancel one job or every running job. SIGTERM by default, escalates to SIGKILL.                                           |
 
 This is "sub-agents for raw bash": it borrows the proven shapes from the
 sub-agents plugin (Repository, discriminated-union state, a pure reducer plus an
@@ -22,7 +22,7 @@ models a raw OS process, not an LLM worker.
 
 ## Why a background tool
 
-The model already has full `Bash` and sub-agents, so it *can* background work
+The model already has full `Bash` and sub-agents, so it _can_ background work
 today. But the foreground `Bash` tool is synchronous, and spawning a whole LLM
 sub-agent just to run `bun test &` is the wrong tool. This plugin gives the model
 a quick, obvious path: fire a command, get a handle back, keep working, and get a
@@ -154,21 +154,21 @@ operator config. The model controls only what runs and an optional per-job
 {
   "plugins": {
     "ma-bg": {
-      "enabled": true,            // default true
+      "enabled": true, // default true
       "defaults": {
-        "timeout": "10m",         // default per-job deadline
-        "maxTimeout": "1d",       // hard ceiling (a request over it is clamped)
-        "allowInfinite": false    // gate the "infinite" timeout escape hatch
+        "timeout": "10m", // default per-job deadline
+        "maxTimeout": "1d", // hard ceiling (a request over it is clamped)
+        "allowInfinite": false, // gate the "infinite" timeout escape hatch
       },
       "limits": {
-        "maxConcurrent": 16,      // running jobs at once
-        "maxTotal": 128           // retained index records (oldest terminal evicted)
+        "maxConcurrent": 16, // running jobs at once
+        "maxTotal": 128, // retained index records (oldest terminal evicted)
       },
       "log": {
-        "maxModelBytes": 65536    // cap on a single model-facing read
-      }
-    }
-  }
+        "maxModelBytes": 65536, // cap on a single model-facing read
+      },
+    },
+  },
 }
 ```
 

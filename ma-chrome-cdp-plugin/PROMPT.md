@@ -55,13 +55,15 @@ Other useful event sources: `Log.enable` then `Log.entryAdded`, `Runtime.enable`
 - **Get a `target` first:** Call `targets`, pick the id, then act on it.
 - **Clicking custom widgets:** `el.click()` often isn't enough for React menus. Dispatch a full event sequence in `expr`:
   ```js
-  ["pointerdown","mousedown","pointerup","mouseup","click"].forEach(t =>
-    el.dispatchEvent(new MouseEvent(t, {bubbles:true, cancelable:true, view:window})));
+  ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((t) =>
+    el.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window })),
+  );
   ```
 - **Setting a React-controlled input:** Use the native setter so onChange fires:
   ```js
-  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set;
-  set.call(input,"text"); input.dispatchEvent(new Event("input",{bubbles:true}));
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  set.call(input, "text");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
   ```
 - **Downloads:** Call `setdownload` first, click, then poll `downloads` until `state:"completed"` before assuming the file exists. One-time downloads are consumed even if the save path wasn't set, so verify.
 - **Logins behind a bot check:** (Cloudflare Turnstile, etc.) usually can't be scripted. Have the user log in once, then script the same-origin work after.

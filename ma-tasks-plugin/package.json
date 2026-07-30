@@ -1,7 +1,7 @@
 {
   "name": "ma-tasks-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO.",
   "type": "module",
   "scripts": {

@@ -1,7 +1,7 @@
 {
   "name": "ma-web-search-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External web-search plugin for minimal-agent (provider-pluggable; ships with Brave).",
   "type": "module",
   "scripts": {

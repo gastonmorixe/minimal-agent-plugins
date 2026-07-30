@@ -47,7 +47,12 @@ describe("buildPresenceRows", () => {
       NOW,
     )
     expect(rows[0]).toMatchObject({ sid: "lead-1", role: "lead", status: "active", pid: 100 })
-    expect(rows[1]).toMatchObject({ role: "worker", status: "active", pid: 200, leadSid: "lead-1" })
+    expect(rows[1]).toMatchObject({
+      role: "worker",
+      status: "active",
+      pid: 200,
+      leadSid: "lead-1",
+    })
     expect(rows[2]).toMatchObject({ role: "worker", status: "done", pid: 0 })
   })
 })

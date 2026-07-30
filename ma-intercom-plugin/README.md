@@ -33,15 +33,15 @@ freshness plus a `kill(pid,0)` probe — a session never self-declares "alive" o
 hook) is still reported correctly: it stops beating, its age crosses the
 thresholds, and the pid probe confirms it's gone.
 
-| heartbeat age | pid (same host) | verdict |
-|---|---|---|
-| ≤ fresh (20s) | — | `online` (+ self phase: active/idle/busy) |
-| fresh..stale (20–90s) | alive | `online` (slow beat) |
-| fresh..stale | gone | `dead` |
-| fresh..stale | cross-host (no probe) | `stale` |
-| > stale (90s) | alive | `hung` |
-| > stale | gone | `dead` |
-| > stale | cross-host | `offline` |
+| heartbeat age         | pid (same host)       | verdict                                   |
+| --------------------- | --------------------- | ----------------------------------------- |
+| ≤ fresh (20s)         | —                     | `online` (+ self phase: active/idle/busy) |
+| fresh..stale (20–90s) | alive                 | `online` (slow beat)                      |
+| fresh..stale          | gone                  | `dead`                                    |
+| fresh..stale          | cross-host (no probe) | `stale`                                   |
+| > stale (90s)         | alive                 | `hung`                                    |
+| > stale               | gone                  | `dead`                                    |
+| > stale               | cross-host            | `offline`                                 |
 
 Thresholds are env-tunable (`MINIMAL_AGENT_INTERCOM_FRESH_MS`, `_STALE_MS`,
 `_HEARTBEAT_MS`). The busy/idle phase is derived from the session transcript's
@@ -92,12 +92,12 @@ pure plugin FSM + ANSI render, host owns painting.
 ❯ hey @Mich
 ```
 
-| Key | Behavior |
-|---|---|
-| `↑` / `↓` | Move selection (halted so history does not steal the key) |
-| `Tab` | Complete to `@Name ` or `@short ` (trailing space, menu closes) |
-| `Enter` | Complete to `@Name` / `@short` **without** halt so submit fires |
-| `Esc` | Close menu, keep buffer as typed |
+| Key       | Behavior                                                        |
+| --------- | --------------------------------------------------------------- |
+| `↑` / `↓` | Move selection (halted so history does not steal the key)       |
+| `Tab`     | Complete to `@Name ` or `@short ` (trailing space, menu closes) |
+| `Enter`   | Complete to `@Name` / `@short` **without** halt so submit fires |
+| `Esc`     | Close menu, keep buffer as typed                                |
 
 **Live highlight.** While the token matches at least one peer, the whole
 `@token` is painted bold violet/purple via the host channel
@@ -106,10 +106,10 @@ tokens stay plain.
 
 **Dual representation (TUI vs model).**
 
-| Surface | What you see / what ships |
-|---|---|
-| Live input, scrollback, queue decoration | Styled `@Michelle` (human form) |
-| Model input + conversation history | Wire form from `lib/mention/PROMPTS.ts` |
+| Surface                                  | What you see / what ships               |
+| ---------------------------------------- | --------------------------------------- |
+| Live input, scrollback, queue decoration | Styled `@Michelle` (human form)         |
+| Model input + conversation history       | Wire form from `lib/mention/PROMPTS.ts` |
 
 Wire form example:
 
@@ -123,14 +123,14 @@ top fuzzy score). Ambiguous or unknown `@foo` is left as-is.
 
 **How it is wired (host channels).**
 
-| Channel | Role |
-|---|---|
-| `editor.buffer.changed` | Open / refilter / close menu; emit style spans |
-| `editor.key` (priority **65**, below slash-menu 70) | Nav / Tab / Enter / Esc |
-| `editor.footer.set` | Paint the peer list above the prompt (overlay layer) |
-| `editor.buffer.styles` | Live `@token` highlight in the input |
-| `editor.buffer.set` | Apply completion into the buffer |
-| `turn.willStart` (chain) | Rewrite model-facing text just before `agent.run` |
+| Channel                                             | Role                                                 |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| `editor.buffer.changed`                             | Open / refilter / close menu; emit style spans       |
+| `editor.key` (priority **65**, below slash-menu 70) | Nav / Tab / Enter / Esc                              |
+| `editor.footer.set`                                 | Paint the peer list above the prompt (overlay layer) |
+| `editor.buffer.styles`                              | Live `@token` highlight in the input                 |
+| `editor.buffer.set`                                 | Apply completion into the buffer                     |
+| `turn.willStart` (chain)                            | Rewrite model-facing text just before `agent.run`    |
 
 The host emits `turn.willStart` with `{ text }` on queue drain **after**
 scrollback commit lines are already captured, so the TUI never shows XML.

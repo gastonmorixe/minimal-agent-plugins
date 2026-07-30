@@ -68,10 +68,10 @@ bun run bin/preview.ts    # see every canonical visual state
 
 ## Triggers
 
-| trigger | scope | dispatch | use when |
-|---|---|---|---|
-| `/<name> [args…]` | actions + skills | **soft**. Rewrites to a user message that asks the model to activate the skill. The model decides whether to call `Skill read`. | the common case |
-| `$<name> [args…]` | skills **only** | **hard**. Agent calls `Skill read` itself, injects the body as a synthetic `tool_use`/`tool_result` pair at turn start. Model cannot skip. | when activation is non-negotiable (e.g. `$swift-concurrency-expert` for a Swift PR review) |
+| trigger           | scope            | dispatch                                                                                                                                   | use when                                                                                   |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `/<name> [args…]` | actions + skills | **soft**. Rewrites to a user message that asks the model to activate the skill. The model decides whether to call `Skill read`.            | the common case                                                                            |
+| `$<name> [args…]` | skills **only**  | **hard**. Agent calls `Skill read` itself, injects the body as a synthetic `tool_use`/`tool_result` pair at turn start. Model cannot skip. | when activation is non-negotiable (e.g. `$swift-concurrency-expert` for a Swift PR review) |
 
 ## Item categories
 
@@ -94,13 +94,13 @@ Each skill row carries an approximate token count of its SKILL.md body
 (4-char heuristic, mtime-keyed cache at
 `~/.minimal-agent/cache/ma-slash-menu/tokens.json`). Severity-graded:
 
-| range | color | meaning |
-|---|---|---|
-| `< 1k` | dim lime | trivial, load freely |
-| `1–3k` | faintWhite | normal |
-| `3–8k` | gold | notable, worth considering |
-| `8–20k` | dim red | heavy, pick deliberately |
-| `> 20k` | bold red | very heavy |
+| range   | color      | meaning                    |
+| ------- | ---------- | -------------------------- |
+| `< 1k`  | dim lime   | trivial, load freely       |
+| `1–3k`  | faintWhite | normal                     |
+| `3–8k`  | gold       | notable, worth considering |
+| `8–20k` | dim red    | heavy, pick deliberately   |
+| `> 20k` | bold red   | very heavy                 |
 
 On the `$` (forced) menu, the footer adds a `cost: ~Nk of ~Mk ctx`
 chip showing the running cost against the active model's context
@@ -112,19 +112,19 @@ A provider exposes the items its plugin contributes. Shape:
 
 ```ts
 interface Provider {
-  id: string
-  list(): Promise<Item[]> | Item[]
-  refreshOn?: string[]   // bus events that invalidate the cache
+  id: string;
+  list(): Promise<Item[]> | Item[];
+  refreshOn?: string[]; // bus events that invalidate the cache
 }
 
 interface Item {
-  slug: string            // bare id, no leading "/" or "$"
-  description: string
-  category: "act" | "skl" | string
-  tokens?: number         // approx token cost, shown as severity-graded chip
-  payload?: unknown       // opaque, returned to the dispatcher on invoke
-  disabled?: boolean
-  disabledReason?: string
+  slug: string; // bare id, no leading "/" or "$"
+  description: string;
+  category: "act" | "skl" | string;
+  tokens?: number; // approx token cost, shown as severity-graded chip
+  payload?: unknown; // opaque, returned to the dispatcher on invoke
+  disabled?: boolean;
+  disabledReason?: string;
 }
 ```
 
@@ -151,7 +151,7 @@ three additional fields (kept here in the README, **not** in
       "captures": ["Up", "Down", "Tab", "Enter", "Escape", "PageUp", "PageDown"],
       "handler": "./lib/overlay.ts",
       "position": "above-editor",
-      "maxRows": 5
+      "maxRows": 5,
     },
     {
       "id": "dollar",
@@ -160,18 +160,18 @@ three additional fields (kept here in the README, **not** in
       "handler": "./lib/overlay.ts",
       "position": "above-editor",
       "maxRows": 5,
-      "options": { "mode": "forced" }
-    }
+      "options": { "mode": "forced" },
+    },
   ],
   "commandProviders": [
     { "id": "actions", "handler": "./providers/actions.ts" },
-    { "id": "skills",  "handler": "./providers/skills.ts"  }
+    { "id": "skills", "handler": "./providers/skills.ts" },
   ],
   "userMessageHook": {
     "id": "slash-dispatch",
     "handler": "./lib/dispatch.ts",
-    "channel": "user.willSubmit"
-  }
+    "channel": "user.willSubmit",
+  },
 }
 ```
 
@@ -244,8 +244,9 @@ the manifest fields, and registers via `editor.registerOverlay`.
 `src/plugins/loader.ts` walks every plugin's `commandProviders[]`,
 instantiates each handler, and exposes a unified `loader.getCommands()`
 that the overlay handler can call. Order is plugin-precedence (project
+
 > home > embedded), then declaration order within a plugin. Dedupes by
-`(category, slug)`.
+> `(category, slug)`.
 
 ### 4. `user.willSubmit` hook channel
 
@@ -264,10 +265,10 @@ The handler receives the raw buffer string and returns a `Dispatch`:
 
 ```ts
 type Dispatch =
-  | { kind: "passthrough" }                                  // send as-is
-  | { kind: "rewrite"; text: string }                        // replace user text
-  | { kind: "injectBefore"; blocks: ContentBlock[]; text: string }  // prefix synthetic blocks
-  | { kind: "abort"; message: string }                       // refuse, show error
+  | { kind: "passthrough" } // send as-is
+  | { kind: "rewrite"; text: string } // replace user text
+  | { kind: "injectBefore"; blocks: ContentBlock[]; text: string } // prefix synthetic blocks
+  | { kind: "abort"; message: string }; // refuse, show error
 ```
 
 `{ kind: "injectBefore" }` is what `$` uses for hard activation: the
@@ -284,12 +285,12 @@ Lives at `~/.minimal-agent/config.jsonc` under `plugins["ma-slash-menu"]`:
   "plugins": {
     "ma-slash-menu": {
       "enabled": true,
-      "sort": "match-score",      // "match-score" | "cost-asc" | "cost-desc"
+      "sort": "match-score", // "match-score" | "cost-asc" | "cost-desc"
       "sortByCostNearQuota": true, // auto-flip to cost-asc near context limit
       "maxRows": 5,
-      "showBadge": true           // override degradation to keep / hide badges
-    }
-  }
+      "showBadge": true, // override degradation to keep / hide badges
+    },
+  },
 }
 ```
 

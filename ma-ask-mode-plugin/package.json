@@ -1,7 +1,7 @@
 {
   "name": "ma-ask-mode-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: read-only Ask mode (harness refuses Edit/Write, model presents diffs).",
   "type": "module",
   "scripts": {

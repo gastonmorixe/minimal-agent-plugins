@@ -29,7 +29,11 @@ export default async function agentOutput(ctx: TUIContext): Promise<TUIResult> {
 
   const store = storeFromCtx(ctx)
   if (!store)
-    return { kind: "tool_result", content: "AgentOutput: no session id available.", is_error: true }
+    return {
+      kind: "tool_result",
+      content: "AgentOutput: no session id available.",
+      is_error: true,
+    }
   const rec = store.get(id)
   if (!rec)
     return {

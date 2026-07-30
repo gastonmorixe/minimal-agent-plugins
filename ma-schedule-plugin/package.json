@@ -1,7 +1,7 @@
 {
   "name": "ma-schedule-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Run prompts on a schedule: the ScheduleCron* tools, /loop and /schedule commands, and a heartbeat that injects due tasks between turns.",
   "type": "module",
   "scripts": {

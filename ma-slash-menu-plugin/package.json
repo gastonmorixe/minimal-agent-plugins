@@ -1,7 +1,7 @@
 {
   "name": "ma-slash-menu-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Slash-command palette for minimal-agent. '/' for actions+skills, '$' for forced skill activation.",
   "type": "module",
   "scripts": {

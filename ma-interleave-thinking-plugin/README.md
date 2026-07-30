@@ -11,8 +11,8 @@ that comes up while generating the answer.
 
 ## What it contributes
 
-| Surface | Trigger | Handler |
-|---|---|---|
+| Surface    | Trigger                           | Handler                  |
+| ---------- | --------------------------------- | ------------------------ |
 | Inline tag | `<ma::emit::interleave-thinking>` | `handlers/interleave.ts` |
 
 The handler returns empty bytes, so the tag body never reaches the
