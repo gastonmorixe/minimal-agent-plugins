@@ -1,7 +1,7 @@
 {
   "name": "ma-background-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: background jobs. Run bash-like commands in the background, check status, read logs, and cancel, with durable logs colocated with session history.",
   "type": "module",
   "scripts": {

@@ -80,7 +80,11 @@ export function parseScheduleArgs(argv: string): ScheduleAction {
   // Unquoted: first 5 whitespace tokens are the cron, the rest is the prompt.
   const tokens = t.split(/\s+/)
   if (tokens.length >= 6) {
-    return { kind: "create", cron: tokens.slice(0, 5).join(" "), prompt: tokens.slice(5).join(" ") }
+    return {
+      kind: "create",
+      cron: tokens.slice(0, 5).join(" "),
+      prompt: tokens.slice(5).join(" "),
+    }
   }
 
   return { kind: "error", message: USAGE }

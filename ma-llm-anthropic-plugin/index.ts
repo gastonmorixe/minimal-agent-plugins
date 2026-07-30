@@ -58,18 +58,9 @@ export {
   LOGIN_SCOPES,
   MANUAL_REDIRECT_URL,
 } from "./oauth-login.ts"
-export {
-  type AnthropicRequestBody,
-  buildAnthropicRequestBody,
-} from "./request-body.ts"
-export {
-  type AnthropicStreamEvent,
-  translateAnthropicStream,
-} from "./response-stream.ts"
-export {
-  extractModelFromSignature,
-  looksLikeAnthropicModelId,
-} from "./signature-model.ts"
+export { type AnthropicRequestBody, buildAnthropicRequestBody } from "./request-body.ts"
+export { type AnthropicStreamEvent, translateAnthropicStream } from "./response-stream.ts"
+export { extractModelFromSignature, looksLikeAnthropicModelId } from "./signature-model.ts"
 export {
   applyMismatchResolution,
   buildMismatchIssue,

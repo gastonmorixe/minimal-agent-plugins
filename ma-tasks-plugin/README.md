@@ -25,12 +25,12 @@ the user sees a live TODO. Single `Task` tool with action switch.
 
 Glyphs are pure unicode (no nerd-font, no emoji):
 
-| Glyph | Status      | Color           |
-|-------|-------------|-----------------|
-| `○`   | todo        | dim             |
-| `◐`   | doing       | sky (accent)    |
-| `✔`   | done        | bold lime       |
-| `✘`   | canceled    | dim red (title prefix) |
+| Glyph | Status   | Color                  |
+| ----- | -------- | ---------------------- |
+| `○`   | todo     | dim                    |
+| `◐`   | doing    | sky (accent)           |
+| `✔`   | done     | bold lime              |
+| `✘`   | canceled | dim red (title prefix) |
 
 ## Files
 
@@ -55,18 +55,18 @@ per line, order = display order.
 
 ## Tool actions
 
-| action      | required           | optional                          |
-|-------------|--------------------|----------------------------------|
-| `add`       | `title`            | `parent`, `after`, `status`       |
-| `add_many`  | `titles[]` **or** `items[]` | `parent` (with flat `titles` only) |
-| `update`    | `id`, `title`      |                                   |
-| `status`    | `id`, `status`     | `reason` (for canceled)           |
-| `start`     | `id`               | `parallel` (compat no-op; start always accumulates) |
-| `done`      | `id`               |                                   |
-| `remove`    | `id`               |                                   |
-| `reorder`   | `order[]` (ids)    |                                   |
-| `list`      |                    | `filter`, `query`, `format`       |
-| `clear`     |                    | `force` (if any task `doing`)     |
+| action     | required                    | optional                                            |
+| ---------- | --------------------------- | --------------------------------------------------- |
+| `add`      | `title`                     | `parent`, `after`, `status`                         |
+| `add_many` | `titles[]` **or** `items[]` | `parent` (with flat `titles` only)                  |
+| `update`   | `id`, `title`               |                                                     |
+| `status`   | `id`, `status`              | `reason` (for canceled)                             |
+| `start`    | `id`                        | `parallel` (compat no-op; start always accumulates) |
+| `done`     | `id`                        |                                                     |
+| `remove`   | `id`                        |                                                     |
+| `reorder`  | `order[]` (ids)             |                                                     |
+| `list`     |                             | `filter`, `query`, `format`                         |
+| `clear`    |                             | `force` (if any task `doing`)                       |
 
 Every action returns the post-mutation task state in model-facing `content` as a `<ma::agent::tasks>` columnar table. It also returns the rendered list in `display` so the TUI shows the new state after every change.
 

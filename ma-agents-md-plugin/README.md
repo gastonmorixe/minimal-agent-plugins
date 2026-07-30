@@ -5,10 +5,10 @@ start so the model gets project and user guidance without a manual paste.
 
 ## What it injects
 
-| Source | Path | Order |
-|---|---|---|
-| Global | `<agent-home>/AGENTS.md` | first |
-| Project | `<cwd>/AGENTS.md` | second |
+| Source  | Path                     | Order  |
+| ------- | ------------------------ | ------ |
+| Global  | `<agent-home>/AGENTS.md` | first  |
+| Project | `<cwd>/AGENTS.md`        | second |
 
 `agent-home` is **not** hardcoded as `~/.minimal-agent`. The host publishes the
 resolved home as `MINIMAL_AGENT_HOME` at boot (honoring relocation /
@@ -54,9 +54,9 @@ Or in `~/.minimal-agent/config.jsonc` (or your relocated agent home):
 {
   "plugins": {
     "agents-md": {
-      "enabled": false
-    }
-  }
+      "enabled": false,
+    },
+  },
 }
 ```
 
@@ -73,9 +73,9 @@ Or in `~/.minimal-agent/config.jsonc` (or your relocated agent home):
       // load <cwd>/AGENTS.md (default true)
       "project": true,
       // per-file size cap in bytes; oversized files are skipped (default 100000)
-      "maxBytes": 100000
-    }
-  }
+      "maxBytes": 100000,
+    },
+  },
 }
 ```
 

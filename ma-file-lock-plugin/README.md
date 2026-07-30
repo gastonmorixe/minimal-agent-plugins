@@ -6,9 +6,9 @@ waits with exponential backoff up to 30s instead of clobbering.
 
 ## What it contributes
 
-| Surface | Trigger | Handler |
-|---|---|---|
-| Tool | `LockStatus` | `handlers/lock_status.ts` |
+| Surface | Trigger      | Handler                   |
+| ------- | ------------ | ------------------------- |
+| Tool    | `LockStatus` | `handlers/lock_status.ts` |
 
 Plus a transparent locking layer wired into the agent's `Edit`/`Write`
 codepaths (NOT inside this plugin, lives in the agent core).

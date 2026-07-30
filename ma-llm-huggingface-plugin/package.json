@@ -1,7 +1,7 @@
 {
   "name": "ma-llm-huggingface-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External provider plugin for minimal-agent: HuggingFace Inference Providers (OpenAI-compatible gateway).",
   "type": "module",
   "scripts": {

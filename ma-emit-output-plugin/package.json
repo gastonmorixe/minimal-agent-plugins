@@ -1,7 +1,7 @@
 {
   "name": "ma-emit-output-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Inline renders file/blob content in the response stream, without the model touching the bytes.",
   "type": "module",
   "scripts": {

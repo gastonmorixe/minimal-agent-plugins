@@ -21,18 +21,18 @@ dashboard subscribe URL).
 
 ## Models
 
-| Model | ID |
-| --- | --- |
-| GLM 5.2 | `cline-pass/glm-5.2` |
-| Kimi K2.7 Code | `cline-pass/kimi-k2.7-code` |
-| Kimi K2.6 | `cline-pass/kimi-k2.6` |
-| DeepSeek V4 Pro | `cline-pass/deepseek-v4-pro` |
+| Model             | ID                             |
+| ----------------- | ------------------------------ |
+| GLM 5.2           | `cline-pass/glm-5.2`           |
+| Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    |
+| Kimi K2.6         | `cline-pass/kimi-k2.6`         |
+| DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   |
 | DeepSeek V4 Flash | `cline-pass/deepseek-v4-flash` |
-| MiniMax M3 | `cline-pass/minimax-m3` |
-| MiMo V2.5 Pro | `cline-pass/mimo-v2.5-pro` |
-| MiMo V2.5 | `cline-pass/mimo-v2.5` |
-| Qwen3.7 Max | `cline-pass/qwen3.7-max` |
-| Qwen3.7 Plus | `cline-pass/qwen3.7-plus` |
+| MiniMax M3        | `cline-pass/minimax-m3`        |
+| MiMo V2.5 Pro     | `cline-pass/mimo-v2.5-pro`     |
+| MiMo V2.5         | `cline-pass/mimo-v2.5`         |
+| Qwen3.7 Max       | `cline-pass/qwen3.7-max`       |
+| Qwen3.7 Plus      | `cline-pass/qwen3.7-plus`      |
 
 Wire format: OpenAI Chat Completions (`POST /api/v1/chat/completions`), SSE stream.
 Reasoning may appear as `delta.reasoning`. Reference pricing is subscription
@@ -40,15 +40,15 @@ quota metering only (not pay-per-token).
 
 ## Endpoints used
 
-| Purpose | URL |
-| --- | --- |
-| Chat | `POST https://api.cline.bot/api/v1/chat/completions` |
-| Device auth | `POST https://api.workos.com/user_management/authorize/device` |
-| Device poll | `POST https://api.workos.com/user_management/authenticate` |
-| Register tokens | `POST https://api.cline.bot/api/v1/auth/register` |
-| Refresh | `POST https://api.cline.bot/api/v1/auth/refresh` |
-| Me / plan | `GET .../api/v1/users/me`, `.../me/plan` |
-| Balance / usage | `GET .../api/v1/users/{id}/balance`, `.../usages` |
+| Purpose         | URL                                                            |
+| --------------- | -------------------------------------------------------------- |
+| Chat            | `POST https://api.cline.bot/api/v1/chat/completions`           |
+| Device auth     | `POST https://api.workos.com/user_management/authorize/device` |
+| Device poll     | `POST https://api.workos.com/user_management/authenticate`     |
+| Register tokens | `POST https://api.cline.bot/api/v1/auth/register`              |
+| Refresh         | `POST https://api.cline.bot/api/v1/auth/refresh`               |
+| Me / plan       | `GET .../api/v1/users/me`, `.../me/plan`                       |
+| Balance / usage | `GET .../api/v1/users/{id}/balance`, `.../usages`              |
 
 ## Install
 

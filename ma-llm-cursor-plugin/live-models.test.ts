@@ -317,7 +317,7 @@ describe("listCursorLiveModels", () => {
     globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
       const headers = new Headers(init?.headers)
       sawAuthorization = headers.get("authorization") ?? ""
-      return new Response(syntheticResponse(), {
+      return new Response(syntheticResponse() as unknown as BodyInit, {
         status: 200,
         headers: { "content-type": "application/proto" },
       })

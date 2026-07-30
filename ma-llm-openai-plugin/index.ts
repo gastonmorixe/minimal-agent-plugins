@@ -37,14 +37,8 @@ export {
   CAPS_O4_MINI_CHAT,
   CAPS_O4_MINI_RESPONSES,
 } from "./capabilities.ts"
-export {
-  buildOpenAIChatBody,
-  type OpenAIChatRequestBody,
-} from "./chat/request-body.ts"
-export {
-  type OpenAIChatChunk,
-  translateOpenAIChatStream,
-} from "./chat/response-stream.ts"
+export { buildOpenAIChatBody, type OpenAIChatRequestBody } from "./chat/request-body.ts"
+export { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
 export { buildOpenAIHeaders, type OpenAIHeadersOpts } from "./headers.ts"
 export { registerOpenAIModels } from "./models.ts"
 export {

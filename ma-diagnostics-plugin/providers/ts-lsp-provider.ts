@@ -61,7 +61,11 @@ export class TsLspProvider implements DiagnosticProvider {
 
   private client: LspClient | null = null
   private booting: Promise<LspClient> | null = null
-  private readonly breaker = new CircuitBreaker({ maxFailures: 2, cooldownMs: 10_000, maxTrips: 5 })
+  private readonly breaker = new CircuitBreaker({
+    maxFailures: 2,
+    cooldownMs: 10_000,
+    maxTrips: 5,
+  })
 
   /**
    * Construct a persistent TypeScript LSP provider over the given binary.

@@ -29,13 +29,13 @@ git clone https://github.com/gastonmorixe/minimal-agent-plugins.git ~/.minimal-a
 
 ## Plugins in this repository
 
-| Directory | Tool(s) | Purpose |
-|-----------|---------|---------|
-| [`ma-agent-writing-style-plugin/`](./ma-agent-writing-style-plugin) | none (pure prompt) | Opinionated agent writing style. Hard-bans em-dashes and semicolons, kills the AI vocabulary, suppresses sycophancy and significance inflation. |
-| [`ma-background-plugin/`](./ma-background-plugin) | `BackgroundRun`, `BackgroundStatus`, `BackgroundLogs`, `BackgroundStop` | Run shell commands in the background, check status, read logs, cancel. Durable logs colocated with session history. |
-| [`ma-fetch-plugin/`](./ma-fetch-plugin) | `Fetch` | Fetch web pages with JS rendering (default backend: [obscura][o]) |
-| [`ma-skills-plugin/`](./ma-skills-plugin) | `Skill` | [Agent Skills][as] support: discovers `SKILL.md` packs and exposes them via progressive disclosure |
-| [`ma-speak-plugin/`](./ma-speak-plugin) | `Speak`, `SpeakStatus`, `SpeakStop` | Read text aloud through a swappable speech backend (default: macOS `say`) |
+| Directory                                                           | Tool(s)                                                                 | Purpose                                                                                                                                         |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ma-agent-writing-style-plugin/`](./ma-agent-writing-style-plugin) | none (pure prompt)                                                      | Opinionated agent writing style. Hard-bans em-dashes and semicolons, kills the AI vocabulary, suppresses sycophancy and significance inflation. |
+| [`ma-background-plugin/`](./ma-background-plugin)                   | `BackgroundRun`, `BackgroundStatus`, `BackgroundLogs`, `BackgroundStop` | Run shell commands in the background, check status, read logs, cancel. Durable logs colocated with session history.                             |
+| [`ma-fetch-plugin/`](./ma-fetch-plugin)                             | `Fetch`                                                                 | Fetch web pages with JS rendering (default backend: [obscura][o])                                                                               |
+| [`ma-skills-plugin/`](./ma-skills-plugin)                           | `Skill`                                                                 | [Agent Skills][as] support: discovers `SKILL.md` packs and exposes them via progressive disclosure                                              |
+| [`ma-speak-plugin/`](./ma-speak-plugin)                             | `Speak`, `SpeakStatus`, `SpeakStop`                                     | Read text aloud through a swappable speech backend (default: macOS `say`)                                                                       |
 
 This table is a sample of the tree. Provider plugins (`ma-llm-*`), intercom,
 sub-agents, tasks, memory, diagnostics, and others live alongside these

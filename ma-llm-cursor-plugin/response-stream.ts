@@ -2,7 +2,7 @@
  * Connect frames → AsyncIterable of CanonicalEvent.
  *
  * Maps text_delta → text_start/delta/stop, thinking_delta → thinking_*,
- * turn_ended → message_delta + message_stop. MVP ignores tool_call_*.
+ * tool_call_* → tool_use_* + stopReason tool_use (MA executes tools).
  *
  * @module llm/providers/cursor/response-stream
  */
@@ -15,6 +15,7 @@ import {
   extractServerTextEvents,
   parseConnectEndStreamError,
 } from "./proto/agent-run.ts"
+import type { DecodedCursorMcpToolCall } from "./proto/tool-call-decode.ts"
 
 export type TranslateCursorStreamOpts = {
   modelId: string
@@ -37,6 +38,11 @@ export async function* translateCursorStream(
   let thinkingIndex = 0
   let blockIndex = 0
   let sawTurnEnded = false
+  let pendingToolIndex: number | undefined
+  let pendingToolId: string | undefined
+  let pendingToolName: string | undefined
+  let pendingToolInput: Record<string, unknown> | undefined
+  let sawToolUse = false
   const emptyUsage: CanonicalUsage = { inputTokens: 0, outputTokens: 0 }
 
   const openMessage = function* (): Generator<CanonicalEvent> {
@@ -62,11 +68,105 @@ export async function* translateCursorStream(
     thinkingOpen = false
   }
 
-  const handleEvents = function* (events: CursorServerEvent[]): Generator<CanonicalEvent> {
+  const emitToolUseStop = function* (): Generator<CanonicalEvent> {
+    if (pendingToolIndex === undefined || !pendingToolId || !pendingToolName) return
+    const input = pendingToolInput ?? {}
+    yield {
+      type: "tool_use_input_delta",
+      index: pendingToolIndex,
+      partialJson: JSON.stringify(input),
+    }
+    yield {
+      type: "tool_use_stop",
+      index: pendingToolIndex,
+      input,
+    }
+    pendingToolIndex = undefined
+    pendingToolId = undefined
+    pendingToolName = undefined
+    pendingToolInput = undefined
+  }
+
+  const finishMessage = function* (stopReason: "end_turn" | "tool_use"): Generator<CanonicalEvent> {
+    yield* closeText()
+    yield* closeThinking()
+    yield* emitToolUseStop()
+    yield* openMessage()
+    yield {
+      type: "message_delta",
+      stopReason,
+      usage: emptyUsage,
+    }
+    yield { type: "message_stop" }
+  }
+
+  const handleMcpToolCall = function* (
+    call: DecodedCursorMcpToolCall | undefined,
+    phase: "started" | "completed",
+  ): Generator<CanonicalEvent, boolean> {
+    if (!call) return false
+    if (call.builtinOneof && call.builtinOneof !== "mcpToolCall") {
+      // Native built-in slipped through — ignore; exclude headers should prevent this.
+      return false
+    }
+    const name = call.maToolName ?? call.toolName
+    if (!name) return false
+
+    if (phase === "started") {
+      yield* openMessage()
+      yield* closeText()
+      yield* closeThinking()
+      pendingToolIndex = blockIndex++
+      pendingToolId = call.callId || crypto.randomUUID()
+      pendingToolName = name
+      pendingToolInput = call.input
+      sawToolUse = true
+      yield {
+        type: "tool_use_start",
+        index: pendingToolIndex,
+        id: pendingToolId,
+        name: pendingToolName,
+      }
+      if (call.input && Object.keys(call.input).length > 0) {
+        yield* emitToolUseStop()
+      }
+      return true
+    }
+
+    // completed — merge args if we started earlier without input
+    if (pendingToolIndex !== undefined && call.input) {
+      pendingToolInput = { ...(pendingToolInput ?? {}), ...call.input }
+    }
+    if (pendingToolIndex === undefined && phase === "completed") {
+      yield* openMessage()
+      pendingToolIndex = blockIndex++
+      pendingToolId = call.callId || crypto.randomUUID()
+      pendingToolName = name
+      pendingToolInput = call.input
+      sawToolUse = true
+      yield {
+        type: "tool_use_start",
+        index: pendingToolIndex,
+        id: pendingToolId,
+        name: pendingToolName,
+      }
+    }
+    yield* emitToolUseStop()
+    return true
+  }
+
+  const handleEvents = function* (events: CursorServerEvent[]): Generator<CanonicalEvent, boolean> {
+    let endAfterTool = false
     for (const ev of events) {
       if (ev.kind === "heartbeat") continue
-      if (ev.kind === "tool_call_started" || ev.kind === "tool_call_completed") {
-        // MVP: MA owns tools; ignore Cursor tool protocol.
+      if (ev.kind === "tool_call_started") {
+        if (yield* handleMcpToolCall(ev.toolCall, "started")) {
+          endAfterTool = true
+        }
+        continue
+      }
+      if (ev.kind === "tool_call_completed") {
+        yield* handleMcpToolCall(ev.toolCall, "completed")
         continue
       }
       if (ev.kind === "text_delta" && ev.text) {
@@ -89,48 +189,36 @@ export async function* translateCursorStream(
         yield { type: "thinking_delta", index: thinkingIndex, text: ev.text }
       } else if (ev.kind === "turn_ended") {
         sawTurnEnded = true
-        yield* closeText()
-        yield* closeThinking()
-        yield* openMessage()
-        yield {
-          type: "message_delta",
-          stopReason: "end_turn",
-          usage: emptyUsage,
-        }
-        yield { type: "message_stop" }
+        yield* finishMessage(sawToolUse ? "tool_use" : "end_turn")
       }
     }
+    return endAfterTool
   }
 
   for await (const chunk of chunks) {
     for (const frame of reader.push(chunk)) {
-      yield* handleFrame(frame, handleEvents)
-      if (sawTurnEnded) return
+      const endAfterTool = yield* handleFrame(frame, handleEvents)
+      if (endAfterTool || sawTurnEnded) {
+        if (endAfterTool && !sawTurnEnded) {
+          yield* finishMessage("tool_use")
+        }
+        return
+      }
     }
   }
 
-  // Flush any remaining incomplete? none — incomplete frames stay in remainder.
   if (started && !sawTurnEnded) {
-    yield* closeText()
-    yield* closeThinking()
-    yield {
-      type: "message_delta",
-      stopReason: "end_turn",
-      usage: emptyUsage,
-    }
-    yield { type: "message_stop" }
+    yield* finishMessage(sawToolUse ? "tool_use" : "end_turn")
   }
 }
 
 function* handleFrame(
   frame: ConnectEnvelope,
-  handleEvents: (events: CursorServerEvent[]) => Generator<CanonicalEvent>,
-): Generator<CanonicalEvent> {
+  handleEvents: (events: CursorServerEvent[]) => Generator<CanonicalEvent, boolean>,
+): Generator<CanonicalEvent, boolean> {
   if (frame.endStream) {
     const parsed = parseConnectEndStreamError(frame.payload)
     if (parsed) {
-      // Host only surfaces `cause` when it is an Error instance
-      // (adapter-legacy taggedStreamError). Keep message free of secrets.
       const cause = new Error(parsed.message)
       yield {
         type: "stream_error",
@@ -140,10 +228,10 @@ function* handleFrame(
         cause,
       }
     }
-    return
+    return false
   }
-  if (frame.payload.length === 0) return
-  yield* handleEvents(extractServerTextEvents(frame.payload))
+  if (frame.payload.length === 0) return false
+  return yield* handleEvents(extractServerTextEvents(frame.payload))
 }
 
 /** Map Connect error codes onto canonical stream_error categories. */
@@ -167,10 +255,8 @@ export async function* translateCursorStreamBuffer(
   opts: TranslateCursorStreamOpts,
 ): AsyncGenerator<CanonicalEvent> {
   async function* frames(): AsyncGenerator<Uint8Array> {
-    // Feed whole buffer as one chunk (parseConnectFrames used internally via reader).
     yield buf
   }
-  // Ensure parseConnectFrames path is covered for multi-frame offline buffers
   void parseConnectFrames
   yield* translateCursorStream(frames(), opts)
 }

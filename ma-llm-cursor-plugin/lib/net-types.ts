@@ -68,6 +68,11 @@ export interface NetworkRequest {
   protocol?: NetworkProtocol
   /** Free-form labels a host network policy can match on. */
   policyTags?: ReadonlyArray<string>
+  /**
+   * When true, keep the HTTP/2 request stream writable after the initial `body`
+   * write (Connect bidi). Follow-up frames use {@link NetworkResponse.writeRequestBody}.
+   */
+  keepRequestOpen?: boolean
 }
 
 /**
@@ -96,6 +101,10 @@ export interface NetworkResponse {
   text(): Promise<string>
   /** Drain the body and JSON-parse it. */
   json<T = unknown>(): Promise<T>
+  /** Write more bytes on an open HTTP/2 request stream (Connect bidi). */
+  writeRequestBody?(chunk: Uint8Array): void
+  /** Half-close the HTTP/2 request stream. */
+  endRequestBody?(): void
 }
 
 /**

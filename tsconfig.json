@@ -11,8 +11,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["bun-types"],
-    "lib": ["ESNext"]
+    "types": ["bun-types"]
   },
   "include": ["ma-*-plugin/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["**/node_modules", "**/.net-dbg", "**/dist", "**/build"]

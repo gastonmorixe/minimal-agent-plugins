@@ -3,22 +3,22 @@
 Persistent cross-session memory plus a per-session short-term scratchpad.
 Three scopes:
 
-| Scope | File | Lifetime |
-|---|---|---|
-| `global` | `~/.minimal-agent/memory.md` | persistent, per-user, cross-project |
-| `project` | `~/.minimal-agent/projects/<absolute-cwd>/memory.md` | persistent, per-user, per-project |
-| `short-term` | `~/.minimal-agent/sessions/<sid>.scratch.md` | one session |
+| Scope        | File                                                 | Lifetime                            |
+| ------------ | ---------------------------------------------------- | ----------------------------------- |
+| `global`     | `~/.minimal-agent/memory.md`                         | persistent, per-user, cross-project |
+| `project`    | `~/.minimal-agent/projects/<absolute-cwd>/memory.md` | persistent, per-user, per-project   |
+| `short-term` | `~/.minimal-agent/sessions/<sid>.scratch.md`         | one session                         |
 
 All three live OUTSIDE the project tree, never committed, never shared
 with collaborators.
 
 ## What it contributes
 
-| Surface | Trigger | Handler |
-|---|---|---|
-| Tool | `MemoryTool` | `handlers/memory_tool.ts` |
-| Inline tag | `<ma::emit::memory>` | `handlers/memory.ts` |
-| Prompt fragment | `id: memory_load` | `handlers/load.ts` |
+| Surface         | Trigger              | Handler                   |
+| --------------- | -------------------- | ------------------------- |
+| Tool            | `MemoryTool`         | `handlers/memory_tool.ts` |
+| Inline tag      | `<ma::emit::memory>` | `handlers/memory.ts`      |
+| Prompt fragment | `id: memory_load`    | `handlers/load.ts`        |
 
 The inline tag is the zero-friction save path (mid-response). The tool
 handles list/read/edit/remove and is also a valid save path. The prompt
@@ -32,7 +32,7 @@ memories too.
 - `handlers/memory.ts`: `<ma::emit::memory>` inline save.
 - `handlers/memory_tool.ts`: `MemoryTool` actions.
 - `handlers/load.ts`: prompt-fragment producer (reads the scratchpad
-  + optionally the persistent files).
+  - optionally the persistent files).
 - `lib/memory-config.ts`: config schema (`scope.inject = "off" | "verbatim" | "summary"`).
 - `cli.ts`: out-of-agent inspection.
 - `PROMPT.md`: model-facing policy: when to query, when to save, three

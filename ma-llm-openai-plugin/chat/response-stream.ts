@@ -11,7 +11,4 @@
  * @module llm/providers/openai/chat/response-stream
  */
 
-export {
-  type OpenAIChatChunk,
-  translateOpenAIChatStream,
-} from "../lib/openai-chat.ts"
+export { type OpenAIChatChunk, translateOpenAIChatStream } from "../lib/openai-chat.ts"

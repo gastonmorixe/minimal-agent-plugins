@@ -1,7 +1,7 @@
 {
   "name": "ma-intercom-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: inter-session communication and presence. Lets any session see what other sessions are doing (presence, tasks, jobs, fleet) and message them (message, interrupt, broadcast) with durable, pull-delivered, crash-safe queues. Tools: Peers, Send, Inbox.",
   "type": "module",
   "scripts": {

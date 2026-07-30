@@ -8,11 +8,11 @@ through a swappable speech backend. The default backend wraps the macOS
 
 Three tools:
 
-| Tool | Purpose |
-|---|---|
-| `Speak` | Start reading text aloud. Returns a job handle (`s1`) immediately; audio plays in the background. |
-| `SpeakStatus` | Is speech still playing? Check one job by handle, or list all jobs this session. |
-| `SpeakStop` | Stop speech. One job by handle, or every active job at once. |
+| Tool          | Purpose                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `Speak`       | Start reading text aloud. Returns a job handle (`s1`) immediately; audio plays in the background. |
+| `SpeakStatus` | Is speech still playing? Check one job by handle, or list all jobs this session.                  |
+| `SpeakStop`   | Stop speech. One job by handle, or every active job at once.                                      |
 
 ## Architecture
 
@@ -74,26 +74,27 @@ unchanged.
 **What the model controls** (tool API): only `text` and `wait`. That's it.
 
 **What the operator controls** (config, never model-facing): the backend, the
-binary path, the voice, and the speaking rate. The model picks *what* is said,
-never *how* it sounds. That keeps the tool backend-agnostic. By default no voice
+binary path, the voice, and the speaking rate. The model picks _what_ is said,
+never _how_ it sounds. That keeps the tool backend-agnostic. By default no voice
 is set, so macOS speaks in its high-quality system default (Premium Siri) voice
-(see *Leave `voice` unset* below).
+(see _Leave `voice` unset_ below).
 
 ### Backend env-var contract
 
 The handler spawns `<plugin>/backends/<backend>.ts` with:
 
-| Var | Required | Notes |
-|---|---|---|
-| `MA_SPEAK_BIN` | no | Path to the speech binary (default: `say` on PATH). |
-| `MA_SPEAK_VOICE` | no | Voice name. macOS backend forwards as `say -v <voice>`. |
-| `MA_SPEAK_RATE` | no | Words per minute. macOS backend forwards as `say -r <rate>`. |
+| Var              | Required | Notes                                                        |
+| ---------------- | -------- | ------------------------------------------------------------ |
+| `MA_SPEAK_BIN`   | no       | Path to the speech binary (default: `say` on PATH).          |
+| `MA_SPEAK_VOICE` | no       | Voice name. macOS backend forwards as `say -v <voice>`.      |
+| `MA_SPEAK_RATE`  | no       | Words per minute. macOS backend forwards as `say -r <rate>`. |
 
 Backend I/O contract:
+
 - **stdin** ← the text to speak (UTF-8). Kept off argv so it can be long and
   never shows in `ps`.
 - **stdout** → nothing (the "output" is audio).
-- **stderr** → diagnostics (never shown raw to the model, see *Failure messages*).
+- **stderr** → diagnostics (never shown raw to the model, see _Failure messages_).
 - **exit** → 0 on success, non-zero on failure.
 
 ## Install
@@ -124,16 +125,16 @@ Backend I/O contract:
          "enabled": true,
          "backend": "macos-say",
          "macos-say": {
-           "bin": "/usr/bin/say"    // optional; default is `say` on PATH
+           "bin": "/usr/bin/say", // optional; default is `say` on PATH
            // "voice" is intentionally NOT set here. See the note below.
            // "rate": 180           // optional; words per minute
          },
          "defaults": {
-           "maxChars": 8000,        // hard cap on a single utterance
-           "waitTimeoutSec": 120    // cap for a blocking `wait: true` call
-         }
-       }
-     }
+           "maxChars": 8000, // hard cap on a single utterance
+           "waitTimeoutSec": 120, // cap for a blocking `wait: true` call
+         },
+       },
+     },
    }
    ```
 

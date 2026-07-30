@@ -56,7 +56,7 @@ You can also `Read` the SKILL.md path directly. Both paths work. The `Skill` too
 
 The spec's `allowed-tools` field (experimental) is a space-separated list like `Bash(git:*) Bash(jq:*) Read`. When a skill declares it, the `Skill read` result reminds you of the constraint:
 
-> *Self-enforce `allowed-tools`: Bash(git:*) Read*
+> _Self-enforce `allowed-tools`: Bash(git:_) Read*
 
 You're on the hook to respect it. minimal-agent does not block tools at the dispatcher layer yet. Treat the field as a soft contract from the skill author saying "these tools are sufficient and intended, and staying within this set keeps the workflow auditable."
 

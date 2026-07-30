@@ -6,7 +6,9 @@
  * @module llm/providers/cursor/validate
  */
 
+import { cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import { isServerTool } from "./lib/canonical-tools.ts"
 import { CapabilityViolation } from "./lib/errors.ts"
 import { modalityViolations } from "./lib/modality-check.ts"
 import type { ModelView, ProviderValidationResult } from "./lib/provider-plugin.ts"
@@ -71,6 +73,32 @@ export function validateCursorRequest(
   }
 
   errors.push(...modalityViolations(req.messages, caps, model.id))
+
+  const serverTools = (req.tools ?? []).filter(isServerTool)
+  if (serverTools.length > 0) {
+    errors.push(
+      new CapabilityViolation(
+        "tools.server",
+        `Cursor adapter executes MA tools via MCP only; server tools [${serverTools.map((t) => t.name).join(", ")}] are not supported`,
+      ),
+    )
+  }
+
+  if (req.toolChoice?.type === "tool") {
+    const name = req.toolChoice.name
+    const known = (req.tools ?? []).some((t) => t.name === name)
+    if (!known) {
+      errors.push(
+        new CapabilityViolation("toolChoice", `toolChoice.tool "${name}" is not in req.tools`),
+      )
+    }
+  }
+
+  if (cursorToolsEnabledOnWire(req) && !caps.tools.userDefined) {
+    errors.push(
+      new CapabilityViolation("tools.userDefined", `model ${model.id} rejects user-defined tools`),
+    )
+  }
 
   return { ok: errors.length === 0, errors }
 }

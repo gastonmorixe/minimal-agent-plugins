@@ -20,7 +20,7 @@ Per-user, never in the project tree, never committed:
 Each entry is a single JSON line:
 
 ```json
-{"id":"...","ts":1700000000000,"sid":"...","cwd":"/abs/path","text":"...","exit":0}
+{ "id": "...", "ts": 1700000000000, "sid": "...", "cwd": "/abs/path", "text": "...", "exit": 0 }
 ```
 
 Stable wire format, append-only, never rewrite an existing line.

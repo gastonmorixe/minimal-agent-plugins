@@ -1,7 +1,7 @@
 {
   "name": "ma-model-info-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Contributes the ModelInfo tool: a decoupled, provider-agnostic way for the model to read its own current capabilities and session details at call time.",
   "type": "module",
   "scripts": {

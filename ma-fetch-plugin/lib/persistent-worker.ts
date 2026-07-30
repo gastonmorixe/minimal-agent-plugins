@@ -100,7 +100,7 @@ function protocolWriter(stdin: WritableStream<Uint8Array> | BunFileSinkLike): Pr
     },
     release: () => {
       try {
-        sink.end?.()
+        void sink.end?.()
       } catch {}
     },
   }

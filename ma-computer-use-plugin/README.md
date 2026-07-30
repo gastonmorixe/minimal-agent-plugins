@@ -80,18 +80,18 @@ ln -s "$PWD" ~/.agents/plugins/ma-computer-use-plugin
 
 ## Control CLI (`bin/cud.ts`)
 
-| command | what |
-|---|---|
-| `build` | xcodegen generate + xcodebuild + dev-sign → `native/build/ComputerUseHelper.app` |
-| `notarize` | Release build + Developer ID sign + notarytool submit + staple |
-| `start` | launch the signed `.app` as a detached daemon |
-| `stop` | terminate the daemon |
-| `restart` | stop + start (needed after granting TCC) |
-| `status` | running? + ping the socket (shows version + perms) |
-| `logs [N]` | tail the daemon log |
-| `perms` | print permission status (runs the app `--check`) |
-| `prompt` | fire permission prompts + open Settings (runs `--prompt`) |
-| `disable` / `enable` | the kill switch (refuse / allow mutating actions) |
+| command              | what                                                                             |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `build`              | xcodegen generate + xcodebuild + dev-sign → `native/build/ComputerUseHelper.app` |
+| `notarize`           | Release build + Developer ID sign + notarytool submit + staple                   |
+| `start`              | launch the signed `.app` as a detached daemon                                    |
+| `stop`               | terminate the daemon                                                             |
+| `restart`            | stop + start (needed after granting TCC)                                         |
+| `status`             | running? + ping the socket (shows version + perms)                               |
+| `logs [N]`           | tail the daemon log                                                              |
+| `perms`              | print permission status (runs the app `--check`)                                 |
+| `prompt`             | fire permission prompts + open Settings (runs `--prompt`)                        |
+| `disable` / `enable` | the kill switch (refuse / allow mutating actions)                                |
 
 The handler also **auto-starts** the daemon on first tool use, so the agent doesn't
 have to call `start`. You still must `build` and grant permissions once.
@@ -132,7 +132,7 @@ This controls the real machine, unsandboxed. Built-in guardrails (defaults on):
 
 ## Notarization (optional, for distribution)
 
-For local use you don't need notarization (Gatekeeper only blocks *quarantined*
+For local use you don't need notarization (Gatekeeper only blocks _quarantined_
 downloads, and a locally built app has no quarantine flag). Notarize only if you
 want to copy the `.app` to **another** Mac without Gatekeeper warnings.
 

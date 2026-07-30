@@ -74,8 +74,8 @@ Drop into `~/.minimal-agent/config.jsonc`:
 ```jsonc
 {
   "plugins": {
-    "quota-status": { "enabled": false }
-  }
+    "quota-status": { "enabled": false },
+  },
 }
 ```
 
@@ -103,15 +103,15 @@ The segments and their order are declarative in
 {
   "statusBar": {
     // default order shown; reorder or omit ids to taste
-    "segments": ["quota", "context", "model", "sid"]
-  }
+    "segments": ["quota", "context", "model", "sid"],
+  },
 }
 ```
 
-- `quota`   — the provider's plan/rate-limit windows (Anthropic: 5h, 7d).
+- `quota` — the provider's plan/rate-limit windows (Anthropic: 5h, 7d).
 - `context` — the session context-usage bar (`contextSize / contextWindow`).
-- `model`   — the `<provider-model>:<effort>` tag (e.g. `anth-4.8:high`).
-- `sid`     — the short session-id anchor.
+- `model` — the `<provider-model>:<effort>` tag (e.g. `anth-4.8:high`).
+- `sid` — the short session-id anchor.
 
 Omit an id to hide it; reorder freely. Unknown ids are ignored and an
 empty/all-invalid list falls back to the default order, so a typo never

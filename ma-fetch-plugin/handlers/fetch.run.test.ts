@@ -394,7 +394,11 @@ describe("runWithDeps - error paths", () => {
 
   test("unclassified failure: generic message + opaque ref, raw stderr NOT surfaced", async () => {
     const spawnFn: SpawnFn = () =>
-      fakeProc({ stdout: "", stderr: "obscura: kaboom unrecognized at obscura.ts:42", exitCode: 1 })
+      fakeProc({
+        stdout: "",
+        stderr: "obscura: kaboom unrecognized at obscura.ts:42",
+        exitCode: 1,
+      })
     const ctx = fakeCtx({ url: "https://example.com" })
     const r = await runWithDeps(
       ctx,

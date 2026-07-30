@@ -52,13 +52,13 @@ Don't fetch full bodies for every match. Skim previews, then `read` the one or t
 
 ## Three scopes: pick deliberately when saving
 
-| Scope        | Lives in                                                | Use when                                                      |
-| ------------ | ------------------------------------------------------- | ------------------------------------------------------------- |
-| `global`     | `~/.minimal-agent/memory.md`                            | True for any project I'll touch with this user.               |
-| `project`    | `~/.minimal-agent/projects/<absolute-cwd>/memory.md`    | True for *this codebase* across sessions.                     |
-| `short-term` | `~/.minimal-agent/sessions/<sid>.scratch.md`            | Useful only until this session ends (per-session scratchpad). |
+| Scope        | Lives in                                             | Use when                                                      |
+| ------------ | ---------------------------------------------------- | ------------------------------------------------------------- |
+| `global`     | `~/.minimal-agent/memory.md`                         | True for any project I'll touch with this user.               |
+| `project`    | `~/.minimal-agent/projects/<absolute-cwd>/memory.md` | True for _this codebase_ across sessions.                     |
+| `short-term` | `~/.minimal-agent/sessions/<sid>.scratch.md`         | Useful only until this session ends (per-session scratchpad). |
 
-All three are **per-user**, never inside the project tree, never committed, never shared with collaborators. Memories are *your* personal scratchpad. Things meant for the team belong in `README.md`, `CLAUDE.md`, `AGENTS.md`, etc.
+All three are **per-user**, never inside the project tree, never committed, never shared with collaborators. Memories are _your_ personal scratchpad. Things meant for the team belong in `README.md`, `CLAUDE.md`, `AGENTS.md`, etc.
 
 ### Namespaces (when the user is testing memory)
 
@@ -66,10 +66,10 @@ If `MINIMAL_AGENT_MEMORY_NAMESPACE=<name>` is set, every path above is rebased u
 
 ## Decision tree (run top-to-bottom before saving)
 
-1. **Will this still be true in a *future* session?**
-    - In any project I'll work on with this user -> `global`
-    - In this project only -> `project`
-    - No -> `short-term` (or don't save at all)
+1. **Will this still be true in a _future_ session?**
+   - In any project I'll work on with this user -> `global`
+   - In this project only -> `project`
+   - No -> `short-term` (or don't save at all)
 
 2. **Is it actionable / specific?** Vague aspirations ("we should fix the bug") aren't memories. Use a TODO list.
 
@@ -79,7 +79,7 @@ If `MINIMAL_AGENT_MEMORY_NAMESPACE=<name>` is set, every path above is rebased u
 
 ## When to use `short-term` specifically
 
-Per-session scratchpad. Things you're *actively* tracking and want to look at every turn or every few turns:
+Per-session scratchpad. Things you're _actively_ tracking and want to look at every turn or every few turns:
 
 - "user said the failing test is in `foo.test.ts:47`"
 - "symptom: snapshot diff fails only when `COLUMNS<80`"

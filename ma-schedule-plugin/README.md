@@ -35,7 +35,7 @@ tasks `⟳` and one-shots `⧗`.
 
 Cron is minute-granular, so `/loop 5m` and up become clean cron cadences. A
 **sub-minute** interval (`/loop 10s`, or `CronCreate every:"10s"`) instead runs
-on the *dynamic* pace: the task stores its period in `intervalMs` and re-arms
+on the _dynamic_ pace: the task stores its period in `intervalMs` and re-arms
 `nextAtMs = now + intervalMs` after each fire. With the 1-second heartbeat a
 `10s` loop fires about every 10 seconds (a fire still waits for any in-flight
 turn to finish, since prompts inject between turns). Intervals floor at 1s.

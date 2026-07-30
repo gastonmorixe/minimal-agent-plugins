@@ -95,7 +95,12 @@ describe("renderWidget", () => {
         tools: 4,
       }),
     ]
-    const out = renderWidget(records, { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD }) as string
+    const out = renderWidget(records, {
+      ansi: false,
+      tick: 0,
+      nowMs: NOW,
+      leadSid: LEAD,
+    }) as string
     expect(out).not.toBeNull()
     const lines = out.split("\n")
     expect(lines[0]).toContain("⚠ 1") // incomplete count in the header

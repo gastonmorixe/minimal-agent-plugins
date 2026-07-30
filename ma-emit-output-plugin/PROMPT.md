@@ -5,9 +5,11 @@ Renders a tool call's raw output or a filesystem path inline in the response str
 ## Two source modes (mutually exclusive)
 
 1. **By tool call**: `tool="call_00_xxx"` using the tool_use_id from the `<ma::agent::raw-output>` footer:
+
    ```
    <ma::emit::output tool="call_00_dMMw39hweiGAR2xNzEoG1240" />
    ```
+
    Resolves that tool call's raw-output blob from this session's blob store. The id must match the footer exactly.
 
 2. **By filesystem path**: `path="/tmp/render_table.txt"`:

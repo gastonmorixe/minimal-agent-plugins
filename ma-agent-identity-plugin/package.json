@@ -1,7 +1,7 @@
 {
   "name": "ma-agent-identity-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: emits a system-prompt line naming the agent session.",
   "type": "module",
   "scripts": {

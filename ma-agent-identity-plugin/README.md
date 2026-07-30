@@ -16,13 +16,13 @@ session id. Opt out with an `off` sentinel.
 
 Pick a source (env wins over config):
 
-| Source | Value | Effect |
-|---|---|---|
-| env `MINIMAL_AGENT_AGENT_NAME` | `Laura` | names the agent `Laura` this run |
-| env `MINIMAL_AGENT_AGENT_NAME` | `auto` | a stable name derived from the session id (the default) |
-| env `MINIMAL_AGENT_AGENT_NAME` | `off` | force-disable (vetoes a configured name) |
-| config `agentName` | `"Laura"` / `"auto"` / `"off"` | same, lower priority than the env var |
-| (nothing set) | | defaults to `auto` |
+| Source                         | Value                          | Effect                                                  |
+| ------------------------------ | ------------------------------ | ------------------------------------------------------- |
+| env `MINIMAL_AGENT_AGENT_NAME` | `Laura`                        | names the agent `Laura` this run                        |
+| env `MINIMAL_AGENT_AGENT_NAME` | `auto`                         | a stable name derived from the session id (the default) |
+| env `MINIMAL_AGENT_AGENT_NAME` | `off`                          | force-disable (vetoes a configured name)                |
+| config `agentName`             | `"Laura"` / `"auto"` / `"off"` | same, lower priority than the env var                   |
+| (nothing set)                  |                                | defaults to `auto`                                      |
 
 `~/.minimal-agent/config.jsonc`:
 
@@ -30,7 +30,7 @@ Pick a source (env wins over config):
 {
   // a literal name, "auto" for a per-session derived name (the default),
   // or "off" to disable naming entirely
-  "agentName": "auto"
+  "agentName": "auto",
 }
 ```
 
@@ -52,7 +52,7 @@ plugin to read. It never changes mid-session, on purpose.
 
 Prompt caching is **prefix-based** on every provider: a cached request is
 reused only up to the first byte that differs, and everything after that is
-recomputed. The system prompt sits *before* every message on the wire, so
+recomputed. The system prompt sits _before_ every message on the wire, so
 changing one byte of it mid-session would invalidate the entire
 conversation's cache, not just the system block. A "rename me" tool would be
 the single most cache-hostile thing this codebase could add. Hence: resolve
@@ -81,8 +81,8 @@ exactly why it goes at the bottom instead.
 
 ## What it contributes
 
-| Surface | Value |
-|---|---|
+| Surface                    | Value                                     |
+| -------------------------- | ----------------------------------------- |
 | `manifest.promptFragments` | one entry, `id: "name"`, a module handler |
 
 The handler (`handlers/identity.ts`) reads the resolved

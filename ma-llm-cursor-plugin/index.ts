@@ -30,11 +30,7 @@ export {
   cursorCaps,
   deriveCursorCapabilities,
 } from "./capabilities.ts"
-export {
-  buildCursorChecksum,
-  scrambleTimestampBytes,
-  timestampBytes,
-} from "./checksum.ts"
+export { buildCursorChecksum, scrambleTimestampBytes, timestampBytes } from "./checksum.ts"
 export { agentRunUrl, apiBase, availableModelsUrl, getUsableModelsUrl } from "./connect/hosts.ts"
 export {
   bearerToken,

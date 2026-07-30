@@ -94,11 +94,11 @@ Do not hard-code that familiar path in implementation code. The plugin honors
 
 ### Session selector semantics
 
-| Call input | Effective behavior |
-|---|---|
-| `session` omitted | Use `defaults.session` if configured, otherwise run statelessly |
-| `session: "x-search"` | Use `<storageRoot>/x-search` |
-| `session: ""` | Explicitly opt out of a configured default for this call |
+| Call input            | Effective behavior                                              |
+| --------------------- | --------------------------------------------------------------- |
+| `session` omitted     | Use `defaults.session` if configured, otherwise run statelessly |
+| `session: "x-search"` | Use `<storageRoot>/x-search`                                    |
+| `session: ""`         | Explicitly opt out of a configured default for this call        |
 
 A non-empty session name must match:
 
@@ -232,8 +232,8 @@ renders the current X authentication application. The live DOM contains one
 form with:
 
 ```html
-<input id="jf-input-username_or_email" name="username_or_email" type="text">
-<input name="password" type="password" inert>
+<input id="jf-input-username_or_email" name="username_or_email" type="text" />
+<input name="password" type="password" inert />
 ```
 
 The page also exposes phone, Google, and Apple authentication controls. The

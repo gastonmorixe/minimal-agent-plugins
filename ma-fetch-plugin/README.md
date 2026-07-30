@@ -32,40 +32,43 @@ ma-fetch-plugin/
 The handler doesn't know obscura exists. It builds a `BackendCallInput`
 from validated tool input + config defaults, then asks `lib/backend.ts`
 to invoke the configured backend script with an `MA_FETCH_*` env block.
-The backend script (today `backends/obscura.ts`) is the *only* place
+The backend script (today `backends/obscura.ts`) is the _only_ place
 that knows about a specific browser's CLI. Tomorrow's
 `backends/playwright.ts` honors the same env contract and the handler
 stays unchanged.
 
 **Always-on backend invariants** (NOT exposed as tool API):
+
 - Anti-detection / stealth (always on - hygiene)
 - Suppress backend banner (always on - clean stdout)
 
 **Tool API** (what the model controls):
+
 - `url` (required)
 - `format` (markdown | text | html | links | accessibility | original)
 - `selector`, `eval`, `eval_mode`, `wait_until`, `timeout_sec`, `cleanup`
-- `session` (persistent cookies + `localStorage`; see *Persistent sessions* below)
+- `session` (persistent cookies + `localStorage`; see _Persistent sessions_ below)
 
 ### Backend env-var contract
 
 The handler spawns `<plugin>/backends/<backend>.ts` with these env vars:
 
-| Var | Required | Notes |
-|---|---|---|
-| `MA_FETCH_URL` | yes | |
-| `MA_FETCH_FORMAT` | yes | `markdown\|text\|html\|links\|accessibility\|original` |
-| `MA_FETCH_WAIT_UNTIL` | yes | `load\|domcontentloaded\|networkidle0` |
-| `MA_FETCH_TIMEOUT_SEC` | yes | integer seconds |
-| `MA_FETCH_SELECTOR` | no | |
-| `MA_FETCH_EVAL` | no | JavaScript expression evaluated in the page context |
-| `MA_FETCH_EVAL_MODE` | no | `value` returns the expression result; `page` evaluates then returns the requested dump |
-| `MA_FETCH_USER_AGENT` | no | from plugin config |
-| `MA_FETCH_PROXY` | no | from plugin config |
-| `MA_FETCH_STORAGE_DIR` | no | absolute path resolved from `session` + `storageRoot`; backends that support persistence (obscura) forward as `--storage-dir <DIR>` |
-| `MA_FETCH_BIN` | yes (set by dispatcher) | absolute path to the backend binary. Resolved by `lib/backend.ts:resolveBackendBin`: operator override (`plugins["ma-fetch"].<backend>.bin`) wins, else `<MINIMAL_AGENT_BIN_DIR>/<backend>` (the agent-managed dir, `~/.minimal-agent/bin`). **No PATH fallback**: if it can't be resolved the backend refuses to run (exit 2) and the tool reports an engine-unavailable error. |
+| Var                    | Required                | Notes                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MA_FETCH_URL`         | yes                     |                                                                                                                                                                                                                                                                                                                                                                                  |
+| `MA_FETCH_FORMAT`      | yes                     | `markdown\|text\|html\|links\|accessibility\|original`                                                                                                                                                                                                                                                                                                                           |
+| `MA_FETCH_WAIT_UNTIL`  | yes                     | `load\|domcontentloaded\|networkidle0`                                                                                                                                                                                                                                                                                                                                           |
+| `MA_FETCH_TIMEOUT_SEC` | yes                     | integer seconds                                                                                                                                                                                                                                                                                                                                                                  |
+| `MA_FETCH_SELECTOR`    | no                      |                                                                                                                                                                                                                                                                                                                                                                                  |
+| `MA_FETCH_EVAL`        | no                      | JavaScript expression evaluated in the page context                                                                                                                                                                                                                                                                                                                              |
+| `MA_FETCH_EVAL_MODE`   | no                      | `value` returns the expression result; `page` evaluates then returns the requested dump                                                                                                                                                                                                                                                                                          |
+| `MA_FETCH_USER_AGENT`  | no                      | from plugin config                                                                                                                                                                                                                                                                                                                                                               |
+| `MA_FETCH_PROXY`       | no                      | from plugin config                                                                                                                                                                                                                                                                                                                                                               |
+| `MA_FETCH_STORAGE_DIR` | no                      | absolute path resolved from `session` + `storageRoot`; backends that support persistence (obscura) forward as `--storage-dir <DIR>`                                                                                                                                                                                                                                              |
+| `MA_FETCH_BIN`         | yes (set by dispatcher) | absolute path to the backend binary. Resolved by `lib/backend.ts:resolveBackendBin`: operator override (`plugins["ma-fetch"].<backend>.bin`) wins, else `<MINIMAL_AGENT_BIN_DIR>/<backend>` (the agent-managed dir, `~/.minimal-agent/bin`). **No PATH fallback**: if it can't be resolved the backend refuses to run (exit 2) and the tool reports an engine-unavailable error. |
 
 Backend output:
+
 - **stdout** → the eval value for `eval_mode: "value"`, otherwise page content; becomes `tool_result.content`
 - **stderr** → diagnostics (shown to the user on errors)
 - **exit code** → 0 on success, non-zero on failure
@@ -105,18 +108,18 @@ Backend output:
        "ma-fetch": {
          "enabled": true,
          "backend": "obscura",
-         "storageRoot": "~/.minimal-agent/sessions/fetch",  // optional override
+         "storageRoot": "~/.minimal-agent/sessions/fetch", // optional override
          "obscura": {
-           "bin": "/path/to/obscura"
+           "bin": "/path/to/obscura",
          },
          "defaults": {
            "format": "markdown",
            "waitUntil": "domcontentloaded",
            "timeoutSec": 30,
-           "session": null  // optional: name used when the model omits `session`
-         }
-       }
-     }
+           "session": null, // optional: name used when the model omits `session`
+         },
+       },
+     },
    }
    ```
 

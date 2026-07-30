@@ -1,7 +1,7 @@
 {
   "name": "ma-llm-openai-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External provider plugin for minimal-agent: OpenAI (Chat Completions + Responses API).",
   "type": "module",
   "scripts": {

@@ -8,31 +8,31 @@ HuggingFace/OpenRouter, and a surface codec for generic-endpoint reuse.
 
 ## Architecture fit
 
-| Host seam | Implementation |
-|-----------|----------------|
-| `provider.json` discovery | `id: grok`, export `grokProviderPlugin` |
-| `ProviderPlugin.register(ctx)` | `bootstrapGrok` → models + adapter + surface codec |
-| `apiKeyAuth` | `grok-api-key` bag → Bearer on `api.x.ai` |
-| `oauthLogin.deviceCode` | PIN flow via `auth.x.ai` → cli-chat-proxy base URL |
-| `fetchSessionInfo` / `primeSessionInfo` | rate-limit headers + monthly billing window |
-| `listLiveModels` | `GET /v1/models` (api.x.ai or proxy) |
-| Surfaces | `openai-responses` (preferred frontier) + `openai-chat-completions` |
-| Vision | `modalities.image: true` on catalog models |
+| Host seam                               | Implementation                                                      |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| `provider.json` discovery               | `id: grok`, export `grokProviderPlugin`                             |
+| `ProviderPlugin.register(ctx)`          | `bootstrapGrok` → models + adapter + surface codec                  |
+| `apiKeyAuth`                            | `grok-api-key` bag → Bearer on `api.x.ai`                           |
+| `oauthLogin.deviceCode`                 | PIN flow via `auth.x.ai` → cli-chat-proxy base URL                  |
+| `fetchSessionInfo` / `primeSessionInfo` | rate-limit headers + monthly billing window                         |
+| `listLiveModels`                        | `GET /v1/models` (api.x.ai or proxy)                                |
+| Surfaces                                | `openai-responses` (preferred frontier) + `openai-chat-completions` |
+| Vision                                  | `modalities.image: true` on catalog models                          |
 
 ## Models
 
 Live sources: subscription `cli-chat-proxy` `/v1/models` (grok-4.5 only) and
 `api.x.ai/v1/models` (full text catalog + price micros).
 
-| Local id | Wire id | Surface | Context | Vision | Notes |
-|----------|---------|---------|---------|--------|-------|
-| `grok-4.5` (default) | `grok-4.5` | **Responses** | 500k | yes | Flagship; efforts low/medium/**high** |
-| `grok-4.5-chat` | `grok-4.5` | Chat | 500k | yes | Same SKU, chat surface |
-| `grok-4.3` | `grok-4.3` | Responses | 1M | yes | Fast / balanced |
-| `grok-build` | `grok-build-0.1` | Responses | 256k | yes | Coding; aliases `grok-code-fast*` |
-| `grok-4.20-reasoning` | `grok-4.20-0309-reasoning` | Responses | 1M | yes | |
-| `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses | 1M | yes | No effort knob |
-| `grok-4.20-multi-agent` | `grok-4.20-multi-agent-0309` | Responses | 1M | yes | Effort = agent count |
+| Local id                  | Wire id                        | Surface       | Context | Vision | Notes                                 |
+| ------------------------- | ------------------------------ | ------------- | ------- | ------ | ------------------------------------- |
+| `grok-4.5` (default)      | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high** |
+| `grok-4.5-chat`           | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                |
+| `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Fast / balanced                       |
+| `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Coding; aliases `grok-code-fast*`     |
+| `grok-4.20-reasoning`     | `grok-4.20-0309-reasoning`     | Responses     | 1M      | yes    |                                       |
+| `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses     | 1M      | yes    | No effort knob                        |
+| `grok-4.20-multi-agent`   | `grok-4.20-multi-agent-0309`   | Responses     | 1M      | yes    | Effort = agent count                  |
 
 Pricing (under 200k prompt): grok-4.5 **$2 / $0.30 cached / $6** per 1M; doubles at ≥200k.
 Prompt-cache accounting is **subset** (OpenAI/xAI): `cached_tokens ⊆ input_tokens`.

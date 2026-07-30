@@ -53,7 +53,11 @@ export class SourceKitLspProvider implements DiagnosticProvider {
 
   private client: LspClient | null = null
   private booting: Promise<LspClient> | null = null
-  private readonly breaker = new CircuitBreaker({ maxFailures: 2, cooldownMs: 15_000, maxTrips: 5 })
+  private readonly breaker = new CircuitBreaker({
+    maxFailures: 2,
+    cooldownMs: 15_000,
+    maxTrips: 5,
+  })
 
   constructor(
     private readonly bin: string,

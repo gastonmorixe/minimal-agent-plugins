@@ -252,7 +252,12 @@ function step(
     const error = probe.crash
       ? `${probe.crash} (exit ${probe.exitCode})`
       : `exited with code ${probe.exitCode}`
-    const status: SubagentStatus = { kind: "failed", endedAt: now, error, exitCode: probe.exitCode }
+    const status: SubagentStatus = {
+      kind: "failed",
+      endedAt: now,
+      error,
+      exitCode: probe.exitCode,
+    }
     return { status, effects: terminalEffects(r, status, now) }
   }
   //    a'. FIX A: the exit code is UNKNOWABLE in production (Bun.spawn is

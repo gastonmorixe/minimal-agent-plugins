@@ -71,7 +71,11 @@ describe("launchWorker", () => {
   })
 })
 
-const target = (pid: number) => ({ pid, resultPath: "/tmp/r.json", transcriptPath: "/tmp/t.jsonl" })
+const target = (pid: number) => ({
+  pid,
+  resultPath: "/tmp/r.json",
+  transcriptPath: "/tmp/t.jsonl",
+})
 
 describe("probeWorker", () => {
   it("reports alive WITH live progress, without reading a result", () => {

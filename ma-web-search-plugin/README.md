@@ -4,9 +4,9 @@
 
 ## What it contributes
 
-| Surface | Trigger | Handler |
-|---|---|---|
-| Tool | `WebSearch` | `handlers/web_search.ts` |
+| Surface | Trigger     | Handler                  |
+| ------- | ----------- | ------------------------ |
+| Tool    | `WebSearch` | `handlers/web_search.ts` |
 
 ## Provider chain
 
@@ -16,9 +16,9 @@ Configured in `~/.minimal-agent/config.jsonc`:
 {
   "plugins": {
     "web-search": {
-      "providers": ["brave"]
-    }
-  }
+      "providers": ["brave"],
+    },
+  },
 }
 ```
 

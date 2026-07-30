@@ -119,7 +119,11 @@ describe("classifyInbound", () => {
       method: "Browser.downloadProgress",
       params: { guid: "g1", state: "completed" },
     }
-    expect(classifyInbound(m)).toEqual({ kind: "downloadProgress", guid: "g1", state: "completed" })
+    expect(classifyInbound(m)).toEqual({
+      kind: "downloadProgress",
+      guid: "g1",
+      state: "completed",
+    })
   })
 
   test("unknown event is ignored", () => {

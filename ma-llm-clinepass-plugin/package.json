@@ -1,7 +1,7 @@
 {
   "name": "ma-llm-clinepass-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External provider plugin for minimal-agent: ClinePass (OpenAI-compatible open-weight models via api.cline.bot).",
   "type": "module",
   "scripts": {

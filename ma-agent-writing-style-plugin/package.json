@@ -1,7 +1,7 @@
 {
   "name": "ma-agent-writing-style-plugin",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "External user plugin for minimal-agent: pure-prompt fragment enforcing agent writing style.",
   "type": "module",
   "scripts": {
