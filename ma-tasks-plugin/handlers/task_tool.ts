@@ -27,6 +27,7 @@
  *  - `"#a7b3c4"` / `"a7b3c4"` (top-level)
  *  - `"#a7b3c4a"` / `"a7b3c4a"` (subtask)
  *  - `"3"` or `3` (1-indexed top-level position)
+ *  - `"3a"` (unprefixed child-row coordinate; stable hashes remain preferred)
  *
  * @module tasks/handlers/task_tool
  */
@@ -335,7 +336,8 @@ function validateInput(raw: Record<string, unknown>): Validation {
       return {
         ok: false,
         error:
-          "`parent` cannot be combined with `items` (the tree defines parents; use `children` instead)",
+          "`parent` cannot be combined with `items`: `items` always creates top-level tree roots. " +
+            "To add a flat batch below a top-level parent, use `titles`; subtasks cannot have children.",
       }
     }
     if (out.after !== undefined) {

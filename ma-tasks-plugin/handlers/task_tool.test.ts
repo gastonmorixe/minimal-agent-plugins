@@ -100,6 +100,7 @@ describe("validation", () => {
     })
     expect(r.is_error).toBe(true)
     expect(r.content).toMatch(/parent.*items|items.*parent/)
+    expect(r.content).toMatch(/top-level|subtasks.*children/)
   })
   test("rejects empty items array", async () => {
     const r = await call({ action: "add_many", items: [] })
@@ -642,6 +643,25 @@ describe("update", () => {
     expect(r.content).toContain("doing     x")
     const store = new TaskStore(sid, { home: tmpHome })
     expect(store.list()[0].status).toBe("doing")
+  })
+  test("updates a subtask by its visible child-row coordinate", async () => {
+    await call({
+      action: "add_many",
+      items: [
+        { title: "Phase", children: ["first child", "second child", "third child"] },
+        { title: "Second phase", children: ["other child"] },
+      ],
+    })
+
+    const r = await call({ action: "update", id: "1c", status: "done" })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`action="update"`)
+    expect(r.content).toContain(`result="marked_done"`)
+
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.resolve(1)!
+    expect(store.resolve(`${parent.id}c`)!.status).toBe("done")
+    expect(store.resolve("2a")!.status).toBe("todo")
   })
   test("update with both title and status applies both", async () => {
     await call({ action: "add", title: "old title" })

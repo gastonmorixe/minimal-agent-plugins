@@ -86,6 +86,9 @@ The store keeps trees consistent in one write:
 - Bare hash: `"a7b3c4"`
 - Prefixed hash: `"#a7b3c4"`
 - Subtask hash: `"a7b3c4a"` (parent + alpha suffix)
+- Child-row coordinate: `"3a"` (unprefixed visible label)
+
+Hashes remain stable across reorders and deletes. Positions and child-row coordinates are convenient but shift after reorders or deletes.
 
 ## CLI
 

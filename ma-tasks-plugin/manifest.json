@@ -21,7 +21,7 @@
         "type": "tool",
         "tool": {
           "name": "Task",
-          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). The user sees a live TODO with real-time status. Mutating actions return the post-mutation task state in a `<ma::agent::tasks>` columnar table so you can confirm state. Last open child auto-promotes its parent (and may return `all_done`); do not also `done` the parent. Re-`done` on an already-done id returns a compact `already_done` ack (no full board). `id` accepts either a 1-indexed position (e.g. `3`) or a hash (`#a7b3c4`). Subtask hashes are parent + alpha suffix (`#a7b3c4a`).",
+          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). The user sees a live TODO with real-time status. Mutating actions return the post-mutation task state in a `<ma::agent::tasks>` columnar table so you can confirm state. Last open child auto-promotes its parent (and may return `all_done`); do not also `done` the parent. Re-`done` on an already-done id returns a compact `already_done` ack (no full board). `id` accepts a top-level position (e.g. `3`), a stable hash (`#a7b3c4`), or an unprefixed child-row coordinate (`3a`).",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -42,7 +42,7 @@
                 "description": "What to do."
               },
               "id": {
-                "description": "Task reference. Accepts a six-hex hash (`a7b3c4`), an optionally-prefixed hash (`#a7b3c4`), a subtask hash (`a7b3c4a`), or a 1-indexed position integer (3). Required for: update, status, start, done, remove."
+                "description": "Task reference. Accepts a six-hex hash (`a7b3c4`), an optionally-prefixed hash (`#a7b3c4`), a subtask hash (`a7b3c4a`), a 1-indexed top-level position integer (`3`), or an unprefixed child-row coordinate (`3a`). Required for: update, status, start, done, remove."
               },
               "title": {
                 "type": "string",
@@ -133,7 +133,7 @@
         "export": "default"
       },
       "interactive": false,
-      "icon": "✔",
+      "icon": "◉",
       "color": "lime"
     }
   ],
