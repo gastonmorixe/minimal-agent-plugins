@@ -290,26 +290,11 @@ export class TaskStore {
 
   /**
    * Resolve an id reference into a task. Accepts a bare id, a `#`-prefixed
-   * id, or a positive integer (1-indexed top-level position). Returns
-   * `null` if no task matches.
+   * id, a positive integer (1-indexed top-level position), or an unprefixed
+   * child-row coordinate such as `"1a"`. Returns `null` if no task matches.
    */
   resolve(ref: string | number): Task | null {
-    if (typeof ref === "number") {
-      if (!Number.isInteger(ref) || ref < 1) return null
-      const tops = this.list().filter((t) => t.parent === null)
-      return tops[ref - 1] ?? null
-    }
-    const bare = ref.startsWith("#") ? ref.slice(1) : ref
-    // Disambiguation: a 6-hex top-level id OR 7-char subtask id is ALWAYS
-    // treated as a hash, even when every character is a digit. This avoids
-    // the all-digit-hash trap (~6% of random hashes are six digits and
-    // would otherwise be mis-parsed as a position).
-    if (isTaskId(bare)) {
-      return this.list().find((t) => t.id === bare) ?? null
-    }
-    // Fall through: pure digit strings of any other length are positions.
-    if (/^\d+$/.test(bare)) return this.resolve(Number.parseInt(bare, 10))
-    return null
+    return this.resolveFrom(ref, this.list())
   }
 
   // -------------------------------------------------------------------------
@@ -698,15 +683,27 @@ export class TaskStore {
       const tops = tasks.filter((t) => t.parent === null)
       return tops[ref - 1] ?? null
     }
-    const bare = ref.startsWith("#") ? ref.slice(1) : ref
-    // Same disambiguation as `resolve` — hash-shaped strings (6 or 7 chars
-    // matching the id regex) win, even when all-digit. See the comment on
-    // `resolve` for the rationale (all-digit hashes occur ~6% of the time).
+    const hasHashPrefix = ref.startsWith("#")
+    const bare = hasHashPrefix ? ref.slice(1) : ref
+    // Hash-shaped strings (6 or 7 chars matching the id regex) always win,
+    // even when every character is a digit. This avoids treating a valid
+    // all-digit hash (~6% of top-level ids) as an enormous display position.
     if (isTaskId(bare)) {
       return tasks.find((t) => t.id === bare) ?? null
     }
     if (/^\d+$/.test(bare)) return this.resolveFrom(Number.parseInt(bare, 10), tasks)
-    return null
+    if (hasHashPrefix) return null
+
+    // The model sees child rows labeled `1a`, `1b`, … alongside stable hashes.
+    // The alpha comes from the stable child-id suffix, so a deleted sibling
+    // leaves a visible gap (for example `1b`) rather than renumbering rows.
+    // `#1a` remains invalid because it is not a stable hash; legacy `#1`
+    // position lookup is preserved by the numeric branch above.
+    const coord = /^(\d+)([a-z])$/.exec(bare)
+    if (coord === null) return null
+    const parent = this.resolveFrom(Number.parseInt(coord[1], 10), tasks)
+    if (parent === null) return null
+    return tasks.find((t) => t.parent === parent.id && t.id === `${parent.id}${coord[2]}`) ?? null
   }
 
   private writeAll(tasks: readonly Task[]): void {

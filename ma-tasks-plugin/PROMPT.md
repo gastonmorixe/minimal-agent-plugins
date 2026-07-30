@@ -17,7 +17,7 @@ Use `Task` to plan and track multi-step work the user can watch in real time. Th
 
 ## Workflow
 
-1. **Plan in one shot.** `Task({action: "add_many", titles: [...]})` at the start, or `items: [{title, children?}]` when you need subtasks in the same call (`titles` XOR `items`; children are `string[]` only). Don't drip-feed tasks one at a time. The user wants to see the whole plan up front.
+1. **Plan in one shot.** `Task({action: "add_many", titles: [...]})` at the start, or `items: [{title, children?}]` when you need new top-level phases with subtasks in the same call (`titles` XOR `items`; children are `string[]` only). `items` cannot attach to an existing parent; use flat `titles` with a top-level `parent` instead. Don't drip-feed tasks one at a time. The user wants to see the whole plan up front.
 2. **Start before you work.** `Task({action: "start", id: N})` flips the task to `doing` and leaves every previously started task as `doing`. Starting a subtask also auto-starts its parent. Started work stays started until you mark it `done`, `canceled`, or explicitly set it back to `todo`. Multiple tasks and subtasks can be `doing` at once.
 3. **Done when materially complete.** `Task({action: "done", id: N})`. Don't pre-mark. Only mark `done` when you've actually finished the work the title described. Completing a child while siblings remain open keeps its parent `doing`; the last open child auto-promotes its parent to `done` (and may return `all_done` for the whole plan). Parent `done` cascades open children. **Never also `done` the parent in the same turn as the last child** - cascade already finished it; a second call is a no-op that returns compact `already_done` (no full board).
 4. **New substeps surface as you work.** If you discover a task is actually 3 substeps, `Task({action: "add", title: "...", parent: "#<hash>"})` for each. Then `start` the first child.
@@ -28,14 +28,15 @@ Use `Task` to plan and track multi-step work the user can watch in real time. Th
 
 ## Id resolution
 
-Every action that takes an `id` accepts THREE shapes:
+Every action that takes an `id` accepts these forms:
 
 - **Position** (1-indexed integer). `id: 3` means the third top-level task in the list. Most natural in conversational use.
 - **Bare hash**: `id: "a7b3c4"`. Six lowercase hex chars.
 - **Prefixed hash**: `id: "#a7b3c4"`. Same as bare. The `#` is purely cosmetic.
 - **Subtask hash**: `id: "a7b3c4a"`. Parent's hash + a-z suffix.
+- **Subtask display coordinate**: `id: "3a"`. This matches the visible child-row label under top-level task 3. Do **not** prefix it with `#`: `#` denotes a stable hash.
 
-The hash is stable across reorders and deletes. The position shifts. So when reordering or doing bulk operations, lean on the hash. For single "mark the next one done" interactions, the position is fine.
+The hash is stable across reorders and deletes. Display positions and coordinates shift. So when reordering or doing bulk operations, lean on the hash. For single "mark the next one done" interactions, the visible position or coordinate is fine.
 
 ## Status state machine
 

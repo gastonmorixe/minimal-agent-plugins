@@ -74,7 +74,7 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     const task = MANIFEST.tuis.find((t) => t.trigger.tool?.name === "Task")
     expect(task).toBeDefined()
     // The cosmetic icon + color flow into the host tool frame (toolPresentation).
-    expect(task?.icon).toBe("✔")
+    expect(task?.icon).toBe("◉")
     expect(task?.color).toBe("lime")
     expect(MANIFEST.turnAttachments?.some((a) => a.id === "tasks_snapshot")).toBe(true)
   })
