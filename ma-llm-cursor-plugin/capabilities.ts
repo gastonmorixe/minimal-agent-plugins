@@ -263,8 +263,9 @@ export function cursorCaps(options: CursorCapsOptions = {}): Capabilities {
  * catalog resolves an effort/reasoning parameter id (`resolveCursorEffortParamId`).
  * A bare `supportsThinking` without field-29/variant param ids still sets
  * thinking=true but **levels=[]** so the host cannot select a knob Jack cannot
- * encode (no inventing `effort` wire id). Static seed via {@link cursorCaps}
- * is unchanged and may still use DEFAULT_EFFORT_LEVELS.
+ * encode (no inventing `effort` wire id). Live probe 2026-07-30: most agent
+ * models advertise thinking with no field-29 effort param — levels stay [].
+ * Static seed via {@link cursorCaps} matches (effortLevels: []).
  */
 export function deriveCursorCapabilities(model: DecodedCursorModel): Capabilities {
   const fromCatalog = extractCursorEffortLevels(model)

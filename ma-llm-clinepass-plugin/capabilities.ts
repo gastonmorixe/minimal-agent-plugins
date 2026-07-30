@@ -3,7 +3,8 @@
  *
  * Sourced from Cline's generated catalog
  * (`sdk/packages/llms/src/catalog/catalog.generated.ts` under `"cline-pass"`)
- * plus product docs. All models speak OpenAI Chat Completions.
+ * plus product docs (docs.cline.bot/getting-started/clinepass). All models speak
+ * OpenAI Chat Completions. Refreshed 2026-07-30.
  *
  * @module llm/providers/clinepass/capabilities
  */
@@ -78,7 +79,14 @@ function baseReasoning(opts: {
 /** GLM-5.2 — 1M context, tools + reasoning. */
 export const CAPS_GLM_5_2: Capabilities = baseReasoning({
   contextWindow: 1_048_576,
-  maxOutputTokens: 32_768,
+  maxOutputTokens: 131_072,
+})
+
+/** Kimi K3 — 1M context, vision + tools + reasoning (added to Pass 2026-07). */
+export const CAPS_KIMI_K3: Capabilities = baseReasoning({
+  contextWindow: 1_048_576,
+  maxOutputTokens: 1_048_576,
+  vision: true,
 })
 
 /** Kimi K2.7 Code — 262K, vision + tools + reasoning. */
@@ -105,7 +113,7 @@ export const CAPS_DEEPSEEK_V4_PRO: Capabilities = baseReasoning({
 export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
   ...baseReasoning({
     contextWindow: 1_048_576,
-    maxOutputTokens: 65_536,
+    maxOutputTokens: 393_216,
   }),
   speedFast: true,
 }
@@ -114,22 +122,22 @@ export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
 export const CAPS_MINIMAX_M3: Capabilities = {
   ...baseReasoning({
     contextWindow: 1_048_576,
-    maxOutputTokens: 131_072,
+    maxOutputTokens: 512_000,
     vision: true,
   }),
   thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
 }
 
-/** MiMo V2.5 Pro — 1M context. */
+/** MiMo V2.5 Pro — ~1.05M context. */
 export const CAPS_MIMO_V2_5_PRO: Capabilities = baseReasoning({
-  contextWindow: 1_048_576,
+  contextWindow: 1_050_000,
   maxOutputTokens: 131_072,
 })
 
-/** MiMo V2.5 — 1M context, vision, efficient. */
+/** MiMo V2.5 — ~1.05M context, vision, efficient. */
 export const CAPS_MIMO_V2_5: Capabilities = {
   ...baseReasoning({
-    contextWindow: 1_048_576,
+    contextWindow: 1_050_000,
     maxOutputTokens: 131_072,
     vision: true,
   }),

@@ -6,8 +6,9 @@
  * `openai-chat-completions` surface — OpenRouter normalizes every upstream model to
  * the OpenAI Chat Completions wire format, so the DeepSeek/OpenAI chat
  * translator handles them unchanged. Only a representative few are
- * registered; any other slug still works on the wire (the CLI doesn't
- * gate on the registry), just without a local cost estimate.
+ * registered (snapshot as of 2026-07-30); any other slug still works on
+ * the wire (the CLI doesn't gate on the registry), just without a local
+ * cost estimate.
  *
  * @module llm/providers/openrouter/models
  */
@@ -16,10 +17,12 @@ import { CAPS_OPENROUTER_CHAT } from "./capabilities.ts"
 import type { ModelRegistrar } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
+  PRICING_OR_CLAUDE_OPUS_5,
   PRICING_OR_CLAUDE_SONNET_5,
   PRICING_OR_DEEPSEEK_V4_FLASH,
   PRICING_OR_GENERIC,
   PRICING_OR_GPT_4O_MINI,
+  PRICING_OR_GPT_56_SOL,
   PRICING_OR_GROK_45,
   PRICING_OR_KIMI_K3,
 } from "./pricing.ts"
@@ -73,6 +76,20 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     displayName: "Claude Sonnet 5 (OpenRouter)",
     tags: ["openrouter", "openai-compatible"],
     pricing: PRICING_OR_CLAUDE_SONNET_5,
+  })
+  // Anthropic frontier via OpenRouter.
+  add({
+    id: "anthropic/claude-opus-5",
+    displayName: "Claude Opus 5 (OpenRouter)",
+    tags: ["openrouter", "openai-compatible", "flagship"],
+    pricing: PRICING_OR_CLAUDE_OPUS_5,
+  })
+  // OpenAI frontier via OpenRouter.
+  add({
+    id: "openai/gpt-5.6-sol",
+    displayName: "GPT-5.6 Sol (OpenRouter)",
+    tags: ["openrouter", "openai-compatible", "flagship"],
+    pricing: PRICING_OR_GPT_56_SOL,
   })
   // xAI frontier via OpenRouter.
   add({

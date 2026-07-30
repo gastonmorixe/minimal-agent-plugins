@@ -3,14 +3,13 @@
  *
  * Two wire surfaces:
  * - **Chat**: OpenAI Chat Completions (`/v1/chat/completions`).
- *   Used by DeepSeek, GLM, Kimi, MiMo.
+ *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, Grok.
  * - **Messages**: Anthropic Messages (`/v1/messages`).
  *   Used by MiniMax, Qwen.
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
  * Data sourced from opencode.ai/docs/go, the /v1/models endpoint,
- * OpenRouter, Artificial Analysis, and each model's official docs
- * (June 2026 snapshot).
+ * models.dev, and each model's official docs (2026-07-30 snapshot).
  *
  * @module llm/providers/opencode/capabilities
  */
@@ -49,6 +48,9 @@ const M_TIV = { image: true, audio: false, pdf: false, video: true } as const
 
 /** Text + image + video + audio (omnimodal). */
 const M_TIVA = { image: true, audio: true, pdf: false, video: true } as const
+
+/** Text + image + audio + pdf (legacy MiMo Omni). */
+const M_TIAP = { image: true, audio: true, pdf: true, video: false } as const
 
 // ---------------------------------------------------------------------------
 // Thinking helpers
@@ -203,11 +205,20 @@ export const CAPS_KIMI_K2_6: Capabilities = {
 }
 
 /**
- * Kimi K3 — flagship, 1M ctx, 65K output, text+image+video.
+ * Kimi K2.5 — predecessor of K2.6, still on /v1/models (catalog/deprecated).
+ * Same multimodal + thinking shape as K2.6.
+ */
+export const CAPS_KIMI_K2_5: Capabilities = {
+  ...chatBase(262_144, 65_536, M_TIV),
+  ...thinkExtended(["medium"], "medium"),
+}
+
+/**
+ * Kimi K3 — flagship, 1M ctx, 131K output, text+image+video.
  * Thinking is always on. Moonshot currently exposes reasoning_effort "max" only.
  */
 export const CAPS_KIMI_K3: Capabilities = {
-  ...chatBase(1_000_000, 65_535, M_TIV),
+  ...chatBase(1_048_576, 131_072, M_TIV),
   ...thinkExtended(["max"], "max"),
 }
 
@@ -221,15 +232,51 @@ export const CAPS_GROK_4_5: Capabilities = {
   ...thinkExtended(["low", "medium", "high"], "high"),
 }
 
-/** MiMo V2.5 — 310B/15B MoE, 1M ctx, 131K output, omni-modal + extended thinking. */
+/**
+ * Hy3 — Tencent Hy reasoning model, 256K ctx, 64K output, text-only.
+ * Upstream efforts: none | low | high ("none" = thinking off, not an effort level).
+ */
+export const CAPS_HY3: Capabilities = {
+  ...chatBase(256_000, 64_000, M_TEXT),
+  ...thinkExtended(["low", "high"], "high"),
+}
+
+/**
+ * Hy3 Preview — same wire shape as Hy3; catalog preview slug still on /v1/models.
+ * Caps cloned from Hy3 until models.dev / docs publish distinct limits.
+ */
+export const CAPS_HY3_PREVIEW: Capabilities = {
+  ...chatBase(256_000, 64_000, M_TEXT),
+  ...thinkExtended(["low", "high"], "high"),
+}
+
+/** MiMo V2.5 — 310B/15B MoE, 1M ctx, 128K output, omni-modal + extended thinking. */
 export const CAPS_MIMO_V2_5: Capabilities = {
-  ...chatBase(1_000_000, 131_072, M_TIVA),
+  ...chatBase(1_000_000, 128_000, M_TIVA),
   ...thinkExtended(["medium"], "medium"),
 }
 
-/** MiMo V2.5 Pro — ~1T MoE, 1M ctx, 131K output, text-only + extended thinking. */
+/** MiMo V2.5 Pro — ~1T MoE, 1M ctx, 128K output, text-only + extended thinking. */
 export const CAPS_MIMO_V2_5_PRO: Capabilities = {
-  ...chatBase(1_000_000, 131_072, M_TEXT),
+  ...chatBase(1_048_576, 128_000, M_TEXT),
+  ...thinkExtended(["medium"], "medium"),
+}
+
+/**
+ * MiMo V2 Pro — predecessor of V2.5 Pro, still on /v1/models (catalog/deprecated).
+ * 1M ctx, 128K output, text-only.
+ */
+export const CAPS_MIMO_V2_PRO: Capabilities = {
+  ...chatBase(1_048_576, 128_000, M_TEXT),
+  ...thinkExtended(["medium"], "medium"),
+}
+
+/**
+ * MiMo V2 Omni — predecessor multimodal MiMo, still on /v1/models (catalog/deprecated).
+ * 262K ctx, 128K output, text+image+audio+pdf.
+ */
+export const CAPS_MIMO_V2_OMNI: Capabilities = {
+  ...chatBase(262_144, 128_000, M_TIAP),
   ...thinkExtended(["medium"], "medium"),
 }
 
@@ -237,9 +284,9 @@ export const CAPS_MIMO_V2_5_PRO: Capabilities = {
 // Anthropic Messages surface models
 // ===========================================================================
 
-/** MiniMax M3 — 1M ctx (min 512K), 16K output, text+image+video, adaptive thinking. */
+/** MiniMax M3 — 1M ctx, 131K output, text+image+video, adaptive thinking. */
 export const CAPS_MINIMAX_M3: Capabilities = {
-  ...msgBase(1_000_000, 16_384, M_TIV),
+  ...msgBase(1_000_000, 131_072, M_TIV),
   ...thinkAdaptive(),
 }
 
@@ -267,9 +314,18 @@ export const CAPS_QWEN3_7_PLUS: Capabilities = {
   ...thinkAdaptive(),
 }
 
-/** Qwen3.6 Plus — 1M ctx, 65K output, text+image, always-on CoT → adaptive. */
+/** Qwen3.6 Plus — 1M ctx, 65K output, text+image+video, always-on CoT → adaptive. */
 export const CAPS_QWEN3_6_PLUS: Capabilities = {
-  ...msgBase(1_000_000, 65_536, M_TI),
+  ...msgBase(1_000_000, 65_536, M_TIV),
+  ...thinkAdaptive(),
+}
+
+/**
+ * Qwen3.5 Plus — predecessor of 3.6/3.7 Plus, still on /v1/models (catalog/deprecated).
+ * 262K ctx, 65K output, text+image+video, adaptive thinking.
+ */
+export const CAPS_QWEN3_5_PLUS: Capabilities = {
+  ...msgBase(262_144, 65_536, M_TIV),
   ...thinkAdaptive(),
 }
 

@@ -627,6 +627,78 @@ describe("update", () => {
     const r = await call({ action: "update", id: "#deadbe", title: "x" })
     expect(r.is_error).toBe(true)
   })
+  test("rejects update with neither title nor status", async () => {
+    await call({ action: "add", title: "x" })
+    const r = await call({ action: "update", id: 1 })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/at least one of.*title.*status/)
+  })
+  test("update with status only delegates to doStatus (marked_doing)", async () => {
+    await call({ action: "add", title: "x" })
+    const r = await call({ action: "update", id: 1, status: "doing" })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`action="update"`)
+    expect(r.content).toContain(`result="marked_doing"`)
+    expect(r.content).toContain("doing     x")
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(store.list()[0].status).toBe("doing")
+  })
+  test("update with both title and status applies both", async () => {
+    await call({ action: "add", title: "old title" })
+    const r = await call({
+      action: "update",
+      id: 1,
+      title: "new title",
+      status: "doing",
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="updated"`)
+    expect(r.content).toContain("new title")
+    // Display shows the title diff.
+    expect(r.display).toContain("old title")
+    expect(r.display).toContain("new title")
+    expect(r.display).toContain("→")
+    const store = new TaskStore(sid, { home: tmpHome })
+    const t = store.list()[0]
+    expect(t.title).toBe("new title")
+    expect(t.status).toBe("doing")
+  })
+  test("update with status=canceled and reason", async () => {
+    await call({ action: "add", title: "x" })
+    const r = await call({
+      action: "update",
+      id: 1,
+      status: "canceled",
+      reason: "no longer needed",
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="marked_canceled"`)
+    expect(r.display).toContain("no longer needed")
+    expect(r.content).toContain("canceled  x (no longer needed)")
+  })
+  test("update with status=done on already-done task returns already_done", async () => {
+    await call({ action: "add", title: "solo" })
+    await call({ action: "done", id: 1 })
+    const r = await call({ action: "update", id: 1, status: "done" })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="already_done"`)
+    expect(r.content).not.toContain("solo")
+  })
+  test("update with title+status=done on last task triggers ALL DONE", async () => {
+    await call({ action: "add", title: "x" })
+    await call({ action: "add", title: "y" })
+    await call({ action: "done", id: 1 })
+    const r = await call({
+      action: "update",
+      id: 2,
+      title: "y done",
+      status: "done",
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.displayHeader).toContain("ALL DONE")
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(store.list().every((t) => t.status === "done")).toBe(true)
+  })
 })
 
 describe("remove", () => {

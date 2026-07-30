@@ -4,7 +4,7 @@
  * ClinePass is a flat subscription, so these rates are for quota metering and
  * UI cost estimates only, not actual billing. Values prefer official Pass
  * reference pricing from docs.cline.bot/getting-started/clinepass, with catalog
- * fallbacks where docs omit a field.
+ * fallbacks where docs omit a field. Refreshed 2026-07-30.
  *
  * @module llm/providers/clinepass/pricing
  */
@@ -26,6 +26,9 @@ export const PRICING_CLINEPASS_GENERIC: MTokRate = rate(0, 0)
 
 /** GLM-5.2 — docs: $1.40 / $4.40 / cache read $0.26 */
 export const PRICING_GLM_5_2: MTokRate = rate(1.4, 4.4, 0.26)
+
+/** Kimi K3 — docs: $3.00 / $15.00 / $0.30 */
+export const PRICING_KIMI_K3: MTokRate = rate(3.0, 15.0, 0.3)
 
 /** Kimi K2.7 Code — docs: $0.95 / $4.00 / $0.19 */
 export const PRICING_KIMI_K2_7_CODE: MTokRate = rate(0.95, 4.0, 0.19)

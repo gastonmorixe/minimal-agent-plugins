@@ -209,8 +209,10 @@ export function registerCursorLiveCatalog(
     if (!modelName) continue
     const id = cursorHostModelId(modelName)
     if (seen.has(id)) continue
+    const wireId = resolveCursorWireId(
+      modelName.startsWith("cursor-") ? modelName : `cursor-${modelName}`,
+    )
     const bare = modelName.replace(/^cursor-/, "")
-    const wireId = resolveCursorWireId(bare)
     registerOne({
       id,
       wireId,
@@ -220,7 +222,9 @@ export function registerCursorLiveCatalog(
         "cursor",
         "live",
         "legacy-name",
-        ...(wireId !== bare ? (["alias", `canonical:${wireId}`] as const) : []),
+        ...(wireId !== modelName && wireId !== bare
+          ? (["alias", `canonical:${wireId}`] as const)
+          : []),
       ],
     })
   }

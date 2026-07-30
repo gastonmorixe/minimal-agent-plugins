@@ -46,7 +46,7 @@
               },
               "title": {
                 "type": "string",
-                "description": "Task title (single line). Required for: add, update."
+                "description": "Task title (single line). Required for: add. Optional for: update (at least one of title or status must be provided)."
               },
               "titles": {
                 "type": "array",
@@ -86,7 +86,7 @@
               "status": {
                 "type": "string",
                 "enum": ["todo", "doing", "done", "canceled"],
-                "description": "New status. Required for: status."
+                "description": "New status. Required for: status. Optional for: update."
               },
               "reason": {
                 "type": "string",

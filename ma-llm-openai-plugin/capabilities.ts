@@ -95,10 +95,10 @@ export const CAPS_GPT_4O_MINI_CHAT: Capabilities = {
   modalities: { ...MODALITIES_TEXT_IMAGE },
 }
 
-/** gpt-4.1 on Chat Completions. */
+/** gpt-4.1 on Chat Completions. Docs: 1,047,576 context (2026-07-30). */
 export const CAPS_GPT_41_CHAT: Capabilities = {
   ...CAPS_GPT_4O_CHAT,
-  contextWindow: 1_000_000,
+  contextWindow: 1_047_576,
   maxOutputTokens: 32_768,
 }
 
@@ -139,17 +139,18 @@ export const CAPS_O4_MINI_CHAT: Capabilities = { ...CAPS_O3_CHAT }
 
 /**
  * gpt-5 on the Responses API. Adaptive-like reasoning, visible reasoning
- * summary deltas, stateful via `previous_response_id`, server-side tools
- * (`web_search_preview`, `file_search`, `code_interpreter`, `computer_use`).
+ * summary deltas, stateful via `previous_response_id`. Docs (2026-07-30):
+ * 400K context, 128K max output, effort `minimal|low|medium|high`, text+image.
+ * Sourced from developers.openai.com/api/docs/models/gpt-5.
  */
 export const CAPS_GPT_5_RESPONSES: Capabilities = {
   ...defaultCapabilities(),
   contextWindow: 400_000,
-  maxOutputTokens: 200_000,
+  maxOutputTokens: 128_000,
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
   thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
+  effort: { levels: ["minimal", "low", "medium", "high"], default: "medium" },
   acceptsTemperature: false,
   acceptsTopP: false,
   acceptsTopK: false,
@@ -161,9 +162,9 @@ export const CAPS_GPT_5_RESPONSES: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE_AUDIO, pdf: true },
+  modalities: { ...MODALITIES_TEXT_IMAGE },
   serverSideHistory: true,
-  serverTools: ["web_search", "file_search", "code_interpreter", "computer_use"],
+  serverTools: ["web_search", "file_search", "code_interpreter"],
 }
 
 /** gpt-5-thinking — same model id family, opt into deeper reasoning. */
@@ -191,9 +192,9 @@ export const CAPS_O4_MINI_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
  * alias routes to this model, so the registry exposes `gpt-5.6` as an alias
  * on the Responses entry and `gpt-5.6-chat` on the Chat entry.
  *
- * Sourced from developers.openai.com/api/docs/models/gpt-5.6-sol and the
- * GPT-5.6 migration guide. The levels are the exact OpenAI API vocabulary
- * for this model, including `none` and `max`.
+ * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.6-sol
+ * (+ Terra/Luna siblings) and the GPT-5.6 migration guide. Effort levels are
+ * the exact OpenAI API vocabulary for this model, including `none` and `max`.
  *
  * API notes not yet represented in the host capability schema: programmatic
  * tool calling, beta multi-agent, persisted reasoning, pro mode, and
@@ -220,7 +221,7 @@ export const CAPS_GPT_5_6_SOL_RESPONSES: Capabilities = {
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE },
   serverSideHistory: true,
-  serverTools: ["web_search", "file_search", "code_interpreter"],
+  serverTools: ["web_search", "file_search", "code_interpreter", "computer_use"],
 }
 
 /** GPT-5.6 Sol on Chat Completions. Reasoning effort is accepted, but summaries are not streamed. */
@@ -259,6 +260,14 @@ export const CAPS_GPT_5_6_LUNA_CHAT: Capabilities = {
 export const CAPS_GPT_5_5_PRO_RESPONSES: Capabilities = {
   ...CAPS_GPT_5_6_SOL_RESPONSES,
   effort: { levels: ["medium", "high", "xhigh"], default: "high" },
+}
+
+/**
+ * GPT-5.4 Pro — Responses only. Effort `medium|high|xhigh` (default high).
+ * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.4-pro.
+ */
+export const CAPS_GPT_5_4_PRO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_5_PRO_RESPONSES,
 }
 
 /** GPT-5.4 frontier tier. */
@@ -303,12 +312,12 @@ export const CAPS_GPT_5_4_NANO_CHAT: Capabilities = {
  * GPT-5.5 on the Responses API. 1.05M context, 128K max output, adaptive
  * reasoning with visible summaries, effort `low|medium|high|xhigh`.
  *
- * Sourced from developers.openai.com/api/docs/models/gpt-5.5 (the live
- * 1,050,000 context + 128K output figures) and the codex `models.json`
- * slug `gpt-5.5` (reasoning levels, `input_modalities`, `prefer_websockets`,
- * `additional_speed_tiers`). Knowledge cutoff 2025-12. The OpenAI "fast"
- * speed tier (`additional_speed_tiers: ["fast"]`) is a vendor extension we
- * do not wire yet, so `speedFast` stays false (no silent wire field).
+ * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.5
+ * (1,050,000 context + 128K output) and the Codex/ChatGPT backend catalog
+ * (`/backend-api/models`). Knowledge cutoff 2025-12-01. The OpenAI "fast"
+ * speed tier (`additional_speed_tiers: ["fast"]` / `service_tier: "fast"`,
+ * renamed from priority on 2026-07-30) is a vendor extension we do not wire
+ * yet, so `speedFast` stays false (no silent wire field).
  *
  * NOTE on the Codex/ChatGPT-OAuth backend: that surface enforces a SMALLER
  * effective window than the model's 1.05M. OpenAI's Codex manifest declares

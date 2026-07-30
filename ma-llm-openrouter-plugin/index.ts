@@ -19,6 +19,7 @@ export {
   registerOpenRouterModels,
 } from "./models.ts"
 export {
+  PRICING_OR_CLAUDE_OPUS_5,
   PRICING_OR_CLAUDE_SONNET_5,
   PRICING_OR_DEEPSEEK_V4_FLASH,
   PRICING_OR_GENERIC,

@@ -167,7 +167,9 @@ export function bootstrapCursor(ctx?: ProviderSetupContext): void {
   catalogScoutId =
     ids.find((id) => id.includes("fast")) ?? ids.find((id) => id === "cursor-auto") ?? ids[0]
   catalogBalancedId =
-    ids.find((id) => id === "cursor-composer-2") ?? ids.find((id) => id === "cursor-auto") ?? ids[0]
+    ids.find((id) => id === "cursor-composer-2.5") ??
+    ids.find((id) => id === "cursor-auto") ??
+    ids[0]
   ctx.providers.register(cursorAdapter)
 }
 

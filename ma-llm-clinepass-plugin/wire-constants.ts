@@ -21,7 +21,10 @@ export const CLINE_OPENAI_BASE = `${CLINE_API_BASE_URL}/api/v1`
 /** Chat Completions endpoint. */
 export const CHAT_COMPLETIONS_URL = `${CLINE_OPENAI_BASE}/chat/completions`
 
-/** Model-list endpoint (often incomplete for Pass-only; catalog is static). */
+/**
+ * Model-list endpoint. As of 2026-07-30, `GET /api/v1/models` returns 404 for
+ * third-party OAuth; the plugin keeps a static Pass catalog instead.
+ */
 export const MODELS_URL = `${CLINE_OPENAI_BASE}/models`
 
 /** Cline auth endpoints (account tokens, not API keys). */

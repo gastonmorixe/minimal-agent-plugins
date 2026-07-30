@@ -1,13 +1,17 @@
 /**
  * Capability tables per Grok / xAI model + surface.
  *
- * Sources (2026-07-27 live probe):
- * - `GET https://cli-chat-proxy.grok.com/v1/models` (subscription): grok-4.5
- *   only — context_window 500000, api_backend responses, efforts
+ * Sources (2026-07-30):
+ * - OAuth `GET https://cli-chat-proxy.grok.com/v1/models` (subscription):
+ *   grok-4.5 only — context_window 500000, api_backend responses, efforts
  *   high|medium|low (default high), auto_compact_threshold_percent 80
- * - `GET https://api.x.ai/v1/models` (full catalog + price fields)
+ * - docs.x.ai model pages + pricing (API catalog retained beyond OAuth):
+ *   grok-4.5 500k; grok-4.3 / grok-4.20-* 1M; grok-build-0.1 256k;
+ *   text+image modalities; tools + structured outputs
  * - https://docs.x.ai/developers/model-capabilities/text/reasoning
- *   (`stop` / presencePenalty / frequencyPenalty error on reasoning models)
+ *   (`stop` / presencePenalty / frequencyPenalty error on reasoning models;
+ *   grok-4.5 effort low|medium|high default high; multi-agent effort =
+ *   agent count including xhigh)
  *
  * Image modality is ON for catalog models so host attachments
  * (`[Image #N]`, screenshots) pass {@link validateOpenAIRequest}.
