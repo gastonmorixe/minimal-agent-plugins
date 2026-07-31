@@ -208,6 +208,20 @@ describe("serviceDepsFromCtx effortLevelsForModel", () => {
     )
     expect(deps?.effortLevelsForModel?.("totally-unknown-model")).toBeUndefined()
   })
+
+  it("REGRESSION: returns empty levels for a live no-effort model (not undefined)", () => {
+    // Empty must stay [] so spawn can refuse/scrub. Collapsing to undefined made
+    // service treat "known no support" as "unknown → pass through" and children
+    // died at boot with validateEffortForModel.
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "cursor-grok-4.5-high-fast",
+        providerId: "cursor",
+        effortLevels: [],
+      }),
+    )
+    expect(deps?.effortLevelsForModel?.("cursor-grok-4.5-high-fast")).toEqual([])
+  })
 })
 
 describe("serviceDepsFromCtx lead credential + effort", () => {

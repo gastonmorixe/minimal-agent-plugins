@@ -250,6 +250,51 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--effort") + 1]).toBe("ultra")
   })
 
+  it("REGRESSION: refuses explicit effort when model has empty levels (Thomas/Adrian fleet)", () => {
+    // cursor-grok / no-effort models: leads (and LLMs filling optional tool
+    // fields) often pass effort=medium. Empty levels means known-unsupported —
+    // refuse at the tool boundary instead of launching a child that dies with
+    // `effort "medium" was requested but this model does not support reasoning effort`.
+    const deps = makeDeps(dir, {
+      defaultModel: "cursor-grok-4.5-high-fast",
+      effortLevelsForModel: () => [],
+    })
+    const r = spawnAgent({ task: "scan resume path", effort: "medium" }, deps)
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toMatch(/effort "medium"/i)
+      expect(r.error).toMatch(/does not support reasoning effort/i)
+    }
+    expect(deps.launched).toHaveLength(0)
+  })
+
+  it("REGRESSION: does not inherit lead effort when model has empty levels", () => {
+    const deps = makeDeps(dir, {
+      defaultModel: "cursor-grok-4.5-high-fast",
+      defaultEffort: "medium",
+      effortLevelsForModel: () => [],
+    })
+    const r = spawnAgent({ task: "inherit must scrub" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv).not.toContain("--effort")
+  })
+
+  it("REGRESSION: does not inherit lead effort when levels are unknown", () => {
+    // JSDoc contract: unsupported OR unknown → omit + scrub. The old branch
+    // `!levels || levels.length === 0 || levels.includes(...)` inherited on
+    // both unknown and empty, which killed no-effort workers at boot.
+    const deps = makeDeps(dir, {
+      defaultModel: "cursor-grok-4.5-high-fast",
+      defaultEffort: "medium",
+      // effortLevelsForModel omitted → unknown
+    })
+    const r = spawnAgent({ task: "unknown levels must scrub" }, deps)
+    expect(r.ok).toBe(true)
+    const argv = deps.launched[0] ?? []
+    expect(argv).not.toContain("--effort")
+  })
+
   it("OMITS --model when no model is knowable (model-agnostic; child self-resolves)", () => {
     const deps = makeDeps(dir, { defaultModel: "" })
     const r = spawnAgent({ task: "no model anywhere" }, deps)
