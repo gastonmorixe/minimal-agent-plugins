@@ -149,19 +149,27 @@ function makeEffortLevelsForModel(
   const liveModelId = live?.modelId?.trim() || ctx.agent?.model?.trim() || ""
   const liveLevels = live?.effort?.levels
   const hasRegistry = Boolean(ctx.host?.models?.find)
-  if ((!liveLevels || liveLevels.length === 0) && !hasRegistry) return undefined
+  // Wire when we have ANY live levels array (including empty = no-effort model)
+  // or a registry to consult. Only skip when both are absent.
+  if (liveLevels === undefined && !hasRegistry) return undefined
 
   return (modelId: string): readonly string[] | undefined => {
     const id = modelId.trim()
     if (id.length === 0) return undefined
-    if (liveModelId && id === liveModelId && liveLevels && liveLevels.length > 0) {
+    // Live snapshot for the lead model: keep empty `[]` (known: no effort
+    // support). Collapsing `[]` → `undefined` made spawn treat no-effort
+    // models as "unknown → pass effort through" and children died at boot
+    // (Thomas/Adrian: effort "medium" on cursor-grok).
+    if (liveModelId && id === liveModelId && liveLevels) {
       return liveLevels
     }
     const entry = ctx.host?.models?.find(id) as
       | { capabilities?: { effort?: { levels?: readonly string[] } } }
       | undefined
-    const levels = entry?.capabilities?.effort?.levels
-    return levels && levels.length > 0 ? levels : undefined
+    if (!entry) return undefined
+    const levels = entry.capabilities?.effort?.levels
+    // Registry hit: missing/empty levels → known no support (`[]`), not unknown.
+    return levels ?? []
   }
 }
 

@@ -147,8 +147,12 @@ export interface ServiceDeps {
    * Reasoning-effort levels the resolved worker model accepts (e.g.
    * `["medium","high","max"]`). When set and the spawn names an `effort`
    * outside this list, {@link spawnAgent} fails with a teaching error
-   * instead of launching a child that dies at boot. `undefined` / empty
-   * means "unknown — pass effort through" (forward-compatible).
+   * instead of launching a child that dies at boot.
+   *
+   * - `undefined` → unknown capabilities: pass EXPLICIT effort through
+   *   (forward-compatible), but do NOT inherit {@link defaultEffort}.
+   * - `[]` → known: model does not support reasoning effort. Refuse explicit
+   *   effort; never inherit lead effort.
    */
   readonly effortLevelsForModel?: (modelId: string) => readonly string[] | undefined
   /**
@@ -219,31 +223,43 @@ export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<Subagen
   // setting) → unset. Unsupported values are refused for EXPLICIT request/def
   // effort (teaching error); for inherited lead effort we DROP it and scrub
   // the env instead of failing the spawn (a lead on xhigh must still be able
-  // to launch a grok explorer).
+  // to launch a grok explorer). Empty levels = known no-effort model; unknown
+  // levels = undefined (inherit must NOT fire — Thomas/Adrian fleet deaths).
   const explicitEffort =
     req.effort ?? def?.effort ?? (rec && !req.model && !def?.model ? rec.effort : undefined)
   const levels = deps.effortLevelsForModel && model ? deps.effortLevelsForModel(model) : undefined
   let effort: string | undefined = explicitEffort
-  if (effort && levels && levels.length > 0 && !levels.includes(effort)) {
-    // Explicit request/def effort that the model rejects → refuse at the tool
-    // boundary (Carlos/schema-vs-runtime). Do NOT fall through to lead effort.
-    if (req.effort !== undefined || def?.effort !== undefined) {
-      return err(
-        `effort "${effort}" is not supported by model "${model || "(inherited)"}" ` +
-          `(supported: ${levels.join(", ")}). Omit \`effort\` to use the model default, ` +
-          `or pass one of the supported levels.`,
-      )
+  if (effort && levels !== undefined) {
+    if (levels.length === 0) {
+      // Known: model rejects all reasoning effort.
+      if (req.effort !== undefined || def?.effort !== undefined) {
+        return err(
+          `effort "${effort}" was requested but this model does not support reasoning effort. ` +
+            `Omit \`effort\` to use the model default.`,
+        )
+      }
+      // Role-recommendation effort on a no-effort model → drop it.
+      effort = undefined
+    } else if (!levels.includes(effort)) {
+      // Explicit request/def effort that the model rejects → refuse at the tool
+      // boundary (Carlos/schema-vs-runtime). Do NOT fall through to lead effort.
+      if (req.effort !== undefined || def?.effort !== undefined) {
+        return err(
+          `effort "${effort}" is not supported by model "${model || "(inherited)"}" ` +
+            `(supported: ${levels.join(", ")}). Omit \`effort\` to use the model default, ` +
+            `or pass one of the supported levels.`,
+        )
+      }
+      // Role-recommendation effort unsupported → drop it (model default).
+      effort = undefined
     }
-    // Role-recommendation effort unsupported → drop it (model default).
-    effort = undefined
   }
   if (effort === undefined && deps.defaultEffort) {
     const leadEffort = deps.defaultEffort.trim()
-    if (leadEffort.length > 0) {
-      if (!levels || levels.length === 0 || levels.includes(leadEffort)) {
-        effort = leadEffort
-      }
-      // else: lead effort unsupported on worker model → omit + scrub env below
+    // Inherit ONLY when levels are known AND include the lead value.
+    // Unknown (`undefined`) and empty (`[]`) both omit + scrub.
+    if (leadEffort.length > 0 && levels && levels.includes(leadEffort)) {
+      effort = leadEffort
     }
   }
   // Credential: only when the worker stays on the lead's provider (or the
