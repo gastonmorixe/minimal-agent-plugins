@@ -546,20 +546,22 @@ describe("ollama registration seam", () => {
   it("registers the full catalog + adapter through the setup ctx", () => {
     const { ctx, models, adapters, defaultId } = fakeCtx()
     ollamaProviderPlugin.register(ctx)
-    // Models contributed only through ctx.models — the whole cloud catalog.
-    expect(models.length).toBeGreaterThanOrEqual(25)
+    // Models contributed only through ctx.models — live /api/tags snapshot (19).
+    expect(models.length).toBe(19)
     expect(models.every((m) => m.providerId === "ollama")).toBe(true)
     expect(models.every((m) => m.surfaceId === "custom")).toBe(true)
-    // A representative spread of families is present.
+    // A representative spread of families is present (ids match live tags).
     for (const id of [
       "deepseek-v4-flash",
       "glm-5.2",
-      "qwen3.5",
+      "qwen3.5:397b",
       "minimax-m3",
       "kimi-k2.6",
+      "kimi-k3",
       "gpt-oss:120b",
-      "gemma4",
+      "gemma4:31b",
       "nemotron-3-ultra",
+      "mistral-large-3:675b",
     ]) {
       expect(models.some((m) => m.id === id)).toBe(true)
     }
@@ -579,14 +581,20 @@ describe("ollama registration seam", () => {
     expect(ds?.capabilities.contextWindow).toBe(1_000_000)
     expect(ds?.capabilities.effort.levels.length).toBeGreaterThan(0)
     expect(ds?.capabilities.modalities.image).toBe(false)
-    // Qwen 3.5: vision + thinking.
-    const qwen = byId.get("qwen3.5")
+    // Qwen 3.5 397B (live slug): vision + thinking (prior /api/show caps).
+    const qwen = byId.get("qwen3.5:397b")
     expect(qwen?.capabilities.modalities.image).toBe(true)
     expect(qwen?.capabilities.thinking.adaptive).toBe(true)
-    // Qwen3 Coder: tools-only, no thinking, no vision.
-    const coder = byId.get("qwen3-coder")
-    expect(coder?.capabilities.thinking.adaptive).toBe(false)
-    expect(coder?.capabilities.modalities.image).toBe(false)
+    // Mistral Large 3: tools + vision, no thinking (prior show caps).
+    const mistral = byId.get("mistral-large-3:675b")
+    expect(mistral?.capabilities.thinking.adaptive).toBe(false)
+    expect(mistral?.capabilities.modalities.image).toBe(true)
+    // kimi-k3: live-only; tags lacked caps — conservative 256K, no thinking/vision.
+    const kimi3 = byId.get("kimi-k3")
+    expect(kimi3?.capabilities.contextWindow).toBe(256_000)
+    expect(kimi3?.capabilities.thinking.adaptive).toBe(false)
+    expect(kimi3?.capabilities.modalities.image).toBe(false)
+    expect(kimi3?.tags).toContain("caps-unknown")
     // gpt-oss carries discrete reasoning levels.
     const gptoss = byId.get("gpt-oss:120b")
     expect(gptoss?.capabilities.effort.levels.length).toBeGreaterThan(0)

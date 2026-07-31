@@ -4,7 +4,7 @@
  * Wafer returns pricing in cents-per-million-tokens from `GET /v1/models`;
  * we convert to USD-per-million for the canonical `MTokRate` shape.
  * This file holds the statically-known rates for the built-in catalog.
- * Rates are sourced from the live API (2026-07-16 snapshot) and should be
+ * Rates are sourced from the live API (2026-07-30 snapshot) and should be
  * refreshed periodically.
  *
  * @module llm/providers/wafer/pricing
@@ -29,8 +29,7 @@ export const PRICING_WAFER_GENERIC: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** GLM-5.1 — strong bilingual coding + reasoning model.
- *  202K context, vision: no, tools: yes, reasoning: yes, ZDR: yes. */
+/** GLM-5.1 — input 100 / output 320 / cache_read 10 cents-per-million. */
 export const PRICING_GLM_5_1: MTokRate = {
   inputUSD: usd(100),
   outputUSD: usd(320),
@@ -39,26 +38,43 @@ export const PRICING_GLM_5_1: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** GLM-5.2 — 1M context version of GLM-5.1.
- *  1,048,576 context, vision: no, tools: yes, reasoning: yes, ZDR: yes. */
+/** GLM-5.2 — input 126 / output 396 / cache_read 23 cents-per-million. */
 export const PRICING_GLM_5_2: MTokRate = {
-  inputUSD: usd(120),
-  outputUSD: usd(410),
-  cacheWriteUSD: usd(120),
-  cacheReadUSD: usd(20),
+  inputUSD: usd(126),
+  outputUSD: usd(396),
+  cacheWriteUSD: usd(126),
+  cacheReadUSD: usd(23),
   webSearchPerCallUSD: 0,
 }
 
-/** glm5.2-fast — high-TPS GLM-5.2 SKU (live API 2026-07-16). */
+/** glm5.2-fast — input 210 / output 660 / cache_read 21 cents-per-million. */
 export const PRICING_GLM_5_2_FAST: MTokRate = {
-  inputUSD: usd(300),
-  outputUSD: usd(1025),
-  cacheWriteUSD: usd(300),
-  cacheReadUSD: usd(50),
+  inputUSD: usd(210),
+  outputUSD: usd(660),
+  cacheWriteUSD: usd(210),
+  cacheReadUSD: usd(21),
   webSearchPerCallUSD: 0,
 }
 
-/** Kimi-K2.6 — sparse MoE, 262K context, vision + tools + reasoning. */
+/** Kimi-K3 — input 300 / output 1500 / cache_read 30 cents-per-million. */
+export const PRICING_KIMI_K3: MTokRate = {
+  inputUSD: usd(300),
+  outputUSD: usd(1500),
+  cacheWriteUSD: usd(300),
+  cacheReadUSD: usd(30),
+  webSearchPerCallUSD: 0,
+}
+
+/** kimi-k3-fast — input 450 / output 2250 / cache_read 45 cents-per-million. */
+export const PRICING_KIMI_K3_FAST: MTokRate = {
+  inputUSD: usd(450),
+  outputUSD: usd(2250),
+  cacheWriteUSD: usd(450),
+  cacheReadUSD: usd(45),
+  webSearchPerCallUSD: 0,
+}
+
+/** Kimi-K2.6 — input 114 / output 480 / cache_read 19 cents-per-million. */
 export const PRICING_KIMI_K2_6: MTokRate = {
   inputUSD: usd(114),
   outputUSD: usd(480),
@@ -67,17 +83,7 @@ export const PRICING_KIMI_K2_6: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** Qwen3.5-397B-A17B — massive MoE, 262K context.
- *  Live API (2026-07-16) omitted pricing; keep last known static rates. */
-export const PRICING_QWEN3_5_397B: MTokRate = {
-  inputUSD: usd(43),
-  outputUSD: usd(260),
-  cacheWriteUSD: usd(43),
-  cacheReadUSD: usd(4),
-  webSearchPerCallUSD: 0,
-}
-
-/** MiniMax-M3 — 1M context, vision + inline <think> reasoning, ZDR: no. */
+/** MiniMax-M3 — input 33 / output 132 / cache_read 7 cents-per-million. */
 export const PRICING_MINIMAX_M3: MTokRate = {
   inputUSD: usd(33),
   outputUSD: usd(132),

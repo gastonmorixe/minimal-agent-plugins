@@ -22,8 +22,9 @@ export {
   CAPS_GLM_5_2,
   CAPS_GLM_5_2_FAST,
   CAPS_KIMI_K2_6,
+  CAPS_KIMI_K3,
+  CAPS_KIMI_K3_FAST,
   CAPS_MINIMAX_M3,
-  CAPS_QWEN3_5_397B,
 } from "./capabilities.ts"
 export {
   findWaferModelByTags,
@@ -37,8 +38,9 @@ export {
   PRICING_GLM_5_2,
   PRICING_GLM_5_2_FAST,
   PRICING_KIMI_K2_6,
+  PRICING_KIMI_K3,
+  PRICING_KIMI_K3_FAST,
   PRICING_MINIMAX_M3,
-  PRICING_QWEN3_5_397B,
   PRICING_WAFER_GENERIC,
 } from "./pricing.ts"
 export {

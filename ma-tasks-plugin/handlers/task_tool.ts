@@ -337,7 +337,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
         ok: false,
         error:
           "`parent` cannot be combined with `items`: `items` always creates top-level tree roots. " +
-            "To add a flat batch below a top-level parent, use `titles`; subtasks cannot have children.",
+          "To add a flat batch below a top-level parent, use `titles`; subtasks cannot have children.",
       }
     }
     if (out.after !== undefined) {

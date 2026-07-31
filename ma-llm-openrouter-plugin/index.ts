@@ -12,7 +12,16 @@ export {
   openRouterApiKeyToSecrets,
   readOpenRouterApiKey,
 } from "./auth.ts"
-export { CAPS_OPENROUTER_CHAT } from "./capabilities.ts"
+export {
+  CAPS_OPENROUTER_CHAT,
+  CAPS_OR_CLAUDE_OPUS_5,
+  CAPS_OR_CLAUDE_SONNET_5,
+  CAPS_OR_DEEPSEEK_V4_FLASH,
+  CAPS_OR_GPT_4O_MINI,
+  CAPS_OR_GPT_56_SOL,
+  CAPS_OR_GROK_45,
+  CAPS_OR_KIMI_K3,
+} from "./capabilities.ts"
 export {
   findOpenRouterModelByTags,
   registerOpenRouterModelInto,

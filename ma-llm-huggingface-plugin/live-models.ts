@@ -5,7 +5,7 @@
  * GET of `https://router.huggingface.co/v1/models` (the router's
  * OpenAI-compatible "list chat-completion models served by Inference
  * Providers" endpoint) so `--list-models` / the picker show the AUTHORITATIVE
- * server catalog — every slug the router currently serves, not just the 3-entry
+ * server catalog — every slug the router currently serves, not just the curated
  * static snapshot in `./models.ts`.
  *
  * Uses the global `fetch` rather than the host transport: listing is a cold,

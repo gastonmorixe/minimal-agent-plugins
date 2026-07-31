@@ -12,6 +12,35 @@
  * `gpt-5.6` alias resolves to `gpt-5.6-sol`, matching the public docs.
  * Pro SKUs (`gpt-5.5-pro`, `gpt-5.4-pro`) are Responses-only.
  *
+ * ## ChatGPT OAuth consumer catalog ↔ API ids (2026-07-30)
+ *
+ * Live ChatGPT backend (`chatgpt.com/backend-api/models`) uses hyphenated
+ * consumer slugs and Instant/Thinking/Pro *lanes*. This plugin registers
+ * **API** model ids only (same ids are sent on ChatGPT-Codex OAuth
+ * Responses traffic). Do not register consumer-only slugs here.
+ *
+ * | ChatGPT slug (live) | API id / behavior |
+ * | ------------------- | ----------------- |
+ * | `gpt-5-5`, `gpt-5-5-instant`, `gpt-5-5-thinking` | `gpt-5.5` (lanes are UI; Instant ≈ low/no think, Thinking ≈ reasoning effort) |
+ * | `gpt-5.5-wm`, `gpt-5.5-cca-wm` | `gpt-5.5` (ChatGPT Work Mode wrappers) |
+ * | `gpt-5-5-pro` | `gpt-5.5-pro` |
+ * | `gpt-5-6-thinking` | `gpt-5.6-sol` (flagship thinking; short alias `gpt-5.6`) |
+ * | `gpt-5.6-sol-wm` / `terra-wm` / `luna-wm` | `gpt-5.6-sol` / `gpt-5.6-terra` / `gpt-5.6-luna` |
+ * | `gpt-5-6-pro` | **no** `gpt-5.6-pro` API SKU (docs 404). Use `gpt-5.6-sol` (etc.) with Responses `reasoning.mode: "pro"` — not wired in caps yet |
+ * | `gpt-5-3`, `gpt-5-3-instant` | Instant snapshot ≈ deprecated API `gpt-5.3-chat-latest` (docs recommend GPT-5.6). Not registered |
+ * | `gpt-5-3-mini`, `gpt-5-5-mini` | **TODO:** no public API counterpart in models catalog |
+ * | `o3` | `o3` |
+ * | `research` | Deep Research product surface — **TODO:** not an API chat/completions model id |
+ *
+ * ChatGPT `max_tokens` is a **consumer UI budget**, not the API
+ * `contextWindow` (e.g. Thinking/Pro often advertise 410000 / 262144 while
+ * API gpt-5.5 / gpt-5.6-sol remain 1_050_000). Never overwrite caps from it.
+ *
+ * ChatGPT thinking efforts are consumer labels
+ * `min|standard|extended|max` (Pro often `standard|extended` only). API
+ * effort ladders stay on developers.openai.com vocabulary
+ * (`none|minimal|low|medium|high|xhigh|max` per model) — do not substitute.
+ *
  * @module llm/providers/openai/models
  */
 
@@ -97,6 +126,8 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
 
   // GPT-5.6 family. Responses is preferred; the `-chat` ids target Chat
   // Completions. The short `gpt-5.6` alias routes to Sol.
+  // ChatGPT live (2026-07-30): `gpt-5-6-thinking` / `gpt-5.6-sol-wm` → sol;
+  // `gpt-5-6-pro` is consumer Pro lane (API: reasoning.mode=pro, not a SKU).
   register({
     id: "gpt-5.6-sol",
     aliases: ["gpt-5.6"],
@@ -173,6 +204,9 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   })
 
   // GPT-5.5 generation.
+  // ChatGPT live (2026-07-30): default slug `gpt-5-5`; Instant/Thinking/Pro
+  // lanes → `gpt-5-5-instant` / `gpt-5-5-thinking` / `gpt-5-5-pro` (API
+  // `gpt-5.5` / `gpt-5.5-pro`). Consumer max_tokens often 137k–410k UI limits.
   register({
     id: "gpt-5.5-pro",
     providerId: "openai",
@@ -311,6 +345,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   })
 
   // o-series reasoning models (Responses surface, visible reasoning).
+  // ChatGPT live (2026-07-30): still lists `o3` under Legacy models.
   register({
     id: "o3",
     providerId: "openai",

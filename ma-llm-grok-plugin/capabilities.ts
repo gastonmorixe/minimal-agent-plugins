@@ -1,17 +1,20 @@
 /**
  * Capability tables per Grok / xAI model + surface.
  *
- * Sources (2026-07-30):
+ * Sources (live probe 2026-07-30, **grok-oauth-9**):
  * - OAuth `GET https://cli-chat-proxy.grok.com/v1/models` (subscription):
- *   grok-4.5 only — context_window 500000, api_backend responses, efforts
- *   high|medium|low (default high), auto_compact_threshold_percent 80
- * - docs.x.ai model pages + pricing (API catalog retained beyond OAuth):
- *   grok-4.5 500k; grok-4.3 / grok-4.20-* 1M; grok-build-0.1 256k;
- *   text+image modalities; tools + structured outputs
+ *   grok-4.5 only — context_window 500000, api_backend responses,
+ *   `reasoning_efforts` high|medium|low (default high),
+ *   auto_compact_threshold_percent 80. This is the **only** live source that
+ *   exposes an effort ladder.
+ * - `api.x.ai/v1/models` + language-models merge: `context_length`,
+ *   `input_modalities`/`output_modalities` (all text SKUs: text+image → text).
+ *   Context: grok-4.5 500k; grok-4.3 / grok-4.20-* 1M; grok-build-0.1 256k.
+ *   Those endpoints do **not** publish effort/thinking caps — leave existing
+ *   ladders for non-4.5 models (docs.x.ai) unless cli-models adds them.
  * - https://docs.x.ai/developers/model-capabilities/text/reasoning
  *   (`stop` / presencePenalty / frequencyPenalty error on reasoning models;
- *   grok-4.5 effort low|medium|high default high; multi-agent effort =
- *   agent count including xhigh)
+ *   multi-agent effort = agent count including xhigh)
  *
  * Image modality is ON for catalog models so host attachments
  * (`[Image #N]`, screenshots) pass {@link validateOpenAIRequest}.
@@ -61,10 +64,11 @@ const REASONING_SAMPLING = {
 
 const CAPS_GROK_45_BASE: Capabilities = {
   ...defaultCapabilities(),
-  contextWindow: 500_000,
+  contextWindow: 500_000, // live cli-models + api.x.ai context_length
   maxOutputTokens: 65_536,
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
+  // live cli-models reasoning_efforts (api.x.ai / language-models omit efforts)
   effort: { levels: ["low", "medium", "high"], default: "high" },
   ...REASONING_SAMPLING,
   speedFast: false,
@@ -73,7 +77,7 @@ const CAPS_GROK_45_BASE: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE }, // live: input text+image, output text
   serverSideHistory: false,
   serverTools: [],
 }
@@ -117,7 +121,7 @@ export const CAPS_GROK_45 = CAPS_GROK_45_RESPONSES
 
 export const CAPS_GROK_BUILD_CHAT: Capabilities = {
   ...defaultCapabilities(),
-  contextWindow: 256_000,
+  contextWindow: 256_000, // live api.x.ai context_length
   maxOutputTokens: 65_536,
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
@@ -127,6 +131,7 @@ export const CAPS_GROK_BUILD_CHAT: Capabilities = {
     visible: false,
     interleaved: false,
   },
+  // not in live /v1/models or cli-models — retained from docs.x.ai
   effort: { levels: ["low", "medium", "high"], default: "medium" },
   ...REASONING_SAMPLING,
   speedFast: false,
@@ -135,7 +140,7 @@ export const CAPS_GROK_BUILD_CHAT: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE }, // live: text+image → text
   serverSideHistory: false,
   serverTools: [],
 }
@@ -159,10 +164,11 @@ export const CAPS_GROK_BUILD = CAPS_GROK_BUILD_RESPONSES
 
 const CAPS_GROK_43_BASE: Capabilities = {
   ...defaultCapabilities(),
-  contextWindow: 1_000_000,
+  contextWindow: 1_000_000, // live api.x.ai context_length (4.3 + 4.20 family)
   maxOutputTokens: 65_536,
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
+  // not in live /v1/models or cli-models — retained from docs.x.ai
   effort: { levels: ["low", "medium", "high"], default: "high" },
   ...REASONING_SAMPLING,
   speedFast: true,
@@ -171,7 +177,7 @@ const CAPS_GROK_43_BASE: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE }, // live: text+image → text
   serverSideHistory: false,
   serverTools: [],
 }

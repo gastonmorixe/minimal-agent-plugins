@@ -3,7 +3,7 @@
  *
  * Covers the permissive default (the fix for the hard-reject bug) and the
  * per-model derivation from live `/v1/models` data. Shapes here mirror REAL
- * router responses captured 2026-07-01 (DeepSeek-V4-Flash, Qwen3.6-35B-A3B).
+ * router responses (DeepSeek-V4-Flash shape still matches live 2026-07-30).
  *
  * @module llm/providers/huggingface/capabilities.test
  */

@@ -8,8 +8,12 @@
  *   Used by MiniMax, Qwen.
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
- * Data sourced from opencode.ai/docs/go, the /v1/models endpoint,
- * models.dev, and each model's official docs (2026-07-30 snapshot).
+ *
+ * Source precedence (2026-07-30):
+ * 1. Live IDs from `https://opencode.ai/zen/go/v1/models` (must stay in sync)
+ * 2. Context / maxOutput / modalities from models.dev `opencode-go` provider
+ * 3. Docs (`opencode.ai/docs/go`) for surface/endpoint mapping; no window sizes
+ * 4. Clone only when docs/family imply same shape and secondary sources omit the slug
  *
  * @module llm/providers/opencode/capabilities
  */
@@ -147,11 +151,9 @@ function msgBase(
 // ===========================================================================
 
 /**
- * DeepSeek V4 Pro — 1.6T/49B MoE, 1M ctx, 384K output.
- *
- * Three reasoning modes upstream: Non-think (off), Think High, Think Max.
- * We map Think High → effort "high", Think Max → effort "max".
- * Non-think is reached by disabling thinking (not an effort level).
+ * DeepSeek V4 Pro — 1M ctx, 384K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Thinking: Think High / Think Max (Non-think = thinking off).
  */
 export const CAPS_DEEPSEEK_V4_PRO: Capabilities = {
   ...chatBase(1_000_000, 384_000, M_TEXT),
@@ -159,54 +161,64 @@ export const CAPS_DEEPSEEK_V4_PRO: Capabilities = {
 }
 
 /**
- * DeepSeek V4 Flash — 284B/13B MoE, 1M ctx, 384K output.
- * Same three-tier thinking as Pro.
+ * DeepSeek V4 Flash — 1M ctx, 384K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
  */
 export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
   ...chatBase(1_000_000, 384_000, M_TEXT),
   ...thinkExtended(["high", "max"], "high"),
 }
 
-/** GLM-5.2 — 744B/40B MoE, 1M ctx, 131K output, dual thinking (high / max). */
+/**
+ * GLM-5.2 — 1M ctx, 131K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ */
 export const CAPS_GLM_5_2: Capabilities = {
   ...chatBase(1_000_000, 131_072, M_TEXT),
   ...thinkExtended(["high", "max"], "high"),
 }
 
-/** GLM-5.1 — 754B/40B MoE, 202K ctx, 65K output, single thinking mode (forced on). */
+/**
+ * GLM-5.1 — 202_752 ctx, 32_768 output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ */
 export const CAPS_GLM_5_1: Capabilities = {
-  ...chatBase(202_752, 65_535, M_TEXT),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/** GLM-5 — earlier generation, ~128K ctx, ~65K output, single thinking mode. */
-export const CAPS_GLM_5: Capabilities = {
-  ...chatBase(128_000, 65_535, M_TEXT),
+  ...chatBase(202_752, 32_768, M_TEXT),
   ...thinkExtended(["medium"], "medium"),
 }
 
 /**
- * Kimi K2.7 Code — 1T/32B MoE, 262K ctx, 32K output.
- * Thinking is ALWAYS on (mandatory preserve_thinking). Single depth.
+ * GLM-5 — deprecated on models.dev; still on live `/v1/models`.
+ * Caps: models.dev opencode-go (2026-07-30) — 202_752 ctx / 32_768 out.
+ * Not listed on docs/go model list; retained for API ID sync.
+ */
+export const CAPS_GLM_5: Capabilities = {
+  ...chatBase(202_752, 32_768, M_TEXT),
+  ...thinkExtended(["medium"], "medium"),
+}
+
+/**
+ * Kimi K2.7 Code — 262K ctx, 262K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Thinking always on (mandatory preserve_thinking).
  */
 export const CAPS_KIMI_K2_7_CODE: Capabilities = {
-  ...chatBase(262_144, 32_768, M_TIV),
+  ...chatBase(262_144, 262_144, M_TIV),
   ...thinkExtended(["medium"], "medium"),
 }
 
 /**
- * Kimi K2.6 — 1T/32B MoE, 262K ctx, 65K output.
- * Upstream has "thinking" and "instant" modes. Instant is thinking OFF,
- * not a low-effort tier. So thinking has a single depth when enabled.
+ * Kimi K2.6 — 262K ctx, 65_536 output, text+image+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
  */
 export const CAPS_KIMI_K2_6: Capabilities = {
-  ...chatBase(262_144, 65_535, M_TIV),
+  ...chatBase(262_144, 65_536, M_TIV),
   ...thinkExtended(["medium"], "medium"),
 }
 
 /**
- * Kimi K2.5 — predecessor of K2.6, still on /v1/models (catalog/deprecated).
- * Same multimodal + thinking shape as K2.6.
+ * Kimi K2.5 — deprecated on models.dev; still on live `/v1/models`.
+ * Caps: models.dev opencode-go (2026-07-30). Same multimodal + thinking shape as K2.6.
  */
 export const CAPS_KIMI_K2_5: Capabilities = {
   ...chatBase(262_144, 65_536, M_TIV),
@@ -214,8 +226,9 @@ export const CAPS_KIMI_K2_5: Capabilities = {
 }
 
 /**
- * Kimi K3 — flagship, 1M ctx, 131K output, text+image+video.
- * Thinking is always on. Moonshot currently exposes reasoning_effort "max" only.
+ * Kimi K3 — 1_048_576 ctx, 131K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Thinking always on; Moonshot exposes reasoning_effort "max" only.
  */
 export const CAPS_KIMI_K3: Capabilities = {
   ...chatBase(1_048_576, 131_072, M_TIV),
@@ -223,18 +236,19 @@ export const CAPS_KIMI_K3: Capabilities = {
 }
 
 /**
- * Grok 4.5 — 500K ctx, 65K output, text+image, extended thinking.
- * Chat Completions surface via OpenCode Go. Efforts match native xAI:
- * low | medium | high (default high).
+ * Grok 4.5 — 500K ctx, 500K output, text+image.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Efforts: low | medium | high (default high) from models.dev reasoning_options.
  */
 export const CAPS_GROK_4_5: Capabilities = {
-  ...chatBase(500_000, 65_536, M_TI),
+  ...chatBase(500_000, 500_000, M_TI),
   ...thinkExtended(["low", "medium", "high"], "high"),
 }
 
 /**
- * Hy3 — Tencent Hy reasoning model, 256K ctx, 64K output, text-only.
- * Upstream efforts: none | low | high ("none" = thinking off, not an effort level).
+ * Hy3 — 256K ctx, 64K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Efforts: none | low | high ("none" = thinking off).
  */
 export const CAPS_HY3: Capabilities = {
   ...chatBase(256_000, 64_000, M_TEXT),
@@ -242,29 +256,36 @@ export const CAPS_HY3: Capabilities = {
 }
 
 /**
- * Hy3 Preview — same wire shape as Hy3; catalog preview slug still on /v1/models.
- * Caps cloned from Hy3 until models.dev / docs publish distinct limits.
+ * Hy3 Preview — on live `/v1/models` but absent from models.dev and docs/go.
+ * Caps cloned from Hy3 (same family / preview slug) until secondary sources
+ * publish distinct limits. Do not invent alternate numbers.
  */
 export const CAPS_HY3_PREVIEW: Capabilities = {
   ...chatBase(256_000, 64_000, M_TEXT),
   ...thinkExtended(["low", "high"], "high"),
 }
 
-/** MiMo V2.5 — 310B/15B MoE, 1M ctx, 128K output, omni-modal + extended thinking. */
+/**
+ * MiMo V2.5 — 1M ctx, 128K output, text+image+audio+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ */
 export const CAPS_MIMO_V2_5: Capabilities = {
   ...chatBase(1_000_000, 128_000, M_TIVA),
   ...thinkExtended(["medium"], "medium"),
 }
 
-/** MiMo V2.5 Pro — ~1T MoE, 1M ctx, 128K output, text-only + extended thinking. */
+/**
+ * MiMo V2.5 Pro — 1_048_576 ctx, 128K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ */
 export const CAPS_MIMO_V2_5_PRO: Capabilities = {
   ...chatBase(1_048_576, 128_000, M_TEXT),
   ...thinkExtended(["medium"], "medium"),
 }
 
 /**
- * MiMo V2 Pro — predecessor of V2.5 Pro, still on /v1/models (catalog/deprecated).
- * 1M ctx, 128K output, text-only.
+ * MiMo V2 Pro — deprecated on models.dev; still on live `/v1/models`.
+ * Caps: models.dev opencode-go (2026-07-30).
  */
 export const CAPS_MIMO_V2_PRO: Capabilities = {
   ...chatBase(1_048_576, 128_000, M_TEXT),
@@ -272,8 +293,8 @@ export const CAPS_MIMO_V2_PRO: Capabilities = {
 }
 
 /**
- * MiMo V2 Omni — predecessor multimodal MiMo, still on /v1/models (catalog/deprecated).
- * 262K ctx, 128K output, text+image+audio+pdf.
+ * MiMo V2 Omni — deprecated on models.dev; still on live `/v1/models`.
+ * Caps: models.dev opencode-go (2026-07-30) — 262K ctx, text+image+audio+pdf.
  */
 export const CAPS_MIMO_V2_OMNI: Capabilities = {
   ...chatBase(262_144, 128_000, M_TIAP),
@@ -284,45 +305,63 @@ export const CAPS_MIMO_V2_OMNI: Capabilities = {
 // Anthropic Messages surface models
 // ===========================================================================
 
-/** MiniMax M3 — 1M ctx, 131K output, text+image+video, adaptive thinking. */
+/**
+ * MiniMax M3 — 1M ctx, 131K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ */
 export const CAPS_MINIMAX_M3: Capabilities = {
   ...msgBase(1_000_000, 131_072, M_TIV),
   ...thinkAdaptive(),
 }
 
-/** MiniMax M2.7 — 205K ctx, 131K output, text-only, adaptive thinking. */
+/**
+ * MiniMax M2.7 — 204_800 ctx, 131K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ */
 export const CAPS_MINIMAX_M2_7: Capabilities = {
   ...msgBase(204_800, 131_072, M_TEXT),
   ...thinkAdaptive(),
 }
 
-/** MiniMax M2.5 — 205K ctx, 197K output, text-only, adaptive thinking. */
+/**
+ * MiniMax M2.5 — deprecated on models.dev; still on live `/v1/models` + docs pricing.
+ * Caps: models.dev opencode-go (2026-07-30) — 204_800 ctx / 65_536 out.
+ */
 export const CAPS_MINIMAX_M2_5: Capabilities = {
-  ...msgBase(204_800, 196_608, M_TEXT),
+  ...msgBase(204_800, 65_536, M_TEXT),
   ...thinkAdaptive(),
 }
 
-/** Qwen3.7 Max — proprietary, 1M ctx, 65K output, text-only, extended CoT → adaptive. */
+/**
+ * Qwen3.7 Max — 1M ctx, 65K output, text-only.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ */
 export const CAPS_QWEN3_7_MAX: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TEXT),
   ...thinkAdaptive(),
 }
 
-/** Qwen3.7 Plus — 1M ctx, 65K output, text+image+video, adaptive thinking. */
+/**
+ * Qwen3.7 Plus — 1M ctx, 65K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ */
 export const CAPS_QWEN3_7_PLUS: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TIV),
   ...thinkAdaptive(),
 }
 
-/** Qwen3.6 Plus — 1M ctx, 65K output, text+image+video, always-on CoT → adaptive. */
+/**
+ * Qwen3.6 Plus — 1M ctx, 65K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ */
 export const CAPS_QWEN3_6_PLUS: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TIV),
   ...thinkAdaptive(),
 }
 
 /**
- * Qwen3.5 Plus — predecessor of 3.6/3.7 Plus, still on /v1/models (catalog/deprecated).
- * 262K ctx, 65K output, text+image+video, adaptive thinking.
+ * Qwen3.5 Plus — deprecated on models.dev; still on live `/v1/models`.
+ * Caps: models.dev opencode-go (2026-07-30) — 262K ctx / 65K out.
  */
 export const CAPS_QWEN3_5_PLUS: Capabilities = {
   ...msgBase(262_144, 65_536, M_TIV),

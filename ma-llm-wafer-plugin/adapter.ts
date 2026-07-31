@@ -39,7 +39,12 @@ import {
 import type { RunContext } from "./lib/provider-auth.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
 import { parseSse } from "./lib/sse-parser.ts"
-import { findWaferModelByTags, registerWaferModel, registerWaferModels } from "./models.ts"
+import {
+  findWaferModelByTags,
+  registerWaferModel,
+  registerWaferModels,
+  waferModelVersionToken,
+} from "./models.ts"
 import {
   accumulateWaferUsage,
   fetchWaferSessionInfo,
@@ -207,12 +212,11 @@ export const waferProviderPlugin: ProviderPlugin = {
    *
    * - `GLM-5.1` → `5.1`
    * - `glm5.2-fast` → `5.2-fast`
-   * - `Qwen3.5-397B-A17B` → `3.5-397B-A17B`
+   * - `Kimi-K3` → `K3`
+   * - `kimi-k3-fast` → `k3-fast`
    * - `Kimi-K2.6` → `K2.6`
    */
   modelVersionToken(modelId: string): string | undefined {
-    // Wafer model IDs are flat strings like "GLM-5.1" or "glm5.2-fast".
-    // Return them directly for label building.
-    return modelId.replace(/^(GLM|glm|Kimi|Qwen|qwen|deepseek|MiniMax)-?/, "")
+    return waferModelVersionToken(modelId)
   },
 }

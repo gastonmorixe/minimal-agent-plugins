@@ -6,6 +6,9 @@
  * `cached_input` tier. GPT-5.6 explicit cache writes are 1.25× uncached
  * input; earlier families without a documented write fee mirror input.
  *
+ * ChatGPT OAuth model lists (2026-07-30) do not publish $/MTok — keep
+ * pricing on the official API pricing page only. No consumer-slug rows.
+ *
  * @module llm/providers/openai/pricing
  */
 

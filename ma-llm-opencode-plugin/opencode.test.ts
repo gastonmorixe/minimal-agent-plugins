@@ -106,35 +106,54 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
 
   it("registers all known model IDs", () => {
     setup()
+    // Live /v1/models snapshot 2026-07-30 (authoritative ID list).
     const ids = [
-      "deepseek-v4-pro",
-      "deepseek-v4-flash",
-      "glm-5.2",
-      "glm-5.1",
-      "glm-5",
-      "kimi-k2.7-code",
-      "kimi-k2.6",
-      "kimi-k2.5",
-      "kimi-k3",
-      "grok-4.5",
-      "hy3",
-      "hy3-preview",
-      "mimo-v2.5",
-      "mimo-v2.5-pro",
-      "mimo-v2-pro",
-      "mimo-v2-omni",
       "minimax-m3",
       "minimax-m2.7",
       "minimax-m2.5",
+      "kimi-k3",
+      "kimi-k2.7-code",
+      "kimi-k2.6",
+      "kimi-k2.5",
+      "glm-5.2",
+      "glm-5.1",
+      "glm-5",
+      "deepseek-v4-pro",
+      "deepseek-v4-flash",
       "qwen3.7-max",
       "qwen3.7-plus",
       "qwen3.6-plus",
       "qwen3.5-plus",
+      "mimo-v2-pro",
+      "mimo-v2-omni",
+      "mimo-v2.5-pro",
+      "mimo-v2.5",
+      "hy3",
+      "hy3-preview",
+      "grok-4.5",
     ]
     for (const id of ids) {
       const m = resolveModel(id)
       expect(m.providerId).toBe("opencode")
     }
+  })
+
+  it("applies models.dev caps and docs/go pricing (2026-07-30)", () => {
+    setup()
+    // Caps refreshed from models.dev where they previously drifted.
+    expect(resolveModel("glm-5").capabilities.contextWindow).toBe(202_752)
+    expect(resolveModel("glm-5").capabilities.maxOutputTokens).toBe(32_768)
+    expect(resolveModel("glm-5.1").capabilities.maxOutputTokens).toBe(32_768)
+    expect(resolveModel("kimi-k2.7-code").capabilities.maxOutputTokens).toBe(262_144)
+    expect(resolveModel("minimax-m2.5").capabilities.maxOutputTokens).toBe(65_536)
+    expect(resolveModel("grok-4.5").capabilities.maxOutputTokens).toBe(500_000)
+    // hy3-preview clones hy3 (no secondary source for distinct caps).
+    expect(resolveModel("hy3-preview").capabilities.contextWindow).toBe(
+      resolveModel("hy3").capabilities.contextWindow,
+    )
+    // Docs/go wins over models.dev on grok cache_read ($0.30 vs $0.50).
+    expect(resolveModel("grok-4.5").pricing?.cacheReadUSD).toBe(0.3)
+    expect(resolveModel("minimax-m2.7").pricing?.cacheWriteUSD).toBe(0.375)
   })
 
   it("registers ad-hoc slugs on demand", () => {

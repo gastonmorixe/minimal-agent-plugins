@@ -2,14 +2,22 @@
  * Ollama Cloud model registry entries.
  *
  * Ollama Cloud (ollama.com) serves frontier open-weight models over its native
- * `/api/chat` protocol. The catalog below is a representative snapshot of the
- * cloud library (https://ollama.com/search?c=cloud) with per-model
- * capabilities (thinking, tools, vision, context window) read from each model's
- * library page. The cloud API accepts the BARE model id (`deepseek-v4-flash`,
- * `qwen3.5`, `gpt-oss:120b`); the `:cloud` tag is only needed for the local
+ * `/api/chat` protocol. The catalog below is a snapshot of the live cloud
+ * `/api/tags` listing (https://ollama.com/api/tags) as of **2026-07-30** (19
+ * slugs). The cloud API accepts the BARE model id (`deepseek-v4-flash`,
+ * `qwen3.5:397b`, `gpt-oss:120b`); the `:cloud` tag is only needed for the local
  * `ollama run` path, not the direct ollama.com API.
  *
- * Only a representative few are registered here; any other cloud slug still
+ * **Gaps (2026-07-30 tags fetch):** every row’s `details` (family, parameter
+ * size, quantization, format) was empty, and `/api/tags` does not include
+ * context windows or capability flags. Context + caps below for models that
+ * were already in this catalog are **retained from earlier `/api/show` /
+ * library reads** for slugs that still appear live — they are NOT re-derived
+ * from this tags fetch. Live-only additions (e.g. `kimi-k3`) use conservative
+ * defaults (256K, no thinking/vision tags) until a show probe fills them in.
+ * Do not invent context windows from tags alone.
+ *
+ * Only these live cloud slugs are registered here; any other cloud slug still
  * works on the wire (the CLI doesn't gate on the registry) — it just registers
  * lazily via {@link registerOllamaAdHocModel} without a tuned capability table.
  *
@@ -60,27 +68,35 @@ interface OllamaCatalogEntry {
  * own capability list; {@link buildEntry} derives the canonical capability table
  * and tags from it so the two never drift. `cheap` flags the small/fast tiers
  * for sub-agent scout recommendation.
+ *
+ * When `ctx` / `caps` are omitted, the entry uses conservative offline defaults
+ * (256K, no thinking/vision) — used for live-only slugs whose tags row lacked
+ * capability data.
  */
 interface OllamaModelSpec {
   id: string
   name: string
   /** Context window in tokens (from `/api/show` model_info `*.context_length`). */
-  ctx: number
+  ctx?: number
   /** Ollama capability flags. `thinking`/`tools`/`vision`/`audio` are honored. */
-  caps: ReadonlyArray<"thinking" | "tools" | "vision" | "audio">
+  caps?: ReadonlyArray<"thinking" | "tools" | "vision" | "audio">
   cheap?: boolean
+  /**
+   * When true, ctx/caps were not available from the 2026-07-30 tags fetch and
+   * no prior show data exists for this exact slug — conservative defaults apply.
+   */
+  capsUnknown?: boolean
 }
 
 /**
- * The built-in Ollama Cloud catalog — a snapshot of the cloud library
- * (https://ollama.com/search?c=cloud) with per-model capabilities and context
- * windows read from each model's `/api/show`. This is the OFFLINE fallback +
- * the source of accurate capability gating; the live `/api/tags` listing
- * (`ProviderPlugin.listLiveModels`) supplements it with whatever the server
- * currently serves. Ids are the bare cloud slugs the API accepts.
+ * The built-in Ollama Cloud catalog — ids from live `/api/tags` (2026-07-30).
+ * This is the OFFLINE fallback + the source of capability gating when prior
+ * `/api/show` data exists; `ProviderPlugin.listLiveModels` supplements it with
+ * whatever the server currently serves.
  */
 const CATALOG_SPECS: OllamaModelSpec[] = [
-  // DeepSeek V4 / V3 — MoE reasoning, tools, text. V4 exposes High/Max modes.
+  // DeepSeek V4 — MoE reasoning, tools, text. V4 exposes High/Max modes.
+  // (ctx/caps retained from prior /api/show; still live 2026-07-30.)
   {
     id: "deepseek-v4-flash",
     name: "DeepSeek V4 Flash",
@@ -89,29 +105,21 @@ const CATALOG_SPECS: OllamaModelSpec[] = [
     cheap: true,
   },
   { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", ctx: 512 * K, caps: ["thinking", "tools"] },
-  { id: "deepseek-v3.2", name: "DeepSeek V3.2", ctx: 160 * K, caps: ["thinking", "tools"] },
-  {
-    id: "deepseek-v3.1:671b",
-    name: "DeepSeek V3.1 671B",
-    ctx: 160 * K,
-    caps: ["thinking", "tools"],
-  },
   // GLM (Z.ai) — thinking + tools, text.
   { id: "glm-5.2", name: "GLM-5.2", ctx: 1 * M, caps: ["thinking", "tools"] },
   { id: "glm-5.1", name: "GLM-5.1", ctx: 198 * K, caps: ["thinking", "tools"] },
-  { id: "glm-5", name: "GLM-5", ctx: 198 * K, caps: ["thinking", "tools"] },
-  { id: "glm-4.7", name: "GLM-4.7", ctx: 198 * K, caps: ["thinking", "tools"] },
-  // Qwen — 3.5 is multimodal+thinking; coder variants are tools-only text.
-  { id: "qwen3.5", name: "Qwen 3.5", ctx: 256 * K, caps: ["thinking", "tools", "vision"] },
-  { id: "qwen3-coder", name: "Qwen3 Coder", ctx: 256 * K, caps: ["tools"] },
-  { id: "qwen3-coder-next", name: "Qwen3 Coder Next", ctx: 256 * K, caps: ["tools"] },
+  // Qwen — live slug is the sized tag `qwen3.5:397b` (was bare `qwen3.5`).
+  {
+    id: "qwen3.5:397b",
+    name: "Qwen 3.5 397B",
+    ctx: 256 * K,
+    caps: ["thinking", "tools", "vision"],
+  },
   // MiniMax — M3 multimodal; M2.x text reasoning + tools.
   { id: "minimax-m3", name: "MiniMax M3", ctx: 512 * K, caps: ["thinking", "tools", "vision"] },
   { id: "minimax-m2.7", name: "MiniMax M2.7", ctx: 192 * K, caps: ["thinking", "tools"] },
   { id: "minimax-m2.5", name: "MiniMax M2.5", ctx: 192 * K, caps: ["thinking", "tools"] },
-  { id: "minimax-m2.1", name: "MiniMax M2.1", ctx: 200 * K, caps: ["thinking", "tools"] },
   // Kimi (Moonshot) — native multimodal agentic: vision + thinking + tools.
-  // Kimi K3 not yet on Ollama Cloud as of 2026-07-16.
   {
     id: "kimi-k2.7-code",
     name: "Kimi K2.7 Code",
@@ -120,6 +128,8 @@ const CATALOG_SPECS: OllamaModelSpec[] = [
   },
   { id: "kimi-k2.6", name: "Kimi K2.6", ctx: 256 * K, caps: ["thinking", "tools", "vision"] },
   { id: "kimi-k2.5", name: "Kimi K2.5", ctx: 256 * K, caps: ["thinking", "tools", "vision"] },
+  // Live 2026-07-30; tags had empty details — no show-derived ctx/caps yet.
+  { id: "kimi-k3", name: "Kimi K3", capsUnknown: true },
   // gpt-oss (OpenAI open-weight) — discrete reasoning levels + tools.
   { id: "gpt-oss:120b", name: "gpt-oss 120B", ctx: 128 * K, caps: ["thinking", "tools"] },
   {
@@ -129,15 +139,13 @@ const CATALOG_SPECS: OllamaModelSpec[] = [
     caps: ["thinking", "tools"],
     cheap: true,
   },
-  // Gemini / Gemma (Google) — multimodal.
+  // Gemma (Google) — live slug is `gemma4:31b` (was bare `gemma4`).
   {
-    id: "gemini-3-flash-preview",
-    name: "Gemini 3 Flash Preview",
-    ctx: 1 * M,
+    id: "gemma4:31b",
+    name: "Gemma 4 31B",
+    ctx: 256 * K,
     caps: ["thinking", "tools", "vision"],
   },
-  { id: "gemma4", name: "Gemma 4", ctx: 256 * K, caps: ["thinking", "tools", "vision"] },
-  { id: "gemma3", name: "Gemma 3", ctx: 128 * K, caps: ["vision"], cheap: true },
   // NVIDIA Nemotron 3 — reasoning + tools, text.
   { id: "nemotron-3-ultra", name: "Nemotron 3 Ultra", ctx: 256 * K, caps: ["thinking", "tools"] },
   { id: "nemotron-3-super", name: "Nemotron 3 Super", ctx: 256 * K, caps: ["thinking", "tools"] },
@@ -148,33 +156,23 @@ const CATALOG_SPECS: OllamaModelSpec[] = [
     caps: ["thinking", "tools"],
     cheap: true,
   },
-  // Mistral family — text/vision + tools.
-  { id: "mistral-large-3", name: "Mistral Large 3", ctx: 256 * K, caps: ["tools", "vision"] },
+  // Mistral — live slug is `mistral-large-3:675b` (was bare `mistral-large-3`).
   {
-    id: "ministral-3:14b",
-    name: "Ministral 3 14B",
+    id: "mistral-large-3:675b",
+    name: "Mistral Large 3 675B",
     ctx: 256 * K,
     caps: ["tools", "vision"],
-    cheap: true,
   },
-  { id: "devstral-2", name: "Devstral 2", ctx: 256 * K, caps: ["tools"] },
-  {
-    id: "devstral-small-2:24b",
-    name: "Devstral Small 2 24B",
-    ctx: 256 * K,
-    caps: ["tools", "vision"],
-    cheap: true,
-  },
-  // Essential AI — dense code/STEM, tools.
-  { id: "rnj-1:8b", name: "Rnj-1 8B", ctx: 32 * K, caps: ["tools"], cheap: true },
 ]
 
 /** Derive a full catalog entry (canonical capabilities + tags) from a spec. */
 function buildEntry(spec: OllamaModelSpec): OllamaCatalogEntry {
-  const has = (c: string) => spec.caps.includes(c as never)
+  const capsList = spec.caps ?? []
+  const has = (c: string) => capsList.includes(c as never)
   const thinking = has("thinking")
+  const contextWindow = spec.ctx ?? 256 * K
   const capabilities = ollamaCaps({
-    contextWindow: spec.ctx,
+    contextWindow,
     maxOutputTokens: 32 * K,
     // Thinking models accept Ollama's `think` level strings; advertise the
     // canonical effort scale so a common `effort:"high"` request validates.
@@ -188,6 +186,7 @@ function buildEntry(spec: OllamaModelSpec): OllamaCatalogEntry {
   if (has("vision")) tags.push("vision")
   if (has("audio")) tags.push("audio")
   if (spec.cheap) tags.push("cheap")
+  if (spec.capsUnknown) tags.push("caps-unknown")
   return {
     id: spec.id,
     displayName: `${spec.name} (Ollama Cloud)`,

@@ -1,15 +1,19 @@
 /**
  * Grok / xAI model registry — dual-surface where appropriate.
  *
- * Catalog reconciled 2026-07-30:
- * - Subscription OAuth (`cli-chat-proxy` `/v1/models`, cred grok-oauth-8):
- *   `grok-4.5` only — context_window 500000, api_backend responses,
- *   reasoning_efforts high|medium|low (default high). Narrow subscription
- *   list; do **not** drop API-catalog entries solely because OAuth omits them.
- * - Public API catalog (docs.x.ai/developers/models + pricing, same date):
- *   keep `grok-4.5`, `grok-build-0.1`, `grok-4.3`, and the `grok-4.20-*`
- *   dated SKUs. No console API-key cred available this refresh to re-probe
- *   `api.x.ai/v1/models` micros; rates match docs (and prior 2026-07-27 live).
+ * Catalog reconciled 2026-07-30 from live probe (**grok-oauth-9**):
+ * - `cli-chat-proxy` `/v1/models` (subscription): `grok-4.5` only — do **not**
+ *   drop API-catalog entries solely because OAuth omits them.
+ * - `api.x.ai/v1/models` + language-models merge: text SKUs, `context_length`,
+ *   `input_modalities`/`output_modalities`, price micros, `aliases`. Imagine
+ *   image/video SKUs omitted (not agent chat surfaces).
+ * - Effort ladders: `/v1/models` and language-models do **not** expose them;
+ *   cli-models exposes `reasoning_efforts` for `grok-4.5` only (see
+ *   capabilities.ts). Other models keep docs-derived effort/thinking caps.
+ *
+ * Aliases: stable live names + local conveniences; date-stamped wire ids as
+ * aliases where the local id is the short form. Beta/experimental/gv2 aliases
+ * omitted to avoid collisions.
  *
  * Pattern from `ma-llm-openai-plugin/models.ts`: preferred surface is
  * Responses for frontier models (`grok-4.5`); Chat Completions variants use
@@ -180,12 +184,13 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     pricing: PRICING_GROK_43,
   })
 
-  // --- grok-4.20 family (api.x.ai)
+  // --- grok-4.20 family (api.x.ai; local ids = short live aliases)
   reg(registrar, {
     id: "grok-4.20-reasoning",
     surfaceId: "openai-responses",
     displayName: "Grok 4.20 Reasoning",
     wireId: "grok-4.20-0309-reasoning",
+    // live: grok-4.20, grok-4.20-reasoning-latest, grok-4.20-0309, …betas omitted
     aliases: [
       "grok-4.20",
       "grok-4.20-0309",
@@ -201,6 +206,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-responses",
     displayName: "Grok 4.20 Non-Reasoning",
     wireId: "grok-4.20-0309-non-reasoning",
+    // live short name is this id; keep wire + *-latest (betas omitted)
     aliases: ["grok-4.20-0309-non-reasoning", "grok-4.20-non-reasoning-latest"],
     tags: ["grok", "xai", "fast", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_420_NON_REASONING,
@@ -211,6 +217,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-responses",
     displayName: "Grok 4.20 Multi-Agent",
     wireId: "grok-4.20-multi-agent-0309",
+    // live short name is this id; keep wire + *-latest (betas omitted)
     aliases: ["grok-4.20-multi-agent-0309", "grok-4.20-multi-agent-latest"],
     tags: ["grok", "xai", "multi-agent", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_420_MULTI_AGENT,
