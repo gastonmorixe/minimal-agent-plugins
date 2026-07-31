@@ -139,12 +139,12 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
     if (raw.eval.length > 0) out.evalExpr = raw.eval
   }
 
-  if (raw.eval_mode !== undefined) {
+  // Models often dump every optional schema field (empty strings + enum
+  // defaults). Ignore eval_mode when there is no real eval — same as empty
+  // selector — so plain page fetches are not rejected.
+  if (raw.eval_mode !== undefined && out.evalExpr) {
     if (typeof raw.eval_mode !== "string" || !VALID_EVAL_MODES.has(raw.eval_mode as EvalMode)) {
       return { ok: false, error: "`eval_mode` must be one of: value, page" }
-    }
-    if (!out.evalExpr) {
-      return { ok: false, error: "`eval_mode` requires a non-empty `eval` expression" }
     }
     if (raw.eval_mode === "value" && out.selector) {
       return {
