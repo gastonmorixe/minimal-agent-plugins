@@ -149,14 +149,22 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(flagship.capabilities.contextWindow).toBe(500_000)
     expect(flagship.capabilities.modalities.image).toBe(true)
     expect(flagship.capabilities.thinking.visible).toBe(true)
+    // live cli-models reasoning_efforts (api.x.ai omits efforts)
     expect(flagship.capabilities.effort.levels).toEqual(["low", "medium", "high"])
     expect(flagship.capabilities.effort.default).toBe("high")
     expect(flagship.capabilities.acceptsStopSequences).toBe(false)
     expect(flagship.capabilities.caching.promptCacheAccounting).toBe("subset")
+    // live micros 20000/60000/3000 → USD/1M
     expect(flagship.pricing.inputUSD).toBe(2)
     expect(flagship.pricing.outputUSD).toBe(6)
     expect(flagship.pricing.cacheReadUSD).toBe(0.3)
     expect(flagship.pricing.longContext?.thresholdTokens).toBe(200_000)
+    expect(flagship.pricing.longContext?.inputUSD).toBe(4)
+    expect(flagship.pricing.longContext?.outputUSD).toBe(12)
+    expect(flagship.pricing.longContext?.cacheReadUSD).toBe(0.6)
+    expect(flagship.aliases).toEqual(
+      expect.arrayContaining(["grok-4.5-latest", "grok-build-latest"]),
+    )
     expect(flagship.capabilities).toEqual(CAPS_GROK_45_RESPONSES)
 
     const chat = resolveModel("grok-4.5-chat")
@@ -168,6 +176,13 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     const build = resolveModel("grok-build")
     expect(build.vendorIds?.firstParty).toBe("grok-build-0.1")
     expect(build.capabilities.contextWindow).toBe(256_000)
+    // live micros 10000/20000/2000
+    expect(build.pricing.inputUSD).toBe(1)
+    expect(build.pricing.outputUSD).toBe(2)
+    expect(build.pricing.cacheReadUSD).toBe(0.2)
+    expect(build.aliases).toEqual(
+      expect.arrayContaining(["grok-code-fast-1", "grok-code-fast", "grok-code-fast-1-0825"]),
+    )
 
     const adapter = resolveProvider("grok")
     expect(adapter.surfaces).toContain("openai-chat-completions")
@@ -181,6 +196,37 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(m.capabilities.speedFast).toBe(true)
     expect(m.capabilities.contextWindow).toBe(1_000_000)
     expect(m.capabilities.modalities.image).toBe(true)
+    // live micros 12500/25000/2000
+    expect(m.pricing.inputUSD).toBe(1.25)
+    expect(m.pricing.outputUSD).toBe(2.5)
+    expect(m.pricing.cacheReadUSD).toBe(0.2)
+    expect(m.pricing.longContext?.inputUSD).toBe(2.5)
+    expect(m.pricing.longContext?.outputUSD).toBe(5)
+    expect(m.aliases).toEqual(expect.arrayContaining(["grok-4.3-latest", "grok-latest"]))
+  })
+
+  it("registers grok-4.20 family with live wire ids, context, and stable aliases", () => {
+    setup()
+    const reasoning = resolveModel("grok-4.20-reasoning")
+    expect(reasoning.vendorIds?.firstParty).toBe("grok-4.20-0309-reasoning")
+    expect(reasoning.capabilities.contextWindow).toBe(1_000_000)
+    expect(reasoning.capabilities.modalities.image).toBe(true)
+    expect(reasoning.pricing.inputUSD).toBe(1.25)
+    expect(reasoning.aliases).toEqual(
+      expect.arrayContaining(["grok-4.20", "grok-4.20-reasoning-latest", "grok-4.20-0309"]),
+    )
+
+    const nonReasoning = resolveModel("grok-4.20-non-reasoning")
+    expect(nonReasoning.vendorIds?.firstParty).toBe("grok-4.20-0309-non-reasoning")
+    expect(nonReasoning.capabilities.contextWindow).toBe(1_000_000)
+    expect(nonReasoning.capabilities.effort.levels).toEqual([])
+    expect(nonReasoning.aliases).toEqual(expect.arrayContaining(["grok-4.20-non-reasoning-latest"]))
+
+    const multi = resolveModel("grok-4.20-multi-agent")
+    expect(multi.vendorIds?.firstParty).toBe("grok-4.20-multi-agent-0309")
+    expect(multi.capabilities.contextWindow).toBe(1_000_000)
+    expect(multi.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+    expect(multi.aliases).toEqual(expect.arrayContaining(["grok-4.20-multi-agent-latest"]))
   })
 
   it("enables image modality on every catalog text model", () => {
@@ -192,6 +238,9 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
       "grok-build-chat",
       "grok-4.3",
       "grok-4.3-chat",
+      "grok-4.20-reasoning",
+      "grok-4.20-non-reasoning",
+      "grok-4.20-multi-agent",
     ]) {
       expect(resolveModel(id).capabilities.modalities.image).toBe(true)
     }

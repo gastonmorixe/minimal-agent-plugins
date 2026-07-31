@@ -13,7 +13,18 @@
  * @module llm/providers/openrouter/models
  */
 
-import { CAPS_OPENROUTER_CHAT } from "./capabilities.ts"
+import {
+  CAPS_OPENROUTER_CHAT,
+  CAPS_OR_CLAUDE_OPUS_5,
+  CAPS_OR_CLAUDE_SONNET_5,
+  CAPS_OR_DEEPSEEK_V4_FLASH,
+  CAPS_OR_GPT_4O_MINI,
+  CAPS_OR_GPT_56_SOL,
+  CAPS_OR_GROK_45,
+  CAPS_OR_KIMI_K3,
+} from "./capabilities.ts"
+import type { Capabilities } from "./lib/capabilities.ts"
+import type { MTokRate } from "./lib/host-types.ts"
 import type { ModelRegistrar } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
@@ -56,11 +67,12 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     ids.push(registerOpenRouterModelInto(models, spec))
   }
 
-  // Flagship: large context, vision, reasoning, tools.
+  // Flagship: large context, vision, reasoning, tools. (live 2026-07-30)
   add({
     id: "moonshotai/kimi-k3",
     displayName: "Kimi K3 (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
+    capabilities: CAPS_OR_KIMI_K3,
     pricing: PRICING_OR_KIMI_K3,
   })
   // Cheap scout / high-volume candidate.
@@ -68,6 +80,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     id: "deepseek/deepseek-v4-flash",
     displayName: "DeepSeek V4 Flash (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "cheap"],
+    capabilities: CAPS_OR_DEEPSEEK_V4_FLASH,
     pricing: PRICING_OR_DEEPSEEK_V4_FLASH,
   })
   // Balanced modern Anthropic.
@@ -75,6 +88,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     id: "anthropic/claude-sonnet-5",
     displayName: "Claude Sonnet 5 (OpenRouter)",
     tags: ["openrouter", "openai-compatible"],
+    capabilities: CAPS_OR_CLAUDE_SONNET_5,
     pricing: PRICING_OR_CLAUDE_SONNET_5,
   })
   // Anthropic frontier via OpenRouter.
@@ -82,6 +96,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     id: "anthropic/claude-opus-5",
     displayName: "Claude Opus 5 (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
+    capabilities: CAPS_OR_CLAUDE_OPUS_5,
     pricing: PRICING_OR_CLAUDE_OPUS_5,
   })
   // OpenAI frontier via OpenRouter.
@@ -89,6 +104,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     id: "openai/gpt-5.6-sol",
     displayName: "GPT-5.6 Sol (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
+    capabilities: CAPS_OR_GPT_56_SOL,
     pricing: PRICING_OR_GPT_56_SOL,
   })
   // xAI frontier via OpenRouter.
@@ -96,6 +112,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     id: "x-ai/grok-4.5",
     displayName: "Grok 4.5 (OpenRouter)",
     tags: ["openrouter", "openai-compatible"],
+    capabilities: CAPS_OR_GROK_45,
     pricing: PRICING_OR_GROK_45,
   })
   // Kept for live tests + a second cheap option.
@@ -103,6 +120,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     id: "openai/gpt-4o-mini",
     displayName: "GPT-4o mini (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "cheap"],
+    capabilities: CAPS_OR_GPT_4O_MINI,
     pricing: PRICING_OR_GPT_4O_MINI,
   })
   return ids
@@ -112,16 +130,8 @@ export interface OpenRouterModelSpec {
   id: string
   displayName?: string
   tags?: string[]
-  pricing?: OpenRouterPricing
-}
-
-interface OpenRouterPricing {
-  inputUSD: number
-  outputUSD: number
-  cacheWriteUSD: number
-  cacheReadUSD: number
-  webSearchPerCallUSD: number
-  reasoningUSD?: number
+  capabilities?: Capabilities
+  pricing?: MTokRate
 }
 
 /**
@@ -140,7 +150,7 @@ export function registerOpenRouterModelInto(
     surfaceId: "openai-chat-completions",
     displayName: spec.displayName ?? spec.id,
     tags,
-    capabilities: CAPS_OPENROUTER_CHAT,
+    capabilities: spec.capabilities ?? CAPS_OPENROUTER_CHAT,
     estimateTokens: estimateOpenRouterTokens,
     pricing: spec.pricing ?? PRICING_OR_GENERIC,
     vendorIds: { firstParty: spec.id },

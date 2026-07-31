@@ -3,7 +3,16 @@
  *
  * Each model's capabilities are derived from the live `GET /v1/models`
  * response (the `wafer.capabilities` field) and mapped to the canonical
- * {@link Capabilities} shape.
+ * {@link Capabilities} shape. Snapshot date: 2026-07-30.
+ *
+ * Mapping (live → Capabilities):
+ * - `context_length` / `max_model_len` → `contextWindow`
+ * - `capabilities.vision` / `messages.vision` → `modalities.image`
+ * - `capabilities.tools` + `*.tool_streaming` → `tools.*`
+ * - `capabilities.reasoning` / `messages.reasoning` → `thinking.adaptive` + `visible`
+ * - `chat_completions.json_schema` / `responses.text_format` → `structuredOutputs`
+ * - `pricing.cache_read_*` present → automatic caching + `reportsCacheHits`
+ * - high-TPS `*-fast` SKUs → `speedFast`
  *
  * All models speak the OpenAI Chat Completions surface
  * (`"openai-chat-completions"`), so these capability records define the
@@ -42,164 +51,111 @@ const MODALITIES_TEXT = {
   video: false,
 } as const
 
+const THINKING_REASONING = {
+  adaptive: true,
+  extended: false,
+  visible: true,
+  interleaved: false,
+} as const
+
+const EFFORT_LMH = {
+  levels: ["low", "medium", "high"] as const,
+  default: "medium" as const,
+}
+
+/** Shared OpenAI-Chat sampling / system defaults for Wafer gateway models. */
+function baseWaferCaps(
+  overrides: Partial<Capabilities> &
+    Pick<Capabilities, "contextWindow" | "speedFast" | "modalities">,
+): Capabilities {
+  return {
+    ...defaultCapabilities(),
+    maxOutputTokens: 8_192,
+    maxOutputTokensBatch: null,
+    thinking: { ...THINKING_REASONING },
+    effort: { levels: [...EFFORT_LMH.levels], default: EFFORT_LMH.default },
+    acceptsTemperature: true,
+    acceptsTopP: true,
+    acceptsTopK: false,
+    acceptsSeed: false,
+    acceptsStopSequences: true,
+    caching: { ...CACHING_AUTO },
+    tools: { ...TOOLS_FULL },
+    midConversationSystem: true,
+    structuredOutputs: true,
+    assistantPrefill: false,
+    serverSideHistory: false,
+    serverTools: [],
+    ...overrides,
+  }
+}
+
 // ---------------------------------------------------------------------------
-// GLM-5.1 — 202K context, reasoning with reasoning_content, tools + vision: no
+// GLM-5.1 — context 202752, vision:false, tools+reasoning, ZDR yes
 // ---------------------------------------------------------------------------
 
-export const CAPS_GLM_5_1: Capabilities = {
-  ...defaultCapabilities(),
+export const CAPS_GLM_5_1: Capabilities = baseWaferCaps({
   contextWindow: 202_752,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
   speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
+})
 
 // ---------------------------------------------------------------------------
-// GLM-5.2 — 1,048,576 context, reasoning, tools, vision: no
+// GLM-5.2 — context 1048576, vision:false, tools+reasoning, ZDR yes
 // ---------------------------------------------------------------------------
 
-export const CAPS_GLM_5_2: Capabilities = {
-  ...defaultCapabilities(),
+export const CAPS_GLM_5_2: Capabilities = baseWaferCaps({
   contextWindow: 1_048_576,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
   speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
+})
 
 // ---------------------------------------------------------------------------
-// glm5.2-fast — same family as GLM-5.2, high-TPS / speed-oriented SKU
+// glm5.2-fast — same family, high-TPS SKU (live display_name GLM5.2-Fast)
 // ---------------------------------------------------------------------------
 
-export const CAPS_GLM_5_2_FAST: Capabilities = {
-  ...defaultCapabilities(),
+export const CAPS_GLM_5_2_FAST: Capabilities = baseWaferCaps({
   contextWindow: 1_048_576,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
   speedFast: true,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
+})
 
 // ---------------------------------------------------------------------------
-// Kimi-K2.6 — 262K context, vision + tools + reasoning
+// Kimi-K3 — context 912384, vision+tools+reasoning, ZDR yes
 // ---------------------------------------------------------------------------
 
-export const CAPS_KIMI_K2_6: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 262_144,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
+export const CAPS_KIMI_K3: Capabilities = baseWaferCaps({
+  contextWindow: 912_384,
   speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
   modalities: { image: true, audio: false, pdf: false, video: false },
-  serverSideHistory: false,
-  serverTools: [],
-}
+})
 
 // ---------------------------------------------------------------------------
-// Qwen3.5-397B-A17B — 262K context, massive MoE, reasoning, tools
+// kimi-k3-fast — context 1048576, vision+tools+reasoning, high-TPS SKU
 // ---------------------------------------------------------------------------
 
-export const CAPS_QWEN3_5_397B: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 262_144,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: false },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT },
-  serverSideHistory: false,
-  serverTools: [],
-}
-
-// ---------------------------------------------------------------------------
-// MiniMax-M3 — 1M context, vision + inline <think> reasoning
-// ---------------------------------------------------------------------------
-
-export const CAPS_MINIMAX_M3: Capabilities = {
-  ...defaultCapabilities(),
+export const CAPS_KIMI_K3_FAST: Capabilities = baseWaferCaps({
   contextWindow: 1_048_576,
-  maxOutputTokens: 8_192,
-  maxOutputTokensBatch: null,
-  thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: true,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_FULL },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
+  speedFast: true,
   modalities: { image: true, audio: false, pdf: false, video: false },
-  serverSideHistory: false,
-  serverTools: [],
-}
+})
+
+// ---------------------------------------------------------------------------
+// Kimi-K2.6 — context 262144, vision+tools+reasoning, ZDR: false
+// ---------------------------------------------------------------------------
+
+export const CAPS_KIMI_K2_6: Capabilities = baseWaferCaps({
+  contextWindow: 262_144,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})
+
+// ---------------------------------------------------------------------------
+// MiniMax-M3 — context 1048576, vision+tools+reasoning, ZDR: false
+// ---------------------------------------------------------------------------
+
+export const CAPS_MINIMAX_M3: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})

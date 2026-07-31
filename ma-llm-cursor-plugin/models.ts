@@ -10,9 +10,13 @@
  *
  * Wire slug for AgentService/Run is stored in `vendorIds.cursor` (bare API id).
  *
- * Static seed aligned to AvailableModels `defaultOn` + Composer siblings
+ * Static seed = AvailableModels `defaultOn` + Composer sibling `composer-2.5`
  * (live probe 2026-07-30 via Cursor Browser Login / `cursor-oauth`). Full
  * catalog (~196 visible rows) still comes from live enrichment.
+ *
+ * Caps from `deriveCursorCapabilities` / `cursorCaps` on that probe:
+ * RPC omits contextTokenLimit* → 128K default; no field-29 effort params →
+ * `effortLevels: []` even when `supportsThinking`; vision from `supportsImages`.
  *
  * @module llm/providers/cursor/models
  */
@@ -66,9 +70,13 @@ export function resolveCursorWireId(slug: string): string {
 }
 
 /**
- * Static offline seed (2026-07-30). Thinking/effort empty until live catalog
- * enriches with effort-param:<id> (Christina: no selectable knobs without wire id).
- * Caps mirror AvailableModels flags where the RPC omits token limits (128K default).
+ * Static offline seed (2026-07-30). Order: Auto alias + canonical, then live
+ * `defaultOn` order, plus non-default sibling `composer-2.5`.
+ *
+ * Live defaultOn wire ids: `default`, `cursor-grok-4.5-high-fast`,
+ * `composer-2.5-fast`, `claude-opus-5-thinking-high`, `gpt-5.6-sol-medium`,
+ * `claude-fable-5-thinking-high`, `claude-sonnet-5-thinking-high`,
+ * `gpt-5.6-terra-medium`.
  */
 const CATALOG: CursorCatalogEntry[] = [
   {
@@ -82,7 +90,7 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: true,
       effortLevels: [],
     }),
-    tags: ["cursor", "auto", "default", "agent"],
+    tags: ["cursor", "auto", "default", "agent", "supports-max-mode"],
   },
   {
     id: "cursor-default",
@@ -94,7 +102,20 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: true,
       effortLevels: [],
     }),
-    tags: ["cursor", "auto", "default", "agent", "canonical:default"],
+    tags: ["cursor", "auto", "default", "agent", "canonical:default", "supports-max-mode"],
+  },
+  {
+    // Wire id already starts with `cursor-`; host id stays the same namespace.
+    id: "cursor-grok-4.5-high-fast",
+    displayName: "Cursor Grok 4.5 Fast",
+    wireId: "cursor-grok-4.5-high-fast",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: false,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "grok", "fast", "thinking", "agent", "supports-max-mode"],
   },
   {
     id: "cursor-composer-2.5-fast",
@@ -106,9 +127,10 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: false,
       effortLevels: [],
     }),
-    tags: ["cursor", "composer", "fast", "thinking"],
+    tags: ["cursor", "composer", "fast", "thinking", "agent", "supports-max-mode"],
   },
   {
+    // Sibling of composer-2.5-fast (not defaultOn; kept for offline picker).
     id: "cursor-composer-2.5",
     displayName: "Composer 2.5 (Cursor)",
     wireId: "composer-2.5",
@@ -118,20 +140,7 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: false,
       effortLevels: [],
     }),
-    tags: ["cursor", "composer", "thinking"],
-  },
-  {
-    // Wire id already starts with `cursor-`; host id stays the same namespace.
-    id: "cursor-grok-4.5-high-fast",
-    displayName: "Grok 4.5 Fast (Cursor)",
-    wireId: "cursor-grok-4.5-high-fast",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: false,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "grok", "fast", "thinking"],
+    tags: ["cursor", "composer", "thinking", "agent", "supports-max-mode"],
   },
   {
     id: "cursor-claude-opus-5-thinking-high",
@@ -143,31 +152,7 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: true,
       effortLevels: [],
     }),
-    tags: ["cursor", "claude", "opus", "thinking", "vision"],
-  },
-  {
-    id: "cursor-claude-sonnet-5-thinking-high",
-    displayName: "Sonnet 5 (Cursor)",
-    wireId: "claude-sonnet-5-thinking-high",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "claude", "sonnet", "thinking", "vision"],
-  },
-  {
-    id: "cursor-claude-fable-5-thinking-high",
-    displayName: "Fable 5 (Cursor)",
-    wireId: "claude-fable-5-thinking-high",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "claude", "fable", "thinking", "vision"],
+    tags: ["cursor", "claude", "opus", "thinking", "vision", "agent", "supports-max-mode"],
   },
   {
     id: "cursor-gpt-5.6-sol-medium",
@@ -179,7 +164,31 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: true,
       effortLevels: [],
     }),
-    tags: ["cursor", "gpt", "sol", "thinking", "vision"],
+    tags: ["cursor", "gpt", "sol", "thinking", "vision", "agent", "supports-max-mode"],
+  },
+  {
+    id: "cursor-claude-fable-5-thinking-high",
+    displayName: "Fable 5 (Cursor)",
+    wireId: "claude-fable-5-thinking-high",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "claude", "fable", "thinking", "vision", "agent", "supports-max-mode"],
+  },
+  {
+    id: "cursor-claude-sonnet-5-thinking-high",
+    displayName: "Sonnet 5 (Cursor)",
+    wireId: "claude-sonnet-5-thinking-high",
+    capabilities: cursorCaps({
+      contextWindow: 128 * K,
+      thinking: true,
+      vision: true,
+      effortLevels: [],
+    }),
+    tags: ["cursor", "claude", "sonnet", "thinking", "vision", "agent", "supports-max-mode"],
   },
   {
     id: "cursor-gpt-5.6-terra-medium",
@@ -191,7 +200,7 @@ const CATALOG: CursorCatalogEntry[] = [
       vision: true,
       effortLevels: [],
     }),
-    tags: ["cursor", "gpt", "terra", "thinking", "vision"],
+    tags: ["cursor", "gpt", "terra", "thinking", "vision", "agent", "supports-max-mode"],
   },
 ]
 
@@ -204,6 +213,7 @@ export function registerCursorModelInto(models: ModelRegistrar, entry: CursorCat
     displayName: entry.displayName,
     tags: entry.tags,
     capabilities: entry.capabilities,
+    // Pricing opaque on AvailableModels — zero rates (see pricing.ts).
     pricing: PRICING_CURSOR_GENERIC,
     estimateTokens: estimateCursorTokens,
     // Never put bare wire ids in `aliases` — they collide with Grok et al.

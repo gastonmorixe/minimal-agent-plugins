@@ -6,7 +6,8 @@
  * provider id but dispatch through their respective wire translators.
  *
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
- * Catalog synced from https://opencode.ai/zen/go/v1/models + docs/models.dev
+ * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
+ * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
  * (2026-07-30).
  *
  * @module llm/providers/opencode/models

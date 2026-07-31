@@ -196,9 +196,17 @@ export const CAPS_O4_MINI_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
  * (+ Terra/Luna siblings) and the GPT-5.6 migration guide. Effort levels are
  * the exact OpenAI API vocabulary for this model, including `none` and `max`.
  *
+ * ChatGPT OAuth live (2026-07-30): consumer Thinking slug `gpt-5-6-thinking`
+ * and work-mode `gpt-5.6-sol-wm` map here; consumer efforts are
+ * `min|standard|extended|max` — do **not** replace this API ladder with those
+ * labels. Consumer `max_tokens` for Thinking was 262144 (UI limit), not this
+ * 1.05M API contextWindow. ChatGPT Pro lane `gpt-5-6-pro` is **not** a
+ * separate API model id (`/api/docs/models/gpt-5.6-pro` 404); docs say enable
+ * Pro via Responses `reasoning.mode: "pro"` on Sol/Terra/Luna.
+ *
  * API notes not yet represented in the host capability schema: programmatic
- * tool calling, beta multi-agent, persisted reasoning, pro mode, and
- * `text.verbosity`.
+ * tool calling, beta multi-agent, persisted reasoning, pro mode
+ * (`reasoning.mode`), and `text.verbosity`.
  */
 export const CAPS_GPT_5_6_SOL_RESPONSES: Capabilities = {
   ...defaultCapabilities(),
@@ -256,7 +264,13 @@ export const CAPS_GPT_5_6_LUNA_CHAT: Capabilities = {
 // GPT-5.5 / GPT-5.4 generation
 // ---------------------------------------------------------------------------
 
-/** GPT-5.5 Pro uses more compute for difficult Responses API work. */
+/**
+ * GPT-5.5 Pro uses more compute for difficult Responses API work.
+ * Docs (2026-07-30): effort `medium|high|xhigh` (default high), 1.05M context.
+ * ChatGPT slug `gpt-5-5-pro` maps here; consumer Pro efforts were only
+ * `standard|extended` — keep the API ladder, do not import consumer labels.
+ * ChatGPT advertised max_tokens 410000 (consumer UI), not API contextWindow.
+ */
 export const CAPS_GPT_5_5_PRO_RESPONSES: Capabilities = {
   ...CAPS_GPT_5_6_SOL_RESPONSES,
   effort: { levels: ["medium", "high", "xhigh"], default: "high" },
@@ -313,11 +327,17 @@ export const CAPS_GPT_5_4_NANO_CHAT: Capabilities = {
  * reasoning with visible summaries, effort `low|medium|high|xhigh`.
  *
  * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.5
- * (1,050,000 context + 128K output) and the Codex/ChatGPT backend catalog
- * (`/backend-api/models`). Knowledge cutoff 2025-12-01. The OpenAI "fast"
- * speed tier (`additional_speed_tiers: ["fast"]` / `service_tier: "fast"`,
+ * (1,050,000 context + 128K output). Knowledge cutoff 2025-12-01. The OpenAI
+ * "fast" speed tier (`additional_speed_tiers: ["fast"]` / `service_tier: "fast"`,
  * renamed from priority on 2026-07-30) is a vendor extension we do not wire
  * yet, so `speedFast` stays false (no silent wire field).
+ *
+ * ChatGPT OAuth live (2026-07-30): default picker slug `gpt-5-5`; Instant /
+ * Thinking lanes `gpt-5-5-instant` / `gpt-5-5-thinking` are UI variants of
+ * this API id (not separate registrations). Consumer Thinking efforts
+ * `min|standard|extended|max` must not replace the API ladder above.
+ * Consumer max_tokens: Instant/auto ~137000, Thinking ~410000 — UI limits
+ * only; keep API contextWindow at 1.05M.
  *
  * NOTE on the Codex/ChatGPT-OAuth backend: that surface enforces a SMALLER
  * effective window than the model's 1.05M. OpenAI's Codex manifest declares

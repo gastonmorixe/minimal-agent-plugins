@@ -6,24 +6,47 @@
  * product TUI) so keepRequestOpen + writeRequestBody are exercised end-to-end.
  */
 
+import { access } from "node:fs/promises"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { describe, expect, test } from "bun:test"
-
-import { createDefaultNetworkClient } from "../../minimal-agent-core/src/network/index.ts"
 
 import { cursorAdapter } from "./adapter.ts"
 import { CURSOR_API_KEY_AUTH, readCursorApiKey } from "./auth.ts"
 import { cursorCaps } from "./capabilities.ts"
 import { resetCursorBidiSessionsForTests } from "./cursor-bidi-session.ts"
 import { parseJsonc } from "./lib/jsonc.ts"
+import type { NetworkClient } from "./lib/net-types.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type { AuthSecretBag } from "./lib/provider-plugin.ts"
 import { CURSOR_OAUTH, readCursorOAuthAuth } from "./oauth-login.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
 const skip = !process.env.E2E
+
+/**
+ * Load the host NetworkClient from a sibling minimal-agent-core checkout.
+ * Uses a non-literal dynamic import so standalone plugins CI typecheck does
+ * not require that sibling tree (E2E stays local / monorepo-only).
+ */
+async function createE2ENetworkClient(): Promise<NetworkClient> {
+  const pluginsRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
+  const coreNetwork = join(pluginsRoot, "..", "minimal-agent-core", "src", "network", "index.ts")
+  try {
+    await access(coreNetwork)
+  } catch {
+    throw new Error(
+      `cursor e2e requires sibling minimal-agent-core at ${coreNetwork} (not available in standalone CI)`,
+    )
+  }
+  const specifier = pathToFileURL(coreNetwork).href
+  const mod = (await import(specifier)) as {
+    createDefaultNetworkClient: () => NetworkClient
+  }
+  return mod.createDefaultNetworkClient()
+}
 
 type AuthStoreFile = {
   version?: number
@@ -121,7 +144,7 @@ describe("cursor provider live (E2E=1)", () => {
     async () => {
       delete process.env.MA_CURSOR_STREAM_TRANSPORT
       const auth = await loadCursorAuthFromStore()
-      const networkClient = createDefaultNetworkClient()
+      const networkClient = await createE2ENetworkClient()
       const events: Array<{ type: string }> = []
       try {
         const gen = cursorAdapter.run(
@@ -153,7 +176,7 @@ describe("cursor provider live (E2E=1)", () => {
         expect(events.some((e) => e.type === "message_stop")).toBe(true)
         expect(text.toUpperCase()).toContain("PONG")
       } finally {
-        await networkClient.close()
+        await networkClient.close?.()
       }
     },
     60_000,
@@ -165,7 +188,7 @@ describe("cursor provider live (E2E=1)", () => {
       delete process.env.MA_CURSOR_STREAM_TRANSPORT
       process.env.MA_CURSOR_BIDI_DEBUG = "1"
       const auth = await loadCursorAuthFromStore()
-      const networkClient = createDefaultNetworkClient()
+      const networkClient = await createE2ENetworkClient()
       const sessionId = `e2e-cursor-bidi-${crypto.randomUUID()}`
       const model = {
         id: "cursor-auto",
@@ -271,7 +294,7 @@ describe("cursor provider live (E2E=1)", () => {
       } finally {
         delete process.env.MA_CURSOR_BIDI_DEBUG
         resetCursorBidiSessionsForTests()
-        await networkClient.close()
+        await networkClient.close?.()
       }
     },
     70_000,

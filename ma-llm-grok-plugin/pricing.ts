@@ -1,14 +1,14 @@
 /**
  * Token pricing for Grok / xAI models (USD per million tokens).
  *
- * Verified 2026-07-30 against https://docs.x.ai/developers/models and
- * https://docs.x.ai/developers/pricing (OAuth `/v1/models` has no prices).
- * Prior live `api.x.ai` micros (2026-07-27) used `*_token_price` / 10_000 =
- * USD per 1M tokens and still match these published rates. Long-context
- * (≥200k prompt) doubles for all listed text SKUs.
+ * Verified 2026-07-30 live probe (**grok-oauth-9**) against
+ * `api.x.ai/v1/models` + language-models merge: price micros
+ * (`*_token_price` / 10_000 = USD per 1M). Long-context tiers use
+ * `*_token_price_long_context` with `long_context_threshold` 200000.
+ * Cross-check: https://docs.x.ai/developers/pricing.
  *
  * Status-bar cost estimates only — xAI also bills tool invocations separately
- * (web_search / x_search $5 per 1k calls).
+ * (web_search / x_search $5 per 1k calls; live `search_price` on text SKUs is 0).
  *
  * @module llm/providers/grok/pricing
  */

@@ -136,14 +136,15 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(adapter.displayName).toBe("Wafer")
   })
 
-  it("registers all 6 built-in models", () => {
+  it("registers all 7 built-in models", () => {
     setup()
     const ids = [
       "GLM-5.1",
-      "GLM-5.2",
+      "Kimi-K3",
       "Kimi-K2.6",
       "MiniMax-M3",
-      "Qwen3.5-397B-A17B",
+      "GLM-5.2",
+      "kimi-k3-fast",
       "glm5.2-fast",
     ]
     for (const id of ids) {
@@ -197,27 +198,29 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(glm51.pricing.outputUSD).toBe(3.2)
 
     const glmFast = resolveModel("glm5.2-fast")
-    expect(glmFast.pricing.inputUSD).toBe(3.0) // 300 cents/mil
-    expect(glmFast.pricing.outputUSD).toBe(10.25)
+    expect(glmFast.pricing.inputUSD).toBe(2.1) // 210 cents/mil
+    expect(glmFast.pricing.outputUSD).toBe(6.6)
 
     const kimi = resolveModel("Kimi-K2.6")
     expect(kimi.pricing.inputUSD).toBe(1.14) // 114 cents/mil
     expect(kimi.pricing.outputUSD).toBe(4.8)
     expect(kimi.pricing.cacheReadUSD).toBe(0.19)
 
-    // All 6 models pricing (live API 2026-07-16)
-    const pricingTable: Record<string, { input: number; output: number }> = {
-      "GLM-5.1": { input: 1.0, output: 3.2 },
-      "GLM-5.2": { input: 1.2, output: 4.1 },
-      "Kimi-K2.6": { input: 1.14, output: 4.8 },
-      "MiniMax-M3": { input: 0.33, output: 1.32 },
-      "Qwen3.5-397B-A17B": { input: 0.43, output: 2.6 },
-      "glm5.2-fast": { input: 3.0, output: 10.25 },
+    // All 7 models pricing (live API 2026-07-30)
+    const pricingTable: Record<string, { input: number; output: number; cacheRead: number }> = {
+      "GLM-5.1": { input: 1.0, output: 3.2, cacheRead: 0.1 },
+      "Kimi-K3": { input: 3.0, output: 15.0, cacheRead: 0.3 },
+      "Kimi-K2.6": { input: 1.14, output: 4.8, cacheRead: 0.19 },
+      "MiniMax-M3": { input: 0.33, output: 1.32, cacheRead: 0.07 },
+      "GLM-5.2": { input: 1.26, output: 3.96, cacheRead: 0.23 },
+      "kimi-k3-fast": { input: 4.5, output: 22.5, cacheRead: 0.45 },
+      "glm5.2-fast": { input: 2.1, output: 6.6, cacheRead: 0.21 },
     }
     for (const [id, prices] of Object.entries(pricingTable)) {
       const m = resolveModel(id)
       expect(m.pricing.inputUSD, `${id} inputUSD`).toBe(prices.input)
       expect(m.pricing.outputUSD, `${id} outputUSD`).toBe(prices.output)
+      expect(m.pricing.cacheReadUSD, `${id} cacheReadUSD`).toBe(prices.cacheRead)
     }
   })
 
@@ -453,7 +456,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   })
 
   // ---------------------------------------------------------------------------
-  // Capability validation for all 6 models
+  // Capability validation for all 7 models (live API 2026-07-30)
   // ---------------------------------------------------------------------------
 
   it("each model has correct capabilities", () => {
@@ -472,9 +475,19 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(glm52.tags).toContain("flagship")
     expect(glm52.tags).toContain("deep")
 
+    // Kimi-K3 — 912K context, vision
+    expect(resolveModel("Kimi-K3").capabilities.modalities.image).toBe(true)
+    expect(resolveModel("Kimi-K3").capabilities.contextWindow).toBe(912_384)
+
     // Kimi-K2.6 — vision
     expect(resolveModel("Kimi-K2.6").capabilities.modalities.image).toBe(true)
     expect(resolveModel("Kimi-K2.6").capabilities.contextWindow).toBe(262_144)
+
+    // kimi-k3-fast — 1M context, vision, speedFast
+    const kimiFast = resolveModel("kimi-k3-fast")
+    expect(kimiFast.capabilities.contextWindow).toBe(1_048_576)
+    expect(kimiFast.capabilities.speedFast).toBe(true)
+    expect(kimiFast.capabilities.modalities.image).toBe(true)
 
     // glm5.2-fast — cheap scout, speedFast
     const glmFast = resolveModel("glm5.2-fast")
@@ -483,12 +496,10 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(glmFast.tags).toContain("cheap")
     expect(glmFast.tags).toContain("scout")
 
-    // Qwen3.5-397B-A17B — 262K context
-    expect(resolveModel("Qwen3.5-397B-A17B").capabilities.contextWindow).toBe(262_144)
-
-    // MiniMax-M3 — interleaved thinking + vision
+    // MiniMax-M3 — vision + reasoning (no interleaved flag in live wafer.capabilities)
     const mm3 = resolveModel("MiniMax-M3")
-    expect(mm3.capabilities.thinking.interleaved).toBe(true)
+    expect(mm3.capabilities.thinking.adaptive).toBe(true)
+    expect(mm3.capabilities.thinking.interleaved).toBe(false)
     expect(mm3.capabilities.contextWindow).toBe(1_048_576)
     expect(mm3.capabilities.modalities.image).toBe(true)
   })
@@ -501,9 +512,10 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     const fn = waferProviderPlugin.modelVersionToken!
     expect(fn("GLM-5.1")).toBe("5.1")
     expect(fn("GLM-5.2")).toBe("5.2")
+    expect(fn("Kimi-K3")).toBe("K3")
     expect(fn("Kimi-K2.6")).toBe("K2.6")
-    expect(fn("Qwen3.5-397B-A17B")).toBe("3.5-397B-A17B")
     expect(fn("MiniMax-M3")).toBe("M3")
+    expect(fn("kimi-k3-fast")).toBe("k3-fast")
     expect(fn("glm5.2-fast")).toBe("5.2-fast")
   })
 
@@ -562,7 +574,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
       },
     }
     registerWaferModels(spyModels)
-    expect(captured.length).toBe(6)
+    expect(captured.length).toBe(7)
     expect(captured[0]!.id).toBe("GLM-5.1")
     expect(captured[0]!.providerId).toBe("wafer")
     expect(captured[0]!.surfaceId).toBe("openai-chat-completions")
@@ -592,14 +604,15 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   // Model tags
   // ---------------------------------------------------------------------------
 
-  it("model tags are correct for all 6 models", () => {
+  it("model tags are correct for all 7 models", () => {
     setup()
     const tagChecks: Record<string, string[]> = {
       "GLM-5.1": ["reasoning", "balanced"],
-      "GLM-5.2": ["reasoning", "1m-context", "flagship", "deep"],
+      "Kimi-K3": ["reasoning", "vision"],
       "Kimi-K2.6": ["reasoning", "vision", "balanced"],
       "MiniMax-M3": ["reasoning", "vision", "1m-context"],
-      "Qwen3.5-397B-A17B": ["reasoning", "balanced"],
+      "GLM-5.2": ["reasoning", "1m-context", "flagship", "deep"],
+      "kimi-k3-fast": ["reasoning", "vision", "1m-context", "fast"],
       "glm5.2-fast": ["reasoning", "cheap", "scout", "fast"],
     }
     for (const [id, expectedTags] of Object.entries(tagChecks)) {
