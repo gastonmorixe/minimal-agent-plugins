@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 
-import handler from "./web_search.ts"
+import handler, { pickQueryString, validateInput } from "./web_search.ts"
 
 let tmpDir: string
 let prevConfigEnv: string | undefined
@@ -119,6 +119,13 @@ describe("WebSearch handler — input validation", () => {
     expect((r as Extract<TUIResult, { kind: "tool_result" }>).content).toMatch(/query.*required/)
   })
 
+  test("rejects explanation-only Cursor-style payload (no search string)", () => {
+    // Models sometimes send Cursor's `explanation` without any query field.
+    const v = validateInput({ explanation: "Find how to mint R2 keys" })
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.error).toMatch(/query.*required/)
+  })
+
   test("rejects unknown type", async () => {
     writeConfig()
     const r = await handler(makeCtx({ query: "x", type: "videos" }))
@@ -137,6 +144,56 @@ describe("WebSearch handler — input validation", () => {
     writeConfig()
     const r = await handler(makeCtx({ query: "x", format: "yaml" }))
     expect((r as Extract<TUIResult, { kind: "tool_result" }>).is_error).toBe(true)
+  })
+})
+
+describe("WebSearch — query aliases (Cursor / near-miss keys)", () => {
+  // Regression: Kevin sid 71826f71 (cursor-grok-4.5-high-fast) called
+  // WebSearch with Cursor's schema `{search_term, explanation}` instead of
+  // `{query}`. Handler rejected with "`query` is required" even though a
+  // usable search string was present. Accept search_term (and a few other
+  // near-miss aliases); ignore explanation.
+  test("pickQueryString prefers query, then Cursor search_term and short aliases", () => {
+    expect(pickQueryString({ query: " canonical ", search_term: "ignored" })).toBe("canonical")
+    expect(pickQueryString({ search_term: " from cursor " })).toBe("from cursor")
+    expect(pickQueryString({ q: "short" })).toBe("short")
+    expect(pickQueryString({ search: "generic" })).toBe("generic")
+    expect(pickQueryString({ searchQuery: "camel" })).toBe("camel")
+    expect(pickQueryString({ explanation: "why" })).toBeUndefined()
+    expect(pickQueryString({ query: "  ", search_term: "fallback" })).toBe("fallback")
+  })
+
+  test("validateInput accepts Cursor-style search_term + explanation", () => {
+    const v = validateInput({
+      search_term: "Cloudflare API create R2 API token access key secret 2025 2026",
+      explanation: "Find how to mint durable R2 S3 credentials via API/CLI for LEDGER_R2_* keys.",
+    })
+    expect(v.ok).toBe(true)
+    if (!v.ok) return
+    expect(v.value.query).toBe("Cloudflare API create R2 API token access key secret 2025 2026")
+  })
+
+  test("handler runs search when only search_term is provided (Kevin regression)", async () => {
+    writeConfig()
+    const restore = patchFetch(
+      () =>
+        new Response(JSON.stringify(fakeBraveResp), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    )
+    try {
+      const r = (await handler(
+        makeCtx({
+          search_term: "Cloudflare R2 API create access key token accounts r2/tokens",
+          explanation: "Find API endpoint to create durable R2 S3 access keys for LEDGER_R2_*.",
+        }),
+      )) as Extract<TUIResult, { kind: "tool_result" }>
+      expect(r.is_error).toBeUndefined()
+      expect(r.content).toContain("[1] Tokio")
+    } finally {
+      restore()
+    }
   })
 })
 

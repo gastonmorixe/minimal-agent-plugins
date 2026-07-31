@@ -10,13 +10,13 @@
         "type": "tool",
         "tool": {
           "name": "WebSearch",
-          "description": "Search the web for current information. Returns ranked hits with title, URL, snippet, age, and source. Use type='news' for time-sensitive queries (recent events, breaking news). Default 'web' for general lookups, documentation, and reference material. Use format='json' only when you need to extract specific fields programmatically. The default 'text' is more compact and easier to read inline.",
+          "description": "Search the web for current information. Required arg is `query` (the search string). Returns ranked hits with title, URL, snippet, age, and source. Use type='news' for time-sensitive queries (recent events, breaking news). Default 'web' for general lookups, documentation, and reference material. Use format='json' only when you need to extract specific fields programmatically. The default 'text' is more compact and easier to read inline.",
           "input_schema": {
             "type": "object",
             "properties": {
               "query": {
                 "type": "string",
-                "description": "The search query. Max 400 characters. Brevity helps, most providers do better with 2-6 well-chosen keywords than full sentences."
+                "description": "The search query (required). Max 400 characters. Brevity helps, most providers do better with 2-6 well-chosen keywords than full sentences."
               },
               "type": {
                 "type": "string",
