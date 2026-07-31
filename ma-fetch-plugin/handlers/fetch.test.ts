@@ -189,7 +189,21 @@ describe("validateInput - selector and eval", () => {
     expect(validateInput({ url: "https://x", eval: "document.title", eval_mode: "raw" }).ok).toBe(
       false,
     )
-    expect(validateInput({ url: "https://x", eval_mode: "value" }).ok).toBe(false)
+  })
+
+  test("eval_mode without eval is ignored (models dump optional schema fields)", () => {
+    for (const input of [
+      { url: "https://x", eval_mode: "value" },
+      { url: "https://x", eval: "", eval_mode: "value" },
+      { url: "https://x", eval: "", eval_mode: "page", selector: "" },
+    ]) {
+      const v = validateInput(input)
+      expect(v.ok).toBe(true)
+      if (v.ok) {
+        expect(v.value.evalExpr).toBeUndefined()
+        expect(v.value.evalMode).toBeUndefined()
+      }
+    }
   })
 
   test("explicit value mode rejects selector; omitted mode leaves inference to mergeInputs", () => {
