@@ -45,14 +45,31 @@ interface ParsedInput {
   format: "text" | "json"
 }
 
+/**
+ * Canonical field is `query`. Models that know Cursor's WebSearch (or other
+ * harnesses) often send `search_term` / `q` / `search` instead — accept those
+ * as near-miss aliases so a wrong key name still searches. Prefer `query`
+ * when both are present. `explanation` and other unknown keys are ignored.
+ */
+const QUERY_ALIASES = ["query", "search_term", "q", "search", "searchQuery"] as const
+
+/** Pick the first non-empty string among the canonical query field and aliases. */
+export function pickQueryString(raw: Record<string, unknown>): string | undefined {
+  for (const key of QUERY_ALIASES) {
+    const v = raw[key]
+    if (typeof v === "string" && v.trim().length > 0) return v.trim()
+  }
+  return undefined
+}
+
 /** Validate tool input. Returns either parsed values or an error message. */
-function validateInput(
+export function validateInput(
   raw: Record<string, unknown>,
 ): { ok: true; value: ParsedInput } | { ok: false; error: string } {
-  if (typeof raw.query !== "string" || raw.query.trim().length === 0) {
+  const query = pickQueryString(raw)
+  if (!query) {
     return { ok: false, error: "`query` is required and must be a non-empty string" }
   }
-  const query = raw.query.trim()
   if (query.length > 400) {
     return { ok: false, error: "`query` exceeds 400 characters" }
   }

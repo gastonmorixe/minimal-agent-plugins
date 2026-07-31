@@ -16,6 +16,7 @@ Use `WebSearch` to find current information on the open web. It returns ranked h
 
 ## How to call it well
 
+- **Pass the search string as `query`.** That is the only required field. Do not use `search_term` or `explanation` (other harnesses); this tool's schema is `query`.
 - **Keep queries short.** 2-6 well-chosen keywords beat full sentences for almost every provider.
 - **Use `type: "news"` for time-sensitive lookups** (recent events, breaking news, "what happened with X this week"). Default `web` for reference, docs, and general lookups.
 - **Default `count` is 10.** The top 5 are usually all that matter. Drop to `count: 5` when you don't need depth.
