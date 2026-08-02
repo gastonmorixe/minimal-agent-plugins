@@ -211,6 +211,7 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
     ...(ctx.env.MINIMAL_AGENT_DISABLE_PLUGINS
       ? { disabledPlugins: ctx.env.MINIMAL_AGENT_DISABLE_PLUGINS }
       : {}),
+    ...(ctx.emitChain ? { emitChain: ctx.emitChain.bind(ctx) } : {}),
   }
 }
 

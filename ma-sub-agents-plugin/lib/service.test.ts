@@ -46,9 +46,9 @@ describe("spawnAgent", () => {
   })
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-  it("launches a worker, persists a running handle, returns it", () => {
+  it("launches a worker, persists a running handle, returns it", async () => {
     const deps = makeDeps(dir)
-    const r = spawnAgent({ task: "refactor parser" }, deps)
+    const r = await spawnAgent({ task: "refactor parser" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.id).toBe(subagentId("A1"))
@@ -67,22 +67,22 @@ describe("spawnAgent", () => {
     expect(prompt).toContain(".result.json")
   })
 
-  it("rejects an empty task without launching", () => {
+  it("rejects an empty task without launching", async () => {
     const deps = makeDeps(dir)
-    const r = spawnAgent({ task: "   " }, deps)
+    const r = await spawnAgent({ task: "   " }, deps)
     expect(r.ok).toBe(false)
     expect(deps.launched).toHaveLength(0)
   })
 
-  it("enforces the nesting ban from a worker (depth 1 → childDepth 2)", () => {
+  it("enforces the nesting ban from a worker (depth 1 → childDepth 2)", async () => {
     const deps = makeDeps(dir, { depth: 1 })
-    const r = spawnAgent({ task: "spawn a grandchild" }, deps)
+    const r = await spawnAgent({ task: "spawn a grandchild" }, deps)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error).toMatch(/nesting/i)
     expect(deps.launched).toHaveLength(0)
   })
 
-  it("resolves a named definition (model + system preamble)", () => {
+  it("resolves a named definition (model + system preamble)", async () => {
     const reviewer: WorkerDefinition = {
       name: "reviewer",
       model: "claude-opus-4-8",
@@ -92,7 +92,7 @@ describe("spawnAgent", () => {
     const deps = makeDeps(dir, {
       resolveDefinition: (n) => (n === "reviewer" ? reviewer : undefined),
     })
-    const r = spawnAgent({ task: "review the diff", agent: "reviewer" }, deps)
+    const r = await spawnAgent({ task: "review the diff", agent: "reviewer" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.type).toBe("reviewer")
@@ -101,9 +101,9 @@ describe("spawnAgent", () => {
     expect(deps.launched[0]?.at(-1)).toContain("You are a strict reviewer.")
   })
 
-  it("inherits deps.defaultModel (the lead's model) when the request omits one", () => {
+  it("inherits deps.defaultModel (the lead's model) when the request omits one", async () => {
     const deps = makeDeps(dir, { defaultModel: "gpt-5.5" })
-    const r = spawnAgent({ task: "inherit my model" }, deps)
+    const r = await spawnAgent({ task: "inherit my model" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.model).toBe("gpt-5.5")
@@ -111,7 +111,7 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--model") + 1]).toBe("gpt-5.5")
   })
 
-  it("passes --provider from resolveProvider when inheriting the lead model (Lisa/grok dual-id)", () => {
+  it("passes --provider from resolveProvider when inheriting the lead model (Lisa/grok dual-id)", async () => {
     // Regression: bare `grok-4.5` is dual-registered (grok + opencode). The
     // host must pin the LEAD provider so the child does not last-write-win to
     // OpenCode Go and 401 on empty credits.
@@ -119,7 +119,7 @@ describe("spawnAgent", () => {
       defaultModel: "grok-4.5",
       resolveProvider: (modelId) => (modelId === "grok-4.5" ? "grok" : undefined),
     })
-    const r = spawnAgent({ task: "scan pii", agent: undefined }, deps)
+    const r = await spawnAgent({ task: "scan pii", agent: undefined }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.model).toBe("grok-4.5")
@@ -129,19 +129,19 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--provider") + 1]).toBe("grok")
   })
 
-  it("omits --provider when resolveProvider returns undefined", () => {
+  it("omits --provider when resolveProvider returns undefined", async () => {
     const deps = makeDeps(dir, {
       defaultModel: "grok-4.5",
       resolveProvider: () => undefined,
     })
-    const r = spawnAgent({ task: "no provider known" }, deps)
+    const r = await spawnAgent({ task: "no provider known" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv).toContain("--model")
     expect(argv).not.toContain("--provider")
   })
 
-  it("rejects unsupported effort before launch (Carlos/schema-vs-runtime)", () => {
+  it("rejects unsupported effort before launch (Carlos/schema-vs-runtime)", async () => {
     // Manifest used to advertise low|medium|high|xhigh|max; leads then passed
     // effort=low on models that only accept medium|high|max and the child died
     // at boot. Refuse at the tool boundary with a teaching error instead.
@@ -149,7 +149,7 @@ describe("spawnAgent", () => {
       defaultModel: "grok-4.5",
       effortLevelsForModel: (id) => (id === "grok-4.5" ? ["medium", "high", "max"] : undefined),
     })
-    const r = spawnAgent({ task: "scan news", effort: "low" }, deps)
+    const r = await spawnAgent({ task: "scan news", effort: "low" }, deps)
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.error).toMatch(/effort "low"/i)
@@ -159,18 +159,18 @@ describe("spawnAgent", () => {
     expect(deps.launched).toHaveLength(0)
   })
 
-  it("allows a supported effort and passes --effort through", () => {
+  it("allows a supported effort and passes --effort through", async () => {
     const deps = makeDeps(dir, {
       defaultModel: "grok-4.5",
       effortLevelsForModel: () => ["medium", "high", "max"],
     })
-    const r = spawnAgent({ task: "scan news", effort: "medium" }, deps)
+    const r = await spawnAgent({ task: "scan news", effort: "medium" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--effort") + 1]).toBe("medium")
   })
 
-  it("inherits lead effort when the worker model supports it", () => {
+  it("inherits lead effort when the worker model supports it", async () => {
     const deps = makeDeps(dir, {
       defaultModel: "gpt-5.6-sol",
       resolveProvider: () => "openai",
@@ -178,13 +178,13 @@ describe("spawnAgent", () => {
       defaultEffort: "high",
       effortLevelsForModel: () => ["none", "low", "medium", "high", "xhigh", "max"],
     })
-    const r = spawnAgent({ task: "inherit effort" }, deps)
+    const r = await spawnAgent({ task: "inherit effort" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--effort") + 1]).toBe("high")
   })
 
-  it("drops unsupported lead effort and still launches (Nathan xhigh→grok)", () => {
+  it("drops unsupported lead effort and still launches (Nathan xhigh→grok)", async () => {
     // Lead on OpenAI xhigh; retry worker on grok-4.5 which only accepts
     // medium|high|max. Must NOT fail the spawn — omit --effort + scrub env.
     const deps = makeDeps(dir, {
@@ -195,7 +195,7 @@ describe("spawnAgent", () => {
       effortLevelsForModel: (id) =>
         id === "grok-4.5" ? ["medium", "high", "max"] : ["none", "low", "medium", "high", "xhigh"],
     })
-    const r = spawnAgent({ task: "retry with grok", model: "grok-4.5" }, deps)
+    const r = await spawnAgent({ task: "retry with grok", model: "grok-4.5" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     const argv = deps.launched[0] ?? []
@@ -204,7 +204,7 @@ describe("spawnAgent", () => {
     expect(argv).not.toContain("--credential-name")
   })
 
-  it("passes lead --credential-name when worker reuses lead provider (Brittany)", () => {
+  it("passes lead --credential-name when worker reuses lead provider (Brittany)", async () => {
     // Lead: --provider openai --model gpt-5.6-sol --credential-name openai-chatgpt-oauth-2
     // Worker must keep the same credential or Codex rejects gpt-5.6-sol on the
     // default OAuth account.
@@ -216,7 +216,7 @@ describe("spawnAgent", () => {
       defaultEffort: "high",
       effortLevelsForModel: () => ["none", "low", "medium", "high", "xhigh", "max"],
     })
-    const r = spawnAgent({ task: "crossref docs" }, deps)
+    const r = await spawnAgent({ task: "crossref docs" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--model") + 1]).toBe("gpt-5.6-sol")
@@ -225,7 +225,7 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--effort") + 1]).toBe("high")
   })
 
-  it("omits lead credential when worker switches provider", () => {
+  it("omits lead credential when worker switches provider", async () => {
     const deps = makeDeps(dir, {
       defaultModel: "gpt-5.6-sol",
       resolveProvider: (id) => (id === "grok-4.5" ? "grok" : "openai"),
@@ -235,22 +235,22 @@ describe("spawnAgent", () => {
       effortLevelsForModel: (id) =>
         id === "grok-4.5" ? ["medium", "high", "max"] : ["high", "xhigh"],
     })
-    const r = spawnAgent({ task: "use grok", model: "grok-4.5" }, deps)
+    const r = await spawnAgent({ task: "use grok", model: "grok-4.5" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv).not.toContain("--credential-name")
   })
 
-  it("passes effort through when effort levels are unknown", () => {
+  it("passes effort through when effort levels are unknown", async () => {
     // Forward-compatible: no levels wired → don't invent a veto.
     const deps = makeDeps(dir, { defaultModel: "grok-4.5" })
-    const r = spawnAgent({ task: "scan", effort: "ultra" }, deps)
+    const r = await spawnAgent({ task: "scan", effort: "ultra" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--effort") + 1]).toBe("ultra")
   })
 
-  it("REGRESSION: refuses explicit effort when model has empty levels (Thomas/Adrian fleet)", () => {
+  it("REGRESSION: refuses explicit effort when model has empty levels (Thomas/Adrian fleet)", async () => {
     // cursor-grok / no-effort models: leads (and LLMs filling optional tool
     // fields) often pass effort=medium. Empty levels means known-unsupported —
     // refuse at the tool boundary instead of launching a child that dies with
@@ -259,7 +259,7 @@ describe("spawnAgent", () => {
       defaultModel: "cursor-grok-4.5-high-fast",
       effortLevelsForModel: () => [],
     })
-    const r = spawnAgent({ task: "scan resume path", effort: "medium" }, deps)
+    const r = await spawnAgent({ task: "scan resume path", effort: "medium" }, deps)
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.error).toMatch(/effort "medium"/i)
@@ -268,19 +268,19 @@ describe("spawnAgent", () => {
     expect(deps.launched).toHaveLength(0)
   })
 
-  it("REGRESSION: does not inherit lead effort when model has empty levels", () => {
+  it("REGRESSION: does not inherit lead effort when model has empty levels", async () => {
     const deps = makeDeps(dir, {
       defaultModel: "cursor-grok-4.5-high-fast",
       defaultEffort: "medium",
       effortLevelsForModel: () => [],
     })
-    const r = spawnAgent({ task: "inherit must scrub" }, deps)
+    const r = await spawnAgent({ task: "inherit must scrub" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv).not.toContain("--effort")
   })
 
-  it("REGRESSION: does not inherit lead effort when levels are unknown", () => {
+  it("REGRESSION: does not inherit lead effort when levels are unknown", async () => {
     // JSDoc contract: unsupported OR unknown → omit + scrub. The old branch
     // `!levels || levels.length === 0 || levels.includes(...)` inherited on
     // both unknown and empty, which killed no-effort workers at boot.
@@ -289,15 +289,15 @@ describe("spawnAgent", () => {
       defaultEffort: "medium",
       // effortLevelsForModel omitted → unknown
     })
-    const r = spawnAgent({ task: "unknown levels must scrub" }, deps)
+    const r = await spawnAgent({ task: "unknown levels must scrub" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv).not.toContain("--effort")
   })
 
-  it("OMITS --model when no model is knowable (model-agnostic; child self-resolves)", () => {
+  it("OMITS --model when no model is knowable (model-agnostic; child self-resolves)", async () => {
     const deps = makeDeps(dir, { defaultModel: "" })
-    const r = spawnAgent({ task: "no model anywhere" }, deps)
+    const r = await spawnAgent({ task: "no model anywhere" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.model).toBe("")
@@ -305,13 +305,13 @@ describe("spawnAgent", () => {
     expect(argv).not.toContain("--model")
   })
 
-  it("a per-spawn model overrides the inherited default", () => {
+  it("a per-spawn model overrides the inherited default", async () => {
     const deps = makeDeps(dir, { defaultModel: "gpt-5.5" })
-    const r = spawnAgent({ task: "override", model: "claude-opus-4-8" }, deps)
+    const r = await spawnAgent({ task: "override", model: "claude-opus-4-8" }, deps)
     expect(r.ok && r.value.model).toBe("claude-opus-4-8")
   })
 
-  it("uses the provider's role recommendation for a role-bearing specialist (Phase G)", () => {
+  it("uses the provider's role recommendation for a role-bearing specialist (Phase G)", async () => {
     const scout: WorkerDefinition = { name: "explorer", role: "scout", systemPrompt: "scout" }
     const deps = makeDeps(dir, {
       defaultModel: "lead-model-x",
@@ -319,7 +319,7 @@ describe("spawnAgent", () => {
       recommendForRole: (role) =>
         role === "scout" ? { modelId: "provider-scout-model", effort: "low" } : undefined,
     })
-    const r = spawnAgent({ task: "scan", agent: "explorer" }, deps)
+    const r = await spawnAgent({ task: "scan", agent: "explorer" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     // the role recommendation beat the lead default
@@ -329,31 +329,31 @@ describe("spawnAgent", () => {
     expect(argv[argv.indexOf("--effort") + 1]).toBe("low")
   })
 
-  it("falls back to the lead model when the provider recommends nothing for the role", () => {
+  it("falls back to the lead model when the provider recommends nothing for the role", async () => {
     const deep: WorkerDefinition = { name: "reviewer", role: "deep", systemPrompt: "review" }
     const deps = makeDeps(dir, {
       defaultModel: "lead-model-x",
       resolveDefinition: (n) => (n === "reviewer" ? deep : undefined),
       recommendForRole: () => undefined, // provider has no rec for this role
     })
-    const r = spawnAgent({ task: "review", agent: "reviewer" }, deps)
+    const r = await spawnAgent({ task: "review", agent: "reviewer" }, deps)
     expect(r.ok && r.value.model).toBe("lead-model-x")
   })
 
-  it("an explicit per-spawn model still wins over a role recommendation", () => {
+  it("an explicit per-spawn model still wins over a role recommendation", async () => {
     const scout: WorkerDefinition = { name: "explorer", role: "scout", systemPrompt: "scout" }
     const deps = makeDeps(dir, {
       defaultModel: "lead-model-x",
       resolveDefinition: (n) => (n === "explorer" ? scout : undefined),
       recommendForRole: () => ({ modelId: "provider-scout-model" }),
     })
-    const r = spawnAgent({ task: "scan", agent: "explorer", model: "user-pick" }, deps)
+    const r = await spawnAgent({ task: "scan", agent: "explorer", model: "user-pick" }, deps)
     expect(r.ok && r.value.model).toBe("user-pick")
   })
 
-  it("threads isolation=fork through to a --resume <leadSid> launch", () => {
+  it("threads isolation=fork through to a --resume <leadSid> launch", async () => {
     const deps = makeDeps(dir)
-    const r = spawnAgent({ task: "side task with my context", isolation: "fork" }, deps)
+    const r = await spawnAgent({ task: "side task with my context", isolation: "fork" }, deps)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.isolation).toBe("fork")
@@ -363,38 +363,38 @@ describe("spawnAgent", () => {
     expect(argv).toContain("--session-id")
   })
 
-  it("rejects an unknown definition name", () => {
+  it("rejects an unknown definition name", async () => {
     const deps = makeDeps(dir, { resolveDefinition: () => undefined })
-    const r = spawnAgent({ task: "x", agent: "ghost" }, deps)
+    const r = await spawnAgent({ task: "x", agent: "ghost" }, deps)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error).toMatch(/unknown sub-agent/i)
   })
 
-  it("launches a read-only specialist with --mode ask (Edit/Write denied at dispatch)", () => {
+  it("launches a read-only specialist with --mode ask (Edit/Write denied at dispatch)", async () => {
     const readonly: WorkerDefinition = { name: "explorer", role: "scout", mode: "ask" }
     const deps = makeDeps(dir, {
       resolveDefinition: (n) => (n === "explorer" ? readonly : undefined),
     })
-    const r = spawnAgent({ task: "find the bug", agent: "explorer" }, deps)
+    const r = await spawnAgent({ task: "find the bug", agent: "explorer" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--mode") + 1]).toBe("ask")
   })
 
-  it("launches an implementer with --mode none (writable) when the definition sets no mode", () => {
+  it("launches an implementer with --mode none (writable) when the definition sets no mode", async () => {
     const writer: WorkerDefinition = { name: "worker", role: "balanced" }
     const deps = makeDeps(dir, {
       resolveDefinition: (n) => (n === "worker" ? writer : undefined),
     })
-    const r = spawnAgent({ task: "implement it", agent: "worker" }, deps)
+    const r = await spawnAgent({ task: "implement it", agent: "worker" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--mode") + 1]).toBe("none")
   })
 
-  it("defaults an inline (definition-less) worker to --mode none", () => {
+  it("defaults an inline (definition-less) worker to --mode none", async () => {
     const deps = makeDeps(dir)
-    const r = spawnAgent({ task: "inline work" }, deps)
+    const r = await spawnAgent({ task: "inline work" }, deps)
     expect(r.ok).toBe(true)
     const argv = deps.launched[0] ?? []
     expect(argv[argv.indexOf("--mode") + 1]).toBe("none")
@@ -408,9 +408,9 @@ describe("stopAgent", () => {
   })
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-  it("kills the pid and marks the worker stopped", () => {
+  it("kills the pid and marks the worker stopped", async () => {
     const deps = makeDeps(dir)
-    const sp = spawnAgent({ task: "long job" }, deps)
+    const sp = await spawnAgent({ task: "long job" }, deps)
     expect(sp.ok).toBe(true)
     const killed: number[] = []
     const r = stopAgent("A1", "superseded", {
@@ -423,7 +423,7 @@ describe("stopAgent", () => {
     expect(deps.store.get("A1")?.status.kind).toBe("stopped")
   })
 
-  it("is a no-op on an unknown id (err) and idempotent on a terminal worker", () => {
+  it("is a no-op on an unknown id (err) and idempotent on a terminal worker", async () => {
     const deps = makeDeps(dir)
     const miss = stopAgent("ZZ", undefined, {
       store: deps.store,

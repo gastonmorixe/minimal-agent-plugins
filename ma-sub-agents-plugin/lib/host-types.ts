@@ -104,6 +104,10 @@ export interface TUIContext {
   queryModelInfo?: () => ModelInfoSnapshot | undefined
   recommendSubagentModels?: () => SubagentModelRecommendation[]
   host?: PluginHost
+  emitChain?: <T>(
+    channel: string,
+    payload: T,
+  ) => Promise<{ payload: T; halted: boolean; reason?: string }>
 }
 
 /**
