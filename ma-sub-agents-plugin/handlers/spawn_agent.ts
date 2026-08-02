@@ -33,7 +33,7 @@ export default async function spawn(ctx: TUIContext): Promise<TUIResult> {
     }
   }
 
-  const r = spawnAgent(parsed.value, deps)
+  const r = await spawnAgent(parsed.value, deps)
   if (!r.ok) return { kind: "tool_result", content: r.error, is_error: true }
 
   const rec = r.value

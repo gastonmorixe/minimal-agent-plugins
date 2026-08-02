@@ -93,7 +93,7 @@ describe("sub-agents end-to-end (real process, no network)", () => {
     const store = new SubagentStore(LEAD, { dir })
 
     // 1. Spawn — returns immediately with a running handle.
-    const sp = spawnAgent({ task: "do the thing", label: "faker" }, svcDeps(store))
+    const sp = await spawnAgent({ task: "do the thing", label: "faker" }, svcDeps(store))
     expect(sp.ok).toBe(true)
     if (!sp.ok) return
     expect(sp.value.status.kind).toBe("running")
@@ -133,7 +133,7 @@ describe("sub-agents end-to-end (real process, no network)", () => {
     const store = new SubagentStore(LEAD, { dir })
     const deps = { ...svcDeps(store), agentBin: [process.execPath, noResultScript] }
 
-    const sp = spawnAgent({ task: "do nothing" }, deps)
+    const sp = await spawnAgent({ task: "do nothing" }, deps)
     expect(sp.ok).toBe(true)
     if (!sp.ok) return
     await waitForExit(sp.value.status.kind === "running" ? sp.value.status.pid : 0)
@@ -179,7 +179,7 @@ describe("sub-agents end-to-end (real process, no network)", () => {
     const store = new SubagentStore(LEAD, { dir })
     const deps = { ...svcDeps(store), agentBin: [process.execPath, distillScript] }
 
-    const sp = spawnAgent({ task: "mine the logs" }, deps)
+    const sp = await spawnAgent({ task: "mine the logs" }, deps)
     expect(sp.ok).toBe(true)
     if (!sp.ok) return
     await waitForExit(sp.value.status.kind === "running" ? sp.value.status.pid : 0)
@@ -212,7 +212,7 @@ describe("sub-agents end-to-end (real process, no network)", () => {
     const deps = { ...svcDeps(store), agentBin: [process.execPath, liarScript] }
 
     const missingPath = join(dir, "promised-findings.md")
-    const sp = spawnAgent({ task: "produce findings", expectArtifacts: [missingPath] }, deps)
+    const sp = await spawnAgent({ task: "produce findings", expectArtifacts: [missingPath] }, deps)
     expect(sp.ok).toBe(true)
     if (!sp.ok) return
     // the contract is persisted on the handle for the async probe
@@ -251,7 +251,7 @@ describe("sub-agents end-to-end (real process, no network)", () => {
     const store = new SubagentStore(LEAD, { dir })
     const deps = { ...svcDeps(store), agentBin: [process.execPath, toolWorker] }
 
-    const sp = spawnAgent({ task: "use the tool" }, deps)
+    const sp = await spawnAgent({ task: "use the tool" }, deps)
     expect(sp.ok).toBe(true)
     if (!sp.ok) return
     await waitForExit(sp.value.status.kind === "running" ? sp.value.status.pid : 0)
@@ -289,7 +289,10 @@ describe("sub-agents end-to-end (real process, no network)", () => {
     const deps = { ...svcDeps(store), agentBin: [process.execPath, partialWorker] }
 
     const missingPath = join(dir, "RESEARCH.md")
-    const sp = spawnAgent({ task: "research the ceiling", expectArtifacts: [missingPath] }, deps)
+    const sp = await spawnAgent(
+      { task: "research the ceiling", expectArtifacts: [missingPath] },
+      deps,
+    )
     expect(sp.ok).toBe(true)
     if (!sp.ok) return
     await waitForExit(sp.value.status.kind === "running" ? sp.value.status.pid : 0)

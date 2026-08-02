@@ -1,0 +1,32 @@
+{
+  "id": "policy-ref",
+  "name": "Policy reference (fixture)",
+  "version": "0.1.0",
+  "description": "Reference lifecycle policy plugin: denies Bash commands matching rm -rf / and redacts sk- API-key-shaped tokens in message.willSend. Disabled by default; enable with --enable-plugin policy-ref to prove the seams.",
+  "enabled": false,
+  "hooks": [
+    {
+      "id": "deny_dangerous_bash",
+      "channel": "tool.willInvoke",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/deny_dangerous_bash.ts",
+        "export": "default"
+      },
+      "priority": 10,
+      "timeoutMs": 2000
+    },
+    {
+      "id": "redact_secrets_will_send",
+      "channel": "message.willSend",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/redact_secrets_will_send.ts",
+        "export": "default"
+      },
+      "priority": 10,
+      "timeoutMs": 2000
+    }
+  ],
+  "permissions": ["hooks:tool.willInvoke", "hooks:message.willSend"]
+}

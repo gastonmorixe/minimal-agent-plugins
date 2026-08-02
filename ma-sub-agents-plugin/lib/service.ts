@@ -178,6 +178,14 @@ export interface ServiceDeps {
    */
   readonly leadProvider?: string
   readonly policy?: GuardPolicy
+  /**
+   * Optional HookBus chain emit (host `ctx.emitChain`). Used for
+   * `subagent.willSpawn` external veto/rewrite after the in-plugin guard.
+   */
+  readonly emitChain?: <T>(
+    channel: string,
+    payload: T,
+  ) => Promise<{ payload: T; halted: boolean; reason?: string }>
 }
 
 /** Count active + total workers for the guard. */
@@ -191,7 +199,10 @@ function counts(records: readonly SubagentRecord[]): { active: number; total: nu
  * Spawn one worker. Self-enforces the guard, builds the plan, launches the
  * process, persists the handle. Returns the created record or a reason.
  */
-export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<SubagentRecord> {
+export async function spawnAgent(
+  req: SpawnRequest,
+  deps: ServiceDeps,
+): Promise<Result<SubagentRecord>> {
   const task = req.task?.trim() ?? ""
   if (task.length === 0) return err("task is required")
 
@@ -283,7 +294,7 @@ export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<Subagen
   const expectArtifacts =
     req.expectArtifacts && req.expectArtifacts.length > 0 ? req.expectArtifacts : undefined
 
-  // Guard (self-enforced). External veto can still ride `tool.willInvoke`.
+  // Guard (self-enforced). External veto rides `subagent.willSpawn` below.
   const records = deps.store.all()
   const { active, total } = counts(records)
   const childDepth = deps.depth + 1
@@ -292,6 +303,25 @@ export function spawnAgent(req: SpawnRequest, deps: ServiceDeps): Result<Subagen
     deps.policy ?? DEFAULT_POLICY,
   )
   if (!verdict.allowed) return err(verdict.allowed ? "" : verdict.reason)
+
+  // External policy chain (LifecyclePort / HookBus `subagent.willSpawn`).
+  if (deps.emitChain) {
+    try {
+      const will = await deps.emitChain("subagent.willSpawn", {
+        task,
+        model,
+        isolation: req.isolation ?? def?.isolation ?? "fresh",
+        depth: childDepth,
+        leadSid: deps.leadSid,
+        type,
+      })
+      if (will.halted) {
+        return err(will.reason?.trim() || "Sub-agent spawn blocked by lifecycle policy hook.")
+      }
+    } catch {
+      /* chain failure must not brick spawn */
+    }
+  }
 
   const childSid = sessionId(deps.newSid())
   const id = deps.store.nextId()
