@@ -12,6 +12,14 @@ import {
 
 const enc = new TextEncoder()
 
+/**
+ * Sentinel worker pid for fakes. Must NOT collide with a live process/PGID on
+ * CI hosts: `killBackend` tries `process.kill(-pid)` first and returns early on
+ * success, skipping `proc.kill`. A low pid like 777 can exist on Linux runners,
+ * leaving `fake.kills` empty and flaking assertions like protocol-skew SIGKILL.
+ */
+const FAKE_WORKER_PID = 2_000_000_001
+
 function config(overrides: Partial<FetchConfig> = {}): FetchConfig {
   return {
     ...defaultConfig(),
@@ -72,7 +80,7 @@ class FakeWorker {
       stdout,
       stderr,
       exited,
-      pid: 777,
+      pid: FAKE_WORKER_PID,
       kill: (signal) => {
         this.kills.push(signal)
         return true
@@ -92,7 +100,7 @@ class FakeWorker {
           ok: true,
           result: {
             protocol: 1,
-            pid: 777,
+            pid: FAKE_WORKER_PID,
             operations: ["hello", "fetch"],
             supported_formats: ["html", "text", "links", "markdown", "accessibility"],
           },
@@ -219,7 +227,7 @@ describe("PersistentWorkerClient", () => {
     expect(fake.spawnEnv?.OBSCURA_FETCH_WORKER_IDLE_TIMEOUT_SECS).toBe("42")
     expect(fake.spawnEnv?.OBSCURA_FETCH_WORKER_EXTENSION).toBeUndefined()
     expect(fake.requests.map((request) => request.op)).toEqual(["hello", "fetch", "fetch"])
-    expect(c.status()).toEqual({ running: true, pid: 777, protocol: 1 })
+    expect(c.status()).toEqual({ running: true, pid: FAKE_WORKER_PID, protocol: 1 })
     fake.close()
   })
 
@@ -247,7 +255,7 @@ describe("PersistentWorkerClient", () => {
           ok: true,
           result: {
             protocol: 1,
-            pid: 777,
+            pid: FAKE_WORKER_PID,
             operations: ["hello", "fetch"],
             supported_formats: ["html", "text", "links", "markdown", "accessibility"],
           },
@@ -292,7 +300,7 @@ describe("PersistentWorkerClient", () => {
         v: 1,
         id: request.id,
         ok: true,
-        result: { protocol: 1, pid: 777, operations: ["hello", "fetch"] },
+        result: { protocol: 1, pid: FAKE_WORKER_PID, operations: ["hello", "fetch"] },
       })
     }
     const result = await client(fake).call(
@@ -311,7 +319,7 @@ describe("PersistentWorkerClient", () => {
         v: 1,
         id: request.id,
         ok: true,
-        result: { protocol: 2, pid: 777, operations: ["hello", "fetch"] },
+        result: { protocol: 2, pid: FAKE_WORKER_PID, operations: ["hello", "fetch"] },
       })
     }
     const result = await client(fake).call(config(), input(), new AbortController().signal)
@@ -331,7 +339,7 @@ describe("PersistentWorkerClient", () => {
           ok: true,
           result: {
             protocol: 1,
-            pid: 777,
+            pid: FAKE_WORKER_PID,
             operations: ["hello", "fetch"],
             supported_formats: ["html", "text", "links", "markdown", "accessibility"],
           },
@@ -360,7 +368,7 @@ describe("PersistentWorkerClient", () => {
           ok: true,
           result: {
             protocol: 1,
-            pid: 777,
+            pid: FAKE_WORKER_PID,
             operations: ["hello", "fetch"],
             supported_formats: ["html", "text", "links", "markdown", "accessibility"],
           },
@@ -433,7 +441,7 @@ describe("PersistentWorkerClient", () => {
           ok: true,
           result: {
             protocol: 1,
-            pid: 777,
+            pid: FAKE_WORKER_PID,
             operations: ["hello", "fetch"],
             supported_formats: ["html", "text", "links", "markdown", "accessibility"],
           },
