@@ -8,6 +8,11 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-08-05 (this session): Husky + Commitlint (Conventional Commits) —
+  `commitlint.config.js`, `.husky/commit-msg`, `prepare` → `husky`, scripts
+  `commitlint` / `commitlint:last`. CI `commitlint` job on push/PR.
+  Agent-gated `scripts/check-agent-coauthor.sh` on `commit-msg` when
+  `MINIMAL_AGENT_SESSION_ID` is set (humans unaffected).
 - 2026-07-23 (this session): `ma-llm-cursor-plugin` landed as a self-contained Cursor provider on the custom `cursor-agent-run` Connect/protobuf surface. Authentication stays in the minimal-agent provider store: pasted API keys are exchanged at request time, while browser login uses Cursor's `loginDeepControl` challenge/poll flow; credentials never fall back to environment variables or macOS Keychain. Request identity includes Cursor-compatible checksum, machine/client IDs, and Connect headers with only non-secret `MA_CURSOR_*` overrides. The authenticated `AvailableModels` catalog decoder maps aliases, variants, context windows, thinking/image support, and effort levels into the live model refresher, with a namespaced offline static seed. ASK-mode streaming translates Cursor token/thinking/usage/error events into canonical events while minimal-agent retains tool ownership.
 - 2026-07-15 (this session): `ma-llm-clinepass-plugin` landed. ClinePass provider (OpenAI-compatible open-weight catalog via `api.cline.bot`). API key + WorkOS device-code OAuth, 10 `cline-pass/*` models, session quota windows from rate-limit headers, package-local `tsdoc.json`. 14 unit tests.
 - 2026-07-15 01:45:31 -0400 (this session): `ma-intercom-plugin` `@`-mention peer autocomplete + dual representation. Typing `@` opens a slash-menu-style fuzzy peer list (footer overlay) sorted online-first with status colors, name/short sid/pid/model/cwd. Matching `@tokens` paint live via `editor.buffer.styles` (violet/purple bold). On the model path, `turn.willStart` rewrites uniquely resolved tokens to peer XML while scrollback/queue keep the styled `@token`. Wire form in `lib/mention/PROMPTS.ts`. `resolvePeer` matches display names. Handlers: `on_key` (prio 65), `on_buffer_changed`, `on_turn_will_start`. Package-local `tsdoc.json`. 41 pure-lib tests. README section.
@@ -49,6 +54,8 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-08-05 (this session): GitHub Actions — `actions/checkout@v7` (was v6);
+  CI/release install steps set `HUSKY=0`.
 - 2026-05-22 (this session): `.gitignore` extended with `.*-dbg/`, `.*-debug/`, `.*.dbg/` patterns. Catches debugger scratch folders like `.net-dbg/` without per-folder rules.
 
 ## 2026-05-22
