@@ -2,7 +2,11 @@
 
 Cursor **AgentService/Run** provider for [minimal-agent](https://github.com/gastonmorixe/minimal-agent-core).
 
-Speaks Connect RPC + protobuf (`application/connect+proto`) to `agentn.global.api5.cursor.sh`.
+This plugin speaks Connect RPC + protobuf (`application/connect+proto`) to
+`agentn.api5.cursor.sh` for `agent.v1.AgentService/Run`, with AiService unary RPCs
+on `api2.cursor.sh`. That is the **plugin** wire path (spike-proven), not a claim
+that every Cursor Agent CLI build uses the same primary loop.
+
 MA tools are **not** sent as Cursor built-ins (`grepToolCall`, `shellToolCall`, …). They ride the
 **MCP** path (`mcp_tools` on the request, `mcp_tool_call` on the response).
 
@@ -109,6 +113,16 @@ Disable bidi with `MA_CURSOR_BIDI=0` to revert to one POST per agent loop step (
 | Built-in catalog     | `cursor-builtin-tools.ts` (from Cursor bundle 2026.07.23)                                  |
 
 `MINIMAL_AGENT_NET_DBG=1` writes binary-safe captures under `~/.minimal-agent/net-dbg/`.
+
+### Conversation identity (plugin vs CLI)
+
+| Field | Plugin behavior |
+| ----- | --------------- |
+| `conversation_id` (#5) | Host `metadata.sessionId` (or bidi session key). Fresh UUID only when neither is set. |
+| `conversation_group_id` (#16) | Optional via `metadata.custom["cursor-conversation-group-id"]`. |
+| `conversation_state` (#1) | **Empty** on each initial Run. This is a fresh/plugin MVP, not Cursor CLI resume. |
+
+The official CLI resume path reconstructs typed `ConversationState` from a persisted blob graph (`ConversationStateStructure` + turn blobs). This plugin does **not** claim that semantics yet. Bidi tool rounds continue on the open stream without re-POSTing folded history.
 
 ## Architecture — bidi tool execution in detail
 

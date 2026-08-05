@@ -9,7 +9,13 @@
 
 import type { ConnectEnvelope } from "./connect/stream.ts"
 import { ConnectFrameReader, parseConnectFrames } from "./connect/stream.ts"
-import type { CanonicalEvent, CanonicalUsage } from "./lib/canonical-events.ts"
+import {
+  applyCursorUsageEvent,
+  type CursorUsageState,
+  cursorUsageReceipts,
+  cursorUsageToCanonical,
+} from "./cursor-usage.ts"
+import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import {
   type CursorServerEvent,
   extractServerTextEvents,
@@ -43,7 +49,7 @@ export async function* translateCursorStream(
   let pendingToolName: string | undefined
   let pendingToolInput: Record<string, unknown> | undefined
   let sawToolUse = false
-  const emptyUsage: CanonicalUsage = { inputTokens: 0, outputTokens: 0 }
+  const usageState: CursorUsageState = {}
 
   const openMessage = function* (): Generator<CanonicalEvent> {
     if (started) return
@@ -52,7 +58,7 @@ export async function* translateCursorStream(
       type: "message_start",
       messageId,
       modelId: opts.modelId,
-      initialUsage: emptyUsage,
+      initialUsage: cursorUsageToCanonical(usageState),
     }
   }
 
@@ -92,10 +98,12 @@ export async function* translateCursorStream(
     yield* closeThinking()
     yield* emitToolUseStop()
     yield* openMessage()
+    const receipts = cursorUsageReceipts(usageState)
     yield {
       type: "message_delta",
       stopReason,
-      usage: emptyUsage,
+      usage: cursorUsageToCanonical(usageState),
+      ...(receipts ? { receipts } : {}),
     }
     yield { type: "message_stop" }
   }
@@ -158,7 +166,18 @@ export async function* translateCursorStream(
   const handleEvents = function* (events: CursorServerEvent[]): Generator<CanonicalEvent, boolean> {
     let endAfterTool = false
     for (const ev of events) {
-      if (ev.kind === "heartbeat") continue
+      applyCursorUsageEvent(usageState, ev)
+      if (
+        ev.kind === "heartbeat" ||
+        ev.kind === "token_delta" ||
+        ev.kind === "conversation_checkpoint_update" ||
+        ev.kind === "summary" ||
+        ev.kind === "summary_started" ||
+        ev.kind === "summary_completed" ||
+        ev.kind === "interaction_query"
+      ) {
+        continue
+      }
       if (ev.kind === "tool_call_started") {
         if (yield* handleMcpToolCall(ev.toolCall, "started")) {
           endAfterTool = true

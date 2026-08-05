@@ -29,6 +29,42 @@ describe("encodeAgentClientMessageExecMcpResult", () => {
   })
 })
 
+describe("native GrepSuccess encoding", () => {
+  test("preserves resultText inside workspace_results content match", () => {
+    const body = encodeAgentClientMessageExecMcpResult({
+      id: 11,
+      execId: "grep-1",
+      resultText: "src/foo.ts:12: hello",
+      isError: false,
+      nativeExecFieldNo: 5,
+    })
+    const outer = decodeFields(body)
+    const exec = fieldBytes(outer.find((f) => f.no === 2)!)!
+    const execFields = decodeFields(exec)
+    expect(Number(execFields.find((f) => f.no === 1)!.value)).toBe(11)
+    const grepResult = fieldBytes(execFields.find((f) => f.no === 5)!)!
+    const grepFields = decodeFields(grepResult)
+    // GrepResult.success (field 1)
+    const success = fieldBytes(grepFields.find((f) => f.no === 1)!)!
+    const successFields = decodeFields(success)
+    expect(fieldString(successFields.find((f) => f.no === 3)!)).toBe("content")
+    // workspace_results map entry (field 4)
+    const mapEntry = fieldBytes(successFields.find((f) => f.no === 4)!)!
+    const mapFields = decodeFields(mapEntry)
+    expect(fieldString(mapFields.find((f) => f.no === 1)!)).toBe(".")
+    const union = fieldBytes(mapFields.find((f) => f.no === 2)!)!
+    const unionFields = decodeFields(union)
+    // GrepUnionResult.content (field 3)
+    const content = fieldBytes(unionFields.find((f) => f.no === 3)!)!
+    const contentFields = decodeFields(content)
+    const fileMatch = fieldBytes(contentFields.find((f) => f.no === 1)!)!
+    const fileFields = decodeFields(fileMatch)
+    const match = fieldBytes(fileFields.find((f) => f.no === 2)!)!
+    const matchFields = decodeFields(match)
+    expect(fieldString(matchFields.find((f) => f.no === 2)!)).toBe("src/foo.ts:12: hello")
+  })
+})
+
 describe("encodeShellStreamExecFrames", () => {
   test("emits start, stdout, exit ShellStream events for success", () => {
     const frames = encodeShellStreamExecFrames({

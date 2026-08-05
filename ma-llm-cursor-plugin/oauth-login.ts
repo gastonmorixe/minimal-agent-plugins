@@ -1,11 +1,12 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 
-import { parseCursorTokenPair } from "./auth.ts"
+import { exchangeCursorApiKey, parseCursorTokenPair } from "./auth.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type {
   AuthCredentialInfo,
   AuthSecretBag,
+  OAuthCredentialRefreshContext,
   OAuthDeviceCodeChallenge,
   OAuthDeviceCodeContext,
   OAuthLoginBuildResult,
@@ -150,6 +151,38 @@ export function inspectCursorOAuthCredential(secrets: AuthSecretBag): AuthCreden
   }
 }
 
+/**
+ * Refresh a Cursor OAuth credential bag for the host's 401 recovery path.
+ *
+ * Cursor has no public `/auth/refresh` grant. When the bag still carries an
+ * API key (or one was persisted alongside tokens), re-run
+ * `/auth/exchange_user_api_key`. Pure browser-login bags (access + refresh
+ * only) cannot be renewed here — the host surfaces a re-login error.
+ */
+export async function refreshCursorOAuthCredential(
+  secrets: AuthSecretBag,
+  ctx: OAuthCredentialRefreshContext = {},
+): Promise<OAuthLoginBuildResult> {
+  const apiKey = str(secrets.apiKey)
+  if (!apiKey) {
+    throw new Error(
+      "Cursor browser-login credentials cannot be refreshed automatically. " +
+        "Run: minimal-agent provider cursor login",
+    )
+  }
+  const pair = await exchangeCursorApiKey(apiKey, {
+    networkClient: ctx.networkClient as NetworkClient | undefined,
+    force: true,
+  })
+  const built = buildCursorOAuthCredential({
+    accessToken: pair.accessToken,
+    refreshToken: pair.refreshToken,
+  })
+  // Keep the API key in the bag so subsequent host refreshes can re-exchange.
+  built.credential.secrets.apiKey = apiKey
+  return built
+}
+
 /** Poll backoff delay for attempt index (exponential, capped). */
 export function cursorPollDelayMs(attempt: number): number {
   return Math.min(POLL_BASE_DELAY_MS * 1.2 ** attempt, POLL_MAX_DELAY_MS)
@@ -245,4 +278,5 @@ export const cursorOAuthLogin: OAuthLoginProvider = {
   buildCredential: buildCursorOAuthCredential,
   readAuth: readCursorOAuthAuth,
   inspectCredential: inspectCursorOAuthCredential,
+  refreshCredential: refreshCursorOAuthCredential,
 }

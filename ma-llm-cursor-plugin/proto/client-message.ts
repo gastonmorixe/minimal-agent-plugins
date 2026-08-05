@@ -83,6 +83,37 @@ function encShellStreamStdout(data: string): Uint8Array {
 }
 
 /**
+ * Encode GrepSuccess with tool output preserved in workspace_results.
+ *
+ * MA tools return ripgrep-style text; Cursor's GrepSuccess has no top-level
+ * text field, so we stuff the blob into one GrepContentMatch under a single
+ * workspace map entry. That is enough for the model to see grep output.
+ */
+function encGrepSuccessContent(resultText: string): Uint8Array {
+  const contentMatch = concat(
+    encVarintField(1, 1), // line_number
+    encString(2, resultText), // content
+  )
+  const fileMatch = concat(
+    encString(1, ""), // file
+    encMsg(2, contentMatch), // matches (repeated)
+  )
+  const contentResult = concat(
+    encMsg(1, fileMatch), // matches (repeated GrepFileMatch)
+    encVarintField(2, 1), // total_lines
+    encVarintField(3, 1), // total_matched_lines
+  )
+  const unionResult = encMsg(3, contentResult) // GrepUnionResult.content
+  // map<string, GrepUnionResult> entry: key=1, value=2
+  const mapEntry = concat(encString(1, "."), encMsg(2, unionResult))
+  return concat(
+    encString(1, ""), // pattern
+    encString(3, "content"), // output_mode
+    encMsg(4, mapEntry), // workspace_results
+  )
+}
+
+/**
  * Encode a native typed result for ExecClientMessage.
  *
  * Each native result type wraps a success message in a `success` oneof (field 1).
@@ -104,17 +135,13 @@ function encNativeResult(fieldNo: number, opts: ExecMcpResultOpts): Uint8Array {
         ),
       )
     case 5: {
-      // grep_result → GrepSuccess { output via workspace_results map }
-      // Simplified: wrap in success with pattern + workspace_results containing content.
-      // GrepSuccess: field 1=pattern, 2=path, 3=output_mode, 4=workspace_results (map)
-      // For simplicity, encode the result text as a GrepUnionResult.content match.
-      return encMsg(
-        1,
-        concat(
-          encString(1, ""), // pattern
-          encString(3, "content"), // output_mode
-        ),
-      )
+      // grep_result → GrepSuccess (agent.v1 from cursor-agent 2026.07.23):
+      //   1=pattern, 2=path, 3=output_mode,
+      //   4=workspace_results map<string, GrepUnionResult>,
+      //   5=active_editor_result GrepUnionResult
+      // GrepUnionResult.content (field 3) → GrepContentResult.matches →
+      // GrepFileMatch.matches → GrepContentMatch.content (field 2).
+      return encMsg(1, encGrepSuccessContent(opts.resultText))
     }
     case 7: // read_result → ReadSuccess { content: field 2 }
       return encMsg(

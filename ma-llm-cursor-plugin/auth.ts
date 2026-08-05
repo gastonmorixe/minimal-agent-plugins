@@ -89,6 +89,27 @@ export function parseCursorTokenPair(raw: Record<string, unknown>): CursorTokenP
   }
 }
 
+/** Re-exchange before JWT expiry (matches cursor-agent skew practice). */
+export const CURSOR_ACCESS_TOKEN_SKEW_MS = 5 * 60 * 1000
+
+type CachedExchange = {
+  accessToken: string
+  refreshToken: string
+  expiresAt: number
+}
+
+/** Process-local exchange cache. Keyed by API key string (already in memory). */
+const exchangeCache = new Map<string, CachedExchange>()
+
+/** Test seam: clear cached exchanges. */
+export function clearCursorExchangeCache(): void {
+  exchangeCache.clear()
+}
+
+function cacheUsable(entry: CachedExchange, nowMs: number): boolean {
+  return entry.expiresAt - CURSOR_ACCESS_TOKEN_SKEW_MS > nowMs
+}
+
 /** Exchange a user API key for the short-lived bearer pair Cursor Connect accepts. */
 export async function exchangeCursorApiKey(
   apiKey: string,
@@ -96,8 +117,23 @@ export async function exchangeCursorApiKey(
     networkClient?: NetworkClient
     signal?: AbortSignal
     apiBase?: string
+    /** When true, skip the process-local cache and force a network exchange. */
+    force?: boolean
+    nowMs?: number
   } = {},
 ): Promise<CursorTokenPair> {
+  const nowMs = options.nowMs ?? Date.now()
+  if (!options.force) {
+    const cached = exchangeCache.get(apiKey)
+    if (cached && cacheUsable(cached, nowMs)) {
+      return {
+        accessToken: cached.accessToken,
+        refreshToken: cached.refreshToken,
+        expiresAt: cached.expiresAt,
+      }
+    }
+  }
+
   const url = `${(options.apiBase ?? CURSOR_API_BASE).replace(/\/$/, "")}${CURSOR_RPC_EXCHANGE_API_KEY_PATH}`
   // Always raw fetch: NetworkClient observers may log Authorization headers.
   // options.networkClient is accepted for API symmetry but intentionally unused.
@@ -118,7 +154,13 @@ export async function exchangeCursorApiKey(
   const raw = (await response.json()) as Record<string, unknown>
   const parsed = record(raw)
   if (!parsed) throw new Error("Cursor API-key exchange returned a non-object response")
-  return parseCursorTokenPair(parsed)
+  const pair = parseCursorTokenPair(parsed)
+  exchangeCache.set(apiKey, {
+    accessToken: pair.accessToken,
+    refreshToken: pair.refreshToken,
+    expiresAt: pair.expiresAt,
+  })
+  return pair
 }
 
 /** Resolve an access token for a provider call, exchanging API keys when necessary. */

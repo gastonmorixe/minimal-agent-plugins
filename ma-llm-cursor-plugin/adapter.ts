@@ -33,7 +33,11 @@ import type {
 import { listCursorLiveModels, setCursorLiveModelRegistrar } from "./live-models.ts"
 import { registerCursorAdHocModelInto, registerCursorModels } from "./models.ts"
 import { cursorOAuthLogin } from "./oauth-login.ts"
-import { buildCursorAgentRunBody, buildCursorToolHeaders } from "./request-body.ts"
+import {
+  applyCursorSessionToRequest,
+  buildCursorAgentRunBody,
+  buildCursorToolHeaders,
+} from "./request-body.ts"
 import { translateCursorStream } from "./response-stream.ts"
 import { fetchCursorSessionInfo } from "./session-info.ts"
 import { validateCursorRequest } from "./validate.ts"
@@ -86,17 +90,20 @@ export const cursorAdapter: ProviderAdapterView = {
       extra: buildCursorToolHeaders(req),
     })
 
-    const protoBody = buildCursorAgentRunBody(req, model)
+    // Wire host/bidi session key into AgentRunRequest.conversation_id via metadata.
+    // Continues reuse the open stream (Megan); this only stabilizes the initial Run id.
+    const reqForWire = applyCursorSessionToRequest(req, bidiSessionKey)
+    const protoBody = buildCursorAgentRunBody(reqForWire, model)
     const url = agentRunUrl()
 
     ctx.debug?.header(`POST ${url}`)
     ctx.debug?.kv("model", model.id)
     ctx.debug?.kv("surface", CURSOR_SURFACE_AGENT_RUN)
-    ctx.debug?.kv("bidi", String(shouldUseCursorBidi(req, networkClient)))
+    ctx.debug?.kv("bidi", String(shouldUseCursorBidi(reqForWire, networkClient)))
     ctx.debug?.kv("bidiSession", bidiSessionKey)
     ctx.debug?.headers(headers)
 
-    if (shouldUseCursorBidi(req, networkClient)) {
+    if (shouldUseCursorBidi(reqForWire, networkClient)) {
       if (!networkClient) {
         yield {
           type: "stream_error",
@@ -106,7 +113,7 @@ export const cursorAdapter: ProviderAdapterView = {
         }
         return
       }
-      yield* runCursorBidi(req, model, {
+      yield* runCursorBidi(reqForWire, model, {
         url,
         headers,
         initialRunBody: protoBody,
