@@ -55,11 +55,22 @@ export const grokApiKeyAuth: ApiKeyAuthProvider = {
   inspectCredential: inspectGrokApiKeyCredential,
 }
 
+export {
+  applyGrokAccountProfile,
+  fetchGrokAccountProfile,
+  type GrokAccountProfile,
+  identityFromUserinfoAndSession,
+  pickGrokSubscription,
+  planFieldsFromSubscriptions,
+  preserveGrokAccountProfileSecrets,
+} from "./account-profile.ts"
 // Re-export OAuth surface from oauth-login for a single auth entrypoint.
 export {
   buildGrokOAuthCredential,
+  finalizeGrokOAuthCredential,
   GROK_OAUTH,
   grokOAuthLogin,
+  inspectGrokOAuthCredential,
   readGrokOAuthAuth,
   refreshGrokOAuthCredential,
 } from "./oauth-login.ts"

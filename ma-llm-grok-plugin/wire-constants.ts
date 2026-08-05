@@ -32,6 +32,15 @@ export const CLI_RESPONSES_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/responses`
 export const CLI_MODELS_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/models`
 export const CLI_BILLING_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/billing`
 
+/** OIDC userinfo (email, name, picture). */
+export const GROK_USERINFO_URL = "https://auth.x.ai/oauth2/userinfo"
+
+/** Web session identity (userId, xUserId, org fields). */
+export const GROK_WEB_SESSION_URL = "https://grok.com/api/auth/session"
+
+/** Subscriptions list (tier / status / provider). */
+export const GROK_SUBSCRIPTIONS_URL = "https://grok.com/rest/subscriptions"
+
 /** User-Agent the adapter advertises. */
 export const GROK_USER_AGENT = "minimal-agent-grok/0.1"
 
