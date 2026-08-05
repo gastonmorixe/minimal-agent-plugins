@@ -122,11 +122,15 @@ describe("runner: timeout", () => {
 describe("runner: explicit stop", () => {
   test("SIGTERM stops the job and records stopped", async () => {
     const { proc, statusPath } = spawnRunner({ command: "sleep 30" })
-    await waitFor(() => readSidecar(statusPath)?.phase === "running")
+    // `running` is only published after stop handlers are armed, so a kill after
+    // this wait cannot race the default SIGTERM disposition.
+    const armed = await waitFor(() => readSidecar(statusPath)?.phase === "running")
+    expect(armed).toBe(true)
     proc.kill("SIGTERM")
     await proc.exited
-    const s = readSidecar(statusPath)
-    expect(s?.phase).toBe("stopped")
+    const stopped = await waitFor(() => readSidecar(statusPath)?.phase === "stopped")
+    expect(stopped).toBe(true)
+    expect(readSidecar(statusPath)?.phase).toBe("stopped")
   }, 10000)
 })
 
