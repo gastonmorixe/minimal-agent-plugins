@@ -112,13 +112,23 @@ function thinkResponses(
  * Adaptive thinking for Anthropic Messages surface models.
  * The model decides per-turn whether to think; visible + interleaved
  * (think → text → think → text within one assistant turn).
+ *
+ * Pass `none` in `levels` when models.dev lists a reasoning **toggle**
+ * (Qwen family, MiniMax M3). `--effort none` then maps to thinking off
+ * on the wire (omit `thinking`; do not send `output_config.effort:"none"`).
  */
-function thinkAdaptive() {
+function thinkAdaptive(
+  levels: ReadonlyArray<"none" | "low" | "medium" | "high"> = ["low", "medium", "high"],
+  df: "none" | "low" | "medium" | "high" = "medium",
+) {
   return {
     thinking: { adaptive: true, extended: false, visible: true, interleaved: true } as const,
-    effort: { levels: ["low", "medium", "high"] as const, default: "medium" as const },
+    effort: { levels, default: df } as const,
   }
 }
+
+/** models.dev `reasoning_options: [{type:"toggle"}, …]` → effort includes none. */
+const THINK_TOGGLE = ["none", "low", "medium", "high"] as const
 
 // ---------------------------------------------------------------------------
 // Base capability builders
@@ -185,7 +195,7 @@ function msgBase(
 /**
  * DeepSeek V4 Pro — 1M ctx, 384K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- * Thinking: Think High / Think Max (Non-think = thinking off).
+ * Efforts: high | max only (models.dev). No thinking-off / Non-think level.
  */
 export const CAPS_DEEPSEEK_V4_PRO: Capabilities = {
   ...chatBase(1_000_000, 384_000, M_TEXT),
@@ -281,11 +291,11 @@ export const CAPS_GROK_4_5: Capabilities = {
 /**
  * Hy3 — 256K ctx, 64K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- * Efforts: none | low | high ("none" = thinking off).
+ * Efforts: none | low | high ("none" = thinking off / reasoning_effort none).
  */
 export const CAPS_HY3: Capabilities = {
   ...chatBase(256_000, 64_000, M_TEXT),
-  ...thinkExtended(["low", "high"], "high"),
+  ...thinkExtended(["none", "low", "high"], "high"),
 }
 
 /**
@@ -295,7 +305,7 @@ export const CAPS_HY3: Capabilities = {
  */
 export const CAPS_HY3_PREVIEW: Capabilities = {
   ...chatBase(256_000, 64_000, M_TEXT),
-  ...thinkExtended(["low", "high"], "high"),
+  ...thinkExtended(["none", "low", "high"], "high"),
 }
 
 /**
@@ -341,15 +351,17 @@ export const CAPS_MIMO_V2_OMNI: Capabilities = {
 /**
  * MiniMax M3 — 1M ctx, 131K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_MINIMAX_M3: Capabilities = {
   ...msgBase(1_000_000, 131_072, M_TIV),
-  ...thinkAdaptive(),
+  ...thinkAdaptive(THINK_TOGGLE),
 }
 
 /**
  * MiniMax M2.7 — 204_800 ctx, 131K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ * models.dev lists reasoning with empty options (no toggle) — no `none`.
  */
 export const CAPS_MINIMAX_M2_7: Capabilities = {
   ...msgBase(204_800, 131_072, M_TEXT),
@@ -359,6 +371,7 @@ export const CAPS_MINIMAX_M2_7: Capabilities = {
 /**
  * MiniMax M2.5 — deprecated on models.dev; still on live `/v1/models` + docs pricing.
  * Caps: models.dev opencode-go (2026-07-30) — 204_800 ctx / 65_536 out.
+ * models.dev lists reasoning with empty options (no toggle) — no `none`.
  */
 export const CAPS_MINIMAX_M2_5: Capabilities = {
   ...msgBase(204_800, 65_536, M_TEXT),
@@ -369,46 +382,51 @@ export const CAPS_MINIMAX_M2_5: Capabilities = {
  * Qwen3.8 Max — 1M ctx, 131K output, text+image+video.
  * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints (/v1/messages).
  * Pricing: docs/go + models.dev agree ($2/$6/$0.25/$2.50).
+ * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_QWEN3_8_MAX: Capabilities = {
   ...msgBase(1_000_000, 131_072, M_TIV),
-  ...thinkAdaptive(),
+  ...thinkAdaptive(THINK_TOGGLE),
 }
 
 /**
  * Qwen3.7 Max — 1M ctx, 65K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_QWEN3_7_MAX: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TEXT),
-  ...thinkAdaptive(),
+  ...thinkAdaptive(THINK_TOGGLE),
 }
 
 /**
  * Qwen3.7 Plus — 1M ctx, 65K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_QWEN3_7_PLUS: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TIV),
-  ...thinkAdaptive(),
+  ...thinkAdaptive(THINK_TOGGLE),
 }
 
 /**
  * Qwen3.6 Plus — 1M ctx, 65K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
+ * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_QWEN3_6_PLUS: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TIV),
-  ...thinkAdaptive(),
+  ...thinkAdaptive(THINK_TOGGLE),
 }
 
 /**
  * Qwen3.5 Plus — deprecated on models.dev; still on live `/v1/models`.
  * Caps: models.dev opencode-go (2026-07-30) — 262K ctx / 65K out.
+ * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_QWEN3_5_PLUS: Capabilities = {
   ...msgBase(262_144, 65_536, M_TIV),
-  ...thinkAdaptive(),
+  ...thinkAdaptive(THINK_TOGGLE),
 }
 
 // ===========================================================================
