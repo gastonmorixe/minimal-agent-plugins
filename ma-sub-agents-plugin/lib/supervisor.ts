@@ -212,13 +212,36 @@ function step(
   if (s.kind !== "running") return { status: s, effects: [] }
 
   // running: the interesting transitions.
-  // 1. Deadline tripped → ask the shell to kill, mark failed(timeout). This now
+  //
+  // 1. SENTINEL WHILE ALIVE (Dorothy A1/A2): a structured result sentinel means
+  //    the worker already handed work back via ReportResult. Finalize immediately
+  //    (same done/incomplete rules as the exit path) and ask the shell to stop
+  //    the lingering pid. This MUST run BEFORE the deadline check — otherwise a
+  //    completed zombie is timed out as failed("No result") and the handoff is
+  //    discarded. Distilled-only text is NOT enough while alive (mid-turn noise).
+  if (probe?.result) {
+    const { status, effects: termFx } = finalizeRunning(r, s, probe, now)
+    const effects: Effect[] = []
+    if (probe.alive) {
+      effects.push({
+        type: "stop",
+        id: r.id,
+        pid: s.pid,
+        reason: "result sentinel written",
+      })
+    }
+    effects.push(...termFx)
+    return { status, effects }
+  }
+
+  // 2. Deadline tripped → ask the shell to kill, mark failed(timeout). This now
   //    fires for UNBUDGETED workers too, via the DEFAULT_DEADLINE_SEC fallback
   //    in `deadlineExceeded` (B-083): a worker wedged mid-finalize (e.g. stuck at
   //    ReportResult) used to be exempt and leaked its concurrency slot forever.
   //    Routed through the SAME stop + terminalEffects path as an explicit budget
   //    so the pid is actually killed and the record transitions to failed WITH
   //    terminal effects emitted (no B-087-style bypass).
+  //    Only reached when there is NO sentinel — step 1 already salvaged that case.
   if (deadlineExceeded(r, s.startedAt, nowMs)) {
     const hadBudget = (r.budget?.deadlineSec ?? 0) > 0
     const status: SubagentStatus = {
@@ -236,18 +259,33 @@ function step(
       ],
     }
   }
-  // 2. No probe this tick → leave unchanged (transient: shell couldn't read).
+  // 3. No probe this tick → leave unchanged (transient: shell couldn't read).
   if (!probe) return { status: s, effects: [] }
-  // 3. Still alive → refresh progress (no terminal effects).
+  // 4. Still alive, no sentinel → refresh progress (no terminal effects).
   if (probe.alive) {
     if (!probe.progress) return { status: s, effects: [] }
     return { status: { ...s, progress: probe.progress }, effects: [] }
   }
-  // 4. Exited. Decide the terminal status.
-  //    a. A non-zero exit → failed (it crashed), regardless of any artifacts.
-  //       Prefer the log's crash signature (the REAL cause: bad model, missing
-  //       beta, ENOENT) over the bare exit code, so the lead reads "why" not
-  //       just "code 1".
+  // 5. Exited (no sentinel already handled above). Decide the terminal status.
+  return finalizeRunning(r, s, probe, now)
+}
+
+/**
+ * Decide the terminal status for a running worker given its probe. Shared by the
+ * exit path and the "sentinel while alive" path so contract / incomplete / done /
+ * crash rules stay in one place. Caller is responsible for emitting a `stop`
+ * effect when the pid is still alive.
+ */
+function finalizeRunning(
+  r: SubagentRecord,
+  s: Extract<SubagentStatus, { kind: "running" }>,
+  probe: WorkerProbe,
+  now: string,
+): { status: SubagentStatus; effects: Effect[] } {
+  // a. A non-zero exit → failed (it crashed), regardless of any artifacts.
+  //    Prefer the log's crash signature (the REAL cause: bad model, missing
+  //    beta, ENOENT) over the bare exit code, so the lead reads "why" not
+  //    just "code 1".
   if (probe.exitCode !== undefined && probe.exitCode !== 0) {
     const error = probe.crash
       ? `${probe.crash} (exit ${probe.exitCode})`
@@ -260,31 +298,31 @@ function step(
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
-  //    a'. FIX A: the exit code is UNKNOWABLE in production (Bun.spawn is
-  //        detached; the supervisor only has pid-liveness, not a wait status).
-  //        So a boot crash arrives here with exitCode `undefined` but a crash
-  //        signature in the log. Treat a found signature as a failure with the
-  //        real cause — this is the fix for the "incomplete · exited without a
-  //        result" mislabel that hid the `long context beta` 400 behind a
-  //        generic message. Only fires when the worker produced nothing usable
-  //        (the probe only reads the log in that case).
+  // a'. FIX A: the exit code is UNKNOWABLE in production (Bun.spawn is
+  //     detached; the supervisor only has pid-liveness, not a wait status).
+  //     So a boot crash arrives here with exitCode `undefined` but a crash
+  //     signature in the log. Treat a found signature as a failure with the
+  //     real cause — this is the fix for the "incomplete · exited without a
+  //     result" mislabel that hid the `long context beta` 400 behind a
+  //     generic message. Only fires when the worker produced nothing usable
+  //     (the probe only reads the log in that case).
   if (probe.crash && !probe.result && !(probe.distilled && probe.distilled.trim().length > 0)) {
     const status: SubagentStatus = { kind: "failed", endedAt: now, error: probe.crash }
     return { status, effects: terminalEffects(r, status, now) }
   }
-  //    b. CONTRACT CHECK (FIX 4): the worker declared `expectArtifacts` and some
-  //       are missing/empty → INCOMPLETE, even if it wrote a sentinel or a final
-  //       message. A claimed-but-absent deliverable is the strongest failure
-  //       signal; never launder it into done.
+  // b. CONTRACT CHECK (FIX 4): the worker declared `expectArtifacts` and some
+  //    are missing/empty → INCOMPLETE, even if it wrote a sentinel or a final
+  //    message. A claimed-but-absent deliverable is the strongest failure
+  //    signal; never launder it into done.
   //
-  //       FIX 5 (the A2/A3 data-loss bug): the contract miss is a HARD gate, but
-  //       it must NOT throw away the synthesis the worker actually produced. If
-  //       the worker wrote a result sentinel (or left a distillable final
-  //       message), SALVAGE that text onto the `incomplete` status so the lead
-  //       reads the findings via AgentResult instead of being forced to mine the
-  //       worker's raw transcript. Sentinel text wins over distilled (same
-  //       precedence as the done path). We still report `incomplete` and still
-  //       cancel any linked todo — the deliverable genuinely wasn't met.
+  //    FIX 5 (the A2/A3 data-loss bug): the contract miss is a HARD gate, but
+  //    it must NOT throw away the synthesis the worker actually produced. If
+  //    the worker wrote a result sentinel (or left a distillable final
+  //    message), SALVAGE that text onto the `incomplete` status so the lead
+  //    reads the findings via AgentResult instead of being forced to mine the
+  //    worker's raw transcript. Sentinel text wins over distilled (same
+  //    precedence as the done path). We still report `incomplete` and still
+  //    cancel any linked todo — the deliverable genuinely wasn't met.
   const missing = probe.missingArtifacts
   if (missing && missing.length > 0) {
     const total = r.expectArtifacts?.length ?? missing.length
@@ -301,12 +339,12 @@ function step(
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
-  //    c0. The worker SELF-REPORTED incompletion (ReportResult({incomplete:true})
-  //        or a hand-written `INCOMPLETE:` sentinel). Honor it: route to
-  //        `incomplete`, never launder an honest "I could not finish" into
-  //        `done`. We still salvage the worker's summary (minus the marker
-  //        prefix) so the lead reads the findings, and surface any claimed
-  //        artifacts. A linked todo is canceled, not ticked green.
+  // c0. The worker SELF-REPORTED incompletion (ReportResult({incomplete:true})
+  //     or a hand-written `INCOMPLETE:` sentinel). Honor it: route to
+  //     `incomplete`, never launder an honest "I could not finish" into
+  //     `done`. We still salvage the worker's summary (minus the marker
+  //     prefix) so the lead reads the findings, and surface any claimed
+  //     artifacts. A linked todo is canceled, not ticked green.
   if (probe.result?.incomplete) {
     const salvage = stripIncompleteMarker(probe.result.short)
     const claimed = probe.result.artifacts
@@ -321,18 +359,19 @@ function step(
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
-  //    c. A parsed result sentinel → done. (FIX 3: when the sentinel's OWN
-  //       declared `artifacts[]` are missing on disk, the shell probe has already
-  //       prepended a "⚠ N/M artifacts missing" warning to `result.short`, so the
-  //       lead is told without the reducer needing filesystem access.)
+  // c. A parsed result sentinel → done. (FIX 3: when the sentinel's OWN
+  //    declared `artifacts[]` are missing on disk, the shell probe has already
+  //    prepended a "⚠ N/M artifacts missing" warning to `result.short`, so the
+  //    lead is told without the reducer needing filesystem access.)
   if (probe.result) {
     const status: SubagentStatus = { kind: "done", endedAt: now, result: probe.result }
     return { status, effects: terminalEffects(r, status, now) }
   }
-  //    d. Clean exit, no sentinel, BUT a distillable final message → done. The
-  //       worker said something useful as its last turn; surface it rather than
-  //       lose it. Marked `distilled` so the lead can tell it apart from a real
-  //       structured sentinel.
+  // d. Clean exit, no sentinel, BUT a distillable final message → done. The
+  //    worker said something useful as its last turn; surface it rather than
+  //    lose it. Marked `distilled` so the lead can tell it apart from a real
+  //    structured sentinel. (Exit-path only — alive workers never reach here
+  //    without a sentinel, because step() returns early for alive+no-result.)
   if (probe.distilled && probe.distilled.trim().length > 0) {
     const status: SubagentStatus = {
       kind: "done",
@@ -346,8 +385,8 @@ function step(
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
-  //    e. Clean exit but NO deliverable AND no final text → INCOMPLETE. The
-  //       critical fix: a missing deliverable is NOT laundered into `done`.
+  // e. Clean exit but NO deliverable AND no final text → INCOMPLETE. The
+  //    critical fix: a missing deliverable is NOT laundered into `done`.
   const status: SubagentStatus = {
     kind: "incomplete",
     endedAt: now,

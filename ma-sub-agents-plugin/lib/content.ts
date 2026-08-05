@@ -60,6 +60,25 @@ export function statusDetail(r: SubagentRecord, nowMs: number): string {
   return lines.join("\n")
 }
 
+/**
+ * Model-facing text when fleet status is failed/stopped but a result sentinel
+ * was found on disk. Keeps Dorothy-style handoffs recoverable even if status
+ * lagged the file. Pure (no IO) so AgentResult stays thin.
+ */
+export function diskSalvageText(
+  id: string,
+  kind: "failed" | "stopped",
+  why: string,
+  short: string,
+  artifacts?: readonly string[],
+): string {
+  const arts = artifacts && artifacts.length > 0 ? `\nartifacts: ${artifacts.join(", ")}` : ""
+  return (
+    `Sub-agent ${id} is marked ${kind} (${why}), but a result sentinel WAS found on disk — surfacing it so the work is not lost:\n\n` +
+    `--- salvaged findings ---\n${short}${arts}`
+  )
+}
+
 /** A finished worker's distilled deliverable (AgentResult). */
 export function resultText(r: SubagentRecord): string {
   switch (r.status.kind) {
@@ -90,9 +109,9 @@ export function resultText(r: SubagentRecord): string {
       return `⚠ Sub-agent ${r.id} (${r.type}) finished WITHOUT a deliverable: ${r.status.reason}. This is NOT a success — the worker exited cleanly but produced no result summary${spent}. Treat the work as unverified: inspect its log/transcript, and re-spawn with a clearer task (and, if it was a file-producing job, set expectArtifacts) if you still need it.`
     }
     case "failed":
-      return `Sub-agent ${r.id} failed: ${r.status.error}. No result. Consider re-spawning with a clearer task or a different model.`
+      return `Sub-agent ${r.id} failed: ${r.status.error}. No result was recorded on the fleet status. If you still need the work, re-spawn with a clearer task or a different model (or inspect the worker's session log/result sentinel on disk if one was written before the failure).`
     case "stopped":
-      return `Sub-agent ${r.id} was stopped${r.status.reason ? `: ${r.status.reason}` : ""}. No result.`
+      return `Sub-agent ${r.id} was stopped${r.status.reason ? `: ${r.status.reason}` : ""}. No result was recorded on the fleet status.`
     case "queued":
     case "running":
       return `Sub-agent ${r.id} is still ${r.status.kind}; no final result yet. Check AgentStatus ${r.id} or wait for the digest that arrives between turns when it finishes.`

@@ -8,10 +8,11 @@
  * {@link realProbeDeps}.
  *
  * Result transport is the "subagent output to filesystem" pattern (Anthropic's
- * game-of-telephone fix): a worker writes a tiny `<id>.result.json` sentinel as
- * its last act; the supervisor reads THAT, not the worker's transcript. When
- * the sentinel is absent the supervisor falls back to the clean-exit
- * placeholder in {@link supervisorTick}.
+ * game-of-telephone fix): a worker writes a tiny `<sid>.result.json` sentinel as
+ * its last act; the supervisor reads THAT, not the worker's transcript — and it
+ * reads the sentinel even while the pid is still alive, because `ReportResult`
+ * does not kill the process. When the sentinel is absent the supervisor falls
+ * back to distilled final text / incomplete in {@link supervisorTick}.
  *
  * @module sub-agents/lib/spawn
  */
@@ -110,13 +111,17 @@ export interface ProbeTarget {
  * Build a {@link WorkerProbe} for a running worker: is it alive (and if so its
  * live progress), did it leave a result sentinel, what was its exit code. Pure
  * given the deps.
+ *
+ * Important: the result sentinel is read EVEN WHILE THE PID IS ALIVE. Workers
+ * call `ReportResult` (which writes `<sid>.result.json`) and then often linger —
+ * they may `end_turn` without the process exiting. If the probe skipped the
+ * sentinel until death, the supervisor would keep the worker `running` until a
+ * deadline and mark it `failed` with "No result" despite a rich handoff on disk
+ * (Dorothy A1/A2). Distillation / crash mining stay exit-only: mid-turn assistant
+ * text must not false-trigger completion.
  */
 export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
   const alive = deps.pidAlive(target.pid)
-  if (alive) {
-    const progress = deps.readProgress?.(target.transcriptPath)
-    return { alive: true, ...(progress ? { progress } : {}) }
-  }
   const rawResult = deps.readResult(target.resultPath)
   // FIX 3: a worker can CLAIM artifacts in its sentinel without writing them.
   // Cross-check the sentinel's own `artifacts[]` and prepend a loud warning to
@@ -124,16 +129,30 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
   // caught automatically. The worker still counts as `done` (it reported), but
   // the lead reads the discrepancy.
   const result = rawResult ? warnMissingDeclared(rawResult, deps) : undefined
-  const exitCode = deps.exitCode?.(target.pid)
-  // Distillation fallback: only bother reading the final message when the worker
-  // left NO structured sentinel — the sentinel always wins (see supervisorTick
-  // precedence). This keeps a sentinel-writing worker's probe cheap.
-  const distilled = result ? undefined : deps.readFinalText?.(target.transcriptPath)
-  // Enforce the deliverable contract: which expected artifacts are missing/empty?
+  // Enforce the deliverable contract whenever we have a contracted set — needed
+  // while alive too, so a sentinel + missing expectArtifacts can finalize as
+  // incomplete without waiting for process death.
   const missingArtifacts =
     target.expectArtifacts && target.expectArtifacts.length > 0
       ? deps.missingArtifacts?.(target.expectArtifacts)
       : undefined
+
+  if (alive) {
+    const progress = deps.readProgress?.(target.transcriptPath)
+    return {
+      alive: true,
+      ...(progress ? { progress } : {}),
+      ...(result ? { result } : {}),
+      ...(missingArtifacts && missingArtifacts.length > 0 ? { missingArtifacts } : {}),
+    }
+  }
+
+  const exitCode = deps.exitCode?.(target.pid)
+  // Distillation fallback: only bother reading the final message when the worker
+  // left NO structured sentinel — the sentinel always wins (see supervisorTick
+  // precedence). This keeps a sentinel-writing worker's probe cheap. Exit-only:
+  // while alive a "final" message may just be mid-turn chatter.
+  const distilled = result ? undefined : deps.readFinalText?.(target.transcriptPath)
   // FIX A: a worker that exited producing NOTHING — no sentinel AND no
   // distillable final message — is the case where a startup/runtime crash hides.
   // ONLY then do we mine the log for a fatal signature, so a worker that simply

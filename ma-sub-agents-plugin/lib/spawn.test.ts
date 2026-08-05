@@ -78,16 +78,62 @@ const target = (pid: number) => ({
 })
 
 describe("probeWorker", () => {
-  it("reports alive WITH live progress, without reading a result", () => {
+  it("reports alive WITH live progress, and still reads a result sentinel if present", () => {
+    // Dorothy bug: ReportResult writes *.result.json while the pid is still
+    // alive. The probe MUST surface that sentinel so the supervisor can promote
+    // to done without waiting for process death.
     const probe = probeWorker(target(99), {
       pidAlive: () => true,
-      readResult: () => {
-        throw new Error("should not read result while alive")
-      },
+      readResult: () => ({ short: "handoff ready", tokens: 100, tools: 3 }),
       readProgress: () => ({ tools: 7, tokens: 4200, lastTool: "Grep" }),
+      readFinalText: () => {
+        throw new Error("should not distill while alive")
+      },
+      readCrash: () => {
+        throw new Error("should not mine crash while alive")
+      },
     })
     expect(probe.alive).toBe(true)
     expect(probe.progress).toEqual({ tools: 7, tokens: 4200, lastTool: "Grep" })
+    expect(probe.result?.short).toBe("handoff ready")
+    expect(probe.distilled).toBeUndefined()
+    expect(probe.crash).toBeUndefined()
+    expect(probe.exitCode).toBeUndefined()
+  })
+
+  it("reports alive with progress and NO result when the sentinel is absent", () => {
+    const probe = probeWorker(target(99), {
+      pidAlive: () => true,
+      readResult: () => undefined,
+      readProgress: () => ({ tools: 7, tokens: 4200, lastTool: "Grep" }),
+    })
+    expect(probe.alive).toBe(true)
+    expect(probe.result).toBeUndefined()
+    expect(probe.progress).toEqual({ tools: 7, tokens: 4200, lastTool: "Grep" })
+  })
+
+  it("reports missingArtifacts while alive when expectArtifacts is unmet (contract)", () => {
+    const probe = probeWorker(
+      {
+        pid: 1,
+        resultPath: "/r.json",
+        transcriptPath: "/t.jsonl",
+        expectArtifacts: ["/findings.md"],
+      },
+      {
+        pidAlive: () => true,
+        readResult: () => ({
+          short: "wrote nothing",
+          tokens: 1,
+          tools: 1,
+          artifacts: ["/findings.md"],
+        }),
+        missingArtifacts: () => ["/findings.md"],
+      },
+    )
+    expect(probe.alive).toBe(true)
+    expect(probe.result).toBeDefined()
+    expect(probe.missingArtifacts).toEqual(["/findings.md"])
   })
 
   it("reports the result + exit code once the pid is gone", () => {

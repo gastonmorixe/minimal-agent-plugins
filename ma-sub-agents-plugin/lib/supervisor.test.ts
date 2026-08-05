@@ -414,6 +414,108 @@ describe("supervisorTick — budget", () => {
   })
 })
 
+describe("supervisorTick — sentinel while alive (Dorothy A1/A2 harness bug)", () => {
+  // Dorothy's planners wrote *.result.json via ReportResult, stayed alive, then
+  // the supervisor deadline-killed them as failed("No result"). A written
+  // sentinel MUST promote to done (and stop the pid) without waiting for exit.
+
+  it("alive + result sentinel → done and emits stop (does not wait for process death)", () => {
+    const out = tick([rec("A1", running())], {
+      A1: { alive: true, progress: PROG, result: RESULT },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind).toBe("done")
+    if (st?.kind === "done") expect(st.result).toEqual(RESULT)
+    const stop = out.effects.find((e) => e.type === "stop")
+    expect(stop?.type === "stop" && stop.pid).toBe(4242)
+    expect(stop?.type === "stop" && stop.reason).toMatch(/sentinel|result|complete/i)
+    const inject = out.effects.find((e) => e.type === "inject")
+    expect(inject?.type === "inject" && inject.text).toContain("AgentResult A1")
+    expect(inject?.type === "inject" && inject.text).toMatch(/finished/i)
+  })
+
+  it("alive + result past deadline → done with that result, NOT failed timeout (Dorothy shape)", () => {
+    // budget 60s, started 2 min ago, but sentinel already on disk — same shape as
+    // Dorothy A1/A2 at deadlineSec=600 with result.json written minutes earlier.
+    const started = new Date(NOW_MS - 120_000).toISOString()
+    const out = tick([rec("A1", running(started), 60)], {
+      A1: { alive: true, progress: PROG, result: RESULT },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind).toBe("done")
+    if (st?.kind === "done") expect(st.result.short).toBe(RESULT.short)
+    expect(out.effects.some((e) => e.type === "stop")).toBe(true)
+    const inject = out.effects.find((e) => e.type === "inject")
+    expect(inject?.type === "inject" && inject.text).not.toMatch(/timed out|failed/i)
+  })
+
+  it("alive + incomplete sentinel → incomplete + stop (not done)", () => {
+    const out = tick([rec("A1", running())], {
+      A1: {
+        alive: true,
+        result: {
+          short: "INCOMPLETE: blocked on missing docs",
+          tokens: 100,
+          tools: 3,
+          incomplete: true,
+        },
+      },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind).toBe("incomplete")
+    if (st?.kind === "incomplete") {
+      expect(st.salvage).toContain("blocked on missing docs")
+    }
+    expect(out.effects.some((e) => e.type === "stop")).toBe(true)
+  })
+
+  it("alive + result + missing expectArtifacts → incomplete with salvage + stop", () => {
+    const r = { ...rec("A1", running()), expectArtifacts: ["/findings.md"] }
+    const out = tick([r], {
+      A1: {
+        alive: true,
+        result: {
+          short: "research summary that must not be lost",
+          tokens: 900,
+          tools: 11,
+          artifacts: ["/findings.md"],
+        },
+        missingArtifacts: ["/findings.md"],
+      },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind).toBe("incomplete")
+    if (st?.kind === "incomplete") {
+      expect(st.salvage).toContain("must not be lost")
+      expect(st.reason).toContain("/findings.md")
+    }
+    expect(out.effects.some((e) => e.type === "stop")).toBe(true)
+  })
+
+  it("alive WITHOUT a sentinel still refreshes progress (no premature done)", () => {
+    const out = tick([rec("A1", running())], { A1: { alive: true, progress: PROG } })
+    expect(out.records[0]?.status.kind).toBe("running")
+    expect(out.effects).toEqual([])
+  })
+
+  it("alive WITHOUT a sentinel past deadline still fails (B-083 preserved)", () => {
+    const started = new Date(NOW_MS - 120_000).toISOString()
+    const out = tick([rec("A1", running(started), 60)], {
+      A1: { alive: true, progress: PROG },
+    })
+    expect(out.records[0]?.status.kind).toBe("failed")
+  })
+
+  it("does NOT treat distilled-only while alive as complete (avoid false early done)", () => {
+    // Distilled final text while pid is still alive can be a mid-turn assistant
+    // message. Only a structured sentinel completes an alive worker.
+    const out = tick([rec("A1", running())], {
+      A1: { alive: true, progress: PROG, distilled: "still working, here is a draft" },
+    })
+    expect(out.records[0]?.status.kind).toBe("running")
+  })
+})
+
 describe("supervisorTick — queued + terminal", () => {
   it("fails a queued worker whose process is already gone (launch failed)", () => {
     const out = tick([rec("A1", { kind: "queued" })], { A1: { alive: false, exitCode: 127 } })

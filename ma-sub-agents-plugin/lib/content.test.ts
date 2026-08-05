@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "bun:test"
 
-import { resultText } from "./content.ts"
+import { diskSalvageText, resultText } from "./content.ts"
 import { type SubagentRecord, type SubagentStatus, sessionId, subagentId } from "./types.ts"
 
 function rec(status: SubagentStatus): SubagentRecord {
@@ -80,5 +80,39 @@ describe("resultText — done still carries its result", () => {
     )
     expect(text).toContain("found 3 callers")
     expect(text).toContain("12 tool calls")
+  })
+})
+
+describe("resultText — failed does not hard-lie about disk", () => {
+  it("says fleet status has no result, and points at possible on-disk sentinel", () => {
+    const text = resultText(
+      rec({
+        kind: "failed",
+        endedAt: "t",
+        error: "timed out (budget deadline exceeded)",
+      }),
+    )
+    expect(text).toMatch(/timed out/i)
+    expect(text).toMatch(/fleet status/i)
+    expect(text).toMatch(/result sentinel/i)
+    // Avoid the old absolute "No result." dead-end that hid Dorothy's handoffs.
+    expect(text).not.toMatch(/No result\.$/)
+  })
+})
+
+describe("diskSalvageText — AgentResult defense for failed+on-disk sentinel", () => {
+  it("surfaces the handoff and keeps the failure reason visible", () => {
+    const text = diskSalvageText(
+      "A1",
+      "failed",
+      "timed out (budget deadline exceeded)",
+      "full research summary that must not be lost",
+      ["/tmp/findings.md"],
+    )
+    expect(text).toContain("must not be lost")
+    expect(text).toMatch(/salvaged findings/i)
+    expect(text).toMatch(/timed out/i)
+    expect(text).toContain("/tmp/findings.md")
+    expect(text).toMatch(/marked failed/i)
   })
 })

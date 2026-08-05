@@ -9,11 +9,13 @@
  */
 
 import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
 
-import { resultText } from "../lib/content.ts"
+import { diskSalvageText, resultText } from "../lib/content.ts"
 import { sessionsDirFromCtx, storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { renderResultDisplay } from "../lib/render.ts"
+import { parseResultDigest } from "../lib/spawn.ts"
 import { parseIdArg } from "../lib/validate.ts"
 
 /** Strip ANSI and return the last `n` non-empty lines of a worker log. */
@@ -61,6 +63,26 @@ export default async function agentResult(ctx: TUIContext): Promise<TUIResult> {
     }
 
   let content = resultText(rec)
+  const sessionsDir = sessionsDirFromCtx(ctx)
+  // Defense in depth (Dorothy A1/A2): if fleet status is failed/stopped but the
+  // worker already wrote a result sentinel, surface that handoff instead of the
+  // hard "No result" lie. The supervisor should have promoted on sentinel-while-
+  // alive; this recovers older/racy failures where status lagged the file.
+  if (rec.status.kind === "failed" || rec.status.kind === "stopped") {
+    const sentinelPath = join(sessionsDir, `${rec.sid}.result.json`)
+    if (existsSync(sentinelPath)) {
+      try {
+        const digest = parseResultDigest(JSON.parse(readFileSync(sentinelPath, "utf-8")))
+        if (digest?.short.trim()) {
+          const why =
+            rec.status.kind === "failed" ? rec.status.error : (rec.status.reason ?? "stopped")
+          content = diskSalvageText(rec.id, rec.status.kind, why, digest.short, digest.artifacts)
+        }
+      } catch {
+        // keep resultText content
+      }
+    }
+  }
   // Surface the worker's log tail whenever the lead would otherwise be blind:
   //   - a `done` worker whose summary is the legacy "no summary captured"
   //     placeholder, OR
@@ -72,7 +94,7 @@ export default async function agentResult(ctx: TUIContext): Promise<TUIResult> {
     rec.status.kind === "done" && rec.status.result.short.includes("no summary captured")
   const blindTerminal = rec.status.kind === "failed" || rec.status.kind === "incomplete"
   if (blindDone || blindTerminal) {
-    const tail = tailLog(`${sessionsDirFromCtx(ctx)}/${rec.sid}.log`, 20)
+    const tail = tailLog(`${sessionsDir}/${rec.sid}.log`, 20)
     if (tail) content += `\n\nLast output (log tail — the worker's stdout/stderr):\n${tail}`
   }
   const disp = renderResultDisplay(rec, true)
