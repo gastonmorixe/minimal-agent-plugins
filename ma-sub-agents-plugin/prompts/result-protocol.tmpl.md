@@ -14,7 +14,7 @@ Finish in two steps, in order:
    "incomplete": false
    })
 
-`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads.
+`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately — do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.
 
 If you could not finish, still call `ReportResult` with `"incomplete": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.
 
