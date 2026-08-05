@@ -6,9 +6,12 @@ import { describe, expect, test } from "bun:test"
 
 import { cursorCaps } from "./capabilities.ts"
 import { AGENT_MODE } from "./proto/agent-run.ts"
-import { decodeFields, fieldBytes } from "./proto/wire.ts"
+import { decodeFields, fieldBytes, fieldString } from "./proto/wire.ts"
 import {
+  applyCursorSessionToRequest,
   buildCursorAgentRunBody,
+  resolveCursorConversationGroupId,
+  resolveCursorConversationId,
   resolveCursorWireAgentMode,
   summarizeRequestText,
 } from "./request-body.ts"
@@ -159,5 +162,161 @@ describe("buildCursorAgentRunBody wire mode", () => {
     expect(text).toContain("list tools")
     expect(text).not.toMatch(/Ask mode is active/i)
     expect(text).not.toMatch(/system_reminder/i)
+  })
+})
+
+/** AgentRunRequest.conversation_id is field 5 under AgentClientMessage f1. */
+function extractConversationId(body: Uint8Array): string | undefined {
+  const run = fieldBytes(decodeFields(body).find((f) => f.no === 1)!)
+  if (!run) return undefined
+  const f5 = decodeFields(run).find((f) => f.no === 5 && f.wire === 2)
+  return f5 ? (fieldString(f5) ?? undefined) : undefined
+}
+
+function extractConversationGroupId(body: Uint8Array): string | undefined {
+  const run = fieldBytes(decodeFields(body).find((f) => f.no === 1)!)
+  if (!run) return undefined
+  const f16 = decodeFields(run).find((f) => f.no === 16 && f.wire === 2)
+  return f16 ? (fieldString(f16) ?? undefined) : undefined
+}
+
+function extractConversationStateBytes(body: Uint8Array): Uint8Array | undefined {
+  const run = fieldBytes(decodeFields(body).find((f) => f.no === 1)!)
+  if (!run) return undefined
+  const f1 = decodeFields(run).find((f) => f.no === 1 && f.wire === 2)
+  return f1 ? (fieldBytes(f1) ?? undefined) : undefined
+}
+
+describe("resolveCursorConversationId", () => {
+  test("prefers metadata.custom cursor-conversation-id over sessionId", () => {
+    expect(
+      resolveCursorConversationId({
+        modelId: "x",
+        messages: [],
+        metadata: {
+          sessionId: "session-aaa",
+          custom: { "cursor-conversation-id": "conv-bbb" },
+        },
+      }),
+    ).toBe("conv-bbb")
+  })
+
+  test("uses metadata.sessionId when no custom override", () => {
+    expect(
+      resolveCursorConversationId({
+        modelId: "x",
+        messages: [],
+        metadata: { sessionId: "session-stable-1" },
+      }),
+    ).toBe("session-stable-1")
+  })
+
+  test("returns undefined when absent (encoder will mint UUID)", () => {
+    expect(resolveCursorConversationId({ modelId: "x", messages: [] })).toBeUndefined()
+  })
+})
+
+describe("resolveCursorConversationGroupId", () => {
+  test("reads optional cursor-conversation-group-id custom metadata", () => {
+    expect(
+      resolveCursorConversationGroupId({
+        modelId: "x",
+        messages: [],
+        metadata: { custom: { "cursor-conversation-group-id": "group-1" } },
+      }),
+    ).toBe("group-1")
+  })
+
+  test("omits when unset", () => {
+    expect(resolveCursorConversationGroupId({ modelId: "x", messages: [] })).toBeUndefined()
+  })
+})
+
+describe("buildCursorAgentRunBody conversation identity", () => {
+  test("stable metadata.sessionId is encoded as conversation_id #5 across builds", () => {
+    const req = {
+      modelId: "cursor-composer-2.5-fast",
+      messages: [{ role: "user" as const, content: [{ type: "text" as const, text: "hi" }] }],
+      metadata: { sessionId: "stable-session-uuid-0001" },
+    }
+    const a = extractConversationId(buildCursorAgentRunBody(req, baseModel()))
+    const b = extractConversationId(buildCursorAgentRunBody(req, baseModel()))
+    expect(a).toBe("stable-session-uuid-0001")
+    expect(b).toBe("stable-session-uuid-0001")
+  })
+
+  test("without sessionId, each encode still yields a non-empty conversation_id", () => {
+    const req = {
+      modelId: "cursor-composer-2.5-fast",
+      messages: [{ role: "user" as const, content: [{ type: "text" as const, text: "hi" }] }],
+    }
+    const a = extractConversationId(buildCursorAgentRunBody(req, baseModel()))
+    const b = extractConversationId(buildCursorAgentRunBody(req, baseModel()))
+    expect(a).toBeTruthy()
+    expect(b).toBeTruthy()
+    expect(a).not.toBe(b)
+  })
+
+  test("conversation_group_id #16 is encoded only when custom metadata provides it", () => {
+    const withGroup = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        metadata: {
+          sessionId: "sid-1",
+          custom: { "cursor-conversation-group-id": "gid-9" },
+        },
+      },
+      baseModel(),
+    )
+    const withoutGroup = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        metadata: { sessionId: "sid-1" },
+      },
+      baseModel(),
+    )
+    expect(extractConversationGroupId(withGroup)).toBe("gid-9")
+    expect(extractConversationGroupId(withoutGroup)).toBeUndefined()
+  })
+
+  test("conversation_state #1 stays empty (no invented transcript rebuild)", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-composer-2.5-fast",
+        messages: [
+          { role: "user", content: [{ type: "text", text: "one" }] },
+          { role: "assistant", content: [{ type: "text", text: "two" }] },
+          { role: "user", content: [{ type: "text", text: "three" }] },
+        ],
+        metadata: { sessionId: "sid-history" },
+      },
+      baseModel(),
+    )
+    const state = extractConversationStateBytes(body)
+    expect(state).toBeDefined()
+    expect(state!.byteLength).toBe(0)
+  })
+
+  test("adapter-style applyCursorSessionToRequest stabilizes conversation_id from bidi key", () => {
+    const bare = {
+      modelId: "cursor-composer-2.5-fast",
+      messages: [{ role: "user" as const, content: [{ type: "text" as const, text: "hi" }] }],
+    }
+    const keyed = applyCursorSessionToRequest(bare, "bidi-host-session-key")
+    expect(resolveCursorConversationId(keyed)).toBe("bidi-host-session-key")
+    expect(extractConversationId(buildCursorAgentRunBody(keyed, baseModel()))).toBe(
+      "bidi-host-session-key",
+    )
+    // Does not overwrite explicit conversation override.
+    const explicit = applyCursorSessionToRequest(
+      {
+        ...bare,
+        metadata: { custom: { "cursor-conversation-id": "explicit-conv" } },
+      },
+      "bidi-host-session-key",
+    )
+    expect(resolveCursorConversationId(explicit)).toBe("explicit-conv")
   })
 })

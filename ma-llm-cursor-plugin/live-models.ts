@@ -247,7 +247,12 @@ export function getCursorLiveModelRegistrar(): ModelRegistrar | undefined {
 
 /**
  * Authenticated AvailableModels catalog.
- * Best effort: failure returns [] for static fallback.
+ *
+ * Auth failures (401/403) throw so the host `Promise.allSettled` path prints
+ * `(live model list unavailable: …)` — same observability contract as Anthropic
+ * `Models API ${status}`. Network/decode failures still soft-return `[]` so a
+ * multi-provider listing can degrade to the static Cursor seed.
+ *
  * On success, also registers full capability entries when a registrar is set.
  */
 export async function listCursorLiveModels(auth: ProviderAuth): Promise<LiveModelRow[]> {
@@ -260,12 +265,13 @@ export async function listCursorLiveModels(auth: ProviderAuth): Promise<LiveMode
       body: new Uint8Array(0),
     })
     if (!response.ok) {
-      // Soft-fail so multi-provider list-models still shows static Cursor seed.
-      // Prefix makes Cursor failures attributable vs Anthropic "Models API 401".
+      const errorBody = await response.text().catch(() => "")
       if (response.status === 401 || response.status === 403) {
-        // Swallow — host Promise.allSettled only prints thrown errors. Cursor
-        // stays quiet; other providers own their own throw shapes.
+        throw new Error(
+          `Cursor AvailableModels ${response.status}: ${errorBody || response.statusText}`,
+        )
       }
+      // Non-auth HTTP errors: soft-fail to static seed (multi-provider listing).
       return []
     }
     const body = new Uint8Array(await response.arrayBuffer())
@@ -278,7 +284,11 @@ export async function listCursorLiveModels(auth: ProviderAuth): Promise<LiveMode
       }
     }
     return mapCursorLiveModels(decoded)
-  } catch {
+  } catch (err) {
+    // Re-throw auth failures so host allSettled surfaces them. Soft-fail the rest.
+    if (err instanceof Error && err.message.startsWith("Cursor AvailableModels ")) {
+      throw err
+    }
     return []
   }
 }

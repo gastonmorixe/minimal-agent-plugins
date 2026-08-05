@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import {
   buildCursorApiKeyCredential,
+  clearCursorExchangeCache,
   cursorApiKeyAuth,
   exchangeCursorApiKey,
   parseCursorTokenPair,
@@ -14,6 +15,7 @@ import {
   createCursorLoginChallenge,
   cursorOAuthLogin,
   cursorPollDelayMs,
+  refreshCursorOAuthCredential,
 } from "./oauth-login.ts"
 
 describe("Cursor API-key auth", () => {
@@ -57,6 +59,76 @@ describe("Cursor API-key auth", () => {
 
   it("rejects incomplete token responses", () => {
     expect(() => parseCursorTokenPair({ accessToken: "only-one" })).toThrow("refreshToken")
+  })
+
+  it("caches API-key exchanges until near JWT expiry", async () => {
+    clearCursorExchangeCache()
+    let calls = 0
+    const header = Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url")
+    const payload = Buffer.from(
+      JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+    ).toString("base64url")
+    const accessToken = `${header}.${payload}.sig`
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async () => {
+      calls++
+      return new Response(JSON.stringify({ accessToken, refreshToken: "refresh-redacted" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }) as unknown as typeof fetch
+    try {
+      const first = await exchangeCursorApiKey("api-redacted")
+      const second = await exchangeCursorApiKey("api-redacted")
+      expect(calls).toBe(1)
+      expect(second.accessToken).toBe(first.accessToken)
+      await exchangeCursorApiKey("api-redacted", { force: true })
+      expect(calls).toBe(2)
+    } finally {
+      globalThis.fetch = realFetch
+      clearCursorExchangeCache()
+    }
+  })
+})
+
+describe("Cursor OAuth refreshCredential", () => {
+  it("re-exchanges when the bag still has an API key", async () => {
+    clearCursorExchangeCache()
+    const header = Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url")
+    const payload = Buffer.from(
+      JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+    ).toString("base64url")
+    const accessToken = `${header}.${payload}.sig`
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ accessToken, refreshToken: "refresh-new" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as unknown as typeof fetch
+    try {
+      const built = await refreshCursorOAuthCredential({
+        tokenType: "oauth",
+        accessToken: "stale",
+        refreshToken: "stale-rt",
+        apiKey: "api-redacted",
+      })
+      expect(built.result.accessToken).toBe(accessToken)
+      expect(built.credential.secrets.apiKey).toBe("api-redacted")
+      expect(cursorOAuthLogin.refreshCredential).toBe(refreshCursorOAuthCredential)
+    } finally {
+      globalThis.fetch = realFetch
+      clearCursorExchangeCache()
+    }
+  })
+
+  it("fails clearly for browser-login bags without an API key", async () => {
+    await expect(
+      refreshCursorOAuthCredential({
+        tokenType: "oauth",
+        accessToken: "stale",
+        refreshToken: "rt-only",
+      }),
+    ).rejects.toThrow(/cannot be refreshed automatically/)
   })
 })
 

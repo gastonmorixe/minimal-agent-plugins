@@ -20,6 +20,7 @@ import {
   encString,
   fieldBytes,
   fieldString,
+  fieldVarint,
 } from "./wire.ts"
 
 /** Cursor agent mode enum (partial). */
@@ -50,7 +51,17 @@ export type CursorModelParameterValue = {
 export type AgentRunEncodeOpts = {
   text: string
   modelId: string
+  /**
+   * AgentRunRequest.conversation_id (field 5).
+   * When omitted, a fresh UUID is generated (CLI `--new-session-id` proves
+   * caller-supplied ids are valid; ordinary CLI persistence is still RE-open).
+   */
   conversationId?: string
+  /**
+   * AgentRunRequest.conversation_group_id (field 16).
+   * Distinct from conversation_id. Omitted when unset.
+   */
+  conversationGroupId?: string
   messageId?: string
   mode?: number
   workspacePath?: string
@@ -135,7 +146,7 @@ function encModelDetails(opts: AgentRunEncodeOpts): Uint8Array {
 export function encodeAgentRunRequest(opts: AgentRunEncodeOpts): Uint8Array {
   const cid = opts.conversationId ?? crypto.randomUUID()
   const parts = [
-    encMsg(1, new Uint8Array(0)), // empty conversation_state
+    encMsg(1, new Uint8Array(0)), // empty conversation_state (no invented rebuild)
     encMsg(2, encConversationAction(opts)),
     encMsg(3, encModelDetails(opts)),
     encString(5, cid),
@@ -146,6 +157,7 @@ export function encodeAgentRunRequest(opts: AgentRunEncodeOpts): Uint8Array {
     parts.push(encMsg(4, encMcpTools(opts.mcpTools)))
   }
   if (opts.excludeWorkspaceContext) parts.push(encBool(12, true))
+  if (opts.conversationGroupId) parts.push(encString(16, opts.conversationGroupId))
   return concat(...parts)
 }
 
@@ -174,11 +186,56 @@ export type CursorServerEvent = {
   rawField?: number
   toolCall?: ReturnType<typeof decodeToolCallUpdate>
   execMcp?: CursorMcpExecRequest
+  /** InteractionUpdate.token_delta.tokens (int32). */
+  tokens?: number
+  /** ConversationTokenDetails.used_tokens (uint32). */
+  usedTokens?: number
+  /** ConversationTokenDetails.max_tokens (uint32). */
+  maxTokens?: number
+  /** SummaryCompletedUpdate.hook_message (optional). */
+  hookMessage?: string
+}
+
+/** Decode agent.v1.ConversationTokenDetails (used_tokens#1, max_tokens#2). */
+export function decodeConversationTokenDetails(body: Uint8Array): {
+  usedTokens?: number
+  maxTokens?: number
+} {
+  let usedTokens: number | undefined
+  let maxTokens: number | undefined
+  for (const f of decodeFields(body)) {
+    const v = fieldVarint(f)
+    if (v == null) continue
+    if (f.no === 1) usedTokens = v
+    else if (f.no === 2) maxTokens = v
+  }
+  return { usedTokens, maxTokens }
+}
+
+/**
+ * Decode AgentServerMessage.conversation_checkpoint_update (#3 =
+ * ConversationStateStructure) for token_details (#5).
+ */
+export function decodeCheckpointTokenDetails(checkpointBody: Uint8Array): {
+  usedTokens?: number
+  maxTokens?: number
+} {
+  for (const f of decodeFields(checkpointBody)) {
+    if (f.no !== 5) continue
+    const td = fieldBytes(f)
+    if (td) return decodeConversationTokenDetails(td)
+  }
+  return {}
 }
 
 /**
  * Extract events from AgentServerMessage payloads.
  * Path: field1 interaction_update → field1 text_delta → field1 text
+ *
+ * InteractionUpdate oneof (cursor-agent 2026.07.23): #8 token_delta,
+ * #9 summary, #10 summary_started, #11 summary_completed.
+ * AgentServerMessage #3 conversation_checkpoint_update carries
+ * ConversationStateStructure.token_details (#5).
  */
 export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[] {
   const events: CursorServerEvent[] = []
@@ -192,6 +249,22 @@ export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[
           events.push({ kind: "text_delta", text: msgTextField1(body), rawField: 1 })
         } else if (u.no === 4 && body) {
           events.push({ kind: "thinking_delta", text: msgTextField1(body), rawField: 4 })
+        } else if (u.no === 8 && body) {
+          // TokenDeltaUpdate.tokens #1 int32
+          let tokens: number | undefined
+          for (const tf of decodeFields(body)) {
+            const v = fieldVarint(tf)
+            if (tf.no === 1 && v != null) tokens = v
+          }
+          events.push({ kind: "token_delta", rawField: 8, tokens })
+        } else if (u.no === 9 && body) {
+          // SummaryUpdate.summary #1 string
+          events.push({ kind: "summary", text: msgTextField1(body), rawField: 9 })
+        } else if (u.no === 10) {
+          events.push({ kind: "summary_started", rawField: 10 })
+        } else if (u.no === 11) {
+          const hookMessage = body ? msgTextField1(body) : undefined
+          events.push({ kind: "summary_completed", rawField: 11, hookMessage })
         } else if (u.no === 14) {
           events.push({ kind: "turn_ended", rawField: 14 })
         } else if (u.no === 13) {
@@ -226,8 +299,21 @@ export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[
         events.push({ kind: "exec_server_message", rawField: 2 })
       }
     } else if (f.no === 3) {
-      events.push({ kind: "conversation_checkpoint_update", rawField: 3 })
+      const checkpoint = fieldBytes(f)
+      if (checkpoint) {
+        const { usedTokens, maxTokens } = decodeCheckpointTokenDetails(checkpoint)
+        events.push({
+          kind: "conversation_checkpoint_update",
+          rawField: 3,
+          usedTokens,
+          maxTokens,
+        })
+      } else {
+        events.push({ kind: "conversation_checkpoint_update", rawField: 3 })
+      }
     } else if (f.no === 7) {
+      // InteractionQuery — opaque until a concrete query oneof is needed.
+      // PreCompact is ExecuteHookRequest.pre_compact, not this field.
       events.push({ kind: "interaction_query", rawField: 7 })
     } else {
       events.push({ kind: `server_field_${f.no}`, rawField: f.no })

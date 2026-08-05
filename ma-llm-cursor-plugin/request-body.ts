@@ -1,8 +1,9 @@
 /**
  * CanonicalRequest → framed AgentClientMessage for AgentService/Run.
  *
- * MVP: flatten system+history into a single user text, empty conversation_state,
- * fresh conversation_id per run. Wire agent **mode** defaults to AGENT (not ASK).
+ * MVP: flatten system+history into a single user text, empty conversation_state.
+ * conversation_id prefers `metadata.sessionId` (stable across continues) and
+ * falls back to a fresh UUID. Wire agent **mode** defaults to AGENT (not ASK).
  *
  * Cache safety: mode is encoded only on UserMessage.mode (protobuf enum). It must
  * never rewrite `req.system` / customSystemPrompt — that would bust the prompt cache
@@ -91,6 +92,51 @@ export function buildCursorModelParameters(
 }
 
 /**
+ * Resolve Cursor AgentRunRequest.conversation_id from host metadata.
+ *
+ * Prefer `metadata.sessionId` (CanonicalRequest contract: "replayed in every
+ * request in a session"). Optional override via
+ * `metadata.custom["cursor-conversation-id"]`. Returns undefined when absent
+ * so the encoder generates a fresh UUID.
+ */
+export function resolveCursorConversationId(req: CanonicalRequest): string | undefined {
+  const custom = req.metadata?.custom?.["cursor-conversation-id"]?.trim()
+  if (custom) return custom
+  const sessionId = req.metadata?.sessionId?.trim()
+  if (sessionId) return sessionId
+  return undefined
+}
+
+/**
+ * Ensure a host/bidi session key is present as `metadata.sessionId` before encode.
+ * Does not overwrite an explicit sessionId or cursor-conversation-id override.
+ */
+export function applyCursorSessionToRequest(
+  req: CanonicalRequest,
+  sessionId: string,
+): CanonicalRequest {
+  const key = sessionId.trim()
+  if (!key) return req
+  if (resolveCursorConversationId(req)) return req
+  return {
+    ...req,
+    metadata: {
+      ...req.metadata,
+      sessionId: key,
+    },
+  }
+}
+
+/**
+ * Resolve optional AgentRunRequest.conversation_group_id (field 16).
+ * Distinct from conversation_id. Only set when explicitly provided.
+ */
+export function resolveCursorConversationGroupId(req: CanonicalRequest): string | undefined {
+  const group = req.metadata?.custom?.["cursor-conversation-group-id"]?.trim()
+  return group || undefined
+}
+
+/**
  * Build the protobuf body for AgentService/Run (AgentClientMessage).
  * Caller wraps with Connect frame via connectFrameProto.
  */
@@ -100,6 +146,7 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
   // returned invalid_argument "unknown option '--system-prompt'" (2026-07-23).
   // Do NOT set excludeWorkspaceContext — rejected for typical accounts.
   // Fold system into the user text for context instead.
+  // Do NOT invent ConversationState rebuild from transcript (Cheryl RE).
   const systemParts: string[] = []
   for (const block of req.system ?? []) {
     const t = blockText(block)
@@ -115,6 +162,8 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
   const isVariant = modelIsCursorVariant(model)
   const parameters = buildCursorModelParameters(req, model)
   const toolPolicy = buildCursorToolWirePolicy(req)
+  const conversationId = resolveCursorConversationId(req)
+  const conversationGroupId = resolveCursorConversationGroupId(req)
 
   const opts: AgentRunEncodeOpts = {
     // Bare Cursor API slug (not host-namespaced id).
@@ -126,6 +175,8 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
     isVariantStringRepresentation: isVariant,
     parameters: parameters.length > 0 ? parameters : undefined,
     mcpTools: toolPolicy.mcpTools.length > 0 ? toolPolicy.mcpTools : undefined,
+    conversationId,
+    conversationGroupId,
   }
   return encodeAgentClientMessageRun(opts)
 }

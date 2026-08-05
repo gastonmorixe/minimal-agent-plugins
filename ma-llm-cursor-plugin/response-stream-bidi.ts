@@ -9,7 +9,13 @@
 
 import { cursorBidiLog } from "./bidi-debug.ts"
 import type { ConnectEnvelope } from "./connect/stream.ts"
-import type { CanonicalEvent, CanonicalUsage } from "./lib/canonical-events.ts"
+import {
+  applyCursorUsageEvent,
+  type CursorUsageState,
+  cursorUsageReceipts,
+  cursorUsageToCanonical,
+} from "./cursor-usage.ts"
+import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import { extractServerTextEvents, parseConnectEndStreamError } from "./proto/agent-run.ts"
 import {
   type DecodedExecMcpArgs,
@@ -64,7 +70,7 @@ function sanitizeToolUseToken(raw: string | undefined, fallbackPrefix: string): 
  */
 export class CursorBidiEnvelopeTranslator {
   private readonly messageId: string
-  private readonly emptyUsage: CanonicalUsage = { inputTokens: 0, outputTokens: 0 }
+  private readonly usageState: CursorUsageState = {}
   private started = false
   private textOpen = false
   private thinkingOpen = false
@@ -160,7 +166,7 @@ export class CursorBidiEnvelopeTranslator {
         type: "message_start",
         messageId: this.messageId,
         modelId: this.opts.modelId,
-        initialUsage: this.emptyUsage,
+        initialUsage: cursorUsageToCanonical(this.usageState),
       },
     ]
   }
@@ -202,12 +208,18 @@ export class CursorBidiEnvelopeTranslator {
   }
 
   private finish(stopReason: "end_turn" | "tool_use"): CanonicalEvent[] {
+    const receipts = cursorUsageReceipts(this.usageState)
     return [
       ...this.closeText(),
       ...this.closeThinking(),
       ...this.emitToolUseStop(),
       ...this.openMessage(),
-      { type: "message_delta", stopReason, usage: this.emptyUsage },
+      {
+        type: "message_delta",
+        stopReason,
+        usage: cursorUsageToCanonical(this.usageState),
+        ...(receipts ? { receipts } : {}),
+      },
       { type: "message_stop" },
     ]
   }
@@ -275,7 +287,18 @@ export class CursorBidiEnvelopeTranslator {
     const events: CanonicalEvent[] = []
     let pauseForToolUse = false
     for (const ev of extractServerTextEvents(payload)) {
-      if (ev.kind === "heartbeat") continue
+      applyCursorUsageEvent(this.usageState, ev)
+      if (
+        ev.kind === "heartbeat" ||
+        ev.kind === "token_delta" ||
+        ev.kind === "conversation_checkpoint_update" ||
+        ev.kind === "summary" ||
+        ev.kind === "summary_started" ||
+        ev.kind === "summary_completed" ||
+        ev.kind === "interaction_query"
+      ) {
+        continue
+      }
       if (ev.kind === "tool_call_started") {
         const tool = this.handleMcpToolCall(ev.toolCall, "started")
         events.push(...tool.events)

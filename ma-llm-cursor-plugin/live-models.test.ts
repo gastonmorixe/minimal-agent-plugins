@@ -345,9 +345,25 @@ describe("listCursorLiveModels", () => {
     expect(await listCursorLiveModels({ kind: "oauth", token: "access-redacted" })).toEqual([])
   })
 
-  it("returns [] on HTTP 401 without throwing (unlike Anthropic Models API shape)", async () => {
+  it("throws on HTTP 401 so host allSettled can print the auth failure", async () => {
     globalThis.fetch = (async () =>
       new Response("authentication_error", { status: 401 })) as unknown as typeof fetch
+    await expect(listCursorLiveModels({ kind: "oauth", token: "access-redacted" })).rejects.toThrow(
+      /Cursor AvailableModels 401: authentication_error/,
+    )
+  })
+
+  it("throws on HTTP 403 with Cursor AvailableModels prefix", async () => {
+    globalThis.fetch = (async () =>
+      new Response("forbidden", { status: 403 })) as unknown as typeof fetch
+    await expect(listCursorLiveModels({ kind: "oauth", token: "access-redacted" })).rejects.toThrow(
+      /Cursor AvailableModels 403: forbidden/,
+    )
+  })
+
+  it("returns [] on non-auth HTTP errors without throwing", async () => {
+    globalThis.fetch = (async () =>
+      new Response("upstream_bug", { status: 500 })) as unknown as typeof fetch
     expect(await listCursorLiveModels({ kind: "oauth", token: "access-redacted" })).toEqual([])
   })
 })
