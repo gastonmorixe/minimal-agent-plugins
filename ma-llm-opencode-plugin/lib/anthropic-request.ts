@@ -167,18 +167,23 @@ export function buildAnthropicRequestBody(
   if (meta) body.metadata = meta
 
   // Thinking — only when capability supports it AND request opted in.
-  const thinking = mapThinking(req.thinking, model)
+  // `effort:"none"` is the toggle-off sentinel for models.dev toggle models
+  // (Qwen / MiniMax M3 on OpenCode Go): omit thinking rather than defaulting
+  // to adaptive when the host only forwarded effort.
+  const thinking = mapThinking(req.thinking, model, req.effort)
   if (thinking) body.thinking = thinking
 
   // Sampling
   applySampling(body, req, model)
 
   // Context management: default for conversations on models that support it.
+  // Skip when thinking is off (`effort:"none"` / `thinking.mode:"off"`).
   if (req.vendor?.anthropic?.contextManagement === null) {
     // explicit opt-out
   } else if (req.vendor?.anthropic?.contextManagement) {
     body.context_management = req.vendor.anthropic.contextManagement
   } else if (
+    thinking &&
     (kind === "conversation" || kind === "subtask") &&
     model.capabilities.thinking.adaptive
   ) {
@@ -411,8 +416,12 @@ function buildMetadata(req: CanonicalRequest): { user_id?: string } | undefined 
 function mapThinking(
   config: ThinkingConfig | undefined,
   model: ModelView,
+  effort?: string,
 ): AnthropicRequestBody["thinking"] | undefined {
   if (!config) {
+    // Host CLI `--effort none` lands as CanonicalRequest.effort without
+    // setting thinking.mode. Treat that as thinking-off for toggle models.
+    if (effort === "none") return undefined
     // Default behavior on adaptive-capable models: enabled adaptive,
     // display omitted. claude-code 2.1.154 sends `{type:"adaptive"}`
     // by default on opus-4-7/4-8.
@@ -474,7 +483,14 @@ function buildOutputConfig(
   const out: NonNullable<AnthropicRequestBody["output_config"]> = {}
 
   // effort: explicit > model default (only when model has any levels).
-  if (req.effort && model.capabilities.effort.levels.includes(req.effort)) {
+  // `none` is a thinking-off sentinel for toggle models — never put it on
+  // `output_config.effort` (Messages wire has no such level). mapThinking
+  // already omitted the thinking block when effort is none.
+  if (
+    req.effort &&
+    req.effort !== "none" &&
+    model.capabilities.effort.levels.includes(req.effort)
+  ) {
     out.effort = req.effort
   } else if (
     req.effort === undefined &&

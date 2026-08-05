@@ -10,6 +10,7 @@ import {
   opencodeApiKeyAuth,
   readOpencodeApiKey,
 } from "./auth.ts"
+import { buildAnthropicRequestBody } from "./lib/anthropic-request.ts"
 import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import { userText } from "./lib/canonical-messages.ts"
@@ -218,6 +219,42 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "high",
       "max",
     ])
+
+    // Hy3 (+ preview): models.dev effort none|low|high (none = thinking off).
+    expect([...resolveModel("hy3").capabilities.effort.levels]).toEqual(["none", "low", "high"])
+    expect([...resolveModel("hy3-preview").capabilities.effort.levels]).toEqual([
+      "none",
+      "low",
+      "high",
+    ])
+
+    // models.dev reasoning toggle → effort includes none (Messages thinking-off).
+    for (const id of [
+      "minimax-m3",
+      "qwen3.8-max",
+      "qwen3.7-max",
+      "qwen3.7-plus",
+      "qwen3.6-plus",
+      "qwen3.5-plus",
+    ]) {
+      expect([...resolveModel(id).capabilities.effort.levels]).toEqual([
+        "none",
+        "low",
+        "medium",
+        "high",
+      ])
+    }
+    // MiniMax M2.x: reasoning with empty options — no toggle / no none.
+    expect([...resolveModel("minimax-m2.7").capabilities.effort.levels]).toEqual([
+      "low",
+      "medium",
+      "high",
+    ])
+    expect([...resolveModel("minimax-m2.5").capabilities.effort.levels]).toEqual([
+      "low",
+      "medium",
+      "high",
+    ])
   })
 
   it("registers ad-hoc slugs on demand", () => {
@@ -355,6 +392,46 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     const roles = body.messages.map((m) => m.role)
     const toolIdx = roles.indexOf("tool")
     expect(toolIdx).toBeGreaterThan(roles.indexOf("assistant"))
+  })
+
+  it("maps Chat effort none to reasoning_effort none (Hy3)", () => {
+    setup()
+    const model = resolveModel("hy3")
+    const req: CanonicalRequest = {
+      modelId: "hy3",
+      messages: [userText("hi")],
+      effort: "none",
+    }
+    expect(resolveProvider("opencode").validate(req, model).ok).toBe(true)
+    const body = buildOpenAIChatBody(req, model)
+    expect(body.reasoning_effort).toBe("none")
+  })
+
+  it("maps Messages effort none to thinking off (omit thinking + no output_config.effort)", () => {
+    setup()
+    const model = resolveModel("qwen3.8-max")
+    const req: CanonicalRequest = {
+      modelId: "qwen3.8-max",
+      messages: [userText("hi")],
+      effort: "none",
+    }
+    expect(resolveProvider("opencode").validate(req, model).ok).toBe(true)
+    const body = buildAnthropicRequestBody(req, model)
+    expect(body.thinking).toBeUndefined()
+    expect(body.output_config?.effort).toBeUndefined()
+    expect(body.context_management).toBeUndefined()
+  })
+
+  it("keeps Messages adaptive thinking when effort is unset", () => {
+    setup()
+    const model = resolveModel("qwen3.8-max")
+    const req: CanonicalRequest = {
+      modelId: "qwen3.8-max",
+      messages: [userText("hi")],
+    }
+    const body = buildAnthropicRequestBody(req, model)
+    expect(body.thinking).toEqual({ type: "adaptive" })
+    expect(body.output_config?.effort).toBe("medium")
   })
 
   const KEY = process.env.MINIMAL_AGENT_OPENCODE_LIVE_KEY
