@@ -107,6 +107,56 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     expect(text!).toContain("plan step 1")
   })
 
+  it("a new plan replaces a fully completed plan so visible coordinates restart at 1", async () => {
+    const sid = "66666666-aaaa-bbbb-cccc-dddddddddddd"
+
+    await dispatch(sid, {
+      action: "add_many",
+      items: [
+        { title: "Old phase 1", children: ["old 1a", "old 1b"] },
+        { title: "Old phase 2", children: ["old 2a", "old 2b"] },
+      ],
+    })
+    await dispatch(sid, { action: "done", id: 1 })
+    await dispatch(sid, { action: "done", id: 2 })
+
+    const addResult = await dispatch(sid, {
+      action: "add_many",
+      items: [
+        { title: "New phase 1", children: ["new 1a", "new 1b", "new 1c"] },
+        { title: "New phase 2", children: ["new 2a", "new 2b", "new 2c"] },
+        { title: "New phase 3", children: ["new 3a"] },
+      ],
+    })
+    expect(addResult.is_error).toBeFalsy()
+    expect(addResult.content).not.toContain("Old phase")
+    expect(addResult.content).toContain("1   #")
+    expect(addResult.content).toContain("2c  #")
+
+    const startResult = await dispatch(sid, { action: "start", id: "2c" })
+    expect(startResult.is_error).toBeFalsy()
+
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(
+      store
+        .list()
+        .filter((task) => task.parent === null)
+        .map((task) => task.title),
+    ).toEqual(["New phase 1", "New phase 2", "New phase 3"])
+    expect(store.resolve("2c")?.title).toBe("new 2c")
+    expect(store.resolve("2c")?.status).toBe("doing")
+  })
+
+  it("keeps append semantics while prior work remains open", async () => {
+    const sid = "77777777-aaaa-bbbb-cccc-dddddddddddd"
+    await dispatch(sid, { action: "add_many", titles: ["done", "still open"] })
+    await dispatch(sid, { action: "done", id: 1 })
+    await dispatch(sid, { action: "add_many", titles: ["new work"] })
+
+    const titles = new TaskStore(sid, { home: tmpHome }).list().map((task) => task.title)
+    expect(titles).toEqual(["done", "still open", "new work"])
+  })
+
   it("done flips a task and the attachment reflects the new status", async () => {
     const sid = "22222222-aaaa-bbbb-cccc-dddddddddddd"
 

@@ -586,6 +586,19 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
 }
 
 function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
+  // A top-level bulk plan starts a new board once the previous board is
+  // terminal. Keeping completed rows in the same board shifts every visible
+  // coordinate, which makes the model reopen old work when it follows a new
+  // plan written as 1/1a/2/2a. The transcript already preserves the completed
+  // board as the audit trail. Flat batches attached to an explicit parent are
+  // incremental additions and must not replace anything.
+  if (input.parent === undefined) {
+    const stats = store.stats()
+    if (stats.total > 0 && stats.todo === 0 && stats.doing === 0) {
+      store.clear()
+    }
+  }
+
   // Tree form: create each top-level parent, then its string children under it.
   // children.length preflight lives in validateInput (before any write).
   if (input.items !== undefined) {

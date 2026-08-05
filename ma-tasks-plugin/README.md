@@ -70,6 +70,8 @@ per line, order = display order.
 
 Every action returns the post-mutation task state in model-facing `content` as a `<ma::agent::tasks>` columnar table. It also returns the rendered list in `display` so the TUI shows the new state after every change.
 
+A top-level `add_many` replaces the current board when every existing row is terminal (`done` or `canceled`). This lets a later user request start a fresh visible plan at position `1` instead of appending below historical work and shifting all coordinates. If any row is still `todo` or `doing`, `add_many` keeps its append behavior. Flat `add_many` with `parent` is always incremental.
+
 ### Parent ↔ child lifecycle rollup
 
 The store keeps trees consistent in one write:
