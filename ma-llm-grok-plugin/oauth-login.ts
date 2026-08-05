@@ -12,6 +12,13 @@
  * @module llm/providers/grok/oauth-login
  */
 
+import {
+  applyGrokAccountProfile,
+  fetchGrokAccountProfile,
+  type GrokAccountProfile,
+  grokAccountProfileHasData,
+  preserveGrokAccountProfileSecrets,
+} from "./account-profile.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type {
@@ -117,7 +124,10 @@ export function grokOAuthConfig(): OAuthLoginConfig {
 }
 
 /** Encode token endpoint JSON into the host secret bag. */
-export function grokOAuthToSecrets(raw: Record<string, unknown>): AuthSecretBag {
+export function grokOAuthToSecrets(
+  raw: Record<string, unknown>,
+  profile?: GrokAccountProfile,
+): AuthSecretBag {
   const accessToken = str(raw.access_token)
   const refreshToken = str(raw.refresh_token)
   if (!accessToken) throw new Error("Grok OAuth response missing access_token")
@@ -126,25 +136,38 @@ export function grokOAuthToSecrets(raw: Record<string, unknown>): AuthSecretBag 
   const expiresAt = Date.now() + expiresIn * 1000
   const payload = decodeJwtPayload(accessToken) ?? {}
   const sub = str(payload.sub)
+  const principalId = str(payload.principal_id) ?? sub
   const teamId = str(payload.team_id)
   const scope = str(raw.scope) ?? str(payload.scope)
+  const jwtTier = num(payload.tier)
 
-  return {
+  const secrets: AuthSecretBag = {
     tokenType: "oauth",
     accessToken,
     ...(refreshToken ? { refreshToken } : {}),
     expiresAt,
     oidcIssuer: GROK_OIDC_ISSUER,
     oidcClientId: GROK_OIDC_CLIENT_ID,
-    ...(sub ? { userId: sub, principalId: sub } : {}),
+    ...(sub ? { userId: sub } : {}),
+    ...(principalId ? { principalId } : {}),
     ...(teamId ? { teamId } : {}),
     ...(scope ? { scope } : {}),
+    ...(jwtTier !== undefined ? { jwtTier } : {}),
   }
+  if (profile) applyGrokAccountProfile(secrets, profile)
+  return secrets
+}
+
+function accountEmailFromSecrets(secrets: AuthSecretBag): string {
+  return str(secrets.emailAddress) ?? "unknown"
 }
 
 /** Convert a raw token response into a host-persistable credential write. */
-export function buildGrokOAuthCredential(response: Record<string, unknown>): OAuthLoginBuildResult {
-  const secrets = grokOAuthToSecrets(response)
+export function buildGrokOAuthCredential(
+  response: Record<string, unknown>,
+  profile?: GrokAccountProfile,
+): OAuthLoginBuildResult {
+  const secrets = grokOAuthToSecrets(response, profile)
   const accessToken = String(secrets.accessToken)
   const refreshToken = typeof secrets.refreshToken === "string" ? secrets.refreshToken : ""
   return {
@@ -164,12 +187,50 @@ export function buildGrokOAuthCredential(response: Record<string, unknown>): OAu
         ? {
             account: {
               uuid: secrets.userId,
-              emailAddress: "unknown",
+              emailAddress: accountEmailFromSecrets(secrets),
             },
           }
         : {}),
     },
   }
+}
+
+/**
+ * After a token response, enrich secrets with userinfo / session / subscriptions.
+ * Best-effort: on failure, keep any prior profile fields from `priorSecrets`.
+ */
+export async function finalizeGrokOAuthCredential(
+  response: Record<string, unknown>,
+  ctx: OAuthDeviceCodeContext | OAuthCredentialRefreshContext,
+  priorSecrets?: AuthSecretBag,
+): Promise<OAuthLoginBuildResult> {
+  const built = buildGrokOAuthCredential(response)
+  preserveGrokAccountProfileSecrets(built.credential.secrets, priorSecrets)
+
+  const accessToken = str(built.credential.secrets.accessToken)
+  if (!accessToken) return built
+
+  try {
+    const client = network(ctx)
+    const profile = await fetchGrokAccountProfile(client, accessToken, ctx.signal)
+    if (grokAccountProfileHasData(profile)) {
+      applyGrokAccountProfile(built.credential.secrets, profile)
+      if (built.result.account && typeof built.credential.secrets.emailAddress === "string") {
+        built.result.account.emailAddress = built.credential.secrets.emailAddress
+      } else if (
+        typeof built.credential.secrets.userId === "string" &&
+        typeof built.credential.secrets.emailAddress === "string"
+      ) {
+        built.result.account = {
+          uuid: built.credential.secrets.userId,
+          emailAddress: built.credential.secrets.emailAddress,
+        }
+      }
+    }
+  } catch {
+    // keep tokens + any preserved prior profile fields
+  }
+  return built
 }
 
 /** Decode a stored Grok OAuth secret bag into runtime provider auth. */
@@ -192,9 +253,19 @@ export function readGrokOAuthAuth(secrets: AuthSecretBag): ProviderAuth | null {
 export function inspectGrokOAuthCredential(secrets: AuthSecretBag): AuthCredentialInfo {
   const token = str(secrets.accessToken)
   const exp = num(secrets.expiresAt)
+  const email = str(secrets.emailAddress)
+  const userId = str(secrets.userId)
+  const plan = str(secrets.plan)
+  const planStatus = str(secrets.planStatus)
+  const labelParts = [email, plan, planStatus].filter(Boolean)
+  const accountId = email ?? userId
   return {
     usable: Boolean(token && token.length > 0),
+    hasRefreshToken: Boolean(str(secrets.refreshToken)),
     ...(exp ? { expiresAt: exp } : {}),
+    ...(accountId ? { accountId } : {}),
+    ...(str(secrets.teamId) ? { organizationId: str(secrets.teamId) } : {}),
+    ...(labelParts.length > 0 ? { label: labelParts.join(" · ") } : {}),
   }
 }
 
@@ -285,7 +356,7 @@ async function completeGrokDeviceCode(
 
     if (response.ok) {
       const tokens = await response.json<Record<string, unknown>>()
-      return buildGrokOAuthCredential(tokens)
+      return finalizeGrokOAuthCredential(tokens, ctx)
     }
 
     let errBody: Record<string, unknown> = {}
@@ -344,10 +415,14 @@ export async function refreshGrokOAuthCredential(
     throw new Error(`Grok OAuth refresh failed (${response.status}): ${text}`)
   }
   const raw = await response.json<Record<string, unknown>>()
-  return buildGrokOAuthCredential({
-    ...raw,
-    refresh_token: str(raw.refresh_token) ?? refreshToken,
-  })
+  return finalizeGrokOAuthCredential(
+    {
+      ...raw,
+      refresh_token: str(raw.refresh_token) ?? refreshToken,
+    },
+    ctx,
+    secrets,
+  )
 }
 
 export const grokOAuthLogin: OAuthLoginProvider = {

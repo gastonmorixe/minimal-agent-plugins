@@ -54,6 +54,19 @@ Runtime:
 - **api-key** → `https://api.x.ai/v1/{chat/completions\|responses}`
 - **oauth** → `https://cli-chat-proxy.grok.com/v1/...` + `X-XAI-Token-Auth: xai-grok-cli` + `x-grok-model-override`
 
+On device-code login and every OAuth refresh, the plugin enriches the credential
+bag (best-effort) from:
+
+| Endpoint | Persisted fields |
+| -------- | ---------------- |
+| `GET auth.x.ai/oauth2/userinfo` | `emailAddress`, `displayName`, `givenName`, `familyName`, `emailVerified`, `picture` |
+| `GET grok.com/api/auth/session` | `xUserId` (plus identity fallbacks) |
+| `GET grok.com/rest/subscriptions` | `plan` (tier), `planStatus`, `planProvider`, `billingPeriodEnd` |
+
+JWT claims still fill `userId` / `principalId` / `teamId` / `jwtTier`. If profile
+fetches fail on refresh, prior email/plan fields are kept. xAI rotates refresh
+tokens — the new `refreshToken` is always written when returned.
+
 ## Quotas (status bar)
 
 - `rpm` / `tpm` from `x-ratelimit-*` response headers (captured on every turn)
@@ -92,6 +105,7 @@ cd ma-llm-grok-plugin && bun test
 adapter.ts           dual-surface ProviderAdapter + ProviderPlugin
 auth.ts              API key strategy (+ re-exports OAuth)
 oauth-login.ts       device-code PIN + refresh (OAuthLoginProvider)
+account-profile.ts   userinfo/session/subscriptions → secret fields
 capabilities.ts      per-model/surface CAPS_* (image/tools/effort)
 models.ts            dual registration (responses + chat)
 headers.ts           Bearer + session headers

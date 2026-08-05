@@ -83,26 +83,20 @@ function setup() {
   reg = makeTestRegistry()
   bootstrapGrok({ models: reg.models, providers: reg.providers })
 }
-function resolveModel(id: string) {
-  return reg.resolveModel(id)
-}
-function resolveProvider(id: string) {
-  return reg.resolveProvider(id)
-}
+const resolveModel = (id: string) => reg.resolveModel(id)
+const resolveProvider = (id: string) => reg.resolveProvider(id)
 
 function sseStream(raw: string): ReadableStream<Uint8Array> {
   const bytes = new TextEncoder().encode(raw)
   return new ReadableStream({
-    start(controller) {
-      controller.enqueue(bytes)
-      controller.close()
+    start(c) {
+      c.enqueue(bytes)
+      c.close()
     },
   })
 }
-
-function openaiChatPong(): string {
-  return readFileSync(join(import.meta.dir, "__fixtures__/chat-pong.sse"), "utf-8")
-}
+const openaiChatPong = () =>
+  readFileSync(join(import.meta.dir, "__fixtures__/chat-pong.sse"), "utf-8")
 
 describe("llm-grok provider plugin (architecture-aligned)", () => {
   it("exposes API-key + OAuth (device-code) strategies", () => {
