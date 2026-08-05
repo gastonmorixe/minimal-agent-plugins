@@ -22,6 +22,10 @@ import {
 import type { RunContext } from "./lib/provider-auth.ts"
 import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
+import {
+  type OpenAIResponsesEvent,
+  translateOpenAIResponsesStream,
+} from "./responses/response-stream.ts"
 
 // A repo-separated provider resolves from a local test registrar rather than
 // the host registry. `setup()` re-registers into a fresh one each call and
@@ -52,6 +56,10 @@ function openaiChatPong(): string {
   return readFileSync(join(import.meta.dir, "__fixtures__/chat-pong.sse"), "utf-8")
 }
 
+function openaiResponsesPong(): string {
+  return readFileSync(join(import.meta.dir, "__fixtures__/responses-pong.sse"), "utf-8")
+}
+
 function anthropicPong(): string {
   return readFileSync(
     join(import.meta.dir, "__fixtures__/conversation-opus48.res-body.sse"),
@@ -61,7 +69,7 @@ function anthropicPong(): string {
 
 // Host-integration its (host run() + NetworkResponse mock) live in a core test;
 // this file covers plugin-local wire/registration only.
-describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)", () => {
+describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", () => {
   it("exposes API-key auth and no OAuth login strategy", () => {
     expect(opencodeProviderPlugin.apiKeyAuth).toBe(opencodeApiKeyAuth)
     expect(opencodeProviderPlugin.oauthLogin).toBeUndefined()
@@ -85,7 +93,7 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
     })
   })
 
-  it("registers models on both surfaces", () => {
+  it("registers models on all three surfaces", () => {
     setup()
 
     const chatModel = resolveModel("deepseek-v4-flash")
@@ -93,20 +101,26 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
     expect(chatModel.surfaceId).toBe("openai-chat-completions")
     expect(chatModel.vendorIds?.firstParty).toBe("deepseek-v4-flash")
 
-    const msgModel = resolveModel("qwen3.7-max")
+    const msgModel = resolveModel("qwen3.8-max")
     expect(msgModel.providerId).toBe("opencode")
     expect(msgModel.surfaceId).toBe("anthropic-messages")
-    expect(msgModel.vendorIds?.firstParty).toBe("qwen3.7-max")
+    expect(msgModel.vendorIds?.firstParty).toBe("qwen3.8-max")
+
+    const responsesModel = resolveModel("gpt-5.6-luna")
+    expect(responsesModel.providerId).toBe("opencode")
+    expect(responsesModel.surfaceId).toBe("openai-responses")
+    expect(responsesModel.vendorIds?.firstParty).toBe("gpt-5.6-luna")
 
     const adapter = resolveProvider("opencode")
     expect(adapter.surfaces).toContain("openai-chat-completions")
     expect(adapter.surfaces).toContain("anthropic-messages")
+    expect(adapter.surfaces).toContain("openai-responses")
     expect(adapter.displayName).toBe("OpenCode Go")
   })
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-07-30 (authoritative ID list).
+    // Live /v1/models snapshot 2026-08-05 (authoritative ID list).
     const ids = [
       "minimax-m3",
       "minimax-m2.7",
@@ -120,6 +134,8 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
       "glm-5",
       "deepseek-v4-pro",
       "deepseek-v4-flash",
+      "gpt-5.6-luna",
+      "qwen3.8-max",
       "qwen3.7-max",
       "qwen3.7-plus",
       "qwen3.6-plus",
@@ -138,7 +154,7 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
     }
   })
 
-  it("applies models.dev caps and docs/go pricing (2026-07-30)", () => {
+  it("applies models.dev caps and docs/go pricing (2026-08-05)", () => {
     setup()
     // Caps refreshed from models.dev where they previously drifted.
     expect(resolveModel("glm-5").capabilities.contextWindow).toBe(202_752)
@@ -154,6 +170,54 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
     // Docs/go wins over models.dev on grok cache_read ($0.30 vs $0.50).
     expect(resolveModel("grok-4.5").pricing?.cacheReadUSD).toBe(0.3)
     expect(resolveModel("minimax-m2.7").pricing?.cacheWriteUSD).toBe(0.375)
+
+    // New 2026-08-05 models.
+    const luna = resolveModel("gpt-5.6-luna")
+    expect(luna.surfaceId).toBe("openai-responses")
+    expect(luna.capabilities.contextWindow).toBe(1_050_000)
+    expect(luna.capabilities.maxOutputTokens).toBe(128_000)
+    expect(luna.capabilities.modalities).toEqual({
+      image: true,
+      audio: false,
+      pdf: true,
+      video: false,
+    })
+    expect(luna.capabilities.acceptsTemperature).toBe(false)
+    expect([...luna.capabilities.effort.levels]).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
+    // Docs/go ≤272K wins over models.dev base rates.
+    expect(luna.pricing?.inputUSD).toBe(0.2)
+    expect(luna.pricing?.outputUSD).toBe(1.2)
+    expect(luna.pricing?.cacheReadUSD).toBe(0.02)
+    expect(luna.pricing?.cacheWriteUSD).toBe(0.25)
+
+    const qwen38 = resolveModel("qwen3.8-max")
+    expect(qwen38.surfaceId).toBe("anthropic-messages")
+    expect(qwen38.capabilities.contextWindow).toBe(1_000_000)
+    expect(qwen38.capabilities.maxOutputTokens).toBe(131_072)
+    expect(qwen38.capabilities.modalities).toEqual({
+      image: true,
+      audio: false,
+      pdf: false,
+      video: true,
+    })
+    expect(qwen38.pricing?.inputUSD).toBe(2.0)
+    expect(qwen38.pricing?.outputUSD).toBe(6.0)
+    expect(qwen38.pricing?.cacheReadUSD).toBe(0.25)
+    expect(qwen38.pricing?.cacheWriteUSD).toBe(2.5)
+
+    // deepseek-v4-flash effort ladder synced to models.dev.
+    expect([...resolveModel("deepseek-v4-flash").capabilities.effort.levels]).toEqual([
+      "low",
+      "high",
+      "max",
+    ])
   })
 
   it("registers ad-hoc slugs on demand", () => {
@@ -175,6 +239,18 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
     let text = ""
     for (const ev of events) if (isEvent(ev, "text_delta")) text += ev.text
     expect(text).toBe("pong")
+  })
+
+  it("round-trips a Responses stream through the REUSED OpenAI translator", async () => {
+    const events: CanonicalEvent[] = []
+    for await (const ev of translateOpenAIResponsesStream(
+      parseSse<OpenAIResponsesEvent>(sseStream(openaiResponsesPong())),
+    )) {
+      events.push(ev)
+    }
+    let text = ""
+    for (const ev of events) if (isEvent(ev, "text_delta")) text += ev.text
+    expect(text.length).toBeGreaterThan(0)
   })
 
   it("round-trips a Messages stream through the REUSED Anthropic translator", async () => {
@@ -199,8 +275,23 @@ describe("llm-opencode (dual-surface provider: OpenAI Chat + Anthropic Messages)
   it("validates a plain Messages request via the REUSED Anthropic validator", () => {
     setup()
     const adapter = resolveProvider("opencode")
-    const req: CanonicalRequest = { modelId: "qwen3.7-max", messages: [userText("hi")] }
-    expect(adapter.validate(req, resolveModel("qwen3.7-max")).ok).toBe(true)
+    const req: CanonicalRequest = { modelId: "qwen3.8-max", messages: [userText("hi")] }
+    expect(adapter.validate(req, resolveModel("qwen3.8-max")).ok).toBe(true)
+  })
+
+  it("validates a plain Responses request and rejects temperature on Luna", () => {
+    setup()
+    const adapter = resolveProvider("opencode")
+    const model = resolveModel("gpt-5.6-luna")
+    const ok: CanonicalRequest = { modelId: "gpt-5.6-luna", messages: [userText("hi")] }
+    expect(adapter.validate(ok, model).ok).toBe(true)
+
+    const bad: CanonicalRequest = {
+      modelId: "gpt-5.6-luna",
+      messages: [userText("hi")],
+      generation: { temperature: 0.7 },
+    }
+    expect(adapter.validate(bad, model).ok).toBe(false)
   })
 
   it("rejects missing API key on run", async () => {

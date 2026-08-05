@@ -1,19 +1,26 @@
 /**
  * Per-model capability tables for OpenCode Go models.
  *
- * Two wire surfaces:
+ * Three wire surfaces:
  * - **Chat**: OpenAI Chat Completions (`/v1/chat/completions`).
  *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, Grok.
  * - **Messages**: Anthropic Messages (`/v1/messages`).
  *   Used by MiniMax, Qwen.
+ * - **Responses**: OpenAI Responses (`/v1/responses`).
+ *   Used by GPT-5.6 Luna.
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
  *
- * Source precedence (2026-07-30):
+ * Source precedence (2026-08-05):
  * 1. Live IDs from `https://opencode.ai/zen/go/v1/models` (must stay in sync)
  * 2. Context / maxOutput / modalities from models.dev `opencode-go` provider
  * 3. Docs (`opencode.ai/docs/go`) for surface/endpoint mapping; no window sizes
  * 4. Clone only when docs/family imply same shape and secondary sources omit the slug
+ *
+ * Three wire surfaces:
+ * - Chat Completions (`/v1/chat/completions`) — DeepSeek, GLM, Kimi, MiMo, Hy, Grok
+ * - Anthropic Messages (`/v1/messages`) — MiniMax, Qwen
+ * - OpenAI Responses (`/v1/responses`) — GPT-5.6 Luna
  *
  * @module llm/providers/opencode/capabilities
  */
@@ -56,6 +63,17 @@ const M_TIVA = { image: true, audio: true, pdf: false, video: true } as const
 /** Text + image + audio + pdf (legacy MiMo Omni). */
 const M_TIAP = { image: true, audio: true, pdf: true, video: false } as const
 
+/** Text + image + pdf (GPT-5.6 Luna on OpenCode Go). */
+const M_TIP = { image: true, audio: false, pdf: true, video: false } as const
+
+const TOOLS_STRICT = {
+  userDefined: true,
+  parallel: true,
+  fineGrainedStreaming: true,
+  toolChoice: true,
+  strictSchema: true,
+} as const
+
 // ---------------------------------------------------------------------------
 // Thinking helpers
 // ---------------------------------------------------------------------------
@@ -67,11 +85,25 @@ const M_TIAP = { image: true, audio: true, pdf: true, video: false } as const
  * Used by most Chat-surface models (DeepSeek, GLM, Kimi, MiMo).
  */
 function thinkExtended(
-  levels: ReadonlyArray<"low" | "medium" | "high" | "max">,
-  df: "low" | "medium" | "high" | "max" = "medium",
+  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh" | "max">,
+  df: "none" | "low" | "medium" | "high" | "xhigh" | "max" = "medium",
 ) {
   return {
     thinking: { adaptive: false, extended: true, visible: true, interleaved: false } as const,
+    effort: { levels, default: df } as const,
+  }
+}
+
+/**
+ * OpenAI Responses-style adaptive reasoning with visible interleaved
+ * summaries. Used by GPT-5.6 Luna on `/v1/responses`.
+ */
+function thinkResponses(
+  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh" | "max">,
+  df: "none" | "low" | "medium" | "high" | "xhigh" | "max" = "medium",
+) {
+  return {
+    thinking: { adaptive: true, extended: false, visible: true, interleaved: true } as const,
     effort: { levels, default: df } as const,
   }
 }
@@ -162,11 +194,12 @@ export const CAPS_DEEPSEEK_V4_PRO: Capabilities = {
 
 /**
  * DeepSeek V4 Flash — 1M ctx, 384K output, text-only.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints table.
+ * Efforts: low | high | max (models.dev reasoning_options).
  */
 export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
   ...chatBase(1_000_000, 384_000, M_TEXT),
-  ...thinkExtended(["high", "max"], "high"),
+  ...thinkExtended(["low", "high", "max"], "high"),
 }
 
 /**
@@ -333,6 +366,16 @@ export const CAPS_MINIMAX_M2_5: Capabilities = {
 }
 
 /**
+ * Qwen3.8 Max — 1M ctx, 131K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints (/v1/messages).
+ * Pricing: docs/go + models.dev agree ($2/$6/$0.25/$2.50).
+ */
+export const CAPS_QWEN3_8_MAX: Capabilities = {
+  ...msgBase(1_000_000, 131_072, M_TIV),
+  ...thinkAdaptive(),
+}
+
+/**
  * Qwen3.7 Max — 1M ctx, 65K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
  */
@@ -366,6 +409,40 @@ export const CAPS_QWEN3_6_PLUS: Capabilities = {
 export const CAPS_QWEN3_5_PLUS: Capabilities = {
   ...msgBase(262_144, 65_536, M_TIV),
   ...thinkAdaptive(),
+}
+
+// ===========================================================================
+// OpenAI Responses surface models
+// ===========================================================================
+
+/**
+ * GPT-5.6 Luna — 1.05M ctx, 128K output, text+image+pdf.
+ * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints
+ * (`/v1/responses`, `@ai-sdk/openai`). Reasoning model: no temperature/top_p.
+ * Efforts: none | low | medium | high | xhigh | max (models.dev).
+ * Server tools / stateful history are OpenAI-first-party features; OpenCode Go
+ * does not advertise them, so keep them off.
+ */
+export const CAPS_GPT_5_6_LUNA: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_050_000,
+  maxOutputTokens: 128_000,
+  maxOutputTokensBatch: null,
+  ...thinkResponses(["none", "low", "medium", "high", "xhigh", "max"], "medium"),
+  acceptsTemperature: false,
+  acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_STRICT },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...M_TIP },
+  serverSideHistory: false,
+  serverTools: [],
 }
 
 // ---------------------------------------------------------------------------

@@ -1,16 +1,18 @@
 /**
- * OpenCode Go `ProviderAdapter` — a dual-surface cross-plugin-reuse example.
+ * OpenCode Go `ProviderAdapter` — a triple-surface cross-plugin-reuse example.
  *
  * OpenCode Go (opencode.ai/go) is a low-cost subscription to open-weight
- * models. It exposes two wire formats depending on the model:
+ * models (plus GPT-5.6 Luna). It exposes three wire formats depending on
+ * the model:
  *
  * - **OpenAI Chat Completions** (`/v1/chat/completions`) — DeepSeek, GLM,
  *   Kimi, MiMo, Hy, Grok.
  * - **Anthropic Messages** (`/v1/messages`) — MiniMax, Qwen.
+ * - **OpenAI Responses** (`/v1/responses`) — GPT-5.6 Luna.
  *
- * This adapter REUSES `plugins/llm-openai`'s wire layer for the Chat
- * surface and `plugins/llm-anthropic`'s wire layer for the Messages
- * surface. Only the endpoints and auth strategy differ.
+ * This adapter REUSES `plugins/llm-openai`'s Chat + Responses wire layers
+ * and `plugins/llm-anthropic`'s Messages wire layer (vendored under `lib/`
+ * and `responses/`). Only the endpoints and auth strategy differ.
  *
  * Auth: a Bearer API key from minimal-agent's provider auth store.
  *
@@ -47,9 +49,15 @@ import {
   registerOpencodeModels,
 } from "./models.ts"
 import { PRICING_OPENCODE_GENERIC } from "./pricing.ts"
+import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
+import {
+  type OpenAIResponsesEvent,
+  translateOpenAIResponsesStream,
+} from "./responses/response-stream.ts"
 
 const OPENCODE_CHAT_URL = "https://opencode.ai/zen/go/v1/chat/completions"
 const OPENCODE_MESSAGES_URL = "https://opencode.ai/zen/go/v1/messages"
+const OPENCODE_RESPONSES_URL = "https://opencode.ai/zen/go/v1/responses"
 
 function buildOpencodeMessagesHeaders(auth: RunContext["auth"]): Record<string, string> {
   const headers: Record<string, string> = {
@@ -71,13 +79,18 @@ function buildOpencodeMessagesHeaders(auth: RunContext["auth"]): Record<string, 
 export const opencodeAdapter: ProviderAdapter = {
   id: "opencode",
   displayName: "OpenCode Go",
-  surfaces: ["openai-chat-completions", "anthropic-messages"] satisfies ReadonlyArray<SurfaceId>,
+  surfaces: [
+    "openai-chat-completions",
+    "anthropic-messages",
+    "openai-responses",
+  ] satisfies ReadonlyArray<SurfaceId>,
 
   validate(req: CanonicalRequest, model: ModelEntry): ValidationResult {
-    if (model.surfaceId === "openai-chat-completions") {
-      return validateOpenAIRequest(req, model)
+    if (model.surfaceId === "anthropic-messages") {
+      return validateAnthropicRequest(req, model)
     }
-    return validateAnthropicRequest(req, model)
+    // Chat Completions + Responses share the OpenAI capability validator.
+    return validateOpenAIRequest(req, model)
   },
 
   async *run(
@@ -149,6 +162,42 @@ export const opencodeAdapter: ProviderAdapter = {
         throw new Error("OpenCode Go API: empty response body for stream")
       }
       yield* translateAnthropicStream(parseSse<AnthropicStreamEvent>(response.body))
+    } else if (model.surfaceId === "openai-responses") {
+      const headers = buildOpenAIHeaders({ auth })
+      const body = buildOpenAIResponsesBody(req, model)
+      if (!body.prompt_cache_key && ctx.sessionId) {
+        body.prompt_cache_key = ctx.sessionId
+      }
+      // OpenCode Go is API-key only; keep store off unless the caller set it.
+      if (body.store !== true && body.previous_response_id !== undefined) {
+        delete body.previous_response_id
+        ctx.debug?.kv("previous_response_id", "dropped (store!=true)")
+      }
+      const serialized = JSON.stringify(body)
+
+      ctx.debug?.header(`POST ${OPENCODE_RESPONSES_URL}`)
+      ctx.debug?.kv("model", body.model)
+      ctx.debug?.kv("surface", "responses")
+      ctx.debug?.headers(headers)
+      ctx.debug?.body(body)
+
+      const response = await networkClient.request({
+        label: "opencode.responses",
+        method: "POST",
+        url: OPENCODE_RESPONSES_URL,
+        headers,
+        body: serialized,
+        signal: req.signal,
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`OpenCode Go API ${response.status}: ${text}`)
+      }
+      if (!response.body) {
+        throw new Error("OpenCode Go API: empty response body for stream")
+      }
+      yield* translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body))
     } else {
       throw new Error(`OpenCode Go adapter: unhandled surface "${model.surfaceId}"`)
     }
