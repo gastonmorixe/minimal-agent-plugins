@@ -43,14 +43,13 @@ export function setCursorBidiSession(sessionId: string, session: CursorBidiSessi
 }
 
 /** Close and remove a bidi session. */
-export function clearCursorBidiSession(sessionId: string): void {
+export function clearCursorBidiSession(sessionId: string, expected?: CursorBidiSession): void {
   const prev = sessions.get(sessionId)
-  if (prev) {
-    try {
-      prev.wire.close()
-    } catch {
-      /* ignore */
-    }
+  if (!prev || (expected && prev !== expected)) return
+  try {
+    prev.wire.close()
+  } catch {
+    /* ignore */
   }
   sessions.delete(sessionId)
 }

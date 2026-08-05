@@ -63,13 +63,24 @@ export async function* runCursorBidi(
   const existing = getCursorBidiSession(sessionKey)
 
   if (existing && requestHasToolResultContinuation(req)) {
-    if (existing.pendingExec) {
+    if (existing.pendingExec && !existing.wire.isClosed()) {
       cursorBidiLog("run.continue", { sessionKey })
-      yield* continueBidiSession(req, existing, opts)
-      return
+      try {
+        yield* continueBidiSession(req, existing, opts)
+        return
+      } catch (err) {
+        // A terminal event can race this check. Do not leave a dead session
+        // with pendingExec in the map, where every later continuation retries
+        // the same closed wire until the process is restarted.
+        clearCursorBidiSession(sessionKey, existing)
+        throw err
+      }
     }
-    cursorBidiLog("run.continue-fresh-wire", { sessionKey })
-    clearCursorBidiSession(sessionKey)
+    cursorBidiLog("run.continue-fresh-wire", {
+      sessionKey,
+      reason: existing.pendingExec ? "wire-closed" : "no-pending-exec",
+    })
+    clearCursorBidiSession(sessionKey, existing)
   } else if (existing) {
     clearCursorBidiSession(sessionKey)
   }
