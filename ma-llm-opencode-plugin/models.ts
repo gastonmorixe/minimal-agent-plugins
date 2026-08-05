@@ -1,14 +1,15 @@
 /**
  * OpenCode Go model registry entries.
  *
- * Dual-surface: OpenAI Chat Completions models (DeepSeek, GLM, Kimi, MiMo,
- * Hy, Grok) and Anthropic Messages models (MiniMax, Qwen) share the same
- * provider id but dispatch through their respective wire translators.
+ * Triple-surface: OpenAI Chat Completions (DeepSeek, GLM, Kimi, MiMo, Hy,
+ * Grok), Anthropic Messages (MiniMax, Qwen), and OpenAI Responses
+ * (GPT-5.6 Luna) share the same provider id but dispatch through their
+ * respective wire translators.
  *
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
  * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
  * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
- * (2026-07-30).
+ * (2026-08-05).
  *
  * @module llm/providers/opencode/models
  */
@@ -19,6 +20,7 @@ import {
   CAPS_GLM_5,
   CAPS_GLM_5_1,
   CAPS_GLM_5_2,
+  CAPS_GPT_5_6_LUNA,
   CAPS_GROK_4_5,
   CAPS_HY3,
   CAPS_HY3_PREVIEW,
@@ -37,6 +39,7 @@ import {
   CAPS_QWEN3_6_PLUS,
   CAPS_QWEN3_7_MAX,
   CAPS_QWEN3_7_PLUS,
+  CAPS_QWEN3_8_MAX,
 } from "./capabilities.ts"
 import type { Capabilities } from "./lib/capabilities.ts"
 import type { SurfaceId } from "./lib/host-types.ts"
@@ -48,6 +51,7 @@ import {
   PRICING_GLM_5,
   PRICING_GLM_5_1,
   PRICING_GLM_5_2,
+  PRICING_GPT_5_6_LUNA,
   PRICING_GROK_4_5,
   PRICING_HY3,
   PRICING_HY3_PREVIEW,
@@ -66,6 +70,7 @@ import {
   PRICING_QWEN3_6_PLUS,
   PRICING_QWEN3_7_MAX,
   PRICING_QWEN3_7_PLUS,
+  PRICING_QWEN3_8_MAX,
 } from "./pricing.ts"
 
 const estimateTokens = makeCharRatioEstimator(3.8)
@@ -239,6 +244,15 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       surfaceId: "openai-chat-completions",
     }),
 
+    // OpenAI Responses surface
+    makeSpec("gpt-5.6-luna", {
+      displayName: "GPT-5.6 Luna",
+      tags: ["opencode", "openai-responses", "gpt"],
+      capabilities: CAPS_GPT_5_6_LUNA,
+      pricing: PRICING_GPT_5_6_LUNA,
+      surfaceId: "openai-responses",
+    }),
+
     // Anthropic Messages surface
     makeSpec("minimax-m3", {
       displayName: "MiniMax M3",
@@ -259,6 +273,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "anthropic-compatible", "minimax"],
       capabilities: CAPS_MINIMAX_M2_5,
       pricing: PRICING_MINIMAX_M2_5,
+      surfaceId: "anthropic-messages",
+    }),
+    makeSpec("qwen3.8-max", {
+      displayName: "Qwen3.8 Max",
+      tags: ["opencode", "anthropic-compatible", "qwen", "flagship"],
+      capabilities: CAPS_QWEN3_8_MAX,
+      pricing: PRICING_QWEN3_8_MAX,
       surfaceId: "anthropic-messages",
     }),
     makeSpec("qwen3.7-max", {

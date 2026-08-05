@@ -6,7 +6,7 @@
  * limits. We record the Go list prices so cost estimates reflect real
  * quota burn.
  *
- * Source precedence (2026-07-30):
+ * Source precedence (2026-08-05):
  * 1. Docs pricing table at `opencode.ai/docs/go` (authoritative Go list rates)
  * 2. models.dev `opencode-go` cost block when docs omit a slug (deprecated /
  *    catalog-only IDs still on live `/v1/models`)
@@ -16,6 +16,8 @@
  * - grok-4.5 cache_read: docs $0.30 vs models.dev $0.50 → docs
  * - minimax-m2.5 cache_read: docs $0.06 vs models.dev $0.03 → docs
  * - minimax-m2.7 / m2.5 cache_write: docs only → docs
+ * - gpt-5.6-luna ≤272K: docs $0.20/$1.20/$0.02/$0.25 vs models.dev
+ *   $0.10/$0.60/$0.01/$0.125 → docs (keep base Go list rate)
  *
  * @module llm/providers/opencode/pricing
  */
@@ -265,6 +267,28 @@ export const PRICING_QWEN3_6_PLUS: MTokRate = {
  * (deprecated; still on live `/v1/models`).
  */
 export const PRICING_QWEN3_5_PLUS: MTokRate = {
+  inputUSD: 0.2,
+  outputUSD: 1.2,
+  cacheWriteUSD: 0.25,
+  cacheReadUSD: 0.02,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: docs/go pricing table (2026-08-05). models.dev agrees. */
+export const PRICING_QWEN3_8_MAX: MTokRate = {
+  inputUSD: 2.0,
+  outputUSD: 6.0,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.25,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: docs/go ≤272K tier (2026-08-05); covers most agent calls.
+ * Docs also publish \>272K tier ($0.40/$1.80/$0.04/$0.50).
+ * Note: models.dev base is $0.10/$0.60/$0.01/$0.125 — prefer docs.
+ */
+export const PRICING_GPT_5_6_LUNA: MTokRate = {
   inputUSD: 0.2,
   outputUSD: 1.2,
   cacheWriteUSD: 0.25,
