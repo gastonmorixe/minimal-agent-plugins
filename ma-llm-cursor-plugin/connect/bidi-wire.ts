@@ -12,6 +12,8 @@ import { type ConnectEnvelope, ConnectFrameReader, connectFrameProto } from "./s
 export type CursorBidiWire = {
   writeProto(payload: Uint8Array): void
   close(): void
+  /** True after the response stream has ended or the wire was explicitly closed. */
+  isClosed(): boolean
   envelopes(signal?: AbortSignal): AsyncGenerator<ConnectEnvelope>
 }
 
@@ -140,6 +142,9 @@ export function createBidiWireFromResponse(response: NetworkResponse): CursorBid
       response.writeRequestBody!(framed)
     },
     close,
+    isClosed() {
+      return closed
+    },
     async *envelopes(signal?: AbortSignal): AsyncGenerator<ConnectEnvelope> {
       const onAbort = () => close()
       signal?.addEventListener("abort", onAbort, { once: true })
