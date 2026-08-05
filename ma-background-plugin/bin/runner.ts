@@ -80,7 +80,6 @@ async function main(): Promise<never> {
       // best-effort, a missing sidecar reconciles as orphaned, never crashes
     }
   }
-  writeSidecar(runningSidecar(base))
 
   // Settle-once guard so the racing cleanup paths record exactly one outcome.
   let settled = false
@@ -120,6 +119,10 @@ async function main(): Promise<never> {
     terminate()
   }
 
+  // Install EVERY stop path BEFORE publishing `running`. The integration suite
+  // (and BackgroundStop) wait on the sidecar: if SIGTERM arrives in the window
+  // after `running` is visible but before handlers are registered, Bun's default
+  // disposition kills us and the sidecar stays stuck at `running` forever.
   // --- Layer 1: stdin EOF (harness death, foolproof, survives -9) ---
   // The harness holds the write end. Any harness exit closes it -> we see EOF.
   const onStdinGone = (): void => stopWith(STOP_REASON.HARNESS_EXIT)
@@ -152,6 +155,9 @@ async function main(): Promise<never> {
     }, cfg.timeoutMs)
     deadline.unref?.()
   }
+
+  // Publish `running` only once stop paths are armed.
+  writeSidecar(runningSidecar(base))
 
   // Wait for the job to exit (whether naturally or because a path killed it).
   const exitCode = await proc.exited
