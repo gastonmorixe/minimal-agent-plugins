@@ -3,29 +3,22 @@
  *
  * Declares the `obscura` render-engine binary the Fetch tool needs, so the host
  * can provision it into the managed `~/.minimal-agent/bin/` on a fresh box (and
- * update it when a newer build is pinned). The plugin returns a descriptor as
+ * update it when a newer build is published). The plugin returns a descriptor as
  * DATA; the agent does the download / verify / install / audit with TUI
  * progress. The plugin NEVER touches the filesystem.
  *
  * ## Private binaries, account-less install
  *
- * obscura's SOURCE is private. We do NOT publish a public download URL. Instead
- * the compiled binaries live in a PRIVATE release repo (`obscura-dist`), and
- * this plugin ships an EMBEDDED read-only credential (a fine-grained PAT scoped
- * to only that repo, Contents: read-only). The host fetches the release asset
- * via the GitHub REST API using that embedded token, so ANY copy of the plugin
- * can install obscura, including a friend with no GitHub account of their own,
- * because the credential travels with the plugin, not with the user.
- *
- * The hardcoded coordinates (`repo` / `tag` / `asset` / `sha256` / `version`)
- * never expire: the real download URL is a short-lived signed URL minted fresh
- * by GitHub on each install and consumed immediately. Never stored here.
+ * obscura's SOURCE is private. Compiled binaries live in a PRIVATE release repo
+ * (`obscura-dist`). This plugin ships an EMBEDDED read-only credential (a
+ * fine-grained PAT scoped to only that repo, Contents: read-only). At setup we
+ * resolve the rolling `latest` release via the GitHub API (no hardcoded build
+ * epoch in source), then ask the host to fetch that asset with the same token.
  *
  * Security posture of the embedded token: read-only, single-repo, and it only
  * grants pulling the (already-distributed) obscura binaries. A leak exposes
  * nothing else. Rotate by bumping the plugin release. The token is read from a
- * sibling `obscura-token.ts` (gitignored; CI writes the real value at release
- * time) so the secret is not committed to the plugin's source tree.
+ * sibling `obscura-token.ts`.
  *
  * ## How the backend finds the binary at runtime
  *
@@ -45,7 +38,7 @@
  *
  * If the user sets `plugins["ma-fetch"].obscura.bin` to their own obscura
  * build, provisioning is skipped (their path wins; the backend reads
- * `MA_FETCH_BIN`). Local dev against `~/Projects/obscura` keeps working.
+ * `MA_FETCH_BIN`). Local dev against a local obscura checkout keeps working.
  *
  * @module setup
  */
@@ -53,6 +46,11 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import {
+  OBSCURA_DIST_REPO,
+  ResolveObscuraError,
+  resolveObscuraBuild,
+} from "./lib/resolve-obscura-release.ts"
 import { agentHome } from "./lib/paths.ts"
 import { OBSCURA_DIST_TOKEN } from "./obscura-token.ts"
 
@@ -80,6 +78,7 @@ interface SetupContext {
   packageDir: string
   cwd: string
   env: Record<string, string>
+  abort?: AbortSignal
   binaries: {
     readonly dir: string
     has(name: string): boolean
@@ -95,40 +94,6 @@ interface SetupResult {
   requireBinaries?: SetupBinarySpec[]
   haltIfMissing?: string[]
   haltMessage?: string
-}
-
-/** The PRIVATE repo holding compiled obscura binaries. */
-const OBSCURA_REPO = "gastonmorixe/obscura-dist"
-
-/**
- * The pinned build this ma-fetch release ships. `tag` + per-asset `sha256` +
- * `version` are filled by obscura CI's release step (it knows the epoch +
- * digests). `version` is the build epoch. Bumping it on the next plugin
- * release makes the host classify an older installed copy as `outdated` and
- * update it.
- */
-const OBSCURA_VERSION = "1780598942"
-const OBSCURA_TAG = "build-1780598942"
-
-interface PlatformBuild {
-  asset: string
-  sha256: string
-}
-
-/** key = `${process.platform}-${process.arch}`. */
-const OBSCURA_BUILDS: Record<string, PlatformBuild> = {
-  "darwin-arm64": {
-    asset: "obscura-aarch64-macos-1780598942.tar.gz",
-    sha256: "e61a8217332d944c6aeb360caf5bbeb4d469d8f5c19aae4444fca1dd0f2ab4d7",
-  },
-  "linux-arm64": {
-    asset: "obscura-aarch64-linux-1780598942.tar.gz",
-    sha256: "61f02acc9dfcc22d9114aa78044a5efca28e50f5b20eaafe93a1ad4bd8f9287f",
-  },
-  // Filled as obscura CI publishes each target. Until a real sha is present the
-  // install fails the sha256 check (fails closed: never installs a wrong file).
-  "darwin-x64": { asset: "obscura-x86_64-macos-1780598942.tar.gz", sha256: "" },
-  "linux-x64": { asset: "obscura-x86_64-linux-1780598942.tar.gz", sha256: "" },
 }
 
 /** Read `plugins["ma-fetch"].obscura.bin` from user config, if set. Lenient. */
@@ -151,7 +116,32 @@ function configuredObscuraBin(): string | undefined {
   }
 }
 
-const setup = (ctx: SetupContext): SetupResult => {
+/**
+ * Token used to read obscura-dist. Prefer the embedded read-only PAT; fall back
+ * to host/env/`gh` so a dev box without a baked token still works.
+ */
+async function resolveDistToken(env: Record<string, string>): Promise<string> {
+  if (OBSCURA_DIST_TOKEN.trim()) return OBSCURA_DIST_TOKEN.trim()
+  const fromEnv =
+    env.MINIMAL_AGENT_GITHUB_TOKEN?.trim() ||
+    env.GITHUB_TOKEN?.trim() ||
+    env.GH_TOKEN?.trim() ||
+    process.env.MINIMAL_AGENT_GITHUB_TOKEN?.trim() ||
+    process.env.GITHUB_TOKEN?.trim() ||
+    process.env.GH_TOKEN?.trim()
+  if (fromEnv) return fromEnv
+  try {
+    const proc = Bun.spawn(["gh", "auth", "token"], { stdout: "pipe", stderr: "ignore" })
+    const out = (await new Response(proc.stdout).text()).trim()
+    await proc.exited
+    if (proc.exitCode === 0 && out.length > 0) return out
+  } catch {
+    // fall through
+  }
+  return ""
+}
+
+const setup = async (ctx: SetupContext): Promise<SetupResult> => {
   // 1. Operator override → skip provisioning.
   const override = configuredObscuraBin()
   if (override) {
@@ -161,31 +151,65 @@ const setup = (ctx: SetupContext): SetupResult => {
     return {}
   }
 
-  // 2. Pick the build for this platform.
-  const key = `${process.platform}-${process.arch}`
-  const build = OBSCURA_BUILDS[key]
-  if (!build || build.sha256.length === 0) {
+  // 2. Resolve the rolling latest release for this platform (no source pin).
+  const platform = `${process.platform}-${process.arch}`
+  const token = await resolveDistToken(ctx.env)
+  if (!token) {
     ctx.log.notice(
       "ma-fetch.setup",
-      `no published obscura build for ${key}; set plugins["ma-fetch"].obscura.bin to use Fetch`,
-      { platform: key },
+      "no GitHub token available to resolve obscura-dist; set plugins[\"ma-fetch\"].obscura.bin or embed OBSCURA_DIST_TOKEN",
+      { platform },
     )
     return {}
   }
 
-  // 3. Declare the requirement: a PRIVATE release asset fetched with the
-  //    embedded read-only token. `obscura-worker` rides along as a sibling.
+  let build: Awaited<ReturnType<typeof resolveObscuraBuild>>
+  try {
+    build = await resolveObscuraBuild({
+      token,
+      platformKey: platform,
+      // Honour abort if the host tears setup down mid-resolve.
+      fetch: async (input, init) => {
+        if (ctx.abort?.aborted) throw new ResolveObscuraError("setup aborted")
+        return await fetch(input, { ...init, signal: ctx.abort })
+      },
+    })
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    if (ctx.binaries.has("obscura")) {
+      ctx.log.notice(
+        "ma-fetch.setup",
+        `could not resolve latest obscura (${detail}); keeping installed copy`,
+        { platform },
+      )
+      return {}
+    }
+    ctx.log.notice(
+      "ma-fetch.setup",
+      `could not resolve latest obscura for ${platform}: ${detail}`,
+      { platform },
+    )
+    return {}
+  }
+
+  ctx.log.info("ma-fetch.setup", "resolved obscura latest release", {
+    tag: build.tag,
+    version: build.version,
+    asset: build.asset,
+    platform: build.platform,
+  })
+
+  // 3. Declare the requirement: PRIVATE release asset + embedded token.
+  //    `obscura-worker` rides along as a sibling.
   const spec: SetupBinarySpec = {
     name: "obscura",
-    version: OBSCURA_VERSION,
+    version: build.version,
     source: {
       kind: "github-release",
-      repo: OBSCURA_REPO,
-      tag: OBSCURA_TAG,
+      repo: OBSCURA_DIST_REPO,
+      tag: build.tag,
       asset: build.asset,
-      // Embedded so an account-less copy can still pull. Empty string ⇒ fall
-      // back to the host's own token resolver (a dev machine logged into gh).
-      ...(OBSCURA_DIST_TOKEN ? { token: OBSCURA_DIST_TOKEN } : {}),
+      ...(OBSCURA_DIST_TOKEN ? { token: OBSCURA_DIST_TOKEN } : token ? { token } : {}),
     },
     sha256: build.sha256,
     archiveMember: "obscura",
