@@ -52,9 +52,12 @@ describe("resolveObscuraBuild", () => {
         })
       }
       if (url.endsWith("/releases/assets/11")) {
-        return new Response("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  obscura-aarch64-macos-999.tar.gz\n", {
-          headers: { "Content-Type": "application/octet-stream" },
-        })
+        return new Response(
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  obscura-aarch64-macos-999.tar.gz\n",
+          {
+            headers: { "Content-Type": "application/octet-stream" },
+          },
+        )
       }
       return new Response("not found", { status: 404 })
     }

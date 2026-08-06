@@ -122,7 +122,8 @@ describe("ma-fetch setup()", () => {
     writeFileSync(cfgPath, `{}`)
     process.env.MINIMAL_AGENT_CONFIG = cfgPath
 
-    globalThis.fetch = (async () => new Response("down", { status: 503 })) as unknown as typeof fetch
+    globalThis.fetch = (async () =>
+      new Response("down", { status: 503 })) as unknown as typeof fetch
 
     const result = await setup(ctx({ has: () => true }))
     expect(result.requireBinaries).toBeUndefined()

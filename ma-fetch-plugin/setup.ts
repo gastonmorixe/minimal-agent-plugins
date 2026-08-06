@@ -46,12 +46,12 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { agentHome } from "./lib/paths.ts"
 import {
   OBSCURA_DIST_REPO,
   ResolveObscuraError,
   resolveObscuraBuild,
 } from "./lib/resolve-obscura-release.ts"
-import { agentHome } from "./lib/paths.ts"
 import { OBSCURA_DIST_TOKEN } from "./obscura-token.ts"
 
 // Structural copies of the host's setup types so this file type-checks
@@ -157,7 +157,7 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
   if (!token) {
     ctx.log.notice(
       "ma-fetch.setup",
-      "no GitHub token available to resolve obscura-dist; set plugins[\"ma-fetch\"].obscura.bin or embed OBSCURA_DIST_TOKEN",
+      'no GitHub token available to resolve obscura-dist; set plugins["ma-fetch"].obscura.bin or embed OBSCURA_DIST_TOKEN',
       { platform },
     )
     return {}

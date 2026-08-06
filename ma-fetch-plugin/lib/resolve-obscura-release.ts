@@ -68,6 +68,7 @@ export interface ResolveObscuraOptions {
   preferTag?: string
 }
 
+/** Thrown when the latest obscura release cannot be resolved for this host. */
 export class ResolveObscuraError extends Error {
   constructor(message: string) {
     super(message)
@@ -97,11 +98,11 @@ export function pickAssetForTarget(
   return undefined
 }
 
-async function apiJson<T>(
+async function apiJson(
   url: string,
   token: string,
   fetchImpl: FetchLike,
-): Promise<{ ok: true; status: number; body: T } | { ok: false; status: number }> {
+): Promise<{ ok: true; status: number; body: unknown } | { ok: false; status: number }> {
   const res = await fetchImpl(url, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -112,7 +113,7 @@ async function apiJson<T>(
     redirect: "follow",
   })
   if (!res.ok) return { ok: false, status: res.status }
-  return { ok: true, status: res.status, body: (await res.json()) as T }
+  return { ok: true, status: res.status, body: await res.json() }
 }
 
 async function apiBytes(
@@ -149,22 +150,22 @@ export async function fetchObscuraRelease(
   const base = `https://api.github.com/repos/${repo}/releases`
 
   if (prefer) {
-    const tagged = await apiJson<ObscuraRelease>(
+    const tagged = await apiJson(
       `${base}/tags/${encodeURIComponent(prefer)}`,
       opts.token,
       fetchImpl,
     )
-    if (tagged.ok) return tagged.body
+    if (tagged.ok) return tagged.body as ObscuraRelease
     if (tagged.status !== 404) {
       throw new ResolveObscuraError(`GitHub API ${tagged.status} for ${repo} tag ${prefer}`)
     }
   }
 
-  const latest = await apiJson<ObscuraRelease>(`${base}/latest`, opts.token, fetchImpl)
+  const latest = await apiJson(`${base}/latest`, opts.token, fetchImpl)
   if (!latest.ok) {
     throw new ResolveObscuraError(`GitHub API ${latest.status} for ${repo} /releases/latest`)
   }
-  return latest.body
+  return latest.body as ObscuraRelease
 }
 
 /** Read sha256 from `<asset>.sha256` sidecar, else hash the archive bytes. */
