@@ -37,12 +37,12 @@ function fmtDur(ms: number): string {
 }
 
 /**
- * Render tasks as a columnar text table for the model.
+ * Render tasks as a hash-only columnar table for the model.
  *
- * Each row is `POS  #HASH  STATUS  TITLE` with optional `  DURATION` suffix.
- * Top-level tasks get 1-indexed integer positions; subtasks get the parent's
- * position plus a suffix letter (e.g. `2a`, `2b`). Columns are padded for
- * alignment so the status field is visually scannable.
+ * Each row is `#HASH  STATUS  TITLE` with optional `  DURATION` suffix.
+ * Children are indented two spaces (tree cue only — not an addressable id).
+ * Position numbers and `1a`-style coords are intentionally omitted so the
+ * model has one stable address: the `#hash`.
  *
  * Named `renderTasksColumnar` (not `renderTasksMarkdown`) because the output
  * is a fixed-width columnar table, not a Markdown ordered list.
@@ -50,43 +50,20 @@ function fmtDur(ms: number): string {
 export function renderTasksColumnar(tasks: readonly Task[]): string {
   if (tasks.length === 0) return "_No tasks._"
 
-  // Compute display positions: top-level tasks get 1-indexed numbers,
-  // subtasks get parent's number + suffix letter (a, b, c, ...)
-  const positions = new Map<string, string>()
-  let topN = 0
+  let idWidth = 0
   for (const t of tasks) {
-    if (t.parent === null) {
-      topN += 1
-      positions.set(t.id, String(topN))
-    } else {
-      const parentPos = positions.get(t.parent)
-      if (parentPos === undefined) {
-        positions.set(t.id, "?")
-      } else {
-        // Subtask ids are parent-id + single alpha suffix (a-z), enforced by
-        // TaskStore.subtaskId(). The last character IS the suffix letter.
-        const suffix = t.id.slice(-1)
-        positions.set(t.id, `${parentPos}${suffix}`)
-      }
-    }
+    idWidth = Math.max(idWidth, t.id.length + 1) // +1 for leading '#'
   }
-
-  // Find column widths for clean alignment
-  let posWidth = 0
-  for (const p of positions.values()) posWidth = Math.max(posWidth, p.length)
 
   const lines: string[] = []
   for (const t of tasks) {
-    const pos = positions.get(t.id) ?? "?"
-    const posCol = pos.padEnd(posWidth)
-    const idCol = `#${t.id}`.padEnd(8)
+    const indent = t.parent !== null ? "  " : ""
+    const idCol = `#${t.id}`.padEnd(idWidth)
     const statusCol = t.status.padEnd(8)
     const durText = fmtDur(t.active_ms)
     const durSuffix = durText.length > 0 ? `  ${durText}` : ""
     const reasonSuffix = t.status === "canceled" && t.reason ? ` (${cleanText(t.reason)})` : ""
-    lines.push(
-      `${posCol}  ${idCol}  ${statusCol}  ${cleanText(t.title)}${reasonSuffix}${durSuffix}`,
-    )
+    lines.push(`${indent}${idCol}  ${statusCol}  ${cleanText(t.title)}${reasonSuffix}${durSuffix}`)
   }
   return lines.join("\n")
 }

@@ -2,7 +2,7 @@
   "id": "tasks",
   "name": "Tasks",
   "version": "0.1.0",
-  "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO. Single Task tool with action switch (add, add_many, update, status, start, done, remove, reorder, list, clear). State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected into every user turn as <ma::agent::tasks>.",
+  "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO. Single Task tool with action switch (add, add_many, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model board is hash-only. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as <ma::agent::tasks>.",
   "promptFragments": [
     {
       "id": "planning",
@@ -21,7 +21,7 @@
         "type": "tool",
         "tool": {
           "name": "Task",
-          "description": "Manage a per-session task list. Use at the start of any 3+ step plan (`add_many`) and mark each task `doing` before you work on it (`start`), `done` when finished (`done`). A top-level `add_many` replaces a fully terminal board, so each new plan restarts at visible position 1; it appends while prior work remains open. The user sees a live TODO with real-time status. Mutating actions return the post-mutation task state in a `<ma::agent::tasks>` columnar table so you can confirm state. Last open child auto-promotes its parent (and may return `all_done`); do not also `done` the parent. Re-`done` on an already-done id returns a compact `already_done` ack (no full board). `id` accepts a top-level position (e.g. `3`), a stable hash (`#a7b3c4`), or an unprefixed child-row coordinate (`3a`).",
+          "description": "Manage a per-session task list. Plan with `add_many` + `tasks: [{title, children?}]` (aliases: `items`, flat `titles`). Mark progress with `start` / `done` using `#hash` from the board. Top-level `add_many` replaces a fully terminal board. Status mutations return a short ack; the next-turn `<ma::agent::tasks>` attachment is hash-only (no POS column). Last open child auto-promotes its parent — do not also `done` the parent (hard error if already done). Prefer `#hash`; position / `3a` still resolve but are deprecated for models.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -42,22 +42,44 @@
                 "description": "What to do."
               },
               "id": {
-                "description": "Task reference. Accepts a six-hex hash (`a7b3c4`), an optionally-prefixed hash (`#a7b3c4`), a subtask hash (`a7b3c4a`), a 1-indexed top-level position integer (`3`), or an unprefixed child-row coordinate (`3a`). Required for: update, status, start, done, remove."
+                "description": "Task reference. Prefer `#hash` from the board (`#a7b3c4`, subtask `#a7b3c4a`). Also accepts bare hash, top-level position `3`, or child coord `3a` (deprecated for models; they shift). Required for: update, status, start, done, remove."
               },
               "title": {
                 "type": "string",
                 "description": "Task title (single line). Required for: add. Optional for: update (at least one of title or status must be provided)."
+              },
+              "tasks": {
+                "type": "array",
+                "description": "Preferred tree form for add_many: one-shot plan with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "description": "Top-level task title."
+                    },
+                    "children": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Optional subtask titles under this parent (depth 2 only; strings, not nested objects)."
+                    }
+                  },
+                  "required": ["title"],
+                  "additionalProperties": false
+                }
               },
               "titles": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Flat list of task titles, created in order. For add_many: provide either `titles` OR `items` (not both). Use `titles` for a flat plan; use `items` when some tasks need subtasks in the same call."
+                "description": "Flat list of task titles (alias). For add_many: send exactly one of `tasks` (preferred), `items` (same as tasks), or `titles`. Use `titles` only for a flat plan or a flat batch under `parent`."
               },
               "items": {
                 "type": "array",
-                "description": "Tree form for add_many: one-shot plan with optional depth-2 children. Mutually exclusive with `titles`. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Cannot combine with `parent`.",
+                "description": "Alias of `tasks`. Prefer `tasks`. Tree form: `{title, children?}[]`. Mutually exclusive with `tasks` and `titles`. Cannot combine with `parent`.",
                 "items": {
                   "type": "object",
                   "properties": {
@@ -78,7 +100,7 @@
                 }
               },
               "parent": {
-                "description": "Make this task a subtask of the given parent. Accepts the same shapes as `id`. Optional for: add, and for flat add_many with `titles`. Not allowed with tree `items`."
+                "description": "Make this task a subtask of the given parent. Accepts the same shapes as `id`. Optional for: add, and for flat add_many with `titles`. Not allowed with tree `tasks`/`items`."
               },
               "after": {
                 "description": "Insert the new task immediately after this task instead of at the end. Top-level only. Optional for: add."
@@ -109,7 +131,7 @@
                 "type": "string",
                 "enum": ["text", "json"],
                 "default": "text",
-                "description": "Result content format. `text` returns the post-mutation state as a `<ma::agent::tasks>` columnar table. `json` returns a parseable shape suitable when you need to extract a specific field. `display` always renders ANSI text regardless."
+                "description": "Result content format. `text`: create/list return a hash-only `<ma::agent::tasks>` board; status mutations return a short self-closing ack. `json` returns a parseable shape. Human TUI display is always ANSI."
               },
               "parallel": {
                 "type": "boolean",

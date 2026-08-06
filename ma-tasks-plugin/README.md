@@ -58,7 +58,7 @@ per line, order = display order.
 | action     | required                    | optional                                            |
 | ---------- | --------------------------- | --------------------------------------------------- |
 | `add`      | `title`                     | `parent`, `after`, `status`                         |
-| `add_many` | `titles[]` **or** `items[]` | `parent` (with flat `titles` only)                  |
+| `add_many` | `tasks[]` (preferred; aliases `items[]`, flat `titles[]`) | `parent` (with flat `titles` only) |
 | `update`   | `id`, `title`               |                                                     |
 | `status`   | `id`, `status`              | `reason` (for canceled)                             |
 | `start`    | `id`                        | `parallel` (compat no-op; start always accumulates) |
@@ -68,7 +68,7 @@ per line, order = display order.
 | `list`     |                             | `filter`, `query`, `format`                         |
 | `clear`    |                             | `force` (if any task `doing`)                       |
 
-Every action returns the post-mutation task state in model-facing `content` as a `<ma::agent::tasks>` columnar table. It also returns the rendered list in `display` so the TUI shows the new state after every change.
+Create/list return model-facing `content` as a hash-only `<ma::agent::tasks>` board (`#HASH STATUS TITLE`). Status mutations (`start`/`done`/…) return a short self-closing ack. Human `display` is still the ANSI tree with numbers. Re-`done` of an already-done id is a hard error (auto-promote stays).
 
 A top-level `add_many` replaces the current board when every existing row is terminal (`done` or `canceled`). This lets a later user request start a fresh visible plan at position `1` instead of appending below historical work and shifting all coordinates. If any row is still `todo` or `doing`, `add_many` keeps its append behavior. Flat `add_many` with `parent` is always incremental.
 
@@ -84,13 +84,16 @@ The store keeps trees consistent in one write:
 
 ## Id formats accepted
 
-- Position (1-indexed integer): `3`
-- Bare hash: `"a7b3c4"`
-- Prefixed hash: `"#a7b3c4"`
-- Subtask hash: `"a7b3c4a"` (parent + alpha suffix)
-- Child-row coordinate: `"3a"` (unprefixed visible label)
+**Model board shows `#hash` only** (children indented). Prefer that in tool calls.
 
-Hashes remain stable across reorders and deletes. Positions and child-row coordinates are convenient but shift after reorders or deletes.
+Still resolved (deprecated for models — they shift):
+
+- Position (1-indexed integer): `3`
+- Child-row coordinate: `"3a"` (unprefixed; human TUI label)
+
+Also: bare hash `"a7b3c4"`, prefixed `"#a7b3c4"`, subtask `"a7b3c4a"`.
+
+Hashes remain stable across reorders and deletes.
 
 ## CLI
 

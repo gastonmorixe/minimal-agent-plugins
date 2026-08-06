@@ -107,7 +107,7 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     expect(text!).toContain("plan step 1")
   })
 
-  it("a new plan replaces a fully completed plan so visible coordinates restart at 1", async () => {
+  it("a new plan replaces a fully completed plan so a fresh tree is addressable", async () => {
     const sid = "66666666-aaaa-bbbb-cccc-dddddddddddd"
 
     await dispatch(sid, {
@@ -130,9 +130,12 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     })
     expect(addResult.is_error).toBeFalsy()
     expect(addResult.content).not.toContain("Old phase")
-    expect(addResult.content).toContain("1   #")
-    expect(addResult.content).toContain("2c  #")
+    // Model board is hash-only (no POS / 2c coords in content).
+    expect(addResult.content).toContain("New phase 1")
+    expect(addResult.content).toContain("new 2c")
+    expect(addResult.content).toMatch(/#[0-9a-f]{6}\s+todo/)
 
+    // Child-row coord still resolves (deprecated for models, kept for back-compat).
     const startResult = await dispatch(sid, { action: "start", id: "2c" })
     expect(startResult.is_error).toBeFalsy()
 
@@ -193,9 +196,11 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     await dispatch(sid, { action: "add", title: "child B", parent: `#${parentHash}` })
 
     const text = new TasksAttachment(sid, { home: tmpHome }).toText()!
-    // Subtask positions are parent-number + suffix letter in columnar format.
-    expect(text).toContain(`1a  #${parentHash}a  todo      child A`)
-    expect(text).toContain(`1b  #${parentHash}b  todo      child B`)
+    // Model channel: hash-only rows; children indented two spaces (no POS/1a).
+    expect(text).toContain(`  #${parentHash}a  todo      child A`)
+    expect(text).toContain(`  #${parentHash}b  todo      child B`)
+    expect(text).toContain(`#${parentHash}`)
+    expect(text).toContain("parent")
     expect(text).toContain("child A")
     expect(text).toContain("child B")
   })
