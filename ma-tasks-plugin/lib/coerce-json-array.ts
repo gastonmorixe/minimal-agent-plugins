@@ -33,7 +33,7 @@ export function coerceJsonArray(raw: unknown, field: string): CoerceArrayResult 
   if (trimmed.length === 0) {
     return {
       ok: false,
-      error: `\`${field}\` was an empty string; pass a JSON array, ` + `not a stringified array`,
+      error: `\`${field}\` was an empty string; pass a JSON array, not a stringified array`,
     }
   }
   let parsed: unknown
