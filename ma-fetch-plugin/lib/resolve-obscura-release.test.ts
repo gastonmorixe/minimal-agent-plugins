@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import {
+  type FetchLike,
   pickAssetForTarget,
   resolveObscuraBuild,
   targetForPlatform,
@@ -38,7 +39,7 @@ describe("pickAssetForTarget", () => {
 describe("resolveObscuraBuild", () => {
   test("resolves rolling latest via tag, then sidecar sha256", async () => {
     const calls: string[] = []
-    const fetchImpl: typeof fetch = async (input) => {
+    const fetchImpl: FetchLike = async (input) => {
       const url = String(input)
       calls.push(url)
       if (url.endsWith("/releases/tags/latest")) {
@@ -74,7 +75,7 @@ describe("resolveObscuraBuild", () => {
   })
 
   test("falls back to /releases/latest when rolling tag is missing", async () => {
-    const fetchImpl: typeof fetch = async (input) => {
+    const fetchImpl: FetchLike = async (input) => {
       const url = String(input)
       if (url.endsWith("/releases/tags/latest")) {
         return new Response("{}", { status: 404 })

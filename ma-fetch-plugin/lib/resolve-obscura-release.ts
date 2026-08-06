@@ -52,6 +52,9 @@ export interface ResolvedObscuraBuild {
   platform: string
 }
 
+/** Minimal fetch shape so Bun's `preconnect`-augmented `typeof fetch` isn't required. */
+export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+
 export interface ResolveObscuraOptions {
   /** `owner/repo`. Defaults to {@link OBSCURA_DIST_REPO}. */
   repo?: string
@@ -60,7 +63,7 @@ export interface ResolveObscuraOptions {
   /** Bearer token for the private dist repo. */
   token: string
   /** Injected fetch (tests). Defaults to global fetch. */
-  fetch?: typeof globalThis.fetch
+  fetch?: FetchLike
   /** Prefer this tag first (`latest`). Empty → only `/releases/latest`. */
   preferTag?: string
 }
@@ -97,7 +100,7 @@ export function pickAssetForTarget(
 async function apiJson<T>(
   url: string,
   token: string,
-  fetchImpl: typeof globalThis.fetch,
+  fetchImpl: FetchLike,
 ): Promise<{ ok: true; status: number; body: T } | { ok: false; status: number }> {
   const res = await fetchImpl(url, {
     headers: {
@@ -115,7 +118,7 @@ async function apiJson<T>(
 async function apiBytes(
   url: string,
   token: string,
-  fetchImpl: typeof globalThis.fetch,
+  fetchImpl: FetchLike,
   accept: string,
 ): Promise<ArrayBuffer> {
   const res = await fetchImpl(url, {
@@ -170,7 +173,7 @@ export async function sha256ForAsset(
   asset: ObscuraReleaseAsset,
   assets: ObscuraReleaseAsset[],
   token: string,
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  fetchImpl: FetchLike = globalThis.fetch,
 ): Promise<string> {
   const sidecar = assets.find((a) => a.name === `${asset.name}.sha256`)
   if (sidecar) {
