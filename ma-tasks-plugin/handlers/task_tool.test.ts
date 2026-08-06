@@ -78,15 +78,35 @@ describe("validation", () => {
     const r2 = await call({ action: "reorder", order: [] })
     expect(r2.is_error).toBe(true)
   })
-  test("rejects add_many without titles or items", async () => {
+  test("rejects add_many without tasks, titles, or items", async () => {
     const r = await call({ action: "add_many" })
     expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/titles.*items|items.*titles/)
+    expect(r.content).toMatch(/tasks/)
+    expect(r.content).toMatch(/titles/)
+    expect(r.content).toMatch(/items/)
   })
   test("rejects add_many with both titles and items", async () => {
     const r = await call({
       action: "add_many",
       titles: ["a"],
+      items: [{ title: "b" }],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/mutually exclusive/)
+  })
+  test("rejects add_many with both tasks and titles", async () => {
+    const r = await call({
+      action: "add_many",
+      tasks: [{ title: "a" }],
+      titles: ["b"],
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/mutually exclusive/)
+  })
+  test("rejects add_many with both tasks and items", async () => {
+    const r = await call({
+      action: "add_many",
+      tasks: [{ title: "a" }],
       items: [{ title: "b" }],
     })
     expect(r.is_error).toBe(true)
@@ -99,7 +119,7 @@ describe("validation", () => {
       items: [{ title: "a", children: ["b"] }],
     })
     expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/parent.*items|items.*parent/)
+    expect(r.content).toMatch(/parent.*(?:tasks|items)|(?:tasks|items).*parent/)
     expect(r.content).toMatch(/top-level|subtasks.*children/)
   })
   test("rejects empty items array", async () => {
@@ -166,13 +186,15 @@ describe("validation", () => {
   test("treats titles:null as absent (add_many fires XOR error, not titles-type error)", async () => {
     const r = await call({ action: "add_many", titles: null })
     expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/titles.*items|items.*titles/)
+    expect(r.content).toMatch(/tasks/)
+    expect(r.content).toMatch(/titles|items/)
     expect(r.content).not.toMatch(/non-empty array/)
   })
   test("treats items:null as absent (add_many fires XOR error, not items-type error)", async () => {
     const r = await call({ action: "add_many", items: null })
     expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/titles.*items|items.*titles/)
+    expect(r.content).toMatch(/tasks/)
+    expect(r.content).toMatch(/titles|items/)
     expect(r.content).not.toMatch(/non-empty array/)
   })
   test("treats id:null as absent on done (fires required-field error, not id-type error)", async () => {
@@ -249,6 +271,77 @@ describe("session id", () => {
 })
 
 // ---------------------------------------------------------------------------
+// coerce stringified arrays + hallucinated ids
+// ---------------------------------------------------------------------------
+
+describe("coerce stringified JSON arrays", () => {
+  test("add_many accepts stringified items (session 1c59e35a smoking gun)", async () => {
+    const items = JSON.stringify([
+      { title: "Phase 1: Inventory source material", children: ["a", "b"] },
+      { title: "Phase 2: Ship" },
+    ])
+    const r = await call({ action: "add_many", items })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="added_many"`)
+    expect(r.content).toContain(`coerced="items"`)
+    expect(r.content).toContain("Phase 1")
+    expect(r.content).toContain("Phase 2")
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(store.list().filter((t) => t.parent === null)).toHaveLength(2)
+  })
+
+  test("add_many accepts stringified titles", async () => {
+    const r = await call({ action: "add_many", titles: JSON.stringify(["one", "two"]) })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`coerced="titles"`)
+    expect(r.content).toContain("todo      one")
+  })
+
+  test("rejects stringified items that are not an array", async () => {
+    const r = await call({ action: "add_many", items: JSON.stringify({ title: "x" }) })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/stringified non-array|parsed to object/)
+  })
+})
+
+describe("hallucinated digit ids", () => {
+  test("long digit string gets a made-up-number hint", async () => {
+    await call({ action: "add", title: "x" })
+    const r = await call({ action: "done", id: "76310000000" })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/made-up number/)
+    expect(r.content).toMatch(/#hash/)
+  })
+
+  test("6-digit invented id also hints at #hash from board", async () => {
+    await call({ action: "add", title: "x" })
+    const r = await call({ action: "done", id: "864232" })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/made-up number|#hash/)
+  })
+})
+
+describe("compact mutation acks", () => {
+  test("done (not all_done) returns self-closing ack with optional parent_auto_done", async () => {
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["a", "b"] }],
+    })
+    await call({ action: "add", title: "other" }) // keep plan open
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.parent === null && t.title === "Phase")!
+    await call({ action: "done", id: `#${parent.id}a` })
+    const r = await call({ action: "done", id: `#${parent.id}b` })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="marked_done"`)
+    expect(r.content).toContain(`parent_auto_done="${parent.id}"`)
+    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).not.toContain("Phase")
+    expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")
+  })
+})
+
+// ---------------------------------------------------------------------------
 // add
 // ---------------------------------------------------------------------------
 
@@ -257,7 +350,7 @@ describe("add", () => {
     const r = await call({ action: "add", title: "hello" })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain(`<ma::agent::tasks action="add" result="added"`)
-    expect(r.content).toContain("1  #")
+    expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo/)
     expect(r.content).toContain("todo      hello")
     expect(r.content).not.toContain("╭")
     expect(r.content).not.toContain("✔")
@@ -272,8 +365,8 @@ describe("add", () => {
     expect(r2.is_error).toBeUndefined()
     expect(r2.content).toContain("child")
     // The new subtask id should be the parent id + alpha suffix and should
-    // render in columnar format with parent-number + suffix letter.
-    expect(r2.content).toContain(`1a  #${id}a  todo      child`)
+    // render indented under the parent (hash-only, no position coord).
+    expect(r2.content).toContain(`  #${id}a  todo      child`)
   })
   test("returns error for missing parent", async () => {
     const r = await call({ action: "add", title: "x", parent: "#deadbe" })
@@ -345,9 +438,25 @@ describe("add_many", () => {
     expect(child.parent).toBe(parent.id)
     expect(child.id).toBe(`${parent.id}a`)
     expect(sibling.parent).toBeNull()
-    // Model content shows nested numbering for the subtask.
+    // Model content indents the subtask under its parent (hash-only).
     expect(r.content).toContain("Subtask of first")
-    expect(r.content).toMatch(/1a\s+#\w+a\s+todo\s+Subtask of first/)
+    expect(r.content).toMatch(/\s+#\w+a\s+todo\s+Subtask of first/)
+  })
+  test("tasks (preferred) creates parents and children in one call", async () => {
+    const r = await call({
+      action: "add_many",
+      tasks: [{ title: "Phase", children: ["a", "b"] }, { title: "Ship" }],
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain(`result="added_many"`)
+    expect(r.displayHeader).toContain("added 4 tasks")
+    const store = new TaskStore(sid, { home: tmpHome })
+    const tasks = store.list()
+    expect(tasks).toHaveLength(4)
+    const phase = tasks.find((t) => t.title === "Phase")!
+    expect(phase.parent).toBeNull()
+    expect(tasks.filter((t) => t.parent === phase.id).map((t) => t.title)).toEqual(["a", "b"])
+    expect(tasks.find((t) => t.title === "Ship")!.parent).toBeNull()
   })
   test("items with only top-level entries (no children) works like flat titles", async () => {
     const r = await call({
@@ -410,8 +519,12 @@ describe("status / start / done", () => {
     expect(r.content).toContain(`action="status"`)
     expect(r.content).toContain(`result="marked_doing"`)
     expect(r.content).toContain(`id="`)
-    expect(r.content).toContain("1  #")
-    expect(r.content).toContain("doing     x")
+    // Compact mutation ack: self-closing tag, no columnar board dump.
+    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).not.toContain("doing     x")
+    expect(r.content).not.toMatch(/\n1\s+#/)
+    // Human TUI still shows the board.
+    expect(r.display).toContain("x")
   })
   test("status sets the new state", async () => {
     await call({ action: "add", title: "x" })
@@ -430,8 +543,9 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("canceled")
     expect(r.display).toContain("user redirected")
-    expect(r.content).toContain("1  #")
-    expect(r.content).toContain("canceled  x (user redirected)")
+    expect(r.content).toContain(`result="marked_canceled"`)
+    expect(r.content).toContain(`reason="user redirected"`)
+    expect(r.content).not.toMatch(/\n1\s+#/)
   })
   test("start keeps previously started tasks as doing", async () => {
     await call({ action: "add", title: "one" })
@@ -454,8 +568,12 @@ describe("status / start / done", () => {
     const r = await call({ action: "start", id: `#${parent.id}a` })
     expect(r.is_error).toBeUndefined()
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("doing")
-    expect(r.content).toContain(`1   #${parent.id}   doing`)
-    expect(r.content).toContain(`1a  #${parent.id}a  doing`)
+    expect(r.content).toContain(`result="started"`)
+    expect(r.content).toContain(`id="${parent.id}a"`)
+    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    // Human display still shows both parent + child as doing.
+    expect(r.display).toContain("Phase")
+    expect(r.display).toContain("child")
   })
 
   test("start parallel:true still accumulates (compat no-op)", async () => {
@@ -518,7 +636,7 @@ describe("status / start / done", () => {
     expect(kids.every((t) => t.status === "done")).toBe(true)
   })
 
-  test("re-done of already-done id returns compact already_done (no full board)", async () => {
+  test("re-done of already-done id is a hard error", async () => {
     await call({ action: "add", title: "solo" })
     const first = await call({ action: "done", id: 1 })
     expect(first.is_error).toBeUndefined()
@@ -528,17 +646,9 @@ describe("status / start / done", () => {
     const store = new TaskStore(sid, { home: tmpHome })
     const before = store.list()[0]!
     const second = await call({ action: "done", id: 1 })
-    expect(second.is_error).toBeUndefined()
-    expect(second.content).toContain(`result="already_done"`)
-    // Compact shell: self-closing tag, no columnar body rows.
-    expect(second.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
-    expect(second.content).not.toContain("solo")
-    expect(second.content).not.toMatch(/\n1\s+#/)
-    expect(second.displayHeader).toContain("already done")
-    expect(second.displayHeader).not.toContain("ALL DONE")
-    expect(second.display).toBe("")
-    expect(second.displayFooter).toBe("")
-    expect(second.suppressToolTime).toBe(true)
+    expect(second.is_error).toBe(true)
+    expect(second.content).toMatch(/already done/i)
+    expect(second.content).toContain(`#${before.id}`)
 
     const after = new TaskStore(sid, { home: tmpHome }).list()[0]!
     expect(after.done_at).toBe(before.done_at)
@@ -546,7 +656,7 @@ describe("status / start / done", () => {
     expect(after.status).toBe("done")
   })
 
-  test("Lisa path: last-child all_done then parent re-done is already_done (no second ALL DONE)", async () => {
+  test("Lisa path: last-child all_done then parent re-done is a hard error (auto-promoted)", async () => {
     // Repro of acee5759 dual ALL DONE frames: model done last child then
     // also done the parent in the same turn. Parent was already promoted.
     await call({
@@ -561,41 +671,27 @@ describe("status / start / done", () => {
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")
 
     const parentAgain = await call({ action: "done", id: `#${parent.id}` })
-    expect(parentAgain.is_error).toBeUndefined()
-    expect(parentAgain.content).toContain(`result="already_done"`)
-    expect(parentAgain.content).toContain(`id="${parent.id}"`)
-    expect(parentAgain.displayHeader).toContain("already done")
-    expect(parentAgain.displayHeader).not.toContain("ALL DONE")
-    // Must not re-emit the full plan board into model context.
-    expect(parentAgain.content).not.toContain("Phase")
-    expect(parentAgain.content!.length).toBeLessThan(lastChild.content!.length)
+    expect(parentAgain.is_error).toBe(true)
+    expect(parentAgain.content).toMatch(/already done/i)
+    expect(parentAgain.content).toMatch(/auto-promoted/i)
+    expect(parentAgain.content).toContain(`#${parent.id}`)
   })
 
-  test("status→done on already-done id is the same compact already_done path", async () => {
+  test("status→done on already-done id is a hard error", async () => {
     await call({ action: "add", title: "x" })
     await call({ action: "done", id: 1 })
     const r = await call({ action: "status", id: 1, status: "done" })
-    expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="already_done"`)
-    expect(r.content).toContain(`action="status"`)
-    expect(r.displayHeader).not.toContain("ALL DONE")
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/already done/i)
   })
 
-  test("already_done format:json returns stats without full tasks array", async () => {
+  test("already_done format:json is still a hard error (not soft JSON)", async () => {
     await call({ action: "add", title: "x" })
     await call({ action: "done", id: 1 })
     const r = await call({ action: "done", id: 1, format: "json" })
-    expect(r.is_error).toBeUndefined()
-    const parsed = JSON.parse(r.content!) as {
-      result: string
-      id: string
-      stats: { total: number; done: number }
-      tasks?: unknown
-    }
-    expect(parsed.result).toBe("already_done")
-    expect(parsed.stats.total).toBe(1)
-    expect(parsed.stats.done).toBe(1)
-    expect(parsed.tasks).toBeUndefined()
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/already done/i)
+    expect(() => JSON.parse(r.content!)).toThrow()
   })
 })
 
@@ -640,7 +736,8 @@ describe("update", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain(`action="update"`)
     expect(r.content).toContain(`result="marked_doing"`)
-    expect(r.content).toContain("doing     x")
+    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).not.toContain("doing     x")
     const store = new TaskStore(sid, { home: tmpHome })
     expect(store.list()[0].status).toBe("doing")
   })
@@ -694,15 +791,15 @@ describe("update", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain(`result="marked_canceled"`)
     expect(r.display).toContain("no longer needed")
-    expect(r.content).toContain("canceled  x (no longer needed)")
+    expect(r.content).toContain(`reason="no longer needed"`)
+    expect(r.content).not.toMatch(/\n1\s+#/)
   })
-  test("update with status=done on already-done task returns already_done", async () => {
+  test("update with status=done on already-done task is a hard error", async () => {
     await call({ action: "add", title: "solo" })
     await call({ action: "done", id: 1 })
     const r = await call({ action: "update", id: 1, status: "done" })
-    expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="already_done"`)
-    expect(r.content).not.toContain("solo")
+    expect(r.is_error).toBe(true)
+    expect(r.content).toMatch(/already done/i)
   })
   test("update with title+status=done on last task triggers ALL DONE", async () => {
     await call({ action: "add", title: "x" })
@@ -833,9 +930,9 @@ describe("model-facing content", () => {
     const r = await call({ action: "add_many", titles: ["one", "two"] })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain(`<ma::agent::tasks action="add_many" result="added_many"`)
-    expect(r.content).toContain("1  #")
+    expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo\s+one/)
     expect(r.content).toContain("todo      one")
-    expect(r.content).toContain("2  #")
+    expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo\s+two/)
     expect(r.content).toContain("todo      two")
     expect(r.content).not.toContain("+ added")
     expect(r.content).not.toContain("0 done · 0 doing")

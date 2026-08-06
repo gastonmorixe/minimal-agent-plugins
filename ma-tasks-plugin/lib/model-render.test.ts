@@ -14,10 +14,10 @@ describe("renderTasksColumnar", () => {
       task({ id: "bbbbbb", status: "doing", title: "two" }),
     ])
 
-    expect(out).toBe(["1  #aaaaaa   todo      one", "2  #bbbbbb   doing     two"].join("\n"))
+    expect(out).toBe(["#aaaaaa  todo      one", "#bbbbbb  doing     two"].join("\n"))
   })
 
-  test("renders subtasks with parent-number + suffix letter", () => {
+  test("indents subtasks under parent", () => {
     const out = renderTasksColumnar([
       task({ id: "aaaaaa", title: "parent" }),
       task({ id: "aaaaaaa", parent: "aaaaaa", title: "child one" }),
@@ -27,18 +27,18 @@ describe("renderTasksColumnar", () => {
 
     expect(out).toBe(
       [
-        "1   #aaaaaa   todo      parent",
-        "1a  #aaaaaaa  todo      child one",
-        "1b  #aaaaaab  todo      child two",
-        "2   #bbbbbb   todo      after",
+        "#aaaaaa   todo      parent",
+        "  #aaaaaaa  todo      child one",
+        "  #aaaaaab  todo      child two",
+        "#bbbbbb   todo      after",
       ].join("\n"),
     )
   })
 
-  test("orphaned subtask gets '?' position", () => {
+  test("orphaned subtask keeps child indent with its hash", () => {
     const out = renderTasksColumnar([task({ id: "aaaaaaa", parent: "missing", title: "orphan" })])
 
-    expect(out).toBe("?  #aaaaaaa  todo      orphan")
+    expect(out).toBe("  #aaaaaaa  todo      orphan")
   })
 
   test("adds trailing duration tokens only when active_ms is non-zero", () => {
@@ -47,7 +47,7 @@ describe("renderTasksColumnar", () => {
       task({ id: "bbbbbb", title: "fresh" }),
     ])
 
-    expect(out).toBe("1  #aaaaaa   todo      done  12s\n2  #bbbbbb   todo      fresh")
+    expect(out).toBe("#aaaaaa  todo      done  12s\n#bbbbbb  todo      fresh")
   })
 
   test("escapes task text that could break the <ma::agent::tasks> wrapper", () => {
@@ -69,15 +69,19 @@ describe("renderTasksColumnar", () => {
     expect(renderTasksColumnar([])).toBe("_No tasks._")
   })
 
-  test("pads position column for double-digit top-level tasks", () => {
+  test("renders hash-only rows without position numbers", () => {
     const tasks = Array.from({ length: 12 }, (_, i) =>
       task({ id: `t${String(i).padStart(6, "0")}`, title: `task ${i + 1}` }),
     )
     const out = renderTasksColumnar(tasks)
     const lines = out.split("\n")
-    // Position 10 should be "10" (2 chars), padded to match "12" (2 chars)
-    expect(lines[9]).toMatch(/^10 /)
-    expect(lines[11]).toMatch(/^12 /)
+    expect(lines).toHaveLength(12)
+    expect(lines[9]).toMatch(/^#t000009\s+todo\s+task 10$/)
+    expect(lines[11]).toMatch(/^#t000011\s+todo\s+task 12$/)
+    for (const line of lines) {
+      expect(line).toMatch(/^#/)
+      expect(line).not.toMatch(/^\d/)
+    }
   })
 })
 
@@ -96,7 +100,7 @@ describe("renderTasksAgentBlock", () => {
     expect(out).toStartWith(
       `<ma::agent::tasks action="add" result="added" id="aaaaaa" total="1" done="0" doing="0" todo="1" canceled="0">`,
     )
-    expect(out).toContain("1  #aaaaaa   todo      x")
+    expect(out).toContain("#aaaaaa  todo      x")
     expect(out).toEndWith("</ma::agent::tasks>")
   })
 
