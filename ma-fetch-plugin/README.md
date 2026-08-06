@@ -89,16 +89,19 @@ Backend output:
    ```
 
 3. Get obscura (the default backend). **Normally you do nothing here:** on
-   an interactive start the host provisions the pinned obscura build into the
-   agent-managed dir (`~/.minimal-agent/bin`) automatically (see `setup.ts` plus
-   minimal-agent's `binaries/` subsystem) and advertises that dir to the plugin
-   via `MINIMAL_AGENT_BIN_DIR`. The plugin runs ONLY that managed copy.
+   an interactive start the host resolves the rolling `latest` release from
+   `gastonmorixe/obscura-dist` (no hardcoded build epoch in the plugin),
+   provisions it into the agent-managed dir (`~/.minimal-agent/bin`)
+   automatically (see `setup.ts` plus minimal-agent's `binaries/` subsystem),
+   and advertises that dir to the plugin via `MINIMAL_AGENT_BIN_DIR`. The
+   plugin runs ONLY that managed copy. A newer `latest` on the next boot is
+   treated as an update.
 
    The plugin does **not** look on your `PATH`. A `obscura` you drop into
-   `/usr/local/bin` is ignored on purpose (it's not the build this plugin
-   pins, and silently running a user's binary is a supply-chain hazard). If you
-   want to point at your own build, set an absolute path via the `obscura.bin`
-   operator override in config (see below). That wins over the managed copy.
+   `/usr/local/bin` is ignored on purpose (silently running a user's binary is
+   a supply-chain hazard). If you want to point at your own build, set an
+   absolute path via the `obscura.bin` operator override in config (see
+   below). That wins over the managed copy.
 
 4. (Optional) Configure in `~/.minimal-agent/config.jsonc`:
 

@@ -29,21 +29,31 @@ function ctx(inv: Partial<FakeInv> = {}, env: Record<string, string> = {}) {
   }
 }
 
+const TARGET_BY_PLATFORM: Record<string, string> = {
+  "darwin-arm64": "aarch64-macos",
+  "darwin-x64": "x86_64-macos",
+  "linux-arm64": "aarch64-linux",
+  "linux-x64": "x86_64-linux",
+}
+
 describe("ma-fetch setup()", () => {
   let cfgDir: string
   let prevCfg: string | undefined
+  let prevFetch: typeof globalThis.fetch
 
   beforeEach(() => {
     cfgDir = mkdtempSync(join(tmpdir(), "ma-fetch-setup-"))
     prevCfg = process.env.MINIMAL_AGENT_CONFIG
+    prevFetch = globalThis.fetch
   })
   afterEach(() => {
     if (prevCfg === undefined) delete process.env.MINIMAL_AGENT_CONFIG
     else process.env.MINIMAL_AGENT_CONFIG = prevCfg
+    globalThis.fetch = prevFetch
     rmSync(cfgDir, { recursive: true, force: true })
   })
 
-  test("skips provisioning when obscura.bin is configured", () => {
+  test("skips provisioning when obscura.bin is configured", async () => {
     const cfgPath = join(cfgDir, "config.jsonc")
     writeFileSync(
       cfgPath,
@@ -53,34 +63,69 @@ describe("ma-fetch setup()", () => {
       }`,
     )
     process.env.MINIMAL_AGENT_CONFIG = cfgPath
-    const result = setup(ctx())
+    const result = await setup(ctx())
     expect(result.requireBinaries).toBeUndefined()
     expect(result.haltIfMissing).toBeUndefined()
   })
 
-  test("declares obscura with worker sibling on a supported platform", () => {
+  test("declares obscura from resolved latest release", async () => {
     const cfgPath = join(cfgDir, "config.jsonc")
     writeFileSync(cfgPath, `{}`)
     process.env.MINIMAL_AGENT_CONFIG = cfgPath
-    const result = setup(ctx())
 
-    // Structure is asserted only on platforms that have a real sha pinned (a
-    // build whose sha256 is still empty is treated as "not published yet").
-    const spec = result.requireBinaries?.[0]
-    if (spec) {
-      expect(spec.name).toBe("obscura")
-      expect(spec.archiveMember).toBe("obscura")
-      expect(spec.archiveExtraMembers).toEqual(["obscura-worker"])
-      expect(spec.source.kind).toBe("github-release")
-      if (spec.source.kind === "github-release") {
-        expect(spec.source.repo).toBe("gastonmorixe/obscura-dist")
-        expect(spec.source.asset).toContain("obscura-")
-      }
-      expect(result.haltIfMissing).toEqual(["obscura"])
-      expect(result.haltMessage).toContain("obscura")
-    } else {
-      // No real build pinned for this platform yet → no requirement emitted.
+    const platform = `${process.platform}-${process.arch}`
+    const target = TARGET_BY_PLATFORM[platform]
+    if (!target) {
+      const result = await setup(ctx())
       expect(result.requireBinaries).toBeUndefined()
+      return
     }
+
+    const asset = `obscura-${target}-424242.tar.gz`
+    const sha = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes("/releases/tags/latest")) {
+        return Response.json({
+          tag_name: "latest",
+          assets: [
+            { id: 1, name: asset },
+            { id: 2, name: `${asset}.sha256` },
+          ],
+        })
+      }
+      if (url.includes("/releases/assets/2")) {
+        return new Response(`${sha}  ${asset}\n`)
+      }
+      return new Response("nope", { status: 404 })
+    }) as typeof fetch
+
+    const result = await setup(ctx())
+    const spec = result.requireBinaries?.[0]
+    expect(spec).toBeDefined()
+    expect(spec!.name).toBe("obscura")
+    expect(spec!.version).toBe("424242")
+    expect(spec!.sha256).toBe(sha)
+    expect(spec!.archiveMember).toBe("obscura")
+    expect(spec!.archiveExtraMembers).toEqual(["obscura-worker"])
+    expect(spec!.source.kind).toBe("github-release")
+    if (spec!.source.kind === "github-release") {
+      expect(spec!.source.repo).toBe("gastonmorixe/obscura-dist")
+      expect(spec!.source.tag).toBe("latest")
+      expect(spec!.source.asset).toBe(asset)
+    }
+    expect(result.haltIfMissing).toEqual(["obscura"])
+  })
+
+  test("keeps installed binary when latest resolve fails", async () => {
+    const cfgPath = join(cfgDir, "config.jsonc")
+    writeFileSync(cfgPath, `{}`)
+    process.env.MINIMAL_AGENT_CONFIG = cfgPath
+
+    globalThis.fetch = (async () => new Response("down", { status: 503 })) as typeof fetch
+
+    const result = await setup(ctx({ has: () => true }))
+    expect(result.requireBinaries).toBeUndefined()
+    expect(result.haltIfMissing).toBeUndefined()
   })
 })

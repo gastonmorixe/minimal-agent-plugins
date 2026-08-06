@@ -6,6 +6,16 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Changed
+
+- 2026-08-05 (this session): `ma-fetch-plugin` no longer pins an obscura build
+  epoch in `setup.ts`. Setup resolves the rolling `gastonmorixe/obscura-dist`
+  `latest` release at boot (sha256 from sidecar), then asks the host to
+  provision/update. Falls back to `/releases/latest` if the rolling tag is
+  missing, and keeps an already-installed binary when resolve fails offline.
+  New `lib/resolve-obscura-release.ts` + tests. `scripts/sync-obscura-release.ts`
+  is now an informational dump (no longer rewrites setup).
+
 ### Added
 
 - 2026-08-05 (this session): `ma-llm-meta-plugin` landed. Meta Model API
