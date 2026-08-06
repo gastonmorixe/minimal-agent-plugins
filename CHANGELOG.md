@@ -8,6 +8,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-08-05 (this session): `ma-llm-meta-plugin` landed. Meta Model API
+  (Muse Spark) via `https://api.meta.ai/v1` OpenAI Chat Completions. API-key
+  auth (`meta-api-key` / `MODEL_API_KEY`), static + live catalog
+  (`muse-spark-1.2`, `1.1`, `1.2-contributor`), effort
+  `minimal|low|medium|high|xhigh`, rate-limit header session info, 12 unit
+  tests. Research: monorepo `private/MA-49282-meta-provider/`.
 - 2026-08-05 (this session): Husky + Commitlint (Conventional Commits) —
   `commitlint.config.js`, `.husky/commit-msg`, `prepare` → `husky`, scripts
   `commitlint` / `commitlint:last`. CI `commitlint` job on push/PR.
