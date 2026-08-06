@@ -21,7 +21,7 @@
         "type": "tool",
         "tool": {
           "name": "Task",
-          "description": "Manage a per-session task list. Plan with `add_many` + `tasks: [{title, children?}]` (aliases: `items`, flat `titles`). Mark progress with `start` / `done` using `#hash` from the board. Top-level `add_many` replaces a fully terminal board. Status mutations return a short ack; the next-turn `<ma::agent::tasks>` attachment is hash-only (no POS column). Last open child auto-promotes its parent — do not also `done` the parent (hard error if already done). Prefer `#hash`; position / `3a` still resolve but are deprecated for models.",
+          "description": "Manage a per-session task list. Plan with `add_many` + `tasks: [{title, children?}]` (aliases: `items`, flat `titles`). Mark progress with `start` / `done` using `#hash` from the board. Top-level `add_many` replaces a fully terminal board. Status mutations return a short ack; the next-turn `<ma::agent::tasks>` attachment is hash-only (no POS column). Last open child auto-promotes its parent - do not also `done` the parent (hard error if already done). Prefer `#hash`; position / `3a` still resolve but are deprecated for models.",
           "input_schema": {
             "type": "object",
             "properties": {
