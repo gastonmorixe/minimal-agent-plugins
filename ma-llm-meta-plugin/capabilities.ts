@@ -7,7 +7,12 @@
  * - OpenAI Chat Completions + Responses both work
  * - `max_tokens` and `max_completion_tokens` both accepted
  * - Automatic prompt cache accounting via `cached_tokens` (subset)
- * - Vision/PDF claimed for 1.1 multimodal; 1.2 coding/agentic (tools + parallel)
+ * - All Muse Spark SKUs are multimodal: image + video + PDF/document + text
+ *   (platform Capabilities tiles: Image/Video/File handling). 1.1 was
+ *   documented as multimodal at launch; 1.2 / 1.2-contributor share the
+ *   same platform surface. See `private/MA-49282-meta-provider/`
+ *   (wayback-ai-docs.txt, promptfoo-meta-model.txt, byteiota + layer3).
+ * - Server tools: web_search grounding ($2.50/1k), computer_use, file_search
  *
  * @module llm/providers/meta/capabilities
  */
@@ -42,8 +47,10 @@ const MODALITIES_MULTIMODAL = {
   image: true,
   audio: false,
   pdf: true,
-  video: false,
+  video: true,
 } as const
+
+const SERVER_TOOLS_MUSE = ["web_search", "computer_use", "file_search"] as const
 
 /** Wire values Meta accepts on muse-spark (none is rejected). */
 const EFFORT_MUSE = {
@@ -76,18 +83,15 @@ function baseMuse(opts: { vision?: boolean }): Capabilities {
     assistantPrefill: false,
     modalities: opts.vision ? { ...MODALITIES_MULTIMODAL } : { ...MODALITIES_TEXT },
     serverSideHistory: false,
-    serverTools: [],
+    serverTools: [...SERVER_TOOLS_MUSE],
   }
 }
 
-/** Muse Spark 1.2 — coding / agentic flagship. */
-export const CAPS_MUSE_SPARK_1_2: Capabilities = baseMuse({ vision: false })
+/** Muse Spark 1.2 — coding / agentic flagship (multimodal). */
+export const CAPS_MUSE_SPARK_1_2: Capabilities = baseMuse({ vision: true })
 
-/**
- * Muse Spark 1.1 — multimodal / computer-use oriented (image + PDF inputs
- * claimed on dashboard).
- */
+/** Muse Spark 1.1 — multimodal / computer-use oriented. */
 export const CAPS_MUSE_SPARK_1_1: Capabilities = baseMuse({ vision: true })
 
-/** Contributor SKU — same surface, cheaper, trains on data. */
-export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR: Capabilities = baseMuse({ vision: false })
+/** Contributor SKU — same surface, cheaper, trains on data (multimodal). */
+export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR: Capabilities = baseMuse({ vision: true })
