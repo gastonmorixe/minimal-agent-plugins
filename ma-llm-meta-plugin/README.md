@@ -34,9 +34,9 @@ minimal-agent --provider meta --model muse-spark-1.2
 
 | Id | Context | Pricing / 1M (in / cached / out) | Notes |
 | --- | --- | --- | --- |
-| `muse-spark-1.2` (default) | 1M | $1.25 / $0.15 / $4.25 | Flagship coding / agentic |
-| `muse-spark-1.1` | 1M | $1.25 / $0.15 / $4.25 | Multimodal (image + PDF) |
-| `muse-spark-1.2-contributor` | 1M | $0.10 / $0.002 / $0.20 | Cheap; **trains on your data**; 60 RPM |
+| `muse-spark-1.2` (default) | 1M | $1.25 / $0.15 / $4.25 | Flagship coding / agentic · multimodal: image + video + PDF |
+| `muse-spark-1.1` | 1M | $1.25 / $0.15 / $4.25 | Multimodal: image + video + PDF |
+| `muse-spark-1.2-contributor` | 1M | $0.10 / $0.002 / $0.20 | Cheap; **trains on your data**; 60 RPM · multimodal: image + video + PDF |
 
 Aliases: `muse-spark`, `spark`, `spark-1.2` → 1.2; `spark-contributor` → contributor.
 
