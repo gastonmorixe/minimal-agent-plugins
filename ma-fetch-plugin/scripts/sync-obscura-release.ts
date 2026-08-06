@@ -140,3 +140,5 @@ async function shaFor(
 }
 
 await main()
+
+export {}

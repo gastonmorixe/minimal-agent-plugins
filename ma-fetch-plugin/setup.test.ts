@@ -98,7 +98,7 @@ describe("ma-fetch setup()", () => {
         return new Response(`${sha}  ${asset}\n`)
       }
       return new Response("nope", { status: 404 })
-    }) as typeof fetch
+    }) as unknown as typeof fetch
 
     const result = await setup(ctx())
     const spec = result.requireBinaries?.[0]
@@ -122,7 +122,7 @@ describe("ma-fetch setup()", () => {
     writeFileSync(cfgPath, `{}`)
     process.env.MINIMAL_AGENT_CONFIG = cfgPath
 
-    globalThis.fetch = (async () => new Response("down", { status: 503 })) as typeof fetch
+    globalThis.fetch = (async () => new Response("down", { status: 503 })) as unknown as typeof fetch
 
     const result = await setup(ctx({ has: () => true }))
     expect(result.requireBinaries).toBeUndefined()
