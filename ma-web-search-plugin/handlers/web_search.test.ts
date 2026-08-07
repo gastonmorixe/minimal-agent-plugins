@@ -323,4 +323,42 @@ describe("WebSearch handler — error path", () => {
     expect(r.is_error).toBe(true)
     expect(r.content).toContain("no providers configured")
   })
+
+  test("transient all-failed (429 after retries) encourages a later retry", async () => {
+    writeConfig({ retry: { maxAttempts: 1 } }) // skip backoff sleeps in test
+    const restore = patchFetch(
+      () => new Response("rate limited", { status: 429, statusText: "Too Many Requests" }),
+    )
+    try {
+      const r = (await handler(makeCtx({ query: "x" }))) as Extract<
+        TUIResult,
+        { kind: "tool_result" }
+      >
+      expect(r.is_error).toBe(true)
+      expect(r.content).toMatch(/HTTP 429/)
+      // Model-facing nudge: failure is transient, retry is reasonable.
+      expect(r.content).toMatch(/transient/i)
+      expect(r.content).toMatch(/retry/i)
+    } finally {
+      restore()
+    }
+  })
+
+  test("permanent all-failed (403) does NOT encourage a retry", async () => {
+    writeConfig()
+    const restore = patchFetch(
+      () => new Response("forbidden", { status: 403, statusText: "Forbidden" }),
+    )
+    try {
+      const r = (await handler(makeCtx({ query: "x" }))) as Extract<
+        TUIResult,
+        { kind: "tool_result" }
+      >
+      expect(r.is_error).toBe(true)
+      expect(r.content).toMatch(/HTTP 403/)
+      expect(r.content).not.toMatch(/All failures look transient/)
+    } finally {
+      restore()
+    }
+  })
 })

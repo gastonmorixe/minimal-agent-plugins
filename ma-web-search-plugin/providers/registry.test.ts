@@ -133,4 +133,56 @@ describe("runChain", () => {
     expect((caught as WebSearchAllFailedError).failures).toEqual([])
     expect((caught as Error).message).toContain("no providers configured")
   })
+
+  test("records transient flag from provider errors", async () => {
+    const a = stub("a", {
+      throws: new WebSearchProviderError("a", "rate limited", undefined, true),
+    })
+    const b = stub("b", { throws: new WebSearchProviderError("b", "bad key", undefined, false) })
+    let caught: unknown
+    try {
+      await runChain("q", opts, [a, b], new AbortController().signal)
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(WebSearchAllFailedError)
+    const failures = (caught as WebSearchAllFailedError).failures
+    expect(failures[0].transient).toBe(true)
+    expect(failures[1].transient).toBe(false)
+  })
+
+  test("plain errors are not treated as transient", async () => {
+    const a = stub("a", { throws: new Error("network") })
+    let caught: unknown
+    try {
+      await runChain("q", opts, [a], new AbortController().signal)
+    } catch (e) {
+      caught = e
+    }
+    expect((caught as WebSearchAllFailedError).failures[0].transient).toBe(false)
+  })
+
+  test("forwards provider retry notices to the chain logger", async () => {
+    // runChain calls each provider's search exactly once — retries happen
+    // INSIDE the provider. This stub simulates a provider that retried
+    // internally (emitting an onRetry notice) and then failed anyway; the
+    // notice must still reach the chain logger.
+    const provider: WebSearchProvider = {
+      id: "a",
+      displayName: "a",
+      capabilities: new Set(["web", "news"]),
+      isConfigured: () => true,
+      search: async (_q, _o, _s, onRetry) => {
+        onRetry?.("brave: HTTP 429 — retrying in ~1.0s (attempt 2/3)")
+        throw new WebSearchProviderError("a", "rate limited", undefined, true)
+      },
+    }
+    const messages: string[] = []
+    await expect(
+      runChain("q", opts, [provider], new AbortController().signal, process.env, (m) =>
+        messages.push(m),
+      ),
+    ).rejects.toBeInstanceOf(WebSearchAllFailedError)
+    expect(messages.some((m) => /retrying in/.test(m))).toBe(true)
+  })
 })

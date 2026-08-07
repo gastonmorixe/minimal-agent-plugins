@@ -27,3 +27,9 @@ Use `WebSearch` to find current information on the open web. It returns ranked h
 ## Provider chain
 
 Results come from a configurable provider chain (Brave by default). Failed or unconfigured providers are skipped silently and the next is tried. Empty results are not a failure, they stop the chain. If every provider fails (e.g. no API key configured), the result is an error with a setup hint. The result header shows which provider answered (`WebSearch[brave/web]`), so you don't need to choose.
+
+## Retries and transient failures
+
+The tool already retries transient failures (rate limits `429`, upstream `502/503/504`, network errors) up to 3 times with backoff before reporting an error, so you don't need to re-fire immediately. Retry backoffs are surfaced to the user as `retrying in ~Ns (attempt 2/3)` lines.
+
+When the final error says failures look **transient**, the provider was rate-limited or flaky, not broken: wait a few seconds and retry with the same or a more specific query. When it says the API key is missing/wrong, fix config instead of retrying; retrying won't help.

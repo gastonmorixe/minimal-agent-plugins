@@ -8,6 +8,29 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-08-07 (this session): `ma-web-search-plugin` retries are now visible
+  and smarter, and the model learns when retrying is worth it. Brave's retry
+  backoff spreads across a few seconds (`baseDelayMs` 500→1000,
+  `maxDelayMs` 5s→8s, `maxTotalMs` 15s→20s) and 429s without a
+  `Retry-After` header get a 1s minimum floor, so the 3 attempts land at
+  ~0s/~1s/~2s instead of re-hammering the limiter instantly. Each backoff
+  emits a `retrying in ~Ns (attempt 2/3)` notice that the chain forwards to
+  the per-plugin logger — retries are visible to the user, not a silent
+  delay. `WebSearchProviderError` gains a `transient` flag (true for
+  rate-limit/upstream/network, false for auth/validation); the chain records
+  it on each failure, and when EVERY provider failed transiently the tool's
+  error message now tells the model the failure was transient, that retries
+  were already attempted with backoff, and to retry in a few seconds (or use
+  a different query) rather than treating it as a final answer. CLI mirrors
+  the same hint. Root cause from session `8c8e1d31`: 4 concurrent agents
+  shared one Brave free-plan key (1 req/sec); 17 requests in a 4.4s window
+  saturated the limiter, so every retry re-joined a full queue. Tests: 9 new
+  (classifyError floor/header cases, onRetry notice, transient marking,
+  registry propagation + forwarding, handler transient/permanent message).
+  Also adds the package-local `tsdoc.json` (extending root) so oxlint
+  recognizes `@module` — the web-search package lint was failing before this
+  change (12 errors) and now passes.
+
 - 2026-08-05 (this session): `ma-fetch-plugin` no longer pins an obscura build
   epoch in `setup.ts`. Setup resolves the rolling `gastonmorixe/obscura-dist`
   `latest` release at boot (sha256 from sidecar), then asks the host to
