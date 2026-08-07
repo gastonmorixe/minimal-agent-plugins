@@ -5,7 +5,8 @@
  * can provision it into the managed `~/.minimal-agent/bin/` on a fresh box (and
  * update it when a newer build is published). The plugin returns a descriptor as
  * DATA; the agent does the download / verify / install / audit with TUI
- * progress. The plugin NEVER touches the filesystem.
+ * progress. The plugin only maintains a small, non-secret release-coordinate
+ * cache; it never touches managed binary files or the host binary manifest.
  *
  * ## Private binaries, account-less install
  *
@@ -46,9 +47,16 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import {
+  isCachedObscuraReleaseFresh,
+  obscuraReleaseCachePath,
+  readCachedObscuraRelease,
+  writeCachedObscuraRelease,
+} from "./lib/obscura-release-cache.ts"
 import { agentHome } from "./lib/paths.ts"
 import {
   OBSCURA_DIST_REPO,
+  type ResolvedObscuraBuild,
   ResolveObscuraError,
   resolveObscuraBuild,
 } from "./lib/resolve-obscura-release.ts"
@@ -94,6 +102,85 @@ interface SetupResult {
   requireBinaries?: SetupBinarySpec[]
   haltIfMissing?: string[]
   haltMessage?: string
+}
+
+/** One process shares an in-flight stale-cache refresh across setup calls. */
+let refreshInFlight: Promise<void> | null = null
+
+/** Build the binary-install descriptor returned to the host. */
+function setupResultFor(
+  build: ResolvedObscuraBuild,
+  haltIfMissing: boolean,
+  token?: string,
+): SetupResult {
+  const spec: SetupBinarySpec = {
+    name: "obscura",
+    version: build.version,
+    source: {
+      kind: "github-release",
+      repo: OBSCURA_DIST_REPO,
+      tag: build.tag,
+      asset: build.asset,
+      ...(OBSCURA_DIST_TOKEN ? { token: OBSCURA_DIST_TOKEN } : token ? { token } : {}),
+    },
+    sha256: build.sha256,
+    archiveMember: "obscura",
+    archiveExtraMembers: ["obscura-worker"],
+  }
+  return {
+    requireBinaries: [spec],
+    ...(haltIfMissing
+      ? {
+          haltIfMissing: ["obscura"],
+          haltMessage:
+            "The Fetch tool needs the obscura render engine, which could not be installed " +
+            "(offline, or no published build for this platform).\n" +
+            'Fix: connect to the network and re-run, or set plugins["ma-fetch"].obscura.bin ' +
+            "in ~/.minimal-agent/config.jsonc to a local obscura build.\n" +
+            'Or disable Fetch: plugins["ma-fetch"].enabled = false.',
+        }
+      : {}),
+  }
+}
+
+/**
+ * Refresh stale metadata in the background. The returned promise is retained
+ * only to coalesce simultaneous setup calls; startup deliberately never awaits
+ * it once a last-known-good record exists.
+ */
+function refreshCachedBuild(
+  cachePath: string,
+  platform: string,
+  env: Record<string, string>,
+  log: SetupContext["log"],
+): void {
+  if (refreshInFlight) return
+  refreshInFlight = (async () => {
+    const token = await resolveDistToken(env)
+    if (!token) return
+    const build = await resolveObscuraBuild({ token, platformKey: platform })
+    writeCachedObscuraRelease(cachePath, build)
+    log.info("ma-fetch.setup", "refreshed obscura latest release", {
+      tag: build.tag,
+      version: build.version,
+      asset: build.asset,
+      platform: build.platform,
+    })
+  })()
+    .catch((e) => {
+      log.notice("ma-fetch.setup", "could not refresh latest obscura; keeping cached release", {
+        detail: e instanceof Error ? e.message : String(e),
+        platform,
+      })
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+}
+
+/** Test-only reset for the module-level stale-refresh coalescer. */
+export function resetObscuraReleaseRefreshForTest(): void {
+  refreshInFlight = null
 }
 
 /** Read `plugins["ma-fetch"].obscura.bin` from user config, if set. Lenient. */
@@ -151,8 +238,24 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
     return {}
   }
 
-  // 2. Resolve the rolling latest release for this platform (no source pin).
+  // 2. Reuse the last known release immediately. A stale entry triggers an
+  // unawaited refresh so regular interactive boots never wait on GitHub.
   const platform = `${process.platform}-${process.arch}`
+  const cachePath = obscuraReleaseCachePath(agentHome({ ...process.env, ...ctx.env }), platform)
+  const cached = readCachedObscuraRelease(cachePath)
+  const hasInstalledObscura = ctx.binaries.has("obscura")
+  if (cached && cached.platform === platform) {
+    if (isCachedObscuraReleaseFresh(cached)) {
+      return setupResultFor(cached, !hasInstalledObscura)
+    }
+    refreshCachedBuild(cachePath, platform, ctx.env, ctx.log)
+    // The current process can use the last verified coordinates immediately;
+    // a future boot observes the completed refresh.
+    return setupResultFor(cached, !hasInstalledObscura)
+  }
+
+  // 3. No usable cache means Fetch cannot operate yet, so this first install
+  // intentionally resolves synchronously and allows the host to provision it.
   const token = await resolveDistToken(ctx.env)
   if (!token) {
     ctx.log.notice(
@@ -163,12 +266,11 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
     return {}
   }
 
-  let build: Awaited<ReturnType<typeof resolveObscuraBuild>>
+  let build: ResolvedObscuraBuild
   try {
     build = await resolveObscuraBuild({
       token,
       platformKey: platform,
-      // Honour abort if the host tears setup down mid-resolve.
       fetch: async (input, init) => {
         if (ctx.abort?.aborted) throw new ResolveObscuraError("setup aborted")
         return await fetch(input, { ...init, signal: ctx.abort })
@@ -192,40 +294,14 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
     return {}
   }
 
+  writeCachedObscuraRelease(cachePath, build)
   ctx.log.info("ma-fetch.setup", "resolved obscura latest release", {
     tag: build.tag,
     version: build.version,
     asset: build.asset,
     platform: build.platform,
   })
-
-  // 3. Declare the requirement: PRIVATE release asset + embedded token.
-  //    `obscura-worker` rides along as a sibling.
-  const spec: SetupBinarySpec = {
-    name: "obscura",
-    version: build.version,
-    source: {
-      kind: "github-release",
-      repo: OBSCURA_DIST_REPO,
-      tag: build.tag,
-      asset: build.asset,
-      ...(OBSCURA_DIST_TOKEN ? { token: OBSCURA_DIST_TOKEN } : token ? { token } : {}),
-    },
-    sha256: build.sha256,
-    archiveMember: "obscura",
-    archiveExtraMembers: ["obscura-worker"],
-  }
-
-  return {
-    requireBinaries: [spec],
-    haltIfMissing: ["obscura"],
-    haltMessage:
-      "The Fetch tool needs the obscura render engine, which could not be installed " +
-      "(offline, or no published build for this platform).\n" +
-      'Fix: connect to the network and re-run, or set plugins["ma-fetch"].obscura.bin ' +
-      "in ~/.minimal-agent/config.jsonc to a local obscura build.\n" +
-      'Or disable Fetch: plugins["ma-fetch"].enabled = false.',
-  }
+  return setupResultFor(build, true, token)
 }
 
 export default setup
