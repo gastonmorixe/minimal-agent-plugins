@@ -165,14 +165,25 @@ function renderAllFailed(err: WebSearchAllFailedError): string {
   }
   const lines = ["WebSearch: all providers failed:"]
   let onlyMissingKey = true
+  let allTransient = true
   for (const f of err.failures) {
     lines.push(`  - ${f.providerId}: ${f.message}`)
     if (f.kind !== "not_configured") onlyMissingKey = false
+    if (f.kind === "not_configured" || f.transient !== true) allTransient = false
   }
   if (onlyMissingKey) {
     lines.push("")
     lines.push("Hint: set BRAVE_API_KEY in your environment, or add an `apiKey` to")
     lines.push('plugins["web-search"].brave in ~/.minimal-agent/config.jsonc.')
+  } else if (allTransient) {
+    // Every failure was a rate limit / upstream / network error. The tool
+    // already retried with backoff — tell the model it may just need to
+    // try again shortly instead of treating the result as conclusive.
+    lines.push("")
+    lines.push("All failures look transient (rate limit / upstream / network) and the")
+    lines.push("search already retried with backoff. Retry the search in a few seconds")
+    lines.push("— the provider may have recovered — or use a different/more specific")
+    lines.push("query. Do not treat this as a final answer.")
   }
   return lines.join("\n")
 }

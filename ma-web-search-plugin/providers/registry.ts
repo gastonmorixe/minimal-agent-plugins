@@ -62,6 +62,12 @@ export interface ChainFailure {
   /** `"not_configured"` | `"error"` */
   kind: "not_configured" | "error"
   message: string
+  /**
+   * Set on `"error"` failures the provider classified as transient
+   * (rate limit, upstream 5xx, network). Lets the caller distinguish
+   * "retry later" from "permanent" when rendering the final error.
+   */
+  transient?: boolean
 }
 
 /**
@@ -102,7 +108,10 @@ export async function runChain(
       continue
     }
     try {
-      return await provider.search(query, opts, signal)
+      // Forward a provider's retry-progress notices (backoff in flight) to
+      // the chain logger so the user sees retries happen rather than
+      // watching a silent delay.
+      return await provider.search(query, opts, signal, (msg) => logger?.(msg))
     } catch (err) {
       const msg =
         err instanceof WebSearchProviderError
@@ -110,7 +119,12 @@ export async function runChain(
           : err instanceof Error
             ? err.message
             : String(err)
-      failures.push({ providerId: provider.id, kind: "error", message: msg })
+      failures.push({
+        providerId: provider.id,
+        kind: "error",
+        message: msg,
+        transient: err instanceof WebSearchProviderError ? err.transient : false,
+      })
       logger?.(`provider "${provider.id}" failed: ${msg}`)
       // continue to next provider
     }

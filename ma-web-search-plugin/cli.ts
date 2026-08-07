@@ -193,7 +193,11 @@ function effectiveOpts(flags: Flags, config: WebSearchConfig): SearchOptions {
 /** Pretty-print a chain failure for terminal use. */
 function reportFailure(err: WebSearchAllFailedError): string {
   const lines = ["web-search: all providers failed:"]
-  for (const f of err.failures) lines.push(`  - ${f.providerId}: ${f.message}`)
+  let allTransient = true
+  for (const f of err.failures) {
+    lines.push(`  - ${f.providerId}: ${f.message}`)
+    if (f.kind === "not_configured" || f.transient !== true) allTransient = false
+  }
   if (err.failures.length === 0) {
     lines.push(
       '  (no providers configured. Set plugins["web-search"].providers in ~/.minimal-agent/config.jsonc)',
@@ -202,6 +206,10 @@ function reportFailure(err: WebSearchAllFailedError): string {
     lines.push("")
     lines.push("Hint: set BRAVE_API_KEY in your environment, or add an `apiKey` to")
     lines.push('plugins["web-search"].brave in ~/.minimal-agent/config.jsonc.')
+  } else if (allTransient) {
+    lines.push("")
+    lines.push("All failures look transient (rate limit / upstream / network). The search")
+    lines.push("already retried with backoff. Retry in a few seconds or use a different query.")
   }
   return lines.join("\n")
 }

@@ -11,7 +11,7 @@ import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
-import { braveFactory, buildQueryParams, MAX_QUERY_LENGTH } from "./brave.ts"
+import { braveFactory, buildQueryParams, classifyError, MAX_QUERY_LENGTH } from "./brave.ts"
 import { type SearchOptions, WebSearchProviderError } from "./types.ts"
 
 const FIX_DIR = join(import.meta.dirname ?? __dirname, "__fixtures__")
@@ -42,6 +42,18 @@ function jsonResponse(
     statusText: init.statusText ?? "OK",
     headers: { "content-type": "application/json" },
   })
+}
+
+/** Build the `ResponseError` marker shape `classifyError` inspects. */
+function respError(
+  status: number,
+  headers: Record<string, string> = {},
+): Error & {
+  response: Response
+} {
+  const err = new Error(`HTTP ${status}`) as Error & { response: Response }
+  err.response = new Response("", { status, headers })
+  return err
 }
 
 describe("buildQueryParams", () => {
@@ -420,5 +432,103 @@ describe("BraveProvider.search — retry behavior", () => {
     })
     await expect(p.search("q", baseOpts, ac.signal)).rejects.toThrow(/fetch failed: user-cancel/)
     expect(attempts).toBe(1)
+  })
+
+  test("classifyError: 429 without Retry-After enforces a 1s backoff floor", () => {
+    const d = classifyError(respError(429))
+    expect(d.retry).toBe(true)
+    expect(d.retryAfterMs).toBe(1000)
+  })
+
+  test("classifyError: Retry-After header beats the 429 floor", () => {
+    const d = classifyError(respError(429, { "retry-after": "2" }))
+    expect(d.retry).toBe(true)
+    expect(d.retryAfterMs).toBe(2000)
+  })
+
+  test("classifyError: 503 without Retry-After has no floor (pure jitter)", () => {
+    const d = classifyError(respError(503))
+    expect(d.retry).toBe(true)
+    expect(d.retryAfterMs).toBeUndefined()
+  })
+
+  test("classifyError: 4xx other than 429 is not retryable", () => {
+    expect(classifyError(respError(403)).retry).toBe(false)
+    expect(classifyError(respError(401)).retry).toBe(false)
+  })
+
+  test("classifyError: network errors retry with no floor", () => {
+    const d = classifyError(new Error("ECONNRESET"))
+    expect(d.retry).toBe(true)
+    expect(d.retryAfterMs).toBeUndefined()
+  })
+
+  test("reports retry progress via the onRetry callback", async () => {
+    let attempts = 0
+    const notices: string[] = []
+    const p = braveFactory({
+      apiKey: "k",
+      retry: { baseDelayMs: 1, maxDelayMs: 1 },
+      fetch: makeFetch(() => {
+        attempts++
+        if (attempts === 1) return new Response("rate limited", { status: 429 })
+        return jsonResponse({ web: { results: [] }, query: { original: "q" } })
+      }),
+    })
+    await p.search("q", baseOpts, new AbortController().signal, (m) => notices.push(m))
+    expect(attempts).toBe(2)
+    expect(notices).toHaveLength(1)
+    expect(notices[0]).toMatch(/HTTP 429/)
+    expect(notices[0]).toMatch(/retrying in ~/)
+    expect(notices[0]).toMatch(/attempt 2\/3/)
+  })
+
+  test("exhausted 429 is marked transient", async () => {
+    const p = braveFactory({
+      apiKey: "k",
+      retry: { maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1 },
+      fetch: makeFetch(() => new Response("rate limited", { status: 429 })),
+    })
+    let caught: unknown
+    try {
+      await p.search("q", baseOpts, new AbortController().signal)
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(WebSearchProviderError)
+    expect((caught as WebSearchProviderError).transient).toBe(true)
+  })
+
+  test("403 is NOT marked transient", async () => {
+    const p = braveFactory({
+      apiKey: "k",
+      fetch: makeFetch(() => new Response("forbidden", { status: 403 })),
+    })
+    let caught: unknown
+    try {
+      await p.search("q", baseOpts, new AbortController().signal)
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(WebSearchProviderError)
+    expect((caught as WebSearchProviderError).transient).toBe(false)
+  })
+
+  test("network failure is marked transient", async () => {
+    const p = braveFactory({
+      apiKey: "k",
+      retry: { maxAttempts: 1 },
+      fetch: makeFetch(() => {
+        throw new Error("ECONNREFUSED")
+      }),
+    })
+    let caught: unknown
+    try {
+      await p.search("q", baseOpts, new AbortController().signal)
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(WebSearchProviderError)
+    expect((caught as WebSearchProviderError).transient).toBe(true)
   })
 })

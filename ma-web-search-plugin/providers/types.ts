@@ -78,6 +78,14 @@ export class WebSearchProviderError extends Error {
     public providerId: string,
     message: string,
     public cause?: unknown,
+    /**
+     * True when the failure is plausibly transient — rate limit (429),
+     * upstream 5xx, network outage — so retrying later may succeed. False
+     * (default) for permanent failures (auth, validation, malformed
+     * responses), which no amount of retrying will fix. The chain records
+     * this so the handler can tell the model "retry me" vs "fix config".
+     */
+    public transient = false,
   ) {
     super(`[${providerId}] ${message}`)
     this.name = "WebSearchProviderError"
@@ -106,8 +114,22 @@ export interface WebSearchProvider {
    * Execute the search. Must honor `signal` (forward to fetch). Throws
    * `WebSearchProviderError` on failure; returns a normalized
    * `SearchResponse` on success (even when hits are empty).
+   *
+   * @param query   - The search string.
+   * @param opts    - Normalized search options (post config-merge).
+   * @param signal  - Abort signal forwarded to `fetch`.
+   * @param onRetry - Optional callback the provider fires *between* retry
+   *   attempts (backoff in progress) with a human-readable line, e.g.
+   *   `"brave: HTTP 429 — retrying in ~1.0s (attempt 2/3)"`. The registry
+   *   forwards it to its logger so retries are visible to the user instead
+   *   of happening silently.
    */
-  search(query: string, opts: SearchOptions, signal: AbortSignal): Promise<SearchResponse>
+  search(
+    query: string,
+    opts: SearchOptions,
+    signal: AbortSignal,
+    onRetry?: (msg: string) => void,
+  ): Promise<SearchResponse>
 }
 
 /** A provider factory: takes its config block and returns an instance. */

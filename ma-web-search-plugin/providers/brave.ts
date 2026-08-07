@@ -182,13 +182,27 @@ function readBraveConfig(raw: ProviderConfig): BraveConfig {
  */
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504])
 
-/** Default retry config tuned for Brave's Free plan (1 qps + 2k/mo quota). */
+/**
+ * Default retry config tuned for Brave's Free plan (1 qps + 2k/mo quota).
+ *
+ * `baseDelayMs: 1000` spreads the default 3-attempt budget across a few
+ * seconds (attempt 2 waits up to 1s, attempt 3 up to 2s) instead of
+ * re-hammering the rate limit instantly.
+ */
 const DEFAULT_RETRY: RetryOptions = {
   maxAttempts: 3,
-  baseDelayMs: 500,
-  maxDelayMs: 5_000,
-  maxTotalMs: 15_000,
+  baseDelayMs: 1_000,
+  maxDelayMs: 8_000,
+  maxTotalMs: 20_000,
 }
+
+/**
+ * Minimum backoff (ms) for 429 rate limits when the server sends no
+ * `Retry-After` header. Brave's free plan is 1 req/sec; without a floor,
+ * full jitter can pick ~0ms and immediately trip the limiter again. With
+ * the floor, the 3 attempts land at ~0s, ~1s, ~2s.
+ */
+const RATE_LIMIT_FLOOR_MS = 1_000
 
 /**
  * Internal marker error: lets us pass a Response through `retry()` (which
@@ -210,17 +224,40 @@ function isResponseError(err: unknown): err is ResponseError {
  * Build the retry classifier closing over our defaults. Honors
  * `Retry-After` (seconds form only — HTTP-date form falls through to
  * jitter); refuses to retry non-`RETRYABLE_STATUSES` HTTP failures.
+ *
+ * Rate limits without a `Retry-After` header get a minimum backoff floor
+ * (`RATE_LIMIT_FLOOR_MS`) so we don't immediately re-hit the limiter.
  */
-function classifyError(err: unknown): { retry: boolean; retryAfterMs?: number } {
+export function classifyError(err: unknown): { retry: boolean; retryAfterMs?: number } {
   if (!isResponseError(err)) {
     // Network failure / DNS / abort — retryable by default.
     return { retry: true }
   }
   const r = err.response
   if (!RETRYABLE_STATUSES.has(r.status)) return { retry: false }
+  let retryAfterMs: number | undefined
   const ra = r.headers.get("retry-after")
-  const retryAfterMs = ra && /^\d+$/.test(ra) ? Number(ra) * 1000 : undefined
+  if (ra && /^\d+$/.test(ra)) {
+    retryAfterMs = Number(ra) * 1000
+  } else if (r.status === 429) {
+    retryAfterMs = RATE_LIMIT_FLOOR_MS
+  }
   return { retry: true, retryAfterMs }
+}
+
+/** Human-readable retry-progress line for the `onRetry` notification. */
+function formatRetryNotice(
+  info: { attempt: number; delayMs: number; error: unknown },
+  maxAttempts: number,
+): string {
+  const status = isResponseError(info.error)
+    ? `${info.error.response.status}${info.error.response.statusText ? ` ${info.error.response.statusText}` : ""}`
+    : "network error"
+  const secs = (info.delayMs / 1000).toFixed(1)
+  // `info.attempt` is the attempt that just failed; the upcoming retry is
+  // the next number.
+  const next = Math.min(info.attempt + 1, maxAttempts)
+  return `brave: HTTP ${status} — retrying in ~${secs}s (attempt ${next}/${maxAttempts})`
 }
 
 class BraveProvider implements WebSearchProvider {
@@ -249,7 +286,12 @@ class BraveProvider implements WebSearchProvider {
     return !!this.apiKey(env)
   }
 
-  async search(query: string, opts: SearchOptions, signal: AbortSignal): Promise<SearchResponse> {
+  async search(
+    query: string,
+    opts: SearchOptions,
+    signal: AbortSignal,
+    onRetry?: (msg: string) => void,
+  ): Promise<SearchResponse> {
     if (!this.capabilities.has(opts.type)) {
       throw new WebSearchProviderError(
         this.id,
@@ -282,26 +324,34 @@ class BraveProvider implements WebSearchProvider {
     let resp: Response
     try {
       // Wrap in retry: transient statuses (429/5xx) trigger backoff with
-      // Retry-After honoring. Non-transient failures (4xx other than 429)
-      // throw immediately. Network errors retry by default. The merged
-      // options always force our `signal` and `shouldRetry`.
-      resp = await retry<Response>(
-        async () => {
-          const r = await this.fetchImpl(url, { headers, signal })
-          if (RETRYABLE_STATUSES.has(r.status)) {
-            const err = new Error(`HTTP ${r.status} ${r.statusText}`) as ResponseError
-            err.response = r
-            throw err
-          }
-          return r
-        },
-        {
-          ...DEFAULT_RETRY,
-          ...this.cfg.retry,
-          signal,
-          shouldRetry: classifyError,
-        },
-      )
+      // Retry-After honoring (plus a 1s floor for 429s without one).
+      // Non-transient failures (4xx other than 429) throw immediately.
+      // Network errors retry by default. The merged options always force
+      // our `signal` and `shouldRetry`.
+      const retryOpts: RetryOptions = {
+        ...DEFAULT_RETRY,
+        ...this.cfg.retry,
+        signal,
+        shouldRetry: classifyError,
+      }
+      const maxAttempts = retryOpts.maxAttempts ?? 3
+      // User-supplied onRetry (e.g. tests) still fires; ours additionally
+      // surfaces each backoff to the chain logger so the user sees the
+      // retry instead of a silent delay.
+      const userOnRetry = retryOpts.onRetry
+      retryOpts.onRetry = (info) => {
+        userOnRetry?.(info)
+        onRetry?.(formatRetryNotice(info, maxAttempts))
+      }
+      resp = await retry<Response>(async () => {
+        const r = await this.fetchImpl(url, { headers, signal })
+        if (RETRYABLE_STATUSES.has(r.status)) {
+          const err = new Error(`HTTP ${r.status} ${r.statusText}`) as ResponseError
+          err.response = r
+          throw err
+        }
+        return r
+      }, retryOpts)
     } catch (err) {
       // A non-retryable response (e.g. 403) reaches here as our
       // ResponseError marker — surface it to the existing `!resp.ok`
@@ -309,7 +359,12 @@ class BraveProvider implements WebSearchProvider {
       if (isResponseError(err)) {
         resp = err.response
       } else {
-        throw new WebSearchProviderError(this.id, `fetch failed: ${(err as Error).message}`, err)
+        throw new WebSearchProviderError(
+          this.id,
+          `fetch failed: ${(err as Error).message}`,
+          err,
+          true, // network failures are transient
+        )
       }
     }
 
@@ -323,6 +378,11 @@ class BraveProvider implements WebSearchProvider {
       throw new WebSearchProviderError(
         this.id,
         `HTTP ${resp.status} ${resp.statusText}${body ? `: ${body}` : ""}`,
+        undefined,
+        // Reaching here with a retryable status means we exhausted the
+        // backoff budget — still transient, worth a later retry. Other
+        // 4xx are permanent.
+        RETRYABLE_STATUSES.has(resp.status),
       )
     }
 

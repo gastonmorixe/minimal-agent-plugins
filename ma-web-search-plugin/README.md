@@ -34,6 +34,17 @@ lives under `providers/`. A provider can return:
 If every provider errors, the tool returns `is_error: true` with a
 setup hint (usually "no API key set").
 
+### Retries
+
+Transient failures — rate limits (`429`), upstream gateway errors
+(`502/503/504`), network errors — are retried up to 3 times with
+jittered exponential backoff (1s base, `Retry-After` honored, 1s floor
+for 429s) before the error is reported. Retry progress is logged
+(`retrying in ~1.0s (attempt 2/3)`) so retries are visible to the user,
+not a silent delay. When retries are exhausted and every failure was
+transient, the error message tells the model the failure was transient
+and to retry in a few seconds — rather than treating it as final.
+
 ## Provider configuration
 
 Brave needs `BRAVE_SEARCH_API_KEY` in the environment. Other providers
