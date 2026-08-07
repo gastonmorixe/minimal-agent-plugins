@@ -7,7 +7,7 @@
  * persisted `Task` tool_result row to {@link renderTaskReplay}, which
  * re-renders the body via the SAME `renderToolDisplay({ansi: true})`
  * the live tool uses — so restored sessions keep the lime/sky/red
- * status styling, dim hashes, and duration columns.
+ * status styling, dim ides, and duration columns.
  *
  * The host supplies the per-session sidecar (`<sid>.tasks.jsonl`,
  * already parsed) plus the historical call's wall-clock. Because the
@@ -137,12 +137,12 @@ function computeStats(tasks: readonly Task[]): {
  *
  *   - `add_many` → `added_many` with the title count.
  *   - `add` → `added_many` with `count: 1` (we don't have the new
- *     hash : it's generated at exec time and not echoed back in the
+ *     id : it's generated at exec time and not echoed back in the
  *     input). Loses the per-row "targeted" highlight but renders the
  *     correct header verb.
  *   - `start` / `done` / `status` → `started` / `marked_done` /
- *     `marked_<value>` with the task hash (`#` prefix stripped).
- *   - `update` / `remove` → `updated` / `removed` with the hash.
+ *     `marked_<value>` with the task id (`#` prefix stripped).
+ *   - `update` / `remove` → `updated` / `removed` with the id.
  *   - `reorder` / `list` / `clear` → kind-only.
  *
  * **`marked_done → all_done` upgrade**: when the post-mutation snapshot
@@ -155,35 +155,53 @@ function mapInputToRenderAction(
   stats: { total: number; done: number; doing: number; todo: number; canceled: number },
 ): RenderAction {
   const action = typeof input.action === "string" ? input.action : ""
-  const stripHash = (raw: unknown): string => {
+  const normalizeHistoricalId = (raw: unknown): string => {
     const s = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw : ""
     return s.startsWith("#") ? s.slice(1) : s
   }
   const allDone = stats.total > 0 && stats.done === stats.total
   switch (action) {
     case "add_many": {
-      const titles = Array.isArray(input.titles) ? input.titles : []
-      return { kind: "added_many", count: titles.length }
+      const rows = Array.isArray(input.tasks)
+        ? input.tasks
+        : Array.isArray(input.items)
+          ? input.items
+          : Array.isArray(input.titles)
+            ? input.titles
+            : []
+      return { kind: "added_many", count: rows.length }
+    }
+    case "replace_plan": {
+      const rows = Array.isArray(input.tasks)
+        ? input.tasks
+        : Array.isArray(input.items)
+          ? input.items
+          : Array.isArray(input.titles)
+            ? input.titles
+            : []
+      return { kind: "replaced_plan", count: rows.length, replaced: 0 }
     }
     case "add":
       return { kind: "added_many", count: 1 }
     case "start":
-      return { kind: "started", hash: stripHash(input.id) }
+      return { kind: "started", id: normalizeHistoricalId(input.id) }
     case "done":
-      return allDone ? { kind: "all_done" } : { kind: "marked_done", hash: stripHash(input.id) }
+      return allDone
+        ? { kind: "all_done" }
+        : { kind: "marked_done", id: normalizeHistoricalId(input.id) }
     case "status": {
       const status = typeof input.status === "string" ? input.status : ""
-      const hash = stripHash(input.id)
-      if (status === "doing") return { kind: "marked_doing", hash }
-      if (status === "todo") return { kind: "marked_todo", hash }
-      if (status === "canceled") return { kind: "marked_canceled", hash }
+      const id = normalizeHistoricalId(input.id)
+      if (status === "doing") return { kind: "marked_doing", id }
+      if (status === "todo") return { kind: "marked_todo", id }
+      if (status === "canceled") return { kind: "marked_canceled", id }
       // status === "done"
-      return allDone ? { kind: "all_done" } : { kind: "marked_done", hash }
+      return allDone ? { kind: "all_done" } : { kind: "marked_done", id }
     }
     case "update":
-      return { kind: "updated", hash: stripHash(input.id) }
+      return { kind: "updated", id: normalizeHistoricalId(input.id) }
     case "remove":
-      return { kind: "removed", hash: stripHash(input.id) }
+      return { kind: "removed", id: normalizeHistoricalId(input.id) }
     case "reorder":
       return { kind: "reordered" }
     case "list":
@@ -215,7 +233,13 @@ export default function renderTaskReplay(ctx: ReplayRenderInput): ReplayRenderRe
     // rows). For every other action, decline : we'd produce a
     // contentless block and the host's content-split says more.
     const action = ctx.input.action
-    if (snapshot.length === 0 && action !== "add_many" && action !== "add") return undefined
+    if (
+      snapshot.length === 0 &&
+      action !== "add_many" &&
+      action !== "replace_plan" &&
+      action !== "add"
+    )
+      return undefined
     const stats = computeStats(snapshot)
     const renderAction = mapInputToRenderAction(ctx.input, stats)
     const views = buildViews(snapshot)

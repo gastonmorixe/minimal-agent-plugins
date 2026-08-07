@@ -28,7 +28,7 @@ Never spawn make-work agents to look busy. One capable worker beats five redunda
 
 (Workers also get a `SubAgentsReportResult` tool to hand their result back. It is not in your tool list: it only appears inside a worker process. See "How a worker finishes" below.)
 
-Link a worker to a todo with `SubAgentsSpawnAgent({task, taskId: "#hash"})`. When it finishes, the todo is ticked done automatically (or canceled with a reason if the worker fails). Plan with the Task tool, then delegate each unit.
+Link a worker to a todo with `SubAgentsSpawnAgent({task, taskId: "1a"})`. When it finishes, the todo is ticked done automatically (or canceled with a reason if the worker fails). Plan with the Task tool, then delegate each unit.
 
 When a worker finishes you get a one-line digest automatically between turns, then call `SubAgentsAgentResult` to read the full summary. You don't need to poll in a busy loop.
 

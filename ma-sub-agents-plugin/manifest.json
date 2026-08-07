@@ -46,7 +46,7 @@
               },
               "taskId": {
                 "type": "string",
-                "description": "Link this worker to a task from the Task tool (its #hash). When the worker finishes the linked todo is ticked done automatically (or canceled with a reason if the worker fails). Use it to make a worker own one of your todos."
+                "description": "Link this worker to a task from the Task tool using its canonical id, such as `1` or `1a`. When the worker finishes the linked todo is ticked done automatically (or canceled with a reason if the worker fails). Use it to make a worker own one of your todos."
               },
               "expectArtifacts": {
                 "type": "array",

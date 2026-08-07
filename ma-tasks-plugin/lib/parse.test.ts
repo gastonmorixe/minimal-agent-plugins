@@ -12,6 +12,8 @@ import {
   parentOf,
   parseFile,
   parseTask,
+  parseTasksFile,
+  parseTasksMeta,
   serializeFile,
   subtaskId,
   TASK_ID_RE,
@@ -127,8 +129,8 @@ describe("subtaskId", () => {
     expect(() => subtaskId("d04c91", 1.5)).toThrow(/non-negative integer/)
   })
   test("rejects non-top-level parent", () => {
-    expect(() => subtaskId("d04c91a", 0)).toThrow(/six-hex top-level id/)
-    expect(() => subtaskId("nope", 0)).toThrow(/six-hex top-level id/)
+    expect(() => subtaskId("d04c91a", 0)).toThrow(/top-level id/)
+    expect(() => subtaskId("nope", 0)).toThrow(/top-level id/)
   })
 })
 
@@ -356,6 +358,42 @@ describe("parseTask robustness", () => {
       active_ms: 0,
     })
     expect(parseTask(badStarted)).toBeNull()
+  })
+})
+
+describe("v3 metadata parsing", () => {
+  test("only accepts a metadata header in the first record", () => {
+    const meta = JSON.stringify({
+      kind: "tasks_meta",
+      v: 3,
+      id_scheme: "ordinal",
+      next_root: 2,
+      next_child: {},
+      aliases: {},
+    })
+    expect(parseTasksFile(`${formatTask(sampleTask)}\n${meta}\n`).meta).toBeNull()
+    expect(parseTasksFile(`${meta}\n${formatTask(sampleTask)}\n`).meta?.next_root).toBe(2)
+  })
+
+  test("keeps only legacy-to-ordinal aliases and valid child allocators", () => {
+    const meta = parseTasksMeta(
+      JSON.stringify({
+        kind: "tasks_meta",
+        v: 3,
+        id_scheme: "ordinal",
+        next_root: 4,
+        next_child: { "1": 2, abcdef: 4, "2": -1 },
+        aliases: { abcdef: "1", "1": "2", fedcba: "abcdef" },
+      }),
+    )
+    expect(meta).toEqual({
+      kind: "tasks_meta",
+      v: 3,
+      id_scheme: "ordinal",
+      next_root: 4,
+      next_child: { "1": 2 },
+      aliases: { abcdef: "1" },
+    })
   })
 })
 

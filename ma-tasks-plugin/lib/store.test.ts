@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from "node:fs"
+/* eslint-disable max-lines -- comprehensive store state-machine and migration regressions */
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -94,7 +95,13 @@ describe("empty state", () => {
     expect(store.views()).toEqual([])
   })
   test("stats() reports all zeros", () => {
-    expect(store.stats()).toEqual({ total: 0, done: 0, doing: 0, todo: 0, canceled: 0 })
+    expect(store.stats()).toEqual({
+      total: 0,
+      done: 0,
+      doing: 0,
+      todo: 0,
+      canceled: 0,
+    })
   })
 })
 
@@ -105,7 +112,7 @@ describe("empty state", () => {
 describe("add()", () => {
   test("appends a top-level task and returns it", () => {
     const t = store.add({ title: "Hello" })
-    expect(t.id).toMatch(/^[0-9a-f]{6}$/)
+    expect(t.id).toBe("1")
     expect(t.title).toBe("Hello")
     expect(t.status).toBe("todo")
     expect(t.parent).toBeNull()
@@ -125,53 +132,53 @@ describe("add()", () => {
     expect(t.done_at).not.toBeNull()
   })
   test("can insert after another top-level task", () => {
-    const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
-    s.add({ title: "first" }) // aaaaaa
-    s.add({ title: "second" }) // bbbbbb
-    s.add({ title: "middle" }, /* after */ 1) // cccccc — inserted after position 1
+    const s = withRand(["1", "2", "3"])
+    s.add({ title: "first" }) // 1
+    s.add({ title: "second" }) // 2
+    s.add({ title: "middle" }, /* after */ 1) // 3 — inserted after position 1
     const ids = s.list().map((t) => t.id)
-    expect(ids).toEqual(["aaaaaa", "cccccc", "bbbbbb"])
+    expect(ids).toEqual(["1", "3", "2"])
   })
 })
 
 describe("add() with parent (subtask)", () => {
   test("generates suffix `a` for first child", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     const c = s.add({ title: "child", parent: p.id })
-    expect(c.id).toBe("aaaaaaa")
-    expect(c.parent).toBe("aaaaaa")
+    expect(c.id).toBe("1a")
+    expect(c.parent).toBe("1")
   })
   test("walks suffix a → b → c", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     const c1 = s.add({ title: "c1", parent: p.id })
     const c2 = s.add({ title: "c2", parent: p.id })
     const c3 = s.add({ title: "c3", parent: p.id })
-    expect([c1.id, c2.id, c3.id]).toEqual(["aaaaaaa", "aaaaaab", "aaaaaac"])
+    expect([c1.id, c2.id, c3.id]).toEqual(["1a", "1b", "1c"])
   })
   test("removed sibling does NOT free its suffix (stable ids)", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     const c1 = s.add({ title: "c1", parent: p.id })
     const c2 = s.add({ title: "c2", parent: p.id })
     s.remove(c1.id)
     const c3 = s.add({ title: "c3", parent: p.id })
     // c3 gets suffix `c` because b is still used and we go max+1, not count.
-    expect(c3.id).toBe("aaaaaac")
-    expect(c2.id).toBe("aaaaaab")
+    expect(c3.id).toBe("1c")
+    expect(c2.id).toBe("1b")
   })
   test("subtask is inserted immediately after parent's last child", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     const p1 = s.add({ title: "p1" })
     s.add({ title: "p2" })
     s.add({ title: "c1", parent: p1.id })
     s.add({ title: "c2", parent: p1.id })
     const ids = s.list().map((t) => t.id)
-    expect(ids).toEqual(["aaaaaa", "aaaaaaa", "aaaaaab", "bbbbbb"])
+    expect(ids).toEqual(["1", "1a", "1b", "2"])
   })
   test("refuses depth-2 nesting", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     const c = s.add({ title: "child", parent: p.id })
     expect(() => s.add({ title: "gc", parent: c.id })).toThrow(/depth-2 nesting is not allowed/)
@@ -180,17 +187,17 @@ describe("add() with parent (subtask)", () => {
 
 describe("addMany()", () => {
   test("creates each task in order", () => {
-    const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
+    const s = withRand(["1", "2", "3"])
     const out = s.addMany(["one", "two", "three"])
     expect(out).toHaveLength(3)
     expect(out.map((t) => t.title)).toEqual(["one", "two", "three"])
-    expect(out.map((t) => t.id)).toEqual(["aaaaaa", "bbbbbb", "cccccc"])
+    expect(out.map((t) => t.id)).toEqual(["1", "2", "3"])
   })
   test("supports a shared parent", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     const subs = s.addMany(["c1", "c2"], { parent: p.id })
-    expect(subs.map((t) => t.id)).toEqual(["aaaaaaa", "aaaaaab"])
+    expect(subs.map((t) => t.id)).toEqual(["1a", "1b"])
   })
   test("rejects when parent doesn't exist", () => {
     expect(() => store.addMany(["x"], { parent: "deadbe" })).toThrow(/not found/)
@@ -203,26 +210,26 @@ describe("addMany()", () => {
 
 describe("resolve()", () => {
   test("resolves by position (number)", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     s.add({ title: "one" })
     s.add({ title: "two" })
-    expect(s.resolve(1)!.id).toBe("aaaaaa")
-    expect(s.resolve(2)!.id).toBe("bbbbbb")
+    expect(s.resolve(1)!.id).toBe("1")
+    expect(s.resolve(2)!.id).toBe("2")
   })
   test("resolves by bare id", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     s.add({ title: "x" })
-    expect(s.resolve("aaaaaa")!.title).toBe("x")
+    expect(s.resolve("1")!.title).toBe("x")
   })
   test("resolves by #-prefixed id", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     s.add({ title: "x" })
-    expect(s.resolve("#aaaaaa")!.title).toBe("x")
+    expect(s.resolve("#1")!.title).toBe("x")
   })
   test("resolves by stringified position", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     s.add({ title: "x" })
-    expect(s.resolve("1")!.id).toBe("aaaaaa")
+    expect(s.resolve("1")!.id).toBe("1")
   })
   test("returns null for unknown id", () => {
     expect(store.resolve("deadbe")).toBeNull()
@@ -232,41 +239,11 @@ describe("resolve()", () => {
     expect(store.resolve("bogus!")).toBeNull()
   })
   test("position numbering skips subtasks", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     const p = s.add({ title: "p1" })
     s.add({ title: "c1", parent: p.id })
     s.add({ title: "p2" })
     expect(s.resolve(2)!.title).toBe("p2")
-  })
-
-  // Regression: when a 6-char random hash happens to be all digits (about 6%
-  // of cases — (10/16)^6 ≈ 0.064), `resolve("398925")` MUST treat the string
-  // as a hash, not as a position lookup. The earlier implementation matched
-  // `/^\d+$/` first and silently looked up "position 398925" which returns
-  // null; the in-flight `done`/`setStatus` then mutated nothing and the test
-  // failed intermittently. Pinned here so it can't drift back.
-  test("all-digit hash is not misread as a position (regression)", () => {
-    const s = withRand(["398925"]) // all decimal digits, still a valid 6-hex id
-    const t = s.add({ title: "needle" })
-    expect(t.id).toBe("398925")
-    // String form (bare and prefixed) AND numeric form behave correctly.
-    expect(s.resolve("398925")!.title).toBe("needle")
-    expect(s.resolve("#398925")!.title).toBe("needle")
-    // The position lookup for position 398925 (no such task) returns null,
-    // NOT the hash-shaped task.
-    expect(s.resolve(398925)).toBeNull()
-    // Setting status by the all-digit hash mutates the right task.
-    s.setStatus("398925", "done")
-    expect(s.list()[0].status).toBe("done")
-  })
-
-  test("all-digit subtask hash is not misread (regression)", () => {
-    const s = withRand(["123456"])
-    const p = s.add({ title: "parent" })
-    const c = s.add({ title: "child", parent: p.id })
-    expect(c.id).toBe("123456a")
-    expect(s.resolve("123456a")!.title).toBe("child")
-    expect(s.resolve("#123456a")!.title).toBe("child")
   })
 })
 
@@ -276,7 +253,7 @@ describe("resolve()", () => {
 
 describe("update()", () => {
   test("changes title", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "before" })
     const u = s.update(t.id, "after")
     expect(u!.title).toBe("after")
@@ -286,7 +263,7 @@ describe("update()", () => {
     expect(store.update("deadbe", "x")).toBeNull()
   })
   test("rejects empty title", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "x" })
     expect(() => s.update(t.id, "")).toThrow(/title cannot be empty/)
   })
@@ -294,21 +271,21 @@ describe("update()", () => {
 
 describe("setStatus()", () => {
   test("flips status and stamps done_at on done", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "x" })
     const u = s.setStatus(t.id, "done")
     expect(u!.status).toBe("done")
     expect(u!.done_at).not.toBeNull()
   })
   test("clears done_at when flipping away from done", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "x", status: "done" })
     expect(t.done_at).not.toBeNull()
     const u = s.setStatus(t.id, "doing")
     expect(u!.done_at).toBeNull()
   })
   test("records reason when setting canceled", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "x" })
     const u = s.setStatus(t.id, "canceled", "user redirected")
     expect(u!.reason).toBe("user redirected")
@@ -322,7 +299,7 @@ describe("setStatus()", () => {
     // the now-bogus reason and stamp done_at, so the row paints lime
     // ✔ with no parenthetical and the closer count moves from
     // "canceled" into "done".
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "PHASE 1 · Setup" })
     s.setStatus(t.id, "canceled", "phase header, all subtasks done")
     const after = s.list()[0]
@@ -340,29 +317,29 @@ describe("setStatus()", () => {
 
 describe("start() / accumulating doing", () => {
   test("flips target to doing", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "x" })
     const u = s.start(t.id)
     expect(u!.status).toBe("doing")
   })
   test("keeps other top-level doing tasks as doing", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     const t1 = s.add({ title: "one", status: "doing" })
     s.add({ title: "two" })
     s.start(2)
     const list = s.list()
     expect(list.find((t) => t.id === t1.id)!.status).toBe("doing")
-    expect(list.find((t) => t.id === "bbbbbb")!.status).toBe("doing")
+    expect(list.find((t) => t.id === "2")!.status).toBe("doing")
   })
   test("parallel flag is a no-op (still accumulates)", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     s.add({ title: "one", status: "doing" })
     s.add({ title: "two" })
     s.start(2, { parallel: true })
     expect(s.list().filter((t) => t.status === "doing")).toHaveLength(2)
   })
   test("subtask start auto-starts its parent and keeps sibling doings", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     const p = s.add({ title: "parent" })
     s.addMany(["c1", "c2"], { parent: p.id })
     // setStatus(doing) and start() both auto-start the parent. Starting c2
@@ -377,7 +354,7 @@ describe("start() / accumulating doing", () => {
   })
 
   test("subtask start does not revive a canceled parent", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     s.addMany(["child"], { parent: p.id })
     s.setStatus(p.id, "canceled", "abandoned")
@@ -389,7 +366,7 @@ describe("start() / accumulating doing", () => {
 
 describe("done()", () => {
   test("is sugar for setStatus(_, done)", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const t = s.add({ title: "x" })
     const u = s.done(t.id)
     expect(u!.status).toBe("done")
@@ -403,7 +380,7 @@ describe("done()", () => {
 
 describe("done cascade + rollup", () => {
   test("last child done auto-promotes parent when every sibling is done", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Phase 9" })
     s.addMany(["a", "b", "c"], { parent: p.id })
     s.done(`${p.id}a`)
@@ -417,7 +394,7 @@ describe("done cascade + rollup", () => {
   })
 
   test("child done auto-starts parent while any sibling is still open", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.done(`${p.id}a`)
@@ -426,7 +403,7 @@ describe("done cascade + rollup", () => {
   })
 
   test("a canceled sibling blocks auto-promote (all children must be done)", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.done(`${p.id}a`)
@@ -437,7 +414,7 @@ describe("done cascade + rollup", () => {
   })
 
   test("does not revive a canceled parent when the last child finishes", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Abandoned phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.setStatus(p.id, "canceled", "user redirected")
@@ -447,7 +424,7 @@ describe("done cascade + rollup", () => {
   })
 
   test("parent done cascades open children to done, leaves canceled children alone", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b", "c"], { parent: p.id })
     s.start(`${p.id}a`)
@@ -463,7 +440,7 @@ describe("done cascade + rollup", () => {
   })
 
   test("parent done is a no-op cascade when children are already done", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.done(`${p.id}a`)
@@ -481,7 +458,7 @@ describe("done cascade + rollup", () => {
   })
 
   test("setStatus(_, 'done') on a child uses the same rollup as done()", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.setStatus(`${p.id}a`, "done")
@@ -530,14 +507,14 @@ describe("done cascade + rollup", () => {
 
 describe("remove()", () => {
   test("removes a top-level task", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     s.add({ title: "x" })
     const removed = s.remove(1)
     expect(removed).toHaveLength(1)
     expect(s.list()).toEqual([])
   })
   test("cascades subtasks", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     const p = s.add({ title: "parent" })
     s.addMany(["c1", "c2"], { parent: p.id })
     s.add({ title: "other" })
@@ -557,32 +534,32 @@ describe("remove()", () => {
 
 describe("reorder()", () => {
   test("reorders top-level tasks", () => {
-    const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
+    const s = withRand(["1", "2", "3"])
     s.add({ title: "1" })
     s.add({ title: "2" })
     s.add({ title: "3" })
-    s.reorder(["#cccccc", "#aaaaaa", "#bbbbbb"])
-    expect(s.list().map((t) => t.id)).toEqual(["cccccc", "aaaaaa", "bbbbbb"])
+    s.reorder(["#3", "#1", "#2"])
+    expect(s.list().map((t) => t.id)).toEqual(["3", "1", "2"])
   })
   test("subtasks ride along with their parent", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     const p1 = s.add({ title: "p1" })
     s.addMany(["c1", "c2"], { parent: p1.id })
     s.add({ title: "p2" })
-    s.reorder(["#bbbbbb", "#aaaaaa"])
+    s.reorder(["#2", "#1"])
     const ids = s.list().map((t) => t.id)
-    expect(ids).toEqual(["bbbbbb", "aaaaaa", "aaaaaaa", "aaaaaab"])
+    expect(ids).toEqual(["2", "1", "1a", "1b"])
   })
   test("missing top-levels go to the end in prior order", () => {
-    const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
+    const s = withRand(["1", "2", "3"])
     s.add({ title: "1" })
     s.add({ title: "2" })
     s.add({ title: "3" })
-    s.reorder(["#bbbbbb"]) // only one mentioned
-    expect(s.list().map((t) => t.id)).toEqual(["bbbbbb", "aaaaaa", "cccccc"])
+    s.reorder(["#2"]) // only one mentioned
+    expect(s.list().map((t) => t.id)).toEqual(["2", "1", "3"])
   })
   test("rejects subtask id in order", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     s.add({ title: "child", parent: p.id })
     expect(() => s.reorder([`${p.id}a`])).toThrow(/subtask/)
@@ -591,10 +568,10 @@ describe("reorder()", () => {
     expect(() => store.reorder(["#deadbe"])).toThrow(/not found/)
   })
   test("rejects duplicate", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     s.add({ title: "1" })
     s.add({ title: "2" })
-    expect(() => s.reorder(["#aaaaaa", "#aaaaaa"])).toThrow(/duplicate/)
+    expect(() => s.reorder(["#1", "#1"])).toThrow(/duplicate/)
   })
 })
 
@@ -604,20 +581,20 @@ describe("reorder()", () => {
 
 describe("clear()", () => {
   test("wipes all when no doing tasks", () => {
-    const s = withRand(["aaaaaa", "bbbbbb"])
+    const s = withRand(["1", "2"])
     s.add({ title: "1" })
     s.add({ title: "2" })
     expect(s.clear()).toBe(2)
     expect(s.list()).toEqual([])
   })
   test("refuses when a task is doing (without force)", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     s.add({ title: "x", status: "doing" })
     expect(() => s.clear()).toThrow(/refusing to clear/)
     expect(s.list()).toHaveLength(1) // unchanged
   })
   test("force: true clears anyway", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     s.add({ title: "x", status: "doing" })
     expect(s.clear(true)).toBe(1)
     expect(s.list()).toEqual([])
@@ -630,7 +607,7 @@ describe("clear()", () => {
 
 describe("views()", () => {
   test("numbers top-level 1, 2, 3", () => {
-    const s = withRand(["aaaaaa", "bbbbbb", "cccccc"])
+    const s = withRand(["1", "2", "3"])
     s.add({ title: "1" })
     s.add({ title: "2" })
     s.add({ title: "3" })
@@ -638,7 +615,7 @@ describe("views()", () => {
     expect(v.map((x) => x.n)).toEqual([1, 2, 3])
   })
   test("subtasks have n: null and childIndex/siblingCount set", () => {
-    const s = withRand(["aaaaaa"])
+    const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     s.addMany(["c1", "c2", "c3"], { parent: p.id })
     const v = s.views()
@@ -652,13 +629,19 @@ describe("views()", () => {
 
 describe("stats()", () => {
   test("counts each status correctly", () => {
-    const s = withRand(["aaaaaa", "bbbbbb", "cccccc", "dddddd", "eeeeee"])
+    const s = withRand(["1", "2", "3", "dddddd", "eeeeee"])
     s.add({ title: "1", status: "done" })
     s.add({ title: "2", status: "done" })
     s.add({ title: "3", status: "doing" })
     s.add({ title: "4", status: "todo" })
     s.add({ title: "5", status: "canceled" })
-    expect(s.stats()).toEqual({ total: 5, done: 2, doing: 1, todo: 1, canceled: 1 })
+    expect(s.stats()).toEqual({
+      total: 5,
+      done: 2,
+      doing: 1,
+      todo: 1,
+      canceled: 1,
+    })
   })
 })
 
@@ -668,10 +651,153 @@ describe("stats()", () => {
 
 describe("persistence", () => {
   test("a second TaskStore on the same sid reads what the first wrote", () => {
-    const s1 = withRand(["aaaaaa"])
+    const s1 = withRand(["1"])
     s1.add({ title: "from-first-store" })
     const s2 = new TaskStore(sid, { home: tmpHome })
     expect(s2.list().map((t) => t.title)).toEqual(["from-first-store"])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v3 ordinal persistence and migration
+// ---------------------------------------------------------------------------
+
+describe("v3 ordinal identity", () => {
+  test("fresh ids are monotonic, stable through holes, and survive clear", () => {
+    const one = store.add({ title: "one" })
+    const two = store.add({ title: "two" })
+    const child = store.add({ title: "child", parent: one.id })
+    expect([one.id, two.id, child.id]).toEqual(["1", "2", "1a"])
+    store.reorder(["2", "1"])
+    store.remove(child.id)
+    expect(store.add({ title: "new child", parent: one.id }).id).toBe("1b")
+    store.remove("1b")
+    expect(store.add({ title: "child after empty hole", parent: one.id }).id).toBe("1c")
+    store.remove("1")
+    expect(store.add({ title: "three" }).id).toBe("3")
+    store.clear()
+    expect(store.add({ title: "four" }).id).toBe("4")
+  })
+
+  test("numeric string and number resolve canonical id, not display position", () => {
+    store.addMany(["one", "two", "three"])
+    store.reorder(["3", "1", "2"])
+    expect(store.resolve(1)?.title).toBe("one")
+    expect(store.resolve("1")?.title).toBe("one")
+    expect(store.views()[0].task.id).toBe("3")
+  })
+
+  test("migrates legacy roots and children and preserves aliases", () => {
+    store.list()
+    const legacy =
+      [
+        { id: "abcdef", parent: null, title: "root", status: "todo" },
+        { id: "abcdefa", parent: "abcdef", title: "child", status: "done" },
+        { id: "fedcba", parent: null, title: "second", status: "doing" },
+      ]
+        .map((x) =>
+          JSON.stringify({
+            v: 2,
+            ...x,
+            created_at: "x",
+            done_at: null,
+            reason: null,
+            started_at: null,
+            last_resumed_at: null,
+            active_ms: 0,
+          }),
+        )
+        .join("\n") + "\n"
+    writeFileSync(store.path, legacy)
+    expect(store.list().map((task) => [task.id, task.parent, task.title])).toEqual([
+      ["1", null, "root"],
+      ["1a", "1", "child"],
+      ["2", null, "second"],
+    ])
+    expect(store.resolve("#abcdef")?.id).toBe("1")
+    expect(store.resolve("abcdefa")?.id).toBe("1a")
+    expect(store.metadata()).toEqual(
+      expect.objectContaining({
+        next_root: 3,
+        aliases: { abcdef: "1", abcdefa: "1a", fedcba: "2" },
+      }),
+    )
+    expect(JSON.parse(readFileSync(store.path, "utf8").split("\n")[0])).toEqual(store.metadata())
+  })
+
+  test("legacy aliases work across every mutation and insertion path", () => {
+    store.list()
+    const legacy =
+      [
+        { id: "abcdef", parent: null, title: "root", status: "todo" },
+        { id: "abcdefa", parent: "abcdef", title: "child", status: "todo" },
+        { id: "fedcba", parent: null, title: "second", status: "todo" },
+      ]
+        .map((task) =>
+          JSON.stringify({
+            v: 2,
+            ...task,
+            created_at: "x",
+            done_at: null,
+            reason: null,
+            started_at: null,
+            last_resumed_at: null,
+            active_ms: 0,
+          }),
+        )
+        .join("\n") + "\n"
+    writeFileSync(store.path, legacy)
+    store.list()
+
+    expect(store.update("abcdefa", "renamed")?.id).toBe("1a")
+    expect(store.start("abcdef")?.id).toBe("1")
+    expect(store.setStatus("abcdefa", "todo")?.id).toBe("1a")
+    expect(store.add({ title: "after alias" }, "abcdef").id).toBe("3")
+    expect(store.add({ title: "alias child", parent: "abcdef" }).id).toBe("1b")
+    expect(store.addMany(["bulk alias child"], { parent: "abcdef" })[0].id).toBe("1c")
+    expect(store.reorder(["fedcba", "abcdef"])[0].id).toBe("2")
+    expect(store.remove("abcdefa").map((task) => task.id)).toEqual(["1a"])
+  })
+
+  test("drops orphan legacy children during migration", () => {
+    store.list()
+    const orphan = JSON.stringify({
+      v: 2,
+      id: "abcdefa",
+      parent: "abcdef",
+      title: "orphan",
+      status: "todo",
+      created_at: "x",
+      done_at: null,
+      reason: null,
+      started_at: null,
+      last_resumed_at: null,
+      active_ms: 0,
+    })
+    writeFileSync(store.path, `${orphan}\n`)
+    expect(store.list()).toEqual([])
+    expect(store.metadata().aliases).toEqual({})
+  })
+
+  test("replaceAll allocates fresh ids and preflight failure preserves old board", () => {
+    store.addMany(["old", "other"])
+    expect(() => store.replaceAll([{ title: "" }])).toThrow(/title cannot be empty/)
+    expect(store.list().map((task) => task.title)).toEqual(["old", "other"])
+    const next = store.replaceAll([{ title: "new", children: [{ title: "sub" }] }])
+    expect(next.map((task) => task.id)).toEqual(["3", "3a"])
+    expect(store.metadata().next_root).toBe(4)
+  })
+
+  test("rename failure preserves the old board", () => {
+    store.add({ title: "old" })
+    const failing = new TaskStore(sid, {
+      home: tmpHome,
+      beforeRename: () => {
+        throw new Error("injected")
+      },
+    })
+    expect(() => failing.replaceAll([{ title: "new" }])).toThrow("injected")
+    expect(store.list().map((task) => task.title)).toEqual(["old"])
   })
 })
 
@@ -883,7 +1009,7 @@ describe("TaskStore — duration accrual through public methods", () => {
         // Two ids, alternating based on how many randomBytes calls so far.
         // The store's add() retries on collision; we don't expect a
         // collision here so this is one call per add.
-        const ids = ["aaaaaa", "bbbbbb"]
+        const ids = ["1", "2"]
         const id = ids[i % 2]
         const buf = Buffer.alloc(3)
         for (let b = 0; b < 3; b++) buf[b] = Number.parseInt(id.slice(b * 2, b * 2 + 2), 16)

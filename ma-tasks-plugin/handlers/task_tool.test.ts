@@ -293,7 +293,7 @@ describe("add", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain("OK added")
     expect(r.content).toContain("action=add")
-    expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo/)
+    expect(r.content).toMatch(/^1\s+todo/m)
     expect(r.content).toContain("todo      hello")
     expect(r.content).not.toContain("╭")
     expect(r.content).not.toContain("✔")
@@ -309,7 +309,7 @@ describe("add", () => {
     expect(r2.content).toContain("child")
     // The new subtask id should be the parent id + alpha suffix and should
     // render indented under the parent (hash-only, no position coord).
-    expect(r2.content).toContain(`  #${id}a  todo      child`)
+    expect(r2.content).toContain(`  ${id}a  todo      child`)
   })
   test("returns error for missing parent", async () => {
     const r = await call({ action: "add", title: "x", parent: "#deadbe" })
@@ -321,7 +321,9 @@ describe("add", () => {
     await call({ action: "add", title: "second" })
     await call({ action: "add", title: "middle", after: 1 })
     const r = await call({ action: "list" })
-    const lines = r.content!.split("\n").filter((l) => /^\s*#[0-9a-f]{6,7}\b/.test(l))
+    const lines = r
+      .content!.split("\n")
+      .filter((l) => /^\s*[1-9]\d*[a-z]?\s+(?:todo|doing|done|canceled)\b/.test(l))
     expect(lines[0]).toContain("first")
     expect(lines[1]).toContain("middle")
     expect(lines[2]).toContain("second")
@@ -336,7 +338,9 @@ describe("add", () => {
     const id = extractFirstHash(r1.content!)
     const r2 = await call({ action: "add", title: "second", after: `#${id}` })
     expect(r2.is_error).toBeUndefined()
-    const lines = r2.content!.split("\n").filter((l) => /^\s*#[0-9a-f]{6,7}\b/.test(l))
+    const lines = r2
+      .content!.split("\n")
+      .filter((l) => /^\s*[1-9]\d*[a-z]?\s+(?:todo|doing|done|canceled)\b/.test(l))
     expect(lines[0]).toContain("first")
     expect(lines[1]).toContain("second")
   })
@@ -387,7 +391,7 @@ describe("add_many", () => {
     expect(sibling.parent).toBeNull()
     // Model content indents the subtask under its parent (hash-only).
     expect(r.content).toContain("Subtask of first")
-    expect(r.content).toMatch(/\s+#\w+a\s+todo\s+Subtask of first/)
+    expect(r.content).toMatch(/\s+1a\s+todo\s+Subtask of first/)
   })
   test("tasks (preferred) creates parents and children in one call", async () => {
     const r = await call({
@@ -606,7 +610,7 @@ describe("remove", () => {
   })
   test("removing a parent ghosts the whole subtree (cascade)", async () => {
     const parent = await call({ action: "add", title: "parent" })
-    const pid = /#([0-9a-f]{6})/.exec(parent.content!)![1]
+    const pid = extractFirstHash(parent.content!)
     await call({ action: "add", title: "child A", parent: `#${pid}` })
     await call({ action: "add", title: "child B", parent: `#${pid}` })
     const r = await call({ action: "remove", id: `#${pid}` })
@@ -712,11 +716,9 @@ describe("format: json", () => {
 // ---------------------------------------------------------------------------
 
 function extractFirstHash(content: string): string {
-  const fromId = /\bid=#([0-9a-f]{6,7})\b/.exec(content)
+  const fromId = /\bid=([1-9]\d*[a-z]?)\b/.exec(content)
   if (fromId) return fromId[1]
-  const legacy = /\bid="([0-9a-f]{6,7})"/.exec(content)
-  if (legacy) return legacy[1]
-  const m = /#([0-9a-f]{6,7})\b/.exec(content)
-  if (!m) throw new Error(`no hash found in: ${content}`)
-  return m[1]
+  const row = /^\s*([1-9]\d*[a-z]?)\s+(?:todo|doing|done|canceled)\b/m.exec(content)
+  if (!row) throw new Error(`no task id found in: ${content}`)
+  return row[1]
 }

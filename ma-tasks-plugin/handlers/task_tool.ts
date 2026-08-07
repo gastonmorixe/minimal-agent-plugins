@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- cohesive Task validation and action dispatch surface */
 /**
  * `Task` tool — the model-facing CRUD interface for per-session tasks.
  *
@@ -9,8 +10,9 @@
  * ## Actions
  *
  * - `add`         — append a new task (optionally as a subtask via `parent`).
- * - `add_many`    — bulk append (one call, full plan). Prefers `tasks`
- *                   (`{title, children?}[]`); aliases: `items` (same), flat `titles`.
+ * - `add_many`    — bulk append. Prefers `tasks` (`{title, children?}[]`);
+ *                   aliases: `items` (same), flat `titles`.
+ * - `replace_plan`— explicitly replace the whole board with a bulk plan.
  * - `update`      — change a task's title and/or status. At least one of
  *                   `title` or `status` must be provided.
  * - `status`      — set status to todo/doing/done/canceled.
@@ -23,11 +25,9 @@
  *
  * ## Id resolution
  *
- * Every `id`-taking action accepts:
- *  - `"#hash"` / bare hash (top-level)
- *  - `"#hasha"` / bare subtask hash (letter suffix)
- *  - `"3"` or `3` (1-indexed top-level position)
- *  - `"3a"` (unprefixed child-row coordinate; stable hashes remain preferred)
+ * Every `id`-taking action accepts the canonical id shown by the board:
+ * ordinal roots such as `3`, and child ids such as `3a`. The store alone
+ * retains silent compatibility with legacy persisted references.
  *
  * @module tasks/handlers/task_tool
  */
@@ -35,19 +35,14 @@
 import { coerceJsonArray } from "../lib/coerce-json-array.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import {
-  renderTasksCompactAck,
   renderTasksToolContent,
   type TaskModelMeta,
   type TaskToolMeta,
 } from "../lib/model-render.ts"
-import {
-  isTaskId,
-  isTaskStatus,
-  MAX_SUBTASKS_PER_PARENT,
-  type Task,
-  type TaskStatus,
-} from "../lib/parse.ts"
+import { isTaskStatus, MAX_SUBTASKS_PER_PARENT, type Task, type TaskStatus } from "../lib/parse.ts"
 import { type RenderAction, renderToolDisplay } from "../lib/render.ts"
+import { tasksFullResults } from "../lib/result-verbosity.ts"
+import { renderStatusResult } from "../lib/status-result.ts"
 import { buildViews, TaskStore, TaskStoreError, type View } from "../lib/store.ts"
 
 // ---------------------------------------------------------------------------
@@ -57,6 +52,7 @@ import { buildViews, TaskStore, TaskStoreError, type View } from "../lib/store.t
 type Action =
   | "add"
   | "add_many"
+  | "replace_plan"
   | "update"
   | "status"
   | "start"
@@ -69,6 +65,7 @@ type Action =
 const VALID_ACTIONS = new Set<Action>([
   "add",
   "add_many",
+  "replace_plan",
   "update",
   "status",
   "start",
@@ -112,6 +109,7 @@ interface ParsedInput {
   format?: "text" | "json"
   parallel?: boolean
   force?: boolean
+  fullResults?: boolean
   /** Fields that arrived as JSON strings and were coerced to arrays. */
   coerced?: string[]
 }
@@ -134,7 +132,10 @@ function parseAddManyTree(rawValue: unknown, field: "tasks" | "items"): TreePars
   const c = coerceJsonArray(rawValue, field)
   if (!c.ok) return { ok: false, error: c.error }
   if (c.value.length === 0) {
-    return { ok: false, error: `\`${field}\` must be a non-empty array of objects` }
+    return {
+      ok: false,
+      error: `\`${field}\` must be a non-empty array of objects`,
+    }
   }
   const coerced: string[] = []
   if (c.coerced) coerced.push(field)
@@ -142,7 +143,10 @@ function parseAddManyTree(rawValue: unknown, field: "tasks" | "items"): TreePars
   for (let i = 0; i < c.value.length; i++) {
     const entry = c.value[i]
     if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
-      return { ok: false, error: `every entry in \`${field}\` must be an object (index ${i})` }
+      return {
+        ok: false,
+        error: `every entry in \`${field}\` must be an object (index ${i})`,
+      }
     }
     const rec = entry as Record<string, unknown>
     if (typeof rec.title !== "string" || rec.title.trim().length === 0) {
@@ -195,7 +199,10 @@ function parseAddManyTree(rawValue: unknown, field: "tasks" | "items"): TreePars
 
 function validateInput(raw: Record<string, unknown>): Validation {
   if (typeof raw.action !== "string" || !VALID_ACTIONS.has(raw.action as Action)) {
-    return { ok: false, error: `\`action\` must be one of: ${[...VALID_ACTIONS].join(", ")}` }
+    return {
+      ok: false,
+      error: `\`action\` must be one of: ${[...VALID_ACTIONS].join(", ")}`,
+    }
   }
   const action = raw.action as Action
 
@@ -204,7 +211,10 @@ function validateInput(raw: Record<string, unknown>): Validation {
   // id (string or integer position)
   if (raw.id !== undefined && raw.id !== null) {
     if (!isIdRef(raw.id)) {
-      return { ok: false, error: "`id` must be a non-empty string or positive integer" }
+      return {
+        ok: false,
+        error: "`id` must be a non-empty string or positive integer",
+      }
     }
     out.id = raw.id as string | number
   }
@@ -224,10 +234,16 @@ function validateInput(raw: Record<string, unknown>): Validation {
     const c = coerceJsonArray(raw.titles, "titles")
     if (!c.ok) return { ok: false, error: c.error }
     if (c.value.length === 0) {
-      return { ok: false, error: "`titles` must be a non-empty array of strings" }
+      return {
+        ok: false,
+        error: "`titles` must be a non-empty array of strings",
+      }
     }
     if (!c.value.every((s) => typeof s === "string" && s.trim().length > 0)) {
-      return { ok: false, error: "every entry in `titles` must be a non-empty string" }
+      return {
+        ok: false,
+        error: "every entry in `titles` must be a non-empty string",
+      }
     }
     if (c.coerced) coerced.push("titles")
     out.titles = c.value as string[]
@@ -250,7 +266,10 @@ function validateInput(raw: Record<string, unknown>): Validation {
   // parent
   if (raw.parent !== undefined && raw.parent !== null) {
     if (!isIdRef(raw.parent)) {
-      return { ok: false, error: "`parent` must be a non-empty string or positive integer" }
+      return {
+        ok: false,
+        error: "`parent` must be a non-empty string or positive integer",
+      }
     }
     out.parent = raw.parent as string | number
   }
@@ -258,7 +277,10 @@ function validateInput(raw: Record<string, unknown>): Validation {
   // after
   if (raw.after !== undefined && raw.after !== null) {
     if (!isIdRef(raw.after)) {
-      return { ok: false, error: "`after` must be a non-empty string or positive integer" }
+      return {
+        ok: false,
+        error: "`after` must be a non-empty string or positive integer",
+      }
     }
     out.after = raw.after as string | number
   }
@@ -266,7 +288,10 @@ function validateInput(raw: Record<string, unknown>): Validation {
   // status
   if (raw.status !== undefined) {
     if (!isTaskStatus(raw.status)) {
-      return { ok: false, error: `\`status\` must be one of: todo, doing, done, canceled` }
+      return {
+        ok: false,
+        error: `\`status\` must be one of: todo, doing, done, canceled`,
+      }
     }
     out.status = raw.status
   }
@@ -299,7 +324,10 @@ function validateInput(raw: Record<string, unknown>): Validation {
   // filter
   if (raw.filter !== undefined) {
     if (typeof raw.filter !== "string" || !VALID_FILTERS.has(raw.filter)) {
-      return { ok: false, error: `\`filter\` must be one of: ${[...VALID_FILTERS].join(", ")}` }
+      return {
+        ok: false,
+        error: `\`filter\` must be one of: ${[...VALID_FILTERS].join(", ")}`,
+      }
     }
     out.filter = raw.filter as ParsedInput["filter"]
   }
@@ -340,7 +368,10 @@ function validateInput(raw: Record<string, unknown>): Validation {
   const need = REQUIRED_FIELDS[action]
   for (const f of need) {
     if (out[f] === undefined) {
-      return { ok: false, error: `\`${f}\` is required for action="${action}"` }
+      return {
+        ok: false,
+        error: `\`${f}\` is required for action="${action}"`,
+      }
     }
   }
 
@@ -354,23 +385,24 @@ function validateInput(raw: Record<string, unknown>): Validation {
     }
   }
 
-  // tasks / items are only meaningful for add_many (schema is flat; reject misuse).
-  if (out.tasks !== undefined && action !== "add_many") {
+  // tasks / items are only meaningful for bulk creation actions.
+  const isBulkAction = action === "add_many" || action === "replace_plan"
+  if (out.tasks !== undefined && !isBulkAction) {
     return {
       ok: false,
       error: `\`tasks\` is only valid for action="add_many" (got "${action}")`,
     }
   }
-  if (out.items !== undefined && action !== "add_many") {
+  if (out.items !== undefined && !isBulkAction) {
     return {
       ok: false,
       error: `\`items\` is only valid for action="add_many" (got "${action}")`,
     }
   }
 
-  // add_many: exactly one of tasks | items | titles.
-  // parent only with flat titles. after not supported.
-  if (action === "add_many") {
+  // Bulk actions require exactly one of tasks | items | titles.
+  // add_many permits parent only with flat titles. replace_plan is top-level only.
+  if (isBulkAction) {
     const hasTitles = out.titles !== undefined
     const hasItems = out.items !== undefined
     const hasTasks = out.tasks !== undefined
@@ -379,7 +411,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
       return {
         ok: false,
         error:
-          "`add_many` requires `tasks` (preferred: `{title, children?}[]`), " +
+          `\`${action}\` requires \`tasks\` (preferred: \`{title, children?}[]\`), ` +
           "or alias `items` (same shape), or flat `titles` (string[]). " +
           "Pass a real JSON array (not a stringified array). Retry once with the corrected shape; " +
           "do not drip-`add` the same titles afterward (that duplicates the board).",
@@ -389,7 +421,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
       return {
         ok: false,
         error:
-          '`tasks`, `items`, and `titles` are mutually exclusive for action="add_many"; ' +
+          `\`tasks\`, \`items\`, and \`titles\` are mutually exclusive for action="${action}"; ` +
           "send exactly one. Prefer `tasks`. Retry once; do not re-add titles that may already exist.",
       }
     }
@@ -397,6 +429,12 @@ function validateInput(raw: Record<string, unknown>): Validation {
     if (hasItems && !hasTasks) {
       out.tasks = out.items
       out.items = undefined
+    }
+    if (out.parent !== undefined && action === "replace_plan") {
+      return {
+        ok: false,
+        error: '`parent` is not valid for action="replace_plan"',
+      }
     }
     if ((hasTasks || hasItems) && out.parent !== undefined) {
       return {
@@ -409,7 +447,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
     if (out.after !== undefined) {
       return {
         ok: false,
-        error: '`after` is only valid for action="add" (not add_many)',
+        error: `\`after\` is only valid for action="add" (not ${action})`,
       }
     }
   }
@@ -422,6 +460,7 @@ const REQUIRED_FIELDS: Record<Action, readonly (keyof ParsedInput)[]> = {
   add: ["title"],
   // add_many: custom titles XOR items check above (not a single required field).
   add_many: [],
+  replace_plan: [],
   update: ["id"],
   status: ["id", "status"],
   start: ["id"],
@@ -441,26 +480,27 @@ function makeStore(sid: string | null, env: Record<string, string>): TaskStore |
   return new TaskStore(sid, env.HOME ? { home: env.HOME } : {})
 }
 
-function modelMeta(action: RenderAction, inputAction?: string, targetHash?: string): TaskModelMeta {
+function modelMeta(action: RenderAction, inputAction?: string, targetId?: string): TaskModelMeta {
   const meta: TaskModelMeta = {}
   if (inputAction) meta.action = inputAction
-  if (targetHash) meta.id = targetHash
+  if (targetId) meta.id = targetId
   switch (action.kind) {
     case "added":
     case "started":
     case "updated":
     case "removed":
       meta.result = action.kind
-      meta.id = action.hash
+      meta.id = action.id
       break
     case "marked_done":
     case "marked_doing":
     case "marked_todo":
     case "marked_canceled":
       meta.result = action.kind
-      meta.id = action.hash
+      meta.id = action.id
       break
     case "added_many":
+    case "replaced_plan":
     case "reordered":
     case "cleared":
     case "all_done":
@@ -469,7 +509,7 @@ function modelMeta(action: RenderAction, inputAction?: string, targetHash?: stri
       break
     case "already_done":
       meta.result = action.kind
-      meta.id = action.hash
+      meta.id = action.id
       break
     default:
       void (action satisfies never)
@@ -483,10 +523,15 @@ function renderResult(
   format: "text" | "json" = "text",
   viewsOverride?: readonly View[],
   inputAction?: string,
-  targetHash?: string,
+  targetId?: string,
   coerced?: readonly string[],
   replaced?: number,
-): { content: string; display: string; displayHeader: string; displayFooter: string } {
+): {
+  content: string
+  display: string
+  displayHeader: string
+  displayFooter: string
+} {
   // `viewsOverride` lets the handler inject augmented views (ghost rows
   // for `remove`, diff overlays for `update`) so the user sees WHAT
   // changed rather than only the post-state. Stats are always
@@ -501,6 +546,7 @@ function renderResult(
         {
           stats,
           tasks,
+          ...(replaced !== undefined ? { replaced } : {}),
           ...(coerced?.length ? { coerced } : {}),
         },
         null,
@@ -512,9 +558,9 @@ function renderResult(
     }
   }
   const meta: TaskToolMeta = {
-    ...modelMeta(action, inputAction, targetHash),
+    ...modelMeta(action, inputAction, targetId),
     ...(coerced?.length ? { coerced } : {}),
-    ...(replaced !== undefined && replaced > 0 ? { replaced } : {}),
+    ...(replaced !== undefined ? { replaced } : {}),
   }
   const content = renderTasksToolContent(tasks, stats, meta)
   return {
@@ -531,7 +577,7 @@ function ok(
   format?: "text" | "json",
   viewsOverride?: readonly View[],
   inputAction?: string,
-  targetHash?: string,
+  targetId?: string,
   coerced?: readonly string[],
   replaced?: number,
 ): TUIResult {
@@ -541,7 +587,7 @@ function ok(
     format ?? "text",
     viewsOverride,
     inputAction,
-    targetHash,
+    targetId,
     coerced,
     replaced,
   )
@@ -587,36 +633,18 @@ function err(message: string): TUIResult {
   return { kind: "tool_result", content: `Task: ${message}`, is_error: true }
 }
 
-/**
- * Prefer `#hash` from the board. Digit-only refs longer than a plausible
- * position are almost always model hallucinations (e.g. `"864232"`,
- * `"76310000000"`), not real task ids.
- */
+/** Report a missing reference without exposing legacy internal identifiers. */
 function idNotFound(ref: string | number): TUIResult {
-  if (typeof ref === "string") {
-    const bare = ref.startsWith("#") ? ref.slice(1) : ref.trim()
-    if (/^\d{4,}$/.test(bare)) {
-      // 6-digit all-digit strings are valid hash *shape* (~6% of real ids) but
-      // still usually invented. Point the model at the board either way.
-      return err(
-        `id "${ref}" not found; "${bare}" looks like a made-up number. ` +
-          `Use the #hash from the board (e.g. #hash-from-board), not an invented digit string`,
-      )
-    }
-    if (isTaskId(bare)) {
-      return err(`id "${ref}" not found; use a #hash that appears on the current board`)
-    }
-  }
-  return err(`id "${ref}" not found`)
+  return err(`id "${ref}" not found; use a current id from the task board`)
 }
 
 /**
- * Compact model-facing result for status mutations.
+ * Model-facing result for status mutations.
  *
- * Plain-text OK line only (MA-39298). The next turn's attachment still carries
- * the full board. Re-dumping the columnar table on every start/done wastes
- * tokens. Human TUI display stays full. Re-done of an already-done id is a
- * hard error (not a soft ack).
+ * The default is a plain-text OK line only (MA-39298). With
+ * `MINIMAL_AGENT_TASKS_FULL_RESULTS=1`, the same acknowledgement is followed by
+ * the complete updated board. Human TUI display stays full in both modes.
+ * Re-done of an already-done id is a hard error (not a soft ack).
  */
 function okCompact(
   store: TaskStore,
@@ -624,42 +652,25 @@ function okCompact(
   format: "text" | "json" | undefined,
   inputAction?: string,
   opts?: {
-    /** Empty human body (already_done). */
     quietDisplay?: boolean
-    /** Parent hash auto-promoted by last-child done. */
     parentAutoDone?: string
-    /** Fields coerced from stringified JSON. */
     coerced?: readonly string[]
-    /** Optional cancel reason for model attrs. */
     reason?: string
+    fullResults?: boolean
+    targetId?: string
   },
 ): TUIResult {
   const stats = store.stats()
-  const displayParts = renderToolDisplay(store.views(), stats, { ansi: true, action })
-  const metaBase = modelMeta(action, inputAction, "hash" in action ? action.hash : undefined)
+  const displayParts = renderToolDisplay(store.views(), stats, {
+    ansi: true,
+    action,
+  })
+  const metaBase = modelMeta(
+    action,
+    inputAction,
+    opts?.targetId ?? ("id" in action ? action.id : undefined),
+  )
   const quiet = opts?.quietDisplay === true
-
-  if (format === "json") {
-    return {
-      kind: "tool_result",
-      content: JSON.stringify(
-        {
-          result: action.kind,
-          id: metaBase.id,
-          stats,
-          ...(opts?.parentAutoDone ? { parent_auto_done: opts.parentAutoDone } : {}),
-          ...(opts?.coerced?.length ? { coerced: opts.coerced } : {}),
-          ...(opts?.reason ? { reason: opts.reason } : {}),
-        },
-        null,
-        2,
-      ),
-      display: quiet ? "" : displayParts.body,
-      displayHeader: displayParts.header,
-      displayFooter: quiet ? "" : displayParts.footer,
-      suppressToolTime: true,
-    }
-  }
 
   const meta: TaskToolMeta = {
     ...metaBase,
@@ -667,7 +678,11 @@ function okCompact(
     ...(opts?.coerced?.length ? { coerced: opts.coerced } : {}),
     ...(opts?.reason ? { reason: opts.reason } : {}),
   }
-  const content = renderTasksCompactAck(stats, meta)
+  const content = renderStatusResult(store, stats, meta, format, opts?.fullResults === true, {
+    parentAutoDone: opts?.parentAutoDone,
+    coerced: opts?.coerced,
+    reason: opts?.reason,
+  })
 
   return {
     kind: "tool_result",
@@ -695,6 +710,7 @@ export default async function taskToolHandler(ctx: TUIContext): Promise<TUIResul
   const v = validateInput(ctx.trigger.input)
   if (!v.ok) return err(v.error)
   const input = v.value
+  input.fullResults = tasksFullResults(ctx.env)
 
   const sid = ctx.env.MINIMAL_AGENT_SESSION_ID?.trim() || null
   const store = makeStore(sid, ctx.env)
@@ -716,6 +732,8 @@ export default async function taskToolHandler(ctx: TUIContext): Promise<TUIResul
         return doAdd(store, input)
       case "add_many":
         return doAddMany(store, input)
+      case "replace_plan":
+        return doReplacePlan(store, input)
       case "update":
         return doUpdate(store, input)
       case "status":
@@ -763,7 +781,7 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
   }
   return ok(
     store,
-    { kind: "added", hash: task.id },
+    { kind: "added", id: task.id },
     input.format,
     undefined,
     input.action,
@@ -773,23 +791,6 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
 }
 
 function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
-  // Top-level bulk plan replaces the prior board (MA-39298). Terminal-only
-  // clear stacked open todos into frankenboards (session 86e27c5a). Parent-
-  // scoped flat batches stay incremental.
-  let replaced = 0
-  if (input.parent === undefined) {
-    const stats = store.stats()
-    if (stats.total > 0) {
-      replaced = stats.total
-      for (const t of store.list()) {
-        if (t.status === "todo" || t.status === "doing") {
-          store.setStatus(t.id, "canceled", "replaced by new plan")
-        }
-      }
-      store.clear(true)
-    }
-  }
-
   if (input.tasks !== undefined) {
     const created: ReturnType<TaskStore["add"]>[] = []
     for (const item of input.tasks) {
@@ -807,7 +808,6 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
       input.action,
       undefined,
       input.coerced,
-      replaced,
     )
   }
 
@@ -823,7 +823,7 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
     const incoming = input.titles!.length
     if (existingKids + incoming > MAX_SUBTASKS_PER_PARENT) {
       return err(
-        `parent "#${parentId}" would have ${existingKids + incoming} subtasks ` +
+        `parent "${parentId}" would have ${existingKids + incoming} subtasks ` +
           `(${existingKids} existing + ${incoming} new); max ${MAX_SUBTASKS_PER_PARENT}`,
       )
     }
@@ -832,6 +832,25 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
   return ok(
     store,
     { kind: "added_many", count: tasks.length },
+    input.format,
+    undefined,
+    input.action,
+    undefined,
+    input.coerced,
+  )
+}
+
+function doReplacePlan(store: TaskStore, input: ParsedInput): TUIResult {
+  const replaced = store.stats().total
+  const plan =
+    input.tasks?.map((item) => ({
+      title: item.title,
+      children: item.children?.map((title) => ({ title })),
+    })) ?? input.titles!.map((title) => ({ title }))
+  const tasks = store.replaceAll(plan)
+  return ok(
+    store,
+    { kind: "replaced_plan", count: tasks.length, replaced },
     input.format,
     undefined,
     input.action,
@@ -892,7 +911,7 @@ function doUpdate(store: TaskStore, input: ParsedInput): TUIResult {
 
   return ok(
     store,
-    { kind: "updated", hash: after.id },
+    { kind: "updated", id: after.id },
     input.format,
     augmented,
     input.action,
@@ -917,17 +936,20 @@ function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
   if (input.status === "done") {
     const s = store.stats()
     if (s.total > 0 && s.done === s.total) {
-      return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
+      return okCompact(store, { kind: "all_done" }, input.format, input.action, {
+        fullResults: input.fullResults,
+        targetId: updated.id,
+      })
     }
   }
   const action: RenderAction =
     input.status === "done"
-      ? { kind: "marked_done", hash: updated.id }
+      ? { kind: "marked_done", id: updated.id }
       : input.status === "doing"
-        ? { kind: "marked_doing", hash: updated.id }
+        ? { kind: "marked_doing", id: updated.id }
         : input.status === "canceled"
-          ? { kind: "marked_canceled", hash: updated.id }
-          : { kind: "marked_todo", hash: updated.id }
+          ? { kind: "marked_canceled", id: updated.id }
+          : { kind: "marked_todo", id: updated.id }
 
   const parentAutoDone =
     input.status === "done" && target.parent !== null
@@ -937,6 +959,7 @@ function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
   return okCompact(store, action, input.format, input.action, {
     parentAutoDone,
     reason: input.status === "canceled" ? input.reason : undefined,
+    fullResults: input.fullResults,
   })
 }
 
@@ -945,7 +968,9 @@ function doStart(store: TaskStore, input: ParsedInput): TUIResult {
   if (target === null) return idNotFound(input.id!)
   const updated = store.start(target.id, { parallel: input.parallel })
   if (updated === null) return idNotFound(input.id!)
-  return okCompact(store, { kind: "started", hash: updated.id }, input.format, input.action)
+  return okCompact(store, { kind: "started", id: updated.id }, input.format, input.action, {
+    fullResults: input.fullResults,
+  })
 }
 
 function doDone(store: TaskStore, input: ParsedInput): TUIResult {
@@ -960,12 +985,16 @@ function doDone(store: TaskStore, input: ParsedInput): TUIResult {
   // Same as doStatus: rollup can complete the plan via a last-child done.
   const s = store.stats()
   if (s.total > 0 && s.done === s.total) {
-    return ok(store, { kind: "all_done" }, input.format, undefined, input.action, updated.id)
+    return okCompact(store, { kind: "all_done" }, input.format, input.action, {
+      fullResults: input.fullResults,
+      targetId: updated.id,
+    })
   }
   const parentAutoDone =
     target.parent !== null ? parentJustAutoDone(store, target.parent, updated.id) : undefined
-  return okCompact(store, { kind: "marked_done", hash: updated.id }, input.format, input.action, {
+  return okCompact(store, { kind: "marked_done", id: updated.id }, input.format, input.action, {
     parentAutoDone,
+    fullResults: input.fullResults,
   })
 }
 
@@ -987,15 +1016,15 @@ function parentJustAutoDone(
  * Soft `already_done` taught models the extra parent `done` after auto-promote
  * was free (~710 hits). Auto-promote stays; the redundant call is now an error.
  */
-function errAlreadyDone(store: TaskStore, hash: string): TUIResult {
-  const hasKids = store.list().some((t) => t.parent === hash)
+function errAlreadyDone(store: TaskStore, id: string): TUIResult {
+  const hasKids = store.list().some((t) => t.parent === id)
   if (hasKids) {
     return err(
-      `#${hash} is already done (likely auto-promoted when its last child finished). ` +
+      `${id} is already done (likely auto-promoted when its last child finished). ` +
         "Do not call done on the parent after finishing the last child — one done on the child is enough",
     )
   }
-  return err(`#${hash} is already done. Do not call done again`)
+  return err(`${id} is already done. Do not call done again`)
 }
 
 function doRemove(store: TaskStore, input: ParsedInput): TUIResult {
@@ -1009,7 +1038,7 @@ function doRemove(store: TaskStore, input: ParsedInput): TUIResult {
   const removed = store.remove(target.id)
   const removedIds = new Set(removed.map((t) => t.id))
   const augmented = viewsWithGhostRemoved(beforeTasks, removedIds)
-  return ok(store, { kind: "removed", hash: target.id }, input.format, augmented, input.action)
+  return ok(store, { kind: "removed", id: target.id }, input.format, augmented, input.action)
 }
 
 function doReorder(store: TaskStore, input: ParsedInput): TUIResult {

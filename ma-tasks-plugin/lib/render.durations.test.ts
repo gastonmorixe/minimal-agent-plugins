@@ -104,7 +104,7 @@ describe("renderBlock — trailing duration suffix", () => {
     const out = plain([topView(t, 1)], stats({ total: 1, done: 1 }))
     // Duration appears AFTER the title, separated by a 2-space gap.
     expect(out).toContain("first  48s")
-    // And NOT in the old between-#hash-and-title middle slot.
+    // And NOT in the old between-hash-and-title middle slot.
     expect(out).not.toContain("    48s  first")
   })
 
@@ -127,9 +127,9 @@ describe("renderBlock — trailing duration suffix", () => {
     const t = task({ status: "todo", title: "x" })
     const out = plain([topView(t, 1)], stats({ total: 1, todo: 1 }))
     // Row ends at the title with no middle whitespace gutter…
-    expect(out).toContain(`#a7b3c4  x`)
+    expect(out).toContain(`1  x`)
     // …and no 7-cell padded slot survives anywhere on the row.
-    expect(out).not.toContain(`#a7b3c4  ${" ".repeat(7)}  x`)
+    expect(out).not.toContain(`1  ${" ".repeat(7)}  x`)
     expect(out).not.toContain(`x  ${" ".repeat(7)}`)
   })
 
@@ -191,7 +191,7 @@ describe("renderBlock — trailing duration suffix", () => {
     })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, doing: 1 }), {
       ansi: true,
-      action: { kind: "started", hash: "a7b3c4" },
+      action: { kind: "started", id: "1" },
       ...withFixedNow(),
     })
     // SKY = \x1b[38;5;45m, BOLD = \x1b[1m
@@ -207,7 +207,7 @@ describe("renderBlock — trailing duration suffix", () => {
     })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, done: 1 }), {
       ansi: true,
-      action: { kind: "marked_done", hash: "a7b3c4" },
+      action: { kind: "marked_done", id: "1" },
       ...withFixedNow(),
     })
     // LGRAY = \x1b[38;5;246m. Match the duration token "30s" inside an LGRAY span.
@@ -223,7 +223,7 @@ describe("renderBlock — trailing duration suffix", () => {
     })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, canceled: 1 }), {
       ansi: true,
-      action: { kind: "marked_canceled", hash: "a7b3c4" },
+      action: { kind: "marked_canceled", id: "1" },
       ...withFixedNow(),
     })
     // RED + DIM + STRIKE around the duration token. Order is exact: \x1b[31m\x1b[2m\x1b[9m
@@ -251,8 +251,8 @@ describe("renderBlock — header date+time suffix", () => {
     const v = topView(task({ status: "done", done_at: "x" }), 1)
     const s = stats({ total: 1, done: 1 })
     for (const action of [
-      { kind: "marked_done", hash: "a7b3c4" } as const,
-      { kind: "added", hash: "a7b3c4" } as const,
+      { kind: "marked_done", id: "1" } as const,
+      { kind: "added", id: "1" } as const,
       { kind: "list" } as const,
       { kind: "all_done" } as const,
     ]) {
@@ -367,7 +367,7 @@ describe("renderBlock — closer elapsed/total", () => {
     })
     const out = renderBlock([topView(t1, 1), topView(t2, 2)], stats({ total: 2, done: 2 }), {
       ansi: true,
-      action: { kind: "marked_done", hash: "bbbbbb" },
+      action: { kind: "marked_done", id: "bbbbbb" },
       ...withFixedNow(),
     })
     const lines = out.trimEnd().split("\n")
@@ -394,8 +394,8 @@ describe("renderBlock — closer elapsed/total", () => {
     //
     //   ╭ ○ Tasks · ✔ ALL DONE · 2/2 · 2026-05-20 18:07:42
     //   │
-    //   │    1  ✔  #aaaaaa  Phase 1  4m 52s
-    //   │    2  ✔  #bbbbbb  Phase 2  7m 12s
+    //   │    1  ✔  aaaaaa  Phase 1  4m 52s
+    //   │    2  ✔  bbbbbb  Phase 2  7m 12s
     //   │
     //   ╰  ✦ ALL DONE · 2 done · 12m 34s     ← LIME+BOLD total
     const t1 = task({

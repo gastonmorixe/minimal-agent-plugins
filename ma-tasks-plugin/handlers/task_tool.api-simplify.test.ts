@@ -22,12 +22,12 @@ import taskToolHandler from "./task_tool.ts"
 let tmpHome: string
 const sid = "task-tool-test-sid"
 
-function ctx(input: Record<string, unknown>): TUIContext {
+function ctx(input: Record<string, unknown>, env: Record<string, string> = {}): TUIContext {
   return {
     trigger: { type: "tool", name: "Task", input, tool_use_id: "test_id" },
     packageDir: "/tmp/fake-package-dir",
     cwd: "/tmp/fake-cwd",
-    env: { HOME: tmpHome, MINIMAL_AGENT_SESSION_ID: sid },
+    env: { HOME: tmpHome, MINIMAL_AGENT_SESSION_ID: sid, ...env },
     abort: new AbortController().signal,
     stdout: process.stdout,
     stdin: process.stdin,
@@ -46,8 +46,11 @@ afterEach(() => {
 
 type ToolResult = Extract<TUIResult, { kind: "tool_result" }>
 
-async function call(input: Record<string, unknown>): Promise<ToolResult> {
-  const r = await taskToolHandler(ctx(input))
+async function call(
+  input: Record<string, unknown>,
+  env: Record<string, string> = {},
+): Promise<ToolResult> {
+  const r = await taskToolHandler(ctx(input, env))
   if (r.kind !== "tool_result") throw new Error(`expected tool_result, got ${r.kind}`)
   return r
 }
@@ -73,14 +76,20 @@ describe("coerce stringified JSON arrays", () => {
   })
 
   test("add_many accepts stringified titles", async () => {
-    const r = await call({ action: "add_many", titles: JSON.stringify(["one", "two"]) })
+    const r = await call({
+      action: "add_many",
+      titles: JSON.stringify(["one", "two"]),
+    })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain("coerced=titles")
     expect(r.content).toContain("todo      one")
   })
 
   test("rejects stringified items that are not an array", async () => {
-    const r = await call({ action: "add_many", items: JSON.stringify({ title: "x" }) })
+    const r = await call({
+      action: "add_many",
+      items: JSON.stringify({ title: "x" }),
+    })
     expect(r.is_error).toBe(true)
     expect(r.content).toMatch(/stringified non-array|parsed to object/)
   })
@@ -91,20 +100,20 @@ describe("hallucinated digit ids", () => {
     await call({ action: "add", title: "x" })
     const r = await call({ action: "done", id: "76310000000" })
     expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/made-up number/)
-    expect(r.content).toMatch(/#hash/)
+    expect(r.content).toMatch(/not found/)
+    expect(r.content).toMatch(/current id/)
   })
 
   test("6-digit invented id also hints at #hash from board", async () => {
     await call({ action: "add", title: "x" })
     const r = await call({ action: "done", id: "864232" })
     expect(r.is_error).toBe(true)
-    expect(r.content).toMatch(/made-up number|#hash/)
+    expect(r.content).toMatch(/not found.*current id/)
   })
 })
 
-describe("plain-text mutation acks", () => {
-  test("done (not all_done) returns plain OK ack with optional parent_auto_done", async () => {
+describe("plain-text mutation results", () => {
+  test("done (not all_done) returns a compact OK ack by default", async () => {
     await call({
       action: "add_many",
       items: [{ title: "Phase", children: ["a", "b"] }],
@@ -116,11 +125,73 @@ describe("plain-text mutation acks", () => {
     const r = await call({ action: "done", id: `#${parent.id}b` })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain("OK marked_done")
-    expect(r.content).toContain(`parent_auto_done=#${parent.id}`)
+    expect(r.content).toContain(`parent_auto_done=${parent.id}`)
     expect(r.content).toMatch(/^OK /)
     expect(r.content).not.toContain("<ma::agent::")
     expect(r.content).not.toContain("Phase")
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")
+  })
+
+  test("full-results env includes the updated board for start, done, and status", async () => {
+    const env = { MINIMAL_AGENT_TASKS_FULL_RESULTS: "1" }
+    await call({ action: "add_many", tasks: [{ title: "Phase", children: ["work"] }] }, env)
+
+    const started = await call({ action: "start", id: "1a" }, env)
+    expect(started.content).toMatch(/^OK started[^\n]*\n/)
+    expect(started.content).toContain("1   doing     Phase")
+    expect(started.content).toContain("1a  doing     work")
+
+    const status = await call({ action: "status", id: "1a", status: "todo" }, env)
+    expect(status.content).toMatch(/^OK marked_todo[^\n]*\n/)
+    expect(status.content).toContain("1a  todo      work")
+
+    const done = await call({ action: "done", id: "1a" }, env)
+    expect(done.content).toMatch(/^OK all_done[^\n]*\n/)
+    expect(done.content).toContain("1   done      Phase")
+    expect(done.content).toContain("1a  done      work")
+  })
+
+  test("full-results env also includes tasks in JSON status results", async () => {
+    const env = { MINIMAL_AGENT_TASKS_FULL_RESULTS: "1" }
+    await call({ action: "add", title: "work" }, env)
+    const started = await call({ action: "start", id: 1, format: "json" }, env)
+    const parsedStart = JSON.parse(started.content) as {
+      result: string
+      tasks: { id: string }[]
+    }
+    expect(parsedStart.result).toBe("started")
+    expect(parsedStart.tasks.map((task) => task.id)).toEqual(["1"])
+
+    const done = await call({ action: "done", id: 1, format: "json" }, env)
+    const parsedDone = JSON.parse(done.content) as {
+      result: string
+      id: string
+      tasks: { status: string }[]
+    }
+    expect(parsedDone).toMatchObject({ result: "all_done", id: "1" })
+    expect(parsedDone.tasks.map((task) => task.status)).toEqual(["done"])
+  })
+
+  test("compact terminal status results omit the board in text and JSON", async () => {
+    await call({ action: "add", title: "work" })
+    const text = await call({ action: "status", id: 1, status: "done" })
+    expect(text.content).toMatch(/^OK all_done[^\n]*$/)
+    expect(text.content).not.toContain("done      work")
+
+    await call({ action: "status", id: 1, status: "todo" })
+    const json = await call({ action: "done", id: 1, format: "json" })
+    const parsed = JSON.parse(json.content) as Record<string, unknown>
+    expect(parsed).toMatchObject({ result: "all_done", id: "1" })
+    expect(parsed).not.toHaveProperty("tasks")
+  })
+
+  test("values other than exactly 1 keep compact results", async () => {
+    await call({ action: "add", title: "work" })
+    const result = await call(
+      { action: "start", id: 1 },
+      { MINIMAL_AGENT_TASKS_FULL_RESULTS: "true" },
+    )
+    expect(result.content).not.toContain("doing     work")
   })
 })
 
@@ -139,7 +210,7 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain("action=status")
     expect(r.content).toContain("OK marked_doing")
-    expect(r.content).toContain("id=#")
+    expect(r.content).toContain("id=")
     // Plain OK ack: no harness tags, no columnar board dump.
     expect(r.content).toMatch(/^OK /)
     expect(r.content).not.toContain("<ma::agent::")
@@ -191,7 +262,7 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("doing")
     expect(r.content).toContain("OK started")
-    expect(r.content).toContain(`id=#${parent.id}a`)
+    expect(r.content).toContain(`id=${parent.id}a`)
     expect(r.content).toMatch(/^OK /)
     expect(r.content).not.toContain("<ma::agent::")
     // Human display still shows both parent + child as doing.
@@ -264,14 +335,14 @@ describe("status / start / done", () => {
     const first = await call({ action: "done", id: 1 })
     expect(first.is_error).toBeUndefined()
     expect(first.content).toContain("OK all_done")
-    expect(first.content).toContain("solo")
+    expect(first.content).not.toContain("done      solo")
 
     const store = new TaskStore(sid, { home: tmpHome })
     const before = store.list()[0]!
     const second = await call({ action: "done", id: 1 })
     expect(second.is_error).toBe(true)
     expect(second.content).toMatch(/already done/i)
-    expect(second.content).toContain(`#${before.id}`)
+    expect(second.content).toContain(before.id)
 
     const after = new TaskStore(sid, { home: tmpHome }).list()[0]!
     expect(after.done_at).toBe(before.done_at)
@@ -297,7 +368,7 @@ describe("status / start / done", () => {
     expect(parentAgain.is_error).toBe(true)
     expect(parentAgain.content).toMatch(/already done/i)
     expect(parentAgain.content).toMatch(/auto-promoted/i)
-    expect(parentAgain.content).toContain(`#${parent.id}`)
+    expect(parentAgain.content).toContain(parent.id)
   })
 
   test("status→done on already-done id is a hard error", async () => {
@@ -339,9 +410,9 @@ describe("model-facing content", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain("OK added_many")
     expect(r.content).toContain("action=add_many")
-    expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo\s+one/)
+    expect(r.content).toMatch(/^1\s+todo\s+one/m)
     expect(r.content).toContain("todo      one")
-    expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo\s+two/)
+    expect(r.content).toMatch(/^2\s+todo\s+two/m)
     expect(r.content).toContain("todo      two")
     expect(r.content).not.toContain("+ added")
     expect(r.content).not.toContain("0 done · 0 doing")
@@ -354,27 +425,44 @@ describe("model-facing content", () => {
 // JSON format
 // ---------------------------------------------------------------------------
 
-describe("add_many replace policy (MA-39298)", () => {
-  test("top-level add_many replaces open non-terminal board", async () => {
+describe("add_many and replace_plan policy", () => {
+  test("top-level add_many is strictly additive", async () => {
     await call({ action: "add_many", titles: ["old A", "old B"] })
-    await call({ action: "start", id: 1 })
     const r = await call({
       action: "add_many",
       tasks: [{ title: "New phase", children: ["step"] }],
     })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toMatch(/^OK added_many .*\breplaced=2\b/)
+    expect(r.content).toContain("old A")
     expect(r.content).toContain("New phase")
-    expect(r.content).not.toContain("old A")
     const store = new TaskStore(sid, { home: tmpHome })
-    expect(store.list().map((x) => x.title)).toEqual(["New phase", "step"])
+    expect(store.list().map((x) => x.title)).toEqual(["old A", "old B", "New phase", "step"])
+  })
+
+  test("replace_plan explicitly and atomically replaces the board", async () => {
+    await call({ action: "add_many", titles: ["old A", "old B"] })
+    const r = await call({
+      action: "replace_plan",
+      tasks: [{ title: "New phase", children: ["step"] }],
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toMatch(/^OK replaced_plan .*\breplaced=2\b/)
+    expect(r.content).not.toContain("old A")
+    expect(new TaskStore(sid, { home: tmpHome }).list().map((x) => x.title)).toEqual([
+      "New phase",
+      "step",
+    ])
   })
 
   test("parent-scoped add_many does not replace the board", async () => {
     await call({ action: "add", title: "parent" })
     const store = new TaskStore(sid, { home: tmpHome })
     const parent = store.list()[0]!
-    await call({ action: "add_many", titles: ["kid"], parent: `#${parent.id}` })
+    await call({
+      action: "add_many",
+      titles: ["kid"],
+      parent: `#${parent.id}`,
+    })
     expect(new TaskStore(sid, { home: tmpHome }).list().map((x) => x.title)).toEqual([
       "parent",
       "kid",

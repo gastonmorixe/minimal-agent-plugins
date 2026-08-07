@@ -69,7 +69,7 @@ describe("renderTaskReplay — sidecar-driven re-render (colorized path)", () =>
   it("emits an ANSI-colored body when sidecar + input are supplied", () => {
     const d = renderTaskReplay({
       content: "(model-facing content goes here)",
-      input: { action: "done", id: "#ccc" },
+      input: { action: "done", id: "ccc" },
       callTs,
       sidecarTasks: threeDoneTasks(),
     })
@@ -78,15 +78,15 @@ describe("renderTaskReplay — sidecar-driven re-render (colorized path)", () =>
     expect(d!.display!).toMatch(/\x1b\[/)
     // Status icons + ids both render after the gutter.
     expect(stripAnsi(d!.display!)).toContain("✔")
-    expect(stripAnsi(d!.display!)).toContain("#aaa")
-    expect(stripAnsi(d!.display!)).toContain("#bbb")
-    expect(stripAnsi(d!.display!)).toContain("#ccc")
+    expect(stripAnsi(d!.display!)).toContain("aaa")
+    expect(stripAnsi(d!.display!)).toContain("bbb")
+    expect(stripAnsi(d!.display!)).toContain("ccc")
   })
 
   it("`action=done` with all tasks done upgrades to ALL DONE header", () => {
     const d = renderTaskReplay({
       content: "(noise)",
-      input: { action: "done", id: "#ccc" },
+      input: { action: "done", id: "ccc" },
       callTs,
       sidecarTasks: threeDoneTasks(),
     })
@@ -104,15 +104,15 @@ describe("renderTaskReplay — sidecar-driven re-render (colorized path)", () =>
     const earlyCutoff = new Date("2026-05-28T08:01:00-04:00")
     const d = renderTaskReplay({
       content: "(noise)",
-      input: { action: "start", id: "#aaa" },
+      input: { action: "start", id: "aaa" },
       callTs: earlyCutoff,
       sidecarTasks: threeDoneTasks(),
     })
     const plain = stripAnsi(d!.display!)
     // All three are visible (created at t0 = before cutoff).
-    expect(plain).toContain("#aaa")
-    expect(plain).toContain("#bbb")
-    expect(plain).toContain("#ccc")
+    expect(plain).toContain("aaa")
+    expect(plain).toContain("bbb")
+    expect(plain).toContain("ccc")
     // Per-call status reconstruction.
     const snap = snapshotTasksAt(threeDoneTasks(), earlyCutoff)
     expect(snap.find((t) => t.id === "aaa")?.status).toBe("doing")

@@ -8,7 +8,7 @@ import type { Stats, View } from "./store.ts"
 /** Build a Task with sensible defaults; override any field per-test. */
 export function task(over: Partial<Task> = {}): Task {
   return {
-    id: "a7b3c4",
+    id: "1",
     parent: null,
     status: "todo",
     title: "Sample task",

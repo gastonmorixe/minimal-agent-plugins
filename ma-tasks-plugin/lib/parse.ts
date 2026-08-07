@@ -10,22 +10,11 @@
  *
  * ## Id format
  *
- * Two id regimes coexist on the same file:
- *
- * - **Top-level tasks** — six lowercase hex characters from
- *   `crypto.randomBytes(3)` (e.g. `a7b3c4`). 16.7M space per session is
- *   ample; the store retries on the astronomically unlikely collision.
- *   The visible `#` prefix is presentation only; ids are stored bare.
- *
- * - **Subtasks** — parent-id + single lowercase alpha suffix (e.g.
- *   `d04c91a`, `d04c91b`). Up to 26 children per parent (realistic
- *   counts are 2-6); the store throws if a 27th child is requested. The
- *   suffix is the parent's child-counter mod 26 plus the byte; children
- *   keep their suffix even after siblings are removed (no renumber on
- *   delete to preserve stable ids).
- *
- * Both forms are accepted by the public id-resolution helpers; the
- * regex {@link TASK_ID_RE} matches either.
+ * v3 stores monotonic ordinal root ids (`1`, `2`, ...) and child ids made
+ * from the root plus one lowercase suffix (`1a`, `1b`, ...). Allocator
+ * counters live in the first JSONL metadata record, so deletion and clear
+ * never reuse an id. Legacy v1/v2 six-hex ids remain accepted only for
+ * migration and delayed-event aliases.
  *
  * @module tasks/lib/parse
  */
@@ -67,7 +56,7 @@ export function isTaskStatus(s: unknown): s is TaskStatus {
  * numbered (their position is implied by tree order).
  */
 export interface Task {
-  /** Six hex chars for top-level, parent-id + alpha suffix for subtasks. No `#` prefix. */
+  /** Ordinal root id or root-id + alpha suffix. Legacy hashes parse for migration. */
   id: string
   /** Parent task id (no `#`), or `null` for top-level tasks. */
   parent: string | null
@@ -138,39 +127,73 @@ export interface NewTaskInput {
  *   done_at, reason.
  * - **v2** — adds `started_at`, `last_resumed_at`, `active_ms` for
  *   per-task duration tracking. v1 files parse forward-compatibly with
- *   the new fields defaulted to `null` / `0` (best-effort: tasks created
- *   pre-v2 never accrue retroactive durations, but the renderer simply
- *   omits the duration column for them).
+ *   the new fields defaulted to `null` / `0`.
+ * - **v3** — adds a first-record allocator/alias header and canonical
+ *   monotonic ordinal ids. Legacy hashes migrate once and remain aliases.
  */
-export const TASK_LINE_SCHEMA_VERSION = 2
+export const TASK_LINE_SCHEMA_VERSION = 3
+
+/** v3 sidecar header. It is always the first JSONL record. */
+export interface TasksMeta {
+  kind: "tasks_meta"
+  v: 3
+  id_scheme: "ordinal"
+  next_root: number
+  next_child: Record<string, number>
+  aliases: Record<string, string>
+}
+
+export const DEFAULT_TASKS_META: Readonly<TasksMeta> = Object.freeze({
+  kind: "tasks_meta",
+  v: 3,
+  id_scheme: "ordinal",
+  next_root: 1,
+  next_child: {},
+  aliases: {},
+})
+
+/** Create isolated v3 allocator metadata with defensive record copies. */
+export function createTasksMeta(
+  over: Partial<Pick<TasksMeta, "next_root" | "next_child" | "aliases">> = {},
+): TasksMeta {
+  return {
+    kind: "tasks_meta",
+    v: 3,
+    id_scheme: "ordinal",
+    next_root: over.next_root ?? 1,
+    next_child: { ...(over.next_child ?? {}) },
+    aliases: { ...(over.aliases ?? {}) },
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Id helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Regex matching a valid task id — either a six-hex top-level id or a
- * six-hex parent + a-z suffix subtask id. Used by the handler to accept
- * `#abc123` or `#abc123d` from model input.
+ * Regex matching a canonical ordinal id or a legacy six-hex id, each with
+ * an optional child suffix. Legacy shapes exist for migration and aliases.
  */
-export const TASK_ID_RE = /^[0-9a-f]{6}([a-z])?$/
+export const LEGACY_TASK_ID_RE = /^[0-9a-f]{6}([a-z])?$/
+export const ORDINAL_TASK_ID_RE = /^[1-9]\d*([a-z])?$/
+export const TASK_ID_RE = /^(?:[0-9a-f]{6}|[1-9]\d*)(?:[a-z])?$/
 
 /** True if `s` is a syntactically valid task id (top-level or subtask). */
 export function isTaskId(s: unknown): s is string {
   return typeof s === "string" && TASK_ID_RE.test(s)
 }
 
-/** True if `id` looks like a subtask id (parent-hash + a-z suffix). */
+/** True if `id` looks like a root id plus one a-z child suffix. */
 export function isSubtaskId(id: string): boolean {
-  return id.length === 7 && /^[0-9a-f]{6}[a-z]$/.test(id)
+  return /^(?:[0-9a-f]{6}|[1-9]\d*)[a-z]$/.test(id)
 }
 
-/** Return the parent id of a subtask id (six-hex prefix). Throws for non-subtask ids. */
+/** Return the root id of a child id. Throws for non-child ids. */
 export function parentOf(subtaskId: string): string {
   if (!isSubtaskId(subtaskId)) {
     throw new Error(`parentOf: not a subtask id: "${subtaskId}"`)
   }
-  return subtaskId.slice(0, 6)
+  return subtaskId.slice(0, -1)
 }
 
 /**
@@ -207,8 +230,8 @@ export function subtaskId(parentId: string, counter: number): string {
       `subtaskId: too many children of #${parentId} (max ${MAX_SUBTASKS_PER_PARENT}, requested index ${counter})`,
     )
   }
-  if (!/^[0-9a-f]{6}$/.test(parentId)) {
-    throw new Error(`subtaskId: parent must be a six-hex top-level id (got "${parentId}")`)
+  if (!/^(?:[0-9a-f]{6}|[1-9]\d*)$/.test(parentId)) {
+    throw new Error(`subtaskId: parent must be a top-level id (got "${parentId}")`)
   }
   const suffix = String.fromCharCode("a".charCodeAt(0) + counter)
   return `${parentId}${suffix}`
@@ -385,12 +408,56 @@ export function parseTask(line: string): Task | null {
  * by the store, not in the pure parser.
  */
 export function parseFile(content: string): Task[] {
-  const out: Task[] = []
-  for (const line of content.split("\n")) {
-    const t = parseTask(line)
-    if (t !== null) out.push(t)
+  return parseTasksFile(content).tasks
+}
+
+export interface ParsedTasksFile {
+  meta: TasksMeta | null
+  tasks: Task[]
+}
+
+/** Parse and validate one v3 metadata record. */
+export function parseTasksMeta(line: string): TasksMeta | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(line)
+  } catch {
+    return null
   }
-  return out
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null
+  const o = parsed as Record<string, unknown>
+  if (o.kind !== "tasks_meta" || o.v !== 3 || o.id_scheme !== "ordinal") return null
+  if (!Number.isInteger(o.next_root) || (o.next_root as number) < 1) return null
+  if (o.aliases === null || typeof o.aliases !== "object" || Array.isArray(o.aliases)) return null
+  const aliases: Record<string, string> = {}
+  for (const [from, to] of Object.entries(o.aliases as Record<string, unknown>)) {
+    if (LEGACY_TASK_ID_RE.test(from) && typeof to === "string" && ORDINAL_TASK_ID_RE.test(to)) {
+      aliases[from] = to
+    }
+  }
+  const nextChildRaw = o.next_child ?? {}
+  if (nextChildRaw === null || typeof nextChildRaw !== "object" || Array.isArray(nextChildRaw)) {
+    return null
+  }
+  const next_child: Record<string, number> = {}
+  for (const [parent, next] of Object.entries(nextChildRaw as Record<string, unknown>)) {
+    if (/^[1-9]\d*$/.test(parent) && Number.isInteger(next) && (next as number) >= 0) {
+      next_child[parent] = next as number
+    }
+  }
+  return createTasksMeta({ next_root: o.next_root as number, next_child, aliases })
+}
+
+/** Parse a complete sidecar, treating only its first record as metadata. */
+export function parseTasksFile(content: string): ParsedTasksFile {
+  const lines = content.split("\n")
+  const meta = lines.length > 0 ? parseTasksMeta(lines[0]) : null
+  const tasks: Task[] = []
+  for (const line of lines) {
+    const task = parseTask(line)
+    if (task !== null) tasks.push(task)
+  }
+  return { meta, tasks }
 }
 
 /**
@@ -401,6 +468,12 @@ export function parseFile(content: string): Task[] {
 export function serializeFile(tasks: readonly Task[]): string {
   if (tasks.length === 0) return ""
   return `${tasks.map(formatTask).join("\n")}\n`
+}
+
+/** Serialize v3 metadata followed by ordered task records. */
+export function serializeTasksFile(meta: TasksMeta, tasks: readonly Task[]): string {
+  const lines = [JSON.stringify(meta), ...tasks.map(formatTask)]
+  return `${lines.join("\n")}\n`
 }
 
 // ---------------------------------------------------------------------------
