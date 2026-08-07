@@ -7,6 +7,15 @@ export interface TaskModelMeta {
   id?: string
 }
 
+/** Extra fields for plain-text tool_result lines (not used on attachment tags). */
+export interface TaskToolMeta extends TaskModelMeta {
+  coerced?: readonly string[]
+  parentAutoDone?: string
+  reason?: string
+  /** Prior rows wiped by top-level add_many replace. */
+  replaced?: number
+}
+
 function cleanText(s: string): string {
   return s
     .replace(/[\r\n\t]+/g, " ")
@@ -68,7 +77,74 @@ export function renderTasksColumnar(tasks: readonly Task[]): string {
   return lines.join("\n")
 }
 
-/** Wrap the model-facing columnar task list in a `<ma::agent::tasks>` block. */
+/**
+ * One-line plain-text ack / header for tool_result content.
+ *
+ * Shape: `OK <result> [action=…] [id=#…] … total=N done=N doing=N todo=N canceled=N`
+ * No XML. Survives Cursor `stripMaAgentWireAnnotations` (MA-39298).
+ */
+export function formatTasksOkLine(stats: Stats, meta: TaskToolMeta = {}): string {
+  const result = (meta.result ?? "ok").replace(/[\r\n\t]+/g, " ").trim() || "ok"
+  const parts: string[] = [`OK ${result}`]
+  if (meta.action) parts.push(`action=${meta.action.replace(/[\s=]+/g, "_")}`)
+  if (meta.id) {
+    const bare = meta.id.replace(/^#/, "").replace(/[\s=]+/g, "")
+    if (bare) parts.push(`id=#${bare}`)
+  }
+  if (meta.parentAutoDone) {
+    const bare = meta.parentAutoDone.replace(/^#/, "").replace(/[\s=]+/g, "")
+    if (bare) parts.push(`parent_auto_done=#${bare}`)
+  }
+  if (meta.coerced?.length) {
+    parts.push(`coerced=${meta.coerced.map((c) => c.replace(/[\s,=]+/g, "_")).join(",")}`)
+  }
+  if (meta.reason) {
+    const safe = meta.reason
+      .replace(/[\r\n\t]+/g, " ")
+      .replace(/"/g, "'")
+      .slice(0, 120)
+    parts.push(`reason="${safe}"`)
+  }
+  if (meta.replaced !== undefined && meta.replaced > 0) {
+    parts.push(`replaced=${meta.replaced}`)
+  }
+  parts.push(
+    `total=${stats.total}`,
+    `done=${stats.done}`,
+    `doing=${stats.doing}`,
+    `todo=${stats.todo}`,
+    `canceled=${stats.canceled}`,
+  )
+  return parts.join(" ")
+}
+
+/**
+ * Full-board tool_result: OK header + columnar hashes.
+ * Used for create/list/clear and other actions that dump the board mid-turn.
+ */
+export function renderTasksToolContent(
+  tasks: readonly Task[],
+  stats: Stats,
+  meta: TaskToolMeta = {},
+): string {
+  return `${formatTasksOkLine(stats, meta)}\n${renderTasksColumnar(tasks)}`
+}
+
+/**
+ * Compact mutation ack (start/done/status): OK line only, no board dump.
+ * Next-turn attachment still carries the board for human+model.
+ */
+export function renderTasksCompactAck(stats: Stats, meta: TaskToolMeta = {}): string {
+  return formatTasksOkLine(stats, meta)
+}
+
+/**
+ * Wrap the columnar task list in a `<ma::agent::tasks>` block.
+ *
+ * For **turn attachments / harness inject only**. Do not put this in
+ * tool_result `content` — Cursor strips `ma::agent::*` from the wire
+ * (MA-39298). Prefer {@link renderTasksToolContent} for tool results.
+ */
 export function renderTasksAgentBlock(
   tasks: readonly Task[],
   stats: Stats,

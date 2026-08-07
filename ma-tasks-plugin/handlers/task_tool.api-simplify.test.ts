@@ -64,8 +64,8 @@ describe("coerce stringified JSON arrays", () => {
     ])
     const r = await call({ action: "add_many", items })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="added_many"`)
-    expect(r.content).toContain(`coerced="items"`)
+    expect(r.content).toContain("OK added_many")
+    expect(r.content).toContain("coerced=items")
     expect(r.content).toContain("Phase 1")
     expect(r.content).toContain("Phase 2")
     const store = new TaskStore(sid, { home: tmpHome })
@@ -75,7 +75,7 @@ describe("coerce stringified JSON arrays", () => {
   test("add_many accepts stringified titles", async () => {
     const r = await call({ action: "add_many", titles: JSON.stringify(["one", "two"]) })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`coerced="titles"`)
+    expect(r.content).toContain("coerced=titles")
     expect(r.content).toContain("todo      one")
   })
 
@@ -103,8 +103,8 @@ describe("hallucinated digit ids", () => {
   })
 })
 
-describe("compact mutation acks", () => {
-  test("done (not all_done) returns self-closing ack with optional parent_auto_done", async () => {
+describe("plain-text mutation acks", () => {
+  test("done (not all_done) returns plain OK ack with optional parent_auto_done", async () => {
     await call({
       action: "add_many",
       items: [{ title: "Phase", children: ["a", "b"] }],
@@ -115,9 +115,10 @@ describe("compact mutation acks", () => {
     await call({ action: "done", id: `#${parent.id}a` })
     const r = await call({ action: "done", id: `#${parent.id}b` })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="marked_done"`)
-    expect(r.content).toContain(`parent_auto_done="${parent.id}"`)
-    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).toContain("OK marked_done")
+    expect(r.content).toContain(`parent_auto_done=#${parent.id}`)
+    expect(r.content).toMatch(/^OK /)
+    expect(r.content).not.toContain("<ma::agent::")
     expect(r.content).not.toContain("Phase")
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("done")
   })
@@ -136,11 +137,12 @@ describe("status / start / done", () => {
     await call({ action: "add", title: "x" })
     const r = await call({ action: "status", id: 1, status: "doing" })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`action="status"`)
-    expect(r.content).toContain(`result="marked_doing"`)
-    expect(r.content).toContain(`id="`)
-    // Compact mutation ack: self-closing tag, no columnar board dump.
-    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).toContain("action=status")
+    expect(r.content).toContain("OK marked_doing")
+    expect(r.content).toContain("id=#")
+    // Plain OK ack: no harness tags, no columnar board dump.
+    expect(r.content).toMatch(/^OK /)
+    expect(r.content).not.toContain("<ma::agent::")
     expect(r.content).not.toContain("doing     x")
     expect(r.content).not.toMatch(/\n1\s+#/)
     // Human TUI still shows the board.
@@ -163,7 +165,7 @@ describe("status / start / done", () => {
     expect(r.is_error).toBeUndefined()
     expect(r.displayHeader).toContain("canceled")
     expect(r.display).toContain("user redirected")
-    expect(r.content).toContain(`result="marked_canceled"`)
+    expect(r.content).toContain("OK marked_canceled")
     expect(r.content).toContain(`reason="user redirected"`)
     expect(r.content).not.toMatch(/\n1\s+#/)
   })
@@ -188,9 +190,10 @@ describe("status / start / done", () => {
     const r = await call({ action: "start", id: `#${parent.id}a` })
     expect(r.is_error).toBeUndefined()
     expect(store.list().find((t) => t.id === parent.id)!.status).toBe("doing")
-    expect(r.content).toContain(`result="started"`)
-    expect(r.content).toContain(`id="${parent.id}a"`)
-    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).toContain("OK started")
+    expect(r.content).toContain(`id=#${parent.id}a`)
+    expect(r.content).toMatch(/^OK /)
+    expect(r.content).not.toContain("<ma::agent::")
     // Human display still shows both parent + child as doing.
     expect(r.display).toContain("Phase")
     expect(r.display).toContain("child")
@@ -260,7 +263,7 @@ describe("status / start / done", () => {
     await call({ action: "add", title: "solo" })
     const first = await call({ action: "done", id: 1 })
     expect(first.is_error).toBeUndefined()
-    expect(first.content).toContain(`result="all_done"`)
+    expect(first.content).toContain("OK all_done")
     expect(first.content).toContain("solo")
 
     const store = new TaskStore(sid, { home: tmpHome })
@@ -324,17 +327,18 @@ describe("status / start / done", () => {
 // ---------------------------------------------------------------------------
 
 describe("model-facing content", () => {
-  test("escapes tag-sensitive title text inside the <ma::agent::tasks> body", async () => {
+  test("escapes tag-sensitive title text in plain tool content", async () => {
     const r = await call({ action: "add", title: 'use <x> & "quotes"' })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toContain('use &lt;x&gt; &amp; "quotes"')
-    expect(r.content).toContain("</ma::agent::tasks>")
+    expect(r.content).not.toContain("<ma::agent::")
   })
 
   test("default text content is not the TUI display without ANSI", async () => {
     const r = await call({ action: "add_many", titles: ["one", "two"] })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`<ma::agent::tasks action="add_many" result="added_many"`)
+    expect(r.content).toContain("OK added_many")
+    expect(r.content).toContain("action=add_many")
     expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo\s+one/)
     expect(r.content).toContain("todo      one")
     expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo\s+two/)
@@ -349,3 +353,31 @@ describe("model-facing content", () => {
 // ---------------------------------------------------------------------------
 // JSON format
 // ---------------------------------------------------------------------------
+
+describe("add_many replace policy (MA-39298)", () => {
+  test("top-level add_many replaces open non-terminal board", async () => {
+    await call({ action: "add_many", titles: ["old A", "old B"] })
+    await call({ action: "start", id: 1 })
+    const r = await call({
+      action: "add_many",
+      tasks: [{ title: "New phase", children: ["step"] }],
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toMatch(/^OK added_many .*\breplaced=2\b/)
+    expect(r.content).toContain("New phase")
+    expect(r.content).not.toContain("old A")
+    const store = new TaskStore(sid, { home: tmpHome })
+    expect(store.list().map((x) => x.title)).toEqual(["New phase", "step"])
+  })
+
+  test("parent-scoped add_many does not replace the board", async () => {
+    await call({ action: "add", title: "parent" })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list()[0]!
+    await call({ action: "add_many", titles: ["kid"], parent: `#${parent.id}` })
+    expect(new TaskStore(sid, { home: tmpHome }).list().map((x) => x.title)).toEqual([
+      "parent",
+      "kid",
+    ])
+  })
+})

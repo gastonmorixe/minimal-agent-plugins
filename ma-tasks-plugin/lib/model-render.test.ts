@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test"
 
-import { renderTasksAgentBlock, renderTasksColumnar } from "./model-render.ts"
+import {
+  formatTasksOkLine,
+  renderTasksAgentBlock,
+  renderTasksColumnar,
+  renderTasksCompactAck,
+  renderTasksToolContent,
+} from "./model-render.ts"
 import { task } from "./render.fixtures.ts"
 
 // ---------------------------------------------------------------------------
@@ -114,5 +120,43 @@ describe("renderTasksAgentBlock", () => {
     expect(out).toContain(`action="a&quot;b"`)
     expect(out).toContain(`result="&lt;done&gt;"`)
     expect(out).toContain(`id="abc123"`)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Plain-text tool_result (MA-39298)
+// ---------------------------------------------------------------------------
+
+describe("formatTasksOkLine / renderTasksToolContent", () => {
+  test("OK line carries result, id, and counts without XML", () => {
+    const line = formatTasksOkLine(
+      { total: 2, done: 0, doing: 1, todo: 1, canceled: 0 },
+      { action: "start", result: "started", id: "abcdef" },
+    )
+    expect(line).toBe("OK started action=start id=#abcdef total=2 done=0 doing=1 todo=1 canceled=0")
+    expect(line).not.toContain("<")
+  })
+
+  test("tool content is OK header plus columnar hashes", () => {
+    const out = renderTasksToolContent(
+      [task({ id: "aaaaaa", title: "one" }), task({ id: "bbbbbb", title: "two" })],
+      { total: 2, done: 0, doing: 0, todo: 2, canceled: 0 },
+      { action: "add_many", result: "added_many", coerced: ["items"] },
+    )
+    expect(out).toStartWith("OK added_many action=add_many coerced=items total=2")
+    expect(out).toContain("#aaaaaa  todo      one")
+    expect(out).toContain("#bbbbbb  todo      two")
+    expect(out).not.toContain("ma::agent::tasks")
+  })
+
+  test("compact ack is a single OK line", () => {
+    const out = renderTasksCompactAck(
+      { total: 3, done: 1, doing: 1, todo: 1, canceled: 0 },
+      { action: "done", result: "marked_done", id: "aabbcc", parentAutoDone: "aa0000" },
+    )
+    expect(out).toBe(
+      "OK marked_done action=done id=#aabbcc parent_auto_done=#aa0000 total=3 done=1 doing=1 todo=1 canceled=0",
+    )
+    expect(out.includes("\n")).toBe(false)
   })
 })

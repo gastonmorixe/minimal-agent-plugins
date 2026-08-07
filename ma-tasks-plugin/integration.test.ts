@@ -150,14 +150,15 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     expect(store.resolve("2c")?.status).toBe("doing")
   })
 
-  it("keeps append semantics while prior work remains open", async () => {
+  it("top-level add_many replaces an open prior board (MA-39298)", async () => {
     const sid = "77777777-aaaa-bbbb-cccc-dddddddddddd"
     await dispatch(sid, { action: "add_many", titles: ["done", "still open"] })
     await dispatch(sid, { action: "done", id: 1 })
-    await dispatch(sid, { action: "add_many", titles: ["new work"] })
+    const second = await dispatch(sid, { action: "add_many", titles: ["new work"] })
 
     const titles = new TaskStore(sid, { home: tmpHome }).list().map((task) => task.title)
-    expect(titles).toEqual(["done", "still open", "new work"])
+    expect(titles).toEqual(["new work"])
+    expect(second.content).toMatch(/OK added_many .*\breplaced=2\b/)
   })
 
   it("done flips a task and the attachment reflects the new status", async () => {

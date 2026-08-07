@@ -42,7 +42,7 @@
                 "description": "What to do."
               },
               "id": {
-                "description": "Task reference. Prefer `#hash` from the board (`#a7b3c4`, subtask `#a7b3c4a`). Also accepts bare hash, top-level position `3`, or child coord `3a` (deprecated for models; they shift). Required for: update, status, start, done, remove."
+                "description": "Task reference. Prefer `#hash` from the current board or latest Task tool result (never invent or copy docs examples). Also accepts bare hash, top-level position `3`, or child coord `3a` (deprecated for models; they shift). Required for: update, status, start, done, remove."
               },
               "title": {
                 "type": "string",
