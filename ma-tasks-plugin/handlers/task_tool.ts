@@ -24,8 +24,8 @@
  * ## Id resolution
  *
  * Every `id`-taking action accepts:
- *  - `"#a7b3c4"` / `"a7b3c4"` (top-level)
- *  - `"#a7b3c4a"` / `"a7b3c4a"` (subtask)
+ *  - `"#hash"` / bare hash (top-level)
+ *  - `"#hasha"` / bare subtask hash (letter suffix)
  *  - `"3"` or `3` (1-indexed top-level position)
  *  - `"3a"` (unprefixed child-row coordinate; stable hashes remain preferred)
  *
@@ -34,7 +34,12 @@
 
 import { coerceJsonArray } from "../lib/coerce-json-array.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
-import { renderTasksAgentBlock, type TaskModelMeta } from "../lib/model-render.ts"
+import {
+  renderTasksCompactAck,
+  renderTasksToolContent,
+  type TaskModelMeta,
+  type TaskToolMeta,
+} from "../lib/model-render.ts"
 import {
   isTaskId,
   isTaskStatus,
@@ -480,6 +485,7 @@ function renderResult(
   inputAction?: string,
   targetHash?: string,
   coerced?: readonly string[],
+  replaced?: number,
 ): { content: string; display: string; displayHeader: string; displayFooter: string } {
   // `viewsOverride` lets the handler inject augmented views (ghost rows
   // for `remove`, diff overlays for `update`) so the user sees WHAT
@@ -505,15 +511,12 @@ function renderResult(
       displayFooter: displayParts.footer,
     }
   }
-  let content = renderTasksAgentBlock(tasks, stats, modelMeta(action, inputAction, targetHash))
-  if (coerced?.length) {
-    // Annotate full-board results the same way compact acks do.
-    const tag = "ma::agent::tasks"
-    const needle = `<${tag} `
-    if (content.startsWith(needle)) {
-      content = content.replace(needle, `<${tag} coerced="${coerced.join(",")}" `)
-    }
+  const meta: TaskToolMeta = {
+    ...modelMeta(action, inputAction, targetHash),
+    ...(coerced?.length ? { coerced } : {}),
+    ...(replaced !== undefined && replaced > 0 ? { replaced } : {}),
   }
+  const content = renderTasksToolContent(tasks, stats, meta)
   return {
     content,
     display: displayParts.body,
@@ -530,6 +533,7 @@ function ok(
   inputAction?: string,
   targetHash?: string,
   coerced?: readonly string[],
+  replaced?: number,
 ): TUIResult {
   const rendered = renderResult(
     store,
@@ -539,6 +543,7 @@ function ok(
     inputAction,
     targetHash,
     coerced,
+    replaced,
   )
   return {
     kind: "tool_result",
@@ -595,7 +600,7 @@ function idNotFound(ref: string | number): TUIResult {
       // still usually invented. Point the model at the board either way.
       return err(
         `id "${ref}" not found; "${bare}" looks like a made-up number. ` +
-          `Use the #hash from the board (e.g. #a7b3c4), not an invented digit string`,
+          `Use the #hash from the board (e.g. #hash-from-board), not an invented digit string`,
       )
     }
     if (isTaskId(bare)) {
@@ -608,10 +613,10 @@ function idNotFound(ref: string | number): TUIResult {
 /**
  * Compact model-facing result for status mutations.
  *
- * The next turn's `‹ma::agent::tasks›` attachment already carries the board.
- * Re-dumping the full columnar table on every `start`/`done` wastes tokens and
- * teaches the model to re-parse POS/coords from the tool result. Human TUI
- * display stays full. Re-done of an already-done id is a hard error (not a soft ack).
+ * Plain-text OK line only (MA-39298). The next turn's attachment still carries
+ * the full board. Re-dumping the columnar table on every start/done wastes
+ * tokens. Human TUI display stays full. Re-done of an already-done id is a
+ * hard error (not a soft ack).
  */
 function okCompact(
   store: TaskStore,
@@ -631,7 +636,7 @@ function okCompact(
 ): TUIResult {
   const stats = store.stats()
   const displayParts = renderToolDisplay(store.views(), stats, { ansi: true, action })
-  const meta = modelMeta(action, inputAction, "hash" in action ? action.hash : undefined)
+  const metaBase = modelMeta(action, inputAction, "hash" in action ? action.hash : undefined)
   const quiet = opts?.quietDisplay === true
 
   if (format === "json") {
@@ -640,7 +645,7 @@ function okCompact(
       content: JSON.stringify(
         {
           result: action.kind,
-          id: meta.id,
+          id: metaBase.id,
           stats,
           ...(opts?.parentAutoDone ? { parent_auto_done: opts.parentAutoDone } : {}),
           ...(opts?.coerced?.length ? { coerced: opts.coerced } : {}),
@@ -656,29 +661,13 @@ function okCompact(
     }
   }
 
-  const attrs: string[] = []
-  if (meta.action) attrs.push(`action="${meta.action}"`)
-  attrs.push(`result="${action.kind}"`)
-  if (meta.id) attrs.push(`id="${meta.id}"`)
-  if (opts?.parentAutoDone) attrs.push(`parent_auto_done="${opts.parentAutoDone}"`)
-  if (opts?.coerced?.length) attrs.push(`coerced="${opts.coerced.join(",")}"`)
-  if (opts?.reason) {
-    const safe = opts.reason
-      .replace(/[\r\n\t]+/g, " ")
-      .replace(/"/g, "&quot;")
-      .slice(0, 120)
-    attrs.push(`reason="${safe}"`)
+  const meta: TaskToolMeta = {
+    ...metaBase,
+    ...(opts?.parentAutoDone ? { parentAutoDone: opts.parentAutoDone } : {}),
+    ...(opts?.coerced?.length ? { coerced: opts.coerced } : {}),
+    ...(opts?.reason ? { reason: opts.reason } : {}),
   }
-  attrs.push(
-    `total="${stats.total}"`,
-    `done="${stats.done}"`,
-    `doing="${stats.doing}"`,
-    `todo="${stats.todo}"`,
-    `canceled="${stats.canceled}"`,
-  )
-  // Self-closing tag — same shape as already_done.
-  const tag = "ma::agent::tasks"
-  const content = `<${tag} ${attrs.join(" ")} />`
+  const content = renderTasksCompactAck(stats, meta)
 
   return {
     kind: "tool_result",
@@ -784,21 +773,23 @@ function doAdd(store: TaskStore, input: ParsedInput): TUIResult {
 }
 
 function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
-  // A top-level bulk plan starts a new board once the previous board is
-  // terminal. Keeping completed rows in the same board shifts every visible
-  // coordinate, which makes the model reopen old work when it follows a new
-  // plan written as 1/1a/2/2a. The transcript already preserves the completed
-  // board as the audit trail. Flat batches attached to an explicit parent are
-  // incremental additions and must not replace anything.
+  // Top-level bulk plan replaces the prior board (MA-39298). Terminal-only
+  // clear stacked open todos into frankenboards (session 86e27c5a). Parent-
+  // scoped flat batches stay incremental.
+  let replaced = 0
   if (input.parent === undefined) {
     const stats = store.stats()
-    if (stats.total > 0 && stats.todo === 0 && stats.doing === 0) {
-      store.clear()
+    if (stats.total > 0) {
+      replaced = stats.total
+      for (const t of store.list()) {
+        if (t.status === "todo" || t.status === "doing") {
+          store.setStatus(t.id, "canceled", "replaced by new plan")
+        }
+      }
+      store.clear(true)
     }
   }
 
-  // Tree form (`tasks`, or alias `items` normalized onto `tasks`): parents + children.
-  // children.length preflight lives in validateInput (before any write).
   if (input.tasks !== undefined) {
     const created: ReturnType<TaskStore["add"]>[] = []
     for (const item of input.tasks) {
@@ -816,10 +807,10 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
       input.action,
       undefined,
       input.coerced,
+      replaced,
     )
   }
 
-  // Flat form: optional shared parent for every title.
   let parentId: string | null = null
   if (input.parent !== undefined) {
     const parent = store.resolve(input.parent)
@@ -828,7 +819,6 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
       return err(`parent "${input.parent}" is a subtask; depth-2 nesting is not allowed`)
     }
     parentId = parent.id
-    // Preflight: existing kids + new titles must fit a–z (avoid partial write).
     const existingKids = store.list().filter((t) => t.parent === parentId).length
     const incoming = input.titles!.length
     if (existingKids + incoming > MAX_SUBTASKS_PER_PARENT) {
@@ -847,6 +837,7 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
     input.action,
     undefined,
     input.coerced,
+    replaced,
   )
 }
 

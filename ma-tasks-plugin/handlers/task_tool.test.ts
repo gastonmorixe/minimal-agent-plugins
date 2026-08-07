@@ -291,7 +291,8 @@ describe("add", () => {
   test("creates a task and splits model columnar content from TUI display", async () => {
     const r = await call({ action: "add", title: "hello" })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`<ma::agent::tasks action="add" result="added"`)
+    expect(r.content).toContain("OK added")
+    expect(r.content).toContain("action=add")
     expect(r.content).toMatch(/#[0-9a-f]{6}\s+todo/)
     expect(r.content).toContain("todo      hello")
     expect(r.content).not.toContain("╭")
@@ -320,7 +321,7 @@ describe("add", () => {
     await call({ action: "add", title: "second" })
     await call({ action: "add", title: "middle", after: 1 })
     const r = await call({ action: "list" })
-    const lines = r.content!.split("\n").filter((l) => l.includes("#"))
+    const lines = r.content!.split("\n").filter((l) => /^\s*#[0-9a-f]{6,7}\b/.test(l))
     expect(lines[0]).toContain("first")
     expect(lines[1]).toContain("middle")
     expect(lines[2]).toContain("second")
@@ -335,7 +336,7 @@ describe("add", () => {
     const id = extractFirstHash(r1.content!)
     const r2 = await call({ action: "add", title: "second", after: `#${id}` })
     expect(r2.is_error).toBeUndefined()
-    const lines = r2.content!.split("\n").filter((l) => l.includes("#"))
+    const lines = r2.content!.split("\n").filter((l) => /^\s*#[0-9a-f]{6,7}\b/.test(l))
     expect(lines[0]).toContain("first")
     expect(lines[1]).toContain("second")
   })
@@ -394,7 +395,7 @@ describe("add_many", () => {
       tasks: [{ title: "Phase", children: ["a", "b"] }, { title: "Ship" }],
     })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="added_many"`)
+    expect(r.content).toContain("OK added_many")
     expect(r.displayHeader).toContain("added 4 tasks")
     const store = new TaskStore(sid, { home: tmpHome })
     const tasks = store.list()
@@ -496,9 +497,10 @@ describe("update", () => {
     await call({ action: "add", title: "x" })
     const r = await call({ action: "update", id: 1, status: "doing" })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`action="update"`)
-    expect(r.content).toContain(`result="marked_doing"`)
-    expect(r.content).toMatch(/<ma::agent::tasks [^>]*\/>/)
+    expect(r.content).toContain("action=update")
+    expect(r.content).toContain("OK marked_doing")
+    expect(r.content).toMatch(/^OK /)
+    expect(r.content).not.toContain("<ma::agent::")
     expect(r.content).not.toContain("doing     x")
     const store = new TaskStore(sid, { home: tmpHome })
     expect(store.list()[0].status).toBe("doing")
@@ -514,8 +516,8 @@ describe("update", () => {
 
     const r = await call({ action: "update", id: "1c", status: "done" })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`action="update"`)
-    expect(r.content).toContain(`result="marked_done"`)
+    expect(r.content).toContain("action=update")
+    expect(r.content).toContain("OK marked_done")
 
     const store = new TaskStore(sid, { home: tmpHome })
     const parent = store.resolve(1)!
@@ -531,7 +533,7 @@ describe("update", () => {
       status: "doing",
     })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="updated"`)
+    expect(r.content).toContain("OK updated")
     expect(r.content).toContain("new title")
     // Display shows the title diff.
     expect(r.display).toContain("old title")
@@ -551,9 +553,9 @@ describe("update", () => {
       reason: "no longer needed",
     })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="marked_canceled"`)
+    expect(r.content).toContain("OK marked_canceled")
     expect(r.display).toContain("no longer needed")
-    expect(r.content).toContain(`reason="no longer needed"`)
+    expect(r.content).toContain('reason="no longer needed"')
     expect(r.content).not.toMatch(/\n1\s+#/)
   })
   test("update with status=done on already-done task is a hard error", async () => {
@@ -650,7 +652,7 @@ describe("clear", () => {
     await call({ action: "add", title: "x", status: "doing" })
     const r = await call({ action: "clear", force: true })
     expect(r.is_error).toBeUndefined()
-    expect(r.content).toContain(`result="cleared"`)
+    expect(r.content).toContain("OK cleared")
     expect(r.content).toContain("_No tasks._")
   })
 })
@@ -710,9 +712,11 @@ describe("format: json", () => {
 // ---------------------------------------------------------------------------
 
 function extractFirstHash(content: string): string {
-  const target = /\bid="([0-9a-f]{6,7})"/.exec(content)
-  if (target) return target[1]
-  const m = /#([0-9a-f]{6,7})/.exec(content)
+  const fromId = /\bid=#([0-9a-f]{6,7})\b/.exec(content)
+  if (fromId) return fromId[1]
+  const legacy = /\bid="([0-9a-f]{6,7})"/.exec(content)
+  if (legacy) return legacy[1]
+  const m = /#([0-9a-f]{6,7})\b/.exec(content)
   if (!m) throw new Error(`no hash found in: ${content}`)
   return m[1]
 }
