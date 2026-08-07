@@ -1,6 +1,6 @@
 # Tasks
 
-Use `Task` to plan and track multi-step work the user can watch in real time. The live board is injected every user turn as a `<ma::agent::tasks>` block (hash-only). Tool results are **plain text** (an `OK ...` line, plus a columnar board for create/list). You do not need to `list` every turn.
+Use `Task` to plan and track multi-step work the user can watch in real time. The live board is injected every user turn as a `<ma::agent::tasks>` block. Every task has one stable canonical id such as `1`, `2`, `1a`, or `2b`. Tool results are plain text and always begin with an `OK ...` acknowledgement. You do not need to `list` every turn.
 
 ## When to use
 
@@ -15,34 +15,30 @@ Use `Task` to plan and track multi-step work the user can watch in real time. Th
 ## Workflow
 
 1. **Plan once.** Prefer:
+
    ```
    Task({ action: "add_many", tasks: [
      { title: "Phase 1: Setup", children: ["step a", "step b"] },
      { title: "Phase 2: Ship" }
    ]})
    ```
-   Aliases (same call, pick one): `items` (= `tasks`), or flat `titles: string[]`.
-   A top-level `add_many` **replaces** the prior board (open or terminal). Do not drip-`add` the same titles after a failed shape. Tool result returns real `#hash` rows in the same turn - use those, never invent ids.
 
-2. **Start, then work.** `Task({ action: "start", id: "#hash-from-board" })` using a hash from the latest tool result or turn attachment. Starting a child auto-starts its parent. Multiple `doing` rows are fine.
+   Aliases (same call, pick one): `items` (= `tasks`), or flat `titles: string[]`. `add_many` always extends the current board.
+   To abandon the current board and create a new plan, use `replace_plan` with the same `tasks`, `items`, or `titles` shape. Replacement is explicit and atomic.
 
-3. **Done when finished.** `Task({ action: "done", id: "#hash-from-board" })`. Completing a child while siblings remain open keeps the parent `doing`; the last open child auto-promotes the parent (and may return `all_done`). **Never also `done` the parent** - that is a hard error if the parent is already done. Status mutations return a short plain `OK ...` ack; the next-turn attachment has the board.
+2. **Start, then work.** `Task({ action: "start", id: "1a" })` using the exact id from the latest tool result or turn attachment. Starting a child auto-starts its parent. Multiple `doing` rows are fine.
 
-4. **Mid-flight substeps.** `Task({ action: "add", title: "...", parent: "#hash-from-board" })` then `start` the child hash from that tool result.
+3. **Done when finished.** `Task({ action: "done", id: "1a" })`. Completing a child while siblings remain open keeps the parent `doing`; the last open child auto-promotes the parent (and may return `all_done`). **Never also `done` the parent** - that is a hard error if the parent is already done.
+
+4. **Mid-flight substeps.** `Task({ action: "add", title: "...", parent: "1" })` then `start` the child id from that tool result.
 
 5. **Redirects.** Never-started -> `remove`. In-flight / abandoned -> `status: "canceled"` with a one-line `reason`.
 
-## Ids (model channel)
+## Ids
 
-The board shows **`#hash` only** (children indented). Prefer that.
+The board shows one canonical stable id per task. Roots use monotonic integers such as `1`, `2`, and `3`. Children use the parent id plus a letter, such as `1a` and `2c`.
 
-Accepted (back-compat, not shown on the board):
-
-- `#` + hex hash from the board / bare hash / subtask hash with letter suffix
-- Top-level position `3` (shifts after reorder/reset - avoid)
-- Child coordinate `3a` (shifts - avoid)
-
-Do **not** invent digit strings (`"864232"`). Do **not** send `#3a`. Do **not** copy example ids from docs - only hashes that appear on the current board or in the latest Task tool result.
+Ids never change when tasks are reordered or removed. Gaps are normal. Always copy the exact id from the current board or latest Task result. Do not infer an id from row position.
 
 ## Status state machine
 
@@ -63,8 +59,7 @@ Do **not** invent digit strings (`"864232"`). Do **not** send `#3a`. Do **not** 
 ## Don't
 
 - Don't stringify arrays. Pass real `tasks` / `titles` arrays. On validation failure, retry **once** - never drip-`add` duplicates.
-- Don't invent digit ids. Use `#hash` from the board or the latest tool result.
-- Don't expect every `start`/`done` to dump the full board (short `OK` ack; attachment is the board).
+- Don't invent ids. Copy the canonical id from the board or latest tool result.
 - Don't echo the task list as prose.
 - Don't `remove` to "clean up" finished work - use `canceled` only when abandoning.
 - Don't reach for `canceled` when you mean `done`.

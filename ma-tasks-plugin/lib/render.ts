@@ -107,19 +107,20 @@ const ANSI = {
 
 /**
  * The action just performed, surfaced in the header. Most actions
- * reference a specific task id (`hash`); a few (`add_many`, `all_done`,
+ * reference a specific task id (`id`); a few (`add_many`, `all_done`,
  * `list`, `clear`) don't.
  */
 export type RenderAction =
-  | { kind: "added"; hash: string }
+  | { kind: "added"; id: string }
   | { kind: "added_many"; count: number }
-  | { kind: "started"; hash: string }
-  | { kind: "marked_done"; hash: string }
-  | { kind: "marked_doing"; hash: string }
-  | { kind: "marked_todo"; hash: string }
-  | { kind: "marked_canceled"; hash: string }
-  | { kind: "updated"; hash: string }
-  | { kind: "removed"; hash: string }
+  | { kind: "replaced_plan"; count: number; replaced: number }
+  | { kind: "started"; id: string }
+  | { kind: "marked_done"; id: string }
+  | { kind: "marked_doing"; id: string }
+  | { kind: "marked_todo"; id: string }
+  | { kind: "marked_canceled"; id: string }
+  | { kind: "updated"; id: string }
+  | { kind: "removed"; id: string }
   | { kind: "reordered" }
   | { kind: "cleared"; count: number }
   | { kind: "all_done" }
@@ -129,7 +130,7 @@ export type RenderAction =
    * never a second ALL DONE celebration, never a full-board re-print
    * from the handler's compact path.
    */
-  | { kind: "already_done"; hash: string }
+  | { kind: "already_done"; id: string }
   | { kind: "list" }
 
 export interface RenderOptions {
@@ -374,7 +375,7 @@ function styleTitle(
 /**
  * Apply per-status text styling to an already-truncated title string.
  *
- * When `targeted` is true (the row matches the action's hash), the
+ * When `targeted` is true (the row matches the action's id), the
  * status's normal styling is escalated: DIM is replaced with the
  * status's identity color, and BOLD is added. So a `marked done` on
  * a row turns its title from DIM+STRIKE (the usual "this is finished
@@ -474,28 +475,31 @@ function renderHeaderText(
   let middle = ""
   switch (action.kind) {
     case "added":
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, "added")} ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, "added")} ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "added_many":
       middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, `added ${action.count} tasks`)}`
       break
+    case "replaced_plan":
+      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, `replaced plan with ${action.count} tasks`)} ${color(ansi, ANSI.DIM, `(${action.replaced} replaced)`)}`
+      break
     case "started":
       // Word + icon both SKY so the header reads as one blue "started"
       // gesture, matching the `marked_canceled` precedent (RED icon +
-      // RED word + dgray hash) and the row's SKY+BOLD title for the
+      // RED word + dgray id) and the row's SKY+BOLD title for the
       // same task.
-      middle = `${color(ansi, ANSI.SKY, GLYPHS.doing)} ${color(ansi, ANSI.SKY, "started")} ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, ANSI.SKY, GLYPHS.doing)} ${color(ansi, ANSI.SKY, "started")} ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_done":
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} marked done ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} marked done ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_doing":
       // Symmetric to `started` — both transition a task into the doing
       // state, both deserve SKY identity on the verb.
-      middle = `${color(ansi, ANSI.SKY, GLYPHS.doing)} ${color(ansi, ANSI.SKY, "marked doing")} ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, ANSI.SKY, GLYPHS.doing)} ${color(ansi, ANSI.SKY, "marked doing")} ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_todo":
-      middle = `${color(ansi, ANSI.DIM, GLYPHS.pending)} reset to todo ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, ANSI.DIM, GLYPHS.pending)} reset to todo ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_canceled":
       // Word "canceled" is RED (no dim) so the action's identity color
@@ -503,13 +507,13 @@ function renderHeaderText(
       // and `marked done` carries the lime `✔`. Icon stays RED+DIM
       // (softer than a row's RED+BOLD `✘`) so the header's verb glyph
       // doesn't compete with the row icons below.
-      middle = `${color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} ${color(ansi, ANSI.RED, "canceled")} ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} ${color(ansi, ANSI.RED, "canceled")} ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "updated":
-      middle = `updated ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `updated ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "removed":
-      middle = `${color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} removed ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} removed ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "reordered":
       middle = `reordered`
@@ -527,7 +531,7 @@ function renderHeaderText(
       // Quiet idempotent ack — dim, no lime shout, no second ALL DONE.
       // Models often re-`done` a parent after last-child auto-promote;
       // celebrating again double-frames the transcript and burns tokens.
-      middle = `${color(ansi, ANSI.DIM, GLYPHS.done)} ${color(ansi, ANSI.DIM, "already done")} ${color(ansi, ANSI.DGRAY, `#${action.hash}`)}`
+      middle = `${color(ansi, ANSI.DIM, GLYPHS.done)} ${color(ansi, ANSI.DIM, "already done")} ${color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "list":
       if (stats.total === 0) {
@@ -600,45 +604,9 @@ function renderHeader(
  * rules. `targeted` rows wear status-color + BOLD; non-targeted rows
  * fall back to the quieter per-status palette.
  */
-function styleNumCol(v: View, ansi: boolean, targeted: boolean): string {
-  const numStr = String(v.n).padStart(2, " ")
-  if (v.ghost === "removed") {
-    // Tombstone — preserve DIM+STRIKE even when targeted; BOLD on a
-    // removed row's number col would look like "still alive".
-    return color(ansi, `${ANSI.DIM}${ANSI.STRIKE}`, numStr)
-  }
-  // Single switch with `targeted` selecting between the two palettes.
-  // Collapsing the prior two-switch form also closes a latent
-  // fall-through bug: a `targeted` row with a hypothetical new status
-  // variant would have silently picked up the non-targeted palette
-  // from the second switch instead of erroring at the exhaustive default.
-  switch (v.task.status) {
-    case "done":
-      return targeted
-        ? color(ansi, `${ANSI.LIME}${ANSI.BOLD}${ANSI.STRIKE}`, numStr)
-        : color(ansi, ANSI.DIM, numStr)
-    case "doing":
-      return targeted
-        ? color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, numStr)
-        : color(ansi, ANSI.BOLD, numStr)
-    case "todo":
-      return targeted ? color(ansi, ANSI.BOLD, numStr) : color(ansi, ANSI.LGRAY, numStr)
-    case "canceled":
-      return targeted
-        ? color(ansi, `${ANSI.RED}${ANSI.BOLD}${ANSI.STRIKE}`, numStr)
-        : color(ansi, `${ANSI.DIM}${ANSI.STRIKE}`, numStr)
-    default: {
-      // Closed-union exhaustiveness check; mirrors the pattern in
-      // `statusGlyph` above. Adding a new TaskStatus variant will
-      // trigger a type error here.
-      throw new Error(`unhandled status: ${String(v.task.status satisfies never)}`)
-    }
-  }
-}
-
 /**
  * ID-column styling for one row. Targeted rows boost DGRAY → LGRAY+BOLD
- * (or DGRAY+BOLD+STRIKE for canceled/ghost) so the hash is the most
+ * (or DGRAY+BOLD+STRIKE for canceled/ghost) so the id is the most
  * visible secondary signal that "this is the row referenced in the
  * header". Especially important for status=doing where the title is
  * already SKY+BOLD whether targeted or not — the id column becomes the
@@ -651,10 +619,10 @@ function styleIdCol(v: View, ansi: boolean, targeted: boolean): string {
     return color(
       ansi,
       targeted ? `${ANSI.DGRAY}${ANSI.BOLD}${ANSI.STRIKE}` : `${ANSI.DGRAY}${ANSI.STRIKE}`,
-      `#${t.id}`,
+      t.id,
     )
   }
-  return color(ansi, targeted ? `${ANSI.LGRAY}${ANSI.BOLD}` : ANSI.DGRAY, `#${t.id}`)
+  return color(ansi, targeted ? `${ANSI.LGRAY}${ANSI.BOLD}` : ANSI.DGRAY, t.id)
 }
 
 /**
@@ -723,7 +691,6 @@ function renderTopLevelRowBody(
   durMs = 0,
 ): string {
   const t = v.task
-  const numCol = styleNumCol(v, ansi, targeted)
   const stCol = statusGlyph(t.status, ansi, v.ghost)
   const idCol = styleIdCol(v, ansi, targeted)
   const titleCol = styleTitle(t, ansi, maxTitleLen, v.ghost, v.diff, targeted)
@@ -731,7 +698,7 @@ function renderTopLevelRowBody(
   // todo / 0ms rows, so the line ends at the title with no trailing
   // whitespace gutter eating horizontal real estate from the title.
   const durSuffix = renderDurationSuffix(durMs, t.status, ansi, v.ghost)
-  return `  ${numCol}  ${stCol}  ${idCol}  ${titleCol}${durSuffix}`
+  return `  ${stCol}  ${idCol}  ${titleCol}${durSuffix}`
 }
 
 function renderTopLevelRow(
@@ -761,16 +728,9 @@ function renderSubtaskRowBody(
   // Trailing duration suffix — empty for todo / 0ms rows. See the
   // sibling top-level builder for the rationale.
   const durSuffix = renderDurationSuffix(durMs, t.status, ansi, v.ghost)
-  // Leading 6 spaces (NOT 7) so the tree glyph lands at the SAME body
-  // offset as the parent's status glyph. Top-level row body is
-  // `"  ${numCol(2)}  ${stCol}  ..."` → parent's `○` sits at body
-  // offset 6 (2 + 2 + 2). Subtask body therefore needs 6 leading
-  // spaces so `├` / `╰` lines up directly under `○`. Its own
-  // `${stCol}` then lands at offset 9 (6 + 1 + 2), and the rest of
-  // the row (status / id / title) is indented one column-pair deeper.
-  // Previously this used 7 spaces, which shoved `├` one cell to the
-  // RIGHT of the parent's `○` and made the subtree feel un-anchored.
-  return `      ${treeGlyph}  ${stCol}  ${idCol}  ${titleCol}${durSuffix}`
+  // The tree glyph aligns with the parent's status glyph. Child status and id
+  // follow one indentation level deeper.
+  return `  ${treeGlyph}  ${stCol}  ${idCol}  ${titleCol}${durSuffix}`
 }
 
 function renderSubtaskRow(
@@ -822,20 +782,20 @@ function allDoneTag(ansi: boolean): string {
 }
 
 // ---------------------------------------------------------------------------
-// "Targeted row" emphasis — find the row that matches the action's hash
+// "Targeted row" emphasis — find the row that matches the action's id
 // ---------------------------------------------------------------------------
 
 /**
  * For actions that mutate ONE specific task (added, started,
  * marked_done, marked_doing, marked_todo, marked_canceled, updated,
- * removed), return that task's hash. Bulk or non-targeting actions
+ * removed), return that task's id. Bulk or non-targeting actions
  * (added_many, reordered, cleared, list, all_done, already_done)
  * return null and no row gets emphasized. `already_done` is
  * intentionally non-targeting: the compact handler path often
  * suppresses the body, and bolding a "no-op" row would still look
  * like a fresh completion.
  *
- * The row whose `task.id` matches this hash is rendered with BOLD on
+ * The row whose `task.id` matches this id is rendered with BOLD on
  * every column (number / icon-where-applicable / id / title), so the
  * reader can see at-a-glance "this is the one that just changed". For
  * a `marked done` row this turns the usual DIM+STRIKE title into
@@ -854,8 +814,9 @@ function targetHashFromAction(action: RenderAction): string | null {
     case "marked_canceled":
     case "updated":
     case "removed":
-      return action.hash
+      return action.id
     case "added_many":
+    case "replaced_plan":
     case "reordered":
     case "cleared":
     case "list":
@@ -935,7 +896,7 @@ export interface ToolDisplayParts {
 
 /**
  * Render the full task tree for the tool's transcript display: one row per
- * task with status glyph, hash, title, and timing, plus the summary footer.
+ * task with status glyph, id, title, and timing, plus the summary footer.
  */
 export function renderToolDisplay(
   views: readonly View[],

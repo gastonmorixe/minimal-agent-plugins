@@ -41,21 +41,21 @@
  * @module tasks/lib/store
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import { resolveSessionsDir } from "./agent-paths.ts"
 import {
+  createTasksMeta,
   isSubtaskId,
-  isTaskId,
   localIsoSeconds,
   type NewTaskInput,
-  newTopLevelId,
-  parseFile,
-  serializeFile,
+  parseTasksFile,
+  serializeTasksFile,
   subtaskId,
   type Task,
   type TaskStatus,
+  type TasksMeta,
 } from "./parse.ts"
 
 // ---------------------------------------------------------------------------
@@ -187,8 +187,16 @@ export interface StoreDeps {
   home?: string
   /** Override the time source (passed through to {@link localIsoSeconds}). */
   now?: () => Date
-  /** Override the RNG used for new top-level ids. */
+  /** Deprecated v2 compatibility injection. Ordinal ids do not use randomness. */
   rand?: () => Buffer
+  /** Test-only hook invoked after the temp file is complete but before rename. */
+  beforeRename?: (tempPath: string) => void
+}
+
+export interface ReplaceTaskInput {
+  title: string
+  status?: TaskStatus
+  children?: readonly Omit<ReplaceTaskInput, "children">[]
 }
 
 function resolveTasksPath(sid: string, deps: StoreDeps): string {
@@ -262,11 +270,19 @@ export class TaskStore {
   // Read paths
   // -------------------------------------------------------------------------
 
-  /** Read all tasks from disk in display order. Returns `[]` if file missing. */
+  /** Read all tasks from disk in display order, initializing or migrating v3 atomically. */
   list(): Task[] {
-    if (!existsSync(this.path)) return []
-    const content = readFileSync(this.path, "utf8")
-    return parseFile(content)
+    return this.readState().tasks
+  }
+
+  /** Return a defensive copy of the persisted v3 allocator metadata. */
+  metadata(): TasksMeta {
+    const meta = this.readState().meta
+    return createTasksMeta({
+      next_root: meta.next_root,
+      next_child: meta.next_child,
+      aliases: meta.aliases,
+    })
   }
 
   /**
@@ -283,7 +299,13 @@ export class TaskStore {
   /** Aggregate counts for headers. */
   stats(): Stats {
     const tasks = this.list()
-    const s: Stats = { total: tasks.length, done: 0, doing: 0, todo: 0, canceled: 0 }
+    const s: Stats = {
+      total: tasks.length,
+      done: 0,
+      doing: 0,
+      todo: 0,
+      canceled: 0,
+    }
     for (const t of tasks) s[t.status] += 1
     return s
   }
@@ -294,7 +316,8 @@ export class TaskStore {
    * child-row coordinate such as `"1a"`. Returns `null` if no task matches.
    */
   resolve(ref: string | number): Task | null {
-    return this.resolveFrom(ref, this.list())
+    const state = this.readState()
+    return this.resolveFrom(ref, state.tasks, state.meta)
   }
 
   // -------------------------------------------------------------------------
@@ -318,31 +341,20 @@ export class TaskStore {
       throw new TaskStoreError(`TaskStore.add: title cannot be empty`)
     }
 
-    const tasks = this.list()
+    const state = this.readState()
+    const tasks = state.tasks
     let id: string
+    let canonicalParent: string | null = null
 
     if (input.parent !== undefined && input.parent !== null) {
-      const parent = this.findParent(input.parent, tasks)
-      // Pick the next alpha suffix from the highest existing suffix + 1
-      // (not just "count of children", to keep stable ids after removes).
-      const usedSuffixes = tasks
-        .filter((t) => t.parent === parent.id && isSubtaskId(t.id))
-        .map((t) => t.id.charCodeAt(t.id.length - 1) - "a".charCodeAt(0))
-      const nextCounter = usedSuffixes.length === 0 ? 0 : Math.max(...usedSuffixes) + 1
+      const parent = this.findParent(input.parent, tasks, state.meta)
+      canonicalParent = parent.id
+      const nextCounter =
+        state.meta.next_child[parent.id] ?? this.nextChildCounter(parent.id, tasks)
       id = subtaskId(parent.id, nextCounter)
+      state.meta.next_child[parent.id] = nextCounter + 1
     } else {
-      // Top-level: random until collision-free. The id space is 16.7M;
-      // a real collision in a session is astronomically unlikely, but
-      // tests inject a deterministic RNG that may collide on purpose.
-      const usedIds = new Set(tasks.map((t) => t.id))
-      let tries = 0
-      do {
-        id = newTopLevelId(this.deps.rand)
-        tries += 1
-        if (tries > 100) {
-          throw new TaskStoreError(`TaskStore.add: failed to generate a unique id after 100 tries`)
-        }
-      } while (usedIds.has(id))
+      id = String(state.meta.next_root++)
     }
 
     // Timing fields (schema v2). For the rare case of `add({status:
@@ -353,7 +365,7 @@ export class TaskStore {
     const startedInDoing = status === "doing"
     const task: Task = {
       id,
-      parent: input.parent ?? null,
+      parent: canonicalParent,
       status,
       title,
       created_at,
@@ -367,7 +379,7 @@ export class TaskStore {
     // Insertion point.
     let insertAt = tasks.length
     if (task.parent === null && after !== undefined) {
-      const anchor = this.resolveFrom(after, tasks)
+      const anchor = this.resolveFrom(after, tasks, state.meta)
       if (anchor !== null && anchor.parent === null) {
         // Insert after the anchor AND after all of the anchor's existing
         // children, so subtasks stay clustered under their parent.
@@ -392,19 +404,22 @@ export class TaskStore {
     }
 
     const next = [...tasks.slice(0, insertAt), task, ...tasks.slice(insertAt)]
-    this.writeAll(next)
+    this.writeState(state.meta, next)
     return task
   }
 
-  /** Bulk variant of {@link add}. All titles get the same `parent` (if any). */
+  /** Bulk variant of {@link add}, committed atomically in one rename. */
   addMany(titles: readonly string[], opts: { parent?: string | number } = {}): Task[] {
-    const out: Task[] = []
+    const clean = titles.map((title) => title.trim())
+    if (clean.some((title) => title === "")) {
+      throw new TaskStoreError(`TaskStore.addMany: title cannot be empty`)
+    }
+    const state = this.readState()
     let parentId: string | null = null
     if (opts.parent !== undefined && opts.parent !== null) {
-      const parent = this.resolve(opts.parent)
-      if (parent === null) {
+      const parent = this.resolveFrom(opts.parent, state.tasks, state.meta)
+      if (parent === null)
         throw new TaskStoreError(`TaskStore.addMany: parent "${opts.parent}" not found`)
-      }
       if (parent.parent !== null) {
         throw new TaskStoreError(
           `TaskStore.addMany: parent "${opts.parent}" is itself a subtask (no nesting beyond depth 1)`,
@@ -412,10 +427,80 @@ export class TaskStore {
       }
       parentId = parent.id
     }
-    for (const title of titles) {
-      out.push(this.add({ title, parent: parentId }))
+    const created_at = localIsoSeconds(this.deps.now)
+    const out: Task[] = []
+    let childCounter =
+      parentId === null
+        ? 0
+        : (state.meta.next_child[parentId] ?? this.nextChildCounter(parentId, state.tasks))
+    for (const title of clean) {
+      const id =
+        parentId === null ? String(state.meta.next_root++) : subtaskId(parentId, childCounter++)
+      out.push({
+        id,
+        parent: parentId,
+        status: "todo",
+        title,
+        created_at,
+        done_at: null,
+        reason: null,
+        started_at: null,
+        last_resumed_at: null,
+        active_ms: 0,
+      })
     }
+    if (parentId === null) state.tasks.push(...out)
+    else {
+      state.meta.next_child[parentId] = childCounter
+      const insertAt = this.endOfParentBlock(parentId, state.tasks)
+      state.tasks.splice(insertAt, 0, ...out)
+    }
+    this.writeState(state.meta, state.tasks)
     return out
+  }
+
+  /** Replace the live board after complete preflight, allocating fresh ordinal ids. */
+  replaceAll(inputs: readonly ReplaceTaskInput[]): Task[] {
+    const prepared = inputs.map((input) => ({
+      title: input.title.trim(),
+      status: input.status ?? ("todo" as TaskStatus),
+      children: (input.children ?? []).map((child) => ({
+        title: child.title.trim(),
+        status: child.status ?? ("todo" as TaskStatus),
+      })),
+    }))
+    for (const input of prepared) {
+      if (input.title === "" || input.children.some((child) => child.title === "")) {
+        throw new TaskStoreError(`TaskStore.replaceAll: title cannot be empty`)
+      }
+      if (input.children.length > 26)
+        throw new TaskStoreError(`TaskStore.replaceAll: too many children`)
+    }
+    const state = this.readState()
+    const created_at = localIsoSeconds(this.deps.now)
+    const tasks: Task[] = []
+    const make = (id: string, parent: string | null, title: string, status: TaskStatus): Task => ({
+      id,
+      parent,
+      title,
+      status,
+      created_at,
+      done_at: status === "done" ? created_at : null,
+      reason: null,
+      started_at: status === "doing" ? created_at : null,
+      last_resumed_at: status === "doing" ? created_at : null,
+      active_ms: 0,
+    })
+    for (const input of prepared) {
+      const rootId = String(state.meta.next_root++)
+      tasks.push(make(rootId, null, input.title, input.status))
+      input.children.forEach((child, index) => {
+        tasks.push(make(subtaskId(rootId, index), rootId, child.title, child.status))
+      })
+      state.meta.next_child[rootId] = input.children.length
+    }
+    this.writeState(state.meta, tasks)
+    return tasks
   }
 
   /** Edit a task's title. Returns the updated task or `null` if not found. */
@@ -424,12 +509,13 @@ export class TaskStore {
     if (trimmed === "") {
       throw new TaskStoreError(`TaskStore.update: title cannot be empty`)
     }
-    const tasks = this.list()
-    const idx = tasks.findIndex((t) => t === this.resolveFrom(ref, tasks))
-    if (idx < 0) return null
-    const updated: Task = { ...tasks[idx], title: trimmed }
-    tasks[idx] = updated
-    this.writeAll(tasks)
+    const state = this.readState()
+    const target = this.resolveFrom(ref, state.tasks, state.meta)
+    if (target === null) return null
+    const idx = state.tasks.indexOf(target)
+    const updated: Task = { ...target, title: trimmed }
+    state.tasks[idx] = updated
+    this.writeState(state.meta, state.tasks)
     return updated
   }
 
@@ -460,8 +546,9 @@ export class TaskStore {
    * Child `todo` / `canceled` transitions stay explicit one-row mutations.
    */
   setStatus(ref: string | number, status: TaskStatus, reason?: string | null): Task | null {
-    const tasks = this.list()
-    const target = this.resolveFrom(ref, tasks)
+    const state = this.readState()
+    const tasks = state.tasks
+    const target = this.resolveFrom(ref, tasks, state.meta)
     if (target === null) return null
     const idx = tasks.indexOf(target)
     const { nowIso, nowMs } = this.nowPair()
@@ -475,7 +562,7 @@ export class TaskStore {
       this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
     }
 
-    this.writeAll(tasks)
+    this.writeState(state.meta, tasks)
     // Re-read the target from the (possibly cascaded) array so the
     // returned Task reflects any parent-side rollup that rewrote it.
     return tasks.find((t) => t.id === next.id) ?? next
@@ -540,8 +627,9 @@ export class TaskStore {
    * `opts.parallel` is accepted for API compatibility and ignored.
    */
   start(ref: string | number, _opts: { parallel?: boolean } = {}): Task | null {
-    const tasks = this.list()
-    const target = this.resolveFrom(ref, tasks)
+    const state = this.readState()
+    const tasks = state.tasks
+    const target = this.resolveFrom(ref, tasks, state.meta)
     if (target === null) return null
     const { nowIso, nowMs } = this.nowPair()
 
@@ -551,7 +639,7 @@ export class TaskStore {
     if (next.parent !== null) {
       this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
     }
-    this.writeAll(tasks)
+    this.writeState(state.meta, tasks)
     return next
   }
 
@@ -565,8 +653,9 @@ export class TaskStore {
    * removed tasks (in file order) or `[]` if not found.
    */
   remove(ref: string | number): Task[] {
-    const tasks = this.list()
-    const target = this.resolveFrom(ref, tasks)
+    const state = this.readState()
+    const tasks = state.tasks
+    const target = this.resolveFrom(ref, tasks, state.meta)
     if (target === null) return []
     const toRemove = new Set<string>([target.id])
     // Cascade subtasks.
@@ -579,7 +668,7 @@ export class TaskStore {
       if (toRemove.has(t.id)) removed.push(t)
       else next.push(t)
     }
-    this.writeAll(next)
+    this.writeState(state.meta, next)
     return removed
   }
 
@@ -592,11 +681,12 @@ export class TaskStore {
    * Returns the full new task list.
    */
   reorder(order: readonly (string | number)[]): Task[] {
-    const tasks = this.list()
+    const state = this.readState()
+    const tasks = state.tasks
     const resolved: string[] = []
     const seen = new Set<string>()
     for (const ref of order) {
-      const t = this.resolveFrom(ref, tasks)
+      const t = this.resolveFrom(ref, tasks, state.meta)
       if (t === null) {
         throw new TaskStoreError(`TaskStore.reorder: id "${ref}" not found`)
       }
@@ -639,7 +729,7 @@ export class TaskStore {
       const grp = groups.get(id)
       if (grp) next.push(...grp)
     }
-    this.writeAll(next)
+    this.writeState(state.meta, next)
     return next
   }
 
@@ -649,13 +739,14 @@ export class TaskStore {
    * in-flight state.
    */
   clear(force: boolean = false): number {
-    const tasks = this.list()
+    const state = this.readState()
+    const tasks = state.tasks
     if (!force && tasks.some((t) => t.status === "doing")) {
       throw new TaskStoreError(
         `TaskStore.clear: refusing to clear with tasks in "doing" state; pass force: true to override`,
       )
     }
-    this.writeAll([])
+    this.writeState(state.meta, [])
     return tasks.length
   }
 
@@ -663,8 +754,8 @@ export class TaskStore {
   // Private helpers
   // -------------------------------------------------------------------------
 
-  private findParent(ref: string | number, tasks: readonly Task[]): Task {
-    const parent = this.resolveFrom(ref, tasks)
+  private findParent(ref: string | number, tasks: readonly Task[], meta?: TasksMeta): Task {
+    const parent = this.resolveFrom(ref, tasks, meta)
     if (parent === null) {
       throw new TaskStoreError(`TaskStore: parent "${ref}" not found`)
     }
@@ -677,39 +768,106 @@ export class TaskStore {
   }
 
   /** Resolve against an already-loaded task list (saves a re-read). */
-  private resolveFrom(ref: string | number, tasks: readonly Task[]): Task | null {
+  private resolveFrom(ref: string | number, tasks: readonly Task[], meta?: TasksMeta): Task | null {
     if (typeof ref === "number") {
       if (!Number.isInteger(ref) || ref < 1) return null
-      const tops = tasks.filter((t) => t.parent === null)
-      return tops[ref - 1] ?? null
+      return tasks.find((task) => task.id === String(ref)) ?? null
     }
-    const hasHashPrefix = ref.startsWith("#")
-    const bare = hasHashPrefix ? ref.slice(1) : ref
-    // Hash-shaped strings (6 or 7 chars matching the id regex) always win,
-    // even when every character is a digit. This avoids treating a valid
-    // all-digit hash (~6% of top-level ids) as an enormous display position.
-    if (isTaskId(bare)) {
-      return tasks.find((t) => t.id === bare) ?? null
-    }
-    if (/^\d+$/.test(bare)) return this.resolveFrom(Number.parseInt(bare, 10), tasks)
-    if (hasHashPrefix) return null
-
-    // The model sees child rows labeled `1a`, `1b`, … alongside stable hashes.
-    // The alpha comes from the stable child-id suffix, so a deleted sibling
-    // leaves a visible gap (for example `1b`) rather than renumbering rows.
-    // `#1a` remains invalid because it is not a stable hash; legacy `#1`
-    // position lookup is preserved by the numeric branch above.
-    const coord = /^(\d+)([a-z])$/.exec(bare)
-    if (coord === null) return null
-    const parent = this.resolveFrom(Number.parseInt(coord[1], 10), tasks)
-    if (parent === null) return null
-    return tasks.find((t) => t.parent === parent.id && t.id === `${parent.id}${coord[2]}`) ?? null
+    const bare = ref.startsWith("#") ? ref.slice(1) : ref
+    const direct = tasks.find((task) => task.id === bare)
+    if (direct !== undefined) return direct
+    const aliases = meta?.aliases ?? this.metadata().aliases
+    const canonical = aliases[bare]
+    return canonical === undefined ? null : (tasks.find((task) => task.id === canonical) ?? null)
   }
 
-  private writeAll(tasks: readonly Task[]): void {
+  private readState(): { meta: TasksMeta; tasks: Task[] } {
+    if (!existsSync(this.path)) {
+      const state = { meta: createTasksMeta(), tasks: [] as Task[] }
+      this.writeState(state.meta, state.tasks)
+      return state
+    }
+    const parsed = parseTasksFile(readFileSync(this.path, "utf8"))
+    if (parsed.meta !== null) {
+      const ordinalTasks = parsed.tasks.filter(
+        (task) =>
+          /^[1-9]\d*[a-z]?$/.test(task.id) &&
+          (task.parent === null || /^[1-9]\d*$/.test(task.parent)),
+      )
+      const maxRoot = ordinalTasks.reduce(
+        (max, task) => (task.parent === null ? Math.max(max, Number(task.id)) : max),
+        0,
+      )
+      if (parsed.meta.next_root <= maxRoot) parsed.meta.next_root = maxRoot + 1
+      for (const task of ordinalTasks) {
+        if (task.parent === null) continue
+        const suffix = task.id.charCodeAt(task.id.length - 1) - "a".charCodeAt(0) + 1
+        parsed.meta.next_child[task.parent] = Math.max(
+          parsed.meta.next_child[task.parent] ?? 0,
+          suffix,
+        )
+      }
+      return { meta: parsed.meta, tasks: ordinalTasks }
+    }
+
+    const aliases: Record<string, string> = {}
+    const rootMap = new Map<string, string>()
+    let nextRoot = 1
+    for (const task of parsed.tasks) {
+      if (task.parent === null) rootMap.set(task.id, String(nextRoot++))
+    }
+    const childCounts = new Map<string, number>()
+    const tasks: Task[] = []
+    for (const task of parsed.tasks) {
+      const oldId = task.id
+      if (task.parent === null) {
+        const id = rootMap.get(oldId)!
+        aliases[oldId] = id
+        tasks.push({ ...task, id })
+        continue
+      }
+      const parent = rootMap.get(task.parent)
+      if (parent === undefined) continue
+      const index = childCounts.get(task.parent) ?? 0
+      childCounts.set(task.parent, index + 1)
+      const id = subtaskId(parent, index)
+      aliases[oldId] = id
+      tasks.push({ ...task, id, parent })
+    }
+    const next_child = Object.fromEntries(
+      [...childCounts].map(([legacyParent, next]) => [rootMap.get(legacyParent)!, next]),
+    )
+    const meta = createTasksMeta({ next_root: nextRoot, next_child, aliases })
+    this.writeState(meta, tasks)
+    return { meta, tasks }
+  }
+
+  private writeState(meta: TasksMeta, tasks: readonly Task[]): void {
     const dir = dirname(this.path)
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    writeFileSync(this.path, serializeFile(tasks), "utf8")
+    const tempPath = `${this.path}.tmp-${process.pid}-${Math.random().toString(16).slice(2)}`
+    try {
+      writeFileSync(tempPath, serializeTasksFile(meta, tasks), "utf8")
+      this.deps.beforeRename?.(tempPath)
+      renameSync(tempPath, this.path)
+    } catch (error) {
+      rmSync(tempPath, { force: true })
+      throw error
+    }
+  }
+
+  private nextChildCounter(parentId: string, tasks: readonly Task[]): number {
+    const suffixes = tasks
+      .filter((task) => task.parent === parentId && isSubtaskId(task.id))
+      .map((task) => task.id.charCodeAt(task.id.length - 1) - 97)
+    return suffixes.length === 0 ? 0 : Math.max(...suffixes) + 1
+  }
+
+  private endOfParentBlock(parentId: string, tasks: readonly Task[]): number {
+    const parentIndex = tasks.findIndex((task) => task.id === parentId)
+    let end = parentIndex + 1
+    while (end < tasks.length && tasks[end].parent === parentId) end++
+    return end
   }
 
   /**

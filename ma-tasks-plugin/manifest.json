@@ -2,7 +2,7 @@
   "id": "tasks",
   "name": "Tasks",
   "version": "0.1.0",
-  "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO. Single Task tool with action switch (add, add_many, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model board is hash-only. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as <ma::agent::tasks>.",
+  "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO. Single Task tool with action switch (add, add_many, replace_plan, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model and human boards use canonical ordinal ids. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as <ma::agent::tasks>.",
   "promptFragments": [
     {
       "id": "planning",
@@ -21,7 +21,7 @@
         "type": "tool",
         "tool": {
           "name": "Task",
-          "description": "Manage a per-session task list. Plan with `add_many` + `tasks: [{title, children?}]` (aliases: `items`, flat `titles`). Mark progress with `start` / `done` using `#hash` from the board. Top-level `add_many` replaces a fully terminal board. Status mutations return a short ack; the next-turn `<ma::agent::tasks>` attachment is hash-only (no POS column). Last open child auto-promotes its parent - do not also `done` the parent (hard error if already done). Prefer `#hash`; position / `3a` still resolve but are deprecated for models.",
+          "description": "Manage a per-session task list. Plan additively with `add_many` + `tasks: [{title, children?}]` (aliases: `items`, flat `titles`). Use `replace_plan` only to explicitly replace the whole board. Mark progress with `start` / `done` using canonical ids such as `1` and `1a` from the board. Tool results begin with a plain `OK ...` acknowledgement; configured result verbosity and the next-turn `<ma::agent::tasks>` attachment use the same canonical ids with no separate position column. Last open child auto-promotes its parent - do not also `done` the parent.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -30,6 +30,7 @@
                 "enum": [
                   "add",
                   "add_many",
+                  "replace_plan",
                   "update",
                   "status",
                   "start",
@@ -42,7 +43,7 @@
                 "description": "What to do."
               },
               "id": {
-                "description": "Task reference. Prefer `#hash` from the current board or latest Task tool result (never invent or copy docs examples). Also accepts bare hash, top-level position `3`, or child coord `3a` (deprecated for models; they shift). Required for: update, status, start, done, remove."
+                "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."
               },
               "title": {
                 "type": "string",
@@ -50,7 +51,7 @@
               },
               "tasks": {
                 "type": "array",
-                "description": "Preferred tree form for add_many: one-shot plan with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`.",
+                "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`.",
                 "items": {
                   "type": "object",
                   "properties": {
@@ -131,7 +132,7 @@
                 "type": "string",
                 "enum": ["text", "json"],
                 "default": "text",
-                "description": "Result content format. `text`: create/list return a hash-only `<ma::agent::tasks>` board; status mutations return a short self-closing ack. `json` returns a parseable shape. Human TUI display is always ANSI."
+                "description": "Result content format. `text` returns a plain acknowledgement and, when applicable under the configured verbosity, a canonical-id task board. `json` returns the equivalent parseable shape. Human TUI display is always ANSI."
               },
               "parallel": {
                 "type": "boolean",

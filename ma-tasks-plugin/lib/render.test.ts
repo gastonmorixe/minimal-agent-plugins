@@ -53,10 +53,10 @@ describe("renderToolDisplay — host-owned frame parts", () => {
     const v = topView(task({ status: "doing", title: "x" }), 1)
     const out = renderToolDisplay([v], stats({ total: 1, doing: 1 }), {
       ansi: false,
-      action: { kind: "started", hash: "a7b3c4" },
+      action: { kind: "started", id: "1" },
     })
-    expect(out.header).toContain(`${GLYPHS.doing} started #a7b3c4`)
-    expect(out.body).toContain(`  1  ${GLYPHS.doing}  #a7b3c4  x`)
+    expect(out.header).toContain(`${GLYPHS.doing} started 1`)
+    expect(out.body).toContain(`  ${GLYPHS.doing}  1  x`)
     expect(out.body).not.toContain(GLYPHS.frameTL)
     expect(out.body).not.toContain(GLYPHS.frameML)
     expect(out.footer).toContain("1 doing")
@@ -74,7 +74,7 @@ describe("renderToolDisplay — host-owned frame parts", () => {
     const out = renderToolDisplay(
       [topView(parent, 1), subView(child, 0, 1), topView(next, 2)],
       stats({ total: 3, done: 1, todo: 2 }),
-      { ansi: false, action: { kind: "marked_done", hash: "3b6c0ea" } },
+      { ansi: false, action: { kind: "marked_done", id: "3b6c0ea" } },
     )
 
     expect(out.body).toContain("Refactor session token accounting")
@@ -88,7 +88,7 @@ describe("renderToolDisplay — host-owned frame parts", () => {
     )
     const out = renderToolDisplay([v], stats({ total: 1, canceled: 1 }), {
       ansi: false,
-      action: { kind: "marked_canceled", hash: "a7b3c4" },
+      action: { kind: "marked_canceled", id: "1" },
     })
 
     expect(out.body).toContain("(user changed direction)")
@@ -104,24 +104,24 @@ describe("renderBlock — header verbs", () => {
   const v = topView(task({ status: "done", done_at: "2026-05-12T15:31:00-04:00" }), 1)
   const s = stats({ total: 1, done: 1 })
 
-  test("marked_done shows ✔ marked done #<hash>", () => {
-    const out = plain([v], s, { action: { kind: "marked_done", hash: "a7b3c4" } })
+  test("marked_done shows ✔ marked done <hash>", () => {
+    const out = plain([v], s, { action: { kind: "marked_done", id: "1" } })
     const head = out.split("\n")[0]
-    expect(head).toContain(`${GLYPHS.done} marked done #a7b3c4`)
+    expect(head).toContain(`${GLYPHS.done} marked done 1`)
     expect(head).toContain("1/1")
   })
-  test("started shows ◐ started #<hash>", () => {
-    const out = plain([v], s, { action: { kind: "started", hash: "a7b3c4" } })
-    expect(out.split("\n")[0]).toContain(`${GLYPHS.doing} started #a7b3c4`)
+  test("started shows ◐ started <hash>", () => {
+    const out = plain([v], s, { action: { kind: "started", id: "1" } })
+    expect(out.split("\n")[0]).toContain(`${GLYPHS.doing} started 1`)
   })
-  test("added shows + added #<hash>", () => {
-    const out = plain([v], s, { action: { kind: "added", hash: "a7b3c4" } })
-    expect(out.split("\n")[0]).toContain(`${GLYPHS.plus} added #a7b3c4`)
+  test("added shows + added <hash>", () => {
+    const out = plain([v], s, { action: { kind: "added", id: "1" } })
+    expect(out.split("\n")[0]).toContain(`${GLYPHS.plus} added 1`)
   })
-  test("added_many shows + added N tasks (no #<hash>)", () => {
+  test("added_many shows + added N tasks (no <hash>)", () => {
     const out = plain([v], s, { action: { kind: "added_many", count: 5 } })
     expect(out.split("\n")[0]).toContain(`${GLYPHS.plus} added 5 tasks`)
-    expect(out.split("\n")[0]).not.toContain("#a7b3c4")
+    expect(out.split("\n")[0]).not.toContain("added 1")
   })
   test("all_done flips the N/M to lime and reads 'ALL DONE' (uppercase shout)", () => {
     const out = plain([v], s, { action: { kind: "all_done" } })
@@ -129,19 +129,19 @@ describe("renderBlock — header verbs", () => {
     expect(out.split("\n")[0]).toContain("1/1")
   })
   test("already_done is a quiet dim ack with hash, no N/M, no ALL DONE shout", () => {
-    const out = plain([v], s, { action: { kind: "already_done", hash: "a7b3c4" } })
+    const out = plain([v], s, { action: { kind: "already_done", id: "1" } })
     const head = out.split("\n")[0]
-    expect(head).toContain(`${GLYPHS.done} already done #a7b3c4`)
+    expect(head).toContain(`${GLYPHS.done} already done 1`)
     expect(head).not.toContain("ALL DONE")
     expect(head).not.toContain("1/1")
   })
-  test("removed shows ✘ removed #<hash>", () => {
-    const out = plain([v], s, { action: { kind: "removed", hash: "a7b3c4" } })
-    expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} removed #a7b3c4`)
+  test("removed shows ✘ removed <hash>", () => {
+    const out = plain([v], s, { action: { kind: "removed", id: "1" } })
+    expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} removed 1`)
   })
-  test("marked_canceled shows ✘ canceled #<hash>", () => {
-    const out = plain([v], s, { action: { kind: "marked_canceled", hash: "a7b3c4" } })
-    expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} canceled #a7b3c4`)
+  test("marked_canceled shows ✘ canceled <hash>", () => {
+    const out = plain([v], s, { action: { kind: "marked_canceled", id: "1" } })
+    expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} canceled 1`)
   })
   test("list with zero tasks → 'no tasks'", () => {
     const out = plain([], stats(), { action: { kind: "list" } })
@@ -161,22 +161,22 @@ describe("renderBlock — top-level rows", () => {
   test("done row has bold check, dim+strike title", () => {
     const t = task({ status: "done", title: "x", done_at: "2026-05-12T15:31:00-04:00" })
     const out = plain([topView(t, 1)], stats({ total: 1, done: 1 }))
-    expect(out).toContain(` 1  ${GLYPHS.done}  #a7b3c4  x`)
+    expect(out).toContain(`${GLYPHS.done}  1  x`)
   })
   test("doing row has half-circle glyph and bold title", () => {
     const t = task({ status: "doing", title: "x" })
     const out = plain([topView(t, 1)], stats({ total: 1, doing: 1 }))
-    expect(out).toContain(` 1  ${GLYPHS.doing}  #a7b3c4  x`)
+    expect(out).toContain(`${GLYPHS.doing}  1  x`)
   })
   test("todo row has dim circle glyph and plain title", () => {
     const t = task({ status: "todo", title: "x" })
     const out = plain([topView(t, 1)], stats({ total: 1, todo: 1 }))
-    expect(out).toContain(` 1  ${GLYPHS.pending}  #a7b3c4  x`)
+    expect(out).toContain(`${GLYPHS.pending}  1  x`)
   })
   test("canceled row has red ✘ in status column, title + (reason) suffix, no title prefix glyph", () => {
     const t = task({ status: "canceled", title: "abandon", reason: "user redirected" })
     const out = plain([topView(t, 1)], stats({ total: 1, canceled: 1 }))
-    expect(out).toContain(` 1  ${GLYPHS.canceled}  #a7b3c4  abandon  (user redirected)`)
+    expect(out).toContain(`${GLYPHS.canceled}  1  abandon  (user redirected)`)
     // The redundant `✘ ` title prefix is gone (icon column carries it now).
     expect(out).not.toContain(`${GLYPHS.canceled} abandon`)
   })
@@ -195,7 +195,7 @@ describe("renderBlock — top-level rows", () => {
     // dim-strike to stay quiet next to the louder red title).
     expect(out).toMatch(new RegExp(STRIKE + nonEsc + "1" + nonEsc + RESET))
     // Strike applied around the id column (DGRAY+STRIKE).
-    expect(out).toMatch(new RegExp(STRIKE + nonEsc + "#a7b3c4" + nonEsc + RESET))
+    expect(out).toMatch(new RegExp(STRIKE + nonEsc + "1" + nonEsc + RESET))
     // Title is RED+STRIKE (matches the icon's red identity — whole row
     // reads as one "canceled = red" gesture).
     expect(out).toMatch(new RegExp(RED + STRIKE + nonEsc + "abandon" + nonEsc + RESET))
@@ -208,16 +208,15 @@ describe("renderBlock — top-level rows", () => {
     // The red ✘ icon itself is NOT struck through.
     expect(out).toContain(`\x1b[31m\x1b[1m${GLYPHS.canceled}\x1b[0m`)
   })
-  test("number column right-aligns to width 2", () => {
-    const t1 = task({ id: "aaaaaa", title: "one" })
-    const t2 = task({ id: "bbbbbb", title: "two" })
+  test("canonical id column renders each stable id", () => {
+    const t1 = task({ id: "1", title: "one" })
+    const t2 = task({ id: "10", title: "two" })
     const lines = plain([topView(t1, 1), topView(t2, 10)], stats({ total: 10, todo: 10 })).split(
       "\n",
     )
-    // top-level rows are between gaps; find them
-    const dataRows = lines.filter((l) => l.includes("#"))
-    expect(dataRows[0]).toContain(" 1  ")
-    expect(dataRows[1]).toContain("10  ")
+    const dataRows = lines.filter((line) => line.includes("one") || line.includes("two"))
+    expect(dataRows[0]).toContain("1  one")
+    expect(dataRows[1]).toContain("10  two")
   })
 })
 
@@ -226,16 +225,16 @@ describe("renderBlock — top-level rows", () => {
 // ---------------------------------------------------------------------------
 
 describe("renderBlock — subtasks", () => {
-  const parent = task({ id: "d04c91", status: "doing", title: "parent" })
+  const parent = task({ id: "2", status: "doing", title: "parent" })
   const child1 = task({
-    id: "d04c91a",
-    parent: "d04c91",
+    id: "2a",
+    parent: "2",
     status: "done",
     title: "c1",
     done_at: "x",
   })
-  const child2 = task({ id: "d04c91b", parent: "d04c91", status: "doing", title: "c2" })
-  const child3 = task({ id: "d04c91c", parent: "d04c91", status: "todo", title: "c3" })
+  const child2 = task({ id: "2b", parent: "2", status: "doing", title: "c2" })
+  const child3 = task({ id: "2c", parent: "2", status: "todo", title: "c3" })
 
   test("uses ├ for mid children and ╰ for last child", () => {
     const views: View[] = [
@@ -245,9 +244,9 @@ describe("renderBlock — subtasks", () => {
       subView(child3, 2, 3),
     ]
     const out = plain(views, stats({ total: 4, done: 1, doing: 2, todo: 1 }))
-    expect(out).toContain(`${GLYPHS.treeMid}  ${GLYPHS.done}  #d04c91a  c1`)
-    expect(out).toContain(`${GLYPHS.treeMid}  ${GLYPHS.doing}  #d04c91b  c2`)
-    expect(out).toContain(`${GLYPHS.treeLast}  ${GLYPHS.pending}  #d04c91c  c3`)
+    expect(out).toContain(`${GLYPHS.treeMid}  ${GLYPHS.done}  2a  c1`)
+    expect(out).toContain(`${GLYPHS.treeMid}  ${GLYPHS.doing}  2b  c2`)
+    expect(out).toContain(`${GLYPHS.treeLast}  ${GLYPHS.pending}  2c  c3`)
   })
   test("single child uses ╰ (siblingCount=1, childIndex=0)", () => {
     const views: View[] = [topView(parent, 1), subView(child1, 0, 1)]
@@ -264,16 +263,14 @@ describe("renderBlock — subtasks", () => {
     // keeps this independent of the cli vs renderToolDisplay path.
     const views: View[] = [topView(parent, 1), subView(child1, 0, 1)]
     const out = plain(views, stats({ total: 2, done: 1, doing: 1 }))
-    const subLine = out
-      .split("\n")
-      .find((l) => l.includes(GLYPHS.treeLast) && l.includes("#d04c91a"))
+    const subLine = out.split("\n").find((l) => l.includes(GLYPHS.treeLast) && l.includes("2a"))
     expect(subLine).toBeDefined()
     // After the frame prefix `"│ "` (2 cells) the body begins. The
     // tree glyph should sit 6 body-cells in, i.e. at line offset 8.
     const idx = subLine!.indexOf(GLYPHS.treeLast)
-    expect(idx).toBe(8)
+    expect(idx).toBe(4)
     // Same offset as the parent's status glyph on the row above.
-    const topLine = out.split("\n").find((l) => l.includes("#d04c91 "))
+    const topLine = out.split("\n").find((line) => line.includes("parent"))
     expect(topLine).toBeDefined()
     expect(topLine!.indexOf(GLYPHS.doing)).toBe(idx)
   })
@@ -311,7 +308,7 @@ describe("renderBlock — closer", () => {
     const out = plain(
       [topView(t1, 1), topView(t2, 2), topView(t3, 3)],
       stats({ total: 3, done: 2, canceled: 1 }),
-      { action: { kind: "marked_done", hash: "bbbbbb" } },
+      { action: { kind: "marked_done", id: "bbbbbb" } },
     )
     const closer = out.trimEnd().split("\n").at(-1)!
     expect(closer).toContain("✦ ALL DONE")
@@ -331,7 +328,7 @@ describe("renderBlock — closer", () => {
     // finish anything, the user just bailed out of a single task).
     const t = task({ id: "aaaaaa", status: "canceled", title: "bailed" })
     const out = plain([topView(t, 1)], stats({ total: 1, canceled: 1 }), {
-      action: { kind: "marked_canceled", hash: "aaaaaa" },
+      action: { kind: "marked_canceled", id: "aaaaaa" },
     })
     const closer = out.trimEnd().split("\n").at(-1)!
     expect(closer).not.toContain("ALL DONE")
@@ -342,7 +339,7 @@ describe("renderBlock — closer", () => {
     const t1 = task({ id: "aaaaaa", status: "done" })
     const t2 = task({ id: "bbbbbb", status: "doing" })
     const out = plain([topView(t1, 1), topView(t2, 2)], stats({ total: 2, done: 1, doing: 1 }), {
-      action: { kind: "marked_done", hash: "aaaaaa" },
+      action: { kind: "marked_done", id: "aaaaaa" },
     })
     const closer = out.trimEnd().split("\n").at(-1)!
     expect(closer).not.toContain("ALL DONE")
@@ -352,7 +349,7 @@ describe("renderBlock — closer", () => {
     const t = task({ id: "aaaaaa", status: "done", title: "only one" })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, done: 1 }), {
       ansi: true,
-      action: { kind: "marked_done", hash: "aaaaaa" },
+      action: { kind: "marked_done", id: "aaaaaa" },
     })
     const LIME = "\\x1b\\[38;5;118m"
     const BOLD = "\\x1b\\[1m"
@@ -363,13 +360,13 @@ describe("renderBlock — closer", () => {
 
   test("ALL DONE header suffix appears on the verb row too", () => {
     // marked_done that completes the last task — header should read
-    // `✔ marked done #<hash> · ✦ ALL DONE` (suffix appended).
+    // `✔ marked done <hash> · ✦ ALL DONE` (suffix appended).
     const t = task({ id: "aaaaaa", status: "done", title: "only one" })
     const out = plain([topView(t, 1)], stats({ total: 1, done: 1 }), {
-      action: { kind: "marked_done", hash: "aaaaaa" },
+      action: { kind: "marked_done", id: "aaaaaa" },
     })
     const headerLine = out.split("\n")[0]
-    expect(headerLine).toContain("marked done #aaaaaa")
+    expect(headerLine).toContain("marked done aaaaaa")
     expect(headerLine).toContain("✦ ALL DONE")
   })
 
@@ -392,10 +389,10 @@ describe("renderBlock — closer", () => {
     // id must not re-shout ALL DONE (Lisa dual-frame bug).
     const t = task({ id: "aaaaaa", status: "done" })
     const out = plain([topView(t, 1)], stats({ total: 1, done: 1 }), {
-      action: { kind: "already_done", hash: "aaaaaa" },
+      action: { kind: "already_done", id: "aaaaaa" },
     })
     const headerLine = out.split("\n")[0]
-    expect(headerLine).toContain("already done #aaaaaa")
+    expect(headerLine).toContain("already done aaaaaa")
     expect(headerLine).not.toContain("ALL DONE")
     expect(headerLine).not.toContain("✦")
   })
@@ -410,7 +407,7 @@ describe("renderBlock — header verb ANSI colors", () => {
     const t = task({ id: "aaaaaa", status: "doing" })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, doing: 1 }), {
       ansi: true,
-      action: { kind: "started", hash: "aaaaaa" },
+      action: { kind: "started", id: "aaaaaa" },
     })
     const SKY = "\\x1b\\[38;5;45m"
     const RESET = "\\x1b\\[0m"
@@ -422,7 +419,7 @@ describe("renderBlock — header verb ANSI colors", () => {
     const t = task({ id: "aaaaaa", status: "doing" })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, doing: 1 }), {
       ansi: true,
-      action: { kind: "marked_doing", hash: "aaaaaa" },
+      action: { kind: "marked_doing", id: "aaaaaa" },
     })
     const SKY = "\\x1b\\[38;5;45m"
     const RESET = "\\x1b\\[0m"
@@ -434,7 +431,7 @@ describe("renderBlock — header verb ANSI colors", () => {
     const t = task({ id: "aaaaaa", status: "canceled" })
     const out = renderBlock([topView(t, 1)], stats({ total: 1, canceled: 1 }), {
       ansi: true,
-      action: { kind: "marked_canceled", hash: "aaaaaa" },
+      action: { kind: "marked_canceled", id: "aaaaaa" },
     })
     const RED = "\\x1b\\[31m"
     const RESET = "\\x1b\\[0m"
@@ -474,12 +471,12 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
   const nonEsc = "[^\\x1b]*?"
 
   test("marked_done: the targeted done row is LIME+BOLD+STRIKE (not DIM+STRIKE)", () => {
-    // Two done rows; only #aaaaaa is the target. Non-target stays dim.
+    // Two done rows; only aaaaaa is the target. Non-target stays dim.
     const t1 = task({ id: "aaaaaa", status: "done", title: "just finished" })
     const t2 = task({ id: "bbbbbb", status: "done", title: "older done" })
     const out = renderBlock([topView(t1, 1), topView(t2, 2)], stats({ total: 2, done: 2 }), {
       ansi: true,
-      action: { kind: "marked_done", hash: "aaaaaa" },
+      action: { kind: "marked_done", id: "aaaaaa" },
     })
     // Targeted title: lime + bold + strike, all three present in the
     // same SGR group (no intervening reset).
@@ -497,7 +494,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
     const t2 = task({ id: "bbbbbb", status: "canceled", title: "older cancel" })
     const out = renderBlock([topView(t1, 1), topView(t2, 2)], stats({ total: 2, canceled: 2 }), {
       ansi: true,
-      action: { kind: "marked_canceled", hash: "aaaaaa" },
+      action: { kind: "marked_canceled", id: "aaaaaa" },
     })
     expect(out).toMatch(new RegExp(RED + BOLD + STRIKE + nonEsc + "just canceled" + nonEsc + RESET))
     // Non-target is RED+STRIKE without BOLD.
@@ -511,7 +508,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
     const t2 = task({ id: "bbbbbb", status: "todo", title: "older todo" })
     const out = renderBlock([topView(t1, 1), topView(t2, 2)], stats({ total: 2, todo: 2 }), {
       ansi: true,
-      action: { kind: "added", hash: "aaaaaa" },
+      action: { kind: "added", id: "aaaaaa" },
     })
     // Targeted title is BOLD (no color); non-target stays plain.
     expect(out).toMatch(new RegExp(BOLD + nonEsc + "just added" + nonEsc + RESET))
@@ -526,12 +523,12 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
     const t2 = task({ id: "bbbbbb", status: "doing", title: "earlier doing" })
     const out = renderBlock([topView(t1, 1), topView(t2, 2)], stats({ total: 2, doing: 2 }), {
       ansi: true,
-      action: { kind: "started", hash: "aaaaaa" },
+      action: { kind: "started", id: "aaaaaa" },
     })
-    // Targeted id col: LGRAY+BOLD around #aaaaaa.
-    expect(out).toMatch(new RegExp(LGRAY + BOLD + nonEsc + "#aaaaaa" + nonEsc + RESET))
-    // Non-target id col stays DGRAY (no LGRAY+BOLD on #bbbbbb).
-    expect(out).not.toMatch(new RegExp(LGRAY + BOLD + nonEsc + "#bbbbbb" + nonEsc + RESET))
+    // Targeted id col: LGRAY+BOLD around aaaaaa.
+    expect(out).toMatch(new RegExp(LGRAY + BOLD + nonEsc + "aaaaaa" + nonEsc + RESET))
+    // Non-target id col stays DGRAY (no LGRAY+BOLD on bbbbbb).
+    expect(out).not.toMatch(new RegExp(LGRAY + BOLD + nonEsc + "bbbbbb" + nonEsc + RESET))
   })
 
   test("removed (ghost): targeted tombstone is RED+BOLD+STRIKE", () => {
@@ -539,7 +536,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
     const out = renderBlock(
       [{ task: t, n: 1, childIndex: null, siblingCount: null, ghost: "removed" } as View],
       stats({ total: 0 }),
-      { ansi: true, action: { kind: "removed", hash: "aaaaaa" } },
+      { ansi: true, action: { kind: "removed", id: "aaaaaa" } },
     )
     expect(out).toMatch(new RegExp(RED + BOLD + STRIKE + nonEsc + "just removed" + nonEsc + RESET))
   })
@@ -554,7 +551,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
       { kind: "reordered" as const },
       { kind: "cleared" as const, count: 5 },
       { kind: "all_done" as const },
-      { kind: "already_done" as const, hash: "aaaaaa" },
+      { kind: "already_done" as const, id: "aaaaaa" },
     ]) {
       const out = renderBlock([topView(t, 1)], stats({ total: 1, done: 1 }), {
         ansi: true,
@@ -590,7 +587,7 @@ describe("renderBlock — targeted row gets BOLD across columns", () => {
         { task: child2, n: null, childIndex: 1, siblingCount: 2 } as View,
       ],
       stats({ total: 3, done: 2, doing: 1 }),
-      { ansi: true, action: { kind: "marked_done", hash: "p00000a" } },
+      { ansi: true, action: { kind: "marked_done", id: "p00000a" } },
     )
     expect(out).toMatch(
       new RegExp(LIME + BOLD + STRIKE + nonEsc + "just-completed child" + nonEsc + RESET),
@@ -635,7 +632,7 @@ describe("renderBlock — ghost-removed overlay", () => {
   }
 
   test("plain-text: ghost row keeps its original position number and shows ✘ + title", () => {
-    // Pre-state had 3 tasks. User removed #2. The renderer is fed the
+    // Pre-state had 3 tasks. User removed 2. The renderer is fed the
     // PRE-state views with `ghost: "removed"` stamped on the deleted row,
     // and post-state stats. Result: all three rows appear (the user sees
     // WHAT was removed) but the closer reflects 2 todo.
@@ -645,15 +642,15 @@ describe("renderBlock — ghost-removed overlay", () => {
     const out = plain(
       [topView(a, 1), ghostView(b, 2), topView(g, 3)],
       stats({ total: 2, todo: 2 }), // post-state: only 2 tasks alive
-      { action: { kind: "removed", hash: "bbbbbb" } },
+      { action: { kind: "removed", id: "bbbbbb" } },
     )
     expect(out).toContain(`alpha`)
     expect(out).toContain(`beta`)
     expect(out).toContain(`gamma`)
     // Ghost row carries the canceled glyph in the status column.
-    expect(out).toContain(` 2  ${GLYPHS.canceled}  #bbbbbb  beta`)
+    expect(out).toContain(`${GLYPHS.canceled}  bbbbbb  beta`)
     // Header verb says "removed".
-    expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} removed #bbbbbb`)
+    expect(out.split("\n")[0]).toContain(`${GLYPHS.canceled} removed bbbbbb`)
     // Closer reflects post-state.
     expect(out.trimEnd().split("\n").at(-1)).toContain("2 todo")
   })
@@ -666,7 +663,7 @@ describe("renderBlock — ghost-removed overlay", () => {
     const b = task({ id: "bbbbbb", title: "beta" })
     const out = renderBlock([ghostView(b, 1)], stats({ total: 0 }), {
       ansi: true,
-      action: { kind: "removed", hash: "bbbbbb" },
+      action: { kind: "removed", id: "bbbbbb" },
     })
     const RED = "\\x1b\\[31m"
     const BOLD = "\\x1b\\[1m"
@@ -679,7 +676,7 @@ describe("renderBlock — ghost-removed overlay", () => {
     expect(out).toContain(`\x1b[31m\x1b[1m${GLYPHS.canceled}\x1b[0m`)
     // Id col is dgray+BOLD+strike for the targeted ghost (was DGRAY+STRIKE
     // pre-targeted-emphasis; the BOLD adds visibility to the hash).
-    expect(out).toMatch(/\x1b\[38;5;240m\x1b\[1m\x1b\[9m[^\x1b]*?#bbbbbb[^\x1b]*?\x1b\[0m/)
+    expect(out).toMatch(/\x1b\[38;5;240m\x1b\[1m\x1b\[9m[^\x1b]*?bbbbbb[^\x1b]*?\x1b\[0m/)
   })
 
   test("ansi: non-targeted ghost row falls back to RED+STRIKE (no BOLD)", () => {
@@ -689,7 +686,7 @@ describe("renderBlock — ghost-removed overlay", () => {
     const b = task({ id: "bbbbbb", title: "beta" })
     const out = renderBlock([ghostView(b, 1)], stats({ total: 0 }), {
       ansi: true,
-      action: { kind: "removed", hash: "ffffff" },
+      action: { kind: "removed", id: "ffffff" },
     })
     const RED = "\\x1b\\[31m"
     const BOLD = "\\x1b\\[1m"
@@ -711,23 +708,20 @@ describe("renderBlock — ghost-removed overlay", () => {
         { task: child, n: null, childIndex: 0, siblingCount: 1, ghost: "removed" } as View,
       ],
       stats({ total: 1, todo: 1 }),
-      { action: { kind: "removed", hash: "p00000a" } },
+      { action: { kind: "removed", id: "p00000a" } },
     )
-    // Tree-last connector + ✘ + #id + title — the child is shown as a ghost
+    // Tree-last connector + ✘ + id + title — the child is shown as a ghost
     // BUT still visually attached to its parent via the tree glyph.
-    expect(out).toContain(`${GLYPHS.treeLast}  ${GLYPHS.canceled}  #p00000a  child`)
+    expect(out).toContain(`${GLYPHS.treeLast}  ${GLYPHS.canceled}  p00000a  child`)
   })
 
-  test("ghost row's number column is dim+strike (matches canceled-row dimming)", () => {
-    const b = task({ id: "bbbbbb", title: "beta" })
-    const out = renderBlock([ghostView(b, 7)], stats({ total: 0 }), {
-      ansi: true,
-      action: { kind: "removed", hash: "bbbbbb" },
+  test("ghost row does not render a separate position column", () => {
+    const b = task({ id: "7", title: "beta" })
+    const out = plain([ghostView(b, 7)], stats({ total: 0 }), {
+      action: { kind: "removed", id: "7" },
     })
-    const DIM = "\\x1b\\[2m"
-    const STRIKE = "\\x1b\\[9m"
-    const RESET = "\\x1b\\[0m"
-    expect(out).toMatch(new RegExp(DIM + STRIKE + "[^\\x1b]*?7[^\\x1b]*?" + RESET))
+    expect(out).toContain(`${GLYPHS.canceled}  7  beta`)
+    expect(out).not.toContain(" 7  ✘  7 ")
   })
 })
 
@@ -743,18 +737,18 @@ describe("renderBlock — update diff overlay", () => {
   test("plain-text: shows '<old>  →  <new>' inline in the title column", () => {
     const t = task({ id: "abcdef", title: "new title text" })
     const out = plain([diffView(t, 1, "old title text")], stats({ total: 1, todo: 1 }), {
-      action: { kind: "updated", hash: "abcdef" },
+      action: { kind: "updated", id: "abcdef" },
     })
     expect(out).toContain("old title text")
     expect(out).toContain("→")
     expect(out).toContain("new title text")
     // Order matters: old comes before arrow comes before new. Filter to
-    // the BODY row specifically — the header also contains `#abcdef`
-    // (via the `updated #abcdef` verb), so a naive `find` returns the
+    // the BODY row specifically — the header also contains `abcdef`
+    // (via the `updated abcdef` verb), so a naive `find` returns the
     // wrong line.
     const titleRow = out
       .split("\n")
-      .find((l) => l.startsWith(GLYPHS.frameML) && l.includes("#abcdef"))!
+      .find((l) => l.startsWith(GLYPHS.frameML) && l.includes("abcdef"))!
     expect(titleRow).toBeDefined()
     const oldIdx = titleRow.indexOf("old title")
     const arrowIdx = titleRow.indexOf("→")
@@ -768,7 +762,7 @@ describe("renderBlock — update diff overlay", () => {
     const t = task({ id: "abcdef", status: "doing", title: "new" })
     const out = renderBlock([diffView(t, 1, "old")], stats({ total: 1, doing: 1 }), {
       ansi: true,
-      action: { kind: "updated", hash: "abcdef" },
+      action: { kind: "updated", id: "abcdef" },
     })
     const RED = "\\x1b\\[31m"
     const STRIKE = "\\x1b\\[9m"
@@ -790,7 +784,7 @@ describe("renderBlock — update diff overlay", () => {
     const out = renderBlock(
       [diffView(t, 1, "original")],
       stats({ total: 1, canceled: 1, done: 0 }),
-      { ansi: true, action: { kind: "updated", hash: "abcdef" } },
+      { ansi: true, action: { kind: "updated", id: "abcdef" } },
     )
     const SKY = "\\x1b\\[38;5;45m"
     const BOLD = "\\x1b\\[1m"
@@ -802,7 +796,7 @@ describe("renderBlock — update diff overlay", () => {
   test("diff overlay preserves the closer/status counts (purely visual)", () => {
     const t = task({ id: "abcdef", title: "renamed" })
     const out = plain([diffView(t, 1, "first")], stats({ total: 1, todo: 1 }), {
-      action: { kind: "updated", hash: "abcdef" },
+      action: { kind: "updated", id: "abcdef" },
     })
     expect(out.trimEnd().split("\n").at(-1)).toContain("1 todo")
   })

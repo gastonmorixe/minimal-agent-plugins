@@ -18,21 +18,39 @@ function snapshot(userDefined: boolean): ModelInfoSnapshot {
     maxOutputTokens: 1,
     modalities: { image: false, audio: false, pdf: false, video: false },
     acceptedInput: {},
-    thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+    thinking: {
+      adaptive: false,
+      extended: false,
+      visible: false,
+      interleaved: false,
+    },
     effort: { levels: [], default: "" },
-    caching: { explicit: false, automatic: false, ttls: [], reportsCacheHits: false },
+    caching: {
+      explicit: false,
+      automatic: false,
+      ttls: [],
+      reportsCacheHits: false,
+    },
     tools: { userDefined, parallel: false },
     serverTools: [],
-    pricing: { inputPerMTok: 0, outputPerMTok: 0, cacheWritePerMTok: 0, cacheReadPerMTok: 0 },
+    pricing: {
+      inputPerMTok: 0,
+      outputPerMTok: 0,
+      cacheWritePerMTok: 0,
+      cacheReadPerMTok: 0,
+    },
     resolved: true,
   }
 }
 
-function ctx(query?: () => ModelInfoSnapshot | undefined): PromptFragmentContext {
+function ctx(
+  query?: () => ModelInfoSnapshot | undefined,
+  env: Record<string, string> = {},
+): PromptFragmentContext {
   return {
     packageDir: PKG_DIR,
     cwd: PKG_DIR,
-    env: {},
+    env,
     abort: new AbortController().signal,
     stderr: process.stderr,
     log: {
@@ -63,10 +81,25 @@ describe("tasks planning fragment", () => {
     expect(out).toMatch(/Plan non-trivial work in phases/)
   })
 
-  it("reads the text from prompts/planning.md, not a hardcoded literal", () => {
+  it("reads the text from prompt markdown, not hardcoded literals", () => {
     const out = planningFragment(ctx(() => snapshot(true)))
-    // The file content is the single source of truth; the handler trims it.
     expect(out.length).toBeGreaterThan(0)
     expect(out).toBe(out.trim())
+  })
+
+  it("describes compact status results by default", () => {
+    const out = planningFragment(ctx(() => snapshot(true)))
+    expect(out).toContain("return a short plain `OK ...` acknowledgement")
+    expect(out).toContain("next-turn `<ma::agent::tasks>` attachment")
+    expect(out).not.toContain("Every successful mutation")
+  })
+
+  it("describes full status results when the session env enables them", () => {
+    const out = planningFragment(
+      ctx(() => snapshot(true), { MINIMAL_AGENT_TASKS_FULL_RESULTS: "1" }),
+    )
+    expect(out).toContain("Every successful mutation")
+    expect(out).toContain("complete updated canonical-id board")
+    expect(out).not.toContain("return a short plain `OK ...` acknowledgement")
   })
 })

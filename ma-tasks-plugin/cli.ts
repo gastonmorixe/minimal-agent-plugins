@@ -182,8 +182,8 @@ function render(store: TaskStore, action: RenderAction, useAnsi: boolean): strin
   return renderBlock(store.views(), store.stats(), { ansi: useAnsi, action })
 }
 
-function resolveIdRef(raw: string): string | number {
-  return /^\d+$/.test(raw) ? Number.parseInt(raw, 10) : raw
+function resolveIdRef(raw: string): string {
+  return raw
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +236,7 @@ function run(flags: Flags): { code: number; output: string } {
           return { code: 2, output: `tasks: parent "${flags.parent}" not found\n` }
         }
         const task = store.add({ title, parent: parentId ?? null })
-        return { code: 0, output: render(store, { kind: "added", hash: task.id }, useAnsi) }
+        return { code: 0, output: render(store, { kind: "added", id: task.id }, useAnsi) }
       }
       case "start": {
         if (flags.positional.length !== 1) {
@@ -247,7 +247,7 @@ function run(flags: Flags): { code: number; output: string } {
           return { code: 2, output: `tasks: id "${flags.positional[0]}" not found\n` }
         }
         store.start(target.id, { parallel: flags.parallel })
-        return { code: 0, output: render(store, { kind: "started", hash: target.id }, useAnsi) }
+        return { code: 0, output: render(store, { kind: "started", id: target.id }, useAnsi) }
       }
       case "done": {
         if (flags.positional.length !== 1) {
@@ -262,7 +262,7 @@ function run(flags: Flags): { code: number; output: string } {
         const action: RenderAction =
           target.parent === null && s.total > 0 && s.done === s.total
             ? { kind: "all_done" }
-            : { kind: "marked_done", hash: target.id }
+            : { kind: "marked_done", id: target.id }
         return { code: 0, output: render(store, action, useAnsi) }
       }
       case "status": {
@@ -281,12 +281,12 @@ function run(flags: Flags): { code: number; output: string } {
         store.setStatus(target.id, statusRaw as TaskStatus, reason)
         const verb: RenderAction =
           statusRaw === "done"
-            ? { kind: "marked_done", hash: target.id }
+            ? { kind: "marked_done", id: target.id }
             : statusRaw === "doing"
-              ? { kind: "marked_doing", hash: target.id }
+              ? { kind: "marked_doing", id: target.id }
               : statusRaw === "canceled"
-                ? { kind: "marked_canceled", hash: target.id }
-                : { kind: "marked_todo", hash: target.id }
+                ? { kind: "marked_canceled", id: target.id }
+                : { kind: "marked_todo", id: target.id }
         return { code: 0, output: render(store, verb, useAnsi) }
       }
       case "update": {
@@ -299,7 +299,7 @@ function run(flags: Flags): { code: number; output: string } {
           return { code: 2, output: `tasks: id "${idRaw}" not found\n` }
         }
         store.update(target.id, titleParts.join(" "))
-        return { code: 0, output: render(store, { kind: "updated", hash: target.id }, useAnsi) }
+        return { code: 0, output: render(store, { kind: "updated", id: target.id }, useAnsi) }
       }
       case "remove": {
         if (flags.positional.length !== 1) {
@@ -310,7 +310,7 @@ function run(flags: Flags): { code: number; output: string } {
           return { code: 2, output: `tasks: id "${flags.positional[0]}" not found\n` }
         }
         store.remove(target.id)
-        return { code: 0, output: render(store, { kind: "removed", hash: target.id }, useAnsi) }
+        return { code: 0, output: render(store, { kind: "removed", id: target.id }, useAnsi) }
       }
       case "reorder": {
         if (flags.positional.length < 2) {

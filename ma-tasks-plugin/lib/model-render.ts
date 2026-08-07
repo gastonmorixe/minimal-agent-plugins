@@ -12,7 +12,7 @@ export interface TaskToolMeta extends TaskModelMeta {
   coerced?: readonly string[]
   parentAutoDone?: string
   reason?: string
-  /** Prior rows wiped by top-level add_many replace. */
+  /** Rows replaced by an explicit replace_plan action. */
   replaced?: number
 }
 
@@ -46,12 +46,11 @@ function fmtDur(ms: number): string {
 }
 
 /**
- * Render tasks as a hash-only columnar table for the model.
+ * Render tasks as a canonical-id columnar table for the model.
  *
- * Each row is `#HASH  STATUS  TITLE` with optional `  DURATION` suffix.
- * Children are indented two spaces (tree cue only — not an addressable id).
- * Position numbers and `1a`-style coords are intentionally omitted so the
- * model has one stable address: the `#hash`.
+ * Each row is `ID  STATUS  TITLE` with optional `  DURATION` suffix.
+ * Children are indented two spaces. Canonical ids are ordinal roots (`1`)
+ * and child ids (`1a`), with no extra position or internal-id column.
  *
  * Named `renderTasksColumnar` (not `renderTasksMarkdown`) because the output
  * is a fixed-width columnar table, not a Markdown ordered list.
@@ -61,13 +60,13 @@ export function renderTasksColumnar(tasks: readonly Task[]): string {
 
   let idWidth = 0
   for (const t of tasks) {
-    idWidth = Math.max(idWidth, t.id.length + 1) // +1 for leading '#'
+    idWidth = Math.max(idWidth, t.id.length)
   }
 
   const lines: string[] = []
   for (const t of tasks) {
     const indent = t.parent !== null ? "  " : ""
-    const idCol = `#${t.id}`.padEnd(idWidth)
+    const idCol = t.id.padEnd(idWidth)
     const statusCol = t.status.padEnd(8)
     const durText = fmtDur(t.active_ms)
     const durSuffix = durText.length > 0 ? `  ${durText}` : ""
@@ -80,7 +79,7 @@ export function renderTasksColumnar(tasks: readonly Task[]): string {
 /**
  * One-line plain-text ack / header for tool_result content.
  *
- * Shape: `OK <result> [action=…] [id=#…] … total=N done=N doing=N todo=N canceled=N`
+ * Shape: `OK <result> [action=…] [id=…] … total=N done=N doing=N todo=N canceled=N`
  * No XML. Survives Cursor `stripMaAgentWireAnnotations` (MA-39298).
  */
 export function formatTasksOkLine(stats: Stats, meta: TaskToolMeta = {}): string {
@@ -88,12 +87,12 @@ export function formatTasksOkLine(stats: Stats, meta: TaskToolMeta = {}): string
   const parts: string[] = [`OK ${result}`]
   if (meta.action) parts.push(`action=${meta.action.replace(/[\s=]+/g, "_")}`)
   if (meta.id) {
-    const bare = meta.id.replace(/^#/, "").replace(/[\s=]+/g, "")
-    if (bare) parts.push(`id=#${bare}`)
+    const id = meta.id.replace(/^#/, "").replace(/[\s=]+/g, "")
+    if (id) parts.push(`id=${id}`)
   }
   if (meta.parentAutoDone) {
-    const bare = meta.parentAutoDone.replace(/^#/, "").replace(/[\s=]+/g, "")
-    if (bare) parts.push(`parent_auto_done=#${bare}`)
+    const id = meta.parentAutoDone.replace(/^#/, "").replace(/[\s=]+/g, "")
+    if (id) parts.push(`parent_auto_done=${id}`)
   }
   if (meta.coerced?.length) {
     parts.push(`coerced=${meta.coerced.map((c) => c.replace(/[\s,=]+/g, "_")).join(",")}`)
@@ -105,9 +104,7 @@ export function formatTasksOkLine(stats: Stats, meta: TaskToolMeta = {}): string
       .slice(0, 120)
     parts.push(`reason="${safe}"`)
   }
-  if (meta.replaced !== undefined && meta.replaced > 0) {
-    parts.push(`replaced=${meta.replaced}`)
-  }
+  if (meta.replaced !== undefined) parts.push(`replaced=${meta.replaced}`)
   parts.push(
     `total=${stats.total}`,
     `done=${stats.done}`,
@@ -119,7 +116,7 @@ export function formatTasksOkLine(stats: Stats, meta: TaskToolMeta = {}): string
 }
 
 /**
- * Full-board tool_result: OK header + columnar hashes.
+ * Full-board tool_result: OK header + canonical-id rows.
  * Used for create/list/clear and other actions that dump the board mid-turn.
  */
 export function renderTasksToolContent(

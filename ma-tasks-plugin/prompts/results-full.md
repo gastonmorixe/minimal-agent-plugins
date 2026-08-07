@@ -1,0 +1,1 @@
+Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it.

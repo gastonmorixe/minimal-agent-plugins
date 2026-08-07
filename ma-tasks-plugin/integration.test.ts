@@ -121,7 +121,7 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     await dispatch(sid, { action: "done", id: 2 })
 
     const addResult = await dispatch(sid, {
-      action: "add_many",
+      action: "replace_plan",
       items: [
         { title: "New phase 1", children: ["new 1a", "new 1b", "new 1c"] },
         { title: "New phase 2", children: ["new 2a", "new 2b", "new 2c"] },
@@ -133,10 +133,13 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     // Model board is hash-only (no POS / 2c coords in content).
     expect(addResult.content).toContain("New phase 1")
     expect(addResult.content).toContain("new 2c")
-    expect(addResult.content).toMatch(/#[0-9a-f]{6}\s+todo/)
+    expect(addResult.content).toMatch(/^3\s+todo/m)
 
-    // Child-row coord still resolves (deprecated for models, kept for back-compat).
-    const startResult = await dispatch(sid, { action: "start", id: "2c" })
+    const replacementRoots = new TaskStore(sid, { home: tmpHome })
+      .list()
+      .filter((task) => task.parent === null)
+    const secondRoot = replacementRoots[1]!
+    const startResult = await dispatch(sid, { action: "start", id: `${secondRoot.id}c` })
     expect(startResult.is_error).toBeFalsy()
 
     const store = new TaskStore(sid, { home: tmpHome })
@@ -146,19 +149,26 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
         .filter((task) => task.parent === null)
         .map((task) => task.title),
     ).toEqual(["New phase 1", "New phase 2", "New phase 3"])
-    expect(store.resolve("2c")?.title).toBe("new 2c")
-    expect(store.resolve("2c")?.status).toBe("doing")
+    expect(store.resolve(`${secondRoot.id}c`)?.title).toBe("new 2c")
+    expect(store.resolve(`${secondRoot.id}c`)?.status).toBe("doing")
   })
 
-  it("top-level add_many replaces an open prior board (MA-39298)", async () => {
+  it("add_many extends while replace_plan explicitly replaces", async () => {
     const sid = "77777777-aaaa-bbbb-cccc-dddddddddddd"
     await dispatch(sid, { action: "add_many", titles: ["done", "still open"] })
-    await dispatch(sid, { action: "done", id: 1 })
-    const second = await dispatch(sid, { action: "add_many", titles: ["new work"] })
+    const extended = await dispatch(sid, { action: "add_many", titles: ["new work"] })
+    expect(extended.content).toContain("still open")
+    expect(new TaskStore(sid, { home: tmpHome }).list().map((task) => task.title)).toEqual([
+      "done",
+      "still open",
+      "new work",
+    ])
 
-    const titles = new TaskStore(sid, { home: tmpHome }).list().map((task) => task.title)
-    expect(titles).toEqual(["new work"])
-    expect(second.content).toMatch(/OK added_many .*\breplaced=2\b/)
+    const replaced = await dispatch(sid, { action: "replace_plan", titles: ["fresh plan"] })
+    expect(replaced.content).toMatch(/OK replaced_plan .*\breplaced=3\b/)
+    expect(new TaskStore(sid, { home: tmpHome }).list().map((task) => task.title)).toEqual([
+      "fresh plan",
+    ])
   })
 
   it("done flips a task and the attachment reflects the new status", async () => {
@@ -185,22 +195,19 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     expect(r.displayHeader).toContain("ALL DONE")
   })
 
-  it("subtasks: add child via #parent and the attachment shows the tree", async () => {
+  it("subtasks use the parent's canonical id", async () => {
     const sid = "44444444-aaaa-bbbb-cccc-dddddddddddd"
 
     const parentR = await dispatch(sid, { action: "add", title: "parent" })
-    const m = /#([0-9a-f]{6})/.exec(parentR.content!)
-    expect(m).not.toBeNull()
-    const parentHash = m![1]
+    const parentId = /\bid=([1-9]\d*)\b/.exec(parentR.content!)![1]
 
-    await dispatch(sid, { action: "add", title: "child A", parent: `#${parentHash}` })
-    await dispatch(sid, { action: "add", title: "child B", parent: `#${parentHash}` })
+    await dispatch(sid, { action: "add", title: "child A", parent: parentId })
+    await dispatch(sid, { action: "add", title: "child B", parent: parentId })
 
     const text = new TasksAttachment(sid, { home: tmpHome }).toText()!
-    // Model channel: hash-only rows; children indented two spaces (no POS/1a).
-    expect(text).toContain(`  #${parentHash}a  todo      child A`)
-    expect(text).toContain(`  #${parentHash}b  todo      child B`)
-    expect(text).toContain(`#${parentHash}`)
+    expect(text).toContain(`  ${parentId}a  todo      child A`)
+    expect(text).toContain(`  ${parentId}b  todo      child B`)
+    expect(text).toContain(parentId)
     expect(text).toContain("parent")
     expect(text).toContain("child A")
     expect(text).toContain("child B")

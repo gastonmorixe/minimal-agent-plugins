@@ -32,6 +32,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { PromptFragmentContext } from "../lib/host-types.ts"
+import { tasksFullResults } from "../lib/result-verbosity.ts"
 
 /**
  * Render the PLAN/PHASES fragment.
@@ -50,13 +51,17 @@ export default function planningFragment(ctx: PromptFragmentContext): string {
   // section-level gate and emit.
   if (info && !info.tools.userDefined) return ""
 
-  const path = join(ctx.packageDir, "prompts", "planning.md")
+  const promptDir = join(ctx.packageDir, "prompts")
+  const resultGuidance = tasksFullResults(ctx.env) ? "results-full.md" : "results-compact.md"
   try {
-    return readFileSync(path, "utf-8").trim()
+    return ["planning.md", resultGuidance]
+      .map((name) => readFileSync(join(promptDir, name), "utf-8").trim())
+      .filter(Boolean)
+      .join("\n\n")
   } catch (e) {
     ctx.log.warn(
       "planning-fragment",
-      `failed to read planning.md: ${e instanceof Error ? e.message : String(e)}`,
+      `failed to read task prompt fragments: ${e instanceof Error ? e.message : String(e)}`,
     )
     return ""
   }

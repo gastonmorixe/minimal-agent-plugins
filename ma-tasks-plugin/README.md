@@ -6,19 +6,19 @@ the user sees a live TODO. Single `Task` tool with action switch.
 ## Visual
 
 ```
-╭ ○ Tasks · ✔ marked done #d04c91 · 3/9
+╭ ○ Tasks · ✔ marked done 3 · 3/9
 │
-│    1  ✔  #a7b3c4  Add contextSize to SessionTokens
-│    2  ✔  #f8e21a  Update addSessionUsage callers
-│    3  ◐  #d04c91  Update src/session-tokens.test.ts
-│         ├  ✔  #d04c91a  Zero-state includes contextSize
-│         ├  ◐  #d04c91b  Replace-not-accumulate semantics
-│         ╰  ○  #d04c91c  Multi-turn growth pinned
-│    4  ○  #b18f73  Update renderSessionSegment in render.ts
-│    5  ○  #e3a5d8  Update showSession gate
-│    6  ○  #c91428  ✘ Remove the legacy cached column  (canceled by user)
-│    7  ○  #7b8f92  Run biome format + lint
-│    8  ○  #3a91c4  Run full test suite
+│    1  ✔  Add contextSize to SessionTokens
+│    2  ✔  Update addSessionUsage callers
+│    3  ◐  Update src/session-tokens.test.ts
+│       ├  ✔  3a  Zero-state includes contextSize
+│       ├  ◐  3b  Replace-not-accumulate semantics
+│       ╰  ○  3c  Multi-turn growth pinned
+│    4  ○  Update renderSessionSegment in render.ts
+│    5  ○  Update showSession gate
+│    6  ○  ✘ Remove the legacy cached column  (canceled by user)
+│    7  ○  Run biome format + lint
+│    8  ○  Run full test suite
 │
 ╰  3 done · 1 doing · 5 todo · 1 canceled
 ```
@@ -55,22 +55,23 @@ per line, order = display order.
 
 ## Tool actions
 
-| action     | required                    | optional                                            |
-| ---------- | --------------------------- | --------------------------------------------------- |
-| `add`      | `title`                     | `parent`, `after`, `status`                         |
-| `add_many` | `tasks[]` (preferred; aliases `items[]`, flat `titles[]`) | `parent` (with flat `titles` only) |
-| `update`   | `id`, `title`               |                                                     |
-| `status`   | `id`, `status`              | `reason` (for canceled)                             |
-| `start`    | `id`                        | `parallel` (compat no-op; start always accumulates) |
-| `done`     | `id`                        |                                                     |
-| `remove`   | `id`                        |                                                     |
-| `reorder`  | `order[]` (ids)             |                                                     |
-| `list`     |                             | `filter`, `query`, `format`                         |
-| `clear`    |                             | `force` (if any task `doing`)                       |
+| action         | required                                                  | optional                                            |
+| -------------- | --------------------------------------------------------- | --------------------------------------------------- |
+| `add`          | `title`                                                   | `parent`, `after`, `status`                         |
+| `add_many`     | `tasks[]` (preferred; aliases `items[]`, flat `titles[]`) | `parent` (with flat `titles` only)                  |
+| `replace_plan` | `tasks[]` (preferred; aliases `items[]`, flat `titles[]`) |                                                     |
+| `update`       | `id`, `title`                                             |                                                     |
+| `status`       | `id`, `status`                                            | `reason` (for canceled)                             |
+| `start`        | `id`                                                      | `parallel` (compat no-op; start always accumulates) |
+| `done`         | `id`                                                      |                                                     |
+| `remove`       | `id`                                                      |                                                     |
+| `reorder`      | `order[]` (ids)                                           |                                                     |
+| `list`         |                                                           | `filter`, `query`, `format`                         |
+| `clear`        |                                                           | `force` (if any task `doing`)                       |
 
-Create/list return model-facing `content` as a hash-only `<ma::agent::tasks>` board (`#HASH STATUS TITLE`). Status mutations (`start`/`done`/…) return a short self-closing ack. Human `display` is still the ANSI tree with numbers. Re-`done` of an already-done id is a hard error (auto-promote stays).
+Create/list return model-facing plain text using the same canonical ids as the human display. By default, status mutations (`start`/`done`/...) return a short plain-text ack. Set `MINIMAL_AGENT_TASKS_FULL_RESULTS=1` before starting the agent to include the complete updated board in every successful status-mutation result. The session-start Task prompt follows the same setting. Re-`done` of an already-done id is a hard error because parent auto-promotion stays.
 
-A top-level `add_many` replaces the current board when every existing row is terminal (`done` or `canceled`). This lets a later user request start a fresh visible plan at position `1` instead of appending below historical work and shifting all coordinates. If any row is still `todo` or `doing`, `add_many` keeps its append behavior. Flat `add_many` with `parent` is always incremental.
+`add_many` is always additive. `replace_plan` is the explicit, atomic operation for abandoning the current board and starting a new plan. Canonical ids are session-monotonic, so replacement never reuses an id that a delayed sub-agent might still reference.
 
 ### Parent ↔ child lifecycle rollup
 
@@ -82,18 +83,11 @@ The store keeps trees consistent in one write:
 - **Parent → done** cascades open children (`todo` / `doing`) to `done`. `canceled` children stay canceled.
 - A canceled parent is never revived automatically.
 
-## Id formats accepted
+## Canonical ids
 
-**Model board shows `#hash` only** (children indented). Prefer that in tool calls.
+Roots receive immutable session-monotonic ids such as `1`, `2`, and `3`. Children receive the parent id plus a stable letter suffix such as `1a` or `3c`. Reorder and removal never renumber tasks, so gaps are expected.
 
-Still resolved (deprecated for models — they shift):
-
-- Position (1-indexed integer): `3`
-- Child-row coordinate: `"3a"` (unprefixed; human TUI label)
-
-Also: bare hash `"a7b3c4"`, prefixed `"#a7b3c4"`, subtask `"a7b3c4a"`.
-
-Hashes remain stable across reorders and deletes.
+Legacy hash references from resumed sessions are migrated to aliases and remain accepted internally. They are not shown or taught to models.
 
 ## CLI
 
