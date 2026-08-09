@@ -323,7 +323,10 @@ export async function* translateOpenAIResponsesStream(
         const key = `${done.item_id}:${done.output_index}:${done.content_index}`
         const idx = textBlocks.get(key)
         if (idx !== undefined) {
+          // Delete here so the later `content_part.done` does not emit a
+          // second text_stop for the same block (duplicate content[] parts).
           yield { type: "text_stop", index: idx, finalText: done.text }
+          textBlocks.delete(key)
         }
         break
       }
