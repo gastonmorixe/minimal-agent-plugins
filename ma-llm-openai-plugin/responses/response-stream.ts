@@ -12,7 +12,8 @@
  * - `response.created` → `MessageStartEvent`
  * - `response.content_part.added type:"output_text"` → `TextStartEvent`
  * - `response.output_text.delta` → `TextDeltaEvent`
- * - `response.output_text.done` / `response.content_part.done` → `TextStopEvent`
+ * - `response.output_text.done` (preferred) or `response.content_part.done` →
+ *   one `TextStopEvent` (first wins; the other is ignored)
  * - `response.output_item.added type:"reasoning"` (or first
  *   `response.reasoning_summary_text.delta`) → `ThinkingStartEvent`
  * - `response.reasoning_summary_text.delta` → `ThinkingDeltaEvent`
@@ -322,7 +323,10 @@ export async function* translateOpenAIResponsesStream(
         const key = `${done.item_id}:${done.output_index}:${done.content_index}`
         const idx = textBlocks.get(key)
         if (idx !== undefined) {
+          // Delete here so the later `content_part.done` does not emit a
+          // second text_stop for the same block (duplicate content[] parts).
           yield { type: "text_stop", index: idx, finalText: done.text }
+          textBlocks.delete(key)
         }
         break
       }

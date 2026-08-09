@@ -464,6 +464,27 @@ describe("OpenAI — service_tier (provider-neutral serviceTier mapping)", () =>
   })
 })
 
+describe("translateOpenAIResponsesStream — single text_stop", () => {
+  it("emits one text_stop when both output_text.done and content_part.done fire", async () => {
+    // OpenAI sends both; without deleting the text block on the first stop,
+    // the agent stored duplicate content[] text parts (Judy 699995c8).
+    const raw = [
+      'event: response.created\ndata: {"type":"response.created","response":{"id":"resp_x","model":"gpt-5.5"}}\n\n',
+      'event: response.content_part.added\ndata: {"type":"response.content_part.added","output_index":0,"content_index":0,"item_id":"msg_1","part":{"type":"output_text","text":""}}\n\n',
+      'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","output_index":0,"content_index":0,"item_id":"msg_1","delta":"hi"}\n\n',
+      'event: response.output_text.done\ndata: {"type":"response.output_text.done","output_index":0,"content_index":0,"item_id":"msg_1","text":"hi"}\n\n',
+      'event: response.content_part.done\ndata: {"type":"response.content_part.done","output_index":0,"content_index":0,"item_id":"msg_1","part":{"type":"output_text","text":"hi"}}\n\n',
+      'event: response.completed\ndata: {"type":"response.completed","response":{"id":"resp_x","status":"completed"}}\n\n',
+    ].join("")
+    const events = await collect(
+      translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(sseStream(raw))),
+    )
+    const stops = events.filter((e) => isEvent(e, "text_stop"))
+    expect(stops).toHaveLength(1)
+    expect(joinedText(events)).toBe("hi")
+  })
+})
+
 describe("translateOpenAIResponsesStream — truncated stream (no terminal event)", () => {
   async function replayRaw(raw: string): Promise<CanonicalEvent[]> {
     return collect(translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(sseStream(raw))))
