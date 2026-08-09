@@ -1,0 +1,42 @@
+{
+  "id": "history-edit",
+  "name": "History Edit",
+  "version": "0.1.0",
+  "description": "Select an earlier current-session prompt, revise it, and continue from a safely rewound conversation timeline.",
+  "commands": [
+    {
+      "name": "history-edit",
+      "summary": "Edit an earlier prompt in this conversation",
+      "handler": { "type": "module", "path": "./handlers/cmd_history_edit.ts", "export": "default" }
+    }
+  ],
+  "events": [
+    {
+      "id": "on_expanded",
+      "on": "history.edit.expanded",
+      "handler": { "type": "module", "path": "./handlers/on_expanded.ts", "export": "default" }
+    }
+  ],
+  "hooks": [
+    {
+      "id": "on_key",
+      "channel": "editor.key",
+      "handler": { "type": "module", "path": "./handlers/on_key.ts", "export": "default" },
+      "priority": 90
+    }
+  ],
+  "permissions": [
+    "hooks:editor.key",
+    "hooks:editor.buffer.set",
+    "hooks:editor.footer.set",
+    "hooks:editor.overlay.open",
+    "hooks:editor.overlay.close",
+    "hooks:editor.prompt.set",
+    "hooks:editor.prompt.clear",
+    "hooks:editor.picker.set",
+    "hooks:editor.picker.clear",
+    "hooks:command.run",
+    "hooks:history.edit.expanded"
+  ],
+  "capabilities": ["sessions:read", "sessions:write"]
+}
