@@ -93,6 +93,16 @@ describe("coerce stringified JSON arrays", () => {
     expect(r.is_error).toBe(true)
     expect(r.content).toMatch(/stringified non-array|parsed to object/)
   })
+
+  test("explains that malformed stringified arrays must be real array values", async () => {
+    const r = await call({
+      action: "add_many",
+      tasks: '[{"title":"unterminated}',
+    })
+    expect(r.is_error).toBe(true)
+    expect(r.content).toContain("actual array value")
+    expect(r.content).toContain("do not JSON.stringify the array")
+  })
 })
 
 describe("hallucinated digit ids", () => {
