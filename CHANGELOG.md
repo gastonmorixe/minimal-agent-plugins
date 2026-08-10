@@ -63,6 +63,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-08-10 (this session): `ma-history-edit-plugin` no longer mistakes a
+  short tail of assistant/tool records for an empty prompt history. The picker
+  now pages backward through the active session until it finds all saved user
+  prompts, then shows newest first. Regression coverage reproduces a tail with
+  no user rows followed by an older prompt.
+
 - 2026-08-09 17:01:27 -0400 `0ae2701`: OpenAI / Grok / OpenCode Responses stream translators now delete the text block on `response.output_text.done`, so the later `response.content_part.done` for the same part does not emit a second `text_stop`. Observed on Judy `699995c8`: assistant messages stored two identical `content[]` text parts and `onTextStop` fired twice. Fixture coverage in `ma-llm-openai-plugin/openai.stream-fixtures.test.ts`.
 - 2026-07-31 11:45:59 -0400 (this session): `ma-web-search-plugin` accepts Cursor-style `search_term` (and `q` / `search` / `searchQuery`) as aliases for the canonical `query` field. Cursor-trained models (observed on Kevin `71826f71`, `cursor-grok-4.5-high-fast`) were calling `WebSearch` with `{search_term, explanation}` and getting `` `query` is required `` even though a usable search string was present. `explanation` remains ignored. Schema/PROMPT still teach `query` as the required arg. Regression tests replay Kevin's exact payloads.
 - 2026-07-31 11:43:42 -0400 (this session): `ma-fetch-plugin` no longer rejects plain page fetches when the model dumps every optional schema field with `eval: ""` and `eval_mode: "value"|"page"`. Empty/`missing` `eval` now ignores `eval_mode` (same as empty `selector`), so Terra-style full-arg calls succeed as normal markdown fetches instead of `` `eval_mode` requires a non-empty `eval` expression ``. Observed on Karen `502dbb7b` (Proxmox / Docker / Dokku research).
