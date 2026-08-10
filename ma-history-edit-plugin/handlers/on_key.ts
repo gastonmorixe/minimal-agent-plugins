@@ -46,10 +46,11 @@ export default function onKey(raw: unknown, ctx: HookContext): void {
     paintPicker(ctx.emit, next)
     return
   }
-  if (raw.key !== "Enter" || !ctx.host?.sessionsWrite) return
+  if (raw.key !== "Enter") return
   const target = state.rows[state.selected]
   if (!target) return
   // Begin is async in the host contract, so actual staging is deliberately
-  // deferred until an out-of-band command bridge owns the transaction.
+  // deferred until an out-of-band command bridge owns the transaction. Do not
+  // require sessionsWrite here: command dispatch receives the full host context.
   ctx.emit("command.run", { line: `/history-edit stage ${target.userId}` })
 }
