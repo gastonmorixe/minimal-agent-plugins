@@ -323,6 +323,59 @@ describe("status / start / done", () => {
     expect(r.displayHeader).toContain("ALL DONE")
   })
 
+  test("last terminal child auto-promotes parent while preserving canceled history", async () => {
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["completed work", "abandoned work"] }],
+    })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.parent === null)!
+
+    await call({ action: "done", id: `#${parent.id}a` })
+    const canceled = await call({
+      action: "status",
+      id: `#${parent.id}b`,
+      status: "canceled",
+      reason: "blocked by concurrent work",
+    })
+
+    expect(canceled.is_error).toBeUndefined()
+    expect(canceled.content).toContain(`parent_auto_done=${parent.id}`)
+    expect(store.resolve(parent.id)!.status).toBe("done")
+    expect(store.resolve(`${parent.id}b`)!.status).toBe("canceled")
+    expect(store.resolve(`${parent.id}b`)!.reason).toBe("blocked by concurrent work")
+
+    const reloaded = new TaskStore(sid, { home: tmpHome })
+    expect(reloaded.resolve(parent.id)!.status).toBe("done")
+    expect(reloaded.resolve(`${parent.id}b`)!.status).toBe("canceled")
+  })
+
+  test("a recovered child completes a phase with an earlier canceled child", async () => {
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["coordinate", "original implementation"] }],
+    })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.parent === null)!
+
+    await call({ action: "done", id: `#${parent.id}a` })
+    await call({ action: "status", id: `#${parent.id}b`, status: "canceled", reason: "retry" })
+    const recovery = await call({
+      action: "add",
+      parent: parent.id,
+      title: "recovered implementation",
+    })
+    expect(recovery.is_error).toBeUndefined()
+    const recovered = store.list().find((t) => t.title === "recovered implementation")!
+    await call({ action: "start", id: recovered.id })
+    const completed = await call({ action: "done", id: recovered.id })
+
+    expect(completed.is_error).toBeUndefined()
+    expect(completed.content).toContain(`parent_auto_done=${parent.id}`)
+    expect(store.resolve(parent.id)!.status).toBe("done")
+    expect(store.resolve(`${parent.id}b`)!.status).toBe("canceled")
+  })
+
   test("parent done cascades open children", async () => {
     await call({
       action: "add_many",

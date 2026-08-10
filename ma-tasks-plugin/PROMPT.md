@@ -53,7 +53,7 @@ Ids never change when tasks are reordered or removed. Gaps are normal. Always co
 `canceled` means the work was given up on. `done` means the work finished. The renderer paints them oppositely (lime ✔ vs red ✘), so picking the wrong verb reads as the opposite of intent.
 
 - **Phase / section headers.** If you add `"PHASE 1: Setup"` and its subtasks finish, the header is `done`, not `canceled`. The phase IS done.
-- **Parents with all-done children.** Last open child auto-promotes the parent. Do not also `done` the parent (hard error). A canceled sibling blocks auto-promote.
+- **Parents with terminal children.** The last open child auto-promotes the parent when every child is `done` or `canceled`. A canceled child stays canceled as audit history. Do not also `done` the parent (hard error).
 - Prefer real parent/subtask trees (`tasks` + `children`) over flat pseudo-headers.
 
 ## Don't

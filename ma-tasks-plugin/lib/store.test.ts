@@ -402,15 +402,16 @@ describe("done cascade + rollup", () => {
     expect(s.list().find((t) => t.id === `${p.id}b`)!.status).toBe("todo")
   })
 
-  test("a canceled sibling blocks auto-promote (all children must be done)", () => {
+  test("a canceled last-open sibling auto-promotes parent and preserves the cancellation", () => {
     const s = withRand(["1"])
     const p = s.add({ title: "Phase" })
     s.addMany(["a", "b"], { parent: p.id })
     s.done(`${p.id}a`)
     s.setStatus(`${p.id}b`, "canceled", "not needed")
-    // The first completed child started the parent. Canceling the last open
-    // sibling does not implicitly finish the phase.
-    expect(s.list().find((t) => t.id === p.id)!.status).toBe("doing")
+    const list = s.list()
+    expect(list.find((t) => t.id === p.id)!.status).toBe("done")
+    expect(list.find((t) => t.id === `${p.id}b`)!.status).toBe("canceled")
+    expect(list.find((t) => t.id === `${p.id}b`)!.reason).toBe("not needed")
   })
 
   test("does not revive a canceled parent when the last child finishes", () => {
