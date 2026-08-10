@@ -1,5 +1,5 @@
-import { scoreItems } from "./scoring.ts"
 import { slashTokenSgr } from "./palette.ts"
+import { scoreItems } from "./scoring.ts"
 import type { Item } from "./types.ts"
 
 export interface BufferStyleSpan {
