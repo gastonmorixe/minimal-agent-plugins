@@ -1,6 +1,6 @@
 import type { CommandContext } from "../lib/host-types.ts"
 import { openPicker, paintEditing } from "../lib/runtime.ts"
-import { getState, setCachedRows, takePendingDraft } from "../lib/state.ts"
+import { getState, type PromptRow, setCachedRows, takePendingDraft } from "../lib/state.ts"
 
 /** Open, stage, or commit the history-edit workflow through host capabilities. */
 export default async function cmdHistoryEdit(
@@ -46,15 +46,26 @@ export default async function cmdHistoryEdit(
     return { kind: "none" }
   }
 
-  const window = await ctx.host.sessions.window(sid, { anchor: "end", limit: 5 })
-  if (!window) return { kind: "error", message: "current session history is unavailable" }
-  const rows = window.items
-    .filter(
-      (item): item is typeof item & { userId: string } =>
-        item.kind === "user" && item.userId !== null,
+  // A completed turn regularly spans several records. A five-record tail can
+  // therefore contain no user records even when the session has many prompts.
+  // Page backwards until the session is exhausted, keeping the newest rows first.
+  const rows: PromptRow[] = []
+  let offset = 0
+  while (true) {
+    const window = await ctx.host.sessions.window(sid, { anchor: "end", offset, limit: 100 })
+    if (!window) return { kind: "error", message: "current session history is unavailable" }
+    rows.push(
+      ...[...window.items]
+        .reverse()
+        .flatMap((item): PromptRow[] =>
+          item.kind === "user" && item.userId !== null
+            ? [{ userId: item.userId, text: item.preview }]
+            : [],
+        ),
     )
-    .reverse()
-    .map((item) => ({ userId: item.userId, text: item.preview }))
+    offset += window.items.length
+    if (window.items.length === 0 || offset >= window.total) break
+  }
   if (rows.length === 0) return { kind: "error", message: "no earlier prompts in this session" }
   setCachedRows(rows)
   openPicker(ctx.emit, takePendingDraft(), rows)

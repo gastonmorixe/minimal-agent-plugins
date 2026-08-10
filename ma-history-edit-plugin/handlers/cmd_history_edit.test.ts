@@ -79,3 +79,40 @@ describe("/history-edit commit", () => {
     expect(result).toEqual({ kind: "error", message: "reload unavailable" })
   })
 })
+
+describe("/history-edit prompt discovery", () => {
+  it("pages beyond a tail without user records to find earlier prompts", async () => {
+    setState({ kind: "closed" })
+    const calls: Array<{ offset?: number; limit?: number }> = []
+    const result = await cmdHistoryEdit({
+      argv: "",
+      emit: noop,
+      agent: { sessionId: "active" },
+      host: {
+        sessions: {
+          async window(_sid, opts) {
+            calls.push({ offset: opts.offset, limit: opts.limit })
+            if (opts.offset === 0) {
+              return {
+                items: [
+                  { index: 5, kind: "assistant", userId: null, preview: "reply" },
+                  { index: 6, kind: "tool_result", userId: null, preview: "tool" },
+                ],
+                total: 3,
+              }
+            }
+            return {
+              items: [{ index: 4, kind: "user", userId: "u1", preview: "earlier prompt" }],
+              total: 3,
+            }
+          },
+        },
+      },
+    })
+    expect(result).toEqual({ kind: "none" })
+    expect(calls).toEqual([
+      { offset: 0, limit: 100 },
+      { offset: 2, limit: 100 },
+    ])
+  })
+})
