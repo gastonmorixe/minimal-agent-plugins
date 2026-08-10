@@ -21,6 +21,20 @@ describe("history-edit editor key hook", () => {
     expect(events).toEqual([["command.run", { line: "/history-edit" }]])
   })
 
+  it("dispatches selected picker prompt on Enter without requiring sessionsWrite in the key hook", () => {
+    setState({
+      kind: "picking",
+      draft: "draft",
+      rows: [{ userId: "u1", text: "older prompt" }],
+      selected: 0,
+    })
+    const events: Array<[string, unknown]> = []
+    const enter = key("Enter")
+    onKey(enter, { emit: (channel, payload) => events.push([channel, payload]) })
+    expect(enter.result.halt).toBe(true)
+    expect(events).toEqual([["command.run", { line: "/history-edit stage u1" }]])
+  })
+
   it("allows ordinary editing keys but Escape restores the original draft", () => {
     setState({
       kind: "editing",
