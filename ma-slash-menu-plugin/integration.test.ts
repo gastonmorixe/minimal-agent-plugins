@@ -89,7 +89,8 @@ function mkCtx(): {
     }
     if (channel === "editor.buffer.styles" && typeof payload === "object" && payload !== null) {
       const p = payload as { spans?: unknown }
-      if (Array.isArray(p.spans)) styleEmits.push(p.spans as { start: number; end: number; style: string }[])
+      if (Array.isArray(p.spans))
+        styleEmits.push(p.spans as { start: number; end: number; style: string }[])
     }
   }
   const listCommands = (): CommandInfo[] => COMMANDS
