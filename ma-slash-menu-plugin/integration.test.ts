@@ -71,9 +71,11 @@ function mkCtx(): {
   eventCtx: <P>(payload: P) => EventHandlerContext<P>
   footerEmits: FootSet[]
   commandRuns: string[]
+  styleEmits: { start: number; end: number; style: string }[][]
 } {
   const footerEmits: FootSet[] = []
   const commandRuns: string[] = []
+  const styleEmits: { start: number; end: number; style: string }[][] = []
   const emit = (channel: string, payload?: unknown): void => {
     if (channel === "editor.footer.set" && typeof payload === "object" && payload !== null) {
       const p = payload as { lines?: unknown }
@@ -84,6 +86,10 @@ function mkCtx(): {
     if (channel === "command.run" && typeof payload === "object" && payload !== null) {
       const p = payload as { line?: unknown }
       if (typeof p.line === "string") commandRuns.push(p.line)
+    }
+    if (channel === "editor.buffer.styles" && typeof payload === "object" && payload !== null) {
+      const p = payload as { spans?: unknown }
+      if (Array.isArray(p.spans)) styleEmits.push(p.spans as { start: number; end: number; style: string }[])
     }
   }
   const listCommands = (): CommandInfo[] => COMMANDS
@@ -109,7 +115,7 @@ function mkCtx(): {
     abort: new AbortController().signal,
     stderr: process.stderr,
   })
-  return { hookCtx, eventCtx, footerEmits, commandRuns }
+  return { hookCtx, eventCtx, footerEmits, commandRuns, styleEmits }
 }
 
 function keyPayload(key: string, buffer = "", col = buffer.length) {
@@ -129,15 +135,40 @@ function keyPayload(key: string, buffer = "", col = buffer.length) {
 
 describe("integration — menu activation", () => {
   it("typing slash opens the menu and paints the footer", async () => {
-    const { eventCtx, footerEmits } = mkCtx()
+    const { eventCtx, footerEmits, hookCtx } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/", cursor: { row: 0, col: 1 } }))
     expect(getFsmState().kind).toBe("open")
     expect(footerEmits.length).toBe(1)
     expect(footerEmits[0]!.lines.length).toBeGreaterThan(0)
   })
 
+  it("typing slash mid-prompt opens without a pasted-slash flicker", async () => {
+    const { hookCtx, eventCtx, footerEmits } = mkCtx()
+    const slash = keyPayload("/", "explain /", 9)
+    onKey(slash, hookCtx)
+    await onBufferChanged(eventCtx({ text: "explain /conf", cursor: { row: 0, col: 13 } }))
+    expect(getFsmState().kind).toBe("open")
+    expect(footerEmits.length).toBe(1)
+
+    _resetForTests()
+    await onBufferChanged(eventCtx({ text: "pasted /conf", cursor: { row: 0, col: 12 } }))
+    expect(getFsmState().kind).toBe("closed")
+  })
+
+  it("styles partial and completed matching slash tokens in the input", async () => {
+    const { eventCtx, styleEmits } = mkCtx()
+    await onBufferChanged(eventCtx({ text: "explain /conf", cursor: { row: 0, col: 13 } }))
+    expect(styleEmits.at(-1)).toHaveLength(1)
+    expect(styleEmits.at(-1)?.[0]).toMatchObject({ start: 8, end: 13 })
+
+    await onBufferChanged(eventCtx({ text: "explain /config", cursor: { row: 0, col: 15 } }))
+    expect(styleEmits.at(-1)?.[0]).toMatchObject({ start: 8, end: 15 })
+  })
+
   it("typing slash-conf opens with config selected at top", async () => {
-    const { eventCtx, footerEmits } = mkCtx()
+    const { eventCtx, footerEmits, hookCtx } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/conf", cursor: { row: 0, col: 5 } }))
     const lines = footerEmits[footerEmits.length - 1]!.lines
     const visible = lines.map(stripSgr).join("\n")
@@ -145,7 +176,8 @@ describe("integration — menu activation", () => {
   })
 
   it("typing dollar opens scoped to skills only", async () => {
-    const { eventCtx, footerEmits } = mkCtx()
+    const { eventCtx, footerEmits, hookCtx } = mkCtx()
+    onKey(keyPayload("$", "$"), hookCtx)
     await onBufferChanged(eventCtx({ text: "$", cursor: { row: 0, col: 1 } }))
     const lines = footerEmits[footerEmits.length - 1]!.lines.map(stripSgr)
     // Item rows have a $ sigil prefix somewhere on the line (after the
@@ -166,7 +198,8 @@ describe("integration — menu activation", () => {
   })
 
   it("trailing space closes an open menu", async () => {
-    const { eventCtx, footerEmits } = mkCtx()
+    const { eventCtx, footerEmits, hookCtx } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/config", cursor: { row: 0, col: 7 } }))
     expect(getFsmState().kind).toBe("open")
     await onBufferChanged(eventCtx({ text: "/config ", cursor: { row: 0, col: 8 } }))
@@ -178,6 +211,7 @@ describe("integration — menu activation", () => {
 describe("integration — navigation while open", () => {
   it("ArrowDown moves selection and re-emits footer; halts key", async () => {
     const { hookCtx, eventCtx, footerEmits } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/", cursor: { row: 0, col: 1 } }))
     const initialFooter = footerEmits.length
     const payload = keyPayload("ArrowDown", "/")
@@ -188,6 +222,7 @@ describe("integration — navigation while open", () => {
 
   it("ArrowUp at top stays at index 0", async () => {
     const { hookCtx, eventCtx } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/", cursor: { row: 0, col: 1 } }))
     const payload = keyPayload("ArrowUp", "/")
     onKey(payload, hookCtx)
@@ -200,6 +235,7 @@ describe("integration — navigation while open", () => {
 describe("integration — selection", () => {
   it("Tab completes via result.buffer and halts", async () => {
     const { hookCtx, eventCtx } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/conf", cursor: { row: 0, col: 5 } }))
     const payload = keyPayload("Tab", "/conf")
     onKey(payload, hookCtx)
@@ -207,8 +243,20 @@ describe("integration — selection", () => {
     expect(payload.result.buffer).toBe("/config ")
   })
 
+  it("Tab preserves surrounding text and puts the caret after a multiline completion", async () => {
+    const { hookCtx, eventCtx } = mkCtx()
+    const before = "line 0\nrun "
+    onKey(keyPayload("/", `${before}/`, before.length + 1), hookCtx)
+    await onBufferChanged(eventCtx({ text: "line 0\nrun /conf tail", cursor: { row: 1, col: 9 } }))
+    const payload = keyPayload("Tab", "line 0\nrun /conf tail", 9)
+    onKey(payload, hookCtx)
+    expect(payload.result.buffer).toBe("line 0\nrun /config  tail")
+    expect(payload.result.cursor).toEqual({ row: 1, col: 12 })
+  })
+
   it("Enter on a command row dispatches via command.run + halts (no buffer submit)", async () => {
     const { hookCtx, eventCtx, footerEmits, commandRuns } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/conf", cursor: { row: 0, col: 5 } }))
     const payload = keyPayload("Enter", "/conf")
     onKey(payload, hookCtx)
@@ -222,6 +270,7 @@ describe("integration — selection", () => {
 
   it("Escape halts and clears footer; buffer left alone", async () => {
     const { hookCtx, eventCtx, footerEmits } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/conf", cursor: { row: 0, col: 5 } }))
     const payload = keyPayload("Escape", "/conf")
     onKey(payload, hookCtx)
@@ -253,6 +302,7 @@ describe("integration — pass-through (menu closed)", () => {
 describe("integration — filter typing", () => {
   it("re-firing same buffer-changed preserves selection; different query resets to 0", async () => {
     const { hookCtx, eventCtx } = mkCtx()
+    onKey(keyPayload("/", "/"), hookCtx)
     await onBufferChanged(eventCtx({ text: "/swift", cursor: { row: 0, col: 6 } }))
     onKey(keyPayload("ArrowDown", "/swift"), hookCtx)
     let state = getFsmState()

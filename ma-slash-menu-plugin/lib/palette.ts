@@ -39,6 +39,7 @@ const FALLBACK_SGR = {
   boldLime: "\x1b[1;38;5;118m",
   boldRed: "\x1b[1;91m",
   boldGold: "\x1b[1;38;5;214m",
+  boldViolet: "\x1b[1m\x1b[38;2;180;140;255m",
 } as const
 
 type Sgr = { readonly [K in keyof typeof FALLBACK_SGR]: string }
@@ -75,6 +76,7 @@ export function resolveSgr(raw?: string): Sgr {
     boldLime: boldToken("lime", FALLBACK_SGR.boldLime),
     boldRed: boldToken("brightRed", FALLBACK_SGR.boldRed),
     boldGold: boldToken("gold", FALLBACK_SGR.boldGold),
+    boldViolet: boldToken("violet", FALLBACK_SGR.boldViolet),
   }
 }
 
@@ -114,6 +116,11 @@ export function dim(text: string): string {
 /** Wrap with the configured "selected row" emphasis. */
 export function selected(text: string): string {
   return wrap(text, SGR.boldSky)
+}
+
+/** Default SGR for resolved slash-command token highlights. */
+export function slashTokenSgr(): string {
+  return SGR.boldViolet
 }
 
 /** Strip SGR escapes — needed for visual-width math in tests. */

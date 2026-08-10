@@ -57,9 +57,10 @@ const handler = async (ctx: EventHandlerContext): Promise<void> => {
   applyEffects(result.effects, ctx)
 
   // Always recompute buffer styles for matching at-tokens (independent of
-  // whether the autocomplete menu is open).
+  // whether the autocomplete menu is open). Source-scoped so slash-menu
+  // (and other producers) can compose without last-writer-wins stomping.
   const spans = mentionStyleSpans(text, getPeers())
-  ctx.emit("editor.buffer.styles", { spans })
+  ctx.emit("editor.buffer.styles", { source: "intercom", spans })
 }
 
 function refreshPeers(ctx: EventHandlerContext): void {
@@ -95,7 +96,7 @@ function applyEffects(effects: Effect[], ctx: EventHandlerContext): void {
         ctx.emit("editor.footer.set", { lines: [] })
         break
       case "set-styles":
-        ctx.emit("editor.buffer.styles", { spans: eff.spans })
+        ctx.emit("editor.buffer.styles", { source: "intercom", spans: eff.spans })
         break
       case "set-buffer":
       case "halt-key":
