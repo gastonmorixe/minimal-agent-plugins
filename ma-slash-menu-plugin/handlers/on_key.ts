@@ -27,7 +27,7 @@
  */
 
 import type { HookHandlerContext } from "../lib/host-types.ts"
-import { type Effect, type KeyName, transition } from "../lib/overlay.ts"
+import { type Effect, type KeyName, offsetToRowCol, transition } from "../lib/overlay.ts"
 import { configureSgr } from "../lib/palette.ts"
 import { getFsmState, getItems, refreshItems, setFsmState } from "../lib/state.ts"
 
@@ -84,25 +84,32 @@ const handler = (payload: unknown, ctx: HookHandlerContext): void => {
   configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
 
   if (!isPayload(payload)) return
+  if (payload.key === "/" || payload.key === "$") {
+    const cursor = absoluteCursor(payload.buffer, payload.cursor)
+    setFsmState(
+      transition(
+        getFsmState(),
+        { kind: "slash-typed", trigger: payload.key, cursor },
+        transitionCtx(ctx),
+      ).state,
+    )
+    return
+  }
+
   const key = toFsmKey(payload.key)
   if (key === null) return
 
-  // Cheap bailout: when closed, only Up/Down might matter for a future
-  // "navigate items list closed" gesture. Today none do — leave the
-  // key alone so other plugins (history) see it cleanly.
   const state = getFsmState()
-  if (state.kind === "closed") return
+  if (state.kind === "closed" || state.kind === "armed") return
 
-  // Keep the action rows in sync with the host's live command registry.
   refreshItems(ctx.listCommands?.())
 
   const result = transition(
     state,
     { kind: "key", name: key },
     {
-      allItems: getItems(),
-      cols: terminalCols(),
-      contextWindow: resolveContextWindow(),
+      ...transitionCtx(ctx),
+      bufferText: payload.buffer,
     },
   )
   setFsmState(result.state)
@@ -119,11 +126,18 @@ function applyEffects(effects: Effect[], payload: EditorKeyPayload, ctx: HookHan
       case "halt-key":
         payload.result.halt = true
         break
-      case "set-buffer":
-        // Same-tick: the editor reads `result.buffer` right after the
-        // hook listener returns. Skip the bus round-trip.
+      case "set-buffer": {
+        // Same-tick: the editor reads `result.buffer` right after the hook
+        // listener returns. Preserve the logical caret for mid-buffer and
+        // multiline completions, like intercom mentions.
         payload.result.buffer = eff.text
+        if (typeof eff.cursor === "number") {
+          const cursor = offsetToRowCol(eff.text, eff.cursor)
+          payload.result.cursor = cursor
+          ctx.emit("editor.buffer.set", { text: eff.text, cursor })
+        }
         break
+      }
       case "paint-footer":
         ctx.emit("editor.footer.set", { lines: eff.lines })
         break
@@ -138,6 +152,25 @@ function applyEffects(effects: Effect[], payload: EditorKeyPayload, ctx: HookHan
         break
     }
   }
+}
+
+function transitionCtx(ctx: HookHandlerContext) {
+  refreshItems(ctx.listCommands?.())
+  return {
+    allItems: getItems(),
+    cols: terminalCols(),
+    contextWindow: resolveContextWindow(),
+  }
+}
+
+function absoluteCursor(text: string, cursor: { row: number; col: number }): number {
+  if (cursor.row <= 0) return Math.max(0, Math.min(cursor.col, text.length))
+  const lines = text.split("\n")
+  let offset = 0
+  for (let row = 0; row < cursor.row && row < lines.length; row++) {
+    offset += (lines[row]?.length ?? 0) + 1
+  }
+  return Math.max(0, Math.min(offset + cursor.col, text.length))
 }
 
 // ---------------------------------------------------------------------------

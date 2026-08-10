@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test"
 
-import { CLOSED, type State, type TransitionCtx, transition } from "./overlay.ts"
+import {
+  CLOSED,
+  completeIntoBuffer,
+  type State,
+  type TransitionCtx,
+  transition,
+} from "./overlay.ts"
 import type { Item } from "./types.ts"
 
 // ---------------------------------------------------------------------------
@@ -58,8 +64,27 @@ describe("transition — buffer-changed (activation)", () => {
     expect(r.effects).toEqual([])
   })
 
-  it("buffer with trigger NOT at col 0 does NOT open (e.g. 'foo/bar')", () => {
-    const r = transition(CLOSED, { kind: "buffer-changed", text: "foo/bar" }, mkCtx())
+  it("a slash in the buffer does not open without a typed-key arm", () => {
+    const r = transition(CLOSED, { kind: "buffer-changed", text: "foo/bar", cursor: 7 }, mkCtx())
+    expect(r.state).toBe(CLOSED)
+  })
+
+  it("a typed slash opens anywhere at the cursor", () => {
+    const text = "explain /conf then"
+    const armed = transition(CLOSED, { kind: "slash-typed", trigger: "/", cursor: 9 }, mkCtx())
+    const r = transition(armed.state, { kind: "buffer-changed", text, cursor: 13 }, mkCtx())
+    if (r.state.kind !== "open") throw new Error("narrow")
+    expect(r.state.query).toBe("conf")
+    expect(r.state.tokenStart).toBe(8)
+    expect(r.state.tokenEnd).toBe(13)
+  })
+
+  it("does not open for pasted slash text", () => {
+    const r = transition(
+      CLOSED,
+      { kind: "buffer-changed", text: "explain /conf", cursor: 13 },
+      mkCtx(),
+    )
     expect(r.state).toBe(CLOSED)
   })
 
@@ -163,6 +188,19 @@ describe("transition — key while OPEN", () => {
     expect(r.effects.some((e) => e.kind === "halt-key")).toBe(true)
   })
 
+  it("Tab preserves text around a mid-buffer slash token", () => {
+    const text = "explain /conf then"
+    const armed = transition(
+      CLOSED,
+      { kind: "slash-typed", trigger: "/", cursor: 9 },
+      mkCtx(),
+    ).state
+    const open = transition(armed, { kind: "buffer-changed", text, cursor: 13 }, mkCtx()).state
+    if (open.kind !== "open") throw new Error("narrow")
+    const completed = completeIntoBuffer(text, open, "config", true)
+    expect(completed).toEqual({ text: "explain /config  then", cursor: 16 })
+  })
+
   it("Enter on a COMMAND row dispatches via run-command + halts (no buffer submit)", () => {
     const s = open("conf") // '/config' is an "act" (command) item
     const r = transition(s, { kind: "key", name: "Enter" }, mkCtx())
@@ -254,6 +292,8 @@ describe("transition — purity invariants", () => {
       kind: "open",
       trigger: "/",
       query: "swift",
+      tokenStart: 0,
+      tokenEnd: 6,
       selectedIndex: 1,
       scrollOffset: 0,
     }

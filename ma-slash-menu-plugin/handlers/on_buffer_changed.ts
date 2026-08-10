@@ -21,6 +21,7 @@ import type { EventHandlerContext } from "../lib/host-types.ts"
 import { type Effect, transition } from "../lib/overlay.ts"
 import { configureSgr } from "../lib/palette.ts"
 import { getFsmState, getItems, refreshItems, setFsmState } from "../lib/state.ts"
+import { slashStyleSpans } from "../lib/styles.ts"
 
 interface BufferChangedPayload {
   text: string
@@ -45,7 +46,11 @@ const handler = async (ctx: EventHandlerContext): Promise<void> => {
   const state = getFsmState()
   const result = transition(
     state,
-    { kind: "buffer-changed", text: ctx.payload.text },
+    {
+      kind: "buffer-changed",
+      text: ctx.payload.text,
+      cursor: absoluteCursor(ctx.payload.text, ctx.payload.cursor),
+    },
     {
       allItems: getItems(),
       cols: terminalCols(),
@@ -54,6 +59,10 @@ const handler = async (ctx: EventHandlerContext): Promise<void> => {
   )
   setFsmState(result.state)
   applyEffects(result.effects, ctx)
+  ctx.emit("editor.buffer.styles", {
+    source: "slash-menu",
+    spans: slashStyleSpans(ctx.payload.text, getItems()),
+  })
 }
 
 function applyEffects(effects: Effect[], ctx: EventHandlerContext): void {
@@ -75,6 +84,16 @@ function applyEffects(effects: Effect[], ctx: EventHandlerContext): void {
         break
     }
   }
+}
+
+function absoluteCursor(text: string, cursor: { row: number; col: number }): number {
+  if (cursor.row <= 0) return Math.max(0, Math.min(cursor.col, text.length))
+  const lines = text.split("\n")
+  let offset = 0
+  for (let row = 0; row < cursor.row && row < lines.length; row++) {
+    offset += (lines[row]?.length ?? 0) + 1
+  }
+  return Math.max(0, Math.min(offset + cursor.col, text.length))
 }
 
 function terminalCols(): number {

@@ -123,7 +123,7 @@ function applyEffects(effects: Effect[], payload: EditorKeyPayload, ctx: HookHan
         ctx.emit?.("editor.footer.set", { lines: [] })
         break
       case "set-styles":
-        ctx.emit?.("editor.buffer.styles", { spans: eff.spans })
+        ctx.emit?.("editor.buffer.styles", { source: "intercom", spans: eff.spans })
         break
     }
   }
