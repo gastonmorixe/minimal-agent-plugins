@@ -1,6 +1,12 @@
 import type { CommandContext } from "../lib/host-types.ts"
-import { openPicker, paintEditing } from "../lib/runtime.ts"
-import { getState, type PromptRow, setCachedRows, takePendingDraft } from "../lib/state.ts"
+import { openPicker, paintEditing, paintPicker } from "../lib/runtime.ts"
+import {
+  getState,
+  type PromptRow,
+  setCachedRows,
+  setState,
+  takePendingDraft,
+} from "../lib/state.ts"
 
 /** Open, stage, or commit the history-edit workflow through host capabilities. */
 export default async function cmdHistoryEdit(
@@ -26,19 +32,39 @@ export default async function cmdHistoryEdit(
     return { kind: "expand", prompt: editing.replacement }
   }
 
-  const stageId = action.match(/^stage\s+(.+)$/)?.[1]
-  if (stageId) {
-    const picking = getState()
-    if (picking.kind !== "picking" || !ctx.host.sessionsWrite)
+  const stage = action.match(/^stage\s+(\S+)\s+(\d+)$/)
+  if (stage) {
+    const [, stageId, tokenText] = stage
+    const token = Number(tokenText)
+    const staging = getState()
+    if (
+      staging.kind !== "staging" ||
+      staging.token !== token ||
+      staging.target.userId !== stageId ||
+      !ctx.host.sessionsWrite
+    ) {
       return { kind: "error", message: "history edit selection expired" }
-    const target = picking.rows.find((row) => row.userId === stageId)
-    if (!target) return { kind: "error", message: "selected prompt no longer exists" }
-    const begun = await ctx.host.sessionsWrite.beginHistoryEdit({ targetUserId: target.userId })
-    if (!begun.ok) return { kind: "error", message: begun.message }
+    }
+    const begun = await ctx.host.sessionsWrite.beginHistoryEdit({
+      targetUserId: staging.target.userId,
+    })
+    const current = getState()
+    if (current.kind !== "staging" || current.token !== token) return { kind: "none" }
+    if (!begun.ok) {
+      const picking = {
+        kind: "picking" as const,
+        draft: current.draft,
+        rows: current.rows,
+        selected: current.selected,
+      }
+      setState(picking)
+      paintPicker(ctx.emit, picking)
+      return { kind: "error", message: begun.message }
+    }
     paintEditing(
       ctx.emit,
-      picking.draft,
-      target,
+      staging.draft,
+      staging.target,
       begun.userPromptOrdinal,
       begun.totalUserPrompts,
       begun.backupSid,

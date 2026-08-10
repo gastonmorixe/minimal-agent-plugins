@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { setState } from "../lib/state.ts"
+import { getState, setState } from "../lib/state.ts"
 
 import onKey from "./on_key.ts"
 
@@ -32,7 +32,42 @@ describe("history-edit editor key hook", () => {
     const enter = key("Enter")
     onKey(enter, { emit: (channel, payload) => events.push([channel, payload]) })
     expect(enter.result.halt).toBe(true)
-    expect(events).toEqual([["command.run", { line: "/history-edit stage u1" }]])
+    expect(events).toEqual([["command.run", { line: "/history-edit stage u1 1" }]])
+  })
+
+  it("dedupes repeated Enter while a stage request is pending", () => {
+    setState({
+      kind: "picking",
+      draft: "draft",
+      rows: [{ userId: "u1", text: "older prompt" }],
+      selected: 0,
+    })
+    const events: Array<[string, unknown]> = []
+    const first = key("Enter")
+    onKey(first, { emit: (channel, payload) => events.push([channel, payload]) })
+    const second = key("Enter")
+    onKey(second, { emit: (channel, payload) => events.push([channel, payload]) })
+    expect(events).toHaveLength(1)
+    expect(events[0]?.[0]).toBe("command.run")
+    expect(events[0]?.[1]).toMatchObject({
+      line: expect.stringMatching(/^\/history-edit stage u1 \d+$/),
+    })
+    expect(getState()).toMatchObject({ kind: "staging" })
+  })
+
+  it("invalidates a pending stage request when Escape closes the picker", () => {
+    setState({
+      kind: "staging",
+      draft: "draft",
+      rows: [{ userId: "u1", text: "older prompt" }],
+      selected: 0,
+      target: { userId: "u1", text: "older prompt" },
+      token: 99,
+    })
+    const escape = key("Escape")
+    onKey(escape, { emit() {} })
+    expect(escape.result.halt).toBe(true)
+    expect(getState()).toEqual({ kind: "closed" })
   })
 
   it("allows ordinary editing keys but Escape restores the original draft", () => {

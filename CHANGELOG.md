@@ -63,6 +63,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-08-10 (this session): `ma-history-edit-plugin` now enters a synchronous
+  staging state before beginning a selected prompt's asynchronous rewind
+  transaction. Repeated Enter is deduplicated, Escape invalidates an in-flight
+  request, failed staging restores the picker, and a late success cannot reopen
+  a canceled editor.
+
 - 2026-08-10 (this session): `ma-history-edit-plugin` no longer mistakes a
   short tail of assistant/tool records for an empty prompt history. The picker
   now pages backward through the active session until it finds all saved user

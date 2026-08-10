@@ -7,6 +7,14 @@ export type State =
   | { kind: "closed" }
   | { kind: "picking"; draft: string; rows: readonly PromptRow[]; selected: number; error?: string }
   | {
+      kind: "staging"
+      draft: string
+      rows: readonly PromptRow[]
+      selected: number
+      target: PromptRow
+      token: number
+    }
+  | {
       kind: "editing"
       draft: string
       target: PromptRow
@@ -19,6 +27,7 @@ export type State =
 let state: State = { kind: "closed" }
 let cachedRows: readonly PromptRow[] = []
 let pendingDraft = ""
+let nextStageToken = 1
 /** Return the active history-edit UI state. */
 export function getState(): State {
   return state
@@ -26,6 +35,10 @@ export function getState(): State {
 /** Replace the active history-edit UI state. */
 export function setState(next: State): void {
   state = next
+}
+/** Allocate a monotonic token that identifies one asynchronous stage request. */
+export function takeStageToken(): number {
+  return nextStageToken++
 }
 /** Return cached picker rows retained between command transitions. */
 export function getCachedRows(): readonly PromptRow[] {

@@ -1,6 +1,6 @@
 import type { EditorKeyPayload, HookContext } from "../lib/host-types.ts"
 import { close, paintPicker } from "../lib/runtime.ts"
-import { getState, setPendingDraft, setState } from "../lib/state.ts"
+import { getState, setPendingDraft, setState, takeStageToken } from "../lib/state.ts"
 
 function payload(v: unknown): v is EditorKeyPayload {
   return !!v && typeof v === "object" && typeof (v as EditorKeyPayload).key === "string"
@@ -16,6 +16,12 @@ export default function onKey(raw: unknown, ctx: HookContext): void {
     raw.result.halt = true
     setPendingDraft(raw.buffer)
     ctx.emit("command.run", { line: "/history-edit" })
+    return
+  }
+
+  if (state.kind === "staging") {
+    raw.result.halt = true
+    if (raw.key === "Escape") close(ctx.emit, state.draft)
     return
   }
 
@@ -49,8 +55,16 @@ export default function onKey(raw: unknown, ctx: HookContext): void {
   if (raw.key !== "Enter") return
   const target = state.rows[state.selected]
   if (!target) return
-  // Begin is async in the host contract, so actual staging is deliberately
-  // deferred until an out-of-band command bridge owns the transaction. Do not
-  // require sessionsWrite here: command dispatch receives the full host context.
-  ctx.emit("command.run", { line: `/history-edit stage ${target.userId}` })
+  // Claim synchronously before the command bridge begins its async transaction.
+  // This dedupes Enter and lets Escape invalidate the request before it returns.
+  const token = takeStageToken()
+  setState({
+    kind: "staging",
+    draft: state.draft,
+    rows: state.rows,
+    selected: state.selected,
+    target,
+    token,
+  })
+  ctx.emit("command.run", { line: `/history-edit stage ${target.userId} ${token}` })
 }
