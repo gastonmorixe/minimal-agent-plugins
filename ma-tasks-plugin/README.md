@@ -79,7 +79,7 @@ The store keeps trees consistent in one write:
 
 - **Child → doing** auto-starts a `todo` or previously `done` parent.
 - **Child → done** keeps/marks the parent `doing` while siblings remain open.
-- **Last child → done** auto-promotes the parent when every sibling is also `done`. A canceled sibling blocks promote.
+- **Last open child → done or canceled** auto-promotes the parent. A canceled child remains visibly canceled, preserving the abandoned-work audit trail without leaving the phase stuck in `doing`.
 - **Parent → done** cascades open children (`todo` / `doing`) to `done`. `canceled` children stay canceled.
 - A canceled parent is never revived automatically.
 

@@ -952,7 +952,7 @@ function doStatus(store: TaskStore, input: ParsedInput): TUIResult {
           : { kind: "marked_todo", id: updated.id }
 
   const parentAutoDone =
-    input.status === "done" && target.parent !== null
+    (input.status === "done" || input.status === "canceled") && target.parent !== null
       ? parentJustAutoDone(store, target.parent, updated.id)
       : undefined
 

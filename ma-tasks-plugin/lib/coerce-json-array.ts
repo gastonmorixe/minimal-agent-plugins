@@ -34,8 +34,8 @@ export function coerceJsonArray(raw: unknown, field: string): CoerceArrayResult 
     return {
       ok: false,
       error:
-        `\`${field}\` must be an actual array value, not a quoted string. ` +
-        `Send {"${field}":[...]} and do not JSON.stringify the array`,
+        `\`${field}\` must be an actual array value, not a quoted string ` +
+        `(empty string). Send {"${field}":[...]} and do not JSON.stringify the array`,
     }
   }
   let parsed: unknown
@@ -45,9 +45,8 @@ export function coerceJsonArray(raw: unknown, field: string): CoerceArrayResult 
     return {
       ok: false,
       error:
-        `\`${field}\` must be an actual array value, not a quoted string. ` +
-        `Send {"${field}":[...]} and do not JSON.stringify the array ` +
-        `(the quoted value was not valid JSON)`,
+        `\`${field}\` must be an actual array value, not a quoted string ` +
+        `(JSON.parse failed). Send {"${field}":[...]} and do not JSON.stringify the array`,
     }
   }
   if (!Array.isArray(parsed)) {

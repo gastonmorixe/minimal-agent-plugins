@@ -538,12 +538,13 @@ export class TaskStore {
    *    children stay `canceled` (abandoned work is not rewritten as
    *    finished).
    *  - **Child → doing** auto-starts a `todo` / `done` parent.
-   *  - **Child → done** auto-promotes the parent to `done` when every
-   *    sibling is also `done`; otherwise it auto-starts the parent so a
-   *    partially completed phase reads as in progress.
+   *  - **Child → done or canceled** auto-promotes the parent to `done` when
+   *    no sibling remains open (`todo` / `doing`). A canceled child remains
+   *    visibly canceled, so a finished phase preserves its abandoned-work
+   *    audit trail instead of being stranded in `doing`.
    *  - A `canceled` parent is never revived automatically.
    *
-   * Child `todo` / `canceled` transitions stay explicit one-row mutations.
+   * Child `todo` transitions stay explicit one-row mutations.
    */
   setStatus(ref: string | number, status: TaskStatus, reason?: string | null): Task | null {
     const state = this.readState()
@@ -558,6 +559,8 @@ export class TaskStore {
 
     if (status === "done") {
       this.applyDoneCascade(tasks, next, nowIso, nowMs)
+    } else if (status === "canceled" && next.parent !== null) {
+      this.applyChildTerminalRollup(tasks, next.parent, nowIso, nowMs)
     } else if (status === "doing" && next.parent !== null) {
       this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
     }
@@ -585,22 +588,29 @@ export class TaskStore {
       return
     }
 
-    // Child done → promote parent iff every sibling is done and the
-    // parent is not canceled (or already done).
-    const parentIdx = tasks.findIndex((t) => t.id === target.parent)
+    this.applyChildTerminalRollup(tasks, target.parent, nowIso, nowMs)
+  }
+
+  /**
+   * Promote a parent when all of its children reached a terminal state.
+   * Canceled children remain canceled. They record abandoned scope without
+   * leaving a phase permanently `doing` after the remaining work finishes.
+   */
+  private applyChildTerminalRollup(
+    tasks: Task[],
+    parentId: string,
+    nowIso: string,
+    nowMs: number,
+  ): void {
+    const parentIdx = tasks.findIndex((t) => t.id === parentId)
     if (parentIdx < 0) return
     const parent = tasks[parentIdx]
     if (parent.status === "canceled") return
 
-    let allDone = true
-    for (const t of tasks) {
-      if (t.parent !== parent.id) continue
-      if (t.status !== "done") {
-        allDone = false
-        break
-      }
-    }
-    if (allDone) {
+    const hasOpenChild = tasks.some(
+      (t) => t.parent === parent.id && (t.status === "todo" || t.status === "doing"),
+    )
+    if (!hasOpenChild) {
       tasks[parentIdx] = applyStatusTransition(parent, "done", nowIso, nowMs)
     } else {
       this.applyParentDoing(tasks, parent.id, nowIso, nowMs)
