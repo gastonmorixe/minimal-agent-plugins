@@ -8,9 +8,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
-- 2026-08-13 (this session): Verified the quota-status model-label rendering
-  changes and regression coverage across the plugin workspace; the complete
-  plugin check gate passes with no warnings or failures.
+- 2026-08-13 (`1f55da0`): `ma-quota-status-plugin` no longer invents a wire
+  effort when none is set. The model segment still renders a bare bold
+  `modelLabel` (e.g. `cur-auto`) for haiku / cursor-auto, and only suppresses
+  the segment when both effort and label are absent. README and regression
+  coverage match the new bare-tag path.
+
 
 ### Changed
 
