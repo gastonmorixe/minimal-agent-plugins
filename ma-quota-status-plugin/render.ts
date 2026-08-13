@@ -41,12 +41,15 @@
  *     very first paint.
  *   - 4-space group separator between distinct segments.
  *   - "overage" hidden by default (set MINIMAL_AGENT_QUOTA_OVERAGE=1 to surface).
- *   - Trailing `effort <level>` segment (faintWhite label, bold value): the
- *     reasoning effort being sent on the wire. No bar — effort is categorical
+ *   - Trailing model/effort segment: with a wire effort level, either
+ *     `<tag>:<level>` (when `modelLabel` is set) or legacy `effort <level>`
+ *     (faintWhite label, bold value). No bar — effort is categorical
  *     (low/medium/high/max), not continuous. No colour-grading either; the
  *     green/yellow/red palette belongs to severity and would read
- *     "high effort == bad". Suppressed entirely when the caller passes no
- *     effort (haiku models don't accept the wire field).
+ *     "high effort == bad". When effort is unset (haiku / cursor-auto: the
+ *     wire field isn't sent) but `modelLabel` is present, still render the
+ *     bare bold tag so the footer identifies the model. Only omit the
+ *     segment when both are absent.
  *   - Absolute-trailing bare-hex session-id anchor (dim, no label). Renders
  *     verbatim — the caller pre-shortens to whatever prefix length disambiguates
  *     inside `~/.minimal-agent/sessions/` (the quota-status handler takes 8
@@ -73,8 +76,8 @@ import { displayWidth, stripAnsi } from "./lib/term-width.ts"
  *
  * Order + membership are declarative (user config `statusBar.segments`).
  * Capability-aware: a segment with no data (e.g. `quota` for a provider with
- * no quota concept, or `model` when no effort is sent) renders nothing even
- * when listed.
+ * no quota concept, or `model` when neither effort nor `modelLabel` is set)
+ * renders nothing even when listed.
  */
 export type StatusSegmentId = "quota" | "context" | "model" | "sid"
 
@@ -150,17 +153,18 @@ export interface RenderOpts {
    * here gets shown verbatim, mirroring the no-validate philosophy of
    * `src/effort-resolution.ts`.
    *
-   * Omit (or pass empty) to suppress the segment entirely — that's the
-   * haiku case, where the wire field isn't sent and the footer would
-   * lie if it showed an effort.
+   * Omit (or pass empty) when the wire field isn't sent (haiku /
+   * cursor-auto). The segment still renders a bare `modelLabel` in that
+   * case so the footer identifies the model without inventing an effort.
    */
   effort?: string
   /**
-   * Compact provider-model tag (e.g. `anth-4.8`, `oai-5.5`) from
-   * `modelShortLabel()`. When present, the effort segment's full form
-   * renders `<tag>:<level>` (bold tag + faint level), replacing the
-   * literal `effort` label. Compressed forms drop the tag. Omit to keep
-   * the legacy `effort <level>` rendering.
+   * Compact provider-model tag (e.g. `anth-4.8`, `oai-5.5`, `cur-auto`) from
+   * `modelShortLabel()`. When present with an effort level, the segment's
+   * full form renders `<tag>:<level>` (bold tag + faint level), replacing
+   * the literal `effort` label. Compressed forms drop the tag. When present
+   * without effort, renders the bare bold tag. Omit to keep the legacy
+   * `effort <level>` rendering (or suppress when effort is also absent).
    */
   modelLabel?: string
   /**
@@ -427,22 +431,24 @@ function shortenEffort(level: string): string {
 }
 
 /**
- * Build the trailing effort segment in one of three formats (Rule 2.1.2).
+ * Build the trailing model/effort segment in one of three formats (Rule 2.1.2).
  *
  * No colour-grading on the value: green/yellow/red are already taken by
  * the quota severity bars (red == "burning through your budget"), and
  * carrying that palette over here would read "high effort == bad".
  * Plain bold keeps the value legible without semantic collision.
  *
- * Returns `null` when `level` is empty/undefined so the caller can skip
- * appending the segment (haiku case, or unresolved state).
+ * Returns `null` only when both `level` and `modelLabel` are empty so the
+ * caller can skip the segment. When effort is unset but a tag is present
+ * (cursor-auto / haiku), returns the bare bold tag — never invents a
+ * fake `:<level>`.
  */
 function renderEffortSegment(
   level: string | undefined,
   fmt: EffortFmt = "full",
   modelLabel?: string,
 ): string | null {
-  if (!level) return null
+  if (!level) return modelLabel ? c.bold(modelLabel) : null
   if (fmt === "full") {
     // With a provider-model tag the segment reads e.g. "anth-4.8:max"
     // (bold/bright tag, faint ":level") — the tag replaces the literal
@@ -595,7 +601,15 @@ export function renderQuotaFooter(
   const tail = !showOverage ? null : overageTailNeutral(opts.overage)
   const order = normalizeSegmentOrder(opts.segments)
 
-  if (windows.length === 0 && !showSession && !tail && !opts.effort && !opts.sid) return null
+  if (
+    windows.length === 0 &&
+    !showSession &&
+    !tail &&
+    !opts.effort &&
+    !opts.modelLabel &&
+    !opts.sid
+  )
+    return null
 
   const overflowMode = opts.overflow ?? "truncate"
 
@@ -634,7 +648,10 @@ export function renderQuotaFooter(
       case "model": {
         // Informative but static-per-session: compresses `full → value →
         // short` and drops before the session block in the ladder.
-        if (!cfg.withEffort || !opts.effort) return []
+        // `withEffort` is the ladder's "keep the model segment" flag
+        // (named for the historical effort-only case). Effort may be
+        // absent — still show a bare `modelLabel` when we have one.
+        if (!cfg.withEffort) return []
         const seg = renderEffortSegment(opts.effort, cfg.effortFmt, opts.modelLabel)
         return seg ? [seg] : []
       }

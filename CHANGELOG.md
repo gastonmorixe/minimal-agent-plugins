@@ -6,6 +6,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Fixed
+
+- 2026-08-13 (this session): Verified the quota-status model-label rendering
+  changes and regression coverage across the plugin workspace; the complete
+  plugin check gate passes with no warnings or failures.
+
 ### Changed
 
 - 2026-08-07 (this session): `ma-web-search-plugin` retries are now visible
