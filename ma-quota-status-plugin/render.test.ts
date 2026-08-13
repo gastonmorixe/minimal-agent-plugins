@@ -478,6 +478,28 @@ describe("renderQuotaFooter", () => {
       expect(out).not.toContain("effort")
     })
 
+    it("renders bare modelLabel when effort is unset (cursor-auto / no-wire-effort)", () => {
+      // cursor-auto clears MINIMAL_AGENT_EFFORT but still has a short
+      // model tag — show the tag alone so the footer identifies the model
+      // without inventing a fake `:<level>`.
+      const windows: QuotaWindow[] = [{ id: "5h", utilization: 0.1 }]
+      const out = renderQuotaFooter(windows, NO_TOKENS, { modelLabel: "cur-auto" }) ?? ""
+      expect(stripAnsi(out)).toMatch(/cur-auto$/)
+      expect(stripAnsi(out)).not.toContain(":")
+      expect(stripAnsi(out)).not.toContain("effort")
+      expect(out).toContain("\x1b[1mcur-auto\x1b[22m")
+    })
+
+    it("renders bare modelLabel when effort is empty string", () => {
+      const windows: QuotaWindow[] = [{ id: "5h", utilization: 0.1 }]
+      const out = stripAnsi(
+        renderQuotaFooter(windows, NO_TOKENS, { effort: "", modelLabel: "cur-auto" }),
+      )
+      expect(out).toMatch(/cur-auto$/)
+      expect(out).not.toContain(":")
+      expect(out).not.toContain("effort")
+    })
+
     it("renders the label faintWhite and the value bold", () => {
       const windows: QuotaWindow[] = [{ id: "5h", utilization: 0.1 }]
       const out = renderQuotaFooter(windows, NO_TOKENS, { effort: "high" }) ?? ""

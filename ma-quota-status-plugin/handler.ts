@@ -72,8 +72,9 @@ function currentProviderId(): string | undefined {
  * the agent on `process.env.MINIMAL_AGENT_EFFORT` after resolution
  * (CLI takes precedence over env, then config, then the "medium"
  * default for non-haiku models). For
- * haiku the agent clears the env var entirely so the segment is
- * suppressed. Snapshot-once at module load — matches the
+ * haiku / cursor-auto the agent clears the env var entirely so no
+ * fabricated effort level appears; the bare `modelLabel` still renders.
+ * Snapshot-once at module load — matches the
  * `MINIMAL_AGENT_MODEL` pattern above.
  */
 function resolveEffort(): string | undefined {

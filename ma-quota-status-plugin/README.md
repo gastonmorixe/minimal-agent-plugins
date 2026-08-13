@@ -110,7 +110,7 @@ The segments and their order are declarative in
 
 - `quota` — the provider's plan/rate-limit windows (Anthropic: 5h, 7d).
 - `context` — the session context-usage bar (`contextSize / contextWindow`).
-- `model` — the `<provider-model>:<effort>` tag (e.g. `anth-4.8:high`).
+- `model` — the `<provider-model>:<effort>` tag (e.g. `anth-4.8:high`), or the bare model tag when effort is unset (e.g. `cur-auto`).
 - `sid` — the short session-id anchor.
 
 Omit an id to hide it; reorder freely. Unknown ids are ignored and an
