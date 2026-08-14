@@ -8,6 +8,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-08-14 (this session): Cursor's offline registry now includes all 207 visible
+  authenticated AvailableModels parents plus their namespaced alias/legacy rows
+  (236 host ids total), including non-fast Grok variants. Capabilities preserve
+  the live 128K context / 16K output defaults, modality and thinking flags, and
+  closed effort semantics when Cursor exposes no wire effort parameter. The
+  generated catalog is sourced from the authenticated `cursor-oauth-2` probe.
+
 - 2026-08-13 (`1f55da0`): `ma-quota-status-plugin` no longer invents a wire
   effort when none is set. The model segment still renders a bare bold
   `modelLabel` (e.g. `cur-auto`) for haiku / cursor-auto, and only suppresses
