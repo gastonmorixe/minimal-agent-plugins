@@ -21,20 +21,24 @@ HuggingFace/OpenRouter, and a surface codec for generic-endpoint reuse.
 
 ## Models
 
-Live sources: subscription `cli-chat-proxy` `/v1/models` (grok-4.5 only) and
-`api.x.ai/v1/models` (full text catalog + price micros).
+Live sources: authenticated subscription `cli-chat-proxy` `/v1/models`
+(grok-4.5 and grok-4.6) and `api.x.ai/v1/models` (full text catalog + price
+micros).
 
 | Local id                  | Wire id                        | Surface       | Context | Vision | Notes                                 |
 | ------------------------- | ------------------------------ | ------------- | ------- | ------ | ------------------------------------- |
-| `grok-4.5` (default)      | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high** |
-| `grok-4.5-chat`           | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                |
+| `grok-4.6` (default)        | `grok-4.6`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/high/**xhigh** |
+| `grok-4.6-chat`             | `grok-4.6`                     | Chat          | 500k    | yes    | Same SKU, chat surface                      |
+| `grok-4.5`                  | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high**       |
+| `grok-4.5-chat`            | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                   |
 | `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Fast / balanced                       |
 | `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Coding; aliases `grok-code-fast*`     |
 | `grok-4.20-reasoning`     | `grok-4.20-0309-reasoning`     | Responses     | 1M      | yes    |                                       |
 | `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses     | 1M      | yes    | No effort knob                        |
 | `grok-4.20-multi-agent`   | `grok-4.20-multi-agent-0309`   | Responses     | 1M      | yes    | Effort = agent count                  |
 
-Pricing (under 200k prompt): grok-4.5 **$2 / $0.30 cached / $6** per 1M; doubles at ≥200k.
+Pricing (under 200k prompt): grok-4.6 **$2 / $0.50 cached / $6** per 1M;
+grok-4.5 **$2 / $0.30 cached / $6** per 1M. Both double at ≥200k.
 Prompt-cache accounting is **subset** (OpenAI/xAI): `cached_tokens ⊆ input_tokens`.
 
 ## Auth

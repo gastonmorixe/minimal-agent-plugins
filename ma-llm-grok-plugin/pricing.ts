@@ -21,6 +21,25 @@ function fromLiveMicros(n: number): number {
 }
 
 /**
+ * grok-4.6 — frontier. xAI release pricing: prompt $2, cached $0.50,
+ * completion $6 below 200k tokens; long-context (≥200k) doubles.
+ */
+export const PRICING_GROK_46: MTokRate = {
+  inputUSD: 2,
+  outputUSD: 6,
+  cacheWriteUSD: 2,
+  cacheReadUSD: 0.5,
+  webSearchPerCallUSD: 0.005,
+  longContext: {
+    thresholdTokens: 200_000,
+    inputUSD: 4,
+    outputUSD: 12,
+    cacheWriteUSD: 4,
+    cacheReadUSD: 1,
+  },
+}
+
+/**
  * grok-4.5 — frontier. Live: prompt 20000, cached 3000, completion 60000;
  * long-context (≥200k) doubles.
  */

@@ -2,11 +2,12 @@
  * Capability tables per Grok / xAI model + surface.
  *
  * Sources (live probe 2026-07-30, **grok-oauth-9**):
- * - OAuth `GET https://cli-chat-proxy.grok.com/v1/models` (subscription):
- *   grok-4.5 only — context_window 500000, api_backend responses,
- *   `reasoning_efforts` high|medium|low (default high),
- *   auto_compact_threshold_percent 80. This is the **only** live source that
- *   exposes an effort ladder.
+ * - Authenticated OAuth `GET https://cli-chat-proxy.grok.com/v1/models`
+ *   (subscription): grok-4.5 and grok-4.6 expose context_window 500000,
+ *   api_backend responses, and reasoning_efforts. grok-4.6 additionally
+ *   accepts xhigh (default high), as confirmed by xAI release notes.
+ *   auto_compact_threshold_percent is 80. This is the live source for the
+ *   subscription effort ladder.
  * - `api.x.ai/v1/models` + language-models merge: `context_length`,
  *   `input_modalities`/`output_modalities` (all text SKUs: text+image → text).
  *   Context: grok-4.5 500k; grok-4.3 / grok-4.20-* 1M; grok-build-0.1 256k.
@@ -57,6 +58,51 @@ const REASONING_SAMPLING = {
   acceptsSeed: false,
   acceptsStopSequences: false,
 } as const
+
+// ---------------------------------------------------------------------------
+// grok-4.6 (500k ctx, Responses + Chat)
+// ---------------------------------------------------------------------------
+
+const CAPS_GROK_46_BASE: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 500_000, // authenticated OAuth cli-models response
+  // xAI does not publish a lower hard max output cap for 4.6. Keep the
+  // host-safe cap until the capability contract supports an unbounded value.
+  maxOutputTokens: 65_536,
+  outputTokensShareContextWindow: true,
+  maxOutputTokensBatch: null,
+  effort: { levels: ["low", "medium", "high", "xhigh"], default: "high" },
+  ...REASONING_SAMPLING,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_FULL },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...MODALITIES_TEXT_IMAGE },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+export const CAPS_GROK_46_CHAT: Capabilities = {
+  ...CAPS_GROK_46_BASE,
+  thinking: {
+    adaptive: true,
+    extended: false,
+    visible: false,
+    interleaved: false,
+  },
+}
+
+export const CAPS_GROK_46_RESPONSES: Capabilities = {
+  ...CAPS_GROK_46_BASE,
+  thinking: {
+    adaptive: true,
+    extended: false,
+    visible: true,
+    interleaved: true,
+  },
+}
 
 // ---------------------------------------------------------------------------
 // Shared frontier base (grok-4.5 family)

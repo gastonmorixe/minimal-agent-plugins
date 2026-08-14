@@ -27,6 +27,8 @@ import {
   CAPS_GROK_43_RESPONSES,
   CAPS_GROK_45_CHAT,
   CAPS_GROK_45_RESPONSES,
+  CAPS_GROK_46_CHAT,
+  CAPS_GROK_46_RESPONSES,
   CAPS_GROK_420_MULTI_AGENT,
   CAPS_GROK_420_NON_REASONING,
   CAPS_GROK_BUILD_CHAT,
@@ -40,6 +42,7 @@ import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_GROK_43,
   PRICING_GROK_45,
+  PRICING_GROK_46,
   PRICING_GROK_420,
   PRICING_GROK_BUILD,
   PRICING_GROK_GENERIC,
@@ -112,6 +115,27 @@ function reg(
  */
 export function registerGrokModels(registrar: ModelRegistrar): string[] {
   localCatalog.length = 0
+
+  // --- grok-4.6: Responses preferred (authenticated cli-models + xAI docs)
+  reg(registrar, {
+    id: "grok-4.6",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.6",
+    wireId: "grok-4.6",
+    aliases: ["grok-4.6-latest"],
+    tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_46_RESPONSES,
+    pricing: PRICING_GROK_46,
+  })
+  reg(registrar, {
+    id: "grok-4.6-chat",
+    surfaceId: "openai-chat-completions",
+    displayName: "Grok 4.6 (Chat)",
+    wireId: "grok-4.6",
+    tags: ["grok", "xai", "flagship", "reasoning", "vision", "tools", "chat"],
+    capabilities: CAPS_GROK_46_CHAT,
+    pricing: PRICING_GROK_46,
+  })
 
   // --- grok-4.5: Responses preferred (cli-chat-proxy + api.x.ai)
   reg(registrar, {
@@ -224,7 +248,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     pricing: PRICING_GROK_420,
   })
 
-  registrar.setDefault("grok-4.5")
+  registrar.setDefault("grok-4.6")
   return localCatalog.map((m) => m.id)
 }
 

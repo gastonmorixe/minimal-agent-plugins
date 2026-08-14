@@ -10,13 +10,16 @@
  *
  * Wire slug for AgentService/Run is stored in `vendorIds.cursor` (bare API id).
  *
- * Static seed = AvailableModels `defaultOn` + Composer sibling `composer-2.5`
- * (live probe 2026-07-30 via Cursor Browser Login / `cursor-oauth`). Full
- * catalog (~196 visible rows) still comes from live enrichment.
+ * Static seed = the authenticated AvailableModels catalog (207 visible parent
+ * rows expanded to 236 host ids through aliases/legacy slugs; live probe
+ * 2026-08-14 via `cursor-oauth-2`). The same expanded rows are also available
+ * from live enrichment.
  *
  * Caps from `deriveCursorCapabilities` / `cursorCaps` on that probe:
- * RPC omits contextTokenLimit* → 128K default; no field-29 effort params →
- * `effortLevels: []` even when `supportsThinking`; vision from `supportsImages`.
+ * RPC omits contextTokenLimit* → 128K default and maxOutputTokens → 16K;
+ * supportsMaxMode/supportsAgent are true for every visible row; no field-29 effort
+ * params → `effortLevels: []` even when `supportsThinking`; vision from
+ * `supportsImages` (185/207 visible rows).
  *
  * @module llm/providers/cursor/models
  */
@@ -26,6 +29,7 @@ import type { Capabilities } from "./lib/capabilities.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import { PRICING_CURSOR_GENERIC } from "./pricing.ts"
+import { CURSOR_STATIC_CATALOG } from "./static-catalog.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
 const K = 1_000
@@ -70,139 +74,40 @@ export function resolveCursorWireId(slug: string): string {
 }
 
 /**
- * Static offline seed (2026-07-30). Order: Auto alias + canonical, then live
- * `defaultOn` order, plus non-default sibling `composer-2.5`.
- *
- * Live defaultOn wire ids: `default`, `cursor-grok-4.5-high-fast`,
- * `composer-2.5-fast`, `claude-opus-5-thinking-high`, `gpt-5.6-sol-medium`,
- * `claude-fable-5-thinking-high`, `claude-sonnet-5-thinking-high`,
- * `gpt-5.6-terra-medium`.
+ * Static offline catalog. Generated rows carry canonical parent and legacy host
+ * ids; `cursor-auto`/`cursor-default` are added as the user-facing Auto rows.
  */
-const CATALOG: CursorCatalogEntry[] = [
-  {
-    // Auto: host id uses the display slug users type (`cursor-auto`); wire is `default`.
-    id: "cursor-auto",
-    displayName: "Auto (Cursor)",
-    wireId: "default",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: false,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "auto", "default", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-default",
-    displayName: "Auto (Cursor)",
-    wireId: "default",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: false,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "auto", "default", "agent", "canonical:default", "supports-max-mode"],
-  },
-  {
-    // Wire id already starts with `cursor-`; host id stays the same namespace.
-    id: "cursor-grok-4.5-high-fast",
-    displayName: "Cursor Grok 4.5 Fast",
-    wireId: "cursor-grok-4.5-high-fast",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: false,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "grok", "fast", "thinking", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-composer-2.5-fast",
-    displayName: "Composer 2.5 Fast (Cursor)",
-    wireId: "composer-2.5-fast",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: false,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "composer", "fast", "thinking", "agent", "supports-max-mode"],
-  },
-  {
-    // Sibling of composer-2.5-fast (not defaultOn; kept for offline picker).
-    id: "cursor-composer-2.5",
-    displayName: "Composer 2.5 (Cursor)",
-    wireId: "composer-2.5",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: false,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "composer", "thinking", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-claude-opus-5-thinking-high",
-    displayName: "Opus 5 (Cursor)",
-    wireId: "claude-opus-5-thinking-high",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "claude", "opus", "thinking", "vision", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-gpt-5.6-sol-medium",
-    displayName: "GPT-5.6 Sol (Cursor)",
-    wireId: "gpt-5.6-sol-medium",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "gpt", "sol", "thinking", "vision", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-claude-fable-5-thinking-high",
-    displayName: "Fable 5 (Cursor)",
-    wireId: "claude-fable-5-thinking-high",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "claude", "fable", "thinking", "vision", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-claude-sonnet-5-thinking-high",
-    displayName: "Sonnet 5 (Cursor)",
-    wireId: "claude-sonnet-5-thinking-high",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "claude", "sonnet", "thinking", "vision", "agent", "supports-max-mode"],
-  },
-  {
-    id: "cursor-gpt-5.6-terra-medium",
-    displayName: "GPT-5.6 Terra (Cursor)",
-    wireId: "gpt-5.6-terra-medium",
-    capabilities: cursorCaps({
-      contextWindow: 128 * K,
-      thinking: true,
-      vision: true,
-      effortLevels: [],
-    }),
-    tags: ["cursor", "gpt", "terra", "thinking", "vision", "agent", "supports-max-mode"],
-  },
-]
+const CATALOG: CursorCatalogEntry[] = CURSOR_STATIC_CATALOG.map((row) => ({
+  id: row.id,
+  displayName: row.displayName,
+  wireId: row.wireId,
+  capabilities: cursorCaps({
+    contextWindow: row.contextWindow,
+    maxOutputTokens: row.maxOutputTokens,
+    thinking: row.supportsThinking,
+    vision: row.supportsImages,
+    effortLevels: row.effortLevels,
+  }),
+  tags: [
+    "cursor",
+    "live",
+    ...(row.defaultOn ? ["default-on"] : []),
+    ...(row.supportsThinking ? ["thinking"] : []),
+    ...(row.supportsImages ? ["vision"] : []),
+    "agent",
+    "supports-max-mode",
+  ],
+}))
+
+// Auto is a display alias for Cursor's canonical `default` model. Keep both
+// host ids offline without adding a bare `auto` alias that can collide globally.
+CATALOG.unshift({
+  id: "cursor-auto",
+  displayName: "Auto (Cursor)",
+  wireId: "default",
+  capabilities: cursorCaps({ contextWindow: 128 * K, vision: true, effortLevels: [] }),
+  tags: ["cursor", "auto", "default", "agent", "supports-max-mode"],
+})
 
 /** Register one Cursor model into the host registry. */
 export function registerCursorModelInto(models: ModelRegistrar, entry: CursorCatalogEntry): string {

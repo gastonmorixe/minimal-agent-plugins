@@ -264,25 +264,51 @@ describe("capabilities seed", () => {
     expect(caps.effort.levels.length).toBeGreaterThan(0)
   })
 
-  test("static catalog / ad-hoc seed use empty effort levels until live enrich", async () => {
+  test("static catalog registers all live host ids and preserves closed efforts", async () => {
     const { registerCursorModels, registerCursorAdHocModelInto } = await import("./models.ts")
     const entries = new Map<
       string,
-      { capabilities: { effort: { levels: string[] }; thinking: { visible: boolean } } }
+      {
+        capabilities: {
+          effort: { levels: string[] }
+          thinking: { visible: boolean }
+          modalities?: { image: boolean }
+        }
+        vendorIds?: { cursor?: string }
+      }
     >()
     const models = {
       register(spec: {
         id: string
-        capabilities: { effort: { levels: string[] }; thinking: { visible: boolean } }
+        capabilities: {
+          effort: { levels: string[] }
+          thinking: { visible: boolean }
+          modalities?: { image: boolean }
+        }
       }) {
         entries.set(spec.id, spec)
       },
       setDefault() {},
     }
     registerCursorModels(models as never)
-    const seed = entries.get("cursor-composer-2.5-fast")
-    expect(seed?.capabilities.thinking.visible).toBe(true)
-    expect(seed?.capabilities.effort.levels).toEqual([])
+    expect(entries.size).toBe(236)
+    const fast = entries.get("cursor-grok-4.6-high-fast")
+    expect(fast?.capabilities.thinking.visible).toBe(true)
+    expect(fast?.capabilities.modalities?.image).toBe(false)
+    expect(fast?.capabilities.effort.levels).toEqual([])
+    const nonFast = entries.get("cursor-grok-4.6-high")
+    expect(nonFast?.capabilities.thinking.visible).toBe(true)
+    expect(nonFast?.capabilities.effort.levels).toEqual([])
+    const alias = entries.get("cursor-grok-4.6")
+    expect(alias?.capabilities.thinking.visible).toBe(true)
+    expect((alias as { vendorIds?: { cursor?: string } } | undefined)?.vendorIds?.cursor).toBe(
+      "cursor-grok-4.6-high-fast",
+    )
+    const vision = entries.get("cursor-gpt-5.6-sol-medium")
+    expect(vision?.capabilities.modalities?.image).toBe(true)
+    const auto = entries.get("cursor-auto")
+    expect(auto?.vendorIds?.cursor).toBe("default")
+    expect(auto?.capabilities.thinking.visible).toBe(false)
     registerCursorAdHocModelInto(models as never, "cursor-adhoc-test")
     expect(entries.get("cursor-adhoc-test")?.capabilities.effort.levels).toEqual([])
   })

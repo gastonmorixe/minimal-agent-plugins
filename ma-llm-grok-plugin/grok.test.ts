@@ -16,7 +16,12 @@ import {
   grokApiKeyAuth,
   readGrokApiKey,
 } from "./auth.ts"
-import { CAPS_GROK_45_CHAT, CAPS_GROK_45_RESPONSES } from "./capabilities.ts"
+import {
+  CAPS_GROK_45_CHAT,
+  CAPS_GROK_45_RESPONSES,
+  CAPS_GROK_46_CHAT,
+  CAPS_GROK_46_RESPONSES,
+} from "./capabilities.ts"
 import { buildGrokHeaders } from "./headers.ts"
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import { userText } from "./lib/canonical-messages.ts"
@@ -132,6 +137,37 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
       expect(auth.baseUrl).toContain("cli-chat-proxy.grok.com")
       expect(auth.headers?.["X-XAI-Token-Auth"]).toBe("xai-grok-cli")
     }
+  })
+
+  it("registers grok-4.6 with OAuth capabilities and pricing", () => {
+    setup()
+    const flagship = resolveModel("grok-4.6")
+    expect(flagship.surfaceId).toBe("openai-responses")
+    expect(flagship.vendorIds?.firstParty).toBe("grok-4.6")
+    expect(flagship.capabilities.contextWindow).toBe(500_000)
+    expect(flagship.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+    expect(flagship.capabilities.effort.default).toBe("high")
+    expect(flagship.capabilities.modalities).toEqual({
+      image: true,
+      audio: false,
+      pdf: false,
+      video: false,
+    })
+    expect(flagship.capabilities).toEqual(CAPS_GROK_46_RESPONSES)
+    expect(flagship.pricing.inputUSD).toBe(2)
+    expect(flagship.pricing.cacheReadUSD).toBe(0.5)
+    expect(flagship.pricing.outputUSD).toBe(6)
+    expect(flagship.pricing.longContext).toEqual({
+      thresholdTokens: 200_000,
+      inputUSD: 4,
+      outputUSD: 12,
+      cacheWriteUSD: 4,
+      cacheReadUSD: 1,
+    })
+
+    const chat = resolveModel("grok-4.6-chat")
+    expect(chat.surfaceId).toBe("openai-chat-completions")
+    expect(chat.capabilities).toEqual(CAPS_GROK_46_CHAT)
   })
 
   it("registers dual surfaces: Responses preferred for frontier, Chat available", () => {
@@ -770,7 +806,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
   it("recommends subagent models by tags", () => {
     setup()
     const recs = grokAdapter.recommendSubagentModels?.() ?? []
-    expect(recs.find((r) => r.role === "deep")?.modelId).toBe("grok-4.5")
+    expect(recs.find((r) => r.role === "deep")?.modelId).toBe("grok-4.6")
     expect(recs.find((r) => r.role === "scout")?.modelId).toBe("grok-4.3")
     expect(recs.find((r) => r.role === "balanced")?.modelId).toBe("grok-build")
   })
@@ -784,8 +820,8 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
   it("registerGrokModels returns dual-surface catalog size", () => {
     setup()
     const ids = registerGrokModels(reg.models)
-    // 2×4.5 + 2×build + 2×4.3 + 3×4.20 = 9
-    expect(ids.length).toBe(9)
+    // 2×4.6 + 2×4.5 + 2×build + 2×4.3 + 3×4.20 = 11
+    expect(ids.length).toBe(11)
     registerGrokModels(reg.models) // idempotent
   })
 
