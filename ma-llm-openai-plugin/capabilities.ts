@@ -193,16 +193,22 @@ export const CAPS_O4_MINI_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
  * on the Responses entry and `gpt-5.6-chat` on the Chat entry.
  *
  * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.6-sol
- * (+ Terra/Luna siblings) and the GPT-5.6 migration guide. Effort levels are
- * the exact OpenAI API vocabulary for this model, including `none` and `max`.
+ * (+ Terra/Luna siblings) and the GPT-5.6 migration guide. Reconfirmed
+ * 2026-08-18 against ChatGPT-Codex `GET /backend-api/codex/models` (credential
+ * `openai-chatgpt-oauth-3`, plan prolite). Codex Fast is
+ * `service_tiers[{id:"priority", name:"Fast"}]` + `additional_speed_tiers:["fast"]`.
+ * Codex effort ladder for Sol/Terra is `low|medium|high|xhigh|max|ultra`
+ * (Sol default `low`; Terra default `medium`). Keep API `none` as well —
+ * public docs still list it; do not drop it just because Codex omits it.
  *
- * ChatGPT OAuth live (2026-07-30): consumer Thinking slug `gpt-5-6-thinking`
- * and work-mode `gpt-5.6-sol-wm` map here; consumer efforts are
- * `min|standard|extended|max` — do **not** replace this API ladder with those
- * labels. Consumer `max_tokens` for Thinking was 262144 (UI limit), not this
- * 1.05M API contextWindow. ChatGPT Pro lane `gpt-5-6-pro` is **not** a
- * separate API model id (`/api/docs/models/gpt-5.6-pro` 404); docs say enable
- * Pro via Responses `reasoning.mode: "pro"` on Sol/Terra/Luna.
+ * ChatGPT OAuth live: consumer slugs `gpt-5-6` / `gpt-5-6-instant` /
+ * `gpt-5-6-thinking` and work-mode `gpt-5.6-sol-wm` map here. Consumer
+ * efforts `min|standard|extended|max` must not replace this API ladder.
+ * Consumer `max_tokens` is a UI budget (Thinking 262144), not this 1.05M
+ * API contextWindow. ChatGPT Pro lane `gpt-5-6-pro` is **not** a separate
+ * API model id; docs say enable Pro via Responses `reasoning.mode: "pro"`.
+ * Codex `context_window` 272000 / `max_context_window` 872000 is the Codex
+ * compact ceiling, not a reason to downgrade the API window.
  *
  * API notes not yet represented in the host capability schema: programmatic
  * tool calling, beta multi-agent, persisted reasoning, pro mode
@@ -215,13 +221,18 @@ export const CAPS_GPT_5_6_SOL_RESPONSES: Capabilities = {
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
   thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
-  effort: { levels: ["none", "low", "medium", "high", "xhigh", "max"], default: "medium" },
+  effort: {
+    levels: ["none", "low", "medium", "high", "xhigh", "max", "ultra"],
+    default: "medium",
+  },
   acceptsTemperature: false,
   acceptsTopP: false,
   acceptsTopK: false,
   acceptsSeed: false,
   acceptsStopSequences: false,
-  speedFast: false,
+  // Codex catalog: service_tiers[{id:"priority", name:"Fast"}] +
+  // additional_speed_tiers:["fast"]. Wire value is still `priority`.
+  speedFast: true,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
   midConversationSystem: true,
@@ -250,14 +261,23 @@ export const CAPS_GPT_5_6_TERRA_CHAT: Capabilities = {
   ...CAPS_GPT_5_6_SOL_CHAT,
 }
 
-/** GPT-5.6 Luna is the high-volume, low-cost tier. */
+/**
+ * GPT-5.6 Luna is the high-volume, low-cost tier. Codex live (2026-08-18)
+ * lists Fast + efforts `low|medium|high|xhigh|max` — no `ultra` (that is
+ * Sol/Terra only). Keep API `none`. Consumer mini slugs `gpt-5-6-mini` /
+ * `gpt-5-6-t-mini` title as Luna.
+ */
 export const CAPS_GPT_5_6_LUNA_RESPONSES: Capabilities = {
   ...CAPS_GPT_5_6_SOL_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high", "xhigh", "max"], default: "medium" },
 }
 
 /** GPT-5.6 Luna on Chat Completions. */
 export const CAPS_GPT_5_6_LUNA_CHAT: Capabilities = {
-  ...CAPS_GPT_5_6_SOL_CHAT,
+  ...CAPS_GPT_5_6_LUNA_RESPONSES,
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
 }
 
 // ---------------------------------------------------------------------------
@@ -298,28 +318,32 @@ export const CAPS_GPT_5_4_CHAT: Capabilities = {
   serverTools: [],
 }
 
-/** GPT-5.4 mini. */
+/** GPT-5.4 mini. Codex catalog: no Fast / priority service tier. */
 export const CAPS_GPT_5_4_MINI_RESPONSES: Capabilities = {
   ...CAPS_GPT_5_4_RESPONSES,
   contextWindow: 400_000,
+  speedFast: false,
 }
 
 /** GPT-5.4 mini on Chat Completions. */
 export const CAPS_GPT_5_4_MINI_CHAT: Capabilities = {
   ...CAPS_GPT_5_4_CHAT,
   contextWindow: 400_000,
+  speedFast: false,
 }
 
-/** GPT-5.4 nano. */
+/** GPT-5.4 nano. Codex catalog: no Fast / priority service tier. */
 export const CAPS_GPT_5_4_NANO_RESPONSES: Capabilities = {
   ...CAPS_GPT_5_4_RESPONSES,
   contextWindow: 400_000,
+  speedFast: false,
 }
 
 /** GPT-5.4 nano on Chat Completions. */
 export const CAPS_GPT_5_4_NANO_CHAT: Capabilities = {
   ...CAPS_GPT_5_4_CHAT,
   contextWindow: 400_000,
+  speedFast: false,
 }
 
 /**
@@ -327,12 +351,14 @@ export const CAPS_GPT_5_4_NANO_CHAT: Capabilities = {
  * reasoning with visible summaries, effort `low|medium|high|xhigh`.
  *
  * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.5
- * (1,050,000 context + 128K output). Knowledge cutoff 2025-12-01. The OpenAI
- * "fast" speed tier (`additional_speed_tiers: ["fast"]` / `service_tier: "fast"`,
- * renamed from priority on 2026-07-30) is a vendor extension we do not wire
- * yet, so `speedFast` stays false (no silent wire field).
+ * (1,050,000 context + 128K output). Knowledge cutoff 2025-12-01. Codex Fast
+ * mode (`/fast`) is this model's catalog Fast tier (wire id `priority`,
+ * display name Fast) plus `additional_speed_tiers: ["fast"]`. `--fast` /
+ * `speed:"fast"` maps to wire `service_tier: "priority"` (Codex
+ * `ServiceTier.Fast.request_value()`), not Anthropic's `speed:"fast"` body
+ * field.
  *
- * ChatGPT OAuth live (2026-07-30): default picker slug `gpt-5-5`; Instant /
+ * ChatGPT OAuth live (2026-08-18): default picker slug `gpt-5-5`; Instant /
  * Thinking lanes `gpt-5-5-instant` / `gpt-5-5-thinking` are UI variants of
  * this API id (not separate registrations). Consumer Thinking efforts
  * `min|standard|extended|max` must not replace the API ladder above.
@@ -363,7 +389,7 @@ export const CAPS_GPT_5_5_RESPONSES: Capabilities = {
   acceptsTopK: false,
   acceptsSeed: false,
   acceptsStopSequences: false,
-  speedFast: false,
+  speedFast: true,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
   midConversationSystem: true,

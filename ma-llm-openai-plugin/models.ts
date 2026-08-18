@@ -1,9 +1,10 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the public OpenAI API catalog (refreshed 2026-07-30) for the
- * GPT-5.6 family plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
- * tables in `capabilities.ts` and `pricing.ts`.
+ * Mirrors the public OpenAI API catalog (refreshed 2026-07-30, Codex live
+ * reconfirmed 2026-08-18 via `openai-chatgpt-oauth-3`) for the GPT-5.6
+ * family plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series tables in
+ * `capabilities.ts` and `pricing.ts`.
  *
  * Dual-surface models (reachable on BOTH Chat Completions and the Responses
  * API) are registered TWICE, under distinct ids with different `surfaceId`s.
@@ -12,22 +13,29 @@
  * `gpt-5.6` alias resolves to `gpt-5.6-sol`, matching the public docs.
  * Pro SKUs (`gpt-5.5-pro`, `gpt-5.4-pro`) are Responses-only.
  *
- * ## ChatGPT OAuth consumer catalog ↔ API ids (2026-07-30)
+ * ## ChatGPT OAuth consumer catalog ↔ API ids (2026-08-18)
  *
  * Live ChatGPT backend (`chatgpt.com/backend-api/models`) uses hyphenated
- * consumer slugs and Instant/Thinking/Pro *lanes*. This plugin registers
- * **API** model ids only (same ids are sent on ChatGPT-Codex OAuth
- * Responses traffic). Do not register consumer-only slugs here.
+ * consumer slugs and Instant/Thinking/Pro *lanes*. Codex
+ * (`chatgpt.com/backend-api/codex/models`) lists API slugs. This plugin
+ * registers **API** model ids only (same ids are sent on ChatGPT-Codex
+ * OAuth Responses traffic). Do not register consumer-only slugs here.
+ *
+ * Codex listed (this account): `gpt-5.6-sol` / `terra` / `luna`, `gpt-5.5`,
+ * `gpt-5.4`, `gpt-5.4-mini` (Fast only on sol/terra/luna/5.5/5.4 — not mini).
+ * `gpt-5.3-codex-spark` is listed but `supported_in_api: false`. Hidden
+ * `codex-auto-review` is not a user model. Codex marks gpt-5.4 / 5.4-mini
+ * for retirement 2026-08-31 (upgrade terra / luna).
  *
  * | ChatGPT slug (live) | API id / behavior |
  * | ------------------- | ----------------- |
  * | `gpt-5-5`, `gpt-5-5-instant`, `gpt-5-5-thinking` | `gpt-5.5` (lanes are UI; Instant ≈ low/no think, Thinking ≈ reasoning effort) |
- * | `gpt-5.5-wm`, `gpt-5.5-cca-wm` | `gpt-5.5` (ChatGPT Work Mode wrappers) |
+ * | `gpt-5.5-wm` | `gpt-5.5` (ChatGPT Work Mode wrapper) |
  * | `gpt-5-5-pro` | `gpt-5.5-pro` |
- * | `gpt-5-6-thinking` | `gpt-5.6-sol` (flagship thinking; short alias `gpt-5.6`) |
+ * | `gpt-5-6`, `gpt-5-6-instant`, `gpt-5-6-thinking` | `gpt-5.6-sol` (short alias `gpt-5.6`) |
  * | `gpt-5.6-sol-wm` / `terra-wm` / `luna-wm` | `gpt-5.6-sol` / `gpt-5.6-terra` / `gpt-5.6-luna` |
+ * | `gpt-5-6-mini`, `gpt-5-6-t-mini` | `gpt-5.6-luna` (consumer mini titles Luna) |
  * | `gpt-5-6-pro` | **no** `gpt-5.6-pro` API SKU (docs 404). Use `gpt-5.6-sol` (etc.) with Responses `reasoning.mode: "pro"` — not wired in caps yet |
- * | `gpt-5-3`, `gpt-5-3-instant` | Instant snapshot ≈ deprecated API `gpt-5.3-chat-latest` (docs recommend GPT-5.6). Not registered |
  * | `gpt-5-3-mini`, `gpt-5-5-mini` | **TODO:** no public API counterpart in models catalog |
  * | `o3` | `o3` |
  * | `research` | Deep Research product surface — **TODO:** not an API chat/completions model id |
@@ -126,7 +134,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
 
   // GPT-5.6 family. Responses is preferred; the `-chat` ids target Chat
   // Completions. The short `gpt-5.6` alias routes to Sol.
-  // ChatGPT live (2026-07-30): `gpt-5-6-thinking` / `gpt-5.6-sol-wm` → sol;
+  // ChatGPT live (2026-08-18): `gpt-5-6` / instant / thinking / sol-wm → sol;
   // `gpt-5-6-pro` is consumer Pro lane (API: reasoning.mode=pro, not a SKU).
   register({
     id: "gpt-5.6-sol",

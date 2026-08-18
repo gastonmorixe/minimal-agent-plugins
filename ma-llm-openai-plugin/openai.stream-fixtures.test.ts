@@ -445,6 +445,48 @@ describe("OpenAI — service_tier (provider-neutral serviceTier mapping)", () =>
     expect(body.service_tier).toBe("priority")
   })
 
+  it("Responses: speed:fast maps to wire service_tier priority (Codex Fast)", () => {
+    bootstrap()
+    const body = buildOpenAIResponsesBody(
+      { modelId: "gpt-5.5", messages: [userText("hi")], speed: "fast" },
+      resolveModel("gpt-5.5"),
+    )
+    expect(body.service_tier).toBe("priority")
+  })
+
+  it("Responses: Codex ultra effort is sent on gpt-5.6-sol", () => {
+    bootstrap()
+    const body = buildOpenAIResponsesBody(
+      { modelId: "gpt-5.6-sol", messages: [userText("hi")], effort: "ultra" },
+      resolveModel("gpt-5.6-sol"),
+    )
+    expect(body.reasoning?.effort).toBe("ultra")
+  })
+
+  it("Responses: serviceTier 'fast' is an alias of wire priority", () => {
+    bootstrap()
+    const body = buildOpenAIResponsesBody(req("fast"), resolveModel("gpt-5.5"))
+    expect(body.service_tier).toBe("priority")
+  })
+
+  it("Responses: speed:fast does not override an explicit serviceTier", () => {
+    bootstrap()
+    const body = buildOpenAIResponsesBody(
+      { modelId: "gpt-5.5", messages: [userText("hi")], speed: "fast", serviceTier: "flex" },
+      resolveModel("gpt-5.5"),
+    )
+    expect(body.service_tier).toBe("flex")
+  })
+
+  it("Responses: speed:fast is omitted on a model without speedFast", () => {
+    bootstrap()
+    const body = buildOpenAIResponsesBody(
+      { modelId: "gpt-5.4-mini", messages: [userText("hi")], speed: "fast" },
+      resolveModel("gpt-5.4-mini"),
+    )
+    expect(body.service_tier).toBeUndefined()
+  })
+
   it("Chat: maps neutral serviceTier 'flex' to body.service_tier", () => {
     bootstrap()
     const body = buildOpenAIChatBody(
@@ -461,6 +503,15 @@ describe("OpenAI — service_tier (provider-neutral serviceTier mapping)", () =>
       resolveModel("gpt-5.5-chat"),
     )
     expect(body.service_tier).toBeUndefined()
+  })
+
+  it("Chat: speed:fast maps to wire service_tier priority", () => {
+    bootstrap()
+    const body = buildOpenAIChatBody(
+      { modelId: "gpt-5.5-chat", messages: [userText("hi")], speed: "fast" },
+      resolveModel("gpt-5.5-chat"),
+    )
+    expect(body.service_tier).toBe("priority")
   })
 })
 

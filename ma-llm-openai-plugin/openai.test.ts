@@ -44,8 +44,17 @@ describe("registerOpenAIModels", () => {
     expect(m.surfaceId).toBe("openai-responses")
     expect(m.capabilities.contextWindow).toBe(1_050_000)
     expect(m.capabilities.maxOutputTokens).toBe(128_000)
-    expect(m.capabilities.effort.levels).toEqual(["none", "low", "medium", "high", "xhigh", "max"])
+    expect(m.capabilities.effort.levels).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra",
+    ])
     expect(m.capabilities.thinking.visible).toBe(true)
+    expect(m.capabilities.speedFast).toBe(true)
     expect(m.knowledgeCutoff).toBe("2026-02-16")
     expect(m.pricing.inputUSD).toBe(5)
     expect(m.pricing.outputUSD).toBe(30)
@@ -73,6 +82,15 @@ describe("registerOpenAIModels", () => {
     expect(reg.resolveModel("gpt-5.6-terra").pricing.outputUSD).toBe(12)
     expect(reg.resolveModel("gpt-5.6-luna").pricing.inputUSD).toBe(0.2)
     expect(reg.resolveModel("gpt-5.6-luna").pricing.outputUSD).toBe(1.2)
+    expect(reg.resolveModel("gpt-5.6-terra").capabilities.effort.levels).toContain("ultra")
+    expect(reg.resolveModel("gpt-5.6-luna").capabilities.effort.levels).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
 
     const chat = reg.resolveModel("gpt-5.6-chat")
     expect(chat.id).toBe("gpt-5.6-sol-chat")
@@ -342,6 +360,21 @@ describe("validateOpenAIRequest", () => {
     expect(adapter.validate(req, model).ok).toBe(true)
   })
 
+  it("accepts Codex ultra effort on gpt-5.6 Sol/Terra and rejects it on Luna", () => {
+    setup()
+    const adapter = resolveProvider("openai")
+    const req = (modelId: string): CanonicalRequest => ({
+      modelId,
+      messages: [userText("hi")],
+      effort: "ultra",
+    })
+    expect(adapter.validate(req("gpt-5.6-sol"), resolveModel("gpt-5.6-sol")).ok).toBe(true)
+    expect(adapter.validate(req("gpt-5.6-terra"), resolveModel("gpt-5.6-terra")).ok).toBe(true)
+    const luna = adapter.validate(req("gpt-5.6-luna"), resolveModel("gpt-5.6-luna"))
+    expect(luna.ok).toBe(false)
+    expect(luna.errors.some((e) => e.capability === "effort")).toBe(true)
+  })
+
   it("rejects previousResponseId on the Chat surface (no server-side history)", () => {
     setup()
     const adapter = resolveProvider("openai")
@@ -364,5 +397,32 @@ describe("validateOpenAIRequest", () => {
     const res = adapter.validate(req, model)
     expect(res.ok).toBe(false)
     expect(res.errors.some((e) => e.capability === "effort")).toBe(true)
+  })
+
+  it("accepts speed:fast on Codex Fast-capable models (gpt-5.5 / gpt-5.6 / gpt-5.4)", () => {
+    setup()
+    const adapter = resolveProvider("openai")
+    for (const id of ["gpt-5.5", "gpt-5.6", "gpt-5.4"] as const) {
+      const res = adapter.validate(
+        { modelId: id, messages: [userText("hi")], speed: "fast" },
+        resolveModel(id),
+      )
+      expect(res.ok).toBe(true)
+    }
+  })
+
+  it("rejects speed:fast on gpt-4o / mini and offers a degrade that drops speed", () => {
+    setup()
+    const adapter = resolveProvider("openai")
+    const model = resolveModel("gpt-4o")
+    const res = adapter.validate(
+      { modelId: "gpt-4o", messages: [userText("hi")], speed: "fast" },
+      model,
+    )
+    expect(res.ok).toBe(false)
+    expect(res.errors[0]?.capability).toBe("speedFast")
+    expect(res.degrade?.speed).toBeUndefined()
+    expect(resolveModel("gpt-5.4-mini").capabilities.speedFast).toBe(false)
+    expect(resolveModel("gpt-5.4-nano").capabilities.speedFast).toBe(false)
   })
 })

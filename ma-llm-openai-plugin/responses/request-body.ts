@@ -41,7 +41,7 @@ export interface OpenAIResponsesRequestBody {
   tool_choice?: "auto" | "none" | "required" | { type: "function"; name: string }
   parallel_tool_calls?: boolean
   reasoning?: {
-    effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max"
+    effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
     summary?: "auto" | "concise" | "detailed"
   }
   response_format?:
@@ -73,8 +73,34 @@ export interface OpenAIResponsesRequestBody {
  * plugin; an unrecognized value is dropped (not sent), so a value meant for
  * a different provider can't 400 here. See OpenAI priority/flex-processing
  * docs. `scale` is the enterprise Scale-tier value, kept for completeness.
+ *
+ * Codex Fast mode is labeled `"fast"` in the catalog
+ * (`additional_speed_tiers`, service-tier display name) but the request
+ * value is still `"priority"` (Codex Fast request value).
  */
 export const OPENAI_SERVICE_TIERS = new Set(["auto", "default", "flex", "scale", "priority"])
+
+/** Wire value for Codex / ChatGPT Fast mode (`speed:"fast"` / `/fast`). */
+export const OPENAI_FAST_SERVICE_TIER = "priority"
+
+/**
+ * Resolve the OpenAI `service_tier` wire value.
+ *
+ * Precedence: `vendor.openai.serviceTier`, then canonical `serviceTier`,
+ * then `speed:"fast"` on a fast-capable model. `"fast"` is an alias of
+ * `"priority"` (Codex `from_request_value`). Unknown values are dropped.
+ */
+export function resolveOpenAIServiceTier(opts: {
+  vendorTier?: string
+  serviceTier?: string
+  speedFast?: boolean
+}): string | undefined {
+  const raw =
+    opts.vendorTier ?? opts.serviceTier ?? (opts.speedFast ? OPENAI_FAST_SERVICE_TIER : undefined)
+  if (raw === undefined) return undefined
+  const wire = raw === "fast" ? OPENAI_FAST_SERVICE_TIER : raw
+  return OPENAI_SERVICE_TIERS.has(wire) ? wire : undefined
+}
 
 export type OpenAIResponsesInputItem =
   | OpenAIResponsesMessageItem
@@ -222,8 +248,13 @@ export function buildOpenAIResponsesBody(
   // Provider-neutral service tier -> OpenAI `service_tier`. Validate against
   // the accepted set; drop (don't send) anything else. `vendor.serviceTier`
   // wins over the neutral field when both are set (explicit last-mile knob).
-  const tier = vendor?.serviceTier ?? req.serviceTier
-  if (tier !== undefined && OPENAI_SERVICE_TIERS.has(tier)) {
+  // `speed:"fast"` (CLI `--fast`) maps to Codex Fast = wire `priority`.
+  const tier = resolveOpenAIServiceTier({
+    vendorTier: vendor?.serviceTier,
+    serviceTier: req.serviceTier,
+    speedFast: req.speed === "fast" && model.capabilities.speedFast,
+  })
+  if (tier !== undefined) {
     body.service_tier = tier as NonNullable<OpenAIResponsesRequestBody["service_tier"]>
   }
 
