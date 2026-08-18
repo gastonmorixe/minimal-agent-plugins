@@ -8,6 +8,7 @@ export interface CursorCapsOptions {
   vision?: boolean
   effortLevels?: ReadonlyArray<string>
   maxMode?: boolean
+  speedFast?: boolean
 }
 
 const DEFAULT_CONTEXT_WINDOW = 128_000
@@ -27,6 +28,13 @@ const KNOWN_EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max", "standard",
  * (false levels). Only effort/reasoning families.
  */
 const EFFORT_PARAM_IDS = new Set(["effort", "reasoning", "reasoning_effort", "reasoningeffort"])
+
+/** True when a parameter id is Cursor's fast/speed boolean. */
+export function isCursorFastParamId(id: string | undefined): boolean {
+  if (!id) return false
+  const n = id.trim().toLowerCase()
+  return n === "fast" || n === "fast_mode" || n === "fastmode"
+}
 
 /** True when a parameter id is an effort/reasoning knob (exact or known alias). */
 export function isCursorEffortParamId(id: string | undefined): boolean {
@@ -176,11 +184,39 @@ export function resolveCursorEffortParamId(
  * Returns undefined when the catalog never advertised an effort parameter id.
  */
 export function effortParamIdFromTags(tags: ReadonlyArray<string> | undefined): string | undefined {
+  return taggedId(tags, "effort-param:")
+}
+
+/** Read `fast-param:<id>` from registered model tags. */
+export function fastParamIdFromTags(tags: ReadonlyArray<string> | undefined): string | undefined {
+  return taggedId(tags, "fast-param:")
+}
+
+function taggedId(tags: ReadonlyArray<string> | undefined, prefix: string): string | undefined {
   if (!tags) return undefined
   for (const tag of tags) {
-    if (tag.startsWith("effort-param:") && tag.length > "effort-param:".length) {
-      return tag.slice("effort-param:".length)
+    if (tag.startsWith(prefix) && tag.length > prefix.length) {
+      return tag.slice(prefix.length)
     }
+  }
+  return undefined
+}
+
+/** True when the catalog advertises a fast/speed boolean parameter. */
+export function resolveCursorFastParamId(
+  model: DecodedCursorModel,
+  variant?: CursorModelVariant,
+): string | undefined {
+  for (const def of model.parameterDefinitions ?? []) {
+    if (isCursorFastParamId(def.id) || isCursorFastParamId(def.name)) {
+      return (def.id ?? def.name)?.trim()
+    }
+  }
+  const values = variant
+    ? (variant.parameterValues ?? [])
+    : (model.variants ?? []).flatMap((v) => v.parameterValues ?? [])
+  for (const pv of values) {
+    if (isCursorFastParamId(pv.id)) return pv.id?.trim()
   }
   return undefined
 }
@@ -234,7 +270,7 @@ export function cursorCaps(options: CursorCapsOptions = {}): Capabilities {
     acceptsTopK: false,
     acceptsSeed: false,
     acceptsStopSequences: false,
-    speedFast: false,
+    speedFast: options.speedFast ?? false,
     tools: {
       userDefined: true,
       parallel: true,
@@ -280,6 +316,7 @@ export function deriveCursorCapabilities(model: DecodedCursorModel): Capabilitie
     vision: Boolean(model.supportsImages),
     effortLevels,
     maxMode: Boolean(model.supportsMaxMode),
+    speedFast: Boolean(resolveCursorFastParamId(model)),
   })
 }
 
@@ -327,6 +364,7 @@ export function deriveCursorVariantCapabilities(
     vision: parent.modalities.image,
     effortLevels,
     maxMode: Boolean(variant.isMaxMode ?? model.supportsMaxMode),
+    speedFast: Boolean(resolveCursorFastParamId(model, variant) ?? parent.speedFast),
   })
 }
 

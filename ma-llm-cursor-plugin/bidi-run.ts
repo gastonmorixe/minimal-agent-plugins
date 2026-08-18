@@ -32,6 +32,7 @@ import {
   encodeShellStreamExecFrames,
 } from "./proto/client-message.ts"
 import { decodeAgentServerMessage } from "./proto/exec-server-decode.ts"
+import { decodeKvServerMessage, encodeAgentClientMessageKvReply } from "./proto/kv.ts"
 import { CursorBidiEnvelopeTranslator } from "./response-stream-bidi.ts"
 
 export type CursorBidiRunOpts = {
@@ -103,6 +104,7 @@ export async function* runCursorBidi(
     translator,
     conversationId,
     pendingExec: null,
+    blobStore: new Map(),
   }
   setCursorBidiSession(sessionKey, session)
 
@@ -206,6 +208,17 @@ async function* readBidiUntilPauseOrEnd(
       }
       if (!session.pendingExec) clearCursorBidiSession(sessionKey)
       return
+    }
+
+    const kv = decodeKvServerMessage(next.value.payload)
+    if (kv) {
+      cursorBidiLog("read.kv", {
+        kind: kv.kind,
+        id: kv.id,
+        blobBytes: kv.kind === "set" ? kv.blobData.byteLength : 0,
+      })
+      session.wire.writeProto(encodeAgentClientMessageKvReply(kv, session.blobStore))
+      continue
     }
 
     const { events, streamEnded, pauseForToolUse } = session.translator.push(next.value)

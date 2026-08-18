@@ -3,9 +3,16 @@
 Cursor **AgentService/Run** provider for [minimal-agent](https://github.com/gastonmorixe/minimal-agent-core).
 
 This plugin speaks Connect RPC + protobuf (`application/connect+proto`) to
-`agentn.api5.cursor.sh` for `agent.v1.AgentService/Run`, with AiService unary RPCs
-on `api2.cursor.sh`. That is the **plugin** wire path (spike-proven), not a claim
-that every Cursor Agent CLI build uses the same primary loop.
+`agentn.global.api5.cursor.sh` for `agent.v1.AgentService/Run` (overridable via
+`MA_CURSOR_AGENT_ENDPOINT`), with AiService unary RPCs on `api2.cursor.sh`.
+The plugin fetches parameterized `AvailableModels` (`use_model_parameters=true`).
+Host ids are namespaced (`cursor-grok-4.6`, `cursor-grok-4.6-high`); parent API
+names (`grok-4.6`) are also registered as Cursor-scoped ids so
+`--provider cursor --model grok-4.6` resolves. AgentService/Run headers match
+Cursor Agent CLI (no IDE checksum). Run `RequestedModel` prefers exploded
+legacy SKUs; see
+[`docs/agent-run-too-many-computers-postmortem.md`](docs/agent-run-too-many-computers-postmortem.md)
+before changing encode or headers.
 
 MA tools are **not** sent as Cursor built-ins (`grepToolCall`, `shellToolCall`, …). They ride the
 **MCP** path (`mcp_tools` on the request, `mcp_tool_call` on the response).
@@ -20,6 +27,23 @@ ma --provider cursor --model cursor-auto
 ```
 
 `cursor-auto` maps to wire model id `default` (Cursor's Auto picker rejects bare `auto` on Run).
+
+`--provider cursor --model grok-4.6` is the Cursor-hosted Grok parent (not the
+Grok plugin). Equivalent exploded SKU: `cursor-grok-4.6-high` (or `-medium` /
+`-high-fast` with `--effort` / `--fast`).
+
+## AgentService/Run (read this before touching headers or model ids)
+
+2026-08-17: live chat failed with Connect `not_found: Error` and
+`resource_exhausted: Error` while official `cursor-agent` worked. The failure
+was **IDE fingerprint headers** (`x-cursor-checksum`, `x-client-key`,
+`x-session-id`, …) that Cursor Agent CLI does not send on AgentService — not
+“too many CLI windows”, and not “parent `grok-4.6` is an illegal Run id”.
+
+Full timeline, reverse-engineering notes, PATH trap (`agent` in fish is Grok
+CLI), and the current header/encode contract:
+
+[`docs/agent-run-too-many-computers-postmortem.md`](docs/agent-run-too-many-computers-postmortem.md)
 
 ## How Cursor tools work in MA
 
@@ -57,10 +81,11 @@ sequenceDiagram
 When the session has tools enabled (and `MA_CURSOR_BIDI` is not `0`):
 
 1. **One HTTP/2 stream** stays open for the whole user turn (until `turn_ended` or abort).
-2. Cursor sends `exec_server_message` with `mcp_args` when it wants a tool run.
-3. MA yields `tool_use`, executes the tool, then on the **next** `run()` call writes
+2. MA answers `kv_server_message` get/set-blob on that stream and sends `client_heartbeat` every 5s (Cursor Agent CLI does both). Skipping either leaves the TUI on "Receiving stream".
+3. Cursor sends `exec_server_message` with `mcp_args` when it wants a tool run.
+4. MA yields `tool_use`, executes the tool, then on the **next** `run()` call writes
    `exec_client_message` with `mcp_result` on the **same** stream (session stored by `sessionId`).
-4. Cursor continues on that stream — no second POST with folded history for tool rounds.
+5. Cursor continues on that stream — no second POST with folded history for tool rounds.
 
 Text-only / `toolChoice: none` sessions still use the unary NetworkClient path (one POST, no bidi).
 
@@ -328,7 +353,8 @@ in between. So the host parsed `safeParseToolInput("") → {}`.
 
 | Variable                 | Effect                                                       |
 |--------------------------|--------------------------------------------------------------|
-| `MA_CURSOR_BIDI_DEBUG=1` | Logs bidi frame flow, session state, tool pause/resume       |
+| `MA_CURSOR_BIDI_DEBUG=1` | Logs bidi frame flow, session state, tool pause/resume, KV acks |
+| `MA_CURSOR_BIDI_HEARTBEAT_MS` | Client heartbeat interval on keep-open Run (default `5000`; `0` disables) |
 | `MA_CURSOR_DEBUG_EXEC=1` | Logs raw protobuf fields in exec_server_message              |
 | `MINIMAL_AGENT_NET_DBG=1`| Binary captures to `~/.minimal-agent/net-dbg/`               |
 | `MA_CURSOR_BIDI=0`       | Force unary fallback (no bidi, one POST per loop step)       |
@@ -395,9 +421,13 @@ connect/
   unary.ts                One-shot POST
   hosts.ts                API host URLs
 live-models.ts            AvailableModels catalog + capability registration
-models.ts                 Static model seed
-headers.ts                Auth + client headers
+models.ts                 Static model seed + dual-register API ids
+headers.ts                Auth + CLI (default) / IDE fingerprint headers
 ids.ts                    Client identity (machineId, sessionId, etc.)
+checksum.ts               IDE x-cursor-checksum (only fingerprint=ide)
+docs/agent-run-too-many-computers-postmortem.md
+                          2026-08-17 Run/header incident (read before changing headers/encode)
+docs/bidi-tools-postmortem.md
 auth.ts                   OAuth + API key token resolution
 validate.ts               Request validation
 ```

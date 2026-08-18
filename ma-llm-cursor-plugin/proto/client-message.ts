@@ -218,3 +218,15 @@ export function encodeAgentClientMessageExecStreamClose(execNumericId: number): 
   const controlBody = encMsg(1, streamCloseBody)
   return encMsg(5, controlBody)
 }
+
+/**
+ * Encode AgentClientMessage.client_heartbeat (field 7).
+ *
+ * Official Cursor Agent CLI writes this empty message every 5s on the keep-open
+ * AgentService/Run stream. Without it the server can finish text and then sit
+ * silent — no `turn_ended`, HTTP/2 body still open, TUI stuck on
+ * "Receiving stream".
+ */
+export function encodeAgentClientMessageHeartbeat(): Uint8Array {
+  return encMsg(7, new Uint8Array(0))
+}

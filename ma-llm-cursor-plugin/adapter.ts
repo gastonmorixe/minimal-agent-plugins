@@ -30,7 +30,11 @@ import type {
   ProviderValidationResult,
   SubagentModelRecommendation,
 } from "./lib/provider-plugin.ts"
-import { listCursorLiveModels, setCursorLiveModelRegistrar } from "./live-models.ts"
+import {
+  ensureCursorLiveCatalog,
+  listCursorLiveModels,
+  setCursorLiveModelRegistrar,
+} from "./live-models.ts"
 import { registerCursorAdHocModelInto, registerCursorModels } from "./models.ts"
 import { cursorOAuthLogin } from "./oauth-login.ts"
 import {
@@ -39,6 +43,7 @@ import {
   buildCursorToolHeaders,
 } from "./request-body.ts"
 import { translateCursorStream } from "./response-stream.ts"
+import { ensureCursorServerConfig } from "./server-config.ts"
 import { fetchCursorSessionInfo } from "./session-info.ts"
 import { validateCursorRequest } from "./validate.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
@@ -77,6 +82,10 @@ export const cursorAdapter: ProviderAdapterView = {
       networkClient,
       signal: req.signal,
     })
+    await Promise.all([
+      ensureCursorServerConfig(token).catch(() => undefined),
+      ensureCursorLiveCatalog(ctx.auth).catch(() => undefined),
+    ])
     const ids = await loadClientIds()
     const bidiSessionKey = resolveBidiSessionKey(ctx.sessionId)
     // Align Cursor wire session id with host (or stable fallback) for bidi.
@@ -204,4 +213,7 @@ export const cursorProviderPlugin: ProviderPlugin = {
   apiKeyAuth: cursorApiKeyAuth,
   oauthLogin: cursorOAuthLogin,
   fetchSessionInfo: fetchCursorSessionInfo,
+  onStartupProbe(ctx) {
+    void ensureCursorLiveCatalog(ctx.auth).catch(() => undefined)
+  },
 }

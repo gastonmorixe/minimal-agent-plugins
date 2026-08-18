@@ -195,7 +195,7 @@ describe("Cursor browser login", () => {
 })
 
 describe("Cursor headers", () => {
-  it("builds checksum, correlation, and Connect headers without secrets in ids", () => {
+  it("matches Cursor Agent CLI: auth + request-id, no IDE checksum", () => {
     const headers = buildCursorHeaders({
       token: "access-redacted",
       ids: {
@@ -209,9 +209,9 @@ describe("Cursor headers", () => {
       streaming: false,
     })
     expect(headers.authorization).toBe("Bearer access-redacted")
-    expect(headers["x-cursor-checksum"]?.length).toBe(137)
     expect(headers["x-request-id"]).toBe("request-redacted")
-    expect(headers["x-amzn-trace-id"]).toBe("Root=request-redacted")
+    expect(headers["x-cursor-checksum"]).toBeUndefined()
+    expect(headers["x-amzn-trace-id"]).toBeUndefined()
     expect(headers["content-type"]).toBe("application/proto")
   })
 })

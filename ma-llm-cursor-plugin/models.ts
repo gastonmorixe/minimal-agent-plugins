@@ -8,23 +8,24 @@
  * `composer-2.5-fast` as a Cursor model id crashes host boot:
  * `alias "composer-2.5-fast" collides with an existing model id`.
  *
- * Wire slug for AgentService/Run is stored in `vendorIds.cursor` (bare API id).
+ * Parents also dual-register the API name (`grok-4.6`) as a Cursor-scoped id
+ * so `--provider cursor --model grok-4.6` resolves. That is a second model id,
+ * not a global alias (aliases still collide with Grok).
  *
- * Static seed = the authenticated AvailableModels catalog (207 visible parent
- * rows expanded to 236 host ids through aliases/legacy slugs; live probe
- * 2026-08-14 via `cursor-oauth-2`). The same expanded rows are also available
- * from live enrichment.
+ * `vendorIds.cursor` is the AgentService/Run model_id: exploded SKU for
+ * variants (`cursor-grok-4.6-high`), parent API name for parents (`grok-4.6`).
+ * Run encode and CLI header mismatch: see
+ * `docs/agent-run-too-many-computers-postmortem.md`.
  *
- * Caps from `deriveCursorCapabilities` / `cursorCaps` on that probe:
- * RPC omits contextTokenLimit* → 128K default and maxOutputTokens → 16K;
- * supportsMaxMode/supportsAgent are true for every visible row; no field-29 effort
- * params → `effortLevels: []` even when `supportsThinking`; vision from
- * `supportsImages` (185/207 visible rows).
+ * Static seed = the authenticated parameterized AvailableModels catalog
+ * (`use_model_parameters=true`). Regenerated via
+ * `scripts/generate-static-catalog.ts`.
  *
  * @module llm/providers/cursor/models
  */
 
-import { cursorCaps } from "./capabilities.ts"
+import { cursorCaps, isCursorEffortParamId, isCursorFastParamId } from "./capabilities.ts"
+import { makeCursorEncodeSpec, registerCursorRunSku, setCursorEncodeSpec } from "./encode-spec.ts"
 import type { Capabilities } from "./lib/capabilities.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
@@ -40,10 +41,22 @@ export interface CursorCatalogEntry {
   /** Host registry id — must not collide with other providers' ids/aliases. */
   id: string
   displayName: string
-  /** Bare Cursor API model slug for AgentService/Run. */
+  /** Bare Cursor API model slug for AgentService/Run (parent id when parameterized). */
   wireId: string
   capabilities: Capabilities
   tags: string[]
+  /** Parent API name for exploded variants (`grok-4.6`). */
+  parentWireId?: string
+  /** Exact AgentService/Run model_id for this row when it is a variant SKU. */
+  runModelId?: string
+  /** Default-non-max variant SKU for parent rows. */
+  defaultRunModelId?: string
+  /** Baked RequestedModel.parameters for variant rows. */
+  parameterValues?: ReadonlyArray<{ id: string; value: string }>
+  /** Parent extras from the catalog default-non-max variant (thinking/context). */
+  defaultParameterValues?: ReadonlyArray<{ id: string; value: string }>
+  /** Send variant-string f8 when the row has no parameter values. */
+  useVariantString?: boolean
 }
 
 /**
@@ -59,23 +72,69 @@ export const CURSOR_WIRE_ID_ALIASES: Readonly<Record<string, string>> = {
 /**
  * Map a user/host slug to the Cursor wire model id for Run.
  *
- * Strips one host `cursor-` namespace except when the API wire id itself starts
- * with `cursor-` (Cursor Grok SKUs: `cursor-grok-4.5-high-fast`). Those share
- * host id === wire id; stripping would send a not_found slug.
+ * Auto still maps to `default`. Grok exploded SKUs keep the `cursor-grok-…`
+ * legacy slug (AgentService/Run rejects the parent `grok-4.6`). Other
+ * variants strip one host `cursor-` namespace.
  */
 export function resolveCursorWireId(slug: string): string {
   if (CURSOR_WIRE_ID_ALIASES[slug]) return CURSOR_WIRE_ID_ALIASES[slug]!
-  if (!slug.startsWith("cursor-")) return slug
-  const bare = slug.slice("cursor-".length)
+  const host = slug.startsWith("cursor-") ? slug : `cursor-${slug}`
+  const bare = host.slice("cursor-".length)
   if (CURSOR_WIRE_ID_ALIASES[bare]) return CURSOR_WIRE_ID_ALIASES[bare]!
-  // First-party Cursor product wires keep the `cursor-` prefix on the wire.
-  if (bare.startsWith("grok-")) return slug
+  const grok = inferCursorGrokPreset(host)
+  if (grok?.effort) return host
+  if (grok) return grok.parent
   return bare
 }
 
+/** Parse `cursor-grok-4.6-high-fast` into parent + effort + fast. */
+export function inferCursorGrokPreset(hostOrWire: string):
+  | {
+      parent: string
+      effort?: string
+      fast: boolean
+    }
+  | undefined {
+  const bare = hostOrWire.replace(/^cursor-/, "")
+  const match = /^(grok-\d+\.\d+)(?:-(low|medium|high|xhigh))?(?:-(fast))?$/.exec(bare)
+  if (!match) return undefined
+  if (!match[1]) return undefined
+  // Reject `grok-4.5-fast-medium` (legacy alias order) — catalog maps those.
+  if (match[2] === undefined && match[3] === "fast") return undefined
+  return {
+    parent: match[1],
+    effort: match[2],
+    fast: match[3] === "fast",
+  }
+}
+
+function tagsForStaticRow(row: (typeof CURSOR_STATIC_CATALOG)[number]): string[] {
+  const tags = new Set<string>(["cursor", "live", "parameterized"])
+  if (row.defaultOn) tags.add("default-on")
+  if (row.supportsThinking) tags.add("thinking")
+  if (row.supportsImages) tags.add("vision")
+  tags.add("agent")
+  tags.add("supports-max-mode")
+  if (row.maxMode) tags.add("max-mode")
+  if (row.parentWireId) {
+    tags.add("variant")
+    tags.add(`parent:${row.parentWireId}`)
+  }
+  if (row.useVariantString) tags.add("variant-string")
+  if (row.effortParamId) tags.add(`effort-param:${row.effortParamId}`)
+  if (row.fastParamId) tags.add(`fast-param:${row.fastParamId}`)
+  for (const pv of row.parameterValues ?? []) {
+    tags.add(`param:${pv.id}=${pv.value}`)
+  }
+  for (const pv of row.defaultParameterValues ?? []) {
+    tags.add(`default-param:${pv.id}=${pv.value}`)
+  }
+  return [...tags]
+}
+
 /**
- * Static offline catalog. Generated rows carry canonical parent and legacy host
- * ids; `cursor-auto`/`cursor-default` are added as the user-facing Auto rows.
+ * Static offline catalog. Generated rows carry canonical parents and exploded
+ * variant host ids; `cursor-auto`/`cursor-default` are the user-facing Auto rows.
  */
 const CATALOG: CursorCatalogEntry[] = CURSOR_STATIC_CATALOG.map((row) => ({
   id: row.id,
@@ -87,16 +146,15 @@ const CATALOG: CursorCatalogEntry[] = CURSOR_STATIC_CATALOG.map((row) => ({
     thinking: row.supportsThinking,
     vision: row.supportsImages,
     effortLevels: row.effortLevels,
+    speedFast: row.speedFast ?? false,
   }),
-  tags: [
-    "cursor",
-    "live",
-    ...(row.defaultOn ? ["default-on"] : []),
-    ...(row.supportsThinking ? ["thinking"] : []),
-    ...(row.supportsImages ? ["vision"] : []),
-    "agent",
-    "supports-max-mode",
-  ],
+  tags: tagsForStaticRow(row),
+  parentWireId: row.parentWireId,
+  parameterValues: row.parameterValues,
+  defaultParameterValues: row.defaultParameterValues,
+  useVariantString: row.useVariantString,
+  runModelId: row.runModelId,
+  defaultRunModelId: row.defaultRunModelId,
 }))
 
 // Auto is a display alias for Cursor's canonical `default` model. Keep both
@@ -109,8 +167,48 @@ CATALOG.unshift({
   tags: ["cursor", "auto", "default", "agent", "supports-max-mode"],
 })
 
+/** AgentService/Run model_id for a catalog row. Variants send the exploded SKU. */
+export function catalogRunModelId(
+  entry: Pick<
+    CursorCatalogEntry,
+    "id" | "wireId" | "parentWireId" | "runModelId" | "useVariantString"
+  >,
+): string | undefined {
+  if (entry.runModelId) return entry.runModelId
+  if (entry.useVariantString) return entry.wireId
+  if (!entry.parentWireId) return undefined
+  const grok = inferCursorGrokPreset(entry.id)
+  if (grok?.effort) return entry.id
+  return entry.id.startsWith("cursor-") ? entry.id.slice("cursor-".length) : entry.id
+}
+
+function shouldDualRegisterApiId(entry: CursorCatalogEntry): boolean {
+  if (entry.parentWireId) return false
+  if (entry.tags.includes("alias") || entry.tags.includes("api-id")) return false
+  const api = entry.wireId
+  if (!api || api === entry.id) return false
+  if (api === "default" || api === "auto") return false
+  if (api.startsWith("cursor-")) return false
+  return true
+}
+
+function indexVariantSku(entry: CursorCatalogEntry, runModelId: string): void {
+  const parent = entry.parentWireId
+  if (!parent || !runModelId) return
+  const params = entry.parameterValues ?? []
+  const effort = params.find((p) => isCursorEffortParamId(p.id))?.value
+  const fastRaw = params.find((p) => isCursorFastParamId(p.id))?.value
+  const fast = fastRaw === "true" ? true : fastRaw === "false" ? false : undefined
+  registerCursorRunSku(parent, { effort, fast }, runModelId)
+  if (entry.tags.includes("default-non-max")) {
+    registerCursorRunSku(parent, {}, runModelId)
+  }
+}
+
 /** Register one Cursor model into the host registry. */
 export function registerCursorModelInto(models: ModelRegistrar, entry: CursorCatalogEntry): string {
+  const runModelId = catalogRunModelId(entry)
+  const vendorWireId = runModelId ?? entry.wireId
   const spec: ProviderModelSpec = {
     id: entry.id,
     providerId: "cursor",
@@ -122,9 +220,43 @@ export function registerCursorModelInto(models: ModelRegistrar, entry: CursorCat
     pricing: PRICING_CURSOR_GENERIC,
     estimateTokens: estimateCursorTokens,
     // Never put bare wire ids in `aliases` — they collide with Grok et al.
-    vendorIds: { cursor: entry.wireId, firstParty: entry.wireId },
+    vendorIds: { cursor: vendorWireId, firstParty: vendorWireId },
   }
   models.register(spec)
+  const effortParamId = entry.tags
+    .find((t) => t.startsWith("effort-param:"))
+    ?.slice("effort-param:".length)
+  const fastParamId = entry.tags
+    .find((t) => t.startsWith("fast-param:"))
+    ?.slice("fast-param:".length)
+  const encodeSpec = makeCursorEncodeSpec({
+    wireId: entry.wireId,
+    runModelId,
+    parentApiId: entry.parentWireId,
+    defaultRunModelId: entry.defaultRunModelId,
+    parameterValues: entry.parameterValues,
+    defaultParameterValues: entry.defaultParameterValues,
+    maxMode: entry.tags.includes("max-mode"),
+    useVariantString: entry.useVariantString,
+    effortParamId,
+    fastParamId,
+    effortLevels: entry.capabilities.effort.levels,
+    speedFast: entry.capabilities.speedFast,
+  })
+  setCursorEncodeSpec(entry.id, encodeSpec)
+  if (runModelId) indexVariantSku(entry, runModelId)
+  if (shouldDualRegisterApiId(entry)) {
+    try {
+      models.register({
+        ...spec,
+        id: entry.wireId,
+        tags: [...entry.tags, "api-id"],
+      })
+      setCursorEncodeSpec(entry.wireId, encodeSpec)
+    } catch {
+      // Another provider already owns this string as an alias.
+    }
+  }
   return entry.id
 }
 
@@ -144,27 +276,41 @@ export function registerCursorModels(models: ModelRegistrar): string[] {
  */
 export function registerCursorAdHocModelInto(models: ModelRegistrar, modelId: string): string {
   const hostId = modelId.startsWith("cursor-") ? modelId : `cursor-${modelId}`
+  const grok = inferCursorGrokPreset(hostId)
   const wireId = resolveCursorWireId(hostId)
   const hostBare = hostId.slice("cursor-".length)
   const tags = ["cursor", "ad-hoc"]
+  const parameterValues: Array<{ id: string; value: string }> = []
   if (CURSOR_WIRE_ID_ALIASES[hostBare]) {
     tags.push("alias", `canonical:${wireId}`)
   }
+  if (grok) {
+    tags.push(`parent:${grok.parent}`, "effort-param:effort", "fast-param:fast")
+    if (grok.effort) {
+      tags.push("variant", `param:effort=${grok.effort}`, `param:fast=${grok.fast}`)
+      parameterValues.push(
+        { id: "effort", value: grok.effort },
+        { id: "fast", value: String(grok.fast) },
+      )
+    }
+  }
   return registerCursorModelInto(models, {
     id: hostId,
-    wireId,
+    wireId: grok && !grok.effort ? grok.parent : wireId,
     displayName:
       hostId === "cursor-auto" || hostId === "cursor-default"
         ? "Auto (Cursor)"
         : `${hostBare} (Cursor)`,
-    // Ad-hoc: thinking ok, no effort levels without catalog effort-param tag.
-    // Auto/default: match catalog (no thinking advertised on Auto).
     capabilities: cursorCaps({
       contextWindow: 128 * K,
       thinking: hostId !== "cursor-auto" && hostId !== "cursor-default",
-      effortLevels: [],
+      effortLevels: grok?.effort ? [grok.effort] : grok ? ["low", "medium", "high", "xhigh"] : [],
+      speedFast: Boolean(grok),
     }),
     tags,
+    parentWireId: grok && grok.effort ? grok.parent : undefined,
+    parameterValues: parameterValues.length > 0 ? parameterValues : undefined,
+    runModelId: grok?.effort ? hostId : undefined,
   })
 }
 

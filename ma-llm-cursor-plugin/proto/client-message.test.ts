@@ -6,6 +6,7 @@ import { describe, expect, test } from "bun:test"
 
 import {
   encodeAgentClientMessageExecMcpResult,
+  encodeAgentClientMessageHeartbeat,
   encodeShellStreamExecFrames,
 } from "./client-message.ts"
 import { decodeFields, fieldBytes, fieldString } from "./wire.ts"
@@ -101,5 +102,16 @@ describe("encodeShellStreamExecFrames", () => {
     const exec = fieldBytes(decodeFields(frames[0]!).find((f) => f.no === 2)!)!
     const stream = fieldBytes(decodeFields(exec).find((f) => f.no === 14)!)!
     expect(decodeFields(stream)[0]!.no).toBe(5) // rejected
+  })
+})
+
+describe("encodeAgentClientMessageHeartbeat", () => {
+  test("wraps empty ClientHeartbeat in AgentClientMessage field 7", () => {
+    const body = encodeAgentClientMessageHeartbeat()
+    const outer = decodeFields(body)
+    expect(outer).toHaveLength(1)
+    expect(outer[0]!.no).toBe(7)
+    expect(outer[0]!.wire).toBe(2)
+    expect(fieldBytes(outer[0]!)?.byteLength ?? 0).toBe(0)
   })
 })

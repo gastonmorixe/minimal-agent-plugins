@@ -130,7 +130,10 @@ export function encRequestedModel(opts: AgentRunEncodeOpts): Uint8Array {
     if (!p.id || !p.value) continue
     parts.push(encMsg(3, encModelParameterValue(p)))
   }
-  parts.push(encBool(7, opts.builtInModel ?? true))
+  // CLI 2026.08.11 leaves built_in_model at proto3 default false (omitted).
+  if (opts.builtInModel) {
+    parts.push(encBool(7, true))
+  }
   if (opts.isVariantStringRepresentation) {
     parts.push(encBoolExplicit(8, true))
   }
@@ -333,6 +336,42 @@ export type ConnectEndStreamError = {
 }
 
 /**
+ * Pull title / ERROR_* codes out of Connect `details` so generic
+ * `message: "Error"` (Too many computers, AI Model Not Found) is usable.
+ * Why this exists: `docs/agent-run-too-many-computers-postmortem.md`.
+ */
+function connectErrorDetailBits(details: unknown): string[] {
+  const bits: string[] = []
+  const seen = new Set<string>()
+  const add = (raw: string) => {
+    const value = raw.trim()
+    if (!value || value === "Error" || value.length > 240) return
+    if (seen.has(value)) return
+    seen.add(value)
+    bits.push(value)
+  }
+  const walk = (value: unknown, depth: number) => {
+    if (value == null || depth > 6 || bits.length >= 4) return
+    if (typeof value === "string") {
+      if (value.startsWith("ERROR_")) add(value)
+      return
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, depth + 1)
+      return
+    }
+    if (typeof value !== "object") return
+    const obj = value as Record<string, unknown>
+    for (const key of ["title", "detail", "error", "reason", "debug_title"]) {
+      if (typeof obj[key] === "string") add(obj[key])
+    }
+    for (const nested of Object.values(obj)) walk(nested, depth + 1)
+  }
+  walk(details, 0)
+  return bits
+}
+
+/**
  * Decode Connect end-stream trailer JSON into a safe diagnostic shape.
  * Connect trailers often look like `{"error":{"code":"…","message":"…"}}`.
  */
@@ -352,16 +391,20 @@ export function parseConnectEndStreamError(payload: Uint8Array): ConnectEndStrea
         error?: { code?: unknown; message?: unknown; details?: unknown }
         code?: unknown
         message?: unknown
+        details?: unknown
       }
       const errObj = parsed.error && typeof parsed.error === "object" ? parsed.error : undefined
       const codeRaw = errObj?.code ?? parsed.code
       const msgRaw = errObj?.message ?? parsed.message
       const code = typeof codeRaw === "string" ? codeRaw : undefined
       const msg = typeof msgRaw === "string" ? msgRaw : undefined
+      const detailBits = connectErrorDetailBits(errObj?.details ?? parsed.details)
       const parts = ["cursor connect end-stream"]
       if (code) parts.push(code)
-      if (msg) parts.push(msg)
-      else parts.push(text.slice(0, 400))
+      if (msg && msg !== "Error") parts.push(msg)
+      else if (msg && detailBits.length === 0) parts.push(msg)
+      parts.push(...detailBits)
+      if (parts.length === 1) parts.push(text.slice(0, 400))
       return {
         message: parts.join(": ").slice(0, 800),
         code,

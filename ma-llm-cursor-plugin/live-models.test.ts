@@ -13,6 +13,7 @@ import {
   listCursorLiveModels,
   mapCursorLiveModels,
   registerCursorLiveCatalog,
+  resetCursorLiveCatalogCacheForTests,
   setCursorLiveModelRegistrar,
 } from "./live-models.ts"
 import { decodeAvailableModel, decodeAvailableModelsResponse } from "./proto/models-decode.ts"
@@ -129,7 +130,7 @@ describe("Cursor AvailableModels decoder", () => {
     expect(mapCursorLiveModels(decoded)).toEqual([
       { id: "cursor-composer-test", displayName: "Composer Test" },
       { id: "cursor-composer-test-alias", displayName: "Composer Test" },
-      { id: "cursor-composer-test-high", displayName: "High" },
+      { id: "cursor-composer-test-high", displayName: "Composer Test High" },
       { id: "cursor-legacy-only", displayName: "legacy-only" },
     ])
   })
@@ -270,8 +271,10 @@ describe("registerCursorLiveCatalog", () => {
     expect(variant!.capabilities.effort.levels).toEqual(["high"])
     expect(variant!.vendorIds?.cursor).toBe("composer-test-high")
     expect(variant!.tags).toContain("variant")
-    // f8 gate: real variantStringRepresentation (synthetic field 9)
-    expect(variant!.tags).toContain("variant-string")
+    expect(variant!.tags).toContain("parent:composer-test")
+    expect(variant!.tags).toContain("param:effort=high")
+    // Parameterized variants encode as exploded SKU, not f8 variant-string.
+    expect(variant!.tags).not.toContain("variant-string")
     expect(variant!.tags).not.toContain("variant-legacy-slug")
     // Selected max only on max variants (variant.isMaxMode)
     expect(variant!.tags).toContain("max-mode")
@@ -310,6 +313,7 @@ describe("listCursorLiveModels", () => {
   afterEach(() => {
     globalThis.fetch = realFetch
     setCursorLiveModelRegistrar(undefined)
+    resetCursorLiveCatalogCacheForTests()
   })
 
   it("fetches the authenticated protobuf catalog and registers caps when registrar is set", async () => {

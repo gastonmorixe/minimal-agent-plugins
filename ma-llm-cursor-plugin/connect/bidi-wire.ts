@@ -6,8 +6,24 @@
 
 import { cursorBidiLog } from "../bidi-debug.ts"
 import type { NetworkClient, NetworkResponse } from "../lib/net-types.ts"
+import { encodeAgentClientMessageHeartbeat } from "../proto/client-message.ts"
 
 import { type ConnectEnvelope, ConnectFrameReader, connectFrameProto } from "./stream.ts"
+
+/** Official Cursor Agent CLI interval for AgentClientMessage.client_heartbeat. */
+export const CURSOR_BIDI_HEARTBEAT_INTERVAL_MS = 5_000
+
+/**
+ * Heartbeat period for a keep-open AgentService/Run stream.
+ * `MA_CURSOR_BIDI_HEARTBEAT_MS=0` disables; unset uses {@link CURSOR_BIDI_HEARTBEAT_INTERVAL_MS}.
+ */
+export function cursorBidiHeartbeatIntervalMs(): number {
+  const raw = process.env.MA_CURSOR_BIDI_HEARTBEAT_MS?.trim()
+  if (raw === undefined || raw === "") return CURSOR_BIDI_HEARTBEAT_INTERVAL_MS
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0) return CURSOR_BIDI_HEARTBEAT_INTERVAL_MS
+  return n
+}
 
 export type CursorBidiWire = {
   writeProto(payload: Uint8Array): void
@@ -23,6 +39,13 @@ export type OpenCursorBidiWireOpts = {
   initialRunBody: Uint8Array
   signal?: AbortSignal
   networkClient: NetworkClient
+  /** Override heartbeat interval (ms). `0` disables. Default: {@link cursorBidiHeartbeatIntervalMs}. */
+  heartbeatIntervalMs?: number
+}
+
+export type CreateBidiWireOpts = {
+  /** Override heartbeat interval (ms). `0` disables. Default: {@link cursorBidiHeartbeatIntervalMs}. */
+  heartbeatIntervalMs?: number
 }
 
 /** Open AgentService/Run with a writable request stream via host Http2Transport. */
@@ -56,21 +79,42 @@ export async function openCursorBidiWire(opts: OpenCursorBidiWireOpts): Promise<
       "cursor bidi: host transport did not expose writeRequestBody (need h2 + keepRequestOpen)",
     )
   }
-  return createBidiWireFromResponse(response)
+  return createBidiWireFromResponse(response, {
+    heartbeatIntervalMs: opts.heartbeatIntervalMs,
+  })
 }
 
 /** Wrap a keep-open NetworkResponse as a Connect envelope reader + writer. */
-export function createBidiWireFromResponse(response: NetworkResponse): CursorBidiWire {
+export function createBidiWireFromResponse(
+  response: NetworkResponse,
+  opts: CreateBidiWireOpts = {},
+): CursorBidiWire {
   const frameReader = new ConnectFrameReader()
   const bodyReader = response.body.getReader()
   const queue: ConnectEnvelope[] = []
   let waiters: Array<(next: ConnectEnvelope | "closed") => void> = []
   let closed = false
   let pumpError: Error | undefined
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined
+  const heartbeatIntervalMs = opts.heartbeatIntervalMs ?? cursorBidiHeartbeatIntervalMs()
 
   const flushWaiters = (kind: ConnectEnvelope | "closed") => {
     for (const w of waiters) w(kind)
     waiters = []
+  }
+
+  const stopHeartbeats = () => {
+    if (heartbeatTimer === undefined) return
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = undefined
+  }
+
+  const markClosed = (err?: Error) => {
+    if (closed) return
+    closed = true
+    stopHeartbeats()
+    if (err) pumpError = err
+    flushWaiters("closed")
   }
 
   const enqueue = (env: ConnectEnvelope) => {
@@ -90,16 +134,22 @@ export function createBidiWireFromResponse(response: NetworkResponse): CursorBid
       waiters.push(resolve)
     })
 
+  const writeProto = (payload: Uint8Array) => {
+    if (closed) throw new Error("cursor bidi wire: closed")
+    const framed = connectFrameProto(payload)
+    cursorBidiLog("wire.write", { protoBytes: payload.length, framedBytes: framed.length })
+    response.writeRequestBody!(framed)
+  }
+
   const close = () => {
     if (closed) return
-    closed = true
+    markClosed()
     try {
       response.endRequestBody?.()
     } catch {
       /* ignore */
     }
     void bodyReader.cancel().catch(() => undefined)
-    flushWaiters("closed")
   }
 
   // One background pump for the wire lifetime — multiple envelopes() consumers
@@ -110,8 +160,7 @@ export function createBidiWireFromResponse(response: NetworkResponse): CursorBid
         const { done, value } = await bodyReader.read()
         if (done) {
           cursorBidiLog("wire.body-done")
-          closed = true
-          flushWaiters("closed")
+          markClosed()
           return
         }
         if (value && value.byteLength > 0) {
@@ -121,11 +170,11 @@ export function createBidiWireFromResponse(response: NetworkResponse): CursorBid
         }
       }
     } catch (err) {
-      pumpError = err instanceof Error ? err : new Error(String(err))
-      cursorBidiLog("wire.pump-error", { message: pumpError.message })
-      closed = true
-      flushWaiters("closed")
+      const error = err instanceof Error ? err : new Error(String(err))
+      cursorBidiLog("wire.pump-error", { message: error.message })
+      markClosed(error)
     } finally {
+      stopHeartbeats()
       try {
         bodyReader.releaseLock()
       } catch {
@@ -134,13 +183,23 @@ export function createBidiWireFromResponse(response: NetworkResponse): CursorBid
     }
   })()
 
+  if (heartbeatIntervalMs > 0) {
+    heartbeatTimer = setInterval(() => {
+      if (closed) {
+        stopHeartbeats()
+        return
+      }
+      try {
+        cursorBidiLog("wire.heartbeat", { intervalMs: heartbeatIntervalMs })
+        writeProto(encodeAgentClientMessageHeartbeat())
+      } catch {
+        stopHeartbeats()
+      }
+    }, heartbeatIntervalMs)
+  }
+
   return {
-    writeProto(payload: Uint8Array) {
-      if (closed) throw new Error("cursor bidi wire: closed")
-      const framed = connectFrameProto(payload)
-      cursorBidiLog("wire.write", { protoBytes: payload.length, framedBytes: framed.length })
-      response.writeRequestBody!(framed)
-    },
+    writeProto,
     close,
     isClosed() {
       return closed

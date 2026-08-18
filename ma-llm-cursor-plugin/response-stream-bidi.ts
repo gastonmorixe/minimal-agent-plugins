@@ -332,6 +332,8 @@ export class CursorBidiEnvelopeTranslator {
       } else if (ev.kind === "turn_ended") {
         events.push(...this.finish(this.sawToolUse ? "tool_use" : "end_turn"))
         return { events, turnEnded: true, pauseForToolUse: this.sawToolUse }
+      } else {
+        cursorBidiLog("translate.skip", { kind: ev.kind, rawField: ev.rawField })
       }
     }
     return { events, turnEnded: false, pauseForToolUse }

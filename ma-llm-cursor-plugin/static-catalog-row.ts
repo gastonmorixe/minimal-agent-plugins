@@ -9,4 +9,14 @@ export interface CursorStaticCatalogRow {
   contextWindow: number
   maxOutputTokens: number
   effortLevels: readonly string[]
+  speedFast?: boolean
+  parentWireId?: string
+  runModelId?: string
+  defaultRunModelId?: string
+  parameterValues?: ReadonlyArray<{ id: string; value: string }>
+  defaultParameterValues?: ReadonlyArray<{ id: string; value: string }>
+  effortParamId?: string
+  fastParamId?: string
+  maxMode?: boolean
+  useVariantString?: boolean
 }

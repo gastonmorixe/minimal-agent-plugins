@@ -8,6 +8,25 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-08-17 (this session): Cursor AgentService/Run chat no longer dies with
+  Connect `not_found` / `resource_exhausted` (“Too many computers”). Root
+  cause was IDE fingerprint headers (`x-cursor-checksum`, `x-client-key`,
+  …), not exploded SKUs. Default headers now match Cursor Agent CLI
+  (`fingerprint: "cli"`, no IDE checksum). Parameterized AvailableModels
+  (`use_model_parameters=true`) dual-registers parent API names (`grok-4.6`)
+  and exploded host ids; Run `RequestedModel` prefers exploded legacy SKUs
+  (`cursor-grok-4.6-high`). Default agent host is
+  `agentn.global.api5.cursor.sh` (GetServerConfig `agentn_url`); client
+  version is `cli-*`. See
+  `ma-llm-cursor-plugin/docs/agent-run-too-many-computers-postmortem.md`.
+
+- 2026-08-17 (this session): Cursor bidi turns no longer leave the TUI on
+  “Receiving stream ⋯ stalled” after text already arrived. MA now answers
+  `kv_server_message` get/set-blob with `kv_client_message` and sends
+  `client_heartbeat` every 5s (`MA_CURSOR_BIDI_HEARTBEAT_MS`; `0` disables).
+  Skipping either left the keep-open HTTP/2 read hanging so
+  `requestStatus` never cleared.
+
 - 2026-08-14 (this session): Cursor's offline registry now includes all 207 visible
   authenticated AvailableModels parents plus their namespaced alias/legacy rows
   (236 host ids total), including non-fast Grok variants. Capabilities preserve

@@ -1,10 +1,9 @@
 /**
- * Generated from authenticated Cursor AvailableModels.
+ * Generated from authenticated Cursor AvailableModels (parameterized).
  *
- * Source probe: 2026-08-14 via cursor-oauth-2; 207 visible, non-hidden parents.
- * Expanded parents plus legacy slugs/aliases with first-wins host-id collision policy.
- * The resulting rows plus cursor-auto match the authenticated models-live listing.
- * Effort levels stay closed unless the catalog exposes a wire effort parameter.
+ * Source probe: 2026-08-17 via cursor-oauth-2 with use_model_parameters=true.
+ * Parents use API names (`grok-4.6`); exploded variant host ids keep legacy
+ * slugs (`cursor-grok-4.6-high`) for AgentService/Run.
  */
 
 import { CURSOR_STATIC_CATALOG_PART as static_catalog_part_1 } from "./static-catalog-part-1.ts"

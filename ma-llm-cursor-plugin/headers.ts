@@ -1,6 +1,12 @@
 /**
  * Cursor Connect request headers.
  *
+ * Default fingerprint is **CLI** (Cursor Agent CLI AgentService interceptor):
+ * auth, ghost-mode, client-type/version, request-id. Do **not** add IDE
+ * checksum / client-key / session-id on this path — that is Connect
+ * `resource_exhausted` “Too many computers” while `cursor-agent` still works.
+ * Full incident: `docs/agent-run-too-many-computers-postmortem.md`.
+ *
  * Auth: Bearer token must already be resolved from MA ProviderAuth
  * (oauth access token or api-key exchange result). Never reads env secrets
  * or keychain.
@@ -9,11 +15,11 @@
  */
 
 import { buildCursorChecksum } from "./checksum.ts"
+import { resolveCursorClientVersion } from "./client-version.ts"
 import type { ClientIds } from "./ids.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import {
   CURSOR_CLIENT_TYPE,
-  CURSOR_CLIENT_VERSION_DEFAULT,
   CURSOR_CONNECT_PROTOCOL_VERSION,
   CURSOR_GHOST_MODE_DEFAULT,
   CURSOR_STREAM_CONTENT_TYPE,
@@ -49,40 +55,47 @@ export interface CursorHeaderOptions {
   requestId?: string
   nowMs?: number
   extra?: Readonly<Record<string, string>>
+  /**
+   * `cli` (default) matches Cursor Agent CLI AgentService interceptors:
+   * auth + ghost + client-type/version + request-id. No IDE checksum.
+   * `ide` restores the workbench fingerprint headers (checksum / client-key).
+   */
+  fingerprint?: "cli" | "ide"
 }
 
-/** Build Cursor fingerprint + auth headers shared by unary and stream calls. */
+/** Build Cursor auth headers shared by unary and stream calls. */
 export function buildCursorHeaders(options: CursorHeaderOptions): Record<string, string> {
   const requestId = options.requestId ?? crypto.randomUUID()
+  const fingerprint = options.fingerprint ?? "cli"
   const headers: Record<string, string> = {
     accept: options.streaming ? CURSOR_STREAM_CONTENT_TYPE : CURSOR_UNARY_CONTENT_TYPE,
     authorization: `Bearer ${options.token}`,
     "connect-protocol-version": CURSOR_CONNECT_PROTOCOL_VERSION,
     "content-type": options.streaming ? CURSOR_STREAM_CONTENT_TYPE : CURSOR_UNARY_CONTENT_TYPE,
     "user-agent": CURSOR_USER_AGENT,
-    "x-amzn-trace-id": `Root=${requestId}`,
-    "x-client-key": options.ids.clientKey,
-    "x-cursor-checksum": buildCursorChecksum(
+    "x-cursor-client-type": options.clientType ?? CURSOR_CLIENT_TYPE,
+    "x-cursor-client-version": resolveCursorClientVersion(),
+    "x-ghost-mode": String(options.ghostMode ?? CURSOR_GHOST_MODE_DEFAULT),
+    "x-request-id": requestId,
+  }
+  // Match Cursor Agent CLI stream interceptor (gzip); not an IDE-only header.
+  if (options.streaming !== false) {
+    headers["connect-accept-encoding"] = "gzip"
+  }
+  if (fingerprint === "ide") {
+    headers["x-amzn-trace-id"] = `Root=${requestId}`
+    headers["x-client-key"] = options.ids.clientKey
+    headers["x-cursor-checksum"] = buildCursorChecksum(
       options.ids.machineId,
       options.ids.macMachineId,
       options.nowMs,
-    ),
-    "x-cursor-client-arch": process.arch === "arm64" ? "arm64" : "x64",
-    "x-cursor-client-device-type": "desktop",
-    "x-cursor-client-os": process.platform === "darwin" ? "darwin" : process.platform,
-    "x-cursor-client-type": options.clientType ?? CURSOR_CLIENT_TYPE,
-    // Spike-proven client version (not package 0.1.0). Override via MA_CURSOR_CLIENT_VERSION.
-    "x-cursor-client-version":
-      process.env.MA_CURSOR_CLIENT_VERSION ?? CURSOR_CLIENT_VERSION_DEFAULT,
-    "x-cursor-streaming": options.streaming === false ? "false" : "true",
-    "x-cursor-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
-    "x-ghost-mode": String(options.ghostMode ?? CURSOR_GHOST_MODE_DEFAULT),
-    "x-request-id": requestId,
-    "x-session-id": options.ids.sessionId,
-  }
-  // Match spike probe-run headers for AgentService/Run (harmless on unary).
-  if (options.streaming !== false) {
-    headers["connect-accept-encoding"] = "gzip"
+    )
+    headers["x-cursor-client-arch"] = process.arch === "arm64" ? "arm64" : "x64"
+    headers["x-cursor-client-device-type"] = "desktop"
+    headers["x-cursor-client-os"] = process.platform === "darwin" ? "darwin" : process.platform
+    headers["x-cursor-streaming"] = options.streaming === false ? "false" : "true"
+    headers["x-cursor-timezone"] = Intl.DateTimeFormat().resolvedOptions().timeZone
+    headers["x-session-id"] = options.ids.sessionId
   }
   if (options.clientLayout) headers["x-cursor-client-layout"] = options.clientLayout
   if (options.ids.configVersion) {

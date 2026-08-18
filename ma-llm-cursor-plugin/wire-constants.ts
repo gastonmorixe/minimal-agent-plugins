@@ -18,9 +18,9 @@
 export const CURSOR_API_BASE =
   process.env.MA_CURSOR_API_ENDPOINT?.replace(/\/$/, "") ?? "https://api2.cursor.sh"
 
-/** AgentService base (Run, GetUsableModels). */
+/** AgentService base (Run, GetUsableModels). CLI GetServerConfig agentn_url. */
 export const CURSOR_AGENT_BASE =
-  process.env.MA_CURSOR_AGENT_ENDPOINT?.replace(/\/$/, "") ?? "https://agentn.api5.cursor.sh"
+  process.env.MA_CURSOR_AGENT_ENDPOINT?.replace(/\/$/, "") ?? "https://agentn.global.api5.cursor.sh"
 
 /** Website origin for loginDeepControl URLs. */
 export const CURSOR_WEBSITE_URL =
@@ -53,6 +53,9 @@ export const CURSOR_SURFACE_AGENT_RUN = "cursor-agent-run"
 /** AiService AvailableModels RPC path. */
 export const CURSOR_RPC_AVAILABLE_MODELS = "aiserver.v1.AiService/AvailableModels"
 
+/** ServerConfigService GetServerConfig (agent URL overlay). */
+export const CURSOR_RPC_GET_SERVER_CONFIG = "aiserver.v1.ServerConfigService/GetServerConfig"
+
 /** AgentService GetUsableModels RPC path. */
 export const CURSOR_RPC_GET_USABLE_MODELS = "agent.v1.AgentService/GetUsableModels"
 
@@ -66,12 +69,13 @@ export const CURSOR_RPC_EXCHANGE_API_KEY_PATH = "/auth/exchange_user_api_key"
 export const CURSOR_AUTH_POLL_PATH = "/auth/poll"
 
 /**
- * Value for `x-cursor-client-version`. Must look like a real Cursor client —
- * the live spike uses `3.12.30`. Do **not** send the plugin package version
- * (`0.1.0`); the agent gateway may reject unknown client versions with a
- * Connect end-stream error.
+ * Value for `x-cursor-client-version`. Must look like a real Cursor Agent CLI
+ * stamp (`cli-YYYY.MM.DD-<sha>`). The IDE spike (`3.12.30`) is rejected by the
+ * current agent gateway with Connect `resource_exhausted`. Override via
+ * `MA_CURSOR_CLIENT_VERSION`. `headers.ts` also detects an installed
+ * `cursor-agent` under `~/.local/share/cursor-agent/versions`.
  */
-export const CURSOR_CLIENT_VERSION_DEFAULT = "3.12.30"
+export const CURSOR_CLIENT_VERSION_DEFAULT = "cli-2026.08.11-e8db854"
 
 /** Plugin display version for diagnostics (not the Connect client version). */
 export const CURSOR_PLUGIN_VERSION = "0.1.0"

@@ -9,6 +9,7 @@ import {
   CURSOR_API_BASE,
   CURSOR_RPC_AGENT_RUN,
   CURSOR_RPC_AVAILABLE_MODELS,
+  CURSOR_RPC_GET_SERVER_CONFIG,
   CURSOR_RPC_GET_USABLE_MODELS,
   CURSOR_WEBSITE_URL,
 } from "../wire-constants.ts"
@@ -18,9 +19,24 @@ export function apiBase(): string {
   return CURSOR_API_BASE
 }
 
+let overlayAgentBase: string | undefined
+
+/** Overlay AgentService base from GetServerConfig (ignored when env is set). */
+export function overlayAgentBaseUrl(url: string): void {
+  const trimmed = url.trim().replace(/\/$/, "")
+  if (trimmed) overlayAgentBase = trimmed
+}
+
+/** Test helper. */
+export function resetAgentBaseOverlayForTests(): void {
+  overlayAgentBase = undefined
+}
+
 /** AgentService base URL (no trailing slash). */
 export function agentBase(): string {
-  return CURSOR_AGENT_BASE
+  const env = process.env.MA_CURSOR_AGENT_ENDPOINT?.replace(/\/$/, "")
+  if (env) return env
+  return overlayAgentBase ?? CURSOR_AGENT_BASE
 }
 
 /** Website origin for login URLs. */
@@ -36,6 +52,11 @@ export function availableModelsUrl(): string {
 /** Full URL for GetUsableModels unary RPC. */
 export function getUsableModelsUrl(): string {
   return `${agentBase()}/${CURSOR_RPC_GET_USABLE_MODELS}`
+}
+
+/** Full URL for GetServerConfig unary RPC. */
+export function getServerConfigUrl(): string {
+  return `${apiBase()}/${CURSOR_RPC_GET_SERVER_CONFIG}`
 }
 
 /** Full URL for AgentService/Run stream RPC. */
