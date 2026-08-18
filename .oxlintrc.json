@@ -81,6 +81,12 @@
         "jsdoc-js/check-param-names": "off",
         "require-yield": "off"
       }
+    },
+    {
+      "files": ["**/static-catalog-part-*.ts"],
+      "rules": {
+        "max-lines": "off"
+      }
     }
   ],
   "ignorePatterns": [

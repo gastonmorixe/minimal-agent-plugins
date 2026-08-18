@@ -35,8 +35,10 @@ describe("cursor wire model id aliases", () => {
     expect(resolveCursorWireId("cursor-composer-2.5-fast")).toBe("composer-2.5-fast")
   })
 
-  test("Cursor Grok wire ids keep the cursor- prefix", () => {
+  test("Cursor Grok exploded SKUs stay as Run slugs; parents keep the API name", () => {
     expect(resolveCursorWireId("cursor-grok-4.5-high-fast")).toBe("cursor-grok-4.5-high-fast")
+    expect(resolveCursorWireId("cursor-grok-4.6")).toBe("grok-4.6")
+    expect(resolveCursorWireId("cursor-grok-4.6-high")).toBe("cursor-grok-4.6-high")
     expect(
       cursorWireModelId({
         id: "cursor-grok-4.5-high-fast",
@@ -73,6 +75,7 @@ describe("cursor provider plugin shape", () => {
     expect(typeof cursorProviderPlugin.listLiveModels).toBe("function")
     expect(cursorProviderPlugin.publicModelList).toBeUndefined()
     expect(typeof cursorProviderPlugin.register).toBe("function")
+    expect(typeof cursorProviderPlugin.onStartupProbe).toBe("function")
   })
 
   test("adapter surface is cursor-agent-run", () => {
@@ -80,20 +83,27 @@ describe("cursor provider plugin shape", () => {
     expect(cursorAdapter.surfaces).toEqual([CURSOR_SURFACE_AGENT_RUN])
   })
 
-  test("stream headers advertise spike client version + connect-accept-encoding", async () => {
+  test("stream headers advertise CLI client version + connect-accept-encoding", async () => {
     const { buildClientIds } = await import("./ids.ts")
-    const { CURSOR_CLIENT_VERSION_DEFAULT } = await import("./wire-constants.ts")
     const ids = await buildClientIds({ machineId: "a".repeat(64), sessionId: "s" })
-    const headers = buildCursorHeaders({
-      token: "t",
-      ids,
-      streaming: true,
-      clientType: "cli",
-    })
-    expect(headers["x-cursor-client-version"]).toBe(CURSOR_CLIENT_VERSION_DEFAULT)
-    expect(headers["x-cursor-client-version"]).toBe("3.12.30")
-    expect(headers["connect-accept-encoding"]).toBe("gzip")
-    expect(headers["user-agent"]).toBe("connect-es/1.6.1")
+    const prev = process.env.MA_CURSOR_CLIENT_VERSION
+    process.env.MA_CURSOR_CLIENT_VERSION = "cli-test-override"
+    try {
+      const headers = buildCursorHeaders({
+        token: "t",
+        ids,
+        streaming: true,
+        clientType: "cli",
+      })
+      expect(headers["x-cursor-client-version"]).toBe("cli-test-override")
+      expect(headers["connect-accept-encoding"]).toBe("gzip")
+      expect(headers["user-agent"]).toBe("connect-es/1.6.1")
+      expect(headers["x-cursor-checksum"]).toBeUndefined()
+      expect(headers["x-client-key"]).toBeUndefined()
+    } finally {
+      if (prev === undefined) delete process.env.MA_CURSOR_CLIENT_VERSION
+      else process.env.MA_CURSOR_CLIENT_VERSION = prev
+    }
   })
 
   test("listLiveModels is wired (may reject without network/auth)", async () => {
@@ -227,7 +237,7 @@ describe("ids + headers", () => {
     expect(bearerToken({ kind: "api-key", key: "raw-key" })).toBeNull()
   })
 
-  test("buildCursorHeaders sets checksum and content-type", async () => {
+  test("buildCursorHeaders matches CLI (no IDE checksum) by default", async () => {
     const ids = await buildClientIds({
       machineId: "a".repeat(64),
       macMachineId: "b".repeat(64),
@@ -243,6 +253,27 @@ describe("ids + headers", () => {
     expect(headers.authorization).toBe("Bearer secret")
     expect(headers["content-type"]).toBe("application/connect+proto")
     expect(headers["connect-protocol-version"]).toBe("1")
+    expect(headers["x-cursor-client-type"]).toBe("cli")
+    expect(headers["x-ghost-mode"]).toBe("true")
+    expect(headers["x-cursor-checksum"]).toBeUndefined()
+    expect(headers["x-client-key"]).toBeUndefined()
+    expect(headers["x-session-id"]).toBeUndefined()
+  })
+
+  test("buildCursorHeaders fingerprint=ide restores checksum headers", async () => {
+    const ids = await buildClientIds({
+      machineId: "a".repeat(64),
+      macMachineId: "b".repeat(64),
+      clientKey: "k".repeat(64),
+      sessionId: "s",
+    })
+    const headers = buildCursorHeaders({
+      token: "secret",
+      ids,
+      streaming: true,
+      nowMs: 1_700_000_000_000,
+      fingerprint: "ide",
+    })
     expect(headers["x-cursor-checksum"]?.length).toBe(137)
     expect(headers["x-client-key"]).toBe("k".repeat(64))
   })
@@ -291,19 +322,25 @@ describe("capabilities seed", () => {
       setDefault() {},
     }
     registerCursorModels(models as never)
-    expect(entries.size).toBe(236)
+    const namespaced = [...entries.keys()].filter((id) => id.startsWith("cursor-"))
+    expect(namespaced.length).toBe(299)
+    expect(entries.has("grok-4.6")).toBe(true)
+    expect(entries.get("grok-4.6")?.vendorIds?.cursor).toBe("grok-4.6")
     const fast = entries.get("cursor-grok-4.6-high-fast")
     expect(fast?.capabilities.thinking.visible).toBe(true)
-    expect(fast?.capabilities.modalities?.image).toBe(false)
-    expect(fast?.capabilities.effort.levels).toEqual([])
+    expect(fast?.capabilities.modalities?.image).toBe(true)
+    expect(fast?.capabilities.effort.levels).toEqual(["high"])
+    expect(fast?.vendorIds?.cursor).toBe("cursor-grok-4.6-high-fast")
     const nonFast = entries.get("cursor-grok-4.6-high")
     expect(nonFast?.capabilities.thinking.visible).toBe(true)
-    expect(nonFast?.capabilities.effort.levels).toEqual([])
+    expect(nonFast?.capabilities.effort.levels).toEqual(["high"])
+    expect(nonFast?.vendorIds?.cursor).toBe("cursor-grok-4.6-high")
     const alias = entries.get("cursor-grok-4.6")
     expect(alias?.capabilities.thinking.visible).toBe(true)
     expect((alias as { vendorIds?: { cursor?: string } } | undefined)?.vendorIds?.cursor).toBe(
-      "cursor-grok-4.6-high-fast",
+      "grok-4.6",
     )
+    expect(alias?.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
     const vision = entries.get("cursor-gpt-5.6-sol-medium")
     expect(vision?.capabilities.modalities?.image).toBe(true)
     const auto = entries.get("cursor-auto")

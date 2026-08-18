@@ -59,9 +59,11 @@ async function loadCursorAuthFromStore(): Promise<ProviderAuth> {
   const text = await Bun.file(path).text()
   const parsed = parseJsonc(text) as AuthStoreFile
   const entries = parsed.entries ?? []
-  const oauthEntry = entries.find((e) => e.id === CURSOR_OAUTH.serviceId)
-  if (oauthEntry) {
-    const auth = readCursorOAuthAuth(oauthEntry.secrets)
+  const oauthNamed =
+    entries.find((e) => e.name === "cursor-oauth-2") ??
+    entries.find((e) => e.id === CURSOR_OAUTH.serviceId)
+  if (oauthNamed) {
+    const auth = readCursorOAuthAuth(oauthNamed.secrets)
     if (auth) return auth
   }
   const keyEntry = entries.find((e) => e.id === CURSOR_API_KEY_AUTH.serviceId)
@@ -180,6 +182,57 @@ describe("cursor provider live (E2E=1)", () => {
       }
     },
     60_000,
+  )
+
+  test.skipIf(skip)(
+    "text-only with tools advertised still ends (kv ack + heartbeat)",
+    async () => {
+      delete process.env.MA_CURSOR_STREAM_TRANSPORT
+      process.env.MA_CURSOR_BIDI_DEBUG = "1"
+      const auth = await loadCursorAuthFromStore()
+      const networkClient = await createE2ENetworkClient()
+      try {
+        const gen = cursorAdapter.run(
+          {
+            modelId: "cursor-auto",
+            messages: [
+              { role: "user", content: [{ type: "text", text: "Reply with exactly: PONG" }] },
+            ],
+            tools: [
+              {
+                name: "ModelInfo",
+                description: "Return session model and provider metadata as JSON text.",
+                inputSchema: { type: "object", properties: {} },
+              },
+            ],
+            generation: { maxOutputTokens: 64 },
+          },
+          {
+            id: "cursor-auto",
+            providerId: "cursor",
+            surfaceId: CURSOR_SURFACE_AGENT_RUN,
+            displayName: "Auto (Cursor)",
+            capabilities: cursorCaps(),
+            pricing: ZERO_PRICING,
+            vendorIds: { cursor: "default" },
+          },
+          {
+            auth,
+            sessionId: `e2e-cursor-heartbeat-${crypto.randomUUID()}`,
+            networkClient,
+          },
+        )
+        const phase = await consumeWithTimeout("text-only-with-tools", gen, { timeoutMs: 35_000 })
+        expect(phase.events.some((e) => e.type === "message_start")).toBe(true)
+        expect(phase.events.some((e) => e.type === "message_stop")).toBe(true)
+        expect(phase.text.toUpperCase()).toContain("PONG")
+      } finally {
+        delete process.env.MA_CURSOR_BIDI_DEBUG
+        resetCursorBidiSessionsForTests()
+        await networkClient.close?.()
+      }
+    },
+    45_000,
   )
 
   test.skipIf(skip)(
@@ -311,7 +364,66 @@ describe("cursor provider live (E2E=1)", () => {
       for (const row of rows) {
         expect(row.id.startsWith("cursor-")).toBe(true)
       }
+      expect(rows.some((row) => row.id === "cursor-grok-4.6")).toBe(true)
+      expect(rows.some((row) => row.id === "cursor-grok-4.6-high")).toBe(true)
     },
     30_000,
+  )
+
+  test.skipIf(skip)(
+    "cursor-grok-4.6-high text round-trip",
+    async () => {
+      delete process.env.MA_CURSOR_STREAM_TRANSPORT
+      const auth = await loadCursorAuthFromStore()
+      const networkClient = await createE2ENetworkClient()
+      try {
+        const gen = cursorAdapter.run(
+          {
+            modelId: "cursor-grok-4.6-high",
+            messages: [
+              { role: "user", content: [{ type: "text", text: "Reply with exactly: PONG" }] },
+            ],
+            generation: { maxOutputTokens: 64 },
+          },
+          {
+            id: "cursor-grok-4.6-high",
+            providerId: "cursor",
+            surfaceId: CURSOR_SURFACE_AGENT_RUN,
+            displayName: "Cursor Grok 4.6 High",
+            capabilities: cursorCaps({
+              thinking: true,
+              vision: true,
+              effortLevels: ["high"],
+              speedFast: true,
+            }),
+            pricing: ZERO_PRICING,
+            vendorIds: { cursor: "grok-4.6" },
+            tags: [
+              "cursor",
+              "variant",
+              "parent:grok-4.6",
+              "param:effort=high",
+              "param:fast=false",
+              "effort-param:effort",
+              "fast-param:fast",
+            ],
+          },
+          { auth, sessionId: "e2e-cursor-grok-high", networkClient },
+        )
+        let text = ""
+        const events: Array<{ type: string }> = []
+        for await (const ev of gen) {
+          events.push({ type: ev.type })
+          if (ev.type === "text_delta") text += ev.text
+          if (ev.type === "stream_error") throw ev.cause ?? new Error("stream_error")
+        }
+        expect(events.some((e) => e.type === "message_start")).toBe(true)
+        expect(events.some((e) => e.type === "message_stop")).toBe(true)
+        expect(text.toUpperCase()).toContain("PONG")
+      } finally {
+        await networkClient.close?.()
+      }
+    },
+    90_000,
   )
 })

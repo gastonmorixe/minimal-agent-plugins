@@ -2,9 +2,10 @@
  * Regression: Cursor wire agent mode must default to AGENT (not ASK),
  * must not rewrite system text for mode, and must honor metadata override only.
  */
-import { describe, expect, test } from "bun:test"
+import { beforeEach, describe, expect, test } from "bun:test"
 
 import { cursorCaps } from "./capabilities.ts"
+import { resetCursorEncodeSpecsForTests } from "./encode-spec.ts"
 import { AGENT_MODE } from "./proto/agent-run.ts"
 import { decodeFields, fieldBytes, fieldString } from "./proto/wire.ts"
 import {
@@ -104,6 +105,9 @@ describe("resolveCursorWireAgentMode", () => {
 })
 
 describe("buildCursorAgentRunBody wire mode", () => {
+  beforeEach(() => {
+    resetCursorEncodeSpecsForTests()
+  })
   test("default body encodes UserMessage.mode = AGENT (1), not ASK (2)", () => {
     const body = buildCursorAgentRunBody(
       {
@@ -233,6 +237,9 @@ describe("resolveCursorConversationGroupId", () => {
 })
 
 describe("buildCursorAgentRunBody conversation identity", () => {
+  beforeEach(() => {
+    resetCursorEncodeSpecsForTests()
+  })
   test("stable metadata.sessionId is encoded as conversation_id #5 across builds", () => {
     const req = {
       modelId: "cursor-composer-2.5-fast",

@@ -4,10 +4,12 @@
 
 import { join } from "node:path"
 
-import { describe, expect, test } from "bun:test"
+import { beforeEach, describe, expect, test } from "bun:test"
 
 import { cursorCaps } from "./capabilities.ts"
 import { connectFrameProto, parseConnectFrames } from "./connect/stream.ts"
+import { resetCursorEncodeSpecsForTests } from "./encode-spec.ts"
+import { registerCursorModels } from "./models.ts"
 import { encodeAgentClientMessageRun, extractServerTextEvents } from "./proto/agent-run.ts"
 import { decodeFields, fieldBytes } from "./proto/wire.ts"
 import { buildCursorAgentRunBody } from "./request-body.ts"
@@ -64,6 +66,10 @@ function modelDetailsFields(body: Uint8Array) {
 }
 
 describe("AgentRunRequest MVP body", () => {
+  beforeEach(() => {
+    resetCursorEncodeSpecsForTests()
+  })
+
   test("omits AgentRunRequest field 8 (customSystemPrompt) and field 12 (excludeWorkspaceContext)", () => {
     const body = buildCursorAgentRunBody(
       {
@@ -80,7 +86,7 @@ describe("AgentRunRequest MVP body", () => {
     expect(nos.has(9)).toBe(true) // requested model present
   })
 
-  test("base model: no variant f8; max_mode false on RequestedModel f2; no parameters without effort", () => {
+  test("base model: no variant f8; max_mode false; effort-param sends capability default", () => {
     const body = buildCursorAgentRunBody(
       {
         modelId: "cursor-composer-2.5-fast",
@@ -91,8 +97,10 @@ describe("AgentRunRequest MVP body", () => {
     const rm = requestedModelFields(body)
     const nos = new Set(rm.map((f) => f.no))
     expect(nos.has(8)).toBe(false) // not a variant
-    expect(nos.has(3)).toBe(false) // no req.effort → no parameters
-    // f2 max_mode explicit false is present as bool varint 0
+    expect(nos.has(3)).toBe(true) // parameterized parent sends default effort
+    const pv = decodeFields(fieldBytes(rm.find((f) => f.no === 3)!)!)
+    expect(new TextDecoder().decode(fieldBytes(pv.find((f) => f.no === 1)!)!)).toBe("effort")
+    expect(new TextDecoder().decode(fieldBytes(pv.find((f) => f.no === 2)!)!)).toBe("medium")
     const maxField = rm.find((f) => f.no === 2)
     expect(maxField).toBeTruthy()
     expect(maxField!.wire).toBe(0)
@@ -230,6 +238,77 @@ describe("AgentRunRequest MVP body", () => {
     const rm = requestedModelFields(body)
     expect(rm.find((f) => f.no === 8)?.value).toBe(1)
   })
+
+  test("cursor-grok-4.6-high encodes exploded SKU without parameters or f8", () => {
+    const body = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-grok-4.6-high",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        id: "cursor-grok-4.6-high",
+        tags: ["cursor", "live", "thinking"],
+        vendorIds: { cursor: "grok-4.6", firstParty: "grok-4.6" },
+        capabilities: cursorCaps({
+          thinking: true,
+          effortLevels: ["high"],
+          speedFast: true,
+        }),
+      }),
+    )
+    const rm = requestedModelFields(body)
+    const modelId = new TextDecoder().decode(fieldBytes(rm.find((f) => f.no === 1)!)!)
+    expect(modelId).toBe("cursor-grok-4.6-high")
+    expect(rm.some((f) => f.no === 8)).toBe(false)
+    expect(rm.some((f) => f.no === 3)).toBe(false)
+  })
+
+  test("parent cursor-grok-4.6 / grok-4.6 encode the matching exploded SKU", () => {
+    const registrar = { register() {}, setDefault() {} }
+    registerCursorModels(registrar as never)
+    const grokCaps = cursorCaps({
+      thinking: true,
+      effortLevels: ["low", "medium", "high", "xhigh"],
+      speedFast: true,
+    })
+    const parentBody = buildCursorAgentRunBody(
+      {
+        modelId: "cursor-grok-4.6",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        id: "cursor-grok-4.6",
+        tags: ["cursor", "live", "thinking", "effort-param:effort", "fast-param:fast"],
+        vendorIds: { cursor: "grok-4.6", firstParty: "grok-4.6" },
+        capabilities: grokCaps,
+      }),
+    )
+    const parentId = new TextDecoder().decode(
+      fieldBytes(requestedModelFields(parentBody).find((f) => f.no === 1)!)!,
+    )
+    expect(parentId).toBe("cursor-grok-4.6-medium")
+    expect(requestedModelFields(parentBody).some((f) => f.no === 3)).toBe(false)
+
+    const apiBody = buildCursorAgentRunBody(
+      {
+        modelId: "grok-4.6",
+        effort: "high",
+        speed: "fast",
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      },
+      baseModel({
+        id: "grok-4.6",
+        tags: ["cursor", "live", "thinking", "effort-param:effort", "fast-param:fast", "api-id"],
+        vendorIds: { cursor: "grok-4.6", firstParty: "grok-4.6" },
+        capabilities: grokCaps,
+      }),
+    )
+    const apiId = new TextDecoder().decode(
+      fieldBytes(requestedModelFields(apiBody).find((f) => f.no === 1)!)!,
+    )
+    expect(apiId).toBe("cursor-grok-4.6-high-fast")
+    expect(requestedModelFields(apiBody).some((f) => f.no === 3)).toBe(false)
+  })
 })
 
 describe("connect frames", () => {
@@ -279,6 +358,43 @@ describe("end-stream trailer → stream_error", () => {
     expect(errEv.cause).toBeInstanceOf(Error)
     expect((errEv.cause as Error).message).toContain("invalid_argument")
     expect((errEv.cause as Error).message).toContain("bad model id")
+  })
+
+  test("surfaces Connect details title when message is generic Error", async () => {
+    const trailer = new TextEncoder().encode(
+      JSON.stringify({
+        error: {
+          code: "resource_exhausted",
+          message: "Error",
+          details: [
+            {
+              debug: {
+                error: "ERROR_CUSTOM_MESSAGE",
+                details: { title: "Too many computers" },
+              },
+            },
+          ],
+        },
+      }),
+    )
+    const frame = new Uint8Array(5 + trailer.length)
+    frame[0] = 0x02
+    new DataView(frame.buffer).setUint32(1, trailer.length, false)
+    frame.set(trailer, 5)
+
+    const events = []
+    for await (const ev of translateCursorStreamBuffer(frame, {
+      modelId: "cursor-grok-4.6-high",
+    })) {
+      events.push(ev)
+    }
+    expect(events).toHaveLength(1)
+    const errEv = events[0]!
+    expect(errEv.type).toBe("stream_error")
+    if (errEv.type !== "stream_error") return
+    expect(errEv.category).toBe("rate_limit")
+    expect((errEv.cause as Error).message).toContain("Too many computers")
+    expect((errEv.cause as Error).message).toContain("ERROR_CUSTOM_MESSAGE")
   })
 })
 

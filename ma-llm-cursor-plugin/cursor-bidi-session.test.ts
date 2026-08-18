@@ -24,6 +24,7 @@ function fakeSession(closed = false): CursorBidiSession {
     translator: undefined as never,
     conversationId: "conversation",
     pendingExec: null,
+    blobStore: new Map(),
   }
 }
 
