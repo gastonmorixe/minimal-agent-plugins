@@ -336,6 +336,11 @@ describe("supervisorTick — tasks linkage", () => {
     if (update?.type === "emit") {
       expect(update.payload).toMatchObject({ taskId: "a7b3c4", status: "done", bySubagent: "A1" })
     }
+    const inject = out.effects.find((e) => e.type === "inject")
+    expect(inject?.type === "inject" && inject.text).toContain(
+      "Linked task a7b3c4 was automatically marked done; do not call Task.done for it.",
+    )
+    expect(out.effects.indexOf(update!)).toBeLessThan(out.effects.indexOf(inject!))
   })
 
   it("emits subagent.taskUpdate(canceled) with a reason when a linked worker fails", () => {
@@ -346,13 +351,20 @@ describe("supervisorTick — tasks linkage", () => {
       taskId: "a7b3c4",
       status: "canceled",
     })
+    const inject = out.effects.find((e) => e.type === "inject")
+    expect(inject?.type === "inject" && inject.text).toContain(
+      "Linked task a7b3c4 was automatically canceled; do not mark it done.",
+    )
+    expect(out.effects.indexOf(update!)).toBeLessThan(out.effects.indexOf(inject!))
   })
 
-  it("emits NO taskUpdate for an unlinked worker", () => {
+  it("emits NO taskUpdate or linkage claim for an unlinked worker", () => {
     const out = tick([rec("A1", running())], { A1: { alive: false, exitCode: 0, result: RESULT } })
     expect(out.effects.some((e) => e.type === "emit" && e.channel === "subagent.taskUpdate")).toBe(
       false,
     )
+    const inject = out.effects.find((e) => e.type === "inject")
+    expect(inject?.type === "inject" && inject.text).not.toMatch(/linked task|Task\.done/i)
   })
 
   it("CANCELS a linked todo (not done) when the worker finishes INCOMPLETE", () => {
@@ -371,6 +383,11 @@ describe("supervisorTick — tasks linkage", () => {
       const payload = update.payload as { reason?: string }
       expect(payload.reason).toMatch(/no deliverable/i)
     }
+    const inject = out.effects.find((e) => e.type === "inject")
+    expect(inject?.type === "inject" && inject.text).toContain(
+      "Linked task a7b3c4 was automatically canceled; do not mark it done.",
+    )
+    expect(out.effects.indexOf(update!)).toBeLessThan(out.effects.indexOf(inject!))
   })
 })
 

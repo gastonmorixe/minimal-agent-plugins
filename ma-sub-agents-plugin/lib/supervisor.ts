@@ -411,11 +411,12 @@ function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string):
       channel: "subagent.didExit",
       payload: { id: r.id, sid: r.sid, status: next.kind },
     },
-    { type: "inject", text: completionDigest(withStatus), source: `subagent:${r.id}` },
   ]
+  let linkedTaskNotice = ""
   // Tasks-plugin linkage (decoupled, via the bus): if this worker owns a todo,
   // tick it green on a clean finish, or cancel it (with a reason) otherwise.
-  // The `tasks` plugin subscribes to `subagent.taskUpdate` and applies it.
+  // Emit the mutation BEFORE the model-facing digest so the tasks subscriber
+  // persists the new state before the lead is told to act on the completion.
   if (r.taskId) {
     // Only a real `done` ticks the linked todo green. `incomplete` (no
     // deliverable) is a FAILURE signal, so it cancels the todo with the reason
@@ -434,7 +435,16 @@ function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string):
       channel: "subagent.taskUpdate",
       payload: { taskId: r.taskId, status, ...(reason ? { reason } : {}), bySubagent: r.id },
     })
+    linkedTaskNotice =
+      status === "done"
+        ? ` Linked task ${r.taskId} was automatically marked done; do not call Task.done for it.`
+        : ` Linked task ${r.taskId} was automatically canceled; do not mark it done.`
   }
+  effects.push({
+    type: "inject",
+    text: `${completionDigest(withStatus)}${linkedTaskNotice}`,
+    source: `subagent:${r.id}`,
+  })
   return effects
 }
 
