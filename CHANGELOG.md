@@ -6,6 +6,20 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Added
+
+- 2026-08-18 (this session): OpenAI Fast mode. Live Codex catalog
+  (`GET chatgpt.com/backend-api/codex/models`, credential
+  `openai-chatgpt-oauth-3`, plan prolite) catalogs Fast as
+  `service_tiers[{id:"priority", name:"Fast"}]` and
+  `additional_speed_tiers: ["fast"]` on gpt-5.6-sol/terra/luna, gpt-5.5,
+  and gpt-5.4 — not gpt-5.4-mini. The wire value is still `priority`.
+  `speedFast` is now true on those models and their Pro/Chat siblings.
+  `--fast` / `speed:"fast"` (and `serviceTier: "fast"`) map to
+  `service_tier: "priority"`. gpt-5.4-mini/nano and gpt-4o stay off;
+  sticky `--fast` on those models degrades instead of failing. Sol/Terra
+  also advertise Codex effort `ultra` (Luna does not).
+
 ### Fixed
 
 - 2026-08-17 (this session): Cursor AgentService/Run chat no longer dies with

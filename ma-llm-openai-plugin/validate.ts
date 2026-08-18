@@ -94,9 +94,9 @@ export function validateOpenAIRequest(req: CanonicalRequest, model: ModelEntry):
     )
   }
 
-  // Speed. OpenAI's metered "fast" tier is a vendor extension we don't
-  // wire, so any speed:"fast" request on a model that doesn't declare it
-  // is a violation rather than a silent drop.
+  // Speed. OpenAI Fast mode is `service_tier: "priority"` on models that
+  // declare `speedFast` (Codex catalog). `--fast` on a model without that
+  // tier is a violation; the degrade offer below strips it.
   if (req.speed === "fast" && !caps.speedFast) {
     errors.push(
       new CapabilityViolation("speedFast", `model ${model.id} doesn't support speed:"fast"`),
@@ -140,6 +140,13 @@ export function validateOpenAIRequest(req: CanonicalRequest, model: ModelEntry):
   errors.push(...modalityViolations(req.messages, caps, model.id))
 
   if (errors.length === 0) return { ok: true, errors }
+
+  // Degrade offer: sticky `--fast` on a model with no Fast / priority tier
+  // (gpt-4o, mini/nano) must not hard-fail. Same as Anthropic validate.
+  if (errors.length === 1 && errors[0]?.capability === "speedFast") {
+    const { speed: _dropped, ...rest } = req
+    return { ok: false, errors, degrade: rest }
+  }
 
   // Degrade offer: when the ONLY violations are modality mismatches, offer a
   // message list with those blocks stripped so the caller can continue the

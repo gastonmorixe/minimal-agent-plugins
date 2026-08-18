@@ -25,7 +25,7 @@ import type {
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { CanonicalToolDefinition, ToolChoice } from "../lib/canonical-tools.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
-import { OPENAI_SERVICE_TIERS } from "../responses/request-body.ts"
+import { resolveOpenAIServiceTier } from "../responses/request-body.ts"
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -46,7 +46,7 @@ export interface OpenAIChatRequestBody {
   stop?: string | string[]
   stream?: boolean
   stream_options?: { include_usage: boolean }
-  reasoning_effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max"
+  reasoning_effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
   metadata?: Record<string, string>
   user?: string
   store?: boolean
@@ -161,8 +161,13 @@ export function buildOpenAIChatBody(
 
   // Provider-neutral service tier -> OpenAI `service_tier` (shared allowed
   // set with the Responses surface). vendor.serviceTier wins; unknown dropped.
-  const tier = vendor?.serviceTier ?? req.serviceTier
-  if (tier !== undefined && OPENAI_SERVICE_TIERS.has(tier)) {
+  // `speed:"fast"` (CLI `--fast`) maps to Codex Fast = wire `priority`.
+  const tier = resolveOpenAIServiceTier({
+    vendorTier: vendor?.serviceTier,
+    serviceTier: req.serviceTier,
+    speedFast: req.speed === "fast" && model.capabilities.speedFast,
+  })
+  if (tier !== undefined) {
     body.service_tier = tier as NonNullable<OpenAIChatRequestBody["service_tier"]>
   }
 
