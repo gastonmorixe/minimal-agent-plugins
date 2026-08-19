@@ -44,7 +44,11 @@ import {
 } from "./request-body.ts"
 import { translateCursorStream } from "./response-stream.ts"
 import { ensureCursorServerConfig } from "./server-config.ts"
-import { fetchCursorSessionInfo } from "./session-info.ts"
+import {
+  fetchCursorSessionInfo,
+  primeCursorSessionInfo,
+  scheduleCursorQuotaRefresh,
+} from "./session-info.ts"
 import { validateCursorRequest } from "./validate.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
@@ -112,40 +116,44 @@ export const cursorAdapter: ProviderAdapterView = {
     ctx.debug?.kv("bidiSession", bidiSessionKey)
     ctx.debug?.headers(headers)
 
-    if (shouldUseCursorBidi(reqForWire, networkClient)) {
-      if (!networkClient) {
-        yield {
-          type: "stream_error",
-          retryable: false,
-          category: "api",
-          cause: new Error("cursor bidi: host NetworkClient is required when tools are enabled"),
+    try {
+      if (shouldUseCursorBidi(reqForWire, networkClient)) {
+        if (!networkClient) {
+          yield {
+            type: "stream_error",
+            retryable: false,
+            category: "api",
+            cause: new Error("cursor bidi: host NetworkClient is required when tools are enabled"),
+          }
+          return
         }
+        yield* runCursorBidi(reqForWire, model, {
+          url,
+          headers,
+          initialRunBody: protoBody,
+          signal: req.signal,
+          sessionId: bidiSessionKey,
+          modelId: model.id,
+          networkClient,
+        })
         return
       }
-      yield* runCursorBidi(reqForWire, model, {
+
+      const framed = connectFrameProto(protoBody)
+      ctx.debug?.kv("bodyBytes", String(framed.length))
+
+      const chunks = connectStreamPost({
         url,
         headers,
-        initialRunBody: protoBody,
+        body: framed,
         signal: req.signal,
-        sessionId: bidiSessionKey,
-        modelId: model.id,
         networkClient,
       })
-      return
+
+      yield* translateCursorStream(chunks, { modelId: model.id })
+    } finally {
+      scheduleCursorQuotaRefresh(token, networkClient)
     }
-
-    const framed = connectFrameProto(protoBody)
-    ctx.debug?.kv("bodyBytes", String(framed.length))
-
-    const chunks = connectStreamPost({
-      url,
-      headers,
-      body: framed,
-      signal: req.signal,
-      networkClient,
-    })
-
-    yield* translateCursorStream(chunks, { modelId: model.id })
   },
 
   /**
@@ -213,6 +221,7 @@ export const cursorProviderPlugin: ProviderPlugin = {
   apiKeyAuth: cursorApiKeyAuth,
   oauthLogin: cursorOAuthLogin,
   fetchSessionInfo: fetchCursorSessionInfo,
+  primeSessionInfo: primeCursorSessionInfo,
   onStartupProbe(ctx) {
     void ensureCursorLiveCatalog(ctx.auth).catch(() => undefined)
   },

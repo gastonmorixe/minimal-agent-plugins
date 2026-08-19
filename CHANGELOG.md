@@ -20,6 +20,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   sticky `--fast` on those models degrades instead of failing. Sol/Terra
   also advertise Codex effort `ultra` (Luna does not).
 
+- 2026-08-18 (this session): Cursor quota-status bar now reads
+  `DashboardService/GetCurrentPeriodUsage` (JSON Connect) into the same
+  `month` / `ondemand` windows as Grok. Prime on boot, cache-only
+  `fetchSessionInfo`, fire-and-forget refresh after each AgentService/Run.
+  Enterprise fallback is `GET /auth/usage` as a `req` window when included
+  cents are missing. `displayMessage` is not parsed.
+
 ### Fixed
 
 - 2026-08-17 (this session): Cursor AgentService/Run chat no longer dies with

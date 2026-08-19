@@ -59,7 +59,13 @@ export {
 } from "./oauth-login.ts"
 export { PRICING_CURSOR_GENERIC } from "./pricing.ts"
 export { decodeAvailableModelsResponse } from "./proto/models-decode.ts"
-export { fetchCursorSessionInfo } from "./session-info.ts"
+export {
+  fetchCursorSessionInfo,
+  parseCursorAuthUsage,
+  parseCursorPeriodUsage,
+  primeCursorSessionInfo,
+  refreshCursorPeriodUsage,
+} from "./session-info.ts"
 export { validateCursorRequest } from "./validate.ts"
 export {
   CURSOR_AGENT_BASE,

@@ -76,6 +76,8 @@ describe("cursor provider plugin shape", () => {
     expect(cursorProviderPlugin.publicModelList).toBeUndefined()
     expect(typeof cursorProviderPlugin.register).toBe("function")
     expect(typeof cursorProviderPlugin.onStartupProbe).toBe("function")
+    expect(typeof cursorProviderPlugin.fetchSessionInfo).toBe("function")
+    expect(typeof cursorProviderPlugin.primeSessionInfo).toBe("function")
   })
 
   test("adapter surface is cursor-agent-run", () => {
