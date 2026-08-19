@@ -32,6 +32,22 @@ ma --provider cursor --model cursor-auto
 Grok plugin). Equivalent exploded SKU: `cursor-grok-4.6-high` (or `-medium` /
 `-high-fast` with `--effort` / `--fast`).
 
+## Quota footer
+
+The quota-status bar uses the same `month` / `ondemand` windows as Grok.
+
+1. **Prime** (`primeSessionInfo`) POSTs
+   `aiserver.v1.DashboardService/GetCurrentPeriodUsage` (JSON Connect, CLI
+   headers, empty `{}`).
+2. **`month`** = `planUsage.includedSpend / planUsage.limit` (not
+   `displayMessage` / `totalPercentUsed`). Reset is `billingCycleEnd`.
+3. **`ondemand`** when `spendLimitUsage.individualLimit > 0`.
+4. After each AgentService/Run, a fire-and-forget refresh (30s debounce)
+   updates the cache. Enterprise accounts with no included-cent limit fall
+   back to `GET /auth/usage` as a `req` window.
+
+`fetchSessionInfo` is cache-only. Identity (`GetMe`) is not shown on the bar.
+
 ## AgentService/Run (read this before touching headers or model ids)
 
 2026-08-17: live chat failed with Connect `not_found: Error` and

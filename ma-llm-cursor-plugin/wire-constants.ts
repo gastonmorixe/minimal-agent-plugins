@@ -56,6 +56,13 @@ export const CURSOR_RPC_AVAILABLE_MODELS = "aiserver.v1.AiService/AvailableModel
 /** ServerConfigService GetServerConfig (agent URL overlay). */
 export const CURSOR_RPC_GET_SERVER_CONFIG = "aiserver.v1.ServerConfigService/GetServerConfig"
 
+/** DashboardService GetCurrentPeriodUsage (included spend + on-demand cap). */
+export const CURSOR_RPC_GET_CURRENT_PERIOD_USAGE =
+  "aiserver.v1.DashboardService/GetCurrentPeriodUsage"
+
+/** Legacy per-model request buckets (Enterprise fallback). */
+export const CURSOR_AUTH_USAGE_PATH = "/auth/usage"
+
 /** AgentService GetUsableModels RPC path. */
 export const CURSOR_RPC_GET_USABLE_MODELS = "agent.v1.AgentService/GetUsableModels"
 

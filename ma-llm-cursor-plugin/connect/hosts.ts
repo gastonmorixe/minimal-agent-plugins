@@ -7,8 +7,10 @@
 import {
   CURSOR_AGENT_BASE,
   CURSOR_API_BASE,
+  CURSOR_AUTH_USAGE_PATH,
   CURSOR_RPC_AGENT_RUN,
   CURSOR_RPC_AVAILABLE_MODELS,
+  CURSOR_RPC_GET_CURRENT_PERIOD_USAGE,
   CURSOR_RPC_GET_SERVER_CONFIG,
   CURSOR_RPC_GET_USABLE_MODELS,
   CURSOR_WEBSITE_URL,
@@ -57,6 +59,16 @@ export function getUsableModelsUrl(): string {
 /** Full URL for GetServerConfig unary RPC. */
 export function getServerConfigUrl(): string {
   return `${apiBase()}/${CURSOR_RPC_GET_SERVER_CONFIG}`
+}
+
+/** Full URL for DashboardService GetCurrentPeriodUsage (JSON Connect). */
+export function currentPeriodUsageUrl(): string {
+  return `${apiBase()}/${CURSOR_RPC_GET_CURRENT_PERIOD_USAGE}`
+}
+
+/** Full URL for legacy `GET /auth/usage` request buckets. */
+export function authUsageUrl(): string {
+  return `${apiBase()}${CURSOR_AUTH_USAGE_PATH}`
 }
 
 /** Full URL for AgentService/Run stream RPC. */
