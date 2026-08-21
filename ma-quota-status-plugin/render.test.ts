@@ -25,6 +25,7 @@ const NO_TOKENS: SessionTokens = {
   total: 0,
   turns: 0,
   contextSize: 0,
+  contextSizeEstimated: false,
 }
 const SOME_TOKENS: SessionTokens = {
   input: 12_400,
@@ -36,6 +37,7 @@ const SOME_TOKENS: SessionTokens = {
   // Latest turn's input footprint — what the ✦ segment displays.
   // Distinct from `total` to make the new contract obvious.
   contextSize: 47_500,
+  contextSizeEstimated: false,
 }
 
 describe("renderQuotaFooter", () => {

@@ -25,6 +25,7 @@ const TOKENS: SessionTokens = {
   total: 0,
   turns: 0,
   contextSize: 0,
+  contextSizeEstimated: false,
 }
 
 const WINDOWS: QuotaWindow[] = [{ id: "5h", utilization: 0.1 }]

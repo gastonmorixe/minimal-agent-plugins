@@ -35,8 +35,10 @@ export interface SessionTokens {
   total: number
   /** Number of API responses contributing to these totals. */
   turns: number
-  /** Latest turn's input footprint (`input + cacheRead + cacheCreate`). */
+  /** Latest turn's footprint in context window. */
   contextSize: number
+  /** True when contextSize is an estimate (no billed usage for latest turn). */
+  contextSizeEstimated: boolean
 }
 
 // ---------------------------------------------------------------------------
