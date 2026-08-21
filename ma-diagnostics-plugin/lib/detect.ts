@@ -129,6 +129,57 @@ const REGISTRY: ToolSpec[] = [
     persistent: false,
   },
   {
+    // Prettier. Only activates when the project CONFIGURED it (a prettier
+    // config file exists): running tool defaults on an unconfigured project
+    // would invent formatting rules the project never chose.
+    id: "prettier",
+    kind: "format",
+    binName: "prettier",
+    configFiles: [
+      ".prettierrc",
+      ".prettierrc.json",
+      ".prettierrc.jsonc",
+      ".prettierrc.yaml",
+      ".prettierrc.yml",
+      ".prettierrc.toml",
+      ".prettierrc.js",
+      ".prettierrc.cjs",
+      ".prettierrc.mjs",
+      ".prettierrc.tml",
+      "prettier.config.js",
+      "prettier.config.cjs",
+      "prettier.config.mjs",
+      "prettier.config.ts",
+    ],
+    depNames: ["prettier"],
+    requiresConfig: true,
+    // Biome owns format when its config is present; skip prettier entirely.
+    suppressedBy: ["biome"],
+    persistent: false,
+  },
+  {
+    // ESLint (flat config era). Coexists with oxlint: they check different
+    // rule sets, so neither suppresses the other.
+    id: "eslint",
+    kind: "lint",
+    binName: "eslint",
+    configFiles: [
+      "eslint.config.js",
+      "eslint.config.mjs",
+      "eslint.config.cjs",
+      "eslint.config.ts",
+      ".eslintrc",
+      ".eslintrc.json",
+      ".eslintrc.js",
+      ".eslintrc.cjs",
+      ".eslintrc.yml",
+      ".eslintrc.yaml",
+    ],
+    depNames: ["eslint"],
+    requiresConfig: true,
+    persistent: false,
+  },
+  {
     id: "sourcekit-lsp",
     kind: "apple",
     binName: "sourcekit-lsp",
@@ -292,14 +343,46 @@ const PROJECT_SIGNALS = [
   "biome.jsonc",
   ".oxlintrc.json",
   "oxlint.json",
+  ".prettierrc",
+  "prettier.config.js",
+  "eslint.config.js",
+  "eslint.config.mjs",
 ]
 
 /** TypeScript / JS project signals (type providers). */
 export const TYPE_CONFIG_SIGNALS = ["tsconfig.json", "jsconfig.json"] as const
 /** Biome config signals (format provider). */
-export const FORMAT_CONFIG_SIGNALS = ["biome.json", "biome.jsonc"] as const
-/** Oxlint config signals (lint provider). */
-export const LINT_CONFIG_SIGNALS = [".oxlintrc.json", "oxlint.json", ".oxlintrc"] as const
+export const FORMAT_CONFIG_SIGNALS = [
+  "biome.json",
+  "biome.jsonc",
+  // Prettier configs (only count when the file is actually configured).
+  ".prettierrc",
+  ".prettierrc.json",
+  ".prettierrc.jsonc",
+  ".prettierrc.yaml",
+  ".prettierrc.yml",
+  ".prettierrc.toml",
+  "prettier.config.js",
+  "prettier.config.cjs",
+  "prettier.config.mjs",
+  "prettier.config.ts",
+] as const
+/** Oxlint + ESLint config signals (lint providers). */
+export const LINT_CONFIG_SIGNALS = [
+  ".oxlintrc.json",
+  "oxlint.json",
+  ".oxlintrc",
+  "eslint.config.js",
+  "eslint.config.mjs",
+  "eslint.config.cjs",
+  "eslint.config.ts",
+  ".eslintrc",
+  ".eslintrc.json",
+  ".eslintrc.js",
+  ".eslintrc.cjs",
+  ".eslintrc.yml",
+  ".eslintrc.yaml",
+] as const
 /** Apple / Xcode project signals. */
 export const APPLE_CONFIG_SIGNALS = ["Package.swift", "*.xcodeproj", "*.xcworkspace"] as const
 

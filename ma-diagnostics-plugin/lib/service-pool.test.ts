@@ -43,7 +43,9 @@ const factories: ProviderFactories = {
   makeTsc: () => fakeProvider("tsc", "type"),
   makeTscDirect: () => fakeProvider("tsc-direct", "type"),
   makeBiome: () => fakeProvider("biome", "format"),
+  makePrettier: () => fakeProvider("prettier", "format"),
   makeOxlint: () => fakeProvider("oxlint", "lint"),
+  makeEslint: () => fakeProvider("eslint", "lint"),
   makeSourceKit: () => fakeProvider("sourcekit-lsp", "apple"),
 }
 

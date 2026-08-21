@@ -80,7 +80,9 @@ function factories(map: Record<string, Finding[]>): ProviderFactories {
     makeTsc: () => fakeProvider("tsc", "type", map.tsc ?? []),
     makeTscDirect: () => fakeProvider("tsc-direct", "type", map["tsc-direct"] ?? []),
     makeBiome: () => fakeProvider("biome", "format", map.biome ?? []),
+    makePrettier: () => fakeProvider("prettier", "format", map.prettier ?? []),
     makeOxlint: () => fakeProvider("oxlint", "lint", map.oxlint ?? []),
+    makeEslint: () => fakeProvider("eslint", "lint", map.eslint ?? []),
     makeSourceKit: () => fakeProvider("sourcekit-lsp", "apple", map.sourcekit ?? []),
   }
 }
@@ -353,7 +355,9 @@ describe("DiagnosticsService", () => {
             }),
           ]),
         makeBiome: () => fakeProvider("biome", "format", []),
+        makePrettier: () => fakeProvider("prettier", "format", []),
         makeOxlint: () => fakeProvider("oxlint", "lint", []),
+        makeEslint: () => fakeProvider("eslint", "lint", []),
         makeSourceKit: () => fakeProvider("sourcekit-lsp", "apple", []),
       })
       const res = await svc.check(join(root, "x.ts"), "code")

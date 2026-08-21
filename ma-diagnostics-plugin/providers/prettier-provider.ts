@@ -1,30 +1,28 @@
 /**
- * Biome provider (format + assist + biome's own lint pass), spawn-per-call.
+ * Prettier provider (format), spawn-per-call.
  *
- * Biome is fast (~60ms/file measured). We check the file ON DISK rather than
- * via `--stdin-file-path`: the `tool.didInvoke` hook fires AFTER the Edit/Write
- * has already written the file, so disk == the proposed text, and disk mode is
- * the one that emits clean `--reporter=json` on stdout (stdin mode instead
- * echoes the formatted source and routes status to stderr, which is unusable
- * here). `--reporter=json` feeds the {@link adaptBiome} adapter.
+ * Mirrors {@link ./biome-provider.ts | BiomeProvider} structurally: run the
+ * tool, adapt output to findings, and when the file differs from the project's
+ * formatting re-run the formatter over the proposed text via stdin and embed
+ * the CONCRETE line diff in the finding's message. Prettier is detected with
+ * `--check`, whose non-zero exit means "not formatted" but is unreliable
+ * across versions, so BOTH signals count: non-zero exit OR `[warn]` lines.
+ * Expected content comes from `--stdin-filepath`, which honors the project's
+ * .prettierrc / prettier.config.*.
  *
- * Biome's JSON for a `format` finding carries NO content ("Formatter would
- * have printed the following content:", position 0:0), which forces the model
- * to guess. So when we see one we re-run the formatter over the text and embed
- * the CONCRETE line diff in the finding's message: the model sees exactly what
- * biome expects, attributed to biome, without us prescribing any command (the
- * project may wire its formatter differently).
+ * As with biome we never prescribe a command; the message shows what prettier
+ * expects and defers to "the project's formatting setup".
  *
- * @module plugins/diagnostics/providers/biome-provider
+ * @module plugins/diagnostics/providers/prettier-provider
  */
 import { relative } from "node:path"
 
-import { adaptBiome } from "../adapters/biome.ts"
+import { adaptPrettier } from "../adapters/prettier.ts"
 import { formatDiff } from "../lib/format-diff.ts"
 import type { DiagnosticProvider } from "../lib/provider.ts"
 import type { Finding } from "../lib/types.ts"
 
-import { runCapture } from "./spawn.ts"
+import { runCapture, type SpawnResult } from "./spawn.ts"
 
 const EXT_RE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|json|jsonc|css)$/
 
@@ -32,41 +30,43 @@ const EXT_RE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|json|jsonc|css)$/
 const MAX_DIFF_LINES = 20
 
 /**
- * Diagnostic provider that shells out to the workspace's biome binary
- * (`biome check --reporter=json`) for one file and adapts the output to
- * findings. Only handles paths inside the workspace root with extensions
- * biome formats/lints.
+ * Diagnostic provider that shells out to the workspace's prettier binary for
+ * one file and adapts the output to findings. Only handles paths inside the
+ * workspace root with extensions prettier formats here.
  */
-export class BiomeProvider implements DiagnosticProvider {
-  readonly id = "biome"
+export class PrettierProvider implements DiagnosticProvider {
+  readonly id = "prettier"
   readonly kind = "format" as const
 
   constructor(
     private readonly bin: string,
     private readonly root: string,
+    private readonly runFn: typeof runCapture = runCapture,
   ) {}
 
   handles(path: string): boolean {
     return EXT_RE.test(path)
   }
 
-  async check(path: string, _text: string, signal?: AbortSignal): Promise<Finding[]> {
+  async check(path: string, text: string, signal?: AbortSignal): Promise<Finding[]> {
     // path.relative (not startsWith+slice): `/repo-other` must not match
     // root `/repo` and yield a garbage suffix.
     const relPath = relative(this.root, path)
     const rel = relPath.startsWith("..") ? path : relPath
-    const res = await runCapture(this.bin, ["check", "--reporter=json", rel], {
+    const res = await this.runFn(this.bin, ["--check", rel], {
       cwd: this.root,
       ...(signal ? { signal } : {}),
     })
-    const findings = adaptBiome(res.stdout)
-    await this.embedFormatDiff(rel, _text, findings, signal)
+    // Prettier 3.x prints `[warn]` lines on STDERR; older versions used
+    // stdout. Scan both so either layout parses.
+    const findings = adaptPrettier(`${res.stdout}\n${res.stderr}`)
+    await this.embedFormatDiff(rel, text, findings, signal)
     return findings
   }
 
   /**
    * Replace the generic `format` message with the actual expected-content
-   * diff, attributed to biome. Best-effort: any failure leaves the generic
+   * diff, attributed to prettier. Best-effort: any failure leaves the generic
    * message in place.
    */
   private async embedFormatDiff(
@@ -78,7 +78,7 @@ export class BiomeProvider implements DiagnosticProvider {
     const idx = findings.findIndex((f) => f.code === "format")
     if (idx < 0 || !text) return
     try {
-      const fmt = await runCapture(this.bin, ["format", `--stdin-file-path=${relPath}`], {
+      const fmt = await this.runFn(this.bin, [`--stdin-filepath=${relPath}`], {
         cwd: this.root,
         input: text,
         ...(signal ? { signal } : {}),
@@ -93,7 +93,7 @@ export class BiomeProvider implements DiagnosticProvider {
         truncated = true
       }
       const head =
-        `File does not match the project's formatting rules (reported by biome). ` +
+        `File does not match the project's formatting rules (reported by prettier). ` +
         `Expected content at line ${d.startLine} (diff, - current / + expected):\n` +
         `${lines.join("\n")}${truncated ? "\n…(truncated)" : ""}\n` +
         `Format the file according to the project's formatting setup.`
@@ -107,3 +107,5 @@ export class BiomeProvider implements DiagnosticProvider {
     /* stateless */
   }
 }
+
+export type { SpawnResult }

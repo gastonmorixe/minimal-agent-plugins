@@ -183,6 +183,71 @@ describe("detectTools", () => {
     }
   })
 
+  it("suppresses prettier when biome is configured (biome owns format)", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "biome")
+      makeBin(root, "prettier")
+      writeFileSync(join(root, "biome.json"), "{}")
+      writeFileSync(join(root, ".prettierrc"), "{}")
+      const tools = detectTools(root)
+      expect(byId(tools, "biome")).toBeDefined()
+      expect(byId(tools, "prettier")).toBeUndefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("detects prettier alone when its config exists (no biome)", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "prettier")
+      writeFileSync(join(root, ".prettierrc.json"), "{}")
+      const tools = detectTools(root)
+      expect(byId(tools, "prettier")).toBeDefined()
+      expect(byId(tools, "biome")).toBeUndefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("does NOT detect prettier with a binary but no config (would invent rules)", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "prettier")
+      const tools = detectTools(root)
+      expect(byId(tools, "prettier")).toBeUndefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("coexists eslint and oxlint (different rule sets, no suppression)", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "eslint")
+      makeBin(root, "oxlint")
+      writeFileSync(join(root, "eslint.config.js"), "export default []")
+      writeFileSync(join(root, ".oxlintrc.json"), "{}")
+      const tools = detectTools(root)
+      expect(byId(tools, "eslint")).toBeDefined()
+      expect(byId(tools, "oxlint")).toBeDefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("does NOT detect eslint without any config file", () => {
+    const root = scratch()
+    try {
+      makeBin(root, "eslint")
+      const tools = detectTools(root)
+      expect(byId(tools, "eslint")).toBeUndefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it("prefers an explicit config signal in package.json devDependencies", () => {
     const root = scratch()
     try {

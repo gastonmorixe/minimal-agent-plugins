@@ -27,9 +27,12 @@ function severityOf(s: unknown): FindingSeverity {
 /** Flatten biome's message (string OR `{content}[]`) plus description fallback. */
 function messageOf(rec: Record<string, unknown>): string {
   // The bare `format` category carries a verbose, agent-unfriendly message
-  // ("Formatter would have printed the following content:"). Replace it with a
-  // concise, actionable line; the code (`format`) already says what it is.
-  if (rec.category === "format") return "File is not formatted (run the formatter)."
+  // ("Formatter would have printed the following content:"). Replace it with
+  // an attributed, neutral line. No command suggestion: formatters are heavily
+  // project-configured and we cannot know the right invocation from here.
+  // The provider may enrich this message with the concrete expected diff.
+  if (rec.category === "format")
+    return "File does not match the project's formatting rules (reported by biome)."
   const m = rec.message
   if (typeof m === "string" && m.length > 0) return m
   if (Array.isArray(m)) {
