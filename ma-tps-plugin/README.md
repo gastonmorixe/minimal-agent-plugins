@@ -20,9 +20,9 @@ tokens-in-window / window-span as the rate.
   segment (sid/name) with a normal two-space gap. No forced re-renders: the
   slot refreshes hourly by timer; each delta event triggers an immediate,
   cheap tail update via `refreshOn`.
-- **Sticky display.** Once shown, the segment holds its value across
-  sub-second windows and short generation pauses; it clears after ~15s of
-  genuine silence (the model stopped talking).
+- **Hides when the stream ends.** The host emits `llm.outputEnd` once
+  the generation stream tears down (before tool IO). The readout clears
+  immediately. A 2.5s idle fallback covers a missed end signal.
 
 ## Requirements
 

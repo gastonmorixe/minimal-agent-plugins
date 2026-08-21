@@ -16,9 +16,10 @@
  *   - A window span under `minSpanMs` (default 1000ms) has too little
  *     signal; the previous display is HELD instead of blanking (sticky
  *     display — flapping visible/hidden was explicitly rejected).
- *   - Idle: no delta for `idleMs` (default 15s) → inactive, the segment
- *     hides. With real mid-stream events arriving continuously, 15s means
- *     "the model genuinely stopped talking", not "a tool is running".
+ *   - Idle: no delta for `idleMs` (default 2500ms) → inactive. Fallback
+ *     for a missed `llm.outputEnd`. The host emits that once in the
+ *     stream `finally` (before tool IO); the plugin then calls
+ *     {@link markInactive} so a long tool run never hangs a stale rate.
  *
  * @module tps/tps-tracker
  */
@@ -28,8 +29,9 @@ export interface TpsTrackerOpts {
   /** Sliding-window length in ms. Default 10_000. */
   windowMs?: number
   /**
-   * Hide the readout after this many ms without any delta. Default 15_000:
-   * with live delta events, silence now genuinely means "not generating".
+   * Hide the readout after this many ms without any delta. Default 2500:
+   * fallback for a missed `llm.outputEnd`. Primary hide is
+   * {@link TpsTracker.markInactive}.
    */
   idleMs?: number
   /** Minimum window span (ms) before a rate is computed. Default 1000. */
@@ -70,7 +72,7 @@ export class TpsTracker {
 
   constructor(opts: TpsTrackerOpts = {}) {
     this.windowMs = opts.windowMs ?? 10_000
-    this.idleMs = opts.idleMs ?? 15_000
+    this.idleMs = opts.idleMs ?? 2_500
     this.minSpanMs = opts.minSpanMs ?? 1000
   }
 
@@ -128,11 +130,21 @@ export class TpsTracker {
     return { tps: this.displayed ?? 0, active }
   }
 
-  /** Drop all state (new session). */
-  reset(): void {
+  /**
+   * Host said generation stopped (`llm.outputEnd`, once in stream
+   * `finally`). Hide immediately instead of waiting out `idleMs`.
+   * Idempotent.
+   */
+  markInactive(): TpsReading {
     this.deltas = []
     this.lastTMs = null
     this.lastDeltaTMs = null
     this.displayed = null
+    return { tps: 0, active: false }
+  }
+
+  /** Drop all state (new session). */
+  reset(): void {
+    this.markInactive()
   }
 }

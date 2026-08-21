@@ -16,7 +16,7 @@
       "refreshMs": 1000,
       "timeoutMs": 800,
       "placeholder": "",
-      "refreshOn": ["llm.outputDelta"]
+      "refreshOn": ["llm.outputDelta", "llm.outputEnd"]
     }
   ],
   "events": [
@@ -26,6 +26,15 @@
       "handler": {
         "type": "module",
         "path": "./on_output_delta.ts",
+        "export": "default"
+      }
+    },
+    {
+      "id": "on_output_end",
+      "on": "llm.outputEnd",
+      "handler": {
+        "type": "module",
+        "path": "./on_output_end.ts",
         "export": "default"
       }
     }

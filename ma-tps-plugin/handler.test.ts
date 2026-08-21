@@ -70,9 +70,42 @@ describe("on_output_delta event handler", () => {
   })
 })
 
-function eventCtx(payload: unknown) {
+describe("on_output_end event handler", () => {
+  it("hides immediately on EventHandlerContext (loader call shape)", async () => {
+    tracker.reset()
+    const { default: onDelta } = await import("./on_output_delta.ts")
+    const { default: onEnd } = await import("./on_output_end.ts")
+    onDelta(eventCtx({ deltaTokens: 25 }, "llm.outputDelta"))
+    onDelta(eventCtx({ deltaTokens: 25 }, "llm.outputDelta"))
+    expect(tracker.read(performance.now()).active).toBe(true)
+    onEnd(eventCtx({ reason: "stream_end" }, "llm.outputEnd"))
+    expect(tracker.read(performance.now())).toEqual({ tps: 0, active: false })
+    // Repeat is idempotent.
+    onEnd(eventCtx({ reason: "stream_end" }, "llm.outputEnd"))
+    expect(tracker.read(performance.now())).toEqual({ tps: 0, active: false })
+  })
+
+  it("slot handler publishes empty after outputEnd", async () => {
+    tracker.reset()
+    const { default: onDelta } = await import("./on_output_delta.ts")
+    const { default: onEnd } = await import("./on_output_end.ts")
+    onDelta(eventCtx({ deltaTokens: 25 }, "llm.outputDelta"))
+    onDelta(eventCtx({ deltaTokens: 25 }, "llm.outputDelta"))
+    onEnd(eventCtx({ reason: "stream_end" }, "llm.outputEnd"))
+    const published: string[] = []
+    const ctx: LiveAreaHandlerContext = {
+      abort: new AbortController().signal,
+      setFooterTail: (text) => published.push(text),
+    }
+    const result = await handle(ctx)
+    expect(result).toBeNull()
+    expect(published).toEqual([""])
+  })
+})
+
+function eventCtx(payload: unknown, event = "llm.outputDelta") {
   return {
-    event: "llm.outputDelta",
+    event,
     payload,
     packageDir: "/tmp",
     cwd: "/tmp",
