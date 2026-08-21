@@ -1,7 +1,7 @@
 /**
  * Prettier provider (format), spawn-per-call.
  *
- * Mirrors {@link ./biome-provider.ts | BiomeProvider} structurally: run the
+ * Mirrors {@link ./biome-provider.ts#BiomeProvider | BiomeProvider} structurally: run the
  * tool, adapt output to findings, and when the file differs from the project's
  * formatting re-run the formatter over the proposed text via stdin and embed
  * the CONCRETE line diff in the finding's message. Prettier is detected with

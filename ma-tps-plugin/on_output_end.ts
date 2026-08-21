@@ -11,10 +11,9 @@
  * @module tps/on_output_end
  */
 
-import type { EventHandlerContext } from "./host-types.ts"
 import { tracker } from "./tracker-holder.ts"
 
 /** Hide the readout. Payload is ignored; any well-formed event is an end. */
-export default function handle(_ctx: EventHandlerContext | unknown): void {
+export default function handle(_ctx: unknown): void {
   tracker.markInactive()
 }

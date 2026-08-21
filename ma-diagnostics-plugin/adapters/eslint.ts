@@ -1,15 +1,13 @@
 /**
- * Adapter: `eslint <file> --format json` stdout -> {@link Finding}[].
+ * Adapter: `eslint` JSON output to findings.
  *
- * ESLint's JSON reporter emits a per-file record array:
- *
- *   [{ filePath, messages: [{ ruleId, severity (1=warn, 2=error),
- *      line, column, message }], errorCount, warningCount, ... }]
- *
- * Pure function: string in, Finding[] out. Malformed or empty JSON (which
- * includes a fatal/config-error run, exit code 2) yields []. Messages whose
- * `ruleId` is null are parse/syntax errors and get the "syntax" code. The
- * caller handles process exit codes: this only ever parses stdout.
+ * ESLint's JSON reporter emits a per-file record array. Each record holds
+ * `filePath` and a `messages` array with `ruleId`, `severity`, `line`,
+ * `column`, and `message`. This module is a pure function: string in,
+ * findings out. Malformed or empty JSON (including fatal/config-error runs)
+ * yields an empty array. Messages whose `ruleId` is null are parse/syntax
+ * errors and get the `syntax` code. The caller handles process exit codes;
+ * this only parses stdout.
  *
  * @module plugins/diagnostics/adapters/eslint
  */
@@ -21,7 +19,7 @@ interface EslintMessage {
   severity?: number
   line?: number
   column?: number
-  message?: string
+  message?: unknown
 }
 
 interface EslintFileRecord {
@@ -59,7 +57,8 @@ export function adaptEslint(stdout: string): Finding[] {
         col: m.column,
         // Parse errors carry ruleId === null; label them "syntax".
         code: m.ruleId ?? "syntax",
-        message: typeof m.message === "string" ? m.message : String(m.message ?? ""),
+        message:
+          typeof m.message === "string" ? m.message : m.message == null ? "" : String(m.message),
         path: rec.filePath,
       })
     }
