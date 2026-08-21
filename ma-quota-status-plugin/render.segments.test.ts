@@ -18,6 +18,7 @@ const TOKENS: SessionTokens = {
   total: 0,
   turns: 0,
   contextSize: 24_000,
+  contextSizeEstimated: false,
 }
 
 const WINDOWS: QuotaWindow[] = [

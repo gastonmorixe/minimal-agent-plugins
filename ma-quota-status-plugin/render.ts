@@ -348,16 +348,21 @@ function renderSessionSegment(
   barCells: number = BAR_CELLS_MAX,
 ): string {
   const usedStr = fmtTokens(s.contextSize)
-  // Live count pops at bold weight once contextSize > 0 ("this is your
-  // current usage"); dims when 0 to keep the pre-traffic shape quiet.
-  const used = s.contextSize > 0 ? c.bold(usedStr) : c.dim(usedStr)
+  const baseUsed = s.contextSize > 0 ? c.bold(usedStr) : c.dim(usedStr)
+  // Dim tilde prefix when the count was estimated (provider omitted usage).
+  // Keep it subtle (dim) so billed vs estimated is readable without
+  // competing with the bar's severity colors.
+  const used = s.contextSizeEstimated ? `${c.dim("~")} ${baseUsed}` : baseUsed
 
   // Unknown context window → dim middle-dot placeholder + count only.
   // No bar (no denominator), no percent (same reason). The dot keeps
   // the segment visually anchored so it doesn't look like an orphan
-  // number trailing the quota windows.
+  // number trailing the quota windows. When the size was estimated we
+  // show `~` instead of `·` so the estimate source is visible even
+  // without a window.
   if (contextWindow == null || !(contextWindow > 0)) {
-    return c.dim("·") + " " + used
+    if (s.contextSizeEstimated) return `${c.dim("~")} ${baseUsed}`
+    return `${c.dim("·")} ${baseUsed}`
   }
 
   // Bar-dropped form (responsive degradation): the size label alone
@@ -378,7 +383,7 @@ function renderSessionSegment(
     colorBar(pct)(full) +
     c.dim(empty) +
     " " +
-    colorPctBold(pct)(pct + "%") +
+    colorPctBold(pct)(`${pct}%`) +
     " " +
     used
   )
