@@ -1,12 +1,89 @@
-/** OpenCode Zen per-model pricing in USD per 1M tokens. */
+/** OpenCode Zen pricing in USD per 1M tokens, from the Zen docs. */
 import type { MTokRate } from "./lib/host-types.ts"
 
-export const PRICING_OX_ALPHA_FREE: MTokRate = {
-  inputUSD: 0,
-  outputUSD: 0,
-  cacheWriteUSD: 0,
-  cacheReadUSD: 0,
+const rate = (
+  inputUSD: number,
+  outputUSD: number,
+  cacheReadUSD = 0,
+  cacheWriteUSD = 0,
+): MTokRate => ({
+  inputUSD,
+  outputUSD,
+  cacheReadUSD,
+  cacheWriteUSD,
   webSearchPerCallUSD: 0,
+})
+
+export const PRICING_OX_ALPHA_FREE = rate(0, 0)
+export const PRICING_OPENCODE_ZEN_GENERIC = PRICING_OX_ALPHA_FREE
+
+export const ZEN_PRICING: Record<string, MTokRate> = {
+  "claude-fable-5": rate(10, 50, 1, 12.5),
+  "claude-opus-5": rate(5, 25, 0.5, 6.25),
+  "claude-opus-4-8": rate(5, 25, 0.5, 6.25),
+  "claude-opus-4-7": rate(5, 25, 0.5, 6.25),
+  "claude-opus-4-6": rate(5, 25, 0.5, 6.25),
+  "claude-opus-4-5": rate(5, 25, 0.5, 6.25),
+  "claude-sonnet-5": rate(2, 10, 0.2, 2.5),
+  "claude-sonnet-4-6": rate(3, 15, 0.3, 3.75),
+  "claude-sonnet-4-5": rate(3, 15, 0.3, 3.75),
+  "claude-sonnet-4": rate(3, 15, 0.3, 3.75),
+  "claude-haiku-4-5": rate(1, 5, 0.1, 1.25),
+  "gpt-5.6-sol": rate(5, 30, 0.5, 6.25),
+  "gpt-5.6-terra": rate(2, 12, 0.2, 2.5),
+  "gpt-5.6-luna": rate(0.2, 1.2, 0.02, 0.25),
+  "gpt-5.5": rate(5, 30, 0.5),
+  "gpt-5.5-pro": rate(30, 180, 30),
+  "gpt-5.4": rate(2.5, 15, 0.25),
+  "gpt-5.4-pro": rate(30, 180, 30),
+  "gpt-5.4-mini": rate(0.75, 4.5, 0.075),
+  "gpt-5.4-nano": rate(0.2, 1.25, 0.02),
+  "gpt-5.3-codex-spark": rate(1.75, 14, 0.175),
+  "gpt-5.3-codex": rate(1.75, 14, 0.175),
+  "gpt-5.2": rate(1.75, 14, 0.175),
+  "gpt-5.2-codex": rate(1.75, 14, 0.175),
+  "gpt-5.1": rate(1.07, 8.5, 0.107),
+  "gpt-5.1-codex-max": rate(1.25, 10, 0.125),
+  "gpt-5.1-codex": rate(1.07, 8.5, 0.107),
+  "gpt-5.1-codex-mini": rate(0.25, 2, 0.025),
+  "gpt-5": rate(1.07, 8.5, 0.107),
+  "gpt-5-codex": rate(1.07, 8.5, 0.107),
+  "gpt-5-nano": rate(0.05, 0.4, 0.005),
+  "grok-4.6": rate(2, 6, 0.5),
+  "grok-4.5": rate(2, 6, 0.3),
+  "grok-build-0.1": rate(1, 2, 0.2),
+  "muse-spark-1.2": rate(1.25, 4.25, 0.15),
+  "deepseek-v4-pro": rate(0.66, 1.98, 0.022),
+  "deepseek-v4-flash": rate(0.22, 0.66, 0.007),
+  "glm-5.2": rate(1.4, 4.4, 0.26),
+  "glm-5.1": rate(1.4, 4.4, 0.26),
+  "glm-5": rate(1, 3.2, 0.2),
+  "minimax-m3": rate(0.3, 1.2, 0.06),
+  "minimax-m2.7": rate(0.3, 1.2, 0.06),
+  "minimax-m2.5": rate(0.3, 1.2, 0.06),
+  "kimi-k3": rate(3, 15, 0.3),
+  "kimi-k2.7-code": rate(0.95, 4, 0.19),
+  "kimi-k2.6": rate(0.95, 4, 0.16),
+  "kimi-k2.5": rate(0.6, 3, 0.1),
+  "qwen3.6-plus": rate(0.5, 3, 0.05, 0.625),
+  "qwen3.5-plus": rate(0.2, 1.2, 0.02, 0.25),
 }
 
-export const PRICING_OPENCODE_ZEN_GENERIC: MTokRate = PRICING_OX_ALPHA_FREE
+for (const id of [
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.1-pro",
+  "gemini-3-flash",
+  "big-pickle",
+  "deepseek-v4-flash-free",
+  "x-preview-f-free",
+  "muse-spark-1.2-contributor-free",
+  "mimo-v2.5-free",
+  "hy3-free",
+  "nemotron-3-ultra-free",
+  "nemotron-3.5-lightning-free",
+  "laguna-s-2.1-free",
+])
+  ZEN_PRICING[id] = rate(0, 0)
