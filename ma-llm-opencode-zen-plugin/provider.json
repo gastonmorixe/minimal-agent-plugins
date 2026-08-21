@@ -1,0 +1,8 @@
+{
+  "id": "opencode-zen",
+  "name": "LLM Provider: OpenCode Zen",
+  "version": "0.1.0",
+  "description": "OpenCode Zen (opencode.ai/zen) — OpenAI Chat Completions access to Zen models. Reuses the OpenAI-compatible wire layer; auth via minimal-agent's OpenCode API-key source.",
+  "entry": "./index.ts",
+  "export": "opencodeProviderPlugin"
+}
