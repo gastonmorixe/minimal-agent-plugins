@@ -3,13 +3,14 @@
  *
  * Triple-surface: OpenAI Chat Completions (DeepSeek, GLM, Kimi, MiMo, Hy,
  * Grok), Anthropic Messages (MiniMax, Qwen), and OpenAI Responses
- * (GPT-5.6 Luna) share the same provider id but dispatch through their
+ * (GPT-5.6 Luna, Muse Spark 1.2 Contributor) share the same provider id but
+ * dispatch through their
  * respective wire translators.
  *
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
  * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
  * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
- * (2026-08-05).
+ * (2026-08-20).
  *
  * @module llm/providers/opencode/models
  */
@@ -20,6 +21,7 @@ import {
   CAPS_GLM_5,
   CAPS_GLM_5_1,
   CAPS_GLM_5_2,
+  CAPS_GLM_5_3,
   CAPS_GPT_5_6_LUNA,
   CAPS_GROK_4_5,
   CAPS_HY3,
@@ -35,6 +37,7 @@ import {
   CAPS_MINIMAX_M2_5,
   CAPS_MINIMAX_M2_7,
   CAPS_MINIMAX_M3,
+  CAPS_MUSE_SPARK_1_2_CONTRIBUTOR,
   CAPS_QWEN3_5_PLUS,
   CAPS_QWEN3_6_PLUS,
   CAPS_QWEN3_7_MAX,
@@ -51,6 +54,7 @@ import {
   PRICING_GLM_5,
   PRICING_GLM_5_1,
   PRICING_GLM_5_2,
+  PRICING_GLM_5_3,
   PRICING_GPT_5_6_LUNA,
   PRICING_GROK_4_5,
   PRICING_HY3,
@@ -66,6 +70,7 @@ import {
   PRICING_MINIMAX_M2_5,
   PRICING_MINIMAX_M2_7,
   PRICING_MINIMAX_M3,
+  PRICING_MUSE_SPARK_1_2_CONTRIBUTOR,
   PRICING_QWEN3_5_PLUS,
   PRICING_QWEN3_6_PLUS,
   PRICING_QWEN3_7_MAX,
@@ -143,6 +148,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "openai-compatible", "deepseek", "cheap"],
       capabilities: CAPS_DEEPSEEK_V4_FLASH,
       pricing: PRICING_DEEPSEEK_V4_FLASH,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("glm-5.3", {
+      displayName: "GLM-5.3",
+      tags: ["opencode", "openai-compatible", "glm"],
+      capabilities: CAPS_GLM_5_3,
+      pricing: PRICING_GLM_5_3,
       surfaceId: "openai-chat-completions",
     }),
     makeSpec("glm-5.2", {
@@ -250,6 +262,14 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "openai-responses", "gpt"],
       capabilities: CAPS_GPT_5_6_LUNA,
       pricing: PRICING_GPT_5_6_LUNA,
+      surfaceId: "openai-responses",
+    }),
+
+    makeSpec("muse-spark-1.2-contributor", {
+      displayName: "Muse Spark 1.2 Contributor",
+      tags: ["opencode", "openai-responses", "muse"],
+      capabilities: CAPS_MUSE_SPARK_1_2_CONTRIBUTOR,
+      pricing: PRICING_MUSE_SPARK_1_2_CONTRIBUTOR,
       surfaceId: "openai-responses",
     }),
 

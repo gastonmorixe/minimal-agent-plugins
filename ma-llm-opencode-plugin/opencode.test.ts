@@ -121,7 +121,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-08-05 (authoritative ID list).
+    // Live /v1/models snapshot 2026-08-20 (authoritative ID list).
     const ids = [
       "minimax-m3",
       "minimax-m2.7",
@@ -130,12 +130,14 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "kimi-k2.7-code",
       "kimi-k2.6",
       "kimi-k2.5",
+      "glm-5.3",
       "glm-5.2",
       "glm-5.1",
       "glm-5",
       "deepseek-v4-pro",
       "deepseek-v4-flash",
       "gpt-5.6-luna",
+      "muse-spark-1.2-contributor",
       "qwen3.8-max",
       "qwen3.7-max",
       "qwen3.7-plus",
@@ -172,7 +174,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(resolveModel("grok-4.5").pricing?.cacheReadUSD).toBe(0.3)
     expect(resolveModel("minimax-m2.7").pricing?.cacheWriteUSD).toBe(0.375)
 
-    // New 2026-08-05 models.
+    // New 2026-08-20 models.
     const luna = resolveModel("gpt-5.6-luna")
     expect(luna.surfaceId).toBe("openai-responses")
     expect(luna.capabilities.contextWindow).toBe(1_050_000)
@@ -197,6 +199,44 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(luna.pricing?.outputUSD).toBe(1.2)
     expect(luna.pricing?.cacheReadUSD).toBe(0.02)
     expect(luna.pricing?.cacheWriteUSD).toBe(0.25)
+
+    const glm53 = resolveModel("glm-5.3")
+    expect(glm53.surfaceId).toBe("openai-chat-completions")
+    expect(glm53.capabilities.contextWindow).toBe(1_000_000)
+    expect(glm53.capabilities.maxOutputTokens).toBe(131_072)
+    expect(glm53.capabilities.modalities).toEqual({
+      image: false,
+      audio: false,
+      pdf: false,
+      video: false,
+    })
+    expect([...glm53.capabilities.effort.levels]).toEqual(["low", "high", "max"])
+    expect(glm53.pricing?.inputUSD).toBe(1.4)
+    expect(glm53.pricing?.outputUSD).toBe(4.4)
+    expect(glm53.pricing?.cacheReadUSD).toBe(0.26)
+
+    const muse = resolveModel("muse-spark-1.2-contributor")
+    expect(muse.surfaceId).toBe("openai-responses")
+    expect(muse.capabilities.contextWindow).toBe(1_048_576)
+    expect(muse.capabilities.maxOutputTokens).toBe(131_072)
+    expect(muse.capabilities.modalities).toEqual({
+      image: true,
+      audio: true,
+      pdf: true,
+      video: true,
+    })
+    expect([...muse.capabilities.effort.levels]).toEqual([
+      "minimal",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+    ])
+    expect(muse.capabilities.tools.strictSchema).toBe(true)
+    expect(muse.pricing?.inputUSD).toBe(0.1)
+    expect(muse.pricing?.outputUSD).toBe(0.2)
+    expect(muse.pricing?.cacheReadUSD).toBe(0.002)
+    expect(muse.pricing?.cacheWriteUSD).toBe(0)
 
     const qwen38 = resolveModel("qwen3.8-max")
     expect(qwen38.surfaceId).toBe("anthropic-messages")
