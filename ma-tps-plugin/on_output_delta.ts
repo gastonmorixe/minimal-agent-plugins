@@ -11,7 +11,6 @@
  * @module tps/on_output_delta
  */
 
-import type { EventHandlerContext } from "./host-types.ts"
 import { tracker } from "./tracker-holder.ts"
 
 /**
@@ -23,7 +22,7 @@ import { tracker } from "./tracker-holder.ts"
  * (as if the bus payload were the first argument) silently no-ops
  * every production event and leaves the footer blank.
  */
-export default function handle(ctx: EventHandlerContext | unknown): void {
+export default function handle(ctx: unknown): void {
   const deltaTokens = extractDeltaTokens(ctx)
   if (typeof deltaTokens !== "number") return
   tracker.sample(performance.now(), deltaTokens)

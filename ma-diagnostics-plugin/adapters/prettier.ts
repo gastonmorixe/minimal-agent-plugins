@@ -10,7 +10,7 @@
  * The finding is intentionally GENERIC: formatters are heavily project-
  * configured, so we never suggest a command ("run prettier --write" is wrong
  * more often than right). The concrete expected-content diff is embedded later
- * by {@link ../providers/prettier-provider.ts | PrettierProvider}.
+ * by {@link ../providers/prettier-provider.ts#PrettierProvider | PrettierProvider}.
  *
  * @module plugins/diagnostics/adapters/prettier
  */

@@ -116,7 +116,7 @@ describe("PrettierProvider", () => {
       const provider = new PrettierProvider(
         "/bin/prettier",
         "/root",
-        fakeRunner(calls, (_i, _bin, args, opts) => {
+        fakeRunner(calls, (_i, _bin, args, _opts) => {
           if (args[0] === "--check") return res({ stdout: "[warn] src/b.ts\n", code: 1 })
           expect(args[0]).toBe("--stdin-filepath=src/b.ts")
           return res({ stdout: formatted, code: 0 })
