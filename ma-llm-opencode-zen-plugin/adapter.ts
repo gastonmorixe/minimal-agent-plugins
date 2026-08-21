@@ -4,6 +4,7 @@ import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthr
 import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import { classifyUpstreamError } from "./lib/errors.ts"
 import type { ModelEntry, ProviderAdapter, SurfaceId, ValidationResult } from "./lib/host-types.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import {
@@ -39,6 +40,48 @@ function buildMessagesHeaders(auth: RunContext["auth"]): Record<string, string> 
   else if (auth.kind === "oauth") headers.authorization = `Bearer ${auth.token}`
   else Object.assign(headers, auth.headers)
   return headers
+}
+
+/**
+ * Parse an upstream error code out of a non-2xx JSON body. Zen returns
+ * `{"error":{"type":"...","message":"..."}}` (Anthropic-style) or
+ * `{"error":{"code":"...","message":"..."}}` (OpenAI-style); fall back to the
+ * raw body when neither shape is present.
+ */
+function parseUpstreamErrorCode(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as { error?: { type?: unknown; code?: unknown } }
+    const err = parsed?.error
+    if (err && typeof err === "object") {
+      if (typeof err.type === "string") return err.type
+      if (typeof err.code === "string") return err.code
+    }
+    return undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Build a tagged HTTP error so the provider-neutral retry coordinator can
+ * recover from a pre-stream rejection (429 / 5xx / 503). The `streamErrorType`
+ * property is what the host's `run()` retry loop checks; untagged errors
+ * propagate and stop the turn. Billing/quota exhaustion stays terminal
+ * (untagged, retryable:false) via {@link classifyUpstreamError}.
+ */
+export function taggedHttpError(
+  status: number,
+  body: string,
+): Error & {
+  streamErrorType?: string
+} {
+  const upstreamCode = parseUpstreamErrorCode(body)
+  const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
+  const err = new Error(`OpenCode Zen API ${status}: ${body}`) as Error & {
+    streamErrorType?: string
+  }
+  if (streamErrorType) err.streamErrorType = streamErrorType
+  return err
 }
 
 export const opencodeZenAdapter: ProviderAdapter = {
@@ -98,8 +141,7 @@ export const opencodeZenAdapter: ProviderAdapter = {
       body: JSON.stringify(body),
       signal: req.signal,
     })
-    if (!response.ok)
-      throw new Error(`OpenCode Zen API ${response.status}: ${await response.text()}`)
+    if (!response.ok) throw taggedHttpError(response.status, await response.text())
     if (!response.body) throw new Error("OpenCode Zen API: empty response body for stream")
     if (model.surfaceId === "openai-chat-completions")
       yield* translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))
