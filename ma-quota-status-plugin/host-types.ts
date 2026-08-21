@@ -102,4 +102,13 @@ export interface PluginHost {
 export interface LiveAreaHandlerContext {
   abort: AbortSignal
   host?: PluginHost
+  /**
+   * Display-width cells the host reserves on this line for segments it
+   * appends after the slot's own content (decoration suffix + joined
+   * footer tails, gaps included). Width-aware renderers subtract this
+   * from their usable budget so compression reacts to the FULL painted
+   * line. `undefined` when the host doesn't provide it (older host,
+   * tests) — treat as 0.
+   */
+  footerReservedWidth?: number
 }

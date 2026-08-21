@@ -111,3 +111,44 @@ describe("renderQuotaFooter — configurable segments", () => {
     expect(s).not.toContain("anth-4.8") // model not listed
   })
 })
+
+describe("renderQuotaFooter — host-reserved width (full-line budget)", () => {
+  // The handler computes `cols: terminalCols - footerReservedWidth` before
+  // calling the renderer. These tests pin the CONTRACT that makes the bars
+  // shrink as soon as the whole painted line (slot content + host-appended
+  // tail block) would stop fitting — not only when the bare line overflows.
+
+  it("bars stay at max width when the bare line fits cols", () => {
+    const wide = renderQuotaFooter(WINDOWS, TOKENS, { ...baseOpts, cols: 120 })!
+    const s = stripAnsi(wide)
+    // Full-width bar run present (8-cell quota bars).
+    expect(s).toMatch(/5h [█▏▎▍▌▋▊▉░]{8}/)
+  })
+
+  it("bars shrink when the caller passes a reduced budget (reserved width)", () => {
+    // Same data; only the budget differs. With a reservation of, say, 20
+    // cells for a tps tail + LSP badge, a 100-col terminal behaves like an
+    // 80-col one and the ladder must walk further down.
+    const bare = renderQuotaFooter(WINDOWS, TOKENS, { ...baseOpts, cols: 100 })!
+    const reserved = renderQuotaFooter(WINDOWS, TOKENS, {
+      ...baseOpts,
+      cols: 100 - 20,
+    })!
+    const sb = stripAnsi(bare)
+    const sr = stripAnsi(reserved)
+    // The reserved-budget line is strictly leaner.
+    expect(sr.length).toBeLessThan(sb.length)
+    // And both still respect their own budgets (Rule 3 invariant).
+    expect(sb.length).toBeLessThanOrEqual(100)
+    expect(sr.length).toBeLessThanOrEqual(80)
+  })
+
+  it("the reduced-budget line never exceeds its usable width at any reservation", () => {
+    // Sweep reservations from 0 to 40 cells against a fixed terminal:
+    // every rendered form must fit within (cols - reservation).
+    for (let resv = 0; resv <= 40; resv += 5) {
+      const out = stripAnsi(renderQuotaFooter(WINDOWS, TOKENS, { ...baseOpts, cols: 90 - resv })!)
+      expect(out.length).toBeLessThanOrEqual(90 - resv)
+    }
+  })
+})

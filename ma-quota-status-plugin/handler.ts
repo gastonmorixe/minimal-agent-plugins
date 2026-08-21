@@ -180,6 +180,11 @@ export default async function handle(ctx: LiveAreaHandlerContext): Promise<strin
   })
   const sessionTokens = sessionInfo.tokens()
 
+  // Usable width for this line: terminal cols minus what the host appends
+  // at flush time (decoration suffix + footer tails). Shared by both the
+  // custom-script path and the built-in renderer below.
+  const usableCols = cols() - (ctx.footerReservedWidth ?? 0)
+
   // Full-custom renderer escape hatch: hand the session metadata to the user's
   // script and use its output. On any failure/empty/timeout we fall through to
   // the built-in renderer, so a broken script never blanks the footer.
@@ -191,7 +196,7 @@ export default async function handle(ctx: LiveAreaHandlerContext): Promise<strin
         modelLabel: info.modelLabel,
         quota: info.quota,
         sessionTokens,
-        cols: cols(),
+        cols: usableCols,
         sid: SID,
         name: AGENT_NAME,
         effort: EFFORT,
@@ -204,7 +209,10 @@ export default async function handle(ctx: LiveAreaHandlerContext): Promise<strin
 
   const windows = info.quota?.windows ?? []
   return renderQuotaFooter(windows, sessionTokens, {
-    cols: cols(),
+    // Budget for the compression ladder is the usable width above. Without
+    // the reservation the bars stay at max width until the bare line alone
+    // overflows, and the appended block gets clipped off-screen instead.
+    cols: usableCols,
     showOverage: SHOW_OVERAGE,
     overage: info.quota?.overage,
     contextWindow: info.contextWindow,
