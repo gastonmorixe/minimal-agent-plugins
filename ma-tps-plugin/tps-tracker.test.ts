@@ -56,11 +56,34 @@ describe("TpsTracker (delta-driven sliding window)", () => {
   })
 
   it("goes idle after idleMs without any deltas", () => {
+    const t = new TpsTracker({ idleMs: 2_500 })
+    t.sample(0, 50)
+    t.sample(500, 50)
+    expect(t.read(2_000).active).toBe(true)
+    expect(t.read(3_100).active).toBe(false)
+  })
+
+  it("markInactive hides immediately without waiting idleMs", () => {
     const t = new TpsTracker({ idleMs: 15_000 })
     t.sample(0, 50)
     t.sample(500, 50)
-    expect(t.read(14_000).active).toBe(true)
-    expect(t.read(16_000).active).toBe(false)
+    expect(t.read(600).active).toBe(true)
+    expect(t.markInactive()).toEqual({ tps: 0, active: false })
+    expect(t.read(600)).toEqual({ tps: 0, active: false })
+    // Idempotent: a second end is a no-op.
+    expect(t.markInactive()).toEqual({ tps: 0, active: false })
+  })
+
+  it("a new sample after markInactive reactivates", () => {
+    const t = new TpsTracker({ minSpanMs: 10 })
+    t.sample(0, 50)
+    t.sample(500, 50)
+    t.markInactive()
+    t.sample(1000, 25)
+    t.sample(1500, 25)
+    const r = t.read(1500)
+    expect(r.active).toBe(true)
+    expect(r.tps).toBeGreaterThan(0)
   })
 
   it("ignores out-of-order samples", () => {
