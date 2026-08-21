@@ -1,15 +1,25 @@
 /**
  * Grok / xAI model registry — dual-surface where appropriate.
  *
- * Catalog reconciled 2026-07-30 from live probe (**grok-oauth-9**):
- * - `cli-chat-proxy` `/v1/models` (subscription): `grok-4.5` only — do **not**
- *   drop API-catalog entries solely because OAuth omits them.
+ * Catalog reconciled 2026-08-21 from live probe (**grok-oauth-9**):
+ * - `cli-chat-proxy` `/v1/models` (subscription): `grok-4.6` + `grok-4.5`
+ *   only. The other SKUs below are **not listed** but still serve inference
+ *   on `/v1/responses` (verified 2026-08-21: grok-4.3, grok-build-0.1,
+ *   grok-4.20-reasoning all HTTP 200) — do not drop them.
  * - `api.x.ai/v1/models` + language-models merge: text SKUs, `context_length`,
  *   `input_modalities`/`output_modalities`, price micros, `aliases`. Imagine
  *   image/video SKUs omitted (not agent chat surfaces).
- * - Effort ladders: `/v1/models` and language-models do **not** expose them;
- *   cli-models exposes `reasoning_efforts` for `grok-4.5` only (see
- *   capabilities.ts). Other models keep docs-derived effort/thinking caps.
+ * - Effort ladders: `/models-v2` exposes `reasoning_efforts`: grok-4.6
+ *   [xhigh, high(default), medium, low]; grok-4.5 [high(default), medium,
+ *   low]. xhigh on 4.6 verified by live inference 2026-08-21.
+ * - Wire quirk: requesting `grok-4.6` returns backend id `grok-4.6-build`
+ *   in the response `model` field; keep sending `grok-4.6`.
+ *
+ * Special models:
+ * - `grok-build` / `grok-build-0.1`: Dedicated agentic coding model (May 2026).
+ *   Optimized for multi-step software engineering, tool calling, and coding
+ *   agent loops (powers the Grok Build CLI/TUI). Smaller context (256k) and
+ *   cheaper/faster than the 4.x flagships. Best used inside agent harnesses.
  *
  * Aliases: stable live names + local conveniences; date-stamped wire ids as
  * aliases where the local id is the short form. Beta/experimental/gv2 aliases
@@ -160,7 +170,11 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-01",
   })
 
-  // --- grok-build-0.1 (wire); local id keeps `grok-build`
+  // --- grok-build-0.1 (wire id); local id = `grok-build`
+  // Specialized agentic coding model (released May 2026).
+  // Optimized for multi-step software engineering, tool use, and coding agent loops
+  // (powers Grok Build CLI/TUI). Faster/cheaper than 4.6 but smaller context.
+  // Best used inside agent harnesses rather than as a general chat model.
   reg(registrar, {
     id: "grok-build",
     surfaceId: "openai-responses",
@@ -173,7 +187,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
       "grok-code-fast-1",
       "grok-code-fast-1-0825",
     ],
-    tags: ["grok", "xai", "balanced", "code", "reasoning", "vision", "tools", "responses"],
+    tags: ["grok", "xai", "code", "agentic", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_BUILD_RESPONSES,
     pricing: PRICING_GROK_BUILD,
   })

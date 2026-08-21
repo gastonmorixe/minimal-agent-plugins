@@ -1,0 +1,33 @@
+{
+  "id": "tps",
+  "name": "TPS",
+  "version": "0.1.0",
+  "description": "Real-time tokens-per-second readout, inline on the quota footer line. Subscribes to the host's llm.outputDelta stream telemetry, keeps a sliding window, and renders the sustained decode rate. Requires a companion footer plugin (quota-status) to be visible.",
+  "capabilities": [],
+  "liveAreaSlots": [
+    {
+      "id": "tps",
+      "handler": {
+        "type": "module",
+        "path": "./handler.ts",
+        "export": "default"
+      },
+      "position": "footer",
+      "refreshMs": 1000,
+      "timeoutMs": 800,
+      "placeholder": "",
+      "refreshOn": ["llm.outputDelta"]
+    }
+  ],
+  "events": [
+    {
+      "id": "on_output_delta",
+      "on": "llm.outputDelta",
+      "handler": {
+        "type": "module",
+        "path": "./on_output_delta.ts",
+        "export": "default"
+      }
+    }
+  ]
+}

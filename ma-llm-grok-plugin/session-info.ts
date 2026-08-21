@@ -16,9 +16,10 @@
  *   2. Else env API keys (`MINIMAL_AGENT_GROK_API_KEY` / `XAI_API_KEY` /
  *      `GROK_API_KEY`), then the matching `grok-oauth` auth.jsonc entry.
  *
- * Weekly `creditUsagePercent` (Grok CLI unified billing) is **not** on the
- * raw `/v1/billing` JSON; until that path is wired, the status bar only
- * surfaces `rpm` / `tpm` / `month` / `ondemand`.
+ * Weekly `creditUsagePercent` (Grok CLI unified billing) comes from
+ * cli-chat-proxy `GET /v1/billing?format=credits` (verified 2026-08-21:
+ * `config.creditUsagePercent`, `config.currentPeriod.type=USAGE_PERIOD_TYPE_WEEKLY`,
+ * `productUsage[].usagePercent`). Surfaced as the `week` quota window.
  *
  * @module llm/providers/grok/session-info
  */
@@ -36,6 +37,7 @@ import type {
 import { grokContextWindow, grokModelShortLabel } from "./models.ts"
 import { GROK_OAUTH } from "./oauth-login.ts"
 import {
+  CLI_BILLING_CREDITS_URL,
   CLI_BILLING_URL,
   CLI_MODELS_URL,
   MODELS_URL,
@@ -66,6 +68,13 @@ let billingQuota: {
   periodEndMs?: number
   onDemandCap?: number
   onDemandUsed?: number
+  at: number
+} | null = null
+
+let weeklyCredits: {
+  /** 0-100, from `config.creditUsagePercent`. */
+  usagePercent: number
+  periodEndMs?: number
   at: number
 } | null = null
 
@@ -134,6 +143,16 @@ export function setGrokBillingQuota(input: {
   }
 }
 
+/** Cache the weekly unified-billing usage (0-100 percent). */
+export function setGrokWeeklyCredits(input: { usagePercent: number; periodEndMs?: number }): void {
+  if (!Number.isFinite(input.usagePercent) || input.usagePercent < 0) return
+  weeklyCredits = {
+    usagePercent: Math.min(100, input.usagePercent),
+    periodEndMs: input.periodEndMs,
+    at: Date.now(),
+  }
+}
+
 /** Read the cached rate-limit header snapshot, if any. */
 export function getGrokRateLimits(): CachedGrokRateLimits | null {
   return cache
@@ -149,11 +168,17 @@ export function getGrokBillingQuota(): typeof billingQuota {
   return billingQuota
 }
 
+/** Read the cached weekly credits usage, if any. */
+export function getGrokWeeklyCredits(): typeof weeklyCredits {
+  return weeklyCredits
+}
+
 /** Drop rate-limit, usage, and billing caches (tests / logout). */
 export function clearGrokSessionCaches(): void {
   cache = null
   sessionUsage = null
   billingQuota = null
+  weeklyCredits = null
 }
 
 function parseResetMs(s: string): number | undefined {
@@ -209,6 +234,14 @@ export function parseGrokQuotaWindows(rateLimits: ReadonlyMap<string, string>): 
     "x-ratelimit-remaining-tokens",
     "x-ratelimit-reset-tokens",
   )
+
+  if (weeklyCredits && Date.now() - weeklyCredits.at < BILLING_FRESHNESS_MS) {
+    out.push({
+      id: "week",
+      utilization: Math.min(1, Math.max(0, weeklyCredits.usagePercent / 100)),
+      resetAtMs: weeklyCredits.periodEndMs,
+    })
+  }
 
   if (billingQuota && Date.now() - billingQuota.at < BILLING_FRESHNESS_MS) {
     if (billingQuota.limit > 0) {
@@ -339,6 +372,10 @@ function billingIsFresh(): boolean {
   return Boolean(billingQuota && Date.now() - billingQuota.at < BILLING_FRESHNESS_MS)
 }
 
+function weeklyCreditsAreFresh(): boolean {
+  return Boolean(weeklyCredits && Date.now() - weeklyCredits.at < BILLING_FRESHNESS_MS)
+}
+
 function rateLimitsAreFresh(): boolean {
   return Boolean(cache && Date.now() - cache.at < FRESHNESS_MS)
 }
@@ -354,7 +391,7 @@ export function primeGrokSessionInfo(ctx: ProviderSessionContext): Promise<void>
 
   const work = (async () => {
     const needRateLimits = !rateLimitsAreFresh()
-    const needBilling = !billingIsFresh()
+    const needBilling = !billingIsFresh() || !weeklyCreditsAreFresh()
     if (!needRateLimits && !needBilling) return
 
     const cred = resolvePrimeCredential(ctx)
@@ -406,10 +443,19 @@ export function primeGrokSessionInfo(ctx: ProviderSessionContext): Promise<void>
     if (needBilling && cred.kind === "oauth") {
       tasks.push(
         (async () => {
-          if (networkClient) {
-            await refreshGrokBillingQuota(networkClient, cred.token, probeSignal)
-          } else {
-            await refreshGrokBillingQuotaViaFetch(cred.token, probeSignal)
+          if (!billingIsFresh()) {
+            if (networkClient) {
+              await refreshGrokBillingQuota(networkClient, cred.token, probeSignal)
+            } else {
+              await refreshGrokBillingQuotaViaFetch(cred.token, probeSignal)
+            }
+          }
+          if (!weeklyCreditsAreFresh()) {
+            if (networkClient) {
+              await refreshGrokWeeklyCredits(networkClient, cred.token, probeSignal)
+            } else {
+              await refreshGrokWeeklyCreditsViaFetch(cred.token, probeSignal)
+            }
           }
         })(),
       )
@@ -503,4 +549,73 @@ function applyBillingBody(text: string): void {
     ...(typeof onDemandCap === "number" ? { onDemandCap } : {}),
     ...(typeof onDemandUsed === "number" ? { onDemandUsed } : {}),
   })
+}
+
+function applyWeeklyCreditsBody(text: string): void {
+  const body = JSON.parse(text) as {
+    config?: {
+      creditUsagePercent?: number
+      currentPeriod?: { end?: string; type?: string }
+      billingPeriodEnd?: string
+    }
+  }
+  const pct = body.config?.creditUsagePercent
+  if (typeof pct !== "number") return
+  const endRaw = body.config?.currentPeriod?.end ?? body.config?.billingPeriodEnd
+  let periodEndMs: number | undefined
+  if (endRaw) {
+    const t = Date.parse(endRaw)
+    if (Number.isFinite(t)) periodEndMs = t
+  }
+  setGrokWeeklyCredits({ usagePercent: pct, periodEndMs })
+}
+
+/**
+ * Fetch weekly unified-billing usage (`?format=credits`) and cache it.
+ * Verified live 2026-08-21: `config.creditUsagePercent` (0-100),
+ * `config.currentPeriod.type=USAGE_PERIOD_TYPE_WEEKLY`.
+ */
+export async function refreshGrokWeeklyCredits(
+  networkClient: NetworkClient,
+  bearerToken: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    const res = await networkClient.request({
+      label: "grok.billing.credits",
+      method: "GET",
+      url: CLI_BILLING_CREDITS_URL,
+      headers: {
+        authorization: `Bearer ${bearerToken}`,
+        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        accept: "application/json",
+      },
+      signal,
+    })
+    if (!res.ok) return
+    applyWeeklyCreditsBody(await res.text())
+  } catch {
+    // best-effort
+  }
+}
+
+/** Same as {@link refreshGrokWeeklyCredits} but uses global `fetch`. */
+export async function refreshGrokWeeklyCreditsViaFetch(
+  bearerToken: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    const res = await fetch(CLI_BILLING_CREDITS_URL, {
+      headers: {
+        authorization: `Bearer ${bearerToken}`,
+        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        accept: "application/json",
+      },
+      signal,
+    })
+    if (!res.ok) return
+    applyWeeklyCreditsBody(await res.text())
+  } catch {
+    // best-effort
+  }
 }

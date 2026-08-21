@@ -1,7 +1,7 @@
 /**
  * Capability tables per Grok / xAI model + surface.
  *
- * Sources (live probe 2026-07-30, **grok-oauth-9**):
+ * Sources (live probe 2026-08-21, **grok-oauth-9**):
  * - Authenticated OAuth `GET https://cli-chat-proxy.grok.com/v1/models`
  *   (subscription): grok-4.5 and grok-4.6 expose context_window 500000,
  *   api_backend responses, and reasoning_efforts. grok-4.6 additionally
@@ -71,6 +71,8 @@ const CAPS_GROK_46_BASE: Capabilities = {
   maxOutputTokens: 65_536,
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
+  // live cli-models reasoning_efforts (xhigh verified by live inference
+  // 2026-08-21: POST /v1/responses effort=xhigh → HTTP 200)
   effort: { levels: ["low", "medium", "high", "xhigh"], default: "high" },
   ...REASONING_SAMPLING,
   speedFast: false,
@@ -115,6 +117,7 @@ const CAPS_GROK_45_BASE: Capabilities = {
   outputTokensShareContextWindow: true,
   maxOutputTokensBatch: null,
   // live cli-models reasoning_efforts (api.x.ai / language-models omit efforts)
+  // xhigh NOT offered on grok-4.5 (live ladder: high/medium/low, default high)
   effort: { levels: ["low", "medium", "high"], default: "high" },
   ...REASONING_SAMPLING,
   speedFast: false,
@@ -163,6 +166,19 @@ export const CAPS_GROK_45 = CAPS_GROK_45_RESPONSES
 
 // ---------------------------------------------------------------------------
 // grok-build-0.1 (256k) — live api.x.ai id; aliases grok-code-fast-*
+//
+// Specialized agentic coding model released May 2026.
+// Purpose-built for coding agents (originally powered Grok Build CLI/TUI).
+// Optimized for:
+//   - Multi-step software engineering workflows
+//   - Tool calling + iterative edit → run → fix loops
+//   - Fast, economical agent harnesses
+//
+// Trade-offs vs Grok 4.6:
+//   - Much smaller context (256k vs 500k+)
+//   - Lower intelligence on very hard architectural/reasoning tasks
+//   - Significantly cheaper and faster
+// Use inside agent frameworks rather than as a general chat model.
 // ---------------------------------------------------------------------------
 
 export const CAPS_GROK_BUILD_CHAT: Capabilities = {
