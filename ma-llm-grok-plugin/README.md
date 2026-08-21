@@ -21,9 +21,14 @@ HuggingFace/OpenRouter, and a surface codec for generic-endpoint reuse.
 
 ## Models
 
-Live sources: authenticated subscription `cli-chat-proxy` `/v1/models`
-(grok-4.5 and grok-4.6) and `api.x.ai/v1/models` (full text catalog + price
-micros).
+Live sources (reconciled 2026-08-21): authenticated subscription
+`cli-chat-proxy` `/v1/models` + `/models-v2` (grok-4.6 and grok-4.5 listed;
+other SKUs still serve inference on `/v1/responses` even though unlisted) and
+`api.x.ai/v1/models` (full text catalog + price micros).
+
+Special note on `grok-build` (`grok-build-0.1`): This is a purpose-built agentic coding model
+(released May 2026), not a general-purpose model. It is optimized for interactive coding agents,
+tool use, and multi-step development workflows. It is the original model behind the Grok Build CLI/TUI.
 
 | Local id                  | Wire id                        | Surface       | Context | Vision | Notes                                 |
 | ------------------------- | ------------------------------ | ------------- | ------- | ------ | ------------------------------------- |
@@ -32,7 +37,7 @@ micros).
 | `grok-4.5`                  | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high**       |
 | `grok-4.5-chat`            | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                   |
 | `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Fast / balanced                       |
-| `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Coding; aliases `grok-code-fast*`     |
+| `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Agentic coding model (May 2026). Optimized for multi-step software engineering, tool use, and coding agent loops (powers Grok Build CLI). Cheaper/faster than 4.6 but smaller context. Aliases: `grok-code-fast*` |
 | `grok-4.20-reasoning`     | `grok-4.20-0309-reasoning`     | Responses     | 1M      | yes    |                                       |
 | `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses     | 1M      | yes    | No effort knob                        |
 | `grok-4.20-multi-agent`   | `grok-4.20-multi-agent-0309`   | Responses     | 1M      | yes    | Effort = agent count                  |
@@ -74,28 +79,40 @@ tokens — the new `refreshToken` is always written when returned.
 ## Quotas (status bar)
 
 - `rpm` / `tpm` from `x-ratelimit-*` response headers (captured on every turn)
+- `week` from `GET https://cli-chat-proxy.grok.com/v1/billing?format=credits`
+  (`config.creditUsagePercent`, weekly unified billing; OAuth / session only)
 - `month` from `GET https://cli-chat-proxy.grok.com/v1/billing` (OAuth / session only), when `monthlyLimit > 0`
 - `ondemand` from the same `/billing` payload when `onDemandCap > 0`
 - Session token usage accumulation for cost estimates
 
 Free / no-included-pool accounts return `monthlyLimit: 0`. We still cache that
-response (so we do not re-probe every turn) but omit the `month` bar. Grok CLI’s
-weekly `creditUsagePercent` meter is a separate unified-billing shape that is
-**not** present on raw `/v1/billing`; it is not shown here yet.
+response (so we do not re-probe every turn) but omit the `month` bar.
 
 ### How monthly billing is populated
 
 1. **`primeSessionInfo` (boot)** — uses the host’s `authKind` + `credentialName`
    (so `--credential-name grok-oauth-3` hits that auth.jsonc entry, not the
    first `grok-oauth`). Falls back to env API key only for api-key sessions.
-   For OAuth, hits `/v1/billing` (and `/v1/models` for rate-limit headers).
-2. **Adapter (OAuth turns)** — if the billing cache is stale/empty after a
-   successful response, fire-and-forget `refreshGrokBillingQuota`.
-3. **`fetchSessionInfo`** — cache-only; merges `rpm`/`tpm` + `month` /
+   For OAuth, hits `/v1/billing` + `/v1/billing?format=credits` (and
+   `/v1/models-v2` for rate-limit headers).
+2. **Adapter (OAuth turns)** — if a billing cache is stale/empty after a
+   successful response, fire-and-forget refresh.
+3. **`fetchSessionInfo`** — cache-only; merges `rpm`/`tpm` + `week` / `month` /
    `ondemand` into neutral `QuotaWindow`s for the status bar.
 
-API-key sessions (console keys on `api.x.ai`) do **not** get a `month` window —
-that endpoint only exists on cli-chat-proxy.
+API-key sessions (console keys on `api.x.ai`) do **not** get `week` / `month`
+windows — those endpoints only exist on cli-chat-proxy.
+
+## Client headers (cli-chat-proxy)
+
+OAuth requests must carry client identity or the proxy answers HTTP 426:
+
+| Header | Value |
+| ------ | ----- |
+| `x-grok-client-version` | `1.0.5` (must be ≥ 0.1.202) |
+| `x-grok-client-identifier` | `grok-shell` |
+| `X-XAI-Token-Auth` | `xai-grok-cli` |
+| `x-grok-model-override` | requested model id |
 
 ## Tests
 

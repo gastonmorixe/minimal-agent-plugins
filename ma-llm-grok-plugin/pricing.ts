@@ -59,7 +59,9 @@ export const PRICING_GROK_45: MTokRate = {
 }
 
 /**
- * grok-build-0.1 (wire id; local id may be `grok-build`). Live: 10000 / 2000 / 20000.
+ * grok-build-0.1 (wire id; local id = `grok-build`).
+ * Specialized agentic coding model (May 2026). Live pricing: $1 / $2.
+ * Cheaper and faster than frontier models; intended for coding agent loops.
  */
 export const PRICING_GROK_BUILD: MTokRate = {
   inputUSD: fromLiveMicros(10_000), // $1.00

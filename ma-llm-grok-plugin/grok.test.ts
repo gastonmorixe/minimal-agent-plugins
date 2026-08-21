@@ -54,7 +54,12 @@ import {
   setGrokRateLimits,
 } from "./session-info.ts"
 import { grokChatCompletionsCodec } from "./surface-codecs.ts"
-import { CLI_BILLING_URL, CLI_MODELS_URL, MODELS_URL } from "./wire-constants.ts"
+import {
+  CLI_BILLING_URL,
+  CLI_MODELS_URL,
+  GROK_CLIENT_VERSION,
+  MODELS_URL,
+} from "./wire-constants.ts"
 
 function fakeNetworkClient(status: number, body: string) {
   return {
@@ -377,7 +382,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(oauthHeaders.authorization).toBe("Bearer tok")
     expect(oauthHeaders["X-XAI-Token-Auth"]).toBe("xai-grok-cli")
     expect(oauthHeaders["x-grok-model-override"]).toBe("grok-4.5")
-    expect(oauthHeaders["x-grok-client-version"]).toBe("0.2.93")
+    expect(oauthHeaders["x-grok-client-version"]).toBe(GROK_CLIENT_VERSION)
     expect(oauthHeaders["x-grok-client-identifier"]).toBe("grok-shell")
   })
 
@@ -808,7 +813,9 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     const recs = grokAdapter.recommendSubagentModels?.() ?? []
     expect(recs.find((r) => r.role === "deep")?.modelId).toBe("grok-4.6")
     expect(recs.find((r) => r.role === "scout")?.modelId).toBe("grok-4.3")
-    expect(recs.find((r) => r.role === "balanced")?.modelId).toBe("grok-build")
+    // grok-build lost "balanced" in the 2026-08-21 catalog refresh (it is a
+    // specialized coding SKU); grok-build-chat carries balanced+code now.
+    expect(recs.find((r) => r.role === "balanced")?.modelId).toBe("grok-build-chat")
   })
 
   it("exposes a chat surface codec for generic-endpoint reuse", () => {

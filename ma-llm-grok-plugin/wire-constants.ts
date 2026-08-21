@@ -30,7 +30,17 @@ export const CLI_CHAT_PROXY_BASE_URL = "https://cli-chat-proxy.grok.com"
 export const CLI_CHAT_COMPLETIONS_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/chat/completions`
 export const CLI_RESPONSES_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/responses`
 export const CLI_MODELS_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/models`
+/**
+ * Enriched model catalog (same payload as /models plus supported_in_api,
+ * hidden, agent_type, laziness_detector). Preferred over /models for OAuth.
+ */
+export const CLI_MODELS_V2_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/models-v2`
 export const CLI_BILLING_URL = `${CLI_CHAT_PROXY_BASE_URL}/v1/billing`
+/**
+ * Unified weekly billing (`creditUsagePercent`, `productUsage`,
+ * `currentPeriod.type=USAGE_PERIOD_TYPE_WEEKLY`). Verified 2026-08-21.
+ */
+export const CLI_BILLING_CREDITS_URL = `${CLI_BILLING_URL}?format=credits`
 
 /** OIDC userinfo (email, name, picture). */
 export const GROK_USERINFO_URL = "https://auth.x.ai/oauth2/userinfo"
@@ -57,10 +67,11 @@ export const GROK_MODEL_OVERRIDE_HEADER = "x-grok-model-override"
 /**
  * Client version header required by cli-chat-proxy.
  * Must be \>= 0.1.202 or the proxy rejects the request with 426.
- * We match the installed grok CLI version so the proxy sees a valid client.
+ * Matches the installed grok CLI (1.0.5, verified live 2026-08-21: requests
+ * without this header get 426 "Your Grok CLI version (none) is outdated").
  */
 export const GROK_CLIENT_VERSION_HEADER = "x-grok-client-version"
-export const GROK_CLIENT_VERSION = "0.2.93"
+export const GROK_CLIENT_VERSION = "1.0.5"
 
 /** Client identifier header sent to cli-chat-proxy (mirrors grok CLI's "grok-shell"). */
 export const GROK_CLIENT_IDENTIFIER_HEADER = "x-grok-client-identifier"
