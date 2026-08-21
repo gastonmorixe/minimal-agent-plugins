@@ -6,7 +6,7 @@
  * limits. We record the Go list prices so cost estimates reflect real
  * quota burn.
  *
- * Source precedence (2026-08-05):
+ * Source precedence (2026-08-20):
  * 1. Docs pricing table at `opencode.ai/docs/go` (authoritative Go list rates)
  * 2. models.dev `opencode-go` cost block when docs omit a slug (deprecated /
  *    catalog-only IDs still on live `/v1/models`)
@@ -54,6 +54,15 @@ export const PRICING_DEEPSEEK_V4_FLASH: MTokRate = {
 }
 
 /** Source: docs/go pricing table (2026-07-30). models.dev agrees. */
+export const PRICING_GLM_5_3: MTokRate = {
+  inputUSD: 1.4,
+  outputUSD: 4.4,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.26,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: docs/go pricing table (2026-08-20). */
 export const PRICING_GLM_5_2: MTokRate = {
   inputUSD: 1.4,
   outputUSD: 4.4,
@@ -280,6 +289,15 @@ export const PRICING_QWEN3_8_MAX: MTokRate = {
   outputUSD: 6.0,
   cacheWriteUSD: 2.5,
   cacheReadUSD: 0.25,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: docs/go pricing table (2026-08-20). No cache writes. */
+export const PRICING_MUSE_SPARK_1_2_CONTRIBUTOR: MTokRate = {
+  inputUSD: 0.1,
+  outputUSD: 0.2,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.002,
   webSearchPerCallUSD: 0,
 }
 

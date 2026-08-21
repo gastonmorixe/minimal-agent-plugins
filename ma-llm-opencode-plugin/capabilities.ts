@@ -7,11 +7,11 @@
  * - **Messages**: Anthropic Messages (`/v1/messages`).
  *   Used by MiniMax, Qwen.
  * - **Responses**: OpenAI Responses (`/v1/responses`).
- *   Used by GPT-5.6 Luna.
+ *   Used by GPT-5.6 Luna and Muse Spark 1.2 Contributor.
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
  *
- * Source precedence (2026-08-05):
+ * Source precedence (2026-08-20):
  * 1. Live IDs from `https://opencode.ai/zen/go/v1/models` (must stay in sync)
  * 2. Context / maxOutput / modalities from models.dev `opencode-go` provider
  * 3. Docs (`opencode.ai/docs/go`) for surface/endpoint mapping; no window sizes
@@ -20,7 +20,7 @@
  * Three wire surfaces:
  * - Chat Completions (`/v1/chat/completions`) — DeepSeek, GLM, Kimi, MiMo, Hy, Grok
  * - Anthropic Messages (`/v1/messages`) — MiniMax, Qwen
- * - OpenAI Responses (`/v1/responses`) — GPT-5.6 Luna
+ * - OpenAI Responses (`/v1/responses`) — GPT-5.6 Luna, Muse Spark 1.2 Contributor
  *
  * @module llm/providers/opencode/capabilities
  */
@@ -63,6 +63,9 @@ const M_TIVA = { image: true, audio: true, pdf: false, video: true } as const
 /** Text + image + audio + pdf (legacy MiMo Omni). */
 const M_TIAP = { image: true, audio: true, pdf: true, video: false } as const
 
+/** Text + image + video + audio + pdf. */
+const M_ALL = { image: true, audio: true, pdf: true, video: true } as const
+
 /** Text + image + pdf (GPT-5.6 Luna on OpenCode Go). */
 const M_TIP = { image: true, audio: false, pdf: true, video: false } as const
 
@@ -85,7 +88,7 @@ const TOOLS_STRICT = {
  * Used by most Chat-surface models (DeepSeek, GLM, Kimi, MiMo).
  */
 function thinkExtended(
-  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh" | "max">,
+  levels: ReadonlyArray<"minimal" | "none" | "low" | "medium" | "high" | "xhigh" | "max">,
   df: "none" | "low" | "medium" | "high" | "xhigh" | "max" = "medium",
 ) {
   return {
@@ -99,7 +102,7 @@ function thinkExtended(
  * summaries. Used by GPT-5.6 Luna on `/v1/responses`.
  */
 function thinkResponses(
-  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh" | "max">,
+  levels: ReadonlyArray<"minimal" | "none" | "low" | "medium" | "high" | "xhigh" | "max">,
   df: "none" | "low" | "medium" | "high" | "xhigh" | "max" = "medium",
 ) {
   return {
@@ -213,8 +216,18 @@ export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
 }
 
 /**
+ * GLM-5.3 — 1M ctx, 131K output, text-only.
+ * Caps: models.dev opencode-go (2026-08-20). Surface: docs endpoints table.
+ * Efforts: low | high | max (models.dev reasoning_options).
+ */
+export const CAPS_GLM_5_3: Capabilities = {
+  ...chatBase(1_000_000, 131_072, M_TEXT),
+  ...thinkExtended(["low", "high", "max"], "high"),
+}
+
+/**
  * GLM-5.2 — 1M ctx, 131K output, text-only.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
+ * Caps: models.dev opencode-go (2026-08-20). Surface: docs endpoints table.
  */
 export const CAPS_GLM_5_2: Capabilities = {
   ...chatBase(1_000_000, 131_072, M_TEXT),
@@ -432,6 +445,34 @@ export const CAPS_QWEN3_5_PLUS: Capabilities = {
 // ===========================================================================
 // OpenAI Responses surface models
 // ===========================================================================
+
+/**
+ * Muse Spark 1.2 Contributor — 1.05M ctx, 128K output, multimodal.
+ * Caps: models.dev opencode-go (2026-08-20). Surface: docs endpoints
+ * (`/v1/responses`, `@ai-sdk/openai`). Efforts: minimal | low | medium | high | xhigh.
+ * OpenCode Go does not advertise server-side tools or stateful history.
+ */
+export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_048_576,
+  maxOutputTokens: 131_072,
+  maxOutputTokensBatch: null,
+  ...thinkResponses(["minimal", "low", "medium", "high", "xhigh"], "medium"),
+  acceptsTemperature: true,
+  acceptsTopP: true,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_STRICT },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...M_ALL },
+  serverSideHistory: false,
+  serverTools: [],
+}
 
 /**
  * GPT-5.6 Luna — 1.05M ctx, 128K output, text+image+pdf.
