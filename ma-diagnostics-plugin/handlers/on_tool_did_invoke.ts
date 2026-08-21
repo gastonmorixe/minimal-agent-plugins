@@ -28,7 +28,9 @@ import {
   type ProviderFactories,
 } from "../lib/service.ts"
 import { BiomeProvider } from "../providers/biome-provider.ts"
+import { EslintProvider } from "../providers/eslint-provider.ts"
 import { OxlintProvider } from "../providers/oxlint-provider.ts"
+import { PrettierProvider } from "../providers/prettier-provider.ts"
 import { SourceKitLspProvider } from "../providers/sourcekit-lsp-provider.ts"
 import { TsLspProvider } from "../providers/ts-lsp-provider.ts"
 import { TscDirectProvider } from "../providers/tsc-direct-provider.ts"
@@ -57,7 +59,9 @@ const REAL_FACTORIES: ProviderFactories = {
   makeTsc: (bin, root) => new TscSpawnProvider(bin, root),
   makeTscDirect: (bin, root) => new TscDirectProvider(bin, root),
   makeBiome: (bin, root) => new BiomeProvider(bin, root),
+  makePrettier: (bin, root) => new PrettierProvider(bin, root),
   makeOxlint: (bin, root) => new OxlintProvider(bin, root),
+  makeEslint: (bin, root) => new EslintProvider(bin, root),
   makeSourceKit: (bin, root) => new SourceKitLspProvider(bin, root),
 }
 
