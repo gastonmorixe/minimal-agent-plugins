@@ -257,6 +257,17 @@ export interface SubagentRecord {
   readonly spawnedAt: string
   /** Current lifecycle state. */
   readonly status: SubagentStatus
+  /**
+   * Last known OS pid. Set at spawn from `running.pid` and KEPT when the
+   * supervisor finalizes to `done`/`incomplete`/`failed`/`stopped`.
+   *
+   * `done` has no pid field (the status is a result digest), but after
+   * ReportResult the bun process can still be alive with an open
+   * `obscura-worker` child. Lead `agent.willStop` reaps leftovers via this
+   * field. Absent on queued-never-launched records and on fleets persisted
+   * before this field existed.
+   */
+  readonly lastPid?: number
   /** Optional runtime budget. */
   readonly budget?: Budget
   /** Linked tasks-plugin task hash, when the worker owns a task. */

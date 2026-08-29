@@ -33,7 +33,9 @@ export default async function stop(ctx: TUIContext): Promise<TUIResult> {
 
   const r = stopAgent(id, reason, {
     store,
-    kill: (pid) => process.kill(pid),
+    // SIGKILL so Fetch's (or any other) SIGTERM swallower cannot leave a
+    // zombie bun + obscura-worker behind. Pipes close → worker exits.
+    kill: (pid) => process.kill(pid, "SIGKILL"),
     now: () => new Date(),
   })
   if (!r.ok) return { kind: "tool_result", content: r.error, is_error: true }

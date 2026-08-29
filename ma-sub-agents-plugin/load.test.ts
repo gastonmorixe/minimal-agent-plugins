@@ -29,6 +29,8 @@ interface Manifest {
     handler: { path: string }
   }[]
   liveAreaSlots?: { id: string; refreshMs?: number }[]
+  hooks?: { id: string; channel?: string }[]
+  permissions?: string[]
 }
 
 const MANIFEST = JSON.parse(
@@ -62,6 +64,12 @@ describe("sub-agents manifest contract", () => {
     const slot = MANIFEST.liveAreaSlots?.find((s) => s.id === "fleet_supervisor")
     expect(slot).toBeDefined()
     expect(slot?.refreshMs).toBe(1000)
+  })
+
+  it("registers agent.willStop to reap the fleet on lead exit", () => {
+    const hook = MANIFEST.hooks?.find((h) => h.channel === "agent.willStop")
+    expect(hook?.id).toBe("on_agent_will_stop")
+    expect(MANIFEST.permissions).toContain("hooks:agent.willStop")
   })
 
   it("contributes a system-prompt block mentioning SpawnAgent", () => {

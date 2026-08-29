@@ -4,7 +4,13 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
-import { type ServiceDeps, spawnAgent, stopAgent, type WorkerDefinition } from "./service.ts"
+import {
+  type ServiceDeps,
+  spawnAgent,
+  stopAgent,
+  stopAllAgents,
+  type WorkerDefinition,
+} from "./service.ts"
 import { type SpawnDeps } from "./spawn.ts"
 import { SubagentStore } from "./store.ts"
 import { sessionId, subagentId } from "./types.ts"
@@ -54,6 +60,9 @@ describe("spawnAgent", () => {
     expect(r.value.id).toBe(subagentId("A1"))
     expect(r.value.status.kind).toBe("running")
     if (r.value.status.kind === "running") expect(r.value.status.pid).toBe(5001)
+    // lastPid survives ReportResult / terminal finalize so willStop can still reap.
+    expect(r.value.lastPid).toBe(5001)
+    expect(deps.store.get("A1")?.lastPid).toBe(5001)
     // persisted
     expect(deps.store.get("A1")?.sid).toBe(sessionId(FIXED_SID))
     // launched with the pinned sid + the task (now followed by the REQUIRED
@@ -431,5 +440,113 @@ describe("stopAgent", () => {
       now: () => new Date(),
     })
     expect(miss.ok).toBe(false)
+  })
+
+  it("SIGKILLs lastPid on a done leftover without rewriting status", () => {
+    const deps = makeDeps(dir)
+    deps.store.upsert({
+      id: subagentId("A1"),
+      sid: sessionId(FIXED_SID),
+      label: "explorer",
+      type: "explorer",
+      model: "cursor-auto",
+      task: "scout",
+      isolation: "fresh",
+      workspace: "inherit-cwd",
+      spawnedAt: "2026-05-30T12:00:00.000Z",
+      status: {
+        kind: "done",
+        endedAt: "2026-05-30T12:01:00.000Z",
+        result: { short: "ok", tokens: 1, tools: 1 },
+      },
+      lastPid: 4242,
+      depth: 1,
+      leadSid: LEAD,
+    })
+    const killed: number[] = []
+    const r = stopAgent("A1", "reap leftover", {
+      store: deps.store,
+      kill: (pid) => killed.push(pid),
+      now: () => new Date("2026-05-30T12:05:00.000Z"),
+    })
+    expect(r.ok).toBe(true)
+    expect(killed).toEqual([4242])
+    expect(deps.store.get("A1")?.status.kind).toBe("done")
+  })
+})
+
+describe("stopAllAgents", () => {
+  let dir: string
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "subagents-stopall-"))
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it("SIGKILLs every running worker and marks them stopped (lead willStop)", async () => {
+    const deps = makeDeps(dir)
+    expect((await spawnAgent({ task: "a" }, deps)).ok).toBe(true)
+    expect((await spawnAgent({ task: "b" }, deps)).ok).toBe(true)
+    const killed: number[] = []
+    const n = stopAllAgents("lead shutting down", {
+      store: deps.store,
+      kill: (pid) => killed.push(pid),
+      now: () => new Date("2026-05-30T12:05:00.000Z"),
+    })
+    expect(n).toBe(2)
+    expect(killed).toEqual([5001, 5002])
+    for (const id of ["A1", "A2"]) {
+      const st = deps.store.get(id)?.status
+      expect(st?.kind).toBe("stopped")
+      if (st?.kind === "stopped") expect(st.reason).toBe("lead shutting down")
+    }
+  })
+
+  it("is a no-op when the fleet is empty", () => {
+    const deps = makeDeps(dir)
+    const killed: number[] = []
+    expect(
+      stopAllAgents("lead shutting down", {
+        store: deps.store,
+        kill: (pid) => killed.push(pid),
+        now: () => new Date(),
+      }),
+    ).toBe(0)
+    expect(killed).toEqual([])
+  })
+
+  it("SIGKILLs lastPid on a done leftover (ReportResult pid still alive)", () => {
+    // Live 2026-08-29: supervisor marks done on the sentinel while the bun pid
+    // is still alive. done has no pid field, so skipping terminal records (or
+    // only reading running.pid) leaves obscura-worker children orphaned.
+    const deps = makeDeps(dir)
+    deps.store.upsert({
+      id: subagentId("A1"),
+      sid: sessionId(FIXED_SID),
+      label: "explorer",
+      type: "explorer",
+      model: "cursor-auto",
+      task: "scout",
+      isolation: "fresh",
+      workspace: "inherit-cwd",
+      spawnedAt: "2026-05-30T12:00:00.000Z",
+      status: {
+        kind: "done",
+        endedAt: "2026-05-30T12:01:00.000Z",
+        result: { short: "ok", tokens: 1, tools: 1 },
+      },
+      lastPid: 4242,
+      depth: 1,
+      leadSid: LEAD,
+    })
+    const killed: number[] = []
+    const n = stopAllAgents("lead shutting down", {
+      store: deps.store,
+      kill: (pid) => killed.push(pid),
+      now: () => new Date("2026-05-30T12:05:00.000Z"),
+    })
+    expect(n).toBe(1)
+    expect(killed).toEqual([4242])
+    // Work already finished. Reap the pid, do not rewrite the status.
+    expect(deps.store.get("A1")?.status.kind).toBe("done")
   })
 })

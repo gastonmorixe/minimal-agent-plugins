@@ -271,6 +271,20 @@
       "timeoutMs": 4000
     }
   ],
+  "hooks": [
+    {
+      "id": "on_agent_will_stop",
+      "channel": "agent.willStop",
+      "handler": {
+        "type": "module",
+        "path": "./handlers/on_agent_will_stop.ts",
+        "export": "default"
+      },
+      "priority": 10,
+      "timeoutMs": 2000
+    }
+  ],
+  "permissions": ["hooks:agent.willStop"],
   "turnAttachments": [
     {
       "id": "fleet_digest",

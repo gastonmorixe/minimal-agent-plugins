@@ -795,9 +795,11 @@ describe("callBackend - parent-exit hook", () => {
     expect(() => unsub()).not.toThrow()
   })
 
-  test("default hook subscribes to exit + SIGINT + SIGTERM + SIGHUP", () => {
-    // We can't easily emit real signals in a test, but we can confirm that
-    // the listener count delta is 4 (one per event) and reverts on unsubscribe.
+  test("default hook subscribes to exit ONLY (never SIGINT/SIGTERM/SIGHUP)", () => {
+    // Signal listeners disable Node/Bun's default terminate-on-signal
+    // behavior. The hook must NOT install them, or a supervisor SIGTERM
+    // kills the backend child then leaves the agent process itself alive
+    // (obscura-worker orphan postmortem 2026-08-29).
     const before = {
       exit: process.listenerCount("exit"),
       sigint: process.listenerCount("SIGINT"),
@@ -806,14 +808,11 @@ describe("callBackend - parent-exit hook", () => {
     }
     const unsub = defaultParentExitHook(() => {})
     expect(process.listenerCount("exit")).toBe(before.exit + 1)
-    expect(process.listenerCount("SIGINT")).toBe(before.sigint + 1)
-    expect(process.listenerCount("SIGTERM")).toBe(before.sigterm + 1)
-    expect(process.listenerCount("SIGHUP")).toBe(before.sighup + 1)
-    unsub()
-    expect(process.listenerCount("exit")).toBe(before.exit)
     expect(process.listenerCount("SIGINT")).toBe(before.sigint)
     expect(process.listenerCount("SIGTERM")).toBe(before.sigterm)
     expect(process.listenerCount("SIGHUP")).toBe(before.sighup)
+    unsub()
+    expect(process.listenerCount("exit")).toBe(before.exit)
   })
 })
 

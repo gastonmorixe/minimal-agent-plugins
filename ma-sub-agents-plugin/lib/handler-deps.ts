@@ -236,9 +236,12 @@ export function supervisorDepsFromCtx(ctx: LiveAreaHandlerContext): SupervisorDe
     store: new SubagentStore(leadSid, { dir: sessionsDir }),
     probeDeps: realProbeDeps(),
     emit: (channel, payload) => ctx.emit?.(channel, payload),
+    // SIGKILL (not SIGTERM): a worker that has used Fetch may have installed
+    // signal listeners that swallow SIGTERM. SIGKILL always reaps the bun
+    // process; its detached obscura-worker then exits on stdin EOF.
     kill: (pid) => {
       try {
-        process.kill(pid)
+        process.kill(pid, "SIGKILL")
       } catch {
         // already gone
       }
