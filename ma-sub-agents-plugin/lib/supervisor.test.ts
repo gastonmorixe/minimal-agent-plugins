@@ -69,6 +69,19 @@ describe("supervisorTick — running transitions", () => {
     expect(inject?.type === "inject" && inject.source).toBe("subagent:A1")
   })
 
+  it("keeps lastPid when a sentinel finalizes a still-alive worker (done leftover)", () => {
+    const out = tick([rec("A1", running())], { A1: { alive: true, result: RESULT } })
+    expect(out.records[0]?.status.kind).toBe("done")
+    expect(out.records[0]?.lastPid).toBe(4242)
+    const stop = out.effects.find((e) => e.type === "stop")
+    expect(stop).toEqual({
+      type: "stop",
+      id: subagentId("A1"),
+      pid: 4242,
+      reason: "result sentinel written",
+    })
+  })
+
   it("transitions running → failed on non-zero exit without a result", () => {
     const out = tick([rec("A1", running())], { A1: { alive: false, exitCode: 1 } })
     const st = out.records[0]?.status

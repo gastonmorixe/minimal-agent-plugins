@@ -460,7 +460,8 @@ export function supervisorTick(input: TickInput): TickOutput {
     const { status, effects: fx } = step(r, probe, input.now, input.nowMs)
     if (status !== r.status) {
       changed = true
-      out.push({ ...r, status })
+      const lastPid = r.status.kind === "running" ? r.status.pid : r.lastPid
+      out.push({ ...r, status, ...(lastPid !== undefined ? { lastPid } : {}) })
     } else {
       out.push(r)
     }

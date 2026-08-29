@@ -151,3 +151,20 @@ export interface LiveAreaHandlerContext {
   emit?: (channel: string, payload?: unknown) => void
   agent?: AgentContext
 }
+
+/**
+ * Runtime context passed to a hooks[] handler. Mirror of the host's
+ * `HookHandlerContext`, narrowed to what this plugin's lifecycle hooks read.
+ */
+export interface HookHandlerContext {
+  channel?: string
+  packageDir?: string
+  cwd: string
+  env: Record<string, string>
+  abort?: AbortSignal
+  priority?: number
+  emit?: (channel: string, payload?: unknown) => void
+  stderr?: NodeJS.WriteStream
+  agent?: AgentContext
+  log?: PluginLogger
+}

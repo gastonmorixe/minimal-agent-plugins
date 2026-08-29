@@ -34,7 +34,7 @@ export const ENV_RESULT_PATH = "MINIMAL_AGENT_SUBAGENT_RESULT_PATH"
 
 /** Side-effects needed to launch a worker. */
 export interface SpawnDeps {
-  /** Launch a detached process; return its pid. Throws on failure. */
+  /** Launch a worker process; return its pid. Throws on failure. */
   readonly launch: (
     argv: readonly string[],
     opts: { cwd: string; env: Record<string, string>; logPath: string },
@@ -261,14 +261,16 @@ export function parseResultDigest(raw: unknown): ResultDigest | undefined {
   }
 }
 
-/** Production spawn deps: detached `Bun.spawn` with stdout/stderr → a log file. */
+/** Production spawn deps: `Bun.spawn` with stdout/stderr → a log file. */
 export function realSpawnDeps(): SpawnDeps {
   return {
     launch: (argv, opts) => {
       mkdirSync(dirname(opts.logPath), { recursive: true })
       const fd = openSync(opts.logPath, "a")
-      // `Bun.spawn` is available in the agent runtime. Detach so the worker
-      // outlives a lead crash; pipe stdio to the log; no stdin.
+      // Not detached: the worker stays a real child of the lead so a forced
+      // lead exit still closes its stdio. (Detached was previously claimed in
+      // a comment but never set — and would make lead-exit reaping harder.)
+      // The supervisor / agent.willStop path SIGKILLs lingering pids explicitly.
       const proc = (
         globalThis as unknown as { Bun: { spawn: (cmd: string[], o: object) => { pid: number } } }
       ).Bun.spawn(

@@ -381,6 +381,7 @@ export async function spawnAgent(
     workspace: "inherit-cwd",
     spawnedAt: nowIso,
     status: { kind: "running", pid: launched.value, startedAt: nowIso, progress: ZERO_PROGRESS },
+    lastPid: launched.value,
     ...(budget ? { budget } : {}),
     ...(req.taskId ? { taskId: req.taskId } : {}),
     ...(expectArtifacts ? { expectArtifacts } : {}),
@@ -399,20 +400,61 @@ export function stopAgent(
 ): Result<SubagentRecord> {
   const rec = deps.store.get(id)
   if (!rec) return err(`unknown sub-agent ${id}`)
-  if (rec.status.kind !== "running" && rec.status.kind !== "queued") {
-    return ok(rec) // already terminal — nothing to stop
-  }
-  if (rec.status.kind === "running") {
+  const pid = rec.status.kind === "running" ? rec.status.pid : rec.lastPid
+  if (typeof pid === "number" && pid > 0) {
     try {
-      deps.kill(rec.status.pid)
+      deps.kill(pid)
     } catch {
-      // pid already gone — fall through to mark stopped
+      // pid already gone — fall through
     }
+  }
+  if (rec.status.kind !== "running" && rec.status.kind !== "queued") {
+    return ok(rec) // already terminal — pid reaped, status stays
   }
   const stopped: SubagentRecord = {
     ...rec,
+    ...(rec.status.kind === "running" ? { lastPid: rec.status.pid } : {}),
     status: { kind: "stopped", endedAt: deps.now().toISOString(), ...(reason ? { reason } : {}) },
   }
   deps.store.upsert(stopped)
   return ok(stopped)
+}
+
+/**
+ * Reap every worker pid the lead still knows about. Used on `agent.willStop`
+ * so a clean lead exit cannot leave orphaned bun processes (and their
+ * detached obscura-worker children) under launchd.
+ *
+ * Running/queued records are marked stopped. Terminal records (especially
+ * `done` after ReportResult) KEEP their status — the work already finished —
+ * but `lastPid` is still SIGKILL'd if present. Returns how many pids were
+ * signaled.
+ */
+export function stopAllAgents(
+  reason: string,
+  deps: { store: SubagentStore; kill: (pid: number) => void; now: () => Date },
+): number {
+  let signaled = 0
+  for (const rec of deps.store.all()) {
+    const pid = rec.status.kind === "running" ? rec.status.pid : rec.lastPid
+    if (typeof pid === "number" && pid > 0) {
+      try {
+        deps.kill(pid)
+        signaled++
+      } catch {
+        // already gone
+      }
+    }
+    if (!isActive(rec.status)) continue
+    deps.store.upsert({
+      ...rec,
+      ...(typeof pid === "number" && pid > 0 ? { lastPid: pid } : {}),
+      status: {
+        kind: "stopped",
+        endedAt: deps.now().toISOString(),
+        reason,
+      },
+    })
+  }
+  return signaled
 }

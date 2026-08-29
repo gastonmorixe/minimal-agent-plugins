@@ -108,13 +108,15 @@ export interface BackendDeps {
   spawnFn?: SpawnFn
   existsFn?: (path: string) => boolean
   /**
-   * Test seam: override the parent-exit hook registrar. Default subscribes
-   * to `process.on("exit"|"SIGINT"|"SIGTERM"|"SIGHUP")` so a wedged backend
-   * gets killed when the agent itself goes away. Returns an unsubscribe.
+   * Test seam: override the parent-exit hook registrar. Default
+   * subscribes to `process.on("exit")` so a wedged backend gets killed
+   * when the agent itself goes away. Returns an unsubscribe.
    *
    * Without this hook the 2026-05-19 orphan obscura postmortem reproduces:
    * agent exits normally, backend keeps spinning, gets adopted by launchd
-   * (PPID=1), burns 100% CPU until manually killed.
+   * (PPID=1), burns 100% CPU until manually killed. Do not "improve" the
+   * default by also listening for SIGTERM — that swallows supervisor
+   * stop-signals (2026-08-29 postmortem).
    */
   parentExitHook?: (onParentExit: () => void) => () => void
   /**
@@ -144,10 +146,24 @@ type TimerHandle = ReturnType<typeof setTimeout>
 export const DEFAULT_WATCHDOG_SLACK_SEC = 30
 
 /**
- * Default parent-exit hook: kill the child if the agent process itself is
- * exiting. Registers across `exit` and the common termination signals so
- * any path out (normal exit, SIGINT, SIGTERM, SIGHUP) takes the backend
- * down with it. Returns an unsubscribe to remove all handlers.
+ * Default parent-exit hook: kill the child when the agent process itself is
+ * exiting. Subscribes to `process.on("exit")` ONLY.
+ *
+ * Do NOT also listen for SIGINT/SIGTERM/SIGHUP. In Node/Bun, installing any
+ * listener for those signals disables the default terminate-on-signal
+ * behavior. An earlier version of this hook registered those listeners,
+ * killed the backend on signal, then returned — leaving the agent process
+ * itself alive. That is the 2026-08-29 obscura orphan postmortem: the
+ * sub-agent supervisor's SIGTERM after `ReportResult` was swallowed, the
+ * bun worker stayed up under launchd, and its detached `obscura-worker`
+ * child (stdin still held open) lived for hours.
+ *
+ * Relying on `exit` is enough: SIGTERM/SIGINT with no swallower terminate
+ * the process, `exit` fires, and we SIGKILL the backend synchronously.
+ * Forced SIGKILL of the parent still reaps the worker via stdin EOF
+ * (obscura-worker exits cleanly when its protocol pipe closes).
+ *
+ * Returns an unsubscribe that removes the `exit` handler.
  */
 export function defaultParentExitHook(onParentExit: () => void): () => void {
   const wrapped = () => {
@@ -158,14 +174,8 @@ export function defaultParentExitHook(onParentExit: () => void): () => void {
     }
   }
   process.on("exit", wrapped)
-  process.on("SIGINT", wrapped)
-  process.on("SIGTERM", wrapped)
-  process.on("SIGHUP", wrapped)
   return () => {
     process.off("exit", wrapped)
-    process.off("SIGINT", wrapped)
-    process.off("SIGTERM", wrapped)
-    process.off("SIGHUP", wrapped)
   }
 }
 
@@ -332,11 +342,13 @@ export function buildBackendEnv(
  *      stderr for postmortem clarity. Defense in depth for the
  *      2026-05-19 obscura wedge: a runaway V8 microtask loop made the
  *      backend ignore its own 30s timeout for 2½ hours.
- *   3. **Parent-exit hook** — `process.on("exit"|SIG{INT,TERM,HUP})`
- *      sends SIGKILL (group) to the backend. POSIX does not propagate
- *      parent death to children by default on macOS (no PR_SET_PDEATHSIG),
- *      so without this the backend gets reparented to launchd and
- *      keeps spinning.
+ *   3. **Parent-exit hook** — `process.on("exit")` sends SIGKILL (group)
+ *      to the backend when this process is actually terminating. (Signal
+ *      listeners are intentionally NOT registered — they would swallow
+ *      SIGTERM and leave the agent + worker alive; see
+ *      {@link defaultParentExitHook}.) POSIX does not propagate parent
+ *      death to children on macOS (no PR_SET_PDEATHSIG); the detached
+ *      worker still dies on parent SIGKILL because its stdin pipe EOF.
  *
  * The backend is spawned with `detached: true` so it becomes its own
  * process-group leader; group-signaling reaches any helpers it forks.

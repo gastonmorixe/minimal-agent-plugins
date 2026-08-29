@@ -6,6 +6,22 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Fixed
+
+- 2026-08-29 (this session): Fetch/obscura-worker orphans after agent exit.
+  `defaultParentExitHook` no longer installs SIGINT/SIGTERM/SIGHUP listeners
+  (those disabled Node/Bun default terminate-on-signal, so a supervisor
+  SIGTERM after `ReportResult` killed nothing useful and left the bun
+  worker — plus its detached `obscura-worker --fetch-protocol` child —
+  alive under launchd for hours). Hook now listens to `exit` only.
+  Sub-agent stop / deadline / lead `agent.willStop` use SIGKILL so any
+  remaining signal swallower cannot strand the fleet; forced parent death
+  still reaps obscura-worker via stdin EOF. Fetch also shuts the
+  persistent worker down on `agent.willStop`. Sub-agents keep `lastPid`
+  across `ReportResult` finalize so `stopAllAgents` / `stopAgent` can
+  SIGKILL done-but-alive leftovers (status stays terminal; pid is reaped).
+  Obscura spawn still uses `detached: true` for Chromium process-group kill.
+
 ### Added
 
 - 2026-08-18 (this session): OpenAI Fast mode. Live Codex catalog
