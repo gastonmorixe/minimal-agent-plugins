@@ -9,6 +9,7 @@
 
 import { cursorBidiLog } from "./bidi-debug.ts"
 import {
+  extractTrailingFollowUpUserText,
   extractTrailingToolResults,
   requestHasToolResultContinuation,
   toolResultToWireText,
@@ -25,7 +26,10 @@ import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ModelView } from "./lib/provider-plugin.ts"
-import { extractServerTextEvents } from "./proto/agent-run.ts"
+import {
+  encodeAgentClientMessageConversationAction,
+  extractServerTextEvents,
+} from "./proto/agent-run.ts"
 import {
   encodeAgentClientMessageExecResult,
   encodeAgentClientMessageExecStreamClose,
@@ -33,6 +37,7 @@ import {
 } from "./proto/client-message.ts"
 import { decodeAgentServerMessage } from "./proto/exec-server-decode.ts"
 import { decodeKvServerMessage, encodeAgentClientMessageKvReply } from "./proto/kv.ts"
+import { resolveCursorWireAgentMode } from "./request-body.ts"
 import { CursorBidiEnvelopeTranslator } from "./response-stream-bidi.ts"
 
 export type CursorBidiRunOpts = {
@@ -178,6 +183,27 @@ async function* continueBidiSession(
     streamCloseBytes: streamClose.length,
     resultPreview: resultText.slice(0, 120),
   })
+
+  // Host drained a mid-turn user prompt into this continuation (tool_results +
+  // text). Official CLI writes AgentClientMessage.conversation_action on the
+  // live stream (`queued_action`) via conversationActionManager, independent of
+  // exec stream_close. Write the follow-up BEFORE closing the exec so Cursor
+  // can preempt the in-flight turn instead of hanging after mcp_result.
+  const followUpText = extractTrailingFollowUpUserText(req.messages)
+  if (followUpText) {
+    const conversationAction = encodeAgentClientMessageConversationAction({
+      text: followUpText,
+      modelId: opts.modelId,
+      conversationId: session.conversationId,
+      mode: resolveCursorWireAgentMode(req),
+    })
+    cursorBidiLog("continue.write-conversation-action", {
+      bytes: conversationAction.length,
+      preview: followUpText.slice(0, 120),
+    })
+    session.wire.writeProto(conversationAction)
+  }
+
   for (const payload of payloads) session.wire.writeProto(payload)
   session.wire.writeProto(streamClose)
   session.pendingExec = null
@@ -193,92 +219,115 @@ async function* readBidiUntilPauseOrEnd(
 ): AsyncGenerator<CanonicalEvent> {
   const sessionKey = opts.sessionId || "default"
 
-  while (true) {
-    const next = await session.envelopeGen.next()
-    cursorBidiLog("read.envelope-next", {
-      done: next.done,
-      payloadBytes: next.done ? 0 : next.value.payload.length,
-      endStream: next.done ? false : next.value.endStream,
-    })
-    if (next.done) {
-      cursorBidiLog("read.envelope-done")
-      for (const event of session.translator.finishIfStarted()) {
-        cursorBidiLog("read.event", { type: event.type })
-        yield event
-      }
-      if (!session.pendingExec) clearCursorBidiSession(sessionKey)
-      return
+  // envelopeGen is created once at open with attempt-1's AbortSignal. Each
+  // continue is a new host attempt (new withStreamWatchdog AbortController).
+  // Re-bind the *current* signal so TTFB/idle abort can close the keep-open
+  // wire; otherwise a silent post-mcp read hangs forever (Heather 3c7e375a).
+  const onAbort = () => {
+    try {
+      session.wire.close()
+    } catch {
+      /* ignore */
     }
+  }
+  if (opts.signal?.aborted) {
+    onAbort()
+    throw opts.signal.reason instanceof Error
+      ? opts.signal.reason
+      : new Error("cursor bidi: aborted")
+  }
+  opts.signal?.addEventListener("abort", onAbort, { once: true })
 
-    const kv = decodeKvServerMessage(next.value.payload)
-    if (kv) {
-      cursorBidiLog("read.kv", {
-        kind: kv.kind,
-        id: kv.id,
-        blobBytes: kv.kind === "set" ? kv.blobData.byteLength : 0,
+  try {
+    while (true) {
+      const next = await session.envelopeGen.next()
+      cursorBidiLog("read.envelope-next", {
+        done: next.done,
+        payloadBytes: next.done ? 0 : next.value.payload.length,
+        endStream: next.done ? false : next.value.endStream,
       })
-      session.wire.writeProto(encodeAgentClientMessageKvReply(kv, session.blobStore))
-      continue
-    }
+      if (next.done) {
+        cursorBidiLog("read.envelope-done")
+        for (const event of session.translator.finishIfStarted()) {
+          cursorBidiLog("read.event", { type: event.type })
+          yield event
+        }
+        if (!session.pendingExec) clearCursorBidiSession(sessionKey)
+        return
+      }
 
-    const { events, streamEnded, pauseForToolUse } = session.translator.push(next.value)
-    cursorBidiLog("read.translated", {
-      eventCount: events.length,
-      streamEnded,
-      pauseForToolUse,
-      eventTypes: events.map((e) => e.type).join(","),
-    })
-    let sawStreamError = false
-    let sawToolUseDelta = false
-    for (const event of events) {
-      cursorBidiLog("read.event", { type: event.type })
-      if (event.type === "stream_error") {
-        sawStreamError = true
-        yield event
+      const kv = decodeKvServerMessage(next.value.payload)
+      if (kv) {
+        cursorBidiLog("read.kv", {
+          kind: kv.kind,
+          id: kv.id,
+          blobBytes: kv.kind === "set" ? kv.blobData.byteLength : 0,
+        })
+        session.wire.writeProto(encodeAgentClientMessageKvReply(kv, session.blobStore))
         continue
       }
-      yield event
-      if (event.type === "message_delta" && event.stopReason === "tool_use") {
-        sawToolUseDelta = true
+
+      const { events, streamEnded, pauseForToolUse } = session.translator.push(next.value)
+      cursorBidiLog("read.translated", {
+        eventCount: events.length,
+        streamEnded,
+        pauseForToolUse,
+        eventTypes: events.map((e) => e.type).join(","),
+      })
+      let sawStreamError = false
+      let sawToolUseDelta = false
+      for (const event of events) {
+        cursorBidiLog("read.event", { type: event.type })
+        if (event.type === "stream_error") {
+          sawStreamError = true
+          yield event
+          continue
+        }
+        yield event
+        if (event.type === "message_delta" && event.stopReason === "tool_use") {
+          sawToolUseDelta = true
+          session.pendingExec = session.translator.getPendingExec() ?? null
+          if (!session.pendingExec) {
+            cursorBidiLog("read.skip-tool-pause-no-exec")
+            sawToolUseDelta = false
+            continue
+          }
+        }
+        if (event.type === "message_stop") {
+          if (sawToolUseDelta && session.pendingExec) {
+            // Tool-use pause: keep session alive for continuation.
+            cursorBidiLog("read.pause-tool-use", {
+              hasPendingExec: true,
+              toolName: session.pendingExec.toolName,
+            })
+            return
+          }
+          clearCursorBidiSession(sessionKey)
+          return
+        }
+      }
+      if (sawStreamError) {
+        clearCursorBidiSession(sessionKey)
+        return
+      }
+
+      if (pauseForToolUse) {
         session.pendingExec = session.translator.getPendingExec() ?? null
         if (!session.pendingExec) {
           cursorBidiLog("read.skip-tool-pause-no-exec")
-          sawToolUseDelta = false
           continue
         }
+        cursorBidiLog("read.pause-tool-use", { hasPendingExec: true })
+        return
       }
-      if (event.type === "message_stop") {
-        if (sawToolUseDelta && session.pendingExec) {
-          // Tool-use pause: keep session alive for continuation.
-          cursorBidiLog("read.pause-tool-use", {
-            hasPendingExec: true,
-            toolName: session.pendingExec.toolName,
-          })
-          return
-        }
+
+      if (streamEnded) {
         clearCursorBidiSession(sessionKey)
         return
       }
     }
-    if (sawStreamError) {
-      clearCursorBidiSession(sessionKey)
-      return
-    }
-
-    if (pauseForToolUse) {
-      session.pendingExec = session.translator.getPendingExec() ?? null
-      if (!session.pendingExec) {
-        cursorBidiLog("read.skip-tool-pause-no-exec")
-        continue
-      }
-      cursorBidiLog("read.pause-tool-use", { hasPendingExec: true })
-      return
-    }
-
-    if (streamEnded) {
-      clearCursorBidiSession(sessionKey)
-      return
-    }
+  } finally {
+    opts.signal?.removeEventListener("abort", onAbort)
   }
 }
 

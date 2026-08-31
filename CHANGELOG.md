@@ -8,6 +8,20 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-08-31 (this session): Cursor bidi ignored mid-turn queued prompts and
+  could hang forever on "Sending request" after a silent mcp_result continue
+  (BUG #293802). (1) Host `drainQueuedUserText` already appended the follow-up
+  as a `text` block next to `tool_result`s, but `runCursorBidi` only wrote
+  `exec_client_message` on the keep-open AgentService/Run stream. Official
+  Cursor Agent CLI (`2026.08.25-3e8eec8`) writes
+  `AgentClientMessage.conversation_action` (`source:"queued_action"`) on
+  that same stream; continuation now encodes that field-4 frame when trailing
+  user text is present. (2) `readBidiUntilPauseOrEnd` reused `envelopeGen`
+  bound to attempt-1's AbortSignal, so the per-attempt TTFB/idle watchdog
+  could not close the keep-open wire on continue — attach the current
+  `opts.signal` → `wire.close()` instead. Offline tests: `bidi-kv.test.ts`,
+  `bidi-tool-results.test.ts`, `proto/client-message.test.ts`.
+
 - 2026-08-29 (this session): Fetch/obscura-worker orphans after agent exit.
   `defaultParentExitHook` no longer installs SIGINT/SIGTERM/SIGHUP listeners
   (those disabled Node/Bun default terminate-on-signal, so a supervisor

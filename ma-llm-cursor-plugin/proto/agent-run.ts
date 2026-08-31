@@ -111,6 +111,17 @@ function encConversationAction(opts: AgentRunEncodeOpts): Uint8Array {
   return encMsg(1, encUserMessageAction(opts))
 }
 
+/**
+ * Encode AgentClientMessage.conversation_action (field 4).
+ *
+ * Official Cursor Agent CLI writes this on the keep-open AgentService/Run
+ * stream when a user prompt arrives mid-turn (`source:"queued_action"`).
+ * A fresh AgentRunRequest (field 1) is the wrong shape for that inject.
+ */
+export function encodeAgentClientMessageConversationAction(opts: AgentRunEncodeOpts): Uint8Array {
+  return encMsg(4, encConversationAction(opts))
+}
+
 /** Encode one ModelParameterValue message `{id, value}`. */
 export function encModelParameterValue(param: CursorModelParameterValue): Uint8Array {
   return concat(encString(1, param.id), encString(2, param.value))

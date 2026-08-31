@@ -4,6 +4,7 @@
 
 import { describe, expect, test } from "bun:test"
 
+import { encodeAgentClientMessageConversationAction } from "./agent-run.ts"
 import {
   encodeAgentClientMessageExecMcpResult,
   encodeAgentClientMessageHeartbeat,
@@ -113,5 +114,26 @@ describe("encodeAgentClientMessageHeartbeat", () => {
     expect(outer[0]!.no).toBe(7)
     expect(outer[0]!.wire).toBe(2)
     expect(fieldBytes(outer[0]!)?.byteLength ?? 0).toBe(0)
+  })
+})
+
+describe("BUG-293802 encodeAgentClientMessageConversationAction", () => {
+  test("wraps user_message_action in AgentClientMessage field 4", () => {
+    const body = encodeAgentClientMessageConversationAction({
+      text: "what is the square root of 9?",
+      modelId: "cursor-auto",
+      conversationId: "conv-1",
+      messageId: "msg-1",
+    })
+    const outer = decodeFields(body)
+    expect(outer.some((f) => f.no === 4 && f.wire === 2)).toBe(true)
+    expect(outer.some((f) => f.no === 1)).toBe(false)
+    const action = fieldBytes(outer.find((f) => f.no === 4)!)!
+    const actionFields = decodeFields(action)
+    const userMessageAction = fieldBytes(actionFields.find((f) => f.no === 1)!)!
+    const umaFields = decodeFields(userMessageAction)
+    const userMessage = fieldBytes(umaFields.find((f) => f.no === 1)!)!
+    const umFields = decodeFields(userMessage)
+    expect(fieldString(umFields.find((f) => f.no === 1)!)).toBe("what is the square root of 9?")
   })
 })

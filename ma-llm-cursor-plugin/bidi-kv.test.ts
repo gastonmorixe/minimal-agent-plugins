@@ -128,3 +128,246 @@ describe("cursor bidi KV acks", () => {
     expect(events).toContain("message_stop")
   })
 })
+
+function mcpExecFrame(opts: { id: number; toolCallId: string; toolName: string }): Uint8Array {
+  const mcpArgs = concat(
+    encString(3, opts.toolCallId),
+    encString(4, "minimal-agent"),
+    encString(5, opts.toolName),
+  )
+  const exec = concat(encVarintField(1, opts.id), encMsg(11, mcpArgs))
+  return connectFrameProto(encMsg(2, exec))
+}
+
+function isConversationActionWrite(chunk: Uint8Array): boolean {
+  return parseConnectFrames(chunk).some((frame) =>
+    decodeFields(frame.payload).some((field) => field.no === 4),
+  )
+}
+
+describe("BUG-293802 cursor bidi queued follow-up", () => {
+  afterEach(() => {
+    delete process.env.MA_CURSOR_BIDI_HEARTBEAT_MS
+    resetCursorBidiSessionsForTests()
+  })
+
+  test("writes conversation_action when tool continuation carries queued user text", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    let bodyController: ReadableStreamDefaultController<Uint8Array> | undefined
+    const writes: Uint8Array[] = []
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        bodyController = controller
+        controller.enqueue(mcpExecFrame({ id: 9, toolCallId: "call_1", toolName: "WebSearch" }))
+      },
+    })
+    const client = fakeClient(stream, (chunk) => {
+      writes.push(chunk)
+      if (!isConversationActionWrite(chunk) || !bodyController) return
+      bodyController.enqueue(turnEndedFrame())
+      bodyController.close()
+    })
+
+    const first = runCursorBidi(req, model as never, {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      sessionId: "queued-follow-up",
+      modelId: "cursor-auto",
+      networkClient: client,
+    })
+    const firstEvents: string[] = []
+    for await (const ev of first) firstEvents.push(ev.type)
+    expect(firstEvents).toContain("message_stop")
+
+    const continuation: CanonicalRequest = {
+      ...req,
+      messages: [
+        ...req.messages,
+        {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "call_1", name: "WebSearch", input: {} }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              toolUseId: "call_1",
+              content: [{ type: "text", text: "search hits" }],
+            },
+            { type: "text", text: "what is the square root of 9?" },
+          ],
+        },
+      ],
+    }
+    const secondEvents: string[] = []
+    for await (const ev of runCursorBidi(continuation, model as never, {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      sessionId: "queued-follow-up",
+      modelId: "cursor-auto",
+      networkClient: client,
+    })) {
+      secondEvents.push(ev.type)
+    }
+
+    expect(writes.some(isConversationActionWrite)).toBe(true)
+    expect(secondEvents).toContain("message_stop")
+
+    const fieldOrder = writes.flatMap((chunk) =>
+      parseConnectFrames(chunk).flatMap((frame) => decodeFields(frame.payload).map((f) => f.no)),
+    )
+    const actionAt = fieldOrder.indexOf(4)
+    const execAt = fieldOrder.indexOf(2)
+    const closeAt = fieldOrder.indexOf(5)
+    expect(actionAt).toBeGreaterThanOrEqual(0)
+    expect(execAt).toBeGreaterThan(actionAt)
+    expect(closeAt).toBeGreaterThan(execAt)
+  })
+
+  test("does not write conversation_action for tool_results-only continuation", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    let bodyController: ReadableStreamDefaultController<Uint8Array> | undefined
+    const writes: Uint8Array[] = []
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        bodyController = controller
+        controller.enqueue(mcpExecFrame({ id: 9, toolCallId: "call_1", toolName: "WebSearch" }))
+      },
+    })
+    let closed = false
+    const client = fakeClient(stream, (chunk) => {
+      writes.push(chunk)
+      if (closed || !bodyController) return
+      const isExecResult = parseConnectFrames(chunk).some((frame) =>
+        decodeFields(frame.payload).some((field) => field.no === 2),
+      )
+      if (!isExecResult) return
+      closed = true
+      bodyController.enqueue(turnEndedFrame())
+      bodyController.close()
+    })
+
+    for await (const _ev of runCursorBidi(req, model as never, {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      sessionId: "no-follow-up",
+      modelId: "cursor-auto",
+      networkClient: client,
+    })) {
+      /* drain first pause */
+    }
+
+    const continuation: CanonicalRequest = {
+      ...req,
+      messages: [
+        ...req.messages,
+        {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "call_1", name: "WebSearch", input: {} }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              toolUseId: "call_1",
+              content: [{ type: "text", text: "search hits" }],
+            },
+          ],
+        },
+      ],
+    }
+    for await (const _ev of runCursorBidi(continuation, model as never, {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      sessionId: "no-follow-up",
+      modelId: "cursor-auto",
+      networkClient: client,
+    })) {
+      /* drain */
+    }
+
+    expect(writes.some(isConversationActionWrite)).toBe(false)
+  })
+
+  /**
+   * Heather (3c7e375a): continue reuses envelopeGen bound to attempt-1's AbortSignal.
+   * Watchdog aborts attempt-2's signal; the hung read never sees it → "Sending request" forever.
+   */
+  test("continue read aborts when the NEW attempt signal fires (not the open-time signal)", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    const openSignal = new AbortController()
+    const continueSignal = new AbortController()
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(mcpExecFrame({ id: 9, toolCallId: "call_1", toolName: "WebSearch" }))
+        // Intentionally never enqueue turn_ended after mcp reply — silent hang.
+      },
+    })
+    const client = fakeClient(stream, () => {
+      /* mcp_result / stream_close writes; server stays silent */
+    })
+
+    for await (const _ev of runCursorBidi(req, model as never, {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      signal: openSignal.signal,
+      sessionId: "abort-rebinding",
+      modelId: "cursor-auto",
+      networkClient: client,
+    })) {
+      /* drain first pause */
+    }
+
+    const continuation: CanonicalRequest = {
+      ...req,
+      messages: [
+        ...req.messages,
+        {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "call_1", name: "WebSearch", input: {} }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              toolUseId: "call_1",
+              content: [{ type: "text", text: "search hits" }],
+            },
+          ],
+        },
+      ],
+    }
+
+    const continueDone = (async () => {
+      for await (const _ev of runCursorBidi(continuation, model as never, {
+        url: "https://example.test/agent.v1.AgentService/Run",
+        headers: {},
+        initialRunBody: new Uint8Array([0]),
+        signal: continueSignal.signal,
+        sessionId: "abort-rebinding",
+        modelId: "cursor-auto",
+        networkClient: client,
+      })) {
+        /* drain until abort unblocks */
+      }
+    })()
+
+    await Bun.sleep(40)
+    continueSignal.abort()
+
+    const hung = Bun.sleep(500).then(() => {
+      throw new Error(
+        "hung: continue ignored attempt-2 AbortSignal (envelopeGen still bound to open-time signal)",
+      )
+    })
+    await Promise.race([continueDone, hung])
+  })
+})
