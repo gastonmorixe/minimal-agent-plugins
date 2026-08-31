@@ -34,6 +34,36 @@ export function requestHasToolResultContinuation(req: CanonicalRequest): boolean
 }
 
 /**
+ * User text the host injected alongside trailing tool_results (queued follow-up).
+ *
+ * Agent.run appends drainQueuedUserText as a `text` block AFTER tool_result
+ * blocks in the same user message. Cursor's live AgentService/Run stream never
+ * sees that text unless we write a conversation_action frame. Returns null
+ * when the trailing user message is tool_results only.
+ */
+export function extractTrailingFollowUpUserText(messages: CanonicalMessage[]): string | null {
+  const parts: string[] = []
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]!
+    if (msg.role !== "user") break
+    let sawToolResult = false
+    for (const block of msg.content) {
+      if (block.type === "tool_result") {
+        sawToolResult = true
+        continue
+      }
+      if (block.type === "text" && block.text.trim()) {
+        if (!sawToolResult) return null
+        parts.push(block.text)
+      }
+    }
+    if (sawToolResult) break
+  }
+  const joined = parts.join("\n").trim()
+  return joined.length > 0 ? joined : null
+}
+
+/**
  * Turn legacy `<ma::agent::tasks …>` attr lists into a plain OK line.
  * Used when older Task payloads (pre MA-39298 plain-text) still wrap content
  * in harness tags that this stripper must not delete.

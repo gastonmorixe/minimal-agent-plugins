@@ -5,6 +5,7 @@
 import { describe, expect, test } from "bun:test"
 
 import {
+  extractTrailingFollowUpUserText,
   extractTrailingToolResults,
   requestHasToolResultContinuation,
   stripMaAgentWireAnnotations,
@@ -70,6 +71,45 @@ describe("bidi tool results", () => {
         messages: [{ role: "user", content: [{ type: "text", text: "hello" }] }],
       }),
     ).toBe(false)
+  })
+})
+
+describe("BUG-293802 trailing follow-up user text on bidi continuation", () => {
+  const toolResultUser = {
+    role: "user" as const,
+    content: [
+      {
+        type: "tool_result" as const,
+        toolUseId: "call_1",
+        content: [{ type: "text" as const, text: "search hits" }],
+      },
+    ],
+  }
+
+  test("returns null when continuation is tool_results only", () => {
+    expect(extractTrailingFollowUpUserText([toolResultUser])).toBeNull()
+  })
+
+  test("returns queued text appended after tool_results (Agent.drainQueuedUserText)", () => {
+    expect(
+      extractTrailingFollowUpUserText([
+        {
+          role: "user",
+          content: [
+            ...toolResultUser.content,
+            { type: "text", text: "what is the square root of 9?" },
+          ],
+        },
+      ]),
+    ).toBe("what is the square root of 9?")
+  })
+
+  test("ignores a fresh user turn that is not a tool continuation", () => {
+    expect(
+      extractTrailingFollowUpUserText([
+        { role: "user", content: [{ type: "text", text: "what is the square root of 9?" }] },
+      ]),
+    ).toBeNull()
   })
 })
 
