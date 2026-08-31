@@ -13,8 +13,11 @@ import type { NetworkClient } from "./lib/net-types.ts"
 import {
   completeCursorLogin,
   createCursorLoginChallenge,
+  cursorAccountDetails,
   cursorOAuthLogin,
   cursorPollDelayMs,
+  enrichCursorSecrets,
+  inspectCursorOAuthCredential,
   refreshCursorOAuthCredential,
 } from "./oauth-login.ts"
 
@@ -130,6 +133,146 @@ describe("Cursor OAuth refreshCredential", () => {
       }),
     ).rejects.toThrow(/cannot be refreshed automatically/)
   })
+
+  it("preserves prior account metadata when the enrichment probe fails on refresh", async () => {
+    clearCursorExchangeCache()
+    const header = Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url")
+    const payload = Buffer.from(
+      JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+    ).toString("base64url")
+    const accessToken = `${header}.${payload}.sig`
+    const realFetch = globalThis.fetch
+    // Exchange succeeds; both enrichment endpoints fail.
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      const href = typeof url === "string" ? url : url instanceof URL ? url.href : String(url)
+      if (href.includes("GetMe") || href.includes("GetCurrentPeriodUsage")) {
+        return new Response("{}", { status: 500 })
+      }
+      return new Response(JSON.stringify({ accessToken, refreshToken: "refresh-new" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }) as unknown as typeof fetch
+    try {
+      const built = await refreshCursorOAuthCredential({
+        tokenType: "oauth",
+        accessToken: "stale",
+        refreshToken: "stale-rt",
+        apiKey: "api-redacted",
+        email: "kept@example.com",
+        userId: 42,
+      })
+      expect(built.credential.secrets.email).toBe("kept@example.com")
+      expect(built.credential.secrets.userId).toBe(42)
+      expect(built.credential.secrets.apiKey).toBe("api-redacted")
+    } finally {
+      globalThis.fetch = realFetch
+      clearCursorExchangeCache()
+    }
+  })
+})
+
+describe("Cursor account metadata projection", () => {
+  it("enriches a secrets bag via the wire probes", async () => {
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      const href = typeof url === "string" ? url : url instanceof URL ? url.href : String(url)
+      if (href.includes("GetMe")) {
+        // field 2 user_id=77, field 3 email
+        return new Response(new Uint8Array([0x10, 0x4d, 0x1a, 5, 0x61, 0x40, 0x62, 0x2e, 0x63]), {
+          status: 200,
+          headers: { "content-type": "application/proto" },
+        })
+      }
+      if (href.includes("GetCurrentPeriodUsage")) {
+        return new Response(
+          JSON.stringify({
+            planUsage: { limit: 7000, includedSpend: 7000, totalPercentUsed: 100 },
+            spendLimitUsage: { individualLimit: 500, individualUsed: 331 },
+            billingCycleEnd: "1788036931000",
+            displayMessage: "You've used 98% of your included usage",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      }
+      throw new Error(`unexpected fetch ${href}`)
+    }) as unknown as typeof fetch
+    try {
+      const enriched = await enrichCursorSecrets({
+        tokenType: "oauth",
+        accessToken: "at-redacted",
+        refreshToken: "rt-redacted",
+      })
+      expect(enriched.userId).toBe(77)
+      expect(enriched.email).toBe("a@b.c")
+      expect(enriched.planLimitCents).toBe(7000)
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it("returns the original bag untouched when probes fail or token is missing", async () => {
+    const bag = { tokenType: "oauth", accessToken: "at" }
+    expect(await enrichCursorSecrets({ tokenType: "oauth" })).toEqual({
+      tokenType: "oauth",
+    })
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async () => new Response("{}", { status: 503 })) as unknown as typeof fetch
+    try {
+      expect(await enrichCursorSecrets(bag)).toEqual(bag)
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it("projects persisted metadata into display-safe detail rows", () => {
+    const details = cursorAccountDetails({
+      tokenType: "oauth",
+      accessToken: "at-redacted",
+      userId: 51_930_405,
+      email: "gaston@gastonmorixe.com",
+      firstName: "Gaston",
+      lastName: "M",
+      country: "US",
+      planLimitCents: 2000,
+      includedSpendCents: 2000,
+      totalPercentUsed: 100,
+      bonusSpendCents: 32_733,
+      onDemandLimitCents: 100,
+      onDemandUsedCents: 158,
+      billingCycleEndMs: 1_789_344_277_000,
+      displayMessage: "You've hit your usage limit",
+    } as never)
+    const byKey = new Map(details.map((d) => [d.key, d.value]))
+    expect(byKey.get("userId")).toBe("51930405")
+    expect(byKey.get("email")).toBe("gaston@gastonmorixe.com")
+    expect(byKey.get("name")).toBe("Gaston M")
+    expect(byKey.get("plan")).toBe("$20.00 plan, $20.00 used")
+    expect(byKey.get("bonus-spend")).toBe("$327.33")
+    expect(byKey.get("on-demand")).toBe("$1.58 / $1.00")
+    expect(byKey.get("usage-note")).toBe("You've hit your usage limit")
+    // No secret material ever appears in rows.
+    for (const row of details) {
+      expect(row.value.includes("at-redacted")).toBe(false)
+    }
+  })
+
+  it("surfaces identity + details through inspectCredential", () => {
+    const info = inspectCursorOAuthCredential({
+      tokenType: "oauth",
+      accessToken: "at-redacted",
+      refreshToken: "rt-redacted",
+      expiresAt: 123,
+      userId: 42,
+      email: "a@b.c",
+    } as never)
+    expect(info.usable).toBe(true)
+    expect(info.accountId).toBe("42")
+    expect(info.hasRefreshToken).toBe(true)
+    const byKey = new Map((info.details ?? []).map((d) => [d.key, d.value]))
+    expect(byKey.get("userId")).toBe("42")
+    expect(byKey.get("email")).toBe("a@b.c")
+  })
 })
 
 describe("Cursor browser login", () => {
@@ -150,12 +293,20 @@ describe("Cursor browser login", () => {
   it("polls 404 then builds an OAuth credential via fetch (verifier never on NetworkClient)", async () => {
     let calls = 0
     let sawVerifierInUrl = false
+    let sawEnrichmentProbe = false
     const realFetch = globalThis.fetch
-    globalThis.fetch = (async (url: string | URL | Request) => {
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
       calls++
       const href = typeof url === "string" ? url : url instanceof URL ? url.href : url.url
       if (href.includes("verifier=")) sawVerifierInUrl = true
+      if (href.includes("GetMe") || href.includes("GetCurrentPeriodUsage")) {
+        sawEnrichmentProbe = true
+        // GetMe: empty proto body; usage: `{}` JSON. Both fail harmlessly here.
+        return new Response("{}", { status: 500 })
+      }
       if (calls === 1) return new Response("{}", { status: 404 })
+      const headers = new Headers(init?.headers)
+      expect(headers.get("authorization")).toBeNull() // poll carries secrets in URL only
       return new Response(
         JSON.stringify({ accessToken: "access-redacted", refreshToken: "refresh-redacted" }),
         { status: 200, headers: { "content-type": "application/json" } },
@@ -174,8 +325,10 @@ describe("Cursor browser login", () => {
         },
       }
       const built = await completeCursorLogin(challenge, { networkClient: client })
-      expect(calls).toBe(2)
+      // poll(404) + poll(200) + GetMe + GetCurrentPeriodUsage enrichment probes.
+      expect(calls).toBe(4)
       expect(sawVerifierInUrl).toBe(true) // real request has verifier; not logged via NC
+      expect(sawEnrichmentProbe).toBe(true)
       expect(built.credential.serviceId).toBe("cursor-oauth")
       expect(built.result.accessToken).toBe("access-redacted")
       expect(cursorOAuthLogin.readAuth?.(built.credential.secrets)).toEqual({

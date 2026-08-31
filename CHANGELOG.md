@@ -6,6 +6,16 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Added
+
+- 2026-08-31 (this session): Cursor OAuth login/refresh best-effort enrichment
+  via `DashboardService/GetMe` + `GetCurrentPeriodUsage`, persisted as display-
+  safe account metadata on the secret bag. `inspectCredential` projects
+  `AuthCredentialInfo.details` (user id, email, plan, on-demand, usage note)
+  for host `auth-status`. Probe failures never block login/refresh and never
+  erase prior metadata. New `account.ts` + tests; oauth-login / auth.test
+  coverage.
+
 ### Fixed
 
 - 2026-08-31 (this session): Cursor bidi ignored mid-turn queued prompts and

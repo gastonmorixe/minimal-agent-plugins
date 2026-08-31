@@ -1,11 +1,19 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 
+import {
+  accountInfoFromBag,
+  fetchCursorAccountEnrichment,
+  hasAccountMetadata,
+  withAccountMetadata,
+} from "./account.ts"
 import { exchangeCursorApiKey, parseCursorTokenPair } from "./auth.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type {
+  AuthCredentialDetail,
   AuthCredentialInfo,
   AuthSecretBag,
+  AuthSecretValue,
   OAuthCredentialRefreshContext,
   OAuthDeviceCodeChallenge,
   OAuthDeviceCodeContext,
@@ -134,6 +142,22 @@ export function buildCursorOAuthCredential(
   }
 }
 
+/**
+ * Probe GetMe + GetCurrentPeriodUsage and merge display-safe account metadata
+ * into the bag. Best-effort: any failure returns the original bag unchanged.
+ */
+export async function enrichCursorSecrets(secrets: AuthSecretBag): Promise<AuthSecretBag> {
+  const token = str(secrets.accessToken)
+  if (!token) return secrets
+  try {
+    const enrichment = await fetchCursorAccountEnrichment(token)
+    if (!enrichment.account && !enrichment.periodUsage) return secrets
+    return withAccountMetadata(secrets, enrichment) as AuthSecretBag
+  } catch {
+    return secrets
+  }
+}
+
 /** Decode stored OAuth secrets into runtime ProviderAuth. */
 export function readCursorOAuthAuth(secrets: AuthSecretBag): ProviderAuth | null {
   const accessToken = str(secrets.accessToken)
@@ -141,13 +165,81 @@ export function readCursorOAuthAuth(secrets: AuthSecretBag): ProviderAuth | null
   return { kind: "oauth", token: accessToken, baseUrl: CURSOR_API_BASE }
 }
 
+/** Format cents as a compact USD string ("$12.34"). */
+function usd(cents: number | undefined): string | undefined {
+  if (cents == null) return undefined
+  const dollars = (cents / 100).toFixed(2)
+  return ["$", dollars].join("")
+}
+
+function percent(value: number | undefined): string | undefined {
+  if (value == null) return undefined
+  return `${Math.round(value)}%`
+}
+
+function isoDate(ms: number | undefined): string | undefined {
+  if (ms == null) return undefined
+  return new Date(ms).toISOString().slice(0, 10)
+}
+
+/**
+ * Project persisted account metadata into provider-neutral detail rows for
+ * host status UIs (`auth-status`, `auth list`). Pure — no network, no secrets.
+ */
+export function cursorAccountDetails(secrets: AuthSecretBag): AuthCredentialDetail[] {
+  const info = accountInfoFromBag(secrets as Record<string, AuthSecretValue>)
+  const rows: AuthCredentialDetail[] = []
+  const push = (key: string, label: string, value: string | undefined) => {
+    if (value != null) rows.push({ key, label, value })
+  }
+  push("userId", "user id", info.userId != null ? String(info.userId) : undefined)
+  push("email", "email", info.email)
+  push("name", "name", [info.firstName, info.lastName].filter(Boolean).join(" ") || undefined)
+  push("team", "team", info.teamName)
+  push("country", "country", info.country?.toUpperCase())
+  push("domain-type", "domain", info.emailDomainType)
+  push("enterprise", "enterprise", info.isEnterpriseUser ? "yes" : undefined)
+  push("created", "created", info.createdAt ? isoOrRaw(info.createdAt) : undefined)
+
+  const plan =
+    info.planLimitCents != null
+      ? `${usd(info.planLimitCents)} plan${info.includedSpendCents != null ? `, ${usd(info.includedSpendCents)} used` : ""}`
+      : undefined
+  push("plan", "plan", plan)
+  push("bonus-spend", "bonus spend", usd(info.bonusSpendCents))
+  push(
+    "total-percent",
+    "included used",
+    percent(info.totalPercentUsed) ??
+      (info.planLimitCents != null && info.includedSpendCents != null
+        ? percent((info.includedSpendCents / Math.max(info.planLimitCents, 1)) * 100)
+        : undefined),
+  )
+  const onDemand =
+    info.onDemandLimitCents != null && info.onDemandLimitCents > 0
+      ? `${usd(info.onDemandUsedCents ?? 0)} / ${usd(info.onDemandLimitCents)}`
+      : undefined
+  push("on-demand", "on-demand", onDemand)
+  push("cycle-end", "cycle ends", isoDate(info.billingCycleEndMs))
+  push("usage-note", "note", info.displayMessage)
+  return rows
+}
+
+function isoOrRaw(value: string): string {
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : value
+}
+
 /** Safe OAuth credential metadata for auth-status diagnostics. */
 export function inspectCursorOAuthCredential(secrets: AuthSecretBag): AuthCredentialInfo {
+  const info = accountInfoFromBag(secrets as Record<string, AuthSecretValue>)
   return {
     usable: Boolean(str(secrets.accessToken)),
     label: CURSOR_OAUTH.displayName,
     expiresAt: num(secrets.expiresAt),
     hasRefreshToken: Boolean(str(secrets.refreshToken)),
+    accountId: info.userId != null ? String(info.userId) : str(info.authId),
+    details: cursorAccountDetails(secrets),
   }
 }
 
@@ -174,12 +266,20 @@ export async function refreshCursorOAuthCredential(
     networkClient: ctx.networkClient as NetworkClient | undefined,
     force: true,
   })
-  const built = buildCursorOAuthCredential({
+  const built = await buildCursorOAuthCredential({
     accessToken: pair.accessToken,
     refreshToken: pair.refreshToken,
   })
-  // Keep the API key in the bag so subsequent host refreshes can re-exchange.
-  built.credential.secrets.apiKey = apiKey
+  // Keep the API key + prior account metadata in the bag so subsequent host
+  // refreshes can re-exchange and enrichment loss never erases history.
+  const merged: AuthSecretBag = {
+    ...secrets,
+    ...built.credential.secrets,
+    apiKey,
+  }
+  // Re-enrich on refresh so identity/quota metadata tracks account changes.
+  const enriched = await enrichCursorSecrets(merged)
+  built.credential.secrets = hasAccountMetadata(enriched) ? enriched : merged
   return built
 }
 
@@ -239,7 +339,11 @@ export async function completeCursorLogin(
         continue
       }
       const raw = (await response.json()) as Record<string, unknown>
-      return buildCursorOAuthCredential(raw)
+      const built = buildCursorOAuthCredential(raw)
+      // Enrich the persisted bag with GetMe identity + quota metadata.
+      // Best-effort: a probe failure must not fail the login.
+      built.credential.secrets = await enrichCursorSecrets(built.credential.secrets)
+      return built
     } catch (error) {
       if (ctx.signal?.aborted || (error instanceof Error && error.name === "AbortError"))
         throw error
