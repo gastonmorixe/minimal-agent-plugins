@@ -12,10 +12,16 @@ export {
 } from "./adapter.ts"
 export {
   buildMetaApiKeyCredential,
+  buildMuseOAuthCredential,
   META_API_KEY_AUTH,
+  META_MUSE_OAUTH,
   metaApiKeyAuth,
   metaApiKeyToSecrets,
+  mintMuseApiKey,
+  museOAuthLogin,
+  museOAuthToSecrets,
   readMetaApiKey,
+  readMuseOAuthAuth,
 } from "./auth.ts"
 export {
   CAPS_MUSE_SPARK_1_1,
@@ -56,5 +62,14 @@ export {
   META_OPENAI_BASE,
   META_USER_AGENT,
   MODELS_URL,
+  MUSE_API_VERSION,
+  MUSE_AUTH_BASE_URL,
+  MUSE_CLIENT_ID,
+  MUSE_CLIENT_ID_HEADER,
+  MUSE_DEVICE_AUTHORIZATION_URL,
+  MUSE_DEVICE_CODE_GRANT,
+  MUSE_DEVICE_TOKEN_URL,
+  MUSE_KEY_MINT_URL,
+  MUSE_OAUTH_USER_AGENT,
   RESPONSES_URL,
 } from "./wire-constants.ts"

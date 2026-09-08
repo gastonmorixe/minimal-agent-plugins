@@ -14,9 +14,13 @@ import {
 } from "./adapter.ts"
 import {
   buildMetaApiKeyCredential,
+  buildMuseOAuthCredential,
   META_API_KEY_AUTH,
+  META_MUSE_OAUTH,
   metaApiKeyAuth,
+  museOAuthLogin,
   readMetaApiKey,
+  readMuseOAuthAuth,
 } from "./auth.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { RunContext } from "./lib/provider-auth.ts"
@@ -64,11 +68,13 @@ function setup() {
 }
 
 describe("meta plugin shape", () => {
-  it("exports plugin id and api-key auth (no oauth)", () => {
+  it("exports plugin id with api-key and Muse Code oauth", () => {
     expect(metaProviderPlugin.id).toBe("meta")
     expect(metaProviderPlugin.shortCode).toBe("meta")
     expect(metaProviderPlugin.apiKeyAuth?.serviceId).toBe(META_API_KEY_AUTH.serviceId)
-    expect(metaProviderPlugin.oauthLogin).toBeUndefined()
+    expect(metaProviderPlugin.oauthLogin?.serviceId).toBe(META_MUSE_OAUTH.serviceId)
+    expect(metaProviderPlugin.oauthLogin?.displayName).toBe(META_MUSE_OAUTH.displayName)
+    expect(metaProviderPlugin.oauthLogin?.deviceCode).toBeDefined()
     expect(metaProviderPlugin.listLiveModels).toBeDefined()
   })
 
@@ -121,7 +127,103 @@ describe("meta auth", () => {
     expect(readMetaApiKey(cred.secrets)).toBe("LLM_test_key")
     expect(metaApiKeyAuth.inspectCredential?.(cred.secrets).usable).toBe(true)
   })
+
+  it("builds Muse OAuth secrets and prefers minted api key at runtime", () => {
+    const built = buildMuseOAuthCredential({
+      access_token: "oidc-access",
+      refresh_token: "oidc-refresh",
+      expires_in: 3600,
+      api_key: "LLM_minted_from_muse",
+      api_base_url: "https://api.meta.ai/v1",
+      user_email: "user@example.com",
+      is_subs_active: true,
+      subs_tier_name: "Everyday",
+    })
+    expect(built.credential.serviceId).toBe(META_MUSE_OAUTH.serviceId)
+    expect(built.credential.secrets.apiKey).toBe("LLM_minted_from_muse")
+    const auth = readMuseOAuthAuth(built.credential.secrets)
+    expect(auth).toEqual({ kind: "api-key", key: "LLM_minted_from_muse" })
+    expect(museOAuthLogin.inspectCredential?.(built.credential.secrets).usable).toBe(true)
+  })
+
+  it("device request + complete polls then mints", async () => {
+    const calls: Array<{ url: string; method: string; body?: string }> = []
+    let tokenPolls = 0
+    const client = {
+      async request(input: { url: string; method: string; body?: string }) {
+        calls.push({ url: input.url, method: input.method, body: input.body })
+        if (input.url.includes("/oidc/device/authorization/")) {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                device_code: "dev-1",
+                user_code: "ABCD-EFGH",
+                verification_uri: "https://auth.meta.com/device",
+                verification_uri_complete: "https://auth.meta.com/device?user_code=ABCD-EFGH",
+                expires_in: 600,
+                interval: 1,
+              }
+            },
+            async text() {
+              return ""
+            },
+          }
+        }
+        if (input.url.includes("/oidc/device/token/")) {
+          tokenPolls += 1
+          if (tokenPolls === 1) {
+            return {
+              ok: false,
+              status: 400,
+              async text() {
+                return JSON.stringify({ error: "authorization_pending" })
+              },
+            }
+          }
+          return {
+            ok: true,
+            status: 200,
+            async text() {
+              return JSON.stringify({
+                access_token: "oidc-access",
+                refresh_token: "oidc-refresh",
+                expires_in: 3600,
+              })
+            },
+          }
+        }
+        if (input.url.includes("/muse-code/key")) {
+          return {
+            ok: true,
+            status: 200,
+            async text() {
+              return JSON.stringify({
+                api_key: "LLM_minted",
+                user_email: "a@b.c",
+                is_subs_active: true,
+                subs_tier_name: "Everyday",
+              })
+            },
+          }
+        }
+        throw new Error(`unexpected url ${input.url}`)
+      },
+    }
+
+    const challenge = await museOAuthLogin.deviceCode!.request({ networkClient: client })
+    expect(challenge.userCode).toBe("ABCD-EFGH")
+    expect(challenge.verificationUrl).toContain("user_code=ABCD-EFGH")
+    expect(challenge.providerData?.deviceCode).toBe("dev-1")
+
+    const built = await museOAuthLogin.deviceCode!.complete(challenge, { networkClient: client })
+    expect(built.credential.secrets.apiKey).toBe("LLM_minted")
+    expect(built.credential.secrets.accessToken).toBe("oidc-access")
+    expect(calls.some((c) => c.url.includes("/muse-code/key"))).toBe(true)
+  })
 })
+
 
 describe("meta wire constants", () => {
   it("points at api.meta.ai/v1", () => {
