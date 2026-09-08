@@ -2,7 +2,7 @@
   "id": "meta",
   "name": "LLM Provider: Meta (Model API)",
   "version": "0.1.0",
-  "description": "Meta Muse Spark via api.meta.ai (OpenAI-compatible Chat Completions). API key auth (MODEL_API_KEY).",
+  "description": "Meta Muse Spark via api.meta.ai (OpenAI-compatible Chat Completions). Muse Code OAuth device login + API key (MODEL_API_KEY).",
   "entry": "./index.ts",
   "export": "metaProviderPlugin"
 }

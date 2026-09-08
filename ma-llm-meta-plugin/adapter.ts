@@ -2,12 +2,12 @@
  * Meta Model API `ProviderAdapter` — OpenAI Chat Completions against api.meta.ai.
  *
  * Reuses the shared OpenAI wire layer (`buildOpenAIChatBody`,
- * `translateOpenAIChatStream`, …). Auth is API key only (no OAuth in v1).
+ * `translateOpenAIChatStream`, …). Auth: API key and Muse Code OAuth.
  *
  * @module llm/providers/meta/adapter
  */
 
-import { metaApiKeyAuth } from "./auth.ts"
+import { metaApiKeyAuth, museOAuthLogin } from "./auth.ts"
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import { classifyUpstreamError } from "./lib/errors.ts"
@@ -62,12 +62,17 @@ export const metaAdapter: ProviderAdapter = {
     const auth = ctx.auth
     if (auth.kind === "api-key" && !auth.key) {
       throw new Error(
-        `Meta adapter: missing api-key (run \`minimal-agent provider meta login\` or set MODEL_API_KEY from ${META_DEV_CONSOLE_URL})`,
+        `Meta adapter: missing api-key (run \`minimal-agent provider meta login api-key\` or set MODEL_API_KEY from ${META_DEV_CONSOLE_URL})`,
       )
     }
-    if (auth.kind !== "api-key" && auth.kind !== "custom") {
+    if (auth.kind === "oauth" && !auth.token) {
       throw new Error(
-        "Meta adapter: only API-key auth is supported in v1 (no OAuth). Mint a key at " +
+        "Meta adapter: missing Muse Code OAuth token (run `minimal-agent provider meta login`)",
+      )
+    }
+    if (auth.kind !== "api-key" && auth.kind !== "oauth" && auth.kind !== "custom") {
+      throw new Error(
+        "Meta adapter: unsupported auth kind. Use Muse Code OAuth (`provider meta login`) or an API key from " +
           META_DEV_CONSOLE_URL,
       )
     }
@@ -181,6 +186,7 @@ export const metaProviderPlugin: ProviderPlugin = {
   register: bootstrapMeta,
   registerAdHocModel: registerMetaAdHocModel,
   apiKeyAuth: metaApiKeyAuth,
+  oauthLogin: museOAuthLogin,
   listLiveModels: listMetaLiveModels,
   fetchSessionInfo: fetchMetaSessionInfo,
   primeSessionInfo: primeMetaSessionInfo,
