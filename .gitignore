@@ -15,6 +15,7 @@ npm-debug.log*
 # Local notes / scratch
 .scratch/
 tmp/
+ma-llm-meta-plugin/tmp-muse-re/
 
 # Debugger / agent scratch dirs (e.g. .net-dbg, .claude-dbg, .agent-dbg)
 .*-dbg/
