@@ -1,10 +1,10 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the public OpenAI API catalog (refreshed 2026-07-30, Codex live
- * reconfirmed 2026-08-18 via `openai-chatgpt-oauth-3`) for the GPT-5.6
- * family plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series tables in
- * `capabilities.ts` and `pricing.ts`.
+ * Mirrors the public OpenAI API catalog (refreshed 2026-09-08 via Codex live
+ * `openai-chatgpt-oauth-4` + developers.openai.com) for GPT-6 Astra, the
+ * GPT-5.6 family, plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
+ * tables in `capabilities.ts` and `pricing.ts`.
  *
  * Dual-surface models (reachable on BOTH Chat Completions and the Responses
  * API) are registered TWICE, under distinct ids with different `surfaceId`s.
@@ -13,28 +13,30 @@
  * `gpt-5.6` alias resolves to `gpt-5.6-sol`, matching the public docs.
  * Pro SKUs (`gpt-5.5-pro`, `gpt-5.4-pro`) are Responses-only.
  *
- * ## ChatGPT OAuth consumer catalog ↔ API ids (2026-08-18)
+ * ## ChatGPT OAuth consumer catalog ↔ API ids (2026-09-08)
  *
  * Live ChatGPT backend (`chatgpt.com/backend-api/models`) uses hyphenated
  * consumer slugs and Instant/Thinking/Pro *lanes*. Codex
- * (`chatgpt.com/backend-api/codex/models`) lists API slugs. This plugin
- * registers **API** model ids only (same ids are sent on ChatGPT-Codex
- * OAuth Responses traffic). Do not register consumer-only slugs here.
+ * (`chatgpt.com/backend-api/codex/models?client_version=1.0.0`) lists API
+ * slugs. This plugin registers **API** model ids only (same ids are sent on
+ * ChatGPT-Codex OAuth Responses traffic). Do not register consumer-only
+ * slugs here.
  *
- * Codex listed (this account): `gpt-5.6-sol` / `terra` / `luna`, `gpt-5.5`,
- * `gpt-5.4`, `gpt-5.4-mini` (Fast only on sol/terra/luna/5.5/5.4 — not mini).
- * `gpt-5.3-codex-spark` is listed but `supported_in_api: false`. Hidden
- * `codex-auto-review` is not a user model. Codex marks gpt-5.4 / 5.4-mini
- * for retirement 2026-08-31 (upgrade terra / luna).
+ * Codex listed (plus plan, this account): `gpt-6-astra` (priority 1, Fast
+ * 2x), hidden `gpt-reserve`, `gpt-5.6-sol` / `terra` / `luna`, `gpt-5.5`,
+ * hidden `codex-auto-review`. gpt-5.4 family is gone from Codex (retired
+ * 2026-08-31) but kept in this registry for API-key compatibility.
  *
  * | ChatGPT slug (live) | API id / behavior |
  * | ------------------- | ----------------- |
+ * | `gpt-6-astra-wm` | `gpt-6-astra` (Work Mode wrapper; flagship) |
  * | `gpt-5-5`, `gpt-5-5-instant`, `gpt-5-5-thinking` | `gpt-5.5` (lanes are UI; Instant ≈ low/no think, Thinking ≈ reasoning effort) |
  * | `gpt-5.5-wm` | `gpt-5.5` (ChatGPT Work Mode wrapper) |
  * | `gpt-5-5-pro` | `gpt-5.5-pro` |
  * | `gpt-5-6`, `gpt-5-6-instant`, `gpt-5-6-thinking` | `gpt-5.6-sol` (short alias `gpt-5.6`) |
  * | `gpt-5.6-sol-wm` / `terra-wm` / `luna-wm` | `gpt-5.6-sol` / `gpt-5.6-terra` / `gpt-5.6-luna` |
  * | `gpt-5-6-mini`, `gpt-5-6-t-mini` | `gpt-5.6-luna` (consumer mini titles Luna) |
+ * | `gpt-reserve` | Codex/ChatGPT hidden reserve lane — **not** registered |
  * | `gpt-5-6-pro` | **no** `gpt-5.6-pro` API SKU (docs 404). Use `gpt-5.6-sol` (etc.) with Responses `reasoning.mode: "pro"` — not wired in caps yet |
  * | `gpt-5-3-mini`, `gpt-5-5-mini` | **TODO:** no public API counterpart in models catalog |
  * | `o3` | `o3` |
@@ -42,7 +44,8 @@
  *
  * ChatGPT `max_tokens` is a **consumer UI budget**, not the API
  * `contextWindow` (e.g. Thinking/Pro often advertise 410000 / 262144 while
- * API gpt-5.5 / gpt-5.6-sol remain 1_050_000). Never overwrite caps from it.
+ * API gpt-5.5 / gpt-5.6-sol / gpt-6-astra remain 1_050_000). Never overwrite
+ * caps from it.
  *
  * ChatGPT thinking efforts are consumer labels
  * `min|standard|extended|max` (Pro often `standard|extended` only). API
@@ -72,6 +75,8 @@ import {
   CAPS_GPT_5_6_TERRA_CHAT,
   CAPS_GPT_5_6_TERRA_RESPONSES,
   CAPS_GPT_5_RESPONSES,
+  CAPS_GPT_6_ASTRA_CHAT,
+  CAPS_GPT_6_ASTRA_RESPONSES,
   CAPS_GPT_41_CHAT,
   CAPS_O3_RESPONSES,
   CAPS_O4_MINI_RESPONSES,
@@ -91,6 +96,7 @@ import {
   PRICING_GPT_5_6_LUNA,
   PRICING_GPT_5_6_SOL,
   PRICING_GPT_5_6_TERRA,
+  PRICING_GPT_6_ASTRA,
   PRICING_GPT_41,
   PRICING_O3,
   PRICING_O4_MINI,
@@ -132,9 +138,39 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     ids.push(spec.id)
   }
 
+  // GPT-6 Astra (current flagship). Registered first so recommendSubagent
+  // flagship tags resolve here. Dual surface (docs + Codex). ChatGPT
+  // live (2026-09-08): work-mode slug `gpt-6-astra-wm` → astra.
+  register({
+    id: "gpt-6-astra",
+    aliases: ["astra"],
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-6 Astra",
+    knowledgeCutoff: "2026-04-30",
+    tags: ["gpt-6", "flagship", "reasoning", "production"],
+    capabilities: CAPS_GPT_6_ASTRA_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_ASTRA,
+    vendorIds: { firstParty: "gpt-6-astra" },
+  })
+  register({
+    id: "gpt-6-astra-chat",
+    aliases: ["astra-chat"],
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-6 Astra (Chat Completions)",
+    knowledgeCutoff: "2026-04-30",
+    tags: ["gpt-6", "flagship", "chat"],
+    capabilities: CAPS_GPT_6_ASTRA_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_ASTRA,
+    vendorIds: { firstParty: "gpt-6-astra" },
+  })
+
   // GPT-5.6 family. Responses is preferred; the `-chat` ids target Chat
   // Completions. The short `gpt-5.6` alias routes to Sol.
-  // ChatGPT live (2026-08-18): `gpt-5-6` / instant / thinking / sol-wm → sol;
+  // ChatGPT live (2026-09-08): `gpt-5-6` / instant / thinking / sol-wm → sol;
   // `gpt-5-6-pro` is consumer Pro lane (API: reasoning.mode=pro, not a SKU).
   register({
     id: "gpt-5.6-sol",
@@ -143,7 +179,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-responses",
     displayName: "GPT-5.6 Sol",
     knowledgeCutoff: "2026-02-16",
-    tags: ["gpt-5", "flagship", "reasoning", "production"],
+    tags: ["gpt-5", "reasoning", "production"],
     capabilities: CAPS_GPT_5_6_SOL_RESPONSES,
     estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_SOL,
@@ -156,7 +192,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-chat-completions",
     displayName: "GPT-5.6 Sol (Chat Completions)",
     knowledgeCutoff: "2026-02-16",
-    tags: ["gpt-5", "flagship", "chat"],
+    tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_6_SOL_CHAT,
     estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_SOL,
@@ -233,7 +269,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-responses",
     displayName: "GPT-5.5",
     knowledgeCutoff: "2025-12-01",
-    tags: ["gpt-5", "flagship", "reasoning", "production"],
+    tags: ["gpt-5", "reasoning", "production"],
     capabilities: CAPS_GPT_5_5_RESPONSES,
     estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_5,
@@ -245,7 +281,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-chat-completions",
     displayName: "GPT-5.5 (Chat Completions)",
     knowledgeCutoff: "2025-12-01",
-    tags: ["gpt-5", "flagship", "chat"],
+    tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_5_CHAT,
     estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_5,

@@ -184,18 +184,74 @@ export const CAPS_O3_RESPONSES: Capabilities = {
 export const CAPS_O4_MINI_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
 
 // ---------------------------------------------------------------------------
-// GPT-5.6 family (current GPT-5 generation; Responses preferred, Chat also works)
+// GPT-6 Astra (current flagship; Responses preferred, Chat also works)
 // ---------------------------------------------------------------------------
 
 /**
- * GPT-5.6 Sol is the frontier tier. The public docs say the short `gpt-5.6`
- * alias routes to this model, so the registry exposes `gpt-5.6` as an alias
- * on the Responses entry and `gpt-5.6-chat` on the Chat entry.
+ * GPT-6 Astra is the current flagship. Sourced 2026-09-08 from
+ * developers.openai.com/api/docs/models/gpt-6-astra and ChatGPT-Codex
+ * `GET /backend-api/codex/models?client_version=1.0.0` (credential
+ * `openai-chatgpt-oauth-4`, plan plus).
+ *
+ * Public API effort: `low|medium|high|xhigh|max`. Codex also lists `ultra`
+ * (multi-agent delegation) and Fast via `service_tiers[{id:"priority"}]` +
+ * `additional_speed_tiers:["fast"]` (2x speed). Docs do **not** list `none`
+ * for Astra (unlike Sol). Codex default effort is `low`.
+ *
+ * ChatGPT consumer work-mode slug `gpt-6-astra-wm` maps here. Do not register
+ * hidden Codex `gpt-reserve` / `codex-auto-review`. Codex compact ceilings
+ * (272k / 872k) must not overwrite the API 1.05M contextWindow.
+ */
+export const CAPS_GPT_6_ASTRA_RESPONSES: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_050_000,
+  maxOutputTokens: 128_000,
+  outputTokensShareContextWindow: true,
+  maxOutputTokensBatch: null,
+  thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
+  effort: {
+    levels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+    default: "low",
+  },
+  acceptsTemperature: false,
+  acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  // Codex: Fast is 2x for Astra (wire value still `priority`).
+  speedFast: true,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_FULL },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...MODALITIES_TEXT_IMAGE },
+  serverSideHistory: true,
+  serverTools: ["web_search", "file_search", "code_interpreter", "computer_use"],
+}
+
+/** GPT-6 Astra on Chat Completions. Effort accepted; summaries not streamed. */
+export const CAPS_GPT_6_ASTRA_CHAT: Capabilities = {
+  ...CAPS_GPT_6_ASTRA_RESPONSES,
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+// ---------------------------------------------------------------------------
+// GPT-5.6 family (previous GPT-5 generation; Responses preferred, Chat also works)
+// ---------------------------------------------------------------------------
+
+/**
+ * GPT-5.6 Sol is the GPT-5.6 frontier tier. The public docs say the short
+ * `gpt-5.6` alias routes to this model, so the registry exposes `gpt-5.6` as
+ * an alias on the Responses entry and `gpt-5.6-chat` on the Chat entry.
  *
  * Sourced 2026-07-30 from developers.openai.com/api/docs/models/gpt-5.6-sol
  * (+ Terra/Luna siblings) and the GPT-5.6 migration guide. Reconfirmed
  * 2026-08-18 against ChatGPT-Codex `GET /backend-api/codex/models` (credential
- * `openai-chatgpt-oauth-3`, plan prolite). Codex Fast is
+ * `openai-chatgpt-oauth-3`, plan prolite) and again 2026-09-08 with
+ * `openai-chatgpt-oauth-4` (`client_version=1.0.0`). Codex Fast is
  * `service_tiers[{id:"priority", name:"Fast"}]` + `additional_speed_tiers:["fast"]`.
  * Codex effort ladder for Sol/Terra is `low|medium|high|xhigh|max|ultra`
  * (Sol default `low`; Terra default `medium`). Keep API `none` as well —

@@ -8,6 +8,25 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-09-08 (this session): OpenAI GPT-6 Astra. Live Codex catalog
+  (`GET chatgpt.com/backend-api/codex/models?client_version=1.0.0`,
+  credential `openai-chatgpt-oauth-4`, plan plus) + public model card list
+  `gpt-6-astra` as flagship (1.05M context, 128K max out, cutoff
+  2026-04-30, Fast 2x). Dual-registered Responses + Chat Completions
+  (`gpt-6-astra` / `astra`, `gpt-6-astra-chat` / `astra-chat`). Effort
+  `low|medium|high|xhigh|max|ultra` (default `low`; no API `none`).
+  Pricing $10 / $50 (cache write $12.50, cache read $1). Subagent
+  flagship tags now resolve to Astra. Hidden Codex `gpt-reserve` /
+  `codex-auto-review` stay unregistered.
+
+### Changed
+
+- 2026-09-08 (this session): GPT-5.6 Sol short-context Standard pricing
+  updated to the current promo ($4 / $20, cache write $5, cache read
+  $0.40; promo through at least 2026-11-21 per pricing page).
+
+### Added
+
 - 2026-08-31 (this session): Cursor OAuth login/refresh best-effort enrichment
   via `DashboardService/GetMe` + `GetCurrentPeriodUsage`, persisted as display-
   safe account metadata on the secret bag. `inspectCredential` projects

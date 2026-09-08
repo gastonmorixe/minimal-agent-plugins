@@ -1,13 +1,14 @@
 /**
  * OpenAI per-model pricing tables (USD per 1M tokens).
  *
- * Source: developers.openai.com/api/docs/pricing (as of 2026-07-30;
+ * Source: developers.openai.com/api/docs/pricing (refreshed 2026-09-08;
  * short-context Standard tier). `cacheReadUSD` matches OpenAI's
- * `cached_input` tier. GPT-5.6 explicit cache writes are 1.25× uncached
- * input; earlier families without a documented write fee mirror input.
+ * `cached_input` tier. GPT-6 / GPT-5.6 explicit cache writes are 1.25×
+ * uncached input; earlier families without a documented write fee mirror
+ * input.
  *
- * ChatGPT OAuth model lists (2026-07-30) do not publish $/MTok — keep
- * pricing on the official API pricing page only. No consumer-slug rows.
+ * ChatGPT OAuth model lists do not publish $/MTok — keep pricing on the
+ * official API pricing page only. No consumer-slug rows.
  *
  * @module llm/providers/openai/pricing
  */
@@ -144,14 +145,33 @@ export const PRICING_GPT_5_5_PRO: MTokRate = {
   reasoningUSD: 180,
 }
 
-/** gpt-5.6 Sol pricing. Explicit cache writes are 1.25x uncached input. */
-export const PRICING_GPT_5_6_SOL: MTokRate = {
-  inputUSD: 5,
-  outputUSD: 30,
-  cacheWriteUSD: 6.25,
-  cacheReadUSD: 0.5,
+/**
+ * gpt-6-astra pricing. Short-context Standard: $10 / $50 (2026-09-08
+ * pricing page + model card). Explicit cache writes are 1.25x uncached
+ * input. Long-context (>272K input) is 2x input/cache and 1.5x output for
+ * the full request — not modeled as a separate rate row here.
+ */
+export const PRICING_GPT_6_ASTRA: MTokRate = {
+  inputUSD: 10,
+  outputUSD: 50,
+  cacheWriteUSD: 12.5,
+  cacheReadUSD: 1,
   webSearchPerCallUSD: 0,
-  reasoningUSD: 30,
+  reasoningUSD: 50,
+}
+
+/**
+ * gpt-5.6 Sol pricing. Short-context Standard promo: $4 / $20 (pricing
+ * page 2026-09-08; promo through at least 2026-11-21). Explicit cache
+ * writes are 1.25x uncached input.
+ */
+export const PRICING_GPT_5_6_SOL: MTokRate = {
+  inputUSD: 4,
+  outputUSD: 20,
+  cacheWriteUSD: 5,
+  cacheReadUSD: 0.4,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 20,
 }
 
 /**
