@@ -15,8 +15,10 @@ import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthr
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { NetworkClient, NetworkRequestInput } from "./lib/net-types.ts"
 import {
   buildOpenAIChatBody,
+  buildOpenAIHeaders,
   type OpenAIChatChunk,
   translateOpenAIChatStream,
 } from "./lib/openai-chat.ts"
@@ -121,35 +123,43 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-08-20 (authoritative ID list).
+    // Live /v1/models snapshot 2026-09-07 (authoritative ID list).
     const ids = [
-      "minimax-m3",
-      "minimax-m2.7",
-      "minimax-m2.5",
-      "kimi-k3",
-      "kimi-k2.7-code",
-      "kimi-k2.6",
-      "kimi-k2.5",
-      "glm-5.3",
-      "glm-5.2",
-      "glm-5.1",
-      "glm-5",
-      "deepseek-v4-pro",
       "deepseek-v4-flash",
+      "deepseek-v4-flash-vision-exp",
+      "deepseek-v4-pro",
+      "glm-5",
+      "glm-5.1",
+      "glm-5.2",
+      "glm-5.3",
+      "glm-5.3-flash",
       "gpt-5.6-luna",
-      "muse-spark-1.2-contributor",
-      "qwen3.8-max",
-      "qwen3.7-max",
-      "qwen3.7-plus",
-      "qwen3.6-plus",
-      "qwen3.5-plus",
-      "mimo-v2-pro",
-      "mimo-v2-omni",
-      "mimo-v2.5-pro",
-      "mimo-v2.5",
+      "grok-4.5",
+      "grok-4.6",
       "hy3",
       "hy3-preview",
-      "grok-4.5",
+      "hy4-preview",
+      "kimi-k2.5",
+      "kimi-k2.6",
+      "kimi-k2.7-code",
+      "kimi-k3",
+      "longcat-2.0",
+      "mimo-v2-omni",
+      "mimo-v2-pro",
+      "mimo-v2.5",
+      "mimo-v2.5-pro",
+      "minimax-m2.5",
+      "minimax-m2.7",
+      "minimax-m3",
+      "muse-spark-1.2-contributor",
+      "muse-spark-1.3-contributor",
+      "omen-alpha",
+      "qwen3.5-plus",
+      "qwen3.6-plus",
+      "qwen3.7-max",
+      "qwen3.7-plus",
+      "qwen3.8-flash",
+      "qwen3.8-max",
     ]
     for (const id of ids) {
       const m = resolveModel(id)
@@ -284,6 +294,13 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
         "high",
       ])
     }
+    // Qwen3.8 Flash: toggle + low|medium|xhigh (models.dev).
+    expect([...resolveModel("qwen3.8-flash").capabilities.effort.levels]).toEqual([
+      "none",
+      "low",
+      "medium",
+      "xhigh",
+    ])
     // MiniMax M2.x: reasoning with empty options — no toggle / no none.
     expect([...resolveModel("minimax-m2.7").capabilities.effort.levels]).toEqual([
       "low",
@@ -295,6 +312,21 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "medium",
       "high",
     ])
+
+    // 2026-09-07 live catalog additions: surface + pricing smoke.
+    expect(resolveModel("grok-4.6").surfaceId).toBe("openai-responses")
+    expect(resolveModel("grok-4.6").pricing?.cacheReadUSD).toBe(0.5)
+    expect(resolveModel("muse-spark-1.3-contributor").surfaceId).toBe("openai-responses")
+    expect(resolveModel("muse-spark-1.3-contributor").pricing?.inputUSD).toBe(0.1)
+    expect(resolveModel("glm-5.3-flash").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("glm-5.3-flash").pricing?.inputUSD).toBe(0.15)
+    expect(resolveModel("qwen3.8-flash").surfaceId).toBe("anthropic-messages")
+    expect(resolveModel("deepseek-v4-flash-vision-exp").surfaceId).toBe(
+      "openai-chat-completions",
+    )
+    expect(resolveModel("hy4-preview").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("longcat-2.0").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("omen-alpha").surfaceId).toBe("openai-chat-completions")
   })
 
   it("registers ad-hoc slugs on demand", () => {
@@ -385,6 +417,67 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
         // should throw before yielding
       }
     }).toThrow("missing api-key")
+  })
+
+  it("buildOpenAIHeaders sets x-opencode-session only when sessionId is passed", () => {
+    const withSession = buildOpenAIHeaders({
+      auth: { kind: "api-key", key: "sk-test" },
+      userAgent: "minimal-agent-opencode/0.1",
+      sessionId: "sess-abc",
+    })
+    expect(withSession["x-opencode-session"]).toBe("sess-abc")
+    expect(withSession["user-agent"]).toBe("minimal-agent-opencode/0.1")
+    expect(withSession.authorization).toBe("Bearer sk-test")
+
+    const without = buildOpenAIHeaders({ auth: { kind: "api-key", key: "sk-test" } })
+    expect(without["x-opencode-session"]).toBeUndefined()
+    expect(without["user-agent"]).toBeUndefined()
+  })
+
+  it("sends x-opencode-session + product UA on Chat, Messages, and Responses", async () => {
+    setup()
+    const adapter = resolveProvider("opencode")
+    const cases: Array<{ modelId: string; fixture: string }> = [
+      { modelId: "deepseek-v4-flash", fixture: openaiChatPong() },
+      { modelId: "qwen3.8-max", fixture: anthropicPong() },
+      { modelId: "gpt-5.6-luna", fixture: openaiResponsesPong() },
+    ]
+
+    for (const { modelId, fixture } of cases) {
+      const captured: NetworkRequestInput[] = []
+      const networkClient: NetworkClient = {
+        async request(input) {
+          captured.push(input)
+          return {
+            status: 200,
+            ok: true,
+            headers: new Headers(),
+            body: sseStream(fixture),
+            transport: { id: "mock" },
+            async text() {
+              return ""
+            },
+            async json() {
+              return {}
+            },
+          }
+        },
+      }
+      const model = resolveModel(modelId)
+      const req: CanonicalRequest = { modelId, messages: [userText("hi")] }
+      const ctx: RunContext = {
+        auth: { kind: "api-key", key: "sk-test" },
+        sessionId: "conversation-42",
+        networkClient,
+      }
+      for await (const _ of adapter.run(req, model, ctx)) {
+        // drain stream
+      }
+      expect(captured).toHaveLength(1)
+      const headers = captured[0]!.headers!
+      expect(headers["x-opencode-session"]).toBe("conversation-42")
+      expect(headers["user-agent"]).toBe("minimal-agent-opencode/0.1")
+    }
   })
 
   it("emits tool_result blocks as role:tool messages (not silently dropped)", () => {

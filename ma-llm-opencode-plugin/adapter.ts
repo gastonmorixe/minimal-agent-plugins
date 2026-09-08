@@ -59,12 +59,19 @@ const OPENCODE_CHAT_URL = "https://opencode.ai/zen/go/v1/chat/completions"
 const OPENCODE_MESSAGES_URL = "https://opencode.ai/zen/go/v1/messages"
 const OPENCODE_RESPONSES_URL = "https://opencode.ai/zen/go/v1/responses"
 
-function buildOpencodeMessagesHeaders(auth: RunContext["auth"]): Record<string, string> {
+/** Product UA required by OpenCode Go (not a generic SDK / HTTP-library name). */
+const OPENCODE_USER_AGENT = "minimal-agent-opencode/0.1"
+
+function buildOpencodeMessagesHeaders(
+  auth: RunContext["auth"],
+  sessionId: string,
+): Record<string, string> {
   const headers: Record<string, string> = {
     accept: "application/json",
     "content-type": "application/json",
     "anthropic-version": "2023-06-01",
-    "user-agent": "minimal-agent-opencode/0.1",
+    "user-agent": OPENCODE_USER_AGENT,
+    "x-opencode-session": sessionId,
   }
   if (auth.kind === "api-key") {
     headers["x-api-key"] = auth.key
@@ -109,7 +116,11 @@ export const opencodeAdapter: ProviderAdapter = {
     if (!networkClient) throw new Error("opencode: no network client on RunContext")
 
     if (model.surfaceId === "openai-chat-completions") {
-      const headers = buildOpenAIHeaders({ auth })
+      const headers = buildOpenAIHeaders({
+        auth,
+        userAgent: OPENCODE_USER_AGENT,
+        sessionId: ctx.sessionId,
+      })
       const body = buildOpenAIChatBody(req, model)
       const serialized = JSON.stringify(body)
 
@@ -136,7 +147,7 @@ export const opencodeAdapter: ProviderAdapter = {
       }
       yield* translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))
     } else if (model.surfaceId === "anthropic-messages") {
-      const headers = buildOpencodeMessagesHeaders(auth)
+      const headers = buildOpencodeMessagesHeaders(auth, ctx.sessionId)
       const body = buildAnthropicRequestBody(req, model)
       const serialized = JSON.stringify(body)
 
@@ -163,7 +174,11 @@ export const opencodeAdapter: ProviderAdapter = {
       }
       yield* translateAnthropicStream(parseSse<AnthropicStreamEvent>(response.body))
     } else if (model.surfaceId === "openai-responses") {
-      const headers = buildOpenAIHeaders({ auth })
+      const headers = buildOpenAIHeaders({
+        auth,
+        userAgent: OPENCODE_USER_AGENT,
+        sessionId: ctx.sessionId,
+      })
       const body = buildOpenAIResponsesBody(req, model)
       if (!body.prompt_cache_key && ctx.sessionId) {
         body.prompt_cache_key = ctx.sessionId

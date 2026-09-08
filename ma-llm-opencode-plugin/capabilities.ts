@@ -3,24 +3,19 @@
  *
  * Three wire surfaces:
  * - **Chat**: OpenAI Chat Completions (`/v1/chat/completions`).
- *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, Grok.
+ *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, LongCat, Omen, Grok 4.5.
  * - **Messages**: Anthropic Messages (`/v1/messages`).
  *   Used by MiniMax, Qwen.
  * - **Responses**: OpenAI Responses (`/v1/responses`).
- *   Used by GPT-5.6 Luna and Muse Spark 1.2 Contributor.
+ *   Used by GPT-5.6 Luna, Grok 4.6, Muse Spark Contributor.
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
  *
- * Source precedence (2026-08-20):
+ * Source precedence (2026-09-07):
  * 1. Live IDs from `https://opencode.ai/zen/go/v1/models` (must stay in sync)
  * 2. Context / maxOutput / modalities from models.dev `opencode-go` provider
  * 3. Docs (`opencode.ai/docs/go`) for surface/endpoint mapping; no window sizes
  * 4. Clone only when docs/family imply same shape and secondary sources omit the slug
- *
- * Three wire surfaces:
- * - Chat Completions (`/v1/chat/completions`) — DeepSeek, GLM, Kimi, MiMo, Hy, Grok
- * - Anthropic Messages (`/v1/messages`) — MiniMax, Qwen
- * - OpenAI Responses (`/v1/responses`) — GPT-5.6 Luna, Muse Spark 1.2 Contributor
  *
  * @module llm/providers/opencode/capabilities
  */
@@ -68,6 +63,9 @@ const M_ALL = { image: true, audio: true, pdf: true, video: true } as const
 
 /** Text + image + pdf (GPT-5.6 Luna on OpenCode Go). */
 const M_TIP = { image: true, audio: false, pdf: true, video: false } as const
+
+/** Text + image + video + pdf (GLM-5.3-Flash). */
+const M_TIVP = { image: true, audio: false, pdf: true, video: true } as const
 
 const TOOLS_STRICT = {
   userDefined: true,
@@ -121,8 +119,12 @@ function thinkResponses(
  * on the wire (omit `thinking`; do not send `output_config.effort:"none"`).
  */
 function thinkAdaptive(
-  levels: ReadonlyArray<"none" | "low" | "medium" | "high"> = ["low", "medium", "high"],
-  df: "none" | "low" | "medium" | "high" = "medium",
+  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh"> = [
+    "low",
+    "medium",
+    "high",
+  ],
+  df: "none" | "low" | "medium" | "high" | "xhigh" = "medium",
 ) {
   return {
     thinking: { adaptive: true, extended: false, visible: true, interleaved: true } as const,
@@ -216,6 +218,26 @@ export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
 }
 
 /**
+ * DeepSeek V4 Flash Vision Exp — 1M ctx, 384K output, text+image.
+ * Caps: models.dev opencode-go (2026-08-21). Surface: docs endpoints table.
+ * Efforts: low | high | max (models.dev reasoning_options).
+ */
+export const CAPS_DEEPSEEK_V4_FLASH_VISION_EXP: Capabilities = {
+  ...chatBase(1_000_000, 384_000, M_TI),
+  ...thinkExtended(["low", "high", "max"], "high"),
+}
+
+/**
+ * GLM-5.3-Flash — 1M ctx, 131K output, text+image+video+pdf.
+ * Caps: models.dev opencode-go (2026-08-26). Surface: docs endpoints table.
+ * Efforts: low | high | max (models.dev reasoning_options).
+ */
+export const CAPS_GLM_5_3_FLASH: Capabilities = {
+  ...chatBase(1_000_000, 131_072, M_TIVP),
+  ...thinkExtended(["low", "high", "max"], "high"),
+}
+
+/**
  * GLM-5.3 — 1M ctx, 131K output, text-only.
  * Caps: models.dev opencode-go (2026-08-20). Surface: docs endpoints table.
  * Efforts: low | high | max (models.dev reasoning_options).
@@ -293,8 +315,9 @@ export const CAPS_KIMI_K3: Capabilities = {
 
 /**
  * Grok 4.5 — 500K ctx, 500K output, text+image.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- * Efforts: low | medium | high (default high) from models.dev reasoning_options.
+ * Caps: models.dev opencode-go (2026-07-30). Surface: docs chat path for
+ * legacy ID still on live `/v1/models` (docs endpoints now list Grok 4.6 on
+ * Responses). Efforts: low | medium | high (default high).
  */
 export const CAPS_GROK_4_5: Capabilities = {
   ...chatBase(500_000, 500_000, M_TI),
@@ -319,6 +342,36 @@ export const CAPS_HY3: Capabilities = {
 export const CAPS_HY3_PREVIEW: Capabilities = {
   ...chatBase(256_000, 64_000, M_TEXT),
   ...thinkExtended(["none", "low", "high"], "high"),
+}
+
+/**
+ * Hy4 Preview — 1_024_000 ctx, 64K output, text-only.
+ * Caps: models.dev opencode-go (2026-08-28). Surface: docs endpoints table.
+ * Efforts: none | high (models.dev reasoning_options).
+ */
+export const CAPS_HY4_PREVIEW: Capabilities = {
+  ...chatBase(1_024_000, 64_000, M_TEXT),
+  ...thinkExtended(["none", "high"], "high"),
+}
+
+/**
+ * LongCat-2.0 — 1M ctx, 131K output, text-only.
+ * Caps: models.dev opencode-go (2026-06-30). Surface: docs endpoints table.
+ * Reasoning toggle only (models.dev) — map to none | medium on Chat.
+ */
+export const CAPS_LONGCAT_2_0: Capabilities = {
+  ...chatBase(1_000_000, 131_072, M_TEXT),
+  ...thinkExtended(["none", "medium"], "medium"),
+}
+
+/**
+ * Omen Alpha — 500K ctx, 128K output, text+image.
+ * Caps: models.dev opencode-go (2026-09-04). Surface: docs endpoints table.
+ * Efforts: low | high (models.dev reasoning_options).
+ */
+export const CAPS_OMEN_ALPHA: Capabilities = {
+  ...chatBase(500_000, 128_000, M_TI),
+  ...thinkExtended(["low", "high"], "high"),
 }
 
 /**
@@ -403,6 +456,16 @@ export const CAPS_QWEN3_8_MAX: Capabilities = {
 }
 
 /**
+ * Qwen3.8 Flash — 1M ctx, 131K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-08-26). Surface: docs endpoints (/v1/messages).
+ * Reasoning toggle + effort low | medium | xhigh (models.dev).
+ */
+export const CAPS_QWEN3_8_FLASH: Capabilities = {
+  ...msgBase(1_000_000, 131_072, M_TIV),
+  ...thinkAdaptive(["none", "low", "medium", "xhigh"], "medium"),
+}
+
+/**
  * Qwen3.7 Max — 1M ctx, 65K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
  * Reasoning toggle (models.dev): `--effort none` turns thinking off.
@@ -447,8 +510,8 @@ export const CAPS_QWEN3_5_PLUS: Capabilities = {
 // ===========================================================================
 
 /**
- * Muse Spark 1.2 Contributor — 1.05M ctx, 128K output, multimodal.
- * Caps: models.dev opencode-go (2026-08-20). Surface: docs endpoints
+ * Muse Spark 1.2 Contributor — 1.05M ctx, 131K output, multimodal.
+ * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints
  * (`/v1/responses`, `@ai-sdk/openai`). Efforts: minimal | low | medium | high | xhigh.
  * OpenCode Go does not advertise server-side tools or stateful history.
  */
@@ -470,6 +533,44 @@ export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...M_ALL },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
+ * Muse Spark 1.3 Contributor — same window/modalities/efforts as 1.2.
+ * Caps: models.dev opencode-go (2026-09-02). Surface: docs endpoints
+ * (`/v1/responses`, `@ai-sdk/openai`). Keep ID distinct for live catalog sync
+ * (error footers use `og-muse-spark-…-contributor:effort`).
+ */
+export const CAPS_MUSE_SPARK_1_3_CONTRIBUTOR: Capabilities = {
+  ...CAPS_MUSE_SPARK_1_2_CONTRIBUTOR,
+}
+
+/**
+ * Grok 4.6 — 500K ctx, 500K output, text+image on Responses.
+ * Caps: models.dev opencode-go (2026-08-12). Surface: docs endpoints
+ * (`/v1/responses`, `@ai-sdk/openai`). Efforts: low | medium | high | xhigh.
+ * Accepts temperature (models.dev); no server-side tools / stateful history.
+ */
+export const CAPS_GROK_4_6: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 500_000,
+  maxOutputTokens: 500_000,
+  maxOutputTokensBatch: null,
+  ...thinkResponses(["low", "medium", "high", "xhigh"], "high"),
+  acceptsTemperature: true,
+  acceptsTopP: true,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_STRICT },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...M_TI },
   serverSideHistory: false,
   serverTools: [],
 }
