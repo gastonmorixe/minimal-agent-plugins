@@ -33,6 +33,41 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("registerOpenAIModels", () => {
+  it("registers gpt-6 Astra on the Responses surface with current capability + pricing data", () => {
+    const reg = makeTestRegistry()
+    const ids = registerOpenAIModels(reg.models)
+
+    expect(ids).toContain("gpt-6-astra")
+    const m = reg.resolveModel("astra")
+    expect(m.id).toBe("gpt-6-astra")
+    expect(m.providerId).toBe("openai")
+    expect(m.surfaceId).toBe("openai-responses")
+    expect(m.capabilities.contextWindow).toBe(1_050_000)
+    expect(m.capabilities.maxOutputTokens).toBe(128_000)
+    expect(m.capabilities.effort.levels).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra",
+    ])
+    expect(m.capabilities.effort.default).toBe("low")
+    expect(m.capabilities.thinking.visible).toBe(true)
+    expect(m.capabilities.speedFast).toBe(true)
+    expect(m.knowledgeCutoff).toBe("2026-04-30")
+    expect(m.pricing.inputUSD).toBe(10)
+    expect(m.pricing.outputUSD).toBe(50)
+    expect(m.pricing.cacheWriteUSD).toBe(12.5)
+    expect(m.pricing.cacheReadUSD).toBe(1)
+
+    const chat = reg.resolveModel("astra-chat")
+    expect(chat.id).toBe("gpt-6-astra-chat")
+    expect(chat.surfaceId).toBe("openai-chat-completions")
+    expect(chat.vendorIds?.firstParty).toBe("gpt-6-astra")
+    expect(chat.capabilities.thinking.visible).toBe(false)
+  })
+
   it("registers gpt-5.6 Sol on the Responses surface with current capability + pricing data", () => {
     const reg = makeTestRegistry()
     const ids = registerOpenAIModels(reg.models)
@@ -56,10 +91,10 @@ describe("registerOpenAIModels", () => {
     expect(m.capabilities.thinking.visible).toBe(true)
     expect(m.capabilities.speedFast).toBe(true)
     expect(m.knowledgeCutoff).toBe("2026-02-16")
-    expect(m.pricing.inputUSD).toBe(5)
-    expect(m.pricing.outputUSD).toBe(30)
-    expect(m.pricing.cacheWriteUSD).toBe(6.25)
-    expect(m.pricing.cacheReadUSD).toBe(0.5)
+    expect(m.pricing.inputUSD).toBe(4)
+    expect(m.pricing.outputUSD).toBe(20)
+    expect(m.pricing.cacheWriteUSD).toBe(5)
+    expect(m.pricing.cacheReadUSD).toBe(0.4)
   })
 
   it("registers the gpt-5.6 family tiers and maps Chat aliases to real model ids", () => {
@@ -68,6 +103,8 @@ describe("registerOpenAIModels", () => {
 
     expect(ids).toEqual(
       expect.arrayContaining([
+        "gpt-6-astra",
+        "gpt-6-astra-chat",
         "gpt-5.6-sol",
         "gpt-5.6-terra",
         "gpt-5.6-luna",
@@ -360,7 +397,7 @@ describe("validateOpenAIRequest", () => {
     expect(adapter.validate(req, model).ok).toBe(true)
   })
 
-  it("accepts Codex ultra effort on gpt-5.6 Sol/Terra and rejects it on Luna", () => {
+  it("accepts Codex ultra effort on gpt-6 Astra and gpt-5.6 Sol/Terra and rejects it on Luna", () => {
     setup()
     const adapter = resolveProvider("openai")
     const req = (modelId: string): CanonicalRequest => ({
@@ -368,11 +405,23 @@ describe("validateOpenAIRequest", () => {
       messages: [userText("hi")],
       effort: "ultra",
     })
+    expect(adapter.validate(req("gpt-6-astra"), resolveModel("gpt-6-astra")).ok).toBe(true)
     expect(adapter.validate(req("gpt-5.6-sol"), resolveModel("gpt-5.6-sol")).ok).toBe(true)
     expect(adapter.validate(req("gpt-5.6-terra"), resolveModel("gpt-5.6-terra")).ok).toBe(true)
     const luna = adapter.validate(req("gpt-5.6-luna"), resolveModel("gpt-5.6-luna"))
     expect(luna.ok).toBe(false)
     expect(luna.errors.some((e) => e.capability === "effort")).toBe(true)
+  })
+
+  it("rejects API none effort on gpt-6 Astra (docs do not list none)", () => {
+    setup()
+    const adapter = resolveProvider("openai")
+    const res = adapter.validate(
+      { modelId: "gpt-6-astra", messages: [userText("hi")], effort: "none" },
+      resolveModel("gpt-6-astra"),
+    )
+    expect(res.ok).toBe(false)
+    expect(res.errors.some((e) => e.capability === "effort")).toBe(true)
   })
 
   it("rejects previousResponseId on the Chat surface (no server-side history)", () => {
@@ -399,10 +448,10 @@ describe("validateOpenAIRequest", () => {
     expect(res.errors.some((e) => e.capability === "effort")).toBe(true)
   })
 
-  it("accepts speed:fast on Codex Fast-capable models (gpt-5.5 / gpt-5.6 / gpt-5.4)", () => {
+  it("accepts speed:fast on Codex Fast-capable models (gpt-6-astra / gpt-5.5 / gpt-5.6 / gpt-5.4)", () => {
     setup()
     const adapter = resolveProvider("openai")
-    for (const id of ["gpt-5.5", "gpt-5.6", "gpt-5.4"] as const) {
+    for (const id of ["gpt-6-astra", "gpt-5.5", "gpt-5.6", "gpt-5.4"] as const) {
       const res = adapter.validate(
         { modelId: id, messages: [userText("hi")], speed: "fast" },
         resolveModel(id),
