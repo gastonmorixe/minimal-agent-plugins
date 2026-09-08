@@ -377,6 +377,11 @@ export interface OpenAIHeadersOpts {
    * absent, no `user-agent` header is set.
    */
   userAgent?: string
+  /**
+   * Optional conversation session id. When set, adds OpenCode Go's required
+   * `x-opencode-session` header. Other OpenAI-compatible callers omit this.
+   */
+  sessionId?: string
 }
 
 /**
@@ -390,6 +395,7 @@ export function buildOpenAIHeaders(opts: OpenAIHeadersOpts): Record<string, stri
     "content-type": "application/json",
   }
   if (opts.userAgent) headers["user-agent"] = opts.userAgent
+  if (opts.sessionId) headers["x-opencode-session"] = opts.sessionId
 
   switch (opts.auth.kind) {
     case "api-key":
