@@ -148,7 +148,7 @@ export const PRICING_GPT_5_5_PRO: MTokRate = {
 /**
  * gpt-6-astra pricing. Short-context Standard: $10 / $50 (2026-09-08
  * pricing page + model card). Explicit cache writes are 1.25x uncached
- * input. Long-context (>272K input) is 2x input/cache and 1.5x output for
+ * input. Long-context (\>272K input) is 2x input/cache and 1.5x output for
  * the full request — not modeled as a separate rate row here.
  */
 export const PRICING_GPT_6_ASTRA: MTokRate = {

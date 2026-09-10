@@ -1,7 +1,7 @@
 /**
  * Non-2xx classification for the triple-surface gateway: every pre-stream
  * `!response.ok` throw MUST carry the retry tag the provider-neutral retry
- * coordinator keys on (429 -> `rate_limit_error` SLOW curve, 5xx ->
+ * coordinator keys on (429 -\> `rate_limit_error` SLOW curve, 5xx -\>
  * `overloaded_error` FAST curve). Billing stays terminal.
  *
  * @module llm/providers/opencode/adapter.http-error.test
