@@ -123,11 +123,13 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-09-07 (authoritative ID list).
+    // Live /v1/models snapshot 2026-09-10 (authoritative ID list).
     const ids = [
+      "deepseek-flash",
       "deepseek-v4-flash",
       "deepseek-v4-flash-vision-exp",
       "deepseek-v4-pro",
+      "deepseek-v4.1-flash",
       "glm-5",
       "glm-5.1",
       "glm-5.2",
@@ -183,6 +185,41 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     // Docs/go wins over models.dev on grok cache_read ($0.30 vs $0.50).
     expect(resolveModel("grok-4.5").pricing?.cacheReadUSD).toBe(0.3)
     expect(resolveModel("minimax-m2.7").pricing?.cacheWriteUSD).toBe(0.375)
+    // DeepSeek Off-Peak tiers refreshed 2026-09-10 (docs/go + models.dev agree).
+    expect(resolveModel("deepseek-v4-flash").pricing?.inputUSD).toBe(0.15)
+    expect(resolveModel("deepseek-v4-flash").pricing?.outputUSD).toBe(0.6)
+    expect(resolveModel("deepseek-v4-flash").pricing?.cacheReadUSD).toBe(0.003)
+    expect(resolveModel("deepseek-v4-pro").pricing?.inputUSD).toBe(0.66)
+    expect(resolveModel("deepseek-v4-pro").pricing?.outputUSD).toBe(1.98)
+    expect(resolveModel("deepseek-v4-pro").pricing?.cacheReadUSD).toBe(0.022)
+    expect(resolveModel("deepseek-v4-flash-vision-exp").pricing?.inputUSD).toBe(0.15)
+    expect(resolveModel("deepseek-v4-flash-vision-exp").pricing?.outputUSD).toBe(0.6)
+    expect(resolveModel("deepseek-v4-flash-vision-exp").pricing?.cacheReadUSD).toBe(0.003)
+
+    // New 2026-09-10 models.
+    const v41 = resolveModel("deepseek-v4.1-flash")
+    expect(v41.surfaceId).toBe("openai-chat-completions")
+    expect(v41.capabilities.contextWindow).toBe(1_000_000)
+    expect(v41.capabilities.maxOutputTokens).toBe(384_000)
+    expect(v41.capabilities.modalities).toEqual({
+      image: true,
+      audio: false,
+      pdf: false,
+      video: false,
+    })
+    expect([...v41.capabilities.effort.levels]).toEqual(["low", "high", "max"])
+    expect(v41.pricing?.inputUSD).toBe(0.15)
+    expect(v41.pricing?.outputUSD).toBe(0.6)
+    expect(v41.pricing?.cacheReadUSD).toBe(0.003)
+
+    // deepseek-flash clones deepseek-v4-flash (live-only slug, no secondary source).
+    const dsf = resolveModel("deepseek-flash")
+    expect(dsf.surfaceId).toBe("openai-chat-completions")
+    expect(dsf.capabilities.contextWindow).toBe(
+      resolveModel("deepseek-v4-flash").capabilities.contextWindow,
+    )
+    expect([...dsf.capabilities.effort.levels]).toEqual(["low", "high", "max"])
+    expect(dsf.pricing?.inputUSD).toBe(0.15)
 
     // New 2026-08-20 models.
     const luna = resolveModel("gpt-5.6-luna")

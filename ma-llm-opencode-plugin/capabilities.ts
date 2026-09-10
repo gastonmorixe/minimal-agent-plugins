@@ -214,6 +214,26 @@ export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
 }
 
 /**
+ * DeepSeek V4.1 Flash — 1M ctx, 384K output, text+image.
+ * Caps: models.dev opencode-go (2026-09-10). Surface: docs endpoints table.
+ * Efforts: low | high | max (models.dev reasoning_options).
+ */
+export const CAPS_DEEPSEEK_V4_1_FLASH: Capabilities = {
+  ...chatBase(1_000_000, 384_000, M_TI),
+  ...thinkExtended(["low", "high", "max"], "high"),
+}
+
+/**
+ * DeepSeek Flash — on live `/v1/models` but absent from models.dev and docs/go.
+ * Caps cloned from DeepSeek V4 Flash (same family) until secondary sources
+ * publish distinct limits. Do not invent alternate numbers.
+ */
+export const CAPS_DEEPSEEK_FLASH: Capabilities = {
+  ...chatBase(1_000_000, 384_000, M_TEXT),
+  ...thinkExtended(["low", "high", "max"], "high"),
+}
+
+/**
  * DeepSeek V4 Flash Vision Exp — 1M ctx, 384K output, text+image.
  * Caps: models.dev opencode-go (2026-08-21). Surface: docs endpoints table.
  * Efforts: low | high | max (models.dev reasoning_options).

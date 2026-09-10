@@ -9,12 +9,14 @@
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
  * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
  * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
- * (2026-09-07).
+ * (2026-09-10).
  *
  * @module llm/providers/opencode/models
  */
 
 import {
+  CAPS_DEEPSEEK_FLASH,
+  CAPS_DEEPSEEK_V4_1_FLASH,
   CAPS_DEEPSEEK_V4_FLASH,
   CAPS_DEEPSEEK_V4_FLASH_VISION_EXP,
   CAPS_DEEPSEEK_V4_PRO,
@@ -56,6 +58,8 @@ import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
+  PRICING_DEEPSEEK_FLASH,
+  PRICING_DEEPSEEK_V4_1_FLASH,
   PRICING_DEEPSEEK_V4_FLASH,
   PRICING_DEEPSEEK_V4_FLASH_VISION_EXP,
   PRICING_DEEPSEEK_V4_PRO,
@@ -156,6 +160,20 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "openai-compatible", "deepseek"],
       capabilities: CAPS_DEEPSEEK_V4_PRO,
       pricing: PRICING_DEEPSEEK_V4_PRO,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("deepseek-v4.1-flash", {
+      displayName: "DeepSeek V4.1 Flash",
+      tags: ["opencode", "openai-compatible", "deepseek", "cheap"],
+      capabilities: CAPS_DEEPSEEK_V4_1_FLASH,
+      pricing: PRICING_DEEPSEEK_V4_1_FLASH,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("deepseek-flash", {
+      displayName: "DeepSeek Flash",
+      tags: ["opencode", "openai-compatible", "deepseek", "cheap"],
+      capabilities: CAPS_DEEPSEEK_FLASH,
+      pricing: PRICING_DEEPSEEK_FLASH,
       surfaceId: "openai-chat-completions",
     }),
     makeSpec("deepseek-v4-flash", {

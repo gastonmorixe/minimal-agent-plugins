@@ -14,6 +14,8 @@ export {
   readOpencodeApiKey,
 } from "./auth.ts"
 export {
+  CAPS_DEEPSEEK_FLASH,
+  CAPS_DEEPSEEK_V4_1_FLASH,
   CAPS_DEEPSEEK_V4_FLASH,
   // Chat surface
   CAPS_DEEPSEEK_V4_PRO,
@@ -39,6 +41,8 @@ export {
 } from "./capabilities.ts"
 export { registerOpencodeModelInto, registerOpencodeModels } from "./models.ts"
 export {
+  PRICING_DEEPSEEK_FLASH,
+  PRICING_DEEPSEEK_V4_1_FLASH,
   PRICING_DEEPSEEK_V4_FLASH,
   PRICING_DEEPSEEK_V4_PRO,
   PRICING_GLM_5,
