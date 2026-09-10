@@ -457,8 +457,8 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
             async text() {
               return ""
             },
-            async json() {
-              return {}
+            async json<T>(): Promise<T> {
+              return {} as T
             },
           }
         },
