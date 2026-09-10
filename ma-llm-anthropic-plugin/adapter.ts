@@ -18,6 +18,7 @@ import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import { classifyUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   PreflightIssue,
@@ -61,6 +62,44 @@ import { validateAnthropicRequest } from "./validate.ts"
 // ---------------------------------------------------------------------------
 
 const MESSAGES_URL = "https://api.anthropic.com/v1/messages?beta=true"
+
+/**
+ * Parse the upstream error type out of a non-2xx Anthropic JSON body.
+ * Anthropic returns `{"type":"error","error":{"type":"...","message":"..."}}`.
+ * Falls back to undefined for non-JSON bodies so the status alone classifies.
+ */
+function parseAnthropicErrorCode(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as { error?: { type?: unknown } }
+    const type = parsed?.error?.type
+    return typeof type === "string" ? type : undefined
+  } catch {
+    return undefined
+  }
+}
+
+type TaggedHttpError = Error & { streamErrorType?: string; retryable?: boolean }
+
+/**
+ * Build a tagged HTTP error so the provider-neutral retry coordinator can
+ * recover from a pre-stream rejection (429 rate limit, 5xx overload) instead
+ * of stopping the agent. Maps status + body error type through
+ * `classifyUpstreamError`; attaches `streamErrorType` for retryable tags and
+ * `retryable: false` for terminal verdicts (billing, auth) so the retry
+ * classifier honors them even when a category remap would land in a
+ * retryable bucket. Untagged errors propagate.
+ */
+function taggedAnthropicHttpError(status: number, body: string): TaggedHttpError {
+  const upstreamCode = parseAnthropicErrorCode(body)
+  const { streamErrorType, retryable } = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode,
+  })
+  const err = new Error(`Anthropic API ${status}: ${body}`) as TaggedHttpError
+  if (streamErrorType) err.streamErrorType = streamErrorType
+  if (retryable === false) err.retryable = false
+  return err
+}
 
 // ---------------------------------------------------------------------------
 // Adapter
@@ -177,7 +216,7 @@ export const anthropicAdapter: ProviderAdapter = {
 
     if (!response.ok) {
       const text = await response.text()
-      throw new Error(`Anthropic API ${response.status}: ${text}`)
+      throw taggedAnthropicHttpError(response.status, text)
     }
     // Cache + broadcast THIS response's rate-limit snapshot so the status-bar
     // footer keeps the live 5h/7d windows fresh on every real turn. Before the
