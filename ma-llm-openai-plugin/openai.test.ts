@@ -44,14 +44,7 @@ describe("registerOpenAIModels", () => {
     expect(m.surfaceId).toBe("openai-responses")
     expect(m.capabilities.contextWindow).toBe(1_050_000)
     expect(m.capabilities.maxOutputTokens).toBe(128_000)
-    expect(m.capabilities.effort.levels).toEqual([
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-      "ultra",
-    ])
+    expect(m.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max", "ultra"])
     expect(m.capabilities.effort.default).toBe("low")
     expect(m.capabilities.thinking.visible).toBe(true)
     expect(m.capabilities.speedFast).toBe(true)

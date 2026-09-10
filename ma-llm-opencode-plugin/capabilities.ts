@@ -119,11 +119,7 @@ function thinkResponses(
  * on the wire (omit `thinking`; do not send `output_config.effort:"none"`).
  */
 function thinkAdaptive(
-  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh"> = [
-    "low",
-    "medium",
-    "high",
-  ],
+  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh"> = ["low", "medium", "high"],
   df: "none" | "low" | "medium" | "high" | "xhigh" = "medium",
 ) {
   return {
