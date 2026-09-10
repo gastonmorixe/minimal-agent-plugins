@@ -25,6 +25,7 @@ import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthr
 import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import { classifyUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -58,6 +59,46 @@ import {
 const OPENCODE_CHAT_URL = "https://opencode.ai/zen/go/v1/chat/completions"
 const OPENCODE_MESSAGES_URL = "https://opencode.ai/zen/go/v1/messages"
 const OPENCODE_RESPONSES_URL = "https://opencode.ai/zen/go/v1/responses"
+
+/**
+ * Parse an upstream error code out of a non-2xx JSON body. The gateway fronts
+ * both Anthropic-style (`{"error":{"type":"..."}}`) and OpenAI-style
+ * (`{"error":{"code":"..."}}`) surfaces; fall back to undefined for non-JSON
+ * bodies so the status alone classifies.
+ */
+function parseOpencodeErrorCode(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as { error?: { type?: unknown; code?: unknown } }
+    const err = parsed?.error
+    if (err && typeof err === "object") {
+      if (typeof err.type === "string") return err.type
+      if (typeof err.code === "string") return err.code
+    }
+    return undefined
+  } catch {
+    return undefined
+  }
+}
+
+type TaggedHttpError = Error & { streamErrorType?: string; retryable?: boolean }
+
+/**
+ * Build a tagged HTTP error so the provider-neutral retry coordinator can
+ * recover from a pre-stream rejection (429 rate limit, 5xx overload) instead
+ * of stopping the agent. Terminal verdicts (billing, auth) carry
+ * `retryable: false` so they propagate. Untagged errors propagate.
+ */
+function taggedOpencodeHttpError(status: number, body: string): TaggedHttpError {
+  const upstreamCode = parseOpencodeErrorCode(body)
+  const { streamErrorType, retryable } = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode,
+  })
+  const err = new Error(`OpenCode Go API ${status}: ${body}`) as TaggedHttpError
+  if (streamErrorType) err.streamErrorType = streamErrorType
+  if (retryable === false) err.retryable = false
+  return err
+}
 
 /** Product UA required by OpenCode Go (not a generic SDK / HTTP-library name). */
 const OPENCODE_USER_AGENT = "minimal-agent-opencode/0.1"
@@ -140,7 +181,7 @@ export const opencodeAdapter: ProviderAdapter = {
 
       if (!response.ok) {
         const text = await response.text()
-        throw new Error(`OpenCode Go API ${response.status}: ${text}`)
+        throw taggedOpencodeHttpError(response.status, text)
       }
       if (!response.body) {
         throw new Error("OpenCode Go API: empty response body for stream")
@@ -167,7 +208,7 @@ export const opencodeAdapter: ProviderAdapter = {
 
       if (!response.ok) {
         const text = await response.text()
-        throw new Error(`OpenCode Go API ${response.status}: ${text}`)
+        throw taggedOpencodeHttpError(response.status, text)
       }
       if (!response.body) {
         throw new Error("OpenCode Go API: empty response body for stream")
@@ -207,7 +248,7 @@ export const opencodeAdapter: ProviderAdapter = {
 
       if (!response.ok) {
         const text = await response.text()
-        throw new Error(`OpenCode Go API ${response.status}: ${text}`)
+        throw taggedOpencodeHttpError(response.status, text)
       }
       if (!response.body) {
         throw new Error("OpenCode Go API: empty response body for stream")
