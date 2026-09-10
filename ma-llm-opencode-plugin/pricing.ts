@@ -37,33 +37,64 @@ export const PRICING_OPENCODE_GENERIC: MTokRate = {
 
 // OpenAI Chat Completions surface
 
-/** Source: docs/go pricing table (2026-07-30). models.dev agrees on input/output/cache_read. */
+/**
+ * Source: docs/go Off-Peak tier (2026-09-10). models.dev agrees on Off-Peak base.
+ * Docs also publish Peak $1.32/$3.96/$0.044.
+ */
 export const PRICING_DEEPSEEK_V4_PRO: MTokRate = {
-  inputUSD: 0.435,
-  outputUSD: 0.87,
+  inputUSD: 0.66,
+  outputUSD: 1.98,
   cacheWriteUSD: 0, // no explicit cache writes on Chat surface
-  cacheReadUSD: 0.003625,
-  webSearchPerCallUSD: 0,
-}
-
-/** Source: docs/go pricing table (2026-07-30). models.dev agrees. */
-export const PRICING_DEEPSEEK_V4_FLASH: MTokRate = {
-  inputUSD: 0.14,
-  outputUSD: 0.28,
-  cacheWriteUSD: 0,
-  cacheReadUSD: 0.0028,
+  cacheReadUSD: 0.022,
   webSearchPerCallUSD: 0,
 }
 
 /**
- * Source: docs/go Off-Peak tier (2026-09-07). models.dev agrees on Off-Peak base.
- * Docs also publish Peak $0.44/$1.32/$0.014.
+ * Source: docs/go Off-Peak tier (2026-09-10). models.dev agrees on Off-Peak base.
+ * Docs also publish Peak $0.30/$1.20/$0.006.
+ */
+export const PRICING_DEEPSEEK_V4_FLASH: MTokRate = {
+  inputUSD: 0.15,
+  outputUSD: 0.6,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.003,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: docs/go Off-Peak tier (2026-09-10). models.dev agrees on Off-Peak base.
+ * Docs also publish Peak $0.30/$1.20/$0.006.
+ */
+export const PRICING_DEEPSEEK_V4_1_FLASH: MTokRate = {
+  inputUSD: 0.15,
+  outputUSD: 0.6,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.003,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Live `/v1/models` slug absent from docs/go and models.dev.
+ * Cloned from DeepSeek V4 Flash Off-Peak (same family) until a distinct
+ * rate is published.
+ */
+export const PRICING_DEEPSEEK_FLASH: MTokRate = {
+  inputUSD: 0.15,
+  outputUSD: 0.6,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.003,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: docs/go Off-Peak tier (2026-09-10). models.dev agrees on Off-Peak base.
+ * Docs also publish Peak $0.30/$1.20/$0.006.
  */
 export const PRICING_DEEPSEEK_V4_FLASH_VISION_EXP: MTokRate = {
-  inputUSD: 0.22,
-  outputUSD: 0.66,
+  inputUSD: 0.15,
+  outputUSD: 0.6,
   cacheWriteUSD: 0,
-  cacheReadUSD: 0.007,
+  cacheReadUSD: 0.003,
   webSearchPerCallUSD: 0,
 }
 
