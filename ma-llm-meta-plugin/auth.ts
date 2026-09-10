@@ -131,12 +131,17 @@ function absoluteExpiryMs(raw: unknown): number | undefined {
   return n > 1e12 ? n : n * 1000
 }
 
-function tokenExpiryMs(accessToken: string, rawExpiresIn?: unknown, rawExpiresAt?: unknown): number {
+function tokenExpiryMs(
+  accessToken: string,
+  rawExpiresIn?: unknown,
+  rawExpiresAt?: unknown,
+): number {
   const absolute = absoluteExpiryMs(rawExpiresAt)
   if (absolute) return absolute
   const jwtExp = num(decodeJwtPayload(accessToken)?.exp)
   if (jwtExp) return jwtExp * 1000
-  const seconds = typeof rawExpiresIn === "string" ? Number.parseInt(rawExpiresIn, 10) : num(rawExpiresIn)
+  const seconds =
+    typeof rawExpiresIn === "string" ? Number.parseInt(rawExpiresIn, 10) : num(rawExpiresIn)
   if (seconds !== undefined && Number.isFinite(seconds) && seconds > 0) {
     return Date.now() + seconds * 1000
   }
@@ -226,10 +231,7 @@ export function buildMuseOAuthCredential(response: Record<string, unknown>) {
       accessToken: String(secrets.accessToken),
       refreshToken: typeof secrets.refreshToken === "string" ? secrets.refreshToken : "",
       expiresAt: Number(secrets.expiresAt),
-      scopes:
-        typeof secrets.scope === "string"
-          ? secrets.scope.split(/\s+/).filter(Boolean)
-          : [],
+      scopes: typeof secrets.scope === "string" ? secrets.scope.split(/\s+/).filter(Boolean) : [],
       ...(email
         ? {
             account: {
@@ -306,8 +308,7 @@ export async function mintMuseApiKey(
       return {
         ...raw,
         api_key: apiKey,
-        api_base_url:
-          str(raw.api_base_url) ?? str(raw.base_url) ?? META_OPENAI_BASE,
+        api_base_url: str(raw.api_base_url) ?? str(raw.base_url) ?? META_OPENAI_BASE,
       }
     }
 

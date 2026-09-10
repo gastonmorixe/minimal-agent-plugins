@@ -321,9 +321,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(resolveModel("glm-5.3-flash").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("glm-5.3-flash").pricing?.inputUSD).toBe(0.15)
     expect(resolveModel("qwen3.8-flash").surfaceId).toBe("anthropic-messages")
-    expect(resolveModel("deepseek-v4-flash-vision-exp").surfaceId).toBe(
-      "openai-chat-completions",
-    )
+    expect(resolveModel("deepseek-v4-flash-vision-exp").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("hy4-preview").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("longcat-2.0").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("omen-alpha").surfaceId).toBe("openai-chat-completions")

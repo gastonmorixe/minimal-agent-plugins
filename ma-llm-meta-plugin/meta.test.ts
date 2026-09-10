@@ -224,7 +224,6 @@ describe("meta auth", () => {
   })
 })
 
-
 describe("meta wire constants", () => {
   it("points at api.meta.ai/v1", () => {
     expect(META_OPENAI_BASE).toBe("https://api.meta.ai/v1")
