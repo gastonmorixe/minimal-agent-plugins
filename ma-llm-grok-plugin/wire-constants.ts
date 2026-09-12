@@ -51,8 +51,8 @@ export const GROK_WEB_SESSION_URL = "https://grok.com/api/auth/session"
 /** Subscriptions list (tier / status / provider). */
 export const GROK_SUBSCRIPTIONS_URL = "https://grok.com/rest/subscriptions"
 
-/** User-Agent the adapter advertises. */
-export const GROK_USER_AGENT = "minimal-agent-grok/0.1"
+/** User-Agent the adapter advertises. Version tracks the grok CLI crate. */
+export const GROK_USER_AGENT = "minimal-agent-grok/1.0.30"
 
 /**
  * Session-auth middleware tag required by cli-chat-proxy when using
@@ -67,12 +67,36 @@ export const GROK_MODEL_OVERRIDE_HEADER = "x-grok-model-override"
 /**
  * Client version header required by cli-chat-proxy.
  * Must be \>= 0.1.202 or the proxy rejects the request with 426.
- * Matches the installed grok CLI (1.0.5, verified live 2026-08-21: requests
- * without this header get 426 "Your Grok CLI version (none) is outdated").
+ * Matches installed grok CLI (`grok --version` → 1.0.30 / 04b7ffed98c6).
+ * grok-build source crate may lag (1.0.24 as of this tree).
  */
 export const GROK_CLIENT_VERSION_HEADER = "x-grok-client-version"
-export const GROK_CLIENT_VERSION = "1.0.5"
+export const GROK_CLIENT_VERSION = "1.0.30"
 
 /** Client identifier header sent to cli-chat-proxy (mirrors grok CLI's "grok-shell"). */
 export const GROK_CLIENT_IDENTIFIER_HEADER = "x-grok-client-identifier"
 export const GROK_CLIENT_IDENTIFIER = "grok-shell"
+
+/** Session / conversation / request routing headers used by grok-build. */
+export const GROK_SESSION_ID_HEADER = "x-grok-session-id"
+export const GROK_CONV_ID_HEADER = "x-grok-conv-id"
+export const GROK_REQ_ID_HEADER = "x-grok-req-id"
+export const GROK_AGENT_ID_HEADER = "x-grok-agent-id"
+export const GROK_CLIENT_MODE_HEADER = "x-grok-client-mode"
+export const GROK_COMPACTION_AT_HEADER = "x-compaction-at"
+export const GROK_COMPACTIONS_REMAINING_HEADER = "x-compactions-remaining"
+
+/** Baked grok-4.6/4.5 auto-compact threshold (percent of context window). */
+export const GROK_AUTO_COMPACT_THRESHOLD_PERCENT = 80
+/** Baked `compactions_remaining` for grok-4.6/4.5. */
+export const GROK_COMPACTIONS_REMAINING = "1"
+
+/** Identity headers required on every cli-chat-proxy OAuth request. */
+export function grokCliProxyIdentityHeaders(): Record<string, string> {
+  return {
+    [XAI_TOKEN_AUTH_HEADER]: XAI_TOKEN_AUTH_VALUE,
+    "x-authenticateresponse": "authenticate-response",
+    [GROK_CLIENT_VERSION_HEADER]: GROK_CLIENT_VERSION,
+    [GROK_CLIENT_IDENTIFIER_HEADER]: GROK_CLIENT_IDENTIFIER,
+  }
+}

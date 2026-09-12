@@ -103,10 +103,27 @@ export const grokAdapter: ProviderAdapter = {
     }
 
     const wireModelId = model.vendorIds?.firstParty ?? req.modelId
-    const headers = buildGrokHeaders({ auth, modelId: wireModelId })
+    const sessionId = req.metadata?.sessionId ?? ctx.sessionId
+    const headers = buildGrokHeaders({
+      auth,
+      modelId: wireModelId,
+      sessionId,
+      contextWindow: model.capabilities.contextWindow,
+    })
+    // grok-build: "fast" is reasoning_effort=low, not a service_tier.
+    // Sticky cache key is the conversation id (same as x-grok-conv-id).
+    let effort = req.effort
+    if (!effort && req.speed === "fast" && model.capabilities.effort.levels.includes("low")) {
+      effort = "low"
+    }
+    const reqForWire: CanonicalRequest = {
+      ...req,
+      effort,
+      metadata: { ...req.metadata, sessionId },
+    }
 
     if (model.surfaceId === "openai-chat-completions") {
-      const body = buildOpenAIChatBody(req, model)
+      const body = buildOpenAIChatBody(reqForWire, model)
       body.model = wireModelId
       const url = resolveUrl(auth, "chat")
       ctx.debug?.header(`POST ${url}`)
@@ -138,7 +155,7 @@ export const grokAdapter: ProviderAdapter = {
     }
 
     if (model.surfaceId === "openai-responses") {
-      const body = buildOpenAIResponsesBody(req, model)
+      const body = buildOpenAIResponsesBody(reqForWire, model)
       body.model = wireModelId
       // Keep store false by default (no server-side history unless host opts in).
       if (body.store !== true && body.previous_response_id !== undefined) {

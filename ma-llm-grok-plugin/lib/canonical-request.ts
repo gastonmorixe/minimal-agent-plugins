@@ -119,6 +119,11 @@ export interface OpenAIVendorOpts {
   include?: string[]
   /** Chat + Responses: opaque user id for abuse tracking. */
   user?: string
+  /**
+   * Prompt-cache routing key (Responses + Chat). grok-build sets this to
+   * the conversation id so multi-turn loops stick to one cache shard.
+   */
+  promptCacheKey?: string
 }
 
 /**

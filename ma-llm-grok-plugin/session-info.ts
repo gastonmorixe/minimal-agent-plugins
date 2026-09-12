@@ -7,8 +7,9 @@
  *   - {@link primeGrokSessionInfo} → `primeSessionInfo` (cold-start warmup).
  *
  * Monthly quota comes from cli-chat-proxy `GET /v1/billing` (OAuth/session
- * tokens). RPM/TPM come from `x-ratelimit-*` response headers on real traffic
- * and from the optional models probe.
+ * tokens). RPM/TPM headers are still captured from `x-ratelimit-*` on real
+ * traffic and the optional models probe, but those windows are not projected
+ * into the status bar (xAI often reports remaining==limit, so they sit at 0%).
  *
  * Credential resolution for the prime path (plugins cannot call host
  * `getAuth`):
@@ -40,8 +41,8 @@ import {
   CLI_BILLING_CREDITS_URL,
   CLI_BILLING_URL,
   CLI_MODELS_URL,
+  grokCliProxyIdentityHeaders,
   MODELS_URL,
-  XAI_TOKEN_AUTH_VALUE,
 } from "./wire-constants.ts"
 
 const FRESHNESS_MS = 5 * 60_000
@@ -181,59 +182,63 @@ export function clearGrokSessionCaches(): void {
   weeklyCredits = null
 }
 
-function parseResetMs(s: string): number | undefined {
-  if (typeof s !== "string") return undefined
-  const trimmed = s.trim()
-  if (!trimmed) return undefined
-  const m = /^(\d+(?:\.\d+)?)(ms|[smhd])?$/i.exec(trimmed)
-  if (!m) {
-    const asNum = Number(trimmed)
-    if (Number.isFinite(asNum) && asNum > 1e12) return asNum
-    if (Number.isFinite(asNum)) return asNum * 1000
-    return undefined
-  }
-  const n = Number(m[1])
-  const unit = (m[2] ?? "s").toLowerCase()
-  const unitMs: Record<string, number> = {
-    ms: 1,
-    s: 1000,
-    m: 60_000,
-    h: 3_600_000,
-    d: 86_400_000,
-  }
-  return n * (unitMs[unit] ?? 1000)
-}
+// rpm/tpm stay off the status bar. xAI often reports remaining==limit so both
+// bars sit at 0% and waste space. Headers are still captured via
+// setGrokRateLimits. Uncomment parseResetMs + the helper + both build() calls
+// in parseGrokQuotaWindows to restore.
+// function parseResetMs(s: string): number | undefined {
+//   if (typeof s !== "string") return undefined
+//   const trimmed = s.trim()
+//   if (!trimmed) return undefined
+//   const m = /^(\d+(?:\.\d+)?)(ms|[smhd])?$/i.exec(trimmed)
+//   if (!m) {
+//     const asNum = Number(trimmed)
+//     if (Number.isFinite(asNum) && asNum > 1e12) return asNum
+//     if (Number.isFinite(asNum)) return asNum * 1000
+//     return undefined
+//   }
+//   const n = Number(m[1])
+//   const unit = (m[2] ?? "s").toLowerCase()
+//   const unitMs: Record<string, number> = {
+//     ms: 1,
+//     s: 1000,
+//     m: 60_000,
+//     h: 3_600_000,
+//     d: 86_400_000,
+//   }
+//   return n * (unitMs[unit] ?? 1000)
+// }
 
-/** Project cached rate-limit headers (+ billing) into provider-neutral quota windows. */
-export function parseGrokQuotaWindows(rateLimits: ReadonlyMap<string, string>): QuotaWindow[] {
+/** Project cached billing (+ optional rate-limit headers) into quota windows. */
+export function parseGrokQuotaWindows(_rateLimits: ReadonlyMap<string, string>): QuotaWindow[] {
   const out: QuotaWindow[] = []
-  const now = Date.now()
-
-  const build = (id: string, limitKey: string, remainingKey: string, resetKey: string): void => {
-    const limit = Number(rateLimits.get(limitKey))
-    const remaining = Number(rateLimits.get(remainingKey))
-    if (!Number.isFinite(limit) || limit <= 0) return
-    if (!Number.isFinite(remaining)) return
-    let utilization = 1 - remaining / limit
-    if (utilization < 0) utilization = 0
-    if (utilization > 1) utilization = 1
-    const resetMs = parseResetMs(rateLimits.get(resetKey) ?? "")
-    const resetAtMs = resetMs == null ? undefined : now + resetMs
-    out.push({ id, utilization, resetAtMs })
-  }
-
-  build(
-    "rpm",
-    "x-ratelimit-limit-requests",
-    "x-ratelimit-remaining-requests",
-    "x-ratelimit-reset-requests",
-  )
-  build(
-    "tpm",
-    "x-ratelimit-limit-tokens",
-    "x-ratelimit-remaining-tokens",
-    "x-ratelimit-reset-tokens",
-  )
+  // const now = Date.now()
+  //
+  // const build = (id: string, limitKey: string, remainingKey: string, resetKey: string): void => {
+  //   const limit = Number(_rateLimits.get(limitKey))
+  //   const remaining = Number(_rateLimits.get(remainingKey))
+  //   if (!Number.isFinite(limit) || limit <= 0) return
+  //   if (!Number.isFinite(remaining)) return
+  //   let utilization = 1 - remaining / limit
+  //   if (utilization < 0) utilization = 0
+  //   if (utilization > 1) utilization = 1
+  //   const resetMs = parseResetMs(_rateLimits.get(resetKey) ?? "")
+  //   const resetAtMs = resetMs == null ? undefined : now + resetMs
+  //   out.push({ id, utilization, resetAtMs })
+  // }
+  //
+  // build(
+  //   "rpm",
+  //   "x-ratelimit-limit-requests",
+  //   "x-ratelimit-remaining-requests",
+  //   "x-ratelimit-reset-requests",
+  // )
+  // build(
+  //   "tpm",
+  //   "x-ratelimit-limit-tokens",
+  //   "x-ratelimit-remaining-tokens",
+  //   "x-ratelimit-reset-tokens",
+  // )
 
   if (weeklyCredits && Date.now() - weeklyCredits.at < BILLING_FRESHNESS_MS) {
     out.push({
@@ -416,7 +421,7 @@ export function primeGrokSessionInfo(ctx: ProviderSessionContext): Promise<void>
               accept: "application/json",
             }
             if (cred.kind === "oauth") {
-              headers["x-xai-token-auth"] = XAI_TOKEN_AUTH_VALUE
+              Object.assign(headers, grokCliProxyIdentityHeaders())
             }
             if (networkClient) {
               const response = await networkClient.request({
@@ -486,7 +491,7 @@ export async function refreshGrokBillingQuota(
       url: CLI_BILLING_URL,
       headers: {
         authorization: `Bearer ${bearerToken}`,
-        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        ...grokCliProxyIdentityHeaders(),
         accept: "application/json",
       },
       signal,
@@ -509,7 +514,7 @@ export async function refreshGrokBillingQuotaViaFetch(
       method: "GET",
       headers: {
         authorization: `Bearer ${bearerToken}`,
-        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        ...grokCliProxyIdentityHeaders(),
         accept: "application/json",
       },
       signal,
@@ -587,7 +592,7 @@ export async function refreshGrokWeeklyCredits(
       url: CLI_BILLING_CREDITS_URL,
       headers: {
         authorization: `Bearer ${bearerToken}`,
-        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        ...grokCliProxyIdentityHeaders(),
         accept: "application/json",
       },
       signal,
@@ -608,7 +613,7 @@ export async function refreshGrokWeeklyCreditsViaFetch(
     const res = await fetch(CLI_BILLING_CREDITS_URL, {
       headers: {
         authorization: `Bearer ${bearerToken}`,
-        "x-xai-token-auth": XAI_TOKEN_AUTH_VALUE,
+        ...grokCliProxyIdentityHeaders(),
         accept: "application/json",
       },
       signal,

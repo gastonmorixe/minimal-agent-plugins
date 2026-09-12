@@ -40,7 +40,10 @@ export interface OpenAIResponsesRequestBody {
   tools?: OpenAIResponsesTool[]
   tool_choice?: "auto" | "none" | "required" | { type: "function"; name: string }
   parallel_tool_calls?: boolean
-  reasoning?: { effort?: "low" | "medium" | "high"; summary?: "auto" | "concise" | "detailed" }
+  reasoning?: {
+    effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max"
+    summary?: "auto" | "concise" | "detailed"
+  }
   response_format?:
     | { type: "text" }
     | { type: "json_object" }
@@ -53,6 +56,11 @@ export interface OpenAIResponsesRequestBody {
   include?: string[]
   metadata?: Record<string, string>
   user?: string
+  /**
+   * Sticky cache routing. grok-build sets this to x-grok-conv-id so
+   * multi-turn agent loops hit the same cache shard.
+   */
+  prompt_cache_key?: string
 }
 
 /**
@@ -102,7 +110,9 @@ export type OpenAIResponsesTool =
       parameters: object
       strict?: boolean
     }
+  | { type: "web_search" }
   | { type: "web_search_preview" }
+  | { type: "x_search" }
   | { type: "file_search"; vector_store_ids: string[] }
   | { type: "code_interpreter"; container: { type: "auto" } }
   | {
@@ -143,17 +153,34 @@ export function buildOpenAIResponsesBody(
   if (req.thinking?.mode === "adaptive" || isReasoningModel) {
     const reasoning: NonNullable<OpenAIResponsesRequestBody["reasoning"]> = {}
     if (req.effort && model.capabilities.effort.levels.includes(req.effort)) {
-      reasoning.effort = req.effort as "low" | "medium" | "high"
+      reasoning.effort = req.effort as NonNullable<
+        OpenAIResponsesRequestBody["reasoning"]
+      >["effort"]
     }
-    // Visible summary deltas opt-in
-    if (
-      (req.thinking?.mode === "adaptive" || req.thinking?.mode === "extended") &&
-      (req.thinking.display === "visible" || req.thinking.display === "summary") &&
-      model.capabilities.thinking.visible
-    ) {
-      reasoning.summary = "auto"
+    // grok-build always sends concise summaries on Responses. Visible
+    // thinking still opts in; otherwise default to concise so xhigh/high
+    // turns still stream a summary.
+    if (model.capabilities.thinking.visible) {
+      reasoning.summary =
+        req.thinking?.mode === "adaptive" || req.thinking?.mode === "extended"
+          ? req.thinking.display === "omitted"
+            ? undefined
+            : "concise"
+          : "concise"
+      if (reasoning.summary === undefined) delete reasoning.summary
     }
     if (Object.keys(reasoning).length > 0) body.reasoning = reasoning
+  }
+
+  // Encrypted reasoning content: grok-build always includes this so later
+  // turns can replay the thinking prefix (cache + compaction).
+  if (model.capabilities.thinking.visible) {
+    const include = new Set(body.include ?? [])
+    include.add("reasoning.encrypted_content")
+    if (req.vendor?.openai?.include) {
+      for (const item of req.vendor.openai.include) include.add(item)
+    }
+    body.include = [...include]
   }
 
   // Output format
@@ -188,9 +215,19 @@ export function buildOpenAIResponsesBody(
   const vendor = req.vendor?.openai
   if (vendor?.parallelToolCalls !== undefined) body.parallel_tool_calls = vendor.parallelToolCalls
   if (vendor?.store !== undefined) body.store = vendor.store
-  if (vendor?.include) body.include = vendor.include
+  if (vendor?.include) {
+    const include = new Set(body.include ?? [])
+    for (const item of vendor.include) include.add(item)
+    body.include = [...include]
+  }
   if (vendor?.user) body.user = vendor.user
   if (req.metadata?.custom) body.metadata = { ...req.metadata.custom }
+
+  const cacheKey =
+    (typeof vendor?.promptCacheKey === "string" && vendor.promptCacheKey) ||
+    req.metadata?.sessionId ||
+    undefined
+  if (cacheKey) body.prompt_cache_key = cacheKey
 
   // Provider-neutral service tier -> OpenAI `service_tier`. Validate against
   // the accepted set; drop (don't send) anything else. `vendor.serviceTier`
@@ -332,7 +369,7 @@ function toResponsesTool(tool: CanonicalToolDefinition): OpenAIResponsesTool {
 function mapServerTool(id: ServerToolId): OpenAIResponsesTool {
   switch (id) {
     case "web_search":
-      return { type: "web_search_preview" }
+      return { type: "web_search" }
     case "code_interpreter":
       return { type: "code_interpreter", container: { type: "auto" } }
     case "file_search":

@@ -39,6 +39,7 @@ import {
   grokOAuthLogin,
   readGrokOAuthAuth,
 } from "./oauth-login.ts"
+import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
 import {
   _resetGrokPrimeInFlight,
   clearGrokSessionCaches,
@@ -152,6 +153,8 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(flagship.capabilities.contextWindow).toBe(500_000)
     expect(flagship.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
     expect(flagship.capabilities.effort.default).toBe("high")
+    expect(flagship.capabilities.speedFast).toBe(true)
+    expect(flagship.knowledgeCutoff).toBe("2026-02-01")
     expect(flagship.capabilities.modalities).toEqual({
       image: true,
       audio: false,
@@ -197,9 +200,8 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(flagship.pricing.longContext?.inputUSD).toBe(4)
     expect(flagship.pricing.longContext?.outputUSD).toBe(12)
     expect(flagship.pricing.longContext?.cacheReadUSD).toBe(0.6)
-    expect(flagship.aliases).toEqual(
-      expect.arrayContaining(["grok-4.5-latest", "grok-build-latest"]),
-    )
+    expect(flagship.aliases).toEqual(expect.arrayContaining(["grok-4.5-latest", "grok-4"]))
+    expect(flagship.aliases).not.toEqual(expect.arrayContaining(["grok-build-latest"]))
     expect(flagship.capabilities).toEqual(CAPS_GROK_45_RESPONSES)
 
     const chat = resolveModel("grok-4.5-chat")
@@ -378,15 +380,44 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     const oauthHeaders = buildGrokHeaders({
       auth: { kind: "oauth", token: "tok" },
       modelId: "grok-4.5",
+      sessionId: "sess-abc",
+      contextWindow: 500_000,
     })
     expect(oauthHeaders.authorization).toBe("Bearer tok")
     expect(oauthHeaders["X-XAI-Token-Auth"]).toBe("xai-grok-cli")
     expect(oauthHeaders["x-grok-model-override"]).toBe("grok-4.5")
     expect(oauthHeaders["x-grok-client-version"]).toBe(GROK_CLIENT_VERSION)
     expect(oauthHeaders["x-grok-client-identifier"]).toBe("grok-shell")
+    expect(oauthHeaders["x-grok-session-id"]).toBe("sess-abc")
+    expect(oauthHeaders["x-grok-conv-id"]).toBe("sess-abc")
+    expect(oauthHeaders["x-grok-req-id"]).toBeTruthy()
+    expect(oauthHeaders["x-grok-agent-id"]).toBeTruthy()
+    expect(oauthHeaders["x-grok-client-mode"]).toBe("interactive")
+    expect(oauthHeaders["x-compactions-remaining"]).toBe("1")
+    expect(oauthHeaders["x-compaction-at"]).toBe("400000")
+    expect(GROK_CLIENT_VERSION).toBe("1.0.30")
   })
 
-  it("parses rpm/tpm + monthly billing quota windows", () => {
+  it("sends xhigh + prompt_cache_key + encrypted reasoning include on Responses", () => {
+    setup()
+    const model = resolveModel("grok-4.6")
+    const body = buildOpenAIResponsesBody(
+      {
+        modelId: "grok-4.6",
+        messages: [userText("hi")],
+        effort: "xhigh",
+        metadata: { sessionId: "sess-1" },
+      },
+      model,
+    )
+    expect(body.reasoning?.effort).toBe("xhigh")
+    expect(body.reasoning?.summary).toBe("concise")
+    expect(body.prompt_cache_key).toBe("sess-1")
+    expect(body.include).toContain("reasoning.encrypted_content")
+    expect(body.store).toBe(false)
+  })
+
+  it("parses monthly billing quota windows and omits rpm/tpm from the status bar", () => {
     clearGrokSessionCaches()
     setGrokRateLimits(
       new Headers({
@@ -400,8 +431,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     )
     setGrokBillingQuota({ used: 100, limit: 4000, periodEndMs: Date.now() + 86400000 })
     const windows = parseGrokQuotaWindows(getGrokRateLimits()!.rateLimits)
-    expect(windows.map((w) => w.id)).toEqual(expect.arrayContaining(["rpm", "tpm", "month"]))
-    expect(windows.find((w) => w.id === "rpm")?.utilization).toBeCloseTo(0.5, 5)
+    expect(windows.map((w) => w.id)).toEqual(["month"])
     expect(windows.find((w) => w.id === "month")?.utilization).toBeCloseTo(0.025, 5)
   })
 
@@ -415,10 +445,11 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
         "x-ratelimit-reset-requests": "1s",
       }),
     )
+    setGrokBillingQuota({ used: 100, limit: 4000, periodEndMs: Date.now() + 86400000 })
     const info = await fetchGrokSessionInfo({ modelId: "grok-4.5" })
     expect(info?.contextWindow).toBe(500_000)
     expect(info?.modelLabel).toBe("xai-4.5")
-    expect((info?.quota?.windows?.length ?? 0) > 0).toBe(true)
+    expect(info?.quota?.windows?.map((w) => w.id)).toEqual(["month"])
   })
 
   it("refreshGrokBillingQuota parses /billing and caches month window", async () => {
@@ -450,7 +481,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]!.url).toBe(CLI_BILLING_URL)
     expect(calls[0]!.headers?.authorization).toBe("Bearer oauth-token-xyz")
-    expect(calls[0]!.headers?.["x-xai-token-auth"]).toBe("xai-grok-cli")
+    expect(calls[0]!.headers?.["X-XAI-Token-Auth"]).toBe("xai-grok-cli")
 
     const cached = getGrokBillingQuota()
     expect(cached?.used).toBe(13)
@@ -792,7 +823,7 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
 
       const info = await fetchGrokSessionInfo({ modelId: "grok-4.5" })
       const ids = info?.quota?.windows?.map((w) => w.id) ?? []
-      expect(ids).toEqual(expect.arrayContaining(["tpm", "month"]))
+      expect(ids).toEqual(["month"])
     } finally {
       if (prev.a === undefined) delete process.env["MINIMAL_AGENT_GROK_API_KEY"]
       else process.env["MINIMAL_AGENT_GROK_API_KEY"] = prev.a
