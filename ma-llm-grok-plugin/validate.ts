@@ -94,9 +94,8 @@ export function validateOpenAIRequest(req: CanonicalRequest, model: ModelEntry):
     )
   }
 
-  // Speed. OpenAI's metered "fast" tier is a vendor extension we don't
-  // wire, so any speed:"fast" request on a model that doesn't declare it
-  // is a violation rather than a silent drop.
+  // Speed. grok-build TUI "fast" is reasoning_effort=low. Models that
+  // declare speedFast accept it; the adapter remaps to effort=low.
   if (req.speed === "fast" && !caps.speedFast) {
     errors.push(
       new CapabilityViolation("speedFast", `model ${model.id} doesn't support speed:"fast"`),

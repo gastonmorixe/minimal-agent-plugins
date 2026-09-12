@@ -77,7 +77,7 @@ describe("llm-grok weekly credits billing", () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]!.url).toBe(CLI_BILLING_CREDITS_URL)
     expect(calls[0]!.headers?.authorization).toBe("Bearer oauth-token-xyz")
-    expect(calls[0]!.headers?.["x-xai-token-auth"]).toBe("xai-grok-cli")
+    expect(calls[0]!.headers?.["X-XAI-Token-Auth"]).toBe("xai-grok-cli")
 
     const cached = getGrokWeeklyCredits()
     expect(cached?.usagePercent).toBe(20.0)

@@ -32,7 +32,7 @@ Requests without client identity get **HTTP 426**
 ```
 Authorization: Bearer <token>
 X-XAI-Token-Auth: xai-grok-cli
-x-grok-client-version: 1.0.5      # must be >= 0.1.202
+x-grok-client-version: 1.0.30     # installed grok CLI (source crate may lag)
 x-grok-client-identifier: grok-shell
 x-grok-model-override: <model>    # routing; safe to always send
 ```

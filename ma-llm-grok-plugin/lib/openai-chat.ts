@@ -560,7 +560,7 @@ export interface OpenAIChatRequestBody {
   stop?: string | string[]
   stream?: boolean
   stream_options?: { include_usage: boolean }
-  reasoning_effort?: "low" | "medium" | "high" | "max"
+  reasoning_effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max"
   metadata?: Record<string, string>
   user?: string
   store?: boolean

@@ -6,6 +6,21 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Changed
+
+- 2026-09-12 (this session): Grok provider aligned to official grok CLI 1.0.30
+  (`04b7ffed98c6`) + grok-build 1.0.24 + docs.x.ai. Client version
+  `1.0.5` → `1.0.30`. OAuth inference now sends session/conv/req/agent
+  headers, `x-grok-client-mode`, and compaction headers
+  (`x-compaction-at` = 80% of ctx, `x-compactions-remaining: 1`).
+  Responses `reasoning.effort` accepts `xhigh`. Always send
+  `reasoning.summary=concise` and `include=["reasoning.encrypted_content"]`.
+  Sticky `prompt_cache_key` from session id. `--fast` / `speed:"fast"`
+  maps to `reasoning_effort=low` (not `service_tier`). Dropped the
+  incorrect `grok-build-latest` alias of grok-4.5. grok-4.6 cutoff
+  `2026-02-01`. Server tool `web_search` uses xAI `{type:"web_search"}`
+  (not OpenAI `web_search_preview`). Collab with Sebastian on grok-build.
+
 ### Added
 
 - 2026-09-08 (this session): OpenAI GPT-6 Astra. Live Codex catalog
@@ -20,6 +35,11 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   `codex-auto-review` stay unregistered.
 
 ### Changed
+
+- 2026-09-12 (this session): Grok status bar no longer paints `rpm` / `tpm`
+  quota windows. xAI `x-ratelimit-*` headers are still cached, but those bars
+  sit at 0% (remaining==limit) and waste space. `week` / `month` / `ondemand`
+  stay.
 
 - 2026-09-08 (this session): GPT-5.6 Sol short-context Standard pricing
   updated to the current promo ($4 / $20, cache write $5, cache read

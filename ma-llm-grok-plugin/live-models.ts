@@ -1,17 +1,23 @@
 /**
  * Live model catalog from xAI / cli-chat-proxy `GET /v1/models` (+ `/models-v2`).
  *
- * The OAuth path prefers `/models-v2`, which carries the full per-model
- * config (supported_in_api, hidden, agent_type, laziness_detector) that the
- * plain `/models` payload omits. Verified 2026-08-21: both serve
- * grok-4.6 + grok-4.5 with identical core fields.
+ * The OAuth path prefers `/models-v2`. Live 2026-09-12 (`grok-oauth-9`):
+ * both `/models` and `/models-v2` return grok-4.6 + grok-4.5 with identical
+ * core fields (effort ladders, ctx 500k, compact 80%, backend_search true).
+ * Host `LiveModelRow` only carries id/name/created, so extra live fields
+ * cannot patch the static catalog until that contract grows.
  *
  * @module llm/providers/grok/live-models
  */
 
 import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type { LiveModelRow } from "./lib/provider-plugin.ts"
-import { CLI_MODELS_URL, CLI_MODELS_V2_URL, MODELS_URL } from "./wire-constants.ts"
+import {
+  CLI_MODELS_URL,
+  CLI_MODELS_V2_URL,
+  grokCliProxyIdentityHeaders,
+  MODELS_URL,
+} from "./wire-constants.ts"
 
 interface GrokModelRow {
   id?: string
@@ -51,9 +57,7 @@ export async function listGrokLiveModels(auth: ProviderAuth): Promise<LiveModelR
   const headers: Record<string, string> = { accept: "application/json" }
   if (token) headers.authorization = `Bearer ${token}`
   if (auth.kind === "oauth") {
-    headers["x-xai-token-auth"] = "xai-grok-cli"
-    headers["x-grok-client-version"] = "1.0.5"
-    headers["x-grok-client-identifier"] = "grok-shell"
+    Object.assign(headers, grokCliProxyIdentityHeaders())
   }
 
   for (const url of modelsUrls(auth)) {

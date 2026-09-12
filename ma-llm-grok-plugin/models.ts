@@ -1,7 +1,8 @@
 /**
  * Grok / xAI model registry — dual-surface where appropriate.
  *
- * Catalog reconciled 2026-08-21 from live probe (**grok-oauth-9**):
+ * Catalog reconciled 2026-09-12 from grok CLI 1.0.30 binary + grok-build
+ * 1.0.24 source + live probe (**grok-oauth-9**):
  * - `cli-chat-proxy` `/v1/models` (subscription): `grok-4.6` + `grok-4.5`
  *   only. The other SKUs below are **not listed** but still serve inference
  *   on `/v1/responses` (verified 2026-08-21: grok-4.3, grok-build-0.1,
@@ -9,9 +10,10 @@
  * - `api.x.ai/v1/models` + language-models merge: text SKUs, `context_length`,
  *   `input_modalities`/`output_modalities`, price micros, `aliases`. Imagine
  *   image/video SKUs omitted (not agent chat surfaces).
- * - Effort ladders: `/models-v2` exposes `reasoning_efforts`: grok-4.6
+ * - Effort ladders: live `/v1/models` 2026-09-12 (`grok-oauth-9`): grok-4.6
  *   [xhigh, high(default), medium, low]; grok-4.5 [high(default), medium,
- *   low]. xhigh on 4.6 verified by live inference 2026-08-21.
+ *   low]. xhigh on 4.6 verified by live inference (HTTP 200, encrypted
+ *   reasoning present). Both SKUs report `supports_backend_search: true`.
  * - Wire quirk: requesting `grok-4.6` returns backend id `grok-4.6-build`
  *   in the response `model` field; keep sending `grok-4.6`.
  *
@@ -136,6 +138,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_46_RESPONSES,
     pricing: PRICING_GROK_46,
+    knowledgeCutoff: "2026-02-01",
   })
   reg(registrar, {
     id: "grok-4.6-chat",
@@ -153,7 +156,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     surfaceId: "openai-responses",
     displayName: "Grok 4.5",
     wireId: "grok-4.5",
-    aliases: ["grok-4", "grok4.5", "grok-4.5-latest", "grok-build-latest"],
+    aliases: ["grok-4", "grok4.5", "grok-4.5-latest"],
     tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
     capabilities: CAPS_GROK_45_RESPONSES,
     pricing: PRICING_GROK_45,

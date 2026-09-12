@@ -75,7 +75,8 @@ const CAPS_GROK_46_BASE: Capabilities = {
   // 2026-08-21: POST /v1/responses effort=xhigh → HTTP 200)
   effort: { levels: ["low", "medium", "high", "xhigh"], default: "high" },
   ...REASONING_SAMPLING,
-  speedFast: false,
+  // grok-build TUI "fast" = reasoning_effort=low, not a service_tier.
+  speedFast: true,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
   midConversationSystem: true,
@@ -83,7 +84,8 @@ const CAPS_GROK_46_BASE: Capabilities = {
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE },
   serverSideHistory: false,
-  serverTools: [],
+  // live cli-chat-proxy 2026-09-12: supports_backend_search=true on 4.6
+  serverTools: ["web_search"],
 }
 
 export const CAPS_GROK_46_CHAT: Capabilities = {
@@ -120,7 +122,7 @@ const CAPS_GROK_45_BASE: Capabilities = {
   // xhigh NOT offered on grok-4.5 (live ladder: high/medium/low, default high)
   effort: { levels: ["low", "medium", "high"], default: "high" },
   ...REASONING_SAMPLING,
-  speedFast: false,
+  speedFast: true,
   caching: { ...CACHING_AUTO },
   tools: { ...TOOLS_FULL },
   midConversationSystem: true,
@@ -128,7 +130,8 @@ const CAPS_GROK_45_BASE: Capabilities = {
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE }, // live: input text+image, output text
   serverSideHistory: false,
-  serverTools: [],
+  // live 2026-09-12: supports_backend_search=true (baked CLI JSON still said false)
+  serverTools: ["web_search"],
 }
 
 /**

@@ -36,8 +36,8 @@ tool use, and multi-step development workflows. It is the original model behind 
 | `grok-4.6-chat`             | `grok-4.6`                     | Chat          | 500k    | yes    | Same SKU, chat surface                      |
 | `grok-4.5`                  | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high**       |
 | `grok-4.5-chat`            | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                   |
-| `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Fast / balanced                       |
-| `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Agentic coding model (May 2026). Optimized for multi-step software engineering, tool use, and coding agent loops (powers Grok Build CLI). Cheaper/faster than 4.6 but smaller context. Aliases: `grok-code-fast*` |
+| `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Still on api.x.ai; not in grok CLI baked catalog |
+| `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Agentic coding SKU on api.x.ai (May 2026). Not in grok CLI baked catalog. Aliases: `grok-code-fast*` |
 | `grok-4.20-reasoning`     | `grok-4.20-0309-reasoning`     | Responses     | 1M      | yes    |                                       |
 | `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses     | 1M      | yes    | No effort knob                        |
 | `grok-4.20-multi-agent`   | `grok-4.20-multi-agent-0309`   | Responses     | 1M      | yes    | Effort = agent count                  |
@@ -78,7 +78,9 @@ tokens — the new `refreshToken` is always written when returned.
 
 ## Quotas (status bar)
 
-- `rpm` / `tpm` from `x-ratelimit-*` response headers (captured on every turn)
+- `rpm` / `tpm` from `x-ratelimit-*` response headers are captured on every turn
+  but **not** shown on the status bar (xAI often reports remaining==limit, so
+  both bars sit at 0%)
 - `week` from `GET https://cli-chat-proxy.grok.com/v1/billing?format=credits`
   (`config.creditUsagePercent`, weekly unified billing; OAuth / session only)
 - `month` from `GET https://cli-chat-proxy.grok.com/v1/billing` (OAuth / session only), when `monthlyLimit > 0`
@@ -97,8 +99,8 @@ response (so we do not re-probe every turn) but omit the `month` bar.
    `/v1/models-v2` for rate-limit headers).
 2. **Adapter (OAuth turns)** — if a billing cache is stale/empty after a
    successful response, fire-and-forget refresh.
-3. **`fetchSessionInfo`** — cache-only; merges `rpm`/`tpm` + `week` / `month` /
-   `ondemand` into neutral `QuotaWindow`s for the status bar.
+3. **`fetchSessionInfo`** — cache-only; merges `week` / `month` / `ondemand`
+   into neutral `QuotaWindow`s for the status bar (`rpm`/`tpm` stay off).
 
 API-key sessions (console keys on `api.x.ai`) do **not** get `week` / `month`
 windows — those endpoints only exist on cli-chat-proxy.
@@ -109,10 +111,16 @@ OAuth requests must carry client identity or the proxy answers HTTP 426:
 
 | Header | Value |
 | ------ | ----- |
-| `x-grok-client-version` | `1.0.5` (must be ≥ 0.1.202) |
+| `x-grok-client-version` | `1.0.30` (installed grok CLI; must be ≥ 0.1.202) |
 | `x-grok-client-identifier` | `grok-shell` |
 | `X-XAI-Token-Auth` | `xai-grok-cli` |
 | `x-grok-model-override` | requested model id |
+| `x-grok-session-id` / `x-grok-conv-id` | host session id (sticky cache + routing) |
+| `x-grok-req-id` | per-request UUID |
+| `x-grok-agent-id` | process UUID |
+| `x-grok-client-mode` | `interactive` |
+| `x-compaction-at` | 80% of model context window |
+| `x-compactions-remaining` | `1` |
 
 ## Tests
 
