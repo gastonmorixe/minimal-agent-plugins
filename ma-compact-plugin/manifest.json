@@ -46,7 +46,9 @@
         "path": "./handlers/compact-context.ts",
         "export": "default"
       },
-      "interactive": false
+      "interactive": false,
+      "icon": "✂",
+      "color": "violet"
     }
   ]
 }
