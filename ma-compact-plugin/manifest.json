@@ -1,0 +1,52 @@
+{
+  "id": "compact",
+  "name": "Compact",
+  "version": "0.1.0",
+  "description": "Contributes the CompactContext tool: queue a context compaction (checkpoint + prune) through the host's context:compact seam. Two triggers: manual (the user asks to compact, or routes /compact to the model) and auto (the model calls the tool itself when the session feels context-heavy). The plugin never compacts directly; it validates args and queues the request, and the host performs the rewrite after the turn.",
+  "capabilities": ["context:compact"],
+  "tuis": [
+    {
+      "id": "compact_context_tool",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "CompactContext",
+          "description": "Queue a context compaction: the host checkpoints the conversation (summary or verbatim tail) and prunes older history. MANUAL trigger: call when the user asks to compact, clean up, or shorten context. AUTO trigger: call proactively when context feels heavy (high context % in SessionInfo, very long history, degrading recall) even without being asked. Args: mode (tail|local|remote|fork, default local), tail (trailing messages kept verbatim, default 6), focus (hint kept verbatim in the checkpoint), reason (manual|auto, default auto). Returns queued:true when the host accepted the request; the rewrite happens after this turn, so continue with the retained tail.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["tail", "local", "remote", "fork"],
+                "description": "Compaction engine. tail keeps the last N messages verbatim (instant, no summary). local writes a checkpoint summary plus tail. remote uses the provider compact endpoint with local fallback. fork checkpoints for a sub-agent handoff."
+              },
+              "tail": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Trailing messages kept verbatim behind the checkpoint. Default 6."
+              },
+              "focus": {
+                "type": "string",
+                "description": "Hint passed to the summarizer and kept verbatim in the checkpoint (e.g. what the next step needs)."
+              },
+              "reason": {
+                "type": "string",
+                "enum": ["manual", "auto"],
+                "description": "Why compacting: manual (the user asked) or auto (the model decided). Default auto."
+              }
+            },
+            "additionalProperties": false
+          },
+          "explicitName": true,
+          "reason": "perfect collision: plugin IS the tool name"
+        }
+      },
+      "handler": {
+        "type": "module",
+        "path": "./handlers/compact-context.ts",
+        "export": "default"
+      },
+      "interactive": false
+    }
+  ]
+}
