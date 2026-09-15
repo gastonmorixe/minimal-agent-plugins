@@ -188,15 +188,19 @@ describe("characterization: beta-flag invariants per model/auth", () => {
 
   it("context-1m membership tracks each model's context window (the fable-5 P0 guard)", () => {
     // The fable-5 P0 was exactly this matrix cell drifting. context-1m is
-    // attached iff the registered model is 1M-capable: opus/fable/sonnet-4-6
-    // are 1M; sonnet-4-5 and haiku-4-5 are 200K and must NOT carry the flag.
+    // attached iff the registered model is 1M-capable (live 2026-09-14):
+    // opus-5/4.8/4.7/4.6, fable-5/5.1, sonnet-5/4.6, sonnet-4-5 are 1M;
+    // opus-4-5 and haiku-4-5 are 200K and must NOT carry the flag.
     const expected: Record<string, boolean> = {
+      "claude-opus-5": true,
+      "claude-fable-5-1": true,
       "claude-fable-5": true,
       "claude-opus-4-8": true,
       "claude-opus-4-7": true,
       "claude-opus-4-6": true,
+      "claude-opus-4-5-20251101": false,
       "claude-sonnet-4-6": true,
-      "claude-sonnet-4-5-20250929": false,
+      "claude-sonnet-4-5-20250929": true,
       "claude-haiku-4-5-20251001": false,
     }
     for (const modelId of Object.keys(expected)) {

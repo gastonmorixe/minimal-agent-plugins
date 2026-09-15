@@ -53,6 +53,20 @@ export const ANTHROPIC_FABLE_5: MTokRate = {
 }
 
 /**
+ * Claude Fable 5.1 rate : live 2026-08-28 per `GET /v1/models`.
+ * Same $10/$50 base + $12.50 cache-write as Fable 5, but cache reads drop
+ * to $0.25/M (2.5% of input vs the standard 10%).
+ * Source: https://www.anthropic.com/claude/fable (verified 2026-09-14).
+ */
+export const ANTHROPIC_FABLE_5_1: MTokRate = {
+  inputUSD: 10,
+  outputUSD: 50,
+  cacheWriteUSD: 12.5,
+  cacheReadUSD: 0.25,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
  * Anthropic's `dx1` rate : opus 4.5/4.6/4.7 with `speed:"fast"`. 6× standard.
  * Verified against `cli.patched.cjs` L116523.
  */
