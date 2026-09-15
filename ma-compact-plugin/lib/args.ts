@@ -7,7 +7,7 @@
  * - `mode`: one of tail|local|remote|fork (case-insensitive, like the
  *   positional `mode=<engine>` argv form). Absent: the host applies its
  *   default (`local`).
- * - `tail`: trailing messages kept verbatim. Must be an integer >= 0
+ * - `tail`: trailing messages kept verbatim. Must be an integer \>= 0
  *   (same rule as `tail=N` / `keep-tail=N`). Absent: host default.
  * - `focus`: hint kept verbatim in the checkpoint (same as `focus="..."`).
  *   Blank strings are dropped.

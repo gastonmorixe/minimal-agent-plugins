@@ -3,7 +3,9 @@
  *
  * Calling `registerAnthropicModels()` populates the canonical model
  * registry with every model in the live Anthropic catalog as of
- * 2026-06-09 (incl. `claude-fable-5`). Pricing comes from the typed
+ * 2026-09-14 (verified via live `GET /v1/models?beta=true` with the
+ * plan-OAuth credential plus Cursor `AvailableModels` via `cursor-oauth-4`).
+ * Pricing comes from the typed
  * tables in `pricing.ts`;
  * capabilities come from `capabilities.ts`. `[1m]` aliases let the
  * caller request 1M context explicitly even when the default already
@@ -14,7 +16,10 @@
 
 import {
   CAPS_FABLE_5,
+  CAPS_FABLE_5_1,
   CAPS_HAIKU_45,
+  CAPS_OPUS_5,
+  CAPS_OPUS_45,
   CAPS_OPUS_46,
   CAPS_OPUS_47,
   CAPS_OPUS_48,
@@ -30,6 +35,7 @@ import { clearLocalCatalog, recordModel } from "./lib/registry.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   ANTHROPIC_FABLE_5,
+  ANTHROPIC_FABLE_5_1,
   ANTHROPIC_HAIKU_45,
   ANTHROPIC_OPUS_4X_FAST_LEGACY,
   ANTHROPIC_OPUS_4X_STANDARD,
@@ -129,6 +135,51 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     registrar.register(spec)
     recordModel(spec as unknown as ModelEntry)
   }
+  register({
+    id: "claude-opus-5",
+    aliases: ["claude-opus-5[1m]"],
+    providerId: "anthropic",
+    surfaceId: "anthropic-messages",
+    displayName: "Claude Opus 5",
+    knowledgeCutoff: "2026-01",
+    tags: ["opus", "1m-context", "flagship", "production"],
+    capabilities: CAPS_OPUS_5,
+    estimateTokens: estimateAnthropicTokens,
+    pricing: ANTHROPIC_OPUS_4X_STANDARD,
+    pricingForRequest: opus48PricingFor,
+    vendorIds: {
+      firstParty: "claude-opus-5",
+      bedrock: "us.anthropic.claude-opus-5",
+      vertex: "claude-opus-5",
+      foundry: "claude-opus-5",
+      anthropicAws: "claude-opus-5",
+      mantle: "anthropic.claude-opus-5",
+      gateway: "claude-opus-5",
+    },
+  })
+
+  register({
+    id: "claude-fable-5-1",
+    aliases: ["claude-fable-5-1[1m]"],
+    providerId: "anthropic",
+    surfaceId: "anthropic-messages",
+    displayName: "Claude Fable 5.1",
+    knowledgeCutoff: "2026-01",
+    tags: ["fable", "mythos", "1m-context", "production"],
+    capabilities: CAPS_FABLE_5_1,
+    estimateTokens: estimateAnthropicTokens,
+    pricing: ANTHROPIC_FABLE_5_1,
+    vendorIds: {
+      firstParty: "claude-fable-5-1",
+      bedrock: "us.anthropic.claude-fable-5-1",
+      vertex: "claude-fable-5-1",
+      foundry: "claude-fable-5-1",
+      anthropicAws: "claude-fable-5-1",
+      mantle: "anthropic.claude-fable-5-1",
+      gateway: "claude-fable-5-1",
+    },
+  })
+
   register({
     id: "claude-fable-5",
     aliases: ["claude-fable-5[1m]"],
@@ -268,6 +319,27 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
   })
 
   register({
+    id: "claude-opus-4-5-20251101",
+    aliases: ["claude-opus-4-5"],
+    providerId: "anthropic",
+    surfaceId: "anthropic-messages",
+    displayName: "Claude Opus 4.5",
+    knowledgeCutoff: "2025-01",
+    tags: ["opus", "legacy"],
+    capabilities: CAPS_OPUS_45,
+    estimateTokens: estimateAnthropicTokens,
+    pricing: ANTHROPIC_OPUS_4X_STANDARD,
+    vendorIds: {
+      firstParty: "claude-opus-4-5-20251101",
+      bedrock: "us.anthropic.claude-opus-4-5-20251101-v1:0",
+      vertex: "claude-opus-4-5@20251101",
+      foundry: "claude-opus-4-5",
+      anthropicAws: "claude-opus-4-5-20251101",
+      gateway: "claude-opus-4-5-20251101",
+    },
+  })
+
+  register({
     id: "claude-sonnet-4-5-20250929",
     aliases: ["claude-sonnet-4-5"],
     providerId: "anthropic",
@@ -311,10 +383,13 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
   })
 
   return [
+    "claude-opus-5",
+    "claude-fable-5-1",
     "claude-fable-5",
     "claude-opus-4-8",
     "claude-opus-4-7",
     "claude-opus-4-6",
+    "claude-opus-4-5-20251101",
     "claude-sonnet-5",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5-20250929",

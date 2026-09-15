@@ -128,6 +128,64 @@ export const CAPS_OPUS_48: Capabilities = {
 export const CAPS_OPUS_47: Capabilities = { ...CAPS_OPUS_48 }
 
 /**
+ * Claude Opus 5 (`claude-opus-5`), live 2026-07-24 per `GET /v1/models`.
+ * Request surface mirrors Opus 4.8: 1M context, 128k output, adaptive-only
+ * thinking, effort low/medium/high/xhigh/max (default high), fast tier,
+ * image + pdf input, structured outputs, full tools + caching. Pricing
+ * stays $5/$25 standard (verified against platform.claude.com pricing).
+ */
+export const CAPS_OPUS_5: Capabilities = { ...CAPS_OPUS_48 }
+
+/**
+ * Claude Opus 4.5 (`claude-opus-4-5-20251101`), live 2025-11-24 per
+ * `GET /v1/models`. Older 200k/64k tier: extended thinking (enabled type)
+ * with no adaptive support, effort low/medium/high (no xhigh/max),
+ * image + pdf input, structured outputs, batch. Same shape as Sonnet 4.5
+ * below, which is also a dated 4-5 SKU.
+ */
+export const CAPS_OPUS_45: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 200_000,
+  maxOutputTokens: 64_000,
+  maxOutputTokensBatch: null,
+  thinking: { ...EXTENDED_THINKING_VISIBLE },
+  effort: { levels: ["low", "medium", "high"], default: "high" },
+  acceptsTemperature: true,
+  acceptsTopP: true,
+  acceptsTopK: true,
+  acceptsSeed: false,
+  acceptsStopSequences: true,
+  speedFast: false,
+  caching: {
+    explicit: true,
+    automatic: false,
+    ttls: ["5m"],
+    minPrefixTokens: 1024,
+    reportsCacheHits: true,
+    promptCacheAccounting: "disjoint" as const,
+  },
+  tools: { ...TOOLS_BASIC },
+  midConversationSystem: false,
+  structuredOutputs: true,
+  assistantPrefill: true,
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  serverSideHistory: false,
+  serverTools: [...SERVER_TOOLS_BASIC],
+}
+
+/**
+ * Claude Fable 5 (`claude-fable-5`) — public Mythos-class model, launched
+ * 2026-06-09. Request surface is identical to Opus 4.8 per the live
+ * `GET /v1/models?beta=true` capability record:
+ *   - max_input_tokens 1_000_000, max_tokens 128_000
+ *   - effort low/medium/high/xhigh/max
+ *   - thinking: adaptive supported, enabled(extended) NOT supported
+ *   - image_input + pdf_input, structured_outputs, code_execution, batch
+ * The one deliberate difference from Opus 4.8: Fable ships a single flat
+ * rate with no `speed:"fast"` tier, so `speedFast` is false (no fast
+ * pricing picker in `models.ts`).
+ */
+/**
  * Claude Fable 5 (`claude-fable-5`) — public Mythos-class model, launched
  * 2026-06-09. Request surface is identical to Opus 4.8 per the live
  * `GET /v1/models?beta=true` capability record:
@@ -143,6 +201,14 @@ export const CAPS_FABLE_5: Capabilities = {
   ...CAPS_OPUS_48,
   speedFast: false,
 }
+
+/**
+ * Claude Fable 5.1 (`claude-fable-5-1`), live 2026-08-28 per `GET /v1/models`.
+ * Same request surface as Fable 5 (1M, adaptive thinking, full effort
+ * ladder, no fast tier). Pricing differs only on cache reads ($0.25/M,
+ * see pricing.ts); caps stay shared with Fable 5.
+ */
+export const CAPS_FABLE_5_1: Capabilities = { ...CAPS_OPUS_48, speedFast: false }
 
 // ---------------------------------------------------------------------------
 // Opus 4.6 (transition tier — extended thinking still functional)
@@ -196,7 +262,7 @@ export const CAPS_SONNET_5: Capabilities = {
   maxOutputTokens: 64_000,
   maxOutputTokensBatch: 300_000,
   thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
-  effort: { levels: ["low", "medium", "high", "xhigh"], default: "medium" },
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "medium" },
   acceptsTemperature: false,
   acceptsTopP: false,
   acceptsTopK: false,
@@ -223,7 +289,7 @@ export const CAPS_SONNET_46: Capabilities = {
   maxOutputTokens: 64_000,
   maxOutputTokensBatch: 300_000,
   thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
-  effort: { levels: ["low", "medium", "high"], default: "medium" },
+  effort: { levels: ["low", "medium", "high", "max"], default: "medium" },
   acceptsTemperature: false,
   acceptsTopP: false,
   acceptsTopK: false,
@@ -241,12 +307,12 @@ export const CAPS_SONNET_46: Capabilities = {
 }
 
 // ---------------------------------------------------------------------------
-// Sonnet 4.5 (extended-thinking with budget; no effort, no adaptive)
+// Sonnet 4.5 (live 1M native per GET /v1/models; extended thinking, dated SKU)
 // ---------------------------------------------------------------------------
 
 export const CAPS_SONNET_45: Capabilities = {
   ...defaultCapabilities(),
-  contextWindow: 200_000,
+  contextWindow: 1_000_000,
   maxOutputTokens: 64_000,
   maxOutputTokensBatch: null,
   thinking: { ...EXTENDED_THINKING_VISIBLE },
