@@ -1,0 +1,8 @@
+{
+  "id": "deepseek",
+  "name": "LLM Provider: DeepSeek",
+  "version": "0.1.0",
+  "description": "DeepSeek (api.deepseek.com) — OpenAI Chat Completions-compatible. Registers deepseek-flash (DeepSeek-V4.1-Flash) and deepseek-v4-pro with thinking/effort support, live /models listing, and API-key login. Reuses the OpenAI Chat wire layer.",
+  "entry": "./index.ts",
+  "export": "deepseekProviderPlugin"
+}
