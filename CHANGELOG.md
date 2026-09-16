@@ -6,6 +6,21 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Added
+
+- 2026-09-16 (this session): DeepSeek provider (`ma-llm-deepseek-plugin`,
+  provider id `deepseek`). OpenAI Chat Completions-compatible at
+  `https://api.deepseek.com/chat/completions` (no `/v1`). Catalog:
+  `deepseek-flash` (DeepSeek-V4.1-Flash, vision; legacy `deepseek-v4-flash` /
+  `deepseek-v4-flash-vision-exp` aliases) and `deepseek-v4-pro`. 1M context /
+  384K max output, thinking via `thinking` toggle + `reasoning_effort`
+  (`none | low | high | max`), automatic context caching, tools. API-key login
+  (`deepseek-api-key`), live `/models` listing for the picker, off-peak pricing.
+  Reasoning round-trip: the vendored translator emits a synthetic
+  `thinking_signature` so the host keeps the chain-of-thought, and the vendored
+  Chat mapper echoes it back as `reasoning_content` (DeepSeek 400s when prior
+  `reasoning_content` is dropped while `tools` are present).
+
 ### Changed
 
 - 2026-09-12 (this session): Grok provider aligned to official grok CLI 1.0.30
