@@ -23,6 +23,7 @@ import {
   CAPS_OPUS_46,
   CAPS_OPUS_47,
   CAPS_OPUS_48,
+  CAPS_OPUS_55,
   CAPS_SONNET_5,
   CAPS_SONNET_45,
   CAPS_SONNET_46,
@@ -40,6 +41,8 @@ import {
   ANTHROPIC_OPUS_4X_FAST_LEGACY,
   ANTHROPIC_OPUS_4X_STANDARD,
   ANTHROPIC_OPUS_48_FAST,
+  ANTHROPIC_OPUS_55_FAST,
+  ANTHROPIC_OPUS_55_STANDARD,
   ANTHROPIC_SONNET_5_INTRO,
   ANTHROPIC_SONNET_STANDARD,
 } from "./pricing.ts"
@@ -61,6 +64,13 @@ type AnthropicModelSpec = ProviderModelSpec & {
 
 const opus48PricingFor = (req: CanonicalRequest): MTokRate =>
   req.speed === "fast" ? ANTHROPIC_OPUS_48_FAST : ANTHROPIC_OPUS_4X_STANDARD
+
+/**
+ * Opus 5.5 rate picker: $8/$40 on the fast tier, $4/$20 standard. Opus 5.5
+ * has its own rate pair (the rest of the opus family shares `opus48`).
+ */
+const opus55PricingFor = (req: CanonicalRequest): MTokRate =>
+  req.speed === "fast" ? ANTHROPIC_OPUS_55_FAST : ANTHROPIC_OPUS_55_STANDARD
 
 const legacyOpusFastPricingFor = (req: CanonicalRequest): MTokRate =>
   req.speed === "fast" ? ANTHROPIC_OPUS_4X_FAST_LEGACY : ANTHROPIC_OPUS_4X_STANDARD
@@ -135,6 +145,29 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     registrar.register(spec)
     recordModel(spec as unknown as ModelEntry)
   }
+  register({
+    id: "claude-opus-5-5",
+    aliases: ["claude-opus-5-5[1m]"],
+    providerId: "anthropic",
+    surfaceId: "anthropic-messages",
+    displayName: "Claude Opus 5.5",
+    knowledgeCutoff: "2026-06",
+    tags: ["opus", "1m-context", "flagship", "production"],
+    capabilities: CAPS_OPUS_55,
+    estimateTokens: estimateAnthropicTokens,
+    pricing: ANTHROPIC_OPUS_55_STANDARD,
+    pricingForRequest: opus55PricingFor,
+    vendorIds: {
+      firstParty: "claude-opus-5-5",
+      bedrock: "us.anthropic.claude-opus-5-5",
+      vertex: "claude-opus-5-5",
+      foundry: "claude-opus-5-5",
+      anthropicAws: "claude-opus-5-5",
+      mantle: "anthropic.claude-opus-5-5",
+      gateway: "claude-opus-5-5",
+    },
+  })
+
   register({
     id: "claude-opus-5",
     aliases: ["claude-opus-5[1m]"],
@@ -383,6 +416,7 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
   })
 
   return [
+    "claude-opus-5-5",
     "claude-opus-5",
     "claude-fable-5-1",
     "claude-fable-5",

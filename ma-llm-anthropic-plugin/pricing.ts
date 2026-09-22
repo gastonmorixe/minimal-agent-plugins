@@ -24,6 +24,53 @@ export const ANTHROPIC_OPUS_4X_STANDARD: MTokRate = {
 }
 
 /**
+ * Claude Opus 5.5 (`claude-opus-5-5`) standard rate : $4 / 1M input,
+ * $20 / 1M output. 20% below Opus 5. Cache reads are $0.20/M, which is
+ * 0.05x input (half the usual 0.1x schedule) per the pricing page footnote.
+ *
+ * Verified two ways on 2026-09-22: the platform.claude.com/docs pricing
+ * table, and the claude-code 2.1.280 baked catalog, whose tier is named
+ * `tier_4_20_cache_read_0_20` and whose rate object reads:
+ *
+ * ```js
+ * {inputTokens:4, outputTokens:20, promptCacheWriteTokens:5,
+ *  promptCacheWrite1hTokens:8, promptCacheReadTokens:0.2}
+ * ```
+ *
+ * The 1h cache-write rate ($8/M) has no slot in {@link MTokRate}, so only
+ * the 5m rate is carried here.
+ */
+export const ANTHROPIC_OPUS_55_STANDARD: MTokRate = {
+  inputUSD: 4,
+  outputUSD: 20,
+  cacheWriteUSD: 5,
+  cacheReadUSD: 0.2,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
+ * Claude Opus 5.5 with `speed:"fast"` : 2x standard, matching the Opus 4.8
+ * fast multiplier. $8 / 1M input, $40 / 1M output.
+ *
+ * Source: the claude-code 2.1.280 rate object returned for
+ * `claude-opus-5-5` when `speed === "fast"`:
+ *
+ * ```js
+ * {inputTokens:8, outputTokens:40, promptCacheWriteTokens:10,
+ *  promptCacheWrite1hTokens:16, promptCacheReadTokens:0.4}
+ * ```
+ *
+ * Matches the fast-mode pricing on the docs site.
+ */
+export const ANTHROPIC_OPUS_55_FAST: MTokRate = {
+  inputUSD: 8,
+  outputUSD: 40,
+  cacheWriteUSD: 10,
+  cacheReadUSD: 0.4,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
  * Anthropic's `cx1` rate : opus 4.8 with `speed:"fast"`. 2× standard.
  * Verified against `cli.patched.cjs` L116530.
  */

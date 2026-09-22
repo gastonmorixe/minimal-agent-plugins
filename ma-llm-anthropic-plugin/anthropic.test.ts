@@ -88,6 +88,29 @@ describe("bootstrapAnthropic", () => {
     expect(fast?.inputUSD).toBe(10)
   })
 
+  it("Opus 5.5 registers at $4/$20 with a $8/$40 fast tier and a medium effort default", () => {
+    setup()
+    const entry = resolveModel("claude-opus-5-5")
+    expect(entry.providerId).toBe("anthropic")
+    expect(resolveModel("claude-opus-5-5[1m]").id).toBe("claude-opus-5-5")
+    // 20% below Opus 5 ($5/$25). Cache read is 0.05x input, not the usual 0.1x.
+    expect(entry.pricing.inputUSD).toBe(4)
+    expect(entry.pricing.outputUSD).toBe(20)
+    expect(entry.pricing.cacheWriteUSD).toBe(5)
+    expect(entry.pricing.cacheReadUSD).toBe(0.2)
+    const fast = entry.pricingForRequest?.({ modelId: entry.id, messages: [], speed: "fast" })
+    expect(fast?.inputUSD).toBe(8)
+    expect(fast?.outputUSD).toBe(40)
+    // The only model whose default effort is NOT "high".
+    expect(entry.capabilities.effort.default).toBe("medium")
+    expect(entry.capabilities.effort.levels).toContain("max")
+    expect(entry.capabilities.contextWindow).toBe(1_000_000)
+    expect(entry.capabilities.maxOutputTokens).toBe(128_000)
+    expect(entry.capabilities.speedFast).toBe(true)
+    expect(entry.capabilities.thinking.adaptive).toBe(true)
+    expect(entry.capabilities.thinking.extended).toBe(false)
+  })
+
   it("Fable 5 registers with a flat $10/$50 rate, no fast tier, 1M window", () => {
     setup()
     const entry = resolveModel("claude-fable-5")
@@ -116,10 +139,10 @@ describe("bootstrapAnthropic", () => {
     // balanced resolves to the FIRST sonnet+production entry in insertion
     // order, which is the newest Sonnet (claude-sonnet-5, registered ahead of
     // sonnet-4-6). deep resolves to the first opus+production entry, the
-    // newest Opus (claude-opus-5, registered ahead of fable/opus-4-8).
+    // newest Opus (claude-opus-5-5, registered ahead of opus-5/fable/opus-4-8).
     expect(byRole.get("scout")).toBe("claude-haiku-4-5-20251001")
     expect(byRole.get("balanced")).toBe("claude-sonnet-5")
-    expect(byRole.get("deep")).toBe("claude-opus-5")
+    expect(byRole.get("deep")).toBe("claude-opus-5-5")
     // every recommended model is actually an Anthropic model in the registry
     for (const r of recs) expect(resolveModel(r.modelId).providerId).toBe("anthropic")
   })
@@ -577,7 +600,9 @@ describe("buildAnthropicHeaders", () => {
     expect(headers["anthropic-beta"]).toContain("extended-cache-ttl-2025-04-11")
     expect(headers["x-app"]).toBe("cli")
     expect(headers["user-agent"]).toMatch(/^claude-cli\/\d+\.\d+\.\d+ \(external, cli\)$/)
-    expect(headers["x-stainless-package-version"]).toBe("0.94.0")
+    // Pinned literal, not the imported constant: this locks the wire value so
+    // a VERSION bump is a deliberate edit here too (0.94.0 → 0.112.1 in 2.1.280).
+    expect(headers["x-stainless-package-version"]).toBe("0.112.1")
     // 9, not 11: interleaved-thinking is omitted for opus-4-8 (T-7c3f02)
     // and redact-thinking is omitted for conversations (B3a, B-0 flip).
     expect(headers["anthropic-beta"]).not.toContain("interleaved-thinking-2025-05-14")
