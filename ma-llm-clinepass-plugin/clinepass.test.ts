@@ -72,6 +72,37 @@ function setup() {
   return reg
 }
 
+describe("ClinePass device OAuth request timeouts", () => {
+  it.each(["request", "poll"] as const)("sets a 15-second timeout for %s", async (phase) => {
+    const calls: Array<{ label: string; timeoutMs?: number }> = []
+    const stopped = new Error("request captured")
+    const networkClient = {
+      async request(input: { label: string; timeoutMs?: number }) {
+        calls.push(input)
+        throw stopped
+      },
+    }
+    const flow = clinepassOAuthLogin.deviceCode!
+    const result =
+      phase === "request"
+        ? flow.request({ networkClient })
+        : flow.complete(
+            {
+              verificationUrl: "https://auth.workos.com/user_management/device",
+              userCode: "ABCD-EFGH",
+              providerData: { deviceCode: "device-1" },
+            },
+            { networkClient },
+          )
+    await expect(result).rejects.toBe(stopped)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      label: phase === "request" ? "clinepass.oauth.device.code" : "clinepass.oauth.device.poll",
+      timeoutMs: 15_000,
+    })
+  })
+})
+
 describe("clinepass plugin shape", () => {
   it("exports plugin id and auth hooks", () => {
     expect(clinepassProviderPlugin.id).toBe("clinepass")

@@ -105,6 +105,37 @@ function sseStream(raw: string): ReadableStream<Uint8Array> {
 const openaiChatPong = () =>
   readFileSync(join(import.meta.dir, "__fixtures__/chat-pong.sse"), "utf-8")
 
+describe("Grok device OAuth request timeouts", () => {
+  it.each(["request", "poll"] as const)("sets a 15-second timeout for %s", async (phase) => {
+    const calls: Array<{ label: string; timeoutMs?: number }> = []
+    const stopped = new Error("request captured")
+    const networkClient = {
+      async request(input: { label: string; timeoutMs?: number }) {
+        calls.push(input)
+        throw stopped
+      },
+    }
+    const flow = grokOAuthLogin.deviceCode!
+    const result =
+      phase === "request"
+        ? flow.request({ networkClient })
+        : flow.complete(
+            {
+              verificationUrl: "https://accounts.x.ai/oauth2/device",
+              userCode: "ABCD-EFGH",
+              providerData: { deviceCode: "device-1" },
+            },
+            { networkClient },
+          )
+    await expect(result).rejects.toBe(stopped)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      label: phase === "request" ? "grok.oauth.device.code" : "grok.oauth.device.poll",
+      timeoutMs: 15_000,
+    })
+  })
+})
+
 describe("llm-grok provider plugin (architecture-aligned)", () => {
   it("exposes API-key + OAuth (device-code) strategies", () => {
     expect(grokProviderPlugin.apiKeyAuth).toBe(grokApiKeyAuth)

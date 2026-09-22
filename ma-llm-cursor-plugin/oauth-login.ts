@@ -30,6 +30,7 @@ export const CURSOR_OAUTH = {
 const POLL_ATTEMPTS = 150
 const POLL_BASE_DELAY_MS = 1_000
 const POLL_MAX_DELAY_MS = 10_000
+const POLL_REQUEST_TIMEOUT_MS = 15_000
 const TOKEN_FALLBACK_LIFETIME_MS = 60 * 60 * 1_000
 
 function str(value: unknown): string | undefined {
@@ -288,6 +289,16 @@ export function cursorPollDelayMs(attempt: number): number {
   return Math.min(POLL_BASE_DELAY_MS * 1.2 ** attempt, POLL_MAX_DELAY_MS)
 }
 
+function pollRequestTimeoutMs(challenge: OAuthDeviceCodeChallenge): number {
+  const n = num(challenge.providerData?.pollRequestTimeoutMs)
+  return n != null && n > 0 ? n : POLL_REQUEST_TIMEOUT_MS
+}
+
+function pollSignal(ctx: OAuthDeviceCodeContext, timeoutMs: number): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs)
+  return ctx.signal ? AbortSignal.any([ctx.signal, timeoutSignal]) : timeoutSignal
+}
+
 /** Poll auth until tokens return or the challenge expires / aborts. */
 export async function completeCursorLogin(
   challenge: OAuthDeviceCodeChallenge,
@@ -314,14 +325,16 @@ export async function completeCursorLogin(
     typeof challenge.pollIntervalMs === "number"
       ? challenge.pollIntervalMs
       : cursorPollDelayMs(attempt)
+  const requestTimeoutMs = pollRequestTimeoutMs(challenge)
 
   for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
     throwIfAborted(ctx.signal)
+    let statusError: Error | undefined
     try {
       const response = await fetch(pollUrl.toString(), {
         method: "GET",
         headers: { accept: "application/json" },
-        signal: ctx.signal,
+        signal: pollSignal(ctx, requestTimeoutMs),
       })
       if (response.status === 404) {
         consecutiveErrors = 0
@@ -331,9 +344,10 @@ export async function completeCursorLogin(
       if (!response.ok) {
         consecutiveErrors++
         if (consecutiveErrors >= 3) {
-          throw new Error(
+          statusError = new Error(
             `Cursor login polling failed after 3 errors (last status ${response.status})`,
           )
+          throw statusError
         }
         await delay(sleepMs(attempt), ctx.signal)
         continue
@@ -345,10 +359,8 @@ export async function completeCursorLogin(
       built.credential.secrets = await enrichCursorSecrets(built.credential.secrets)
       return built
     } catch (error) {
-      if (ctx.signal?.aborted || (error instanceof Error && error.name === "AbortError"))
-        throw error
-      if (error instanceof Error && error.message.startsWith("Cursor login polling failed"))
-        throw error
+      if (ctx.signal?.aborted) throw abortError()
+      if (statusError && error === statusError) throw error
       consecutiveErrors++
       if (consecutiveErrors >= 3) {
         // Generic message only — never interpolate error.message or attach cause

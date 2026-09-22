@@ -47,6 +47,7 @@ const MUSE_OAUTH_HEADERS = {
   "content-type": "application/x-www-form-urlencoded",
   "user-agent": MUSE_OAUTH_USER_AGENT,
 } as const
+const MUSE_DEVICE_REQUEST_TIMEOUT_MS = 15_000
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
@@ -334,6 +335,7 @@ async function requestMuseDeviceCode(
     headers: { ...MUSE_OAUTH_HEADERS },
     body: fields.toString(),
     signal: ctx.signal,
+    timeoutMs: MUSE_DEVICE_REQUEST_TIMEOUT_MS,
     capture: { requestBody: "[REDACTED MUSE DEVICE AUTHORIZATION BODY]", responseBody: false },
   })
   if (!response.ok) {
@@ -392,6 +394,7 @@ async function completeMuseDeviceCodeLogin(
       headers: { ...MUSE_OAUTH_HEADERS },
       body: fields.toString(),
       signal: ctx.signal,
+      timeoutMs: MUSE_DEVICE_REQUEST_TIMEOUT_MS,
       capture: { requestBody: "[REDACTED MUSE DEVICE TOKEN BODY]", responseBody: false },
     })
 

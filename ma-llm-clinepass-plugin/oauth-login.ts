@@ -41,6 +41,7 @@ export const CLINEPASS_OAUTH = {
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
 const DEFAULT_POLL_MS = 5_000
+const DEVICE_REQUEST_TIMEOUT_MS = 15_000
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
@@ -253,6 +254,7 @@ async function requestClinepassDeviceCode(
     },
     body: body.toString(),
     signal: ctx.signal,
+    timeoutMs: DEVICE_REQUEST_TIMEOUT_MS,
     capture: { requestBody: "[REDACTED DEVICE CODE BODY]", responseBody: false },
   })
   if (!response.ok) {
@@ -303,6 +305,7 @@ async function registerWorkOSWithCline(
       refreshToken: workos.refreshToken,
     }),
     signal: ctx.signal,
+    timeoutMs: DEVICE_REQUEST_TIMEOUT_MS,
     capture: { requestBody: "[REDACTED REGISTER BODY]", responseBody: false },
   })
   if (!response.ok) {
@@ -351,6 +354,7 @@ async function completeClinepassDeviceCode(
       },
       body: body.toString(),
       signal: ctx.signal,
+      timeoutMs: DEVICE_REQUEST_TIMEOUT_MS,
       capture: { requestBody: "[REDACTED DEVICE POLL BODY]", responseBody: false },
     })
 

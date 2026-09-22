@@ -32,6 +32,37 @@ import {
 // Registry + bootstrap
 // ---------------------------------------------------------------------------
 
+describe("OpenAI device OAuth request timeouts", () => {
+  it.each(["request", "poll"] as const)("sets a 15-second timeout for %s", async (phase) => {
+    const calls: Array<{ label: string; timeoutMs?: number }> = []
+    const stopped = new Error("request captured")
+    const networkClient = {
+      async request(input: { label: string; timeoutMs?: number }) {
+        calls.push(input)
+        throw stopped
+      },
+    }
+    const flow = openAIOAuthLogin.deviceCode!
+    const result =
+      phase === "request"
+        ? flow.request({ networkClient })
+        : flow.complete(
+            {
+              verificationUrl: "https://auth.openai.com/codex/device",
+              userCode: "ABCD-EFGH",
+              providerData: { deviceAuthId: "device-1" },
+            },
+            { networkClient },
+          )
+    await expect(result).rejects.toBe(stopped)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      label: phase === "request" ? "openai.oauth.device.usercode" : "openai.oauth.device.poll",
+      timeoutMs: 15_000,
+    })
+  })
+})
+
 describe("registerOpenAIModels", () => {
   it("registers gpt-6 Astra on the Responses surface with current capability + pricing data", () => {
     const reg = makeTestRegistry()

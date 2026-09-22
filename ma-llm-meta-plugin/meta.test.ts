@@ -67,6 +67,40 @@ function setup() {
   return reg
 }
 
+describe("Meta device OAuth request timeouts", () => {
+  it.each(["request", "poll"] as const)("sets a 15-second timeout for %s", async (phase) => {
+    const calls: Array<{ label: string; timeoutMs?: number }> = []
+    const stopped = new Error("request captured")
+    const networkClient = {
+      async request(input: { label: string; timeoutMs?: number }) {
+        calls.push(input)
+        throw stopped
+      },
+    }
+    const flow = museOAuthLogin.deviceCode!
+    const result =
+      phase === "request"
+        ? flow.request({ networkClient })
+        : flow.complete(
+            {
+              verificationUrl: "https://auth.meta.com/device",
+              userCode: "ABCD-EFGH",
+              providerData: { deviceCode: "device-1" },
+            },
+            { networkClient },
+          )
+    await expect(result).rejects.toBe(stopped)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      label:
+        phase === "request"
+          ? "meta.muse.oauth.device.authorization"
+          : "meta.muse.oauth.device.token",
+      timeoutMs: 15_000,
+    })
+  })
+})
+
 describe("meta plugin shape", () => {
   it("exports plugin id with api-key and Muse Code oauth", () => {
     expect(metaProviderPlugin.id).toBe("meta")
