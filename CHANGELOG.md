@@ -6,6 +6,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Fixed
+
+- 2026-09-15 (this session): WSL OAuth device-code polls no longer stall forever
+  when a connect/fetch hangs. Cursor poll uses a 15s AbortSignal timeout.
+  OpenAI, Grok, Muse, and ClinePass set `timeoutMs: 15000` on device request
+  and poll. Host races `complete()` against `expiresInMs`. Prefer IPv4 DNS.
+
 ### Changed
 
 - 2026-09-12 (this session): Grok provider aligned to official grok CLI 1.0.30

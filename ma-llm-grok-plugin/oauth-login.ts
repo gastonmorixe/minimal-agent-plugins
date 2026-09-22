@@ -57,6 +57,7 @@ const TOKEN_URL = `${GROK_OIDC_ISSUER}/oauth2/token`
 const AUTHORIZE_URL = `${GROK_OIDC_ISSUER}/oauth2/authorize`
 const DEFAULT_REDIRECT = "http://127.0.0.1/callback"
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000
+const DEVICE_REQUEST_TIMEOUT_MS = 15_000
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
@@ -287,6 +288,7 @@ async function requestGrokDeviceCode(
     },
     body: body.toString(),
     signal: ctx.signal,
+    timeoutMs: DEVICE_REQUEST_TIMEOUT_MS,
     capture: { requestBody: "[REDACTED DEVICE CODE BODY]", responseBody: false },
   })
   if (!response.ok) {
@@ -351,6 +353,7 @@ async function completeGrokDeviceCode(
       },
       body: body.toString(),
       signal: ctx.signal,
+      timeoutMs: DEVICE_REQUEST_TIMEOUT_MS,
       capture: { requestBody: "[REDACTED DEVICE POLL BODY]", responseBody: false },
     })
 

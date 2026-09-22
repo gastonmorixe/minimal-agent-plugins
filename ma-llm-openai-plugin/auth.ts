@@ -32,6 +32,7 @@ const OPENAI_AUTH_BASE_URL = "https://auth.openai.com"
 const OPENAI_DEVICE_AUTH_API = `${OPENAI_AUTH_BASE_URL}/api/accounts`
 const OPENAI_DEVICE_REDIRECT_URI = `${OPENAI_AUTH_BASE_URL}/deviceauth/callback`
 const OPENAI_DEVICE_TIMEOUT_MS = 15 * 60 * 1000
+const OPENAI_DEVICE_REQUEST_TIMEOUT_MS = 15_000
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
@@ -185,6 +186,7 @@ async function requestOpenAIDeviceCode(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ client_id: openAIOAuthLogin.config().clientId }),
     signal: ctx.signal,
+    timeoutMs: OPENAI_DEVICE_REQUEST_TIMEOUT_MS,
     capture: { requestBody: "[REDACTED OAUTH DEVICE USERCODE BODY]", responseBody: false },
   })
   if (!response.ok) {
@@ -246,6 +248,7 @@ async function pollOpenAIDeviceCode(
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ device_auth_id: deviceAuthId, user_code: challenge.userCode }),
       signal: ctx.signal,
+      timeoutMs: OPENAI_DEVICE_REQUEST_TIMEOUT_MS,
       capture: { requestBody: "[REDACTED OAUTH DEVICE POLL BODY]", responseBody: false },
     })
     if (response.ok) return response.json<Record<string, unknown>>()
@@ -284,6 +287,7 @@ async function exchangeOpenAIDeviceAuthorizationCode(
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: fields.toString(),
     signal: ctx.signal,
+    timeoutMs: OPENAI_DEVICE_REQUEST_TIMEOUT_MS,
     capture: { requestBody: "[REDACTED OAUTH DEVICE EXCHANGE BODY]", responseBody: false },
   })
   if (!response.ok) {
