@@ -137,6 +137,22 @@ export const CAPS_OPUS_47: Capabilities = { ...CAPS_OPUS_48 }
 export const CAPS_OPUS_5: Capabilities = { ...CAPS_OPUS_48 }
 
 /**
+ * Claude Opus 5.5 (`claude-opus-5-5`), released 2026-09-22. Same request
+ * surface as Opus 5 (1M context, 128k output, adaptive-only thinking, fast
+ * tier, image + pdf input, structured outputs, full tools + caching) with
+ * ONE difference: the default effort level is `medium`, not `high`. It is
+ * the only model in the catalog whose default is not `high`.
+ *
+ * Verified 2026-09-22 against platform.claude.com/docs (models overview +
+ * pricing) and the claude-code 2.1.280 baked catalog
+ * (`default_effort:"medium"`, `context_window:1e6`, `max_output:128000`).
+ */
+export const CAPS_OPUS_55: Capabilities = {
+  ...CAPS_OPUS_48,
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "medium" },
+}
+
+/**
  * Claude Opus 4.5 (`claude-opus-4-5-20251101`), live 2025-11-24 per
  * `GET /v1/models`. Older 200k/64k tier: extended thinking (enabled type)
  * with no adaptive support, effort low/medium/high (no xhigh/max),
