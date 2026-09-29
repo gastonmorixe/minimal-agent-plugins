@@ -310,7 +310,7 @@ describe("AgentRunRequest MVP body", () => {
     expect(requestedModelFields(apiBody).some((f) => f.no === 3)).toBe(false)
   })
 
-  test("bare cursor-grok-4.7 and cursor-claude-sonnet-5-5 encode medium SKUs", () => {
+  test("bare parents encode server default-non-max (medium only for grok-4.6)", () => {
     resetCursorEncodeSpecsForTests()
     const entries = new Map<
       string,
@@ -333,7 +333,18 @@ describe("AgentRunRequest MVP body", () => {
       setDefault() {},
     } as never)
 
-    for (const hostId of ["cursor-grok-4.7", "cursor-claude-sonnet-5-5"] as const) {
+    const expected: Record<string, string> = {
+      "cursor-grok-4.6": "cursor-grok-4.6-medium",
+      "cursor-grok-4.7": "grok-4.7-high-fast",
+      "cursor-gemini-3.8-flash": "gemini-3.8-flash-high",
+      "cursor-claude-sonnet-5-5": "claude-sonnet-5-5-high",
+      "cursor-muse-spark-1.3": "muse-spark-1.3-high",
+      "cursor-kimi-k3": "kimi-k3-max",
+      "cursor-claude-opus-5-5": "claude-opus-5-5-medium",
+      "cursor-composer-2.5": "composer-2.5-fast",
+    }
+
+    for (const [hostId, want] of Object.entries(expected)) {
       const entry = entries.get(hostId)
       expect(entry).toBeTruthy()
       const body = buildCursorAgentRunBody(
@@ -351,8 +362,7 @@ describe("AgentRunRequest MVP body", () => {
       const modelId = new TextDecoder().decode(
         fieldBytes(requestedModelFields(body).find((f) => f.no === 1)!)!,
       )
-      const bare = hostId.replace(/^cursor-/, "")
-      expect(modelId === `${bare}-medium` || modelId === `cursor-${bare}-medium`).toBe(true)
+      expect(modelId).toBe(want)
       expect(requestedModelFields(body).some((f) => f.no === 3)).toBe(false)
     }
   })

@@ -198,6 +198,15 @@ function buildEffortFastSlug(prefix: string, effort: string, fast: boolean): str
   return fast ? `${prefix}-${effort}-fast` : `${prefix}-${effort}`
 }
 
+/**
+ * Bare parent → medium only for these wire ids (postmortem / prior catalog).
+ * All other parents keep the server default-non-max variant.
+ */
+export function preferMediumBareDefault(wireId: string): boolean {
+  const bare = wireId.replace(/^cursor-/, "")
+  return bare === "grok-4.5" || bare === "grok-4.6"
+}
+
 /** Effort/fast wire ids from the known default variant parameterValues. */
 function effortFastParamIdsFromVariant(
   model: DecodedCursorModel,
@@ -256,11 +265,10 @@ export function expandCursorCatalog(
     const skuPrefix = templateSlug
       ? cursorSkuPrefixFromLegacySlug(templateSlug, effortLevels)
       : model.name
-    // Prefer medium non-fast when medium is in effort levels. Postmortem +
-    // MA intentional medium default (server often advertises high-fast as
-    // default-non-max). See docs/agent-run-too-many-computers-postmortem.md.
+    // Server default-non-max wins for bare parents, except grok-4.5 / grok-4.6
+    // where MA keeps the postmortem medium tier (not server high-fast).
     let defaultRunModelId = variantRunSlug(defaultVariant)
-    if (effortLevels.includes("medium") && skuPrefix) {
+    if (preferMediumBareDefault(model.name) && effortLevels.includes("medium") && skuPrefix) {
       defaultRunModelId = buildEffortFastSlug(skuPrefix, "medium", false)
     }
     const hiddenTags = model.isHidden ? (["hidden"] as const) : []
@@ -315,7 +323,7 @@ export function expandCursorCatalog(
             const synthetic: CursorModelVariant = {
               legacySlug: slug,
               parameterValues: params,
-              isDefaultNonMaxConfig: effort === "medium" && !fast,
+              isDefaultNonMaxConfig: defaultRunModelId === slug,
             }
             add({
               id: cursorHostModelId(slug),

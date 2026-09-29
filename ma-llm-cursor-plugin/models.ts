@@ -277,9 +277,10 @@ function fillSparseStaticCatalog(entries: CursorCatalogEntry[]): CursorCatalogEn
       }
     }
 
-    // Prefer medium non-fast when medium exists. Postmortem + MA intentional
-    // medium default (not server high-fast).
-    if (levels.includes("medium")) {
+    // Medium bare default only for grok-4.5 / grok-4.6 (postmortem). Other
+    // parents keep the static catalog server default-non-max.
+    const bare = parent.wireId.replace(/^cursor-/, "")
+    if ((bare === "grok-4.5" || bare === "grok-4.6") && levels.includes("medium")) {
       parent.defaultRunModelId = `${prefix}-medium`
     }
   }

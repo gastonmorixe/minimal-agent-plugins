@@ -16,7 +16,7 @@ function parentWithSparseVariants(model: DecodedCursorModel) {
 }
 
 describe("expandCursorCatalog sparse variant synthesis", () => {
-  test("grok-4.7 synthesizes effort x fast SKUs and prefers medium default", () => {
+  test("grok-4.7 synthesizes effort x fast SKUs and keeps server high-fast default", () => {
     const rows = parentWithSparseVariants({
       name: "grok-4.7",
       clientDisplayName: "Grok 4.7",
@@ -67,7 +67,7 @@ describe("expandCursorCatalog sparse variant synthesis", () => {
     }
 
     const parent = rows.find((r) => r.id === "cursor-grok-4.7")
-    expect(parent?.defaultRunModelId).toBe("grok-4.7-medium")
+    expect(parent?.defaultRunModelId).toBe("grok-4.7-high-fast")
 
     const medium = rows.find((r) => r.id === "cursor-grok-4.7-medium")
     expect(medium?.parentWireId).toBe("grok-4.7")
@@ -78,6 +78,44 @@ describe("expandCursorCatalog sparse variant synthesis", () => {
       ]),
     )
     expect(medium?.parameterValues?.some((p) => p.id === "fast" && p.value === "true")).toBe(false)
+  })
+
+  test("grok-4.6 prefers medium bare default (postmortem tier)", () => {
+    const rows = parentWithSparseVariants({
+      name: "grok-4.6",
+      clientDisplayName: "Grok 4.6",
+      supportsThinking: true,
+      supportsImages: true,
+      parameterDefinitions: [
+        {
+          id: "effort",
+          name: "Effort",
+          enumValues: [
+            { value: "low" },
+            { value: "medium" },
+            { value: "high" },
+            { value: "xhigh" },
+          ],
+        },
+        {
+          id: "fast",
+          name: "fast",
+          booleanValues: [{ value: "true" }, { value: "false" }],
+        },
+      ],
+      variants: [
+        {
+          legacySlug: "cursor-grok-4.6-high-fast",
+          isDefaultNonMaxConfig: true,
+          parameterValues: [
+            { id: "effort", value: "high" },
+            { id: "fast", value: "true" },
+          ],
+        },
+      ],
+    })
+    const parent = rows.find((r) => r.id === "cursor-grok-4.6")
+    expect(parent?.defaultRunModelId).toBe("cursor-grok-4.6-medium")
   })
 
   test("gemini-3.8-flash synthesizes effort-only SKUs", () => {
@@ -107,7 +145,7 @@ describe("expandCursorCatalog sparse variant synthesis", () => {
     expect(ids.has("cursor-gemini-3.8-flash-high")).toBe(true)
     expect(ids.has("cursor-gemini-3.8-flash-low-fast")).toBe(false)
     const parent = rows.find((r) => r.id === "cursor-gemini-3.8-flash")
-    expect(parent?.defaultRunModelId).toBe("gemini-3.8-flash-medium")
+    expect(parent?.defaultRunModelId).toBe("gemini-3.8-flash-high")
   })
 
   test("claude-sonnet-5-5 synthesizes effort ladder including max", () => {
@@ -149,6 +187,6 @@ describe("expandCursorCatalog sparse variant synthesis", () => {
       expect(ids.has(`cursor-claude-sonnet-5-5-${effort}`)).toBe(true)
     }
     const parent = rows.find((r) => r.id === "cursor-claude-sonnet-5-5")
-    expect(parent?.defaultRunModelId).toBe("claude-sonnet-5-5-medium")
+    expect(parent?.defaultRunModelId).toBe("claude-sonnet-5-5-high")
   })
 })
