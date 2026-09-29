@@ -13,8 +13,15 @@
 import { concat, encBool } from "./wire.ts"
 
 export type AvailableModelsRequestOpts = {
+  /** Field 2. Include long-context-only SKUs. */
+  includeLongContextModels?: boolean
   /** Field 5. When true, parents expose parameter_definitions + variants. */
   useModelParameters?: boolean
+  /**
+   * Field 6. Include models flagged `is_hidden` (not shown in product pickers).
+   * Needed for a complete offline registry / Run id coverage.
+   */
+  includeHiddenModels?: boolean
   /** Field 7. CLI always sets this on the parameterized fetch. */
   doNotUseMarkdown?: boolean
   /** Field 8. Explode variants in the picker list. */
@@ -23,9 +30,11 @@ export type AvailableModelsRequestOpts = {
 
 /** Encode an AvailableModelsRequest protobuf body. */
 export function encodeAvailableModelsRequest(opts: AvailableModelsRequestOpts = {}): Uint8Array {
-  return concat(
-    encBool(5, opts.useModelParameters ?? true),
-    encBool(7, opts.doNotUseMarkdown ?? true),
-    encBool(8, opts.variantsWillBeShownInExplodedList ?? false),
-  )
+  const parts: Uint8Array[] = []
+  if (opts.includeLongContextModels) parts.push(encBool(2, true))
+  parts.push(encBool(5, opts.useModelParameters ?? true))
+  if (opts.includeHiddenModels) parts.push(encBool(6, true))
+  parts.push(encBool(7, opts.doNotUseMarkdown ?? true))
+  parts.push(encBool(8, opts.variantsWillBeShownInExplodedList ?? false))
+  return concat(...parts)
 }
