@@ -5,10 +5,13 @@ Cursor **AgentService/Run** provider for [minimal-agent](https://github.com/gast
 This plugin speaks Connect RPC + protobuf (`application/connect+proto`) to
 `agentn.global.api5.cursor.sh` for `agent.v1.AgentService/Run` (overridable via
 `MA_CURSOR_AGENT_ENDPOINT`), with AiService unary RPCs on `api2.cursor.sh`.
-The plugin fetches parameterized `AvailableModels` (`use_model_parameters=true`).
-Host ids are namespaced (`cursor-grok-4.6`, `cursor-grok-4.6-high`); parent API
-names (`grok-4.6`) are also registered as Cursor-scoped ids so
-`--provider cursor --model grok-4.6` resolves. AgentService/Run headers match
+The plugin fetches parameterized `AvailableModels` (`use_model_parameters=true`,
+including **hidden** + long-context models for registry completeness). Live
+`--list-models` still omits `is_hidden` parents; the offline static catalog and
+live registrar keep them so Run ids resolve. Host ids are namespaced
+(`cursor-grok-4.6`, `cursor-grok-4.6-high`); parent API names (`grok-4.6`) are
+also registered as Cursor-scoped ids so `--provider cursor --model grok-4.6`
+resolves. AgentService/Run headers match
 Cursor Agent CLI (no IDE checksum). Run `RequestedModel` prefers exploded
 legacy SKUs; see
 [`docs/agent-run-too-many-computers-postmortem.md`](docs/agent-run-too-many-computers-postmortem.md)
@@ -31,6 +34,19 @@ ma --provider cursor --model cursor-auto
 `--provider cursor --model grok-4.6` is the Cursor-hosted Grok parent (not the
 Grok plugin). Equivalent exploded SKU: `cursor-grok-4.6-high` (or `-medium` /
 `-high-fast` with `--effort` / `--fast`).
+
+## Refresh model registry
+
+```bash
+cd minimal-agent-plugins/ma-llm-cursor-plugin
+bun run generate:static-catalog
+# or: bun run scripts/generate-static-catalog.ts
+```
+
+Pulls live `aiserver.v1.AiService/AvailableModels` with hidden + long-context
+models, regenerates `static-catalog-part-*.ts`, and writes
+`tmp/available-models-snapshot.json`. Requires `cursor-oauth-2` in
+`~/.minimal-agent/auth.jsonc` (or `CURSOR_ACCESS_TOKEN`).
 
 ## Quota footer
 

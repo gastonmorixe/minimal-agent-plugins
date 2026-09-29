@@ -19,4 +19,6 @@ export interface CursorStaticCatalogRow {
   fastParamId?: string
   maxMode?: boolean
   useVariantString?: boolean
+  /** Present when AvailableModels marked the parent `is_hidden`. */
+  isHidden?: boolean
 }

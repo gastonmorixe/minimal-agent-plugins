@@ -113,6 +113,7 @@ function tagsForStaticRow(row: (typeof CURSOR_STATIC_CATALOG)[number]): string[]
   if (row.defaultOn) tags.add("default-on")
   if (row.supportsThinking) tags.add("thinking")
   if (row.supportsImages) tags.add("vision")
+  if (row.isHidden) tags.add("hidden")
   tags.add("agent")
   tags.add("supports-max-mode")
   if (row.maxMode) tags.add("max-mode")
@@ -132,30 +133,186 @@ function tagsForStaticRow(row: (typeof CURSOR_STATIC_CATALOG)[number]): string[]
   return [...tags]
 }
 
+function staticHostId(slug: string): string {
+  const bare = slug.replace(/^cursor-/, "")
+  return bare.startsWith("cursor-") ? bare : `cursor-${bare}`
+}
+
+function staticSkuPrefix(legacySlug: string, effortLevels: readonly string[]): string {
+  let s = legacySlug.replace(/-fast$/i, "")
+  const levels = [...effortLevels].sort((a, b) => b.length - a.length)
+  for (const effort of levels) {
+    const suffix = `-${effort}`
+    if (s.toLowerCase().endsWith(suffix.toLowerCase())) {
+      s = s.slice(0, -suffix.length)
+      break
+    }
+  }
+  return s
+}
+
+function prettyStaticToken(raw: string): string {
+  return raw
+    .split(/[-_/]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+}
+
+/**
+ * Fill sparse static parents that advertise effortLevels but only ship one real
+ * variant row (parentWireId + parameterValues). Synthesize the missing
+ * effort x fast SKUs so CLI ids resolve offline.
+ */
+function fillSparseStaticCatalog(entries: CursorCatalogEntry[]): CursorCatalogEntry[] {
+  const byId = new Map(entries.map((e) => [e.id, e]))
+  const extras: CursorCatalogEntry[] = []
+
+  for (const parent of entries) {
+    if (parent.parentWireId) continue
+    const levels = parent.capabilities.effort.levels
+    if (levels.length === 0) continue
+
+    const children = entries.filter(
+      (e) => e.parentWireId === parent.wireId && e.parameterValues && e.parameterValues.length > 0,
+    )
+    const template =
+      children.find((c) => c.runModelId === parent.defaultRunModelId) ??
+      children.find((c) => c.runModelId) ??
+      children[0]
+    if (!template?.runModelId || !template.parameterValues) continue
+
+    const hasFast =
+      Boolean(parent.tags.find((t) => t.startsWith("fast-param:"))) || parent.capabilities.speedFast
+    const expected = levels.length * (hasFast ? 2 : 1)
+    if (children.length >= expected) continue
+
+    const prefix = staticSkuPrefix(template.runModelId, levels)
+    const effortId = template.parameterValues.find((p) => isCursorEffortParamId(p.id))?.id
+    if (!effortId) continue
+    const fastId = template.parameterValues.find((p) => isCursorFastParamId(p.id))?.id
+    const nonEF = template.parameterValues.filter(
+      (p) => !isCursorEffortParamId(p.id) && !isCursorFastParamId(p.id),
+    )
+    const effortParamTag =
+      parent.tags.find((t) => t.startsWith("effort-param:"))?.slice("effort-param:".length) ??
+      effortId
+    const fastParamTag =
+      parent.tags.find((t) => t.startsWith("fast-param:"))?.slice("fast-param:".length) ?? fastId
+    const fastOptions = fastId || hasFast ? [false, true] : [false]
+
+    for (const effort of levels) {
+      for (const fast of fastOptions) {
+        if (fast && !fastId) continue
+        const slug = fast ? `${prefix}-${effort}-fast` : `${prefix}-${effort}`
+        const hostId = staticHostId(slug)
+        const existing = byId.get(hostId)
+        // Real variant rows already index in lookupCursorRunSku. Alias-shaped
+        // legacySlug rows (no parentWireId / no parameterValues) must be upgraded.
+        const needsUpgrade =
+          !existing ||
+          !existing.parentWireId ||
+          !existing.parameterValues ||
+          existing.parameterValues.length === 0
+        if (!needsUpgrade) continue
+        if (!existing && extras.some((e) => e.id === hostId)) continue
+
+        const parameterValues: Array<{ id: string; value: string }> = [
+          ...nonEF.map((p) => ({ id: p.id, value: p.value })),
+          { id: effortId, value: effort },
+        ]
+        if (fastId) parameterValues.push({ id: fastId, value: String(fast) })
+
+        const tags = new Set<string>([
+          "cursor",
+          "live",
+          "parameterized",
+          "variant",
+          `parent:${parent.wireId}`,
+          "agent",
+          "supports-max-mode",
+          `effort-param:${effortParamTag}`,
+        ])
+        if (parent.tags.includes("thinking")) tags.add("thinking")
+        if (parent.tags.includes("vision")) tags.add("vision")
+        if (fastParamTag) tags.add(`fast-param:${fastParamTag}`)
+        for (const pv of parameterValues) tags.add(`param:${pv.id}=${pv.value}`)
+        if (effort === "medium" && !fast) tags.add("default-non-max")
+
+        const displayBits = [parent.displayName]
+        for (const pv of nonEF) {
+          displayBits.push(
+            pv.value === "true"
+              ? prettyStaticToken(pv.id)
+              : `${prettyStaticToken(pv.id)} ${prettyStaticToken(pv.value)}`,
+          )
+        }
+        displayBits.push(prettyStaticToken(effort))
+        if (fast) displayBits.push("Fast")
+
+        const synthesized: CursorCatalogEntry = {
+          id: hostId,
+          wireId: slug,
+          displayName: displayBits.join(" "),
+          capabilities: cursorCaps({
+            contextWindow: parent.capabilities.contextWindow,
+            maxOutputTokens: parent.capabilities.maxOutputTokens,
+            thinking: parent.capabilities.thinking.visible,
+            vision: parent.capabilities.modalities.image,
+            effortLevels: [effort],
+            speedFast: hasFast,
+          }),
+          tags: [...tags],
+          parentWireId: parent.wireId,
+          parameterValues,
+          runModelId: slug,
+        }
+        if (existing) {
+          Object.assign(existing, synthesized)
+          byId.set(hostId, existing)
+        } else {
+          extras.push(synthesized)
+          byId.set(hostId, synthesized)
+        }
+      }
+    }
+
+    // Prefer medium non-fast when medium exists. Postmortem + MA intentional
+    // medium default (not server high-fast).
+    if (levels.includes("medium")) {
+      parent.defaultRunModelId = `${prefix}-medium`
+    }
+  }
+
+  return extras.length === 0 ? entries : [...entries, ...extras]
+}
+
 /**
  * Static offline catalog. Generated rows carry canonical parents and exploded
  * variant host ids; `cursor-auto`/`cursor-default` are the user-facing Auto rows.
  */
-const CATALOG: CursorCatalogEntry[] = CURSOR_STATIC_CATALOG.map((row) => ({
-  id: row.id,
-  displayName: row.displayName,
-  wireId: row.wireId,
-  capabilities: cursorCaps({
-    contextWindow: row.contextWindow,
-    maxOutputTokens: row.maxOutputTokens,
-    thinking: row.supportsThinking,
-    vision: row.supportsImages,
-    effortLevels: row.effortLevels,
-    speedFast: row.speedFast ?? false,
-  }),
-  tags: tagsForStaticRow(row),
-  parentWireId: row.parentWireId,
-  parameterValues: row.parameterValues,
-  defaultParameterValues: row.defaultParameterValues,
-  useVariantString: row.useVariantString,
-  runModelId: row.runModelId,
-  defaultRunModelId: row.defaultRunModelId,
-}))
+const CATALOG: CursorCatalogEntry[] = fillSparseStaticCatalog(
+  CURSOR_STATIC_CATALOG.map((row) => ({
+    id: row.id,
+    displayName: row.displayName,
+    wireId: row.wireId,
+    capabilities: cursorCaps({
+      contextWindow: row.contextWindow,
+      maxOutputTokens: row.maxOutputTokens,
+      thinking: row.supportsThinking,
+      vision: row.supportsImages,
+      effortLevels: row.effortLevels,
+      speedFast: row.speedFast ?? false,
+    }),
+    tags: tagsForStaticRow(row),
+    parentWireId: row.parentWireId,
+    parameterValues: row.parameterValues,
+    defaultParameterValues: row.defaultParameterValues,
+    useVariantString: row.useVariantString,
+    runModelId: row.runModelId,
+    defaultRunModelId: row.defaultRunModelId,
+  })),
+)
 
 // Auto is a display alias for Cursor's canonical `default` model. Keep both
 // host ids offline without adding a bare `auto` alias that can collide globally.
@@ -166,6 +323,29 @@ CATALOG.unshift({
   capabilities: cursorCaps({ contextWindow: 128 * K, vision: true, effortLevels: [] }),
   tags: ["cursor", "auto", "default", "agent", "supports-max-mode"],
 })
+
+// HEAD had these; live catalog dropped them; keep for resolve stability.
+{
+  const kimiCanonical = CATALOG.find((e) => e.id === "cursor-kimi-k2.7-code")
+  if (kimiCanonical) {
+    for (const aliasId of ["cursor-kimi", "cursor-kimi-latest"] as const) {
+      if (CATALOG.some((e) => e.id === aliasId)) continue
+      CATALOG.push({
+        id: aliasId,
+        wireId: "kimi-k2.7-code",
+        displayName: kimiCanonical.displayName,
+        capabilities: kimiCanonical.capabilities,
+        tags: [
+          ...kimiCanonical.tags.filter((t) => t !== "default-on"),
+          "alias",
+          "canonical:kimi-k2.7-code",
+        ],
+        defaultParameterValues: kimiCanonical.defaultParameterValues,
+        defaultRunModelId: kimiCanonical.defaultRunModelId,
+      })
+    }
+  }
+}
 
 /** AgentService/Run model_id for a catalog row. Variants send the exploded SKU. */
 export function catalogRunModelId(
