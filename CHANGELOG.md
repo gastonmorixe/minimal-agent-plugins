@@ -96,34 +96,6 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   - Evidence: the live e2e "cursor-auto text round-trip" passes in 3.4 s (it was
     a 60 s timeout), and a real `/compact` finished in about 5 s.
 
-### Known issues
-
-- Cursor debug mode (`cursor-agent-mode: debug`) fails with "The debug
-  configuration was not set up properly", with either tool header. The tool
-  filter does not cause it. It is not fixed.
-- With the allowlist, a server-required tool that is not in the plugin catalog
-  fails the Run with the raw server error and no retry. Use
-  `MA_CURSOR_TOOL_FILTER=exclude` as the fallback.
-- MA does not send Cursor `conversation_state` or store checkpoints. So Cursor
-  server-side auto-compaction never applies to MA sessions. Cursor staff have
-  said it starts at about 90% of the window (forum post, cited in the CLI
-  2026.09.28 reverse-engineering report 04). We did not measure this.
-  - MA compaction is host-side. Core compacts on its own only when the provider
-    returns a context-length error (`src/host/context-exceeded-recovery.ts`). There
-    is no percentage threshold in core.
-  - With Cursor, MA's own compaction is a tool-less Cursor request. That is why
-    the tool-less fix above matters for long sessions.
-  - There is no per-provider switch for MA auto-compaction yet. Only the global
-    `MINIMAL_AGENT_AUTO_COMPACT=0` exists.
-- The allowlist and exclude behavior is verified against server behavior at CLI
-  2026.09.28 only. A server change could reject the allowlist.
-  `MA_CURSOR_TOOL_FILTER=exclude` is the fallback.
-- The plugins CI lint step fails on a fresh install (oxlint 1.86 with
-  oxlint-tsgolint 0.24, `bun.lock` is gitignored). It passes locally with oxlint
-  1.73.0.
-
-### Fixed
-
 - 2026-09-28: **Cursor provider no longer gets stuck after one or two prompts**,
   and the model now sees and calls MA tools again. Tested against Cursor CLI
   build `2026.09.28-64d2043` wire. Work by Eric (`9a34c325`) and Margaret
@@ -203,6 +175,32 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   when a connect/fetch hangs. Cursor poll uses a 15s AbortSignal timeout.
   OpenAI, Grok, Muse, and ClinePass set `timeoutMs: 15000` on device request
   and poll. Host races `complete()` against `expiresInMs`. Prefer IPv4 DNS.
+
+### Known issues
+
+- Cursor debug mode (`cursor-agent-mode: debug`) fails with "The debug
+  configuration was not set up properly", with either tool header. The tool
+  filter does not cause it. It is not fixed.
+- With the allowlist, a server-required tool that is not in the plugin catalog
+  fails the Run with the raw server error and no retry. Use
+  `MA_CURSOR_TOOL_FILTER=exclude` as the fallback.
+- MA does not send Cursor `conversation_state` or store checkpoints. So Cursor
+  server-side auto-compaction never applies to MA sessions. Cursor staff have
+  said it starts at about 90% of the window (forum post, cited in the CLI
+  2026.09.28 reverse-engineering report 04). We did not measure this.
+  - MA compaction is host-side. Core compacts on its own only when the provider
+    returns a context-length error (`src/host/context-exceeded-recovery.ts`). There
+    is no percentage threshold in core.
+  - With Cursor, MA's own compaction is a tool-less Cursor request. That is why
+    the tool-less fix above matters for long sessions.
+  - There is no per-provider switch for MA auto-compaction yet. Only the global
+    `MINIMAL_AGENT_AUTO_COMPACT=0` exists.
+- The allowlist and exclude behavior is verified against server behavior at CLI
+  2026.09.28 only. A server change could reject the allowlist.
+  `MA_CURSOR_TOOL_FILTER=exclude` is the fallback.
+- The plugins CI lint step fails on a fresh install (oxlint 1.86 with
+  oxlint-tsgolint 0.24, `bun.lock` is gitignored). It passes locally with oxlint
+  1.73.0.
 
 ### Changed
 
