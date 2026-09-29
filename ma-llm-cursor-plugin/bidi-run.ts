@@ -216,13 +216,62 @@ async function* continueBidiSession(
   session.translator.clearAfterMcpReply()
 
   cursorBidiLog("continue.read-after-mcp")
-  yield* readBidiUntilPauseOrEnd(session, opts)
+  yield* readBidiUntilPauseOrEnd(session, opts, cursorBidiContinueIdleMs())
 }
 
+/** Server heartbeat frames are 4 bytes. Anything larger counts as progress. */
+const CURSOR_BIDI_HEARTBEAT_MAX_BYTES = 4
+
+/** Default no-progress limit after a tool result is written on the open stream. */
+const CURSOR_BIDI_CONTINUE_IDLE_DEFAULT_MS = 30_000
+
+/**
+ * How long a continuation may see no real server frame before we give up.
+ * `MA_CURSOR_BIDI_CONTINUE_IDLE_MS=0` disables the guard.
+ */
+export function cursorBidiContinueIdleMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.MA_CURSOR_BIDI_CONTINUE_IDLE_MS?.trim()
+  if (raw === undefined || raw === "") return CURSOR_BIDI_CONTINUE_IDLE_DEFAULT_MS
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0) return CURSOR_BIDI_CONTINUE_IDLE_DEFAULT_MS
+  return n
+}
+
+const IDLE_TIMEOUT = Symbol("cursor-bidi-idle-timeout")
+
+/**
+ * Wait for `pending`, or give up once `remainingMs` passes.
+ * The timer is cleared as soon as `pending` settles.
+ */
+async function raceIdle<T>(
+  pending: Promise<T>,
+  remainingMs: number,
+): Promise<T | typeof IDLE_TIMEOUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const idle = new Promise<typeof IDLE_TIMEOUT>((resolve) => {
+    timer = setTimeout(() => resolve(IDLE_TIMEOUT), Math.max(0, remainingMs))
+  })
+  try {
+    return await Promise.race([pending, idle])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
+/**
+ * Read server frames until the turn ends or pauses for a tool call.
+ *
+ * The optional third argument is the idle guard in ms. When above 0, give up
+ * after that long without a real (non-heartbeat) frame. Continuations use it:
+ * after a tool result is written on the open stream there is no new HTTP
+ * request, so the host watchdog stays in "pre-headers" for its full 120 s.
+ */
 async function* readBidiUntilPauseOrEnd(
   session: CursorBidiSession,
   opts: CursorBidiRunOpts,
+  idleGuardMs = 0,
 ): AsyncGenerator<CanonicalEvent> {
+  let lastProgressAt = Date.now()
   const sessionKey = opts.sessionId || "default"
 
   // envelopeGen is created once at open with attempt-1's AbortSignal. Each
@@ -246,7 +295,37 @@ async function* readBidiUntilPauseOrEnd(
 
   try {
     while (true) {
-      const next = await session.envelopeGen.next()
+      const pending = session.envelopeGen.next()
+      const raced =
+        idleGuardMs > 0
+          ? await raceIdle(pending, idleGuardMs - (Date.now() - lastProgressAt))
+          : await pending
+      if (raced === IDLE_TIMEOUT) {
+        cursorBidiLog("continue.idle-timeout", {
+          idleGuardMs,
+          silentMs: Date.now() - lastProgressAt,
+        })
+        onAbort()
+        clearCursorBidiSession(sessionKey, session)
+        // The abandoned next() settles once the wire closes. Ignore its outcome.
+        pending.catch(() => {})
+        yield {
+          type: "stream_error",
+          retryable: true,
+          category: "timeout",
+          // Must be a tag core's retry classifier knows ("stream_idle"), or the
+          // host would surface this error instead of retrying with a fresh Run.
+          upstreamType: "stream_idle",
+          cause: new Error(
+            `cursor bidi: no progress for ${Math.round(idleGuardMs / 1000)}s after the tool result was sent`,
+          ),
+        }
+        return
+      }
+      const next = raced
+      if (!next.done && next.value.payload.length > CURSOR_BIDI_HEARTBEAT_MAX_BYTES) {
+        lastProgressAt = Date.now()
+      }
       cursorBidiLog("read.envelope-next", {
         done: next.done,
         payloadBytes: next.done ? 0 : next.value.payload.length,
