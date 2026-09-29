@@ -16,6 +16,7 @@ import { cursorApiKeyAuth, resolveCursorAccessToken } from "./auth.ts"
 import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
 import { agentRunUrl } from "./connect/hosts.ts"
 import { connectFrameProto, connectStreamPost } from "./connect/stream.ts"
+import { learnCursorRequiredTool, requiredToolFromCursorError } from "./cursor-tool-policy.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
@@ -127,15 +128,39 @@ export const cursorAdapter: ProviderAdapterView = {
           }
           return
         }
-        yield* runCursorBidi(reqForWire, model, {
-          url,
-          headers,
-          initialRunBody: protoBody,
-          signal: req.signal,
-          sessionId: bidiSessionKey,
-          modelId: model.id,
-          networkClient,
-        })
+        const runOnce = (runHeaders: Record<string, string>) =>
+          runCursorBidi(reqForWire, model, {
+            url,
+            headers: runHeaders,
+            initialRunBody: protoBody,
+            signal: req.signal,
+            sessionId: bidiSessionKey,
+            modelId: model.id,
+            networkClient,
+          })
+        // Self-heal the tool allowlist: when the server demands a tool we did
+        // not allow, and nothing reached the host yet, learn it and retry once.
+        let emitted = false
+        for await (const event of runOnce(headers)) {
+          const required =
+            !emitted && event.type === "stream_error" && event.cause instanceof Error
+              ? requiredToolFromCursorError(event.cause.message)
+              : undefined
+          if (required && learnCursorRequiredTool(required)) {
+            ctx.debug?.kv("cursorRequiredTool", required)
+            const retryHeaders = buildCursorHeaders({
+              token,
+              ids,
+              streaming: true,
+              clientType: "cli",
+              extra: buildCursorToolHeaders(req),
+            })
+            yield* runOnce(retryHeaders)
+            return
+          }
+          emitted = true
+          yield event
+        }
         return
       }
 
