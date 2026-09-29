@@ -1,7 +1,9 @@
 /**
  * Cursor AgentService/Run built-in ToolCall oneof catalog.
  *
- * Sourced from agent.v1.ToolCall (Cursor CLI bundle 2026.07.23). Used to build
+ * Sourced from agent.v1.ToolCall (Cursor CLI bundle 2026.09.28, 69 oneofs).
+ * Drift guard: cursor-builtin-tools.test.ts diffs it against the checked-in
+ * snapshot __fixtures__/toolcall-oneof-catalog.cli-*.json. Used to build
  * `x-cursor-agent-exclude-tools` so MA tools ride MCP (`mcp_tool_call`) instead
  * of Cursor-native grep/shell/read oneofs.
  *
@@ -18,7 +20,7 @@ export type CursorBuiltinToolEntry = {
 }
 
 /**
- * Full ToolCall oneof catalog (2026.07.23 bundle). Keep in sync when Cursor adds tools.
+ * Full ToolCall oneof catalog (2026.09.28 bundle). Keep in sync when Cursor adds tools.
  * Research snapshot: ~/Projects/cursor/jul-28/raw/toolcall-oneof-catalog.json
  */
 export const CURSOR_BUILTIN_TOOL_CATALOG: readonly CursorBuiltinToolEntry[] = [
@@ -140,6 +142,31 @@ export const CURSOR_BUILTIN_TOOL_CATALOG: readonly CursorBuiltinToolEntry[] = [
     protoName: "search_conversations_tool_call",
     oneofCase: "searchConversationsToolCall",
   },
+  // Added in CLI 2026.09.26 / 2026.09.28 (fields 70-80). Without these the
+  // exclude header leaks goals, multi-agent and canvas tools to the model.
+  { fieldNumber: 70, protoName: "create_goal_tool_call", oneofCase: "createGoalToolCall" },
+  { fieldNumber: 71, protoName: "update_goal_tool_call", oneofCase: "updateGoalToolCall" },
+  { fieldNumber: 72, protoName: "adopt_tool_call", oneofCase: "adoptToolCall" },
+  {
+    fieldNumber: 73,
+    protoName: "get_agent_status_tool_call",
+    oneofCase: "getAgentStatusToolCall",
+  },
+  { fieldNumber: 74, protoName: "send_to_agent_tool_call", oneofCase: "sendToAgentToolCall" },
+  {
+    fieldNumber: 75,
+    protoName: "read_agent_transcript_tool_call",
+    oneofCase: "readAgentTranscriptToolCall",
+  },
+  { fieldNumber: 76, protoName: "create_agent_tool_call", oneofCase: "createAgentToolCall" },
+  { fieldNumber: 77, protoName: "stop_agent_tool_call", oneofCase: "stopAgentToolCall" },
+  {
+    fieldNumber: 78,
+    protoName: "get_pr_code_tour_tool_call",
+    oneofCase: "getPrCodeTourToolCall",
+  },
+  { fieldNumber: 79, protoName: "write_canvas_tool_call", oneofCase: "writeCanvasToolCall" },
+  { fieldNumber: 80, protoName: "read_canvas_tool_call", oneofCase: "readCanvasToolCall" },
 ] as const
 
 /** MCP oneof — the only built-in we keep when advertising MA tools via MCP. */
