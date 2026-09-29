@@ -54,17 +54,17 @@ describe("cursor builtin tool catalog vs CLI snapshot", () => {
   test("new July-to-Sept oneofs 70-80 are excluded when MCP is enabled", () => {
     const exclude = cursorBuiltinToolsToExclude(true)
     for (const name of [
-      "createGoalToolCall",
-      "updateGoalToolCall",
-      "adoptToolCall",
-      "getAgentStatusToolCall",
-      "sendToAgentToolCall",
-      "readAgentTranscriptToolCall",
-      "createAgentToolCall",
-      "stopAgentToolCall",
-      "getPrCodeTourToolCall",
-      "writeCanvasToolCall",
-      "readCanvasToolCall",
+      "create_goal_tool_call",
+      "update_goal_tool_call",
+      "adopt_tool_call",
+      "get_agent_status_tool_call",
+      "send_to_agent_tool_call",
+      "read_agent_transcript_tool_call",
+      "create_agent_tool_call",
+      "stop_agent_tool_call",
+      "get_pr_code_tour_tool_call",
+      "write_canvas_tool_call",
+      "read_canvas_tool_call",
     ]) {
       expect(exclude).toContain(name)
       expect(isValidCursorBuiltinToolName(name)).toBe(true)
@@ -72,7 +72,7 @@ describe("cursor builtin tool catalog vs CLI snapshot", () => {
   })
 
   test("mcpToolCall stays allowed", () => {
-    expect(cursorBuiltinToolsToExclude(true)).not.toContain(CURSOR_MCP_TOOL_ONEOF)
+    expect(cursorBuiltinToolsToExclude(true)).not.toContain("mcp_tool_call")
     expect(cli.some((r) => r.oneof_case === CURSOR_MCP_TOOL_ONEOF)).toBe(true)
   })
 })

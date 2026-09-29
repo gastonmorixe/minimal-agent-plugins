@@ -38,17 +38,26 @@ const model = {
 }
 
 describe("cursor tool policy", () => {
-  test("exclude list omits mcpToolCall when MCP tools enabled", () => {
+  test("exclude list omits mcp_tool_call when MCP tools enabled", () => {
     const exclude = cursorBuiltinToolsToExclude(true)
-    expect(exclude).not.toContain(CURSOR_MCP_TOOL_ONEOF)
-    expect(exclude).toContain("grepToolCall")
-    expect(exclude).toContain("shellToolCall")
+    expect(exclude).not.toContain("mcp_tool_call")
+    expect(exclude).toContain("grep_tool_call")
+    expect(exclude).toContain("shell_tool_call")
     expect(exclude.length).toBe(CURSOR_BUILTIN_TOOL_CATALOG.length - 1)
   })
 
-  test("exclude list includes mcpToolCall when tools disabled", () => {
+  test("exclude list includes mcp_tool_call when tools disabled", () => {
     const exclude = cursorBuiltinToolsToExclude(false)
-    expect(exclude).toContain(CURSOR_MCP_TOOL_ONEOF)
+    expect(exclude).toContain("mcp_tool_call")
+  })
+
+  // The official CLI validates --exclude-tools against ToolCall.fields[].name
+  // (snake_case) and joins those names into x-cursor-agent-exclude-tools
+  // (6949.index.js exclude-tools.ts + exclude-tools-headers.ts, 2026.09.28).
+  test("exclude header uses snake_case proto names, never camelCase oneof cases", () => {
+    const exclude = cursorBuiltinToolsToExclude(true)
+    for (const token of exclude) expect(token).toMatch(/^[a-z0-9]+(_[a-z0-9]+)*_tool_call$/)
+    expect(exclude).not.toContain(CURSOR_MCP_TOOL_ONEOF)
   })
 
   test("maps MA tools to MCP wire rows", () => {
@@ -78,7 +87,7 @@ describe("cursor tool policy", () => {
       tools: [{ name: "Read", description: "x", inputSchema: { type: "object" } }],
       toolChoice: { type: "none" },
     })
-    expect(headers[CURSOR_EXCLUDE_TOOLS_HEADER]).toContain(CURSOR_MCP_TOOL_ONEOF)
+    expect(headers[CURSOR_EXCLUDE_TOOLS_HEADER]?.split(",")).toContain("mcp_tool_call")
   })
 
   test("AgentRunRequest encodes mcp_tools field 4 when tools present", () => {
@@ -119,6 +128,7 @@ describe("cursor tool policy", () => {
     })
     expect(policy.mcpTools).toHaveLength(1)
     expect(policy.headers[CURSOR_EXCLUDE_TOOLS_HEADER]).toBeTruthy()
-    expect(policy.headers[CURSOR_EXCLUDE_TOOLS_HEADER]).not.toContain(CURSOR_MCP_TOOL_ONEOF)
+    expect(policy.headers[CURSOR_EXCLUDE_TOOLS_HEADER]?.split(",")).not.toContain("mcp_tool_call")
+    expect(policy.headers[CURSOR_EXCLUDE_TOOLS_HEADER]?.split(",")).toContain("shell_tool_call")
   })
 })
