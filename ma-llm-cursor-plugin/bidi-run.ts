@@ -21,7 +21,7 @@ import {
   getCursorBidiSession,
   setCursorBidiSession,
 } from "./cursor-bidi-session.ts"
-import { cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
+import { buildCursorToolWirePolicy, cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
@@ -35,6 +35,10 @@ import {
   encodeAgentClientMessageExecStreamClose,
   encodeShellStreamExecFrames,
 } from "./proto/client-message.ts"
+import {
+  decodeAgentServerMcpState,
+  encodeAgentClientMcpStateResult,
+} from "./proto/exec-mcp-state.ts"
 import { decodeAgentServerMessage } from "./proto/exec-server-decode.ts"
 import { decodeInteractionQuery, encodeInteractionRejection } from "./proto/interaction-query.ts"
 import { decodeKvServerMessage, encodeAgentClientMessageKvReply } from "./proto/kv.ts"
@@ -111,6 +115,7 @@ export async function* runCursorBidi(
     conversationId,
     pendingExec: null,
     blobStore: new Map(),
+    mcpTools: buildCursorToolWirePolicy(req).mcpTools,
   }
   setCursorBidiSession(sessionKey, session)
 
@@ -275,6 +280,28 @@ async function* readBidiUntilPauseOrEnd(
       if (query) {
         cursorBidiLog("read.interaction-query", { id: query.id, queryField: query.queryField })
         session.wire.writeProto(encodeInteractionRejection(query))
+        continue
+      }
+
+      // mcp_state_exec_args (exec #36): the server asks which MCP servers and
+      // tools the client has before it exposes them to the model. Unanswered,
+      // the turn hangs and the model never sees MA tools.
+      const mcpState = decodeAgentServerMcpState(next.value.payload)
+      if (mcpState) {
+        cursorBidiLog("read.mcp-state", {
+          id: mcpState.id,
+          servers: mcpState.serverIdentifiers.join(","),
+          kickOnly: mcpState.kickOnly,
+          toolCount: session.mcpTools?.length ?? 0,
+        })
+        session.wire.writeProto(
+          encodeAgentClientMcpStateResult(
+            mcpState,
+            session.mcpTools ?? [],
+            mcpState.serverIdentifiers,
+          ),
+        )
+        session.wire.writeProto(encodeAgentClientMessageExecStreamClose(mcpState.id))
         continue
       }
 
