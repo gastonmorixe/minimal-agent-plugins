@@ -14,7 +14,10 @@ import { cursorAdapter } from "./adapter.ts"
 import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
 import { cursorCaps } from "./capabilities.ts"
 import { connectFrameProto, parseConnectFrames } from "./connect/stream.ts"
-import { resetCursorBidiSessionsForTests } from "./cursor-bidi-session.ts"
+import {
+  cursorBidiSessionKeysForTests,
+  resetCursorBidiSessionsForTests,
+} from "./cursor-bidi-session.ts"
 import { CURSOR_ALLOWED_TOOLS_HEADER, CURSOR_EXCLUDE_TOOLS_HEADER } from "./cursor-tool-policy.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
@@ -262,6 +265,66 @@ describe("cursor tool-less requests use the bidi wire", () => {
     expect(calls).toHaveLength(2)
     expect(wires[0]!.writes.some((c) => writtenFields(c).includes(2))).toBe(true)
     expect(textOf(gen2)).toBe("GOT-TOOL")
+  })
+
+  test("two concurrent tool-less runs on one host id do not close each other", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    // Wire 0 (run A) stays open until B is done. Wire 1 (run B) ends at once.
+    let releaseA: (() => void) | undefined
+    const { client, wires } = scriptedClient(
+      (i, w) => {
+        if (i === 0) {
+          w.ctrl?.enqueue(textFrame("A1"))
+          // After B finished, A needs an ack: KV set, then A ends on the ack.
+          releaseA = () => w.ctrl?.enqueue(kvSetFrame(9))
+        }
+        if (i === 1) {
+          w.ctrl?.enqueue(textFrame("B"))
+          w.ctrl?.enqueue(turnEndedFrame())
+          w.ctrl?.close()
+        }
+      },
+      (i, w, chunk) => {
+        if (i === 0 && writtenFields(chunk).includes(3) && w.ctrl) {
+          w.ctrl.enqueue(textFrame("A2"))
+          w.ctrl.enqueue(turnEndedFrame())
+          w.ctrl.close()
+          w.ctrl = undefined
+        }
+      },
+    )
+    const opts = {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      sessionId: "concurrent-host",
+      modelId: "cursor-auto",
+      networkClient: client,
+    }
+
+    const eventsA: CanonicalEvent[] = []
+    const runA = (async () => {
+      for await (const ev of runCursorBidi(toollessReq, model as never, opts)) eventsA.push(ev)
+    })()
+    // Let A open its wire and read its first frame.
+    const t0 = Date.now()
+    while (!eventsA.some((e) => e.type === "text_delta") && Date.now() - t0 < 1000) {
+      await Bun.sleep(1)
+    }
+
+    const eventsB = await collect(runCursorBidi(toollessReq, model as never, opts), "run B")
+    expect(textOf(eventsB)).toBe("B")
+
+    releaseA?.()
+    await Promise.race([
+      runA,
+      new Promise<never>((_, r) => setTimeout(() => r(new Error("hung: run A")), 2000)),
+    ])
+    expect(textOf(eventsA)).toBe("A1A2")
+    expect(eventsA.some((e) => e.type === "stream_error")).toBe(false)
+    expect(wires[0]!.writes.some((c) => writtenFields(c).includes(3))).toBe(true)
+    // No leaked tool-less session entries.
+    expect(cursorBidiSessionKeysForTests().filter((k) => k.includes(":notools"))).toEqual([])
   })
 
   test("mcp_state on a tool-less run is answered with an empty server list", async () => {
