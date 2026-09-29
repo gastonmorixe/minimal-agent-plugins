@@ -237,6 +237,96 @@ export function decodeAgentServerMessage(payload: Uint8Array): {
   return { kind: "other" }
 }
 
+/**
+ * ExecServerMessage args oneof, field number to proto name (CLI 2026.09.28-64d2043
+ * descriptor). Used only to name exec kinds that MA cannot answer.
+ */
+const EXEC_ARGS_ONEOF_NAMES: ReadonlyMap<number, string> = new Map([
+  [2, "shell_args"],
+  [3, "write_args"],
+  [4, "delete_args"],
+  [5, "grep_args"],
+  [7, "read_args"],
+  [8, "ls_args"],
+  [9, "diagnostics_args"],
+  [10, "request_context_args"],
+  [11, "mcp_args"],
+  [14, "shell_stream_args"],
+  [16, "background_shell_spawn_args"],
+  [17, "list_mcp_resources_exec_args"],
+  [18, "read_mcp_resource_exec_args"],
+  [20, "fetch_args"],
+  [21, "record_screen_args"],
+  [22, "computer_use_args"],
+  [23, "write_shell_stdin_args"],
+  [27, "execute_hook_args"],
+  [28, "subagent_args"],
+  [29, "redacted_read_args"],
+  [30, "force_background_shell_args"],
+  [31, "force_background_subagent_args"],
+  [36, "mcp_state_exec_args"],
+  [37, "subagent_await_args"],
+  [38, "smart_mode_classifier_args"],
+  [40, "canvas_diagnostics_args"],
+  [41, "shell_allowlist_precheck_args"],
+  [42, "mcp_allowlist_precheck_args"],
+  [43, "web_fetch_allowlist_precheck_args"],
+  [44, "git_diff_request"],
+  [45, "pi_read_args"],
+  [46, "pi_bash_args"],
+  [47, "pi_edit_args"],
+  [48, "pi_write_args"],
+  [49, "pi_grep_args"],
+  [50, "pi_find_args"],
+  [51, "pi_ls_args"],
+  [52, "mini_swe_agent_bash_args"],
+  [53, "conversation_search_args"],
+  [54, "agent_store_conflict_args"],
+  [56, "adopt_args"],
+])
+
+/** ExecServerMessage.id (#1) of an AgentServerMessage exec frame, or 0. */
+export function decodeAgentServerExecId(payload: Uint8Array): number {
+  for (const f of decodeFields(payload)) {
+    if (f.no !== 2 || f.wire !== 2) continue
+    const body = fieldBytes(f)
+    if (!body) return 0
+    for (const g of decodeFields(body)) {
+      if (g.no === 1 && g.wire === 0) return Number(g.value ?? 0)
+    }
+    return 0
+  }
+  return 0
+}
+
+/** Exec field numbers MA answers outside the native mapper (mcp_state has its own reply). */
+const EXEC_HANDLED_ELSEWHERE: ReadonlySet<number> = new Set([36])
+
+/** An exec request MA has no handler for. */
+export type UnsupportedExec = { fieldNo: number; name: string }
+
+/**
+ * Return the exec kind when an AgentServerMessage carries an exec request that
+ * MA cannot answer. That covers kinds with no MA mapping, and mapped kinds that
+ * the decoder refuses (for example a shell exec with an empty command). The
+ * caller must reply, or the server waits forever.
+ */
+export function findUnsupportedExec(payload: Uint8Array): UnsupportedExec | undefined {
+  for (const f of decodeFields(payload)) {
+    if (f.no !== 2 || f.wire !== 2) continue
+    const body = fieldBytes(f)
+    if (!body) return undefined
+    if (decodeExecServerMessageBody(body)) return undefined
+    for (const g of decodeFields(body)) {
+      if (g.wire !== 2 || EXEC_HANDLED_ELSEWHERE.has(g.no)) continue
+      const name = EXEC_ARGS_ONEOF_NAMES.get(g.no)
+      if (name) return { fieldNo: g.no, name }
+    }
+    return undefined
+  }
+  return undefined
+}
+
 /** Find exec_server_message on an AgentServerMessage payload (any exec oneof). */
 export function decodeAgentServerExec(payload: Uint8Array): DecodedExecMcpArgs | undefined {
   for (const f of decodeFields(payload)) {

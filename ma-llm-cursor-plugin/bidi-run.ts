@@ -33,13 +33,18 @@ import {
 import {
   encodeAgentClientMessageExecResult,
   encodeAgentClientMessageExecStreamClose,
+  encodeAgentClientMessageExecThrow,
   encodeShellStreamExecFrames,
 } from "./proto/client-message.ts"
 import {
   decodeAgentServerMcpState,
   encodeAgentClientMcpStateResult,
 } from "./proto/exec-mcp-state.ts"
-import { decodeAgentServerMessage } from "./proto/exec-server-decode.ts"
+import {
+  decodeAgentServerExecId,
+  decodeAgentServerMessage,
+  findUnsupportedExec,
+} from "./proto/exec-server-decode.ts"
 import { decodeInteractionQuery, encodeInteractionRejection } from "./proto/interaction-query.ts"
 import { decodeKvServerMessage, encodeAgentClientMessageKvReply } from "./proto/kv.ts"
 import { resolveCursorWireAgentMode } from "./request-body.ts"
@@ -381,6 +386,27 @@ async function* readBidiUntilPauseOrEnd(
           ),
         )
         session.wire.writeProto(encodeAgentClientMessageExecStreamClose(mcpState.id))
+        continue
+      }
+
+      // Any other exec MA cannot answer: reply like the official CLI does with
+      // no handler (throw, then stream_close). Unanswered, the server waits
+      // forever and heartbeats keep the stream open.
+      const unsupported = findUnsupportedExec(next.value.payload)
+      if (unsupported) {
+        const execId = decodeAgentServerExecId(next.value.payload)
+        cursorBidiLog("read.exec-unsupported", {
+          id: execId,
+          fieldNo: unsupported.fieldNo,
+          name: unsupported.name,
+        })
+        session.wire.writeProto(
+          encodeAgentClientMessageExecThrow(
+            execId,
+            `minimal-agent has no handler for server exec ${unsupported.name}`,
+          ),
+        )
+        session.wire.writeProto(encodeAgentClientMessageExecStreamClose(execId))
         continue
       }
 
