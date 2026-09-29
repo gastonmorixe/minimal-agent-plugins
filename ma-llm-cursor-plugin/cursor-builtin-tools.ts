@@ -181,13 +181,19 @@ export function isValidCursorBuiltinToolName(name: string): boolean {
 }
 
 /**
- * Built-in tools to exclude on the wire.
+ * Built-in tools to exclude on the wire, as snake_case proto field names.
  *
- * @param allowMcp - when true, omit `mcpToolCall` from the exclude list so MCP
+ * The official CLI validates `--exclude-tools` against `ToolCall.fields[].name`
+ * (snake_case, e.g. `shell_tool_call`) and joins those names into
+ * `x-cursor-agent-exclude-tools` (`exclude-tools.ts` and
+ * `exclude-tools-headers.ts`, CLI 2026.09.28). camelCase oneof cases match
+ * nothing, so every native tool stayed visible to the model.
+ *
+ * @param allowMcp - when true, omit `mcp_tool_call` from the exclude list so MCP
  *   definitions in `AgentRunRequest.mcp_tools` can be invoked.
  */
 export function cursorBuiltinToolsToExclude(allowMcp: boolean): string[] {
   return CURSOR_BUILTIN_TOOL_CATALOG.filter(
     (e) => !(allowMcp && e.oneofCase === CURSOR_MCP_TOOL_ONEOF),
-  ).map((e) => e.oneofCase)
+  ).map((e) => e.protoName)
 }
