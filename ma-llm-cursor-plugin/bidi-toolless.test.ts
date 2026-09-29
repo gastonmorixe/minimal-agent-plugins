@@ -16,6 +16,7 @@ import { cursorCaps } from "./capabilities.ts"
 import { connectFrameProto, parseConnectFrames } from "./connect/stream.ts"
 import {
   cursorBidiSessionKeysForTests,
+  getCursorBidiSession,
   resetCursorBidiSessionsForTests,
 } from "./cursor-bidi-session.ts"
 import { CURSOR_ALLOWED_TOOLS_HEADER, CURSOR_EXCLUDE_TOOLS_HEADER } from "./cursor-tool-policy.ts"
@@ -360,5 +361,95 @@ describe("cursor tool-less requests use the bidi wire", () => {
     expect(success).toBeDefined()
     expect(getRepeatedMsg(success!, 1)).toHaveLength(0)
     expect(textOf(events)).toBe("NO-TOOLS")
+  })
+})
+
+// An abandoned tool-less Run (Esc during compaction, watchdog, host retry) must
+// close its wire and leave no entry in the session map. Unique keys are never
+// overwritten, so a missing cleanup leaks one open wire per abandoned Run.
+// Probe by Margaret (740642b5).
+describe("cursor tool-less sessions are cleaned up when the caller leaves", () => {
+  afterEach(() => {
+    delete process.env.MA_CURSOR_BIDI_HEARTBEAT_MS
+    resetCursorBidiSessionsForTests()
+  })
+
+  const openRun = (signal?: AbortSignal) => {
+    const { client, wires } = scriptedClient(
+      (_i, w) => w.ctrl?.enqueue(textFrame("partial")),
+      () => {},
+    )
+    const gen = runCursorBidi(toollessReq, model as never, {
+      url: "https://example.test/agent.v1.AgentService/Run",
+      headers: {},
+      initialRunBody: new Uint8Array([0]),
+      sessionId: "leak-host",
+      modelId: "cursor-auto",
+      networkClient: client,
+      ...(signal ? { signal } : {}),
+    })
+    return { gen, wires }
+  }
+
+  const notoolsKeys = () => cursorBidiSessionKeysForTests().filter((k) => k.includes(":notools"))
+
+  test("abort mid-stream", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    const ac = new AbortController()
+    const { gen } = openRun(ac.signal)
+    await gen.next()
+    ac.abort()
+    try {
+      for await (const _ of gen) {
+        /* drain */
+      }
+    } catch {
+      /* abort error is expected */
+    }
+    expect(notoolsKeys()).toEqual([])
+  })
+
+  test("caller stops iterating early (return): session gone, wire closed", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    const { gen } = openRun()
+    await gen.next()
+    const [key] = notoolsKeys()
+    expect(key).toBeDefined()
+    const session = getCursorBidiSession(key!)
+    await gen.return(undefined)
+    expect(notoolsKeys()).toEqual([])
+    expect(session?.wire.isClosed()).toBe(true)
+  })
+
+  test("consumer throws inside its for-await", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    const { gen } = openRun()
+    await expect(
+      (async () => {
+        for await (const _ of gen) throw new Error("consumer failed")
+      })(),
+    ).rejects.toThrow("consumer failed")
+    expect(notoolsKeys()).toEqual([])
+  })
+
+  test("a tool run paused on a pending exec keeps its session", async () => {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    const { client } = scriptedClient(
+      (_i, w) => w.ctrl?.enqueue(mcpExecFrame(1, "call-keep")),
+      () => {},
+    )
+    const events = await collect(
+      runCursorBidi(toolsReq, model as never, {
+        url: "https://example.test/agent.v1.AgentService/Run",
+        headers: {},
+        initialRunBody: new Uint8Array([0]),
+        sessionId: "keep-host",
+        modelId: "cursor-auto",
+        networkClient: client,
+      }),
+      "pause",
+    )
+    expect(events.some((e) => e.type === "tool_use_start")).toBe(true)
+    expect(cursorBidiSessionKeysForTests()).toContain("keep-host")
   })
 })
