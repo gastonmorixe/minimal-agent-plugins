@@ -8,6 +8,81 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-09-28: **Cursor provider no longer gets stuck after one or two prompts**,
+  and the model now sees and calls MA tools again. Tested against Cursor CLI
+  build `2026.09.28-64d2043` wire. Work by Eric (`9a34c325`) and Margaret
+  (`740642b5`). One fix per commit, and each fix has a test that failed
+  before the change.
+
+  Root cause: the Cursor server now sends
+  `ExecServerMessage.mcp_state_exec_args` (#36). It asks the client for its
+  MCP servers and tools before it exposes them to the model. The plugin
+  dropped this frame as an unknown exec. So the server waited, the model got
+  no MA tools, and it fell back to Cursor native tools. A tool-result
+  continuation then sat silent until the host 120 s watchdog fired.
+
+  Ruled out:
+  - Client version stamp: `cli-2026.07.23` fails the same way as `cli-2026.09.28`.
+  - Usage cap: `cursor-auto` still had quota.
+  - Dead pooled h2 connection: the stalls were continuation writes on the
+    open stream, not new requests.
+
+  - `4703a05` mcp_state reply (main fix). Answer #36 with
+    `mcp_state_exec_result` success: one `minimal-agent` server, status
+    `connected`, our `McpToolDefinition` rows, then `stream_close`. This
+    matches the official `mcp-state-executor`.
+  - `c6c7823` Exclude header uses snake_case proto names (`shell_tool_call`).
+    The official CLI validates and sends `ToolCall.fields[].name`. We sent
+    camelCase oneof cases, which matched nothing.
+  - `7c37cc7` Exclude catalog refreshed from 58 to 69 oneofs, adding 70-80
+    (goals, agents, canvas, PR code tour). A drift test checks the catalog
+    against a checked-in CLI snapshot.
+  - `c2e4bf2` Any other exec MA cannot answer gets
+    `exec_client_control throw {id, error}` then `stream_close {id}`, as the
+    official CLI does when it has no handler. The log line
+    `read.exec-unsupported` names the oneof.
+  - `b487322` `interaction_query` (#7) is answered with a rejection
+    (`interaction_response` #6) instead of being ignored.
+  - `3703b97` A Run stream that ends with no content (for example the usage
+    cap, HTTP 200 then an instant close) now shows an error instead of an
+    empty turn.
+  - `f3f4269`, `ddd2ad3` A tool-result continuation with no progress for 30 s
+    closes the stream. It emits a retryable `stream_idle` error, so the host
+    retries with a fresh Run at once instead of after 120 s. Any frame larger
+    than a heartbeat counts as progress. Set it with
+    `MA_CURSOR_BIDI_CONTINUE_IDLE_MS` (`0` turns it off).
+  - `2446193` A fresh Run that rebuilds history now keeps `tool_use` and
+    `tool_result` blocks, paired by id. The result is capped at 20000 chars.
+    Before this, a retry lost the tool result.
+
+  Proof:
+  - Offline: `bun run check` passes (4237 pass, 0 fail).
+  - Live e2e "bidi MCP tool round-trip": passes in 5.9 s. Before the fixes it
+    hung for 35 s.
+  - Live 3-prompt TUI session with the full tool set: 4 MA tool calls, no
+    stall, no retry, no native tool calls.
+  - Live forced continuation timeout: one retry after 95 ms. The retry body
+    holds the tool pair, and the answer used the tool result.
+
+  Not done, or Assumed:
+  - Skipped on purpose: we still send `RequestedModel.is_variant_string_representation`
+    (#8). It is gone from the 09.28 descriptor, but we have no evidence that
+    the server rejects it.
+  - The model still lists Cursor native tool names when asked. It did not
+    call any. Next test: `x-cursor-agent-allowed-tools: mcp_tool_call`.
+  - Assumed: a throw is a safe reply for housekeeping execs
+    (`request_context_args`, allowlist prechecks, `git_diff`). None appeared
+    live.
+  - Assumed: rejection is safe for interaction kinds other than web search.
+  - Assumed: `stream_close` after the mcp_state reply is correct. The server
+    accepted it live.
+  - Unknown: when the server began to require mcp_state. On 2026-09-25, MA
+    tools still worked without it.
+  - Open: the plugin files `connect/bidi-http2.ts` and `connect/bidi-stream.ts`
+    are dead code (not imported). We did not remove them.
+  - Open: core counts a continuation with no data as "pre-headers" for the
+    full 120 s. The plugin guard works around this, and core is unchanged.
+
 - 2026-09-15 (this session): WSL OAuth device-code polls no longer stall forever
   when a connect/fetch hangs. Cursor poll uses a 15s AbortSignal timeout.
   OpenAI, Grok, Muse, and ClinePass set `timeoutMs: 15000` on device request
@@ -146,7 +221,6 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   `modelLabel` (e.g. `cur-auto`) for haiku / cursor-auto, and only suppresses
   the segment when both effort and label are absent. README and regression
   coverage match the new bare-tag path.
-
 
 ### Changed
 
