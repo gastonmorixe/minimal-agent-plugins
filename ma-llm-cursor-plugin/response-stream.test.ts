@@ -309,6 +309,53 @@ describe("AgentRunRequest MVP body", () => {
     expect(apiId).toBe("cursor-grok-4.6-high-fast")
     expect(requestedModelFields(apiBody).some((f) => f.no === 3)).toBe(false)
   })
+
+  test("bare cursor-grok-4.7 and cursor-claude-sonnet-5-5 encode medium SKUs", () => {
+    resetCursorEncodeSpecsForTests()
+    const entries = new Map<
+      string,
+      {
+        id: string
+        tags?: string[]
+        vendorIds?: Record<string, string>
+        capabilities: ReturnType<typeof cursorCaps>
+      }
+    >()
+    registerCursorModels({
+      register(spec: {
+        id: string
+        tags?: string[]
+        vendorIds?: Record<string, string>
+        capabilities: ReturnType<typeof cursorCaps>
+      }) {
+        entries.set(spec.id, spec)
+      },
+      setDefault() {},
+    } as never)
+
+    for (const hostId of ["cursor-grok-4.7", "cursor-claude-sonnet-5-5"] as const) {
+      const entry = entries.get(hostId)
+      expect(entry).toBeTruthy()
+      const body = buildCursorAgentRunBody(
+        {
+          modelId: hostId,
+          messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        },
+        baseModel({
+          id: hostId,
+          tags: entry!.tags,
+          vendorIds: entry!.vendorIds,
+          capabilities: entry!.capabilities,
+        }),
+      )
+      const modelId = new TextDecoder().decode(
+        fieldBytes(requestedModelFields(body).find((f) => f.no === 1)!)!,
+      )
+      const bare = hostId.replace(/^cursor-/, "")
+      expect(modelId === `${bare}-medium` || modelId === `cursor-${bare}-medium`).toBe(true)
+      expect(requestedModelFields(body).some((f) => f.no === 3)).toBe(false)
+    }
+  })
 })
 
 describe("connect frames", () => {
