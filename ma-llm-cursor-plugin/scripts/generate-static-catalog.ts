@@ -14,7 +14,11 @@
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-import { effortParamIdFromTags, fastParamIdFromTags, resolveCursorEffortParamId } from "../capabilities.ts"
+import {
+  effortParamIdFromTags,
+  fastParamIdFromTags,
+  resolveCursorEffortParamId,
+} from "../capabilities.ts"
 import { expandCursorCatalog } from "../catalog-expand.ts"
 import { buildCursorHeaders } from "../headers.ts"
 import { loadClientIds } from "../ids.ts"
