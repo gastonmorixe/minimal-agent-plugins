@@ -20,7 +20,16 @@ const DEFAULT_EFFORT_LEVELS = ["low", "medium", "high", "max"] as const
  * Canonical effort labels we accept from Cursor parameter_definitions /
  * variant parameterValues. Order is intentional for UI defaults.
  */
-const KNOWN_EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max", "standard", "grind"] as const
+const KNOWN_EFFORT_ORDER = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+  "standard",
+  "grind",
+] as const
 
 /**
  * Parameter definition / parameterValue ids that carry the product effort ladder.

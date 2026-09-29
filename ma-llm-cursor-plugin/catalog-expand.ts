@@ -13,6 +13,7 @@
 import {
   deriveCursorCapabilities,
   deriveCursorVariantCapabilities,
+  extractCursorEffortLevels,
   isCursorEffortParamId,
   isCursorFastParamId,
   resolveCursorEffortParamId,
@@ -174,11 +175,66 @@ function variantRunSlug(variant: CursorModelVariant | undefined): string | undef
 }
 
 /**
- * Expand rich AvailableModels into host catalog entries (parents, variants,
- * leftover aliases). Hidden models are omitted. Variant host ids prefer
- * `legacy_slug` over the bracketed variant-string representation.
+ * Strip trailing `-<effort>` and optional `-fast` from a legacy slug so the
+ * remainder is the SKU prefix (`cursor-grok-4.6` or `grok-4.7`).
  */
-export function expandCursorCatalog(decoded: DecodedAvailableModelsResponse): CursorCatalogEntry[] {
+export function cursorSkuPrefixFromLegacySlug(
+  legacySlug: string,
+  effortLevels: readonly string[],
+): string {
+  let s = legacySlug.replace(/-fast$/i, "")
+  const levels = [...effortLevels].sort((a, b) => b.length - a.length)
+  for (const effort of levels) {
+    const suffix = `-${effort}`
+    if (s.toLowerCase().endsWith(suffix.toLowerCase())) {
+      s = s.slice(0, -suffix.length)
+      break
+    }
+  }
+  return s
+}
+
+function buildEffortFastSlug(prefix: string, effort: string, fast: boolean): string {
+  return fast ? `${prefix}-${effort}-fast` : `${prefix}-${effort}`
+}
+
+/** Effort/fast wire ids from the known default variant parameterValues. */
+function effortFastParamIdsFromVariant(
+  model: DecodedCursorModel,
+  variant: CursorModelVariant | undefined,
+): { effortParamId?: string; fastParamId?: string } {
+  let effortParamId: string | undefined
+  let fastParamId: string | undefined
+  for (const pv of variant?.parameterValues ?? []) {
+    if (!pv.id) continue
+    if (!effortParamId && isCursorEffortParamId(pv.id)) effortParamId = pv.id
+    if (!fastParamId && isCursorFastParamId(pv.id)) fastParamId = pv.id
+  }
+  return {
+    effortParamId: effortParamId ?? resolveCursorEffortParamId(model, variant),
+    fastParamId: fastParamId ?? resolveCursorFastParamId(model, variant),
+  }
+}
+
+export type ExpandCursorCatalogOptions = {
+  /**
+   * When true (default), include `is_hidden` parents/variants so the registry
+   * can resolve Run ids that pickers omit. Live *list* UIs should still filter
+   * via {@link mapCursorLiveModels} / `isHidden`.
+   */
+  includeHidden?: boolean
+}
+
+/**
+ * Expand rich AvailableModels into host catalog entries (parents, variants,
+ * leftover aliases). Variant host ids prefer `legacy_slug` over the bracketed
+ * variant-string representation.
+ */
+export function expandCursorCatalog(
+  decoded: DecodedAvailableModelsResponse,
+  options: ExpandCursorCatalogOptions = {},
+): CursorCatalogEntry[] {
+  const includeHidden = options.includeHidden !== false
   const rows: CursorCatalogEntry[] = []
   const seen = new Set<string>()
 
@@ -189,19 +245,31 @@ export function expandCursorCatalog(decoded: DecodedAvailableModelsResponse): Cu
   }
 
   for (const model of decoded.models) {
-    if (model.isHidden) continue
+    if (model.isHidden && !includeHidden) continue
     if (!model.name) continue
 
     const parentCaps = deriveCursorCapabilities(model)
     const parentDisplay = cursorModelDisplayName(model)
     const defaultVariant = defaultNonMaxVariant(model)
-    const defaultRunModelId = variantRunSlug(defaultVariant)
+    const effortLevels = extractCursorEffortLevels(model)
+    const templateSlug = variantRunSlug(defaultVariant)
+    const skuPrefix = templateSlug
+      ? cursorSkuPrefixFromLegacySlug(templateSlug, effortLevels)
+      : model.name
+    // Prefer medium non-fast when medium is in effort levels. Postmortem +
+    // MA intentional medium default (server often advertises high-fast as
+    // default-non-max). See docs/agent-run-too-many-computers-postmortem.md.
+    let defaultRunModelId = variantRunSlug(defaultVariant)
+    if (effortLevels.includes("medium") && skuPrefix) {
+      defaultRunModelId = buildEffortFastSlug(skuPrefix, "medium", false)
+    }
+    const hiddenTags = model.isHidden ? (["hidden"] as const) : []
     add({
       id: cursorHostModelId(model.name),
       wireId: model.name,
       displayName: parentDisplay,
       capabilities: parentCaps,
-      tags: tagsForParent(model),
+      tags: [...tagsForParent(model), ...hiddenTags],
       defaultParameterValues: extraDefaultParams(model),
       defaultRunModelId,
     })
@@ -218,12 +286,50 @@ export function expandCursorCatalog(decoded: DecodedAvailableModelsResponse): Cu
         wireId: useVariantString ? variant.variantStringRepresentation! : hostSlug,
         displayName: formatCursorVariantDisplayName(parentDisplay, variant),
         capabilities: deriveCursorVariantCapabilities(model, variant),
-        tags: tagsForVariant(model, variant, hasParams, hasVariantString),
+        tags: [...tagsForVariant(model, variant, hasParams, hasVariantString), ...hiddenTags],
         parentWireId: model.name,
         parameterValues: hasParams ? params : undefined,
         useVariantString,
         runModelId: useVariantString ? variant.variantStringRepresentation! : hostSlug,
       })
+    }
+
+    // Synthesize missing effort x fast SKUs when the server returns only one
+    // variant but parameterDefinitions advertise the full ladder.
+    if (effortLevels.length > 0 && skuPrefix) {
+      const { effortParamId, fastParamId } = effortFastParamIdsFromVariant(model, defaultVariant)
+      if (effortParamId) {
+        const extras = extraDefaultParams(model)
+        const fastOptions = fastParamId ? [false, true] : [false]
+        for (const effort of effortLevels) {
+          for (const fast of fastOptions) {
+            const slug = buildEffortFastSlug(skuPrefix, effort, fast)
+            if (seen.has(cursorHostModelId(slug))) continue
+            const params: Array<{ id: string; value: string }> = [
+              ...extras.map((p) => ({ id: p.id, value: p.value })),
+              { id: effortParamId, value: effort },
+            ]
+            if (fastParamId) {
+              params.push({ id: fastParamId, value: String(fast) })
+            }
+            const synthetic: CursorModelVariant = {
+              legacySlug: slug,
+              parameterValues: params,
+              isDefaultNonMaxConfig: effort === "medium" && !fast,
+            }
+            add({
+              id: cursorHostModelId(slug),
+              wireId: slug,
+              displayName: formatCursorVariantDisplayName(parentDisplay, synthetic),
+              capabilities: deriveCursorVariantCapabilities(model, synthetic),
+              tags: [...tagsForVariant(model, synthetic, true, false), ...hiddenTags],
+              parentWireId: model.name,
+              parameterValues: params,
+              runModelId: slug,
+            })
+          }
+        }
+      }
     }
 
     for (const alias of unique([...(model.idAliases ?? []), ...(model.legacySlugs ?? [])])) {
@@ -237,6 +343,7 @@ export function expandCursorCatalog(decoded: DecodedAvailableModelsResponse): Cu
         capabilities: parentCaps,
         tags: [
           ...tagsForParent(model).filter((t) => t !== "default-on"),
+          ...hiddenTags,
           "alias",
           `canonical:${model.name}`,
         ],
