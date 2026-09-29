@@ -19,6 +19,7 @@ import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
 import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import { encMsg, encString } from "./proto/wire.ts"
+import { withToolAllowlistSelfHeal } from "./tool-allowlist-self-heal.ts"
 import { CURSOR_STREAM_CONTENT_TYPE, CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
 const model = {
@@ -155,6 +156,42 @@ describe("cursor tool allowlist self-heal", () => {
     const events = await run(client, "self-heal-unknown")
     expect(calls).toHaveLength(1)
     expect(events.some((e) => e.type === "stream_error")).toBe(true)
+  })
+
+  test("a framing event (message_start) before the error does not block the retry", async () => {
+    async function* first(): AsyncGenerator<CanonicalEvent> {
+      yield { type: "message_start" } as CanonicalEvent
+      yield {
+        type: "stream_error",
+        retryable: false,
+        category: "api",
+        cause: new Error(REQUIRED),
+      } as CanonicalEvent
+    }
+    async function* second(): AsyncGenerator<CanonicalEvent> {
+      yield { type: "message_start" } as CanonicalEvent
+      yield { type: "text_delta", index: 0, text: "HEALED" } as CanonicalEvent
+    }
+    const learned: string[] = []
+    const out: CanonicalEvent[] = []
+    for await (const ev of withToolAllowlistSelfHeal(first(), second, (t) => learned.push(t))) {
+      out.push(ev)
+    }
+    expect(learned).toEqual(["create_plan_tool_call"])
+    // The held message_start of the failed attempt is dropped: exactly one.
+    expect(out.filter((e) => e.type === "message_start")).toHaveLength(1)
+    expect(out.some((e) => e.type === "stream_error")).toBe(false)
+    expect(out.some((e) => e.type === "text_delta")).toBe(true)
+  })
+
+  test("framing events are flushed in order before the first content event", async () => {
+    async function* only(): AsyncGenerator<CanonicalEvent> {
+      yield { type: "message_start" } as CanonicalEvent
+      yield { type: "text_delta", index: 0, text: "x" } as CanonicalEvent
+    }
+    const out: CanonicalEvent[] = []
+    for await (const ev of withToolAllowlistSelfHeal(only(), only)) out.push(ev)
+    expect(out.map((e) => e.type)).toEqual(["message_start", "text_delta"])
   })
 
   test("does not retry after output already reached the host", async () => {
