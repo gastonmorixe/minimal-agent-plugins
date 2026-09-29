@@ -239,11 +239,13 @@ export function resolveCursorRequestedModelId(
 
   const lookup = req ? desiredSkuLookup(req, model) : undefined
   if (lookup) {
-    const fromIndex =
-      lookupCursorRunSku(lookup.parent, { effort: lookup.effort, fast: lookup.fast }) ??
-      spec?.defaultRunModelId
+    // Prefer indexed SKU, then constructed grok slug, then catalog default.
+    // Constructed medium must win over server high-fast when the index misses.
     const fromGrok = grokExplodedSku(lookup.parent, lookup.effort, lookup.fast === true)
-    const sku = fromIndex ?? fromGrok
+    const sku =
+      lookupCursorRunSku(lookup.parent, { effort: lookup.effort, fast: lookup.fast }) ??
+      fromGrok ??
+      spec?.defaultRunModelId
     if (sku) {
       return { modelId: sku, isVariantStringRepresentation: false, sendParameters: false }
     }
