@@ -212,6 +212,23 @@ export function encodeAgentClientMessageExecMcpResult(opts: ExecMcpResultOpts): 
   return encodeAgentClientMessageExecResult(opts)
 }
 
+/**
+ * Encode ExecClientControlMessage.throw (#2) = `ExecClientThrow { 1 id, 2 error }`,
+ * wrapped in AgentClientMessage (field 5). The official CLI sends this, then
+ * stream_close, when it has no handler for a server exec
+ * ("No handler found for server message of type ...", CLI 2026.09.28).
+ */
+export function encodeAgentClientMessageExecThrow(
+  execNumericId: number,
+  error: string,
+): Uint8Array {
+  const throwBody = concat(
+    execNumericId > 0 ? encVarintField(1, execNumericId) : new Uint8Array(0),
+    encString(2, error),
+  )
+  return encMsg(5, encMsg(2, throwBody))
+}
+
 /** Encode ExecClientControlMessage.stream_close wrapped in AgentClientMessage (field 5). */
 export function encodeAgentClientMessageExecStreamClose(execNumericId: number): Uint8Array {
   const streamCloseBody = execNumericId > 0 ? encVarintField(1, execNumericId) : new Uint8Array(0)
