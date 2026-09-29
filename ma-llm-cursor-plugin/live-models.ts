@@ -120,7 +120,13 @@ async function fetchCursorAvailableModels(
     method: "POST",
     headers: buildCursorHeaders({ token, ids, streaming: false, clientType: "cli" }),
     body: Buffer.from(
-      encodeAvailableModelsRequest({ useModelParameters: true, doNotUseMarkdown: true }),
+      encodeAvailableModelsRequest({
+        useModelParameters: true,
+        doNotUseMarkdown: true,
+        includeHiddenModels: true,
+        includeLongContextModels: true,
+        variantsWillBeShownInExplodedList: true,
+      }),
     ),
   })
   if (!response.ok) {
