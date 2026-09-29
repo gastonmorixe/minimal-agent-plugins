@@ -1,6 +1,7 @@
 /**
  * Hidden AvailableModels parents stay resolvable offline but never become
- * picker choices or the registry default.
+ * picker choices or the registry default. Registered-but-hidden ids remain
+ * selectable with `--model` (Run resolve).
  */
 import { describe, expect, test } from "bun:test"
 
@@ -67,5 +68,30 @@ describe("cursor hidden models", () => {
     expect(ids).toContain("cursor-visible-model")
     expect(ids).not.toContain("cursor-secret-lab-model")
     expect(ids).not.toContain("cursor-secret-lab-model-high")
+  })
+
+  test("live list mapping over static catalog omits every hidden host id", () => {
+    const hiddenIds = CURSOR_STATIC_CATALOG.filter((row) => row.isHidden).map((row) => row.id)
+    expect(hiddenIds.length).toBeGreaterThan(0)
+
+    const parents = CURSOR_STATIC_CATALOG.filter((row) => !row.parentWireId)
+    const rows = mapCursorLiveModels({
+      modelNames: [],
+      useModelParameters: true,
+      models: parents.map((row) => ({
+        name: row.wireId,
+        clientDisplayName: row.displayName,
+        isHidden: Boolean(row.isHidden),
+        variants: CURSOR_STATIC_CATALOG.filter((v) => v.parentWireId === row.wireId).map((v) => ({
+          legacySlug: v.runModelId ?? v.wireId,
+        })),
+        idAliases: [],
+        legacySlugs: [],
+      })),
+    })
+    const liveIds = new Set(rows.map((r) => r.id))
+    for (const id of hiddenIds) {
+      expect(liveIds.has(id)).toBe(false)
+    }
   })
 })
