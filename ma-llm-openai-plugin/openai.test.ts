@@ -18,7 +18,7 @@ import {
 import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
-import { registerOpenAIModels } from "./models.ts"
+import { findOpenAIModelByTags, registerOpenAIModels } from "./models.ts"
 import {
   captureOpenAIResponseRequest,
   clearModelRegistry,
@@ -90,6 +90,51 @@ describe("registerOpenAIModels", () => {
     expect(chat.surfaceId).toBe("openai-chat-completions")
     expect(chat.vendorIds?.firstParty).toBe("gpt-6-astra")
     expect(chat.capabilities.thinking.visible).toBe(false)
+  })
+
+  it("registers gpt-6.1 Sol, gpt-6 Sol and gpt-6 Luna with model-card data", () => {
+    const reg = makeTestRegistry()
+    const ids = registerOpenAIModels(reg.models)
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "gpt-6.1-sol",
+        "gpt-6.1-sol-chat",
+        "gpt-6-sol",
+        "gpt-6-sol-chat",
+        "gpt-6-luna",
+        "gpt-6-luna-chat",
+      ]),
+    )
+    const sol61 = reg.resolveModel("gpt-6.1-sol")
+    expect(sol61.surfaceId).toBe("openai-responses")
+    expect(sol61.capabilities.effort.levels).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra",
+    ])
+    expect(sol61.capabilities.effort.default).toBe("medium")
+    expect(sol61.capabilities.speedFast).toBe(true)
+    expect(sol61.pricing.inputUSD).toBe(2)
+    expect(sol61.pricing.outputUSD).toBe(10)
+    expect(sol61.pricing.cacheReadUSD).toBe(0.1)
+    expect(reg.resolveModel("gpt-6.1-sol-chat").vendorIds?.firstParty).toBe("gpt-6.1-sol")
+
+    const sol6 = reg.resolveModel("gpt-6-sol")
+    expect(sol6.capabilities.effort.levels).toContain("none")
+    expect(sol6.capabilities.effort.levels).toContain("ultra")
+    expect(sol6.capabilities.speedFast).toBe(true)
+    expect(sol6.pricing.cacheReadUSD).toBe(0.2)
+
+    const luna = reg.resolveModel("gpt-6-luna")
+    expect(luna.capabilities.effort.levels).toContain("none")
+    expect(luna.capabilities.effort.levels).not.toContain("ultra")
+    expect(luna.capabilities.speedFast).toBe(true)
+    expect(luna.pricing.inputUSD).toBe(0.1)
+    expect(luna.pricing.outputUSD).toBe(0.5)
+    expect(luna.knowledgeCutoff).toBe("2026-05-18")
   })
 
   it("registers gpt-5.6 Sol on the Responses surface with current capability + pricing data", () => {
@@ -497,5 +542,108 @@ describe("validateOpenAIRequest", () => {
     expect(res.degrade?.speed).toBeUndefined()
     expect(resolveModel("gpt-5.4-mini").capabilities.speedFast).toBe(false)
     expect(resolveModel("gpt-5.4-nano").capabilities.speedFast).toBe(false)
+  })
+})
+
+describe("GPT-6 Chat caps and sub-agent picks", () => {
+  it("flags Chat tools off and trims Chat effort per live probe (2026-09-29)", () => {
+    const reg = makeTestRegistry()
+    registerOpenAIModels(reg.models)
+    const sol61 = reg.resolveModel("gpt-6.1-sol-chat")
+    expect(sol61.capabilities.tools.userDefined).toBe(false)
+    expect(sol61.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+    expect(reg.resolveModel("gpt-6-sol-chat").capabilities.tools.userDefined).toBe(false)
+    const luna = reg.resolveModel("gpt-6-luna-chat")
+    expect(luna.capabilities.tools.userDefined).toBe(false)
+    expect(luna.capabilities.effort.levels).not.toContain("ultra")
+    expect(reg.resolveModel("gpt-6-astra-chat").capabilities.tools.userDefined).toBe(true)
+  })
+
+  it("keeps sub-agent recommendations on tool-capable models", () => {
+    const reg = makeTestRegistry()
+    registerOpenAIModels(reg.models)
+    expect(findOpenAIModelByTags(["chat", "fast"])).toBe("gpt-5.6-luna-chat")
+    expect(findOpenAIModelByTags(["flagship", "chat"])).toBe("gpt-6-astra-chat")
+    expect(findOpenAIModelByTags(["flagship", "reasoning"])).toBe("gpt-6-astra")
+  })
+})
+
+describe("remaining API models (2026-09-29)", () => {
+  const NEW = [
+    "gpt-5.1",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "gpt-5.3-codex",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-pro",
+    "chat-latest",
+    "o1",
+    "o1-pro",
+    "o3-mini",
+    "o3-pro",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+  ]
+  const REMOVED = [
+    "gpt-5.1-chat-latest",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-max",
+    "gpt-5.1-codex-mini",
+    "gpt-5.2-codex",
+    "gpt-5.2-chat-latest",
+    "gpt-5.3-chat-latest",
+    "gpt-5-codex",
+    "gpt-5-chat-latest",
+    "o3-deep-research",
+    "o4-mini-deep-research",
+    "gpt-5-search-api",
+    "gpt-4",
+    "gpt-4-turbo",
+    "gpt-3.5-turbo",
+  ]
+  const PRO = ["gpt-5.2-pro", "gpt-5-pro", "o1-pro", "o3-pro"]
+
+  it("registers all 14 ids and none of the removed ids", () => {
+    const ids = registerOpenAIModels(makeTestRegistry().models)
+    for (const id of NEW) expect(ids).toContain(id)
+    for (const id of REMOVED) {
+      expect(ids).not.toContain(id)
+      expect(ids).not.toContain(`${id}-chat`)
+    }
+  })
+
+  it("Pro entries have no chat sibling and cacheRead equals input", () => {
+    const reg = makeTestRegistry()
+    const ids = registerOpenAIModels(reg.models)
+    for (const id of PRO) {
+      expect(ids).not.toContain(`${id}-chat`)
+      const p = reg.resolveModel(id).pricing
+      expect(p.cacheReadUSD).toBe(p.inputUSD)
+    }
+    expect(ids).not.toContain("gpt-5.3-codex-chat")
+  })
+
+  it("keeps effort ladders", () => {
+    const reg = makeTestRegistry()
+    registerOpenAIModels(reg.models)
+    const eff = (id: string) => reg.resolveModel(id).capabilities.effort.levels
+    expect(eff("chat-latest")).toEqual(["medium"])
+    expect(eff("chat-latest-chat")).toEqual(["medium"])
+    expect(eff("gpt-5-pro")).toEqual(["high"])
+    expect(eff("gpt-5.1")).toEqual(["none", "low", "medium", "high"])
+    expect(eff("gpt-5.2")).toEqual(["none", "low", "medium", "high", "xhigh"])
+    expect(eff("gpt-5.2-pro")).toEqual(["medium", "high", "xhigh"])
+    expect(eff("gpt-5-mini")).toEqual(["minimal", "low", "medium", "high"])
+    expect(eff("o1")).toEqual(["low", "medium", "high"])
+    expect(eff("gpt-4.1-mini")).toEqual([])
+    expect(reg.resolveModel("gpt-4.1-nano").capabilities.acceptsTemperature).toBe(true)
+  })
+
+  it("marks deprecated models in displayName", () => {
+    const reg = makeTestRegistry()
+    registerOpenAIModels(reg.models)
+    expect(reg.resolveModel("gpt-5-pro").displayName).toContain("(deprecated 2026-12-11)")
+    expect(reg.resolveModel("o1").displayName).toContain("(deprecated 2026-10-23)")
   })
 })

@@ -239,6 +239,90 @@ export const CAPS_GPT_6_ASTRA_CHAT: Capabilities = {
 }
 
 // ---------------------------------------------------------------------------
+// GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna (sourced 2026-09-29 from
+// developers.openai.com/api/docs/models/{gpt-6.1-sol,gpt-6-sol,gpt-6-luna})
+// ---------------------------------------------------------------------------
+
+/**
+ * GPT-6.1 Sol (released 2026-09-29). Near-Astra quality at lower cost.
+ * Effort `low|medium|high|xhigh|max` (default medium). `none` and `minimal`
+ * are NOT supported. Codex live (2026-09-29) also lists `ultra` and Fast
+ * (`priority`, 2x). 1.05M context, 128K output. Tool calling needs the
+ * Responses API. Chat Completions works without tools.
+ */
+export const CAPS_GPT_6_1_SOL_RESPONSES: Capabilities = {
+  ...CAPS_GPT_6_ASTRA_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh", "max", "ultra"], default: "medium" },
+}
+
+/**
+ * GPT-6.1 Sol on Chat Completions. Live probe 2026-09-29: function tools are
+ * rejected at every effort ("use /v1/responses"), and effort `max` is not
+ * listed for Chat (server list: low|medium|high|xhigh). Tools need Responses.
+ */
+export const CAPS_GPT_6_1_SOL_CHAT: Capabilities = {
+  ...CAPS_GPT_6_1_SOL_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh"], default: "medium" },
+  tools: {
+    ...TOOLS_FULL,
+    userDefined: false,
+    parallel: false,
+    toolChoice: false,
+    strictSchema: false,
+  },
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
+ * GPT-6 Sol (2026-09-22, superseded by 6.1 Sol). Effort
+ * `none|low|medium|high|xhigh|max` (default medium). Chat Completions
+ * supports function calling only with effort `none`.
+ */
+export const CAPS_GPT_6_SOL_RESPONSES: Capabilities = {
+  ...CAPS_GPT_6_ASTRA_RESPONSES,
+  effort: {
+    levels: ["none", "low", "medium", "high", "xhigh", "max", "ultra"],
+    default: "medium",
+  },
+}
+
+/**
+ * GPT-6 Sol on Chat Completions. Live probe 2026-09-29 (Luna, same rule per
+ * docs): function tools work only with effort `none`. The default effort is
+ * medium, so tools are flagged off here. Use Responses for tools.
+ */
+export const CAPS_GPT_6_SOL_CHAT: Capabilities = {
+  ...CAPS_GPT_6_SOL_RESPONSES,
+  tools: {
+    ...TOOLS_FULL,
+    userDefined: false,
+    parallel: false,
+    toolChoice: false,
+    strictSchema: false,
+  },
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
+ * GPT-6 Luna (2026-09-22). Codex live (2026-09-29): Fast + efforts
+ * `low|medium|high|xhigh|max`, no `ultra`. Keep API `none`.
+ */
+export const CAPS_GPT_6_LUNA_RESPONSES: Capabilities = {
+  ...CAPS_GPT_6_SOL_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high", "xhigh", "max"], default: "medium" },
+}
+
+/** GPT-6 Luna on Chat Completions. */
+export const CAPS_GPT_6_LUNA_CHAT: Capabilities = {
+  ...CAPS_GPT_6_SOL_CHAT,
+  effort: CAPS_GPT_6_LUNA_RESPONSES.effort,
+}
+
+// ---------------------------------------------------------------------------
 // GPT-5.6 family (previous GPT-5 generation; Responses preferred, Chat also works)
 // ---------------------------------------------------------------------------
 
@@ -466,4 +550,143 @@ export const CAPS_GPT_5_5_CHAT: Capabilities = {
   thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
   serverSideHistory: false,
   serverTools: [],
+}
+
+// ---------------------------------------------------------------------------
+// Remaining API models (registered 2026-09-29 from live probes, key
+// openai-api-key-2, plus developers.openai.com/api/docs/models/<id>).
+// speedFast is true only where a request with service_tier "priority" echoed
+// service_tier "priority" (re-probed 2026-09-29): gpt-5.1, gpt-5.2,
+// gpt-5.3-codex, gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano. A 200 that echoed
+// "default" (gpt-5.2-pro, gpt-5-nano, gpt-5-pro, chat-latest, o-series) means
+// not honored, so speedFast stays false.
+// ---------------------------------------------------------------------------
+
+/** Chat Completions view of a Responses caps entry: no streamed reasoning, no hosted tools. */
+function chatSurface(caps: Capabilities): Capabilities {
+  return {
+    ...caps,
+    thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+    serverSideHistory: false,
+    serverTools: [],
+  }
+}
+
+/** gpt-5.1. Docs: reasoning.effort none (default), low, medium, high. */
+export const CAPS_GPT_5_1_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high"], default: "none" },
+  speedFast: true,
+}
+
+/** gpt-5.1 on Chat Completions. Tools work. */
+export const CAPS_GPT_5_1_CHAT: Capabilities = chatSurface(CAPS_GPT_5_1_RESPONSES)
+
+/** gpt-5.2. Docs: reasoning.effort none (default), low, medium, high, xhigh. */
+export const CAPS_GPT_5_2_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high", "xhigh"], default: "none" },
+  speedFast: true,
+}
+
+/** gpt-5.2 on Chat Completions. Tools work. */
+export const CAPS_GPT_5_2_CHAT: Capabilities = chatSurface(CAPS_GPT_5_2_RESPONSES)
+
+/** gpt-5.2 Pro. Responses only. Effort ladder medium|high|xhigh, default unverified (medium). */
+export const CAPS_GPT_5_2_PRO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["medium", "high", "xhigh"], default: "medium" },
+  speedFast: false,
+}
+
+/** gpt-5.3-codex. Responses only. Default effort unverified (medium). */
+export const CAPS_GPT_5_3_CODEX_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high", "xhigh"], default: "medium" },
+  speedFast: true,
+}
+
+/** gpt-5-mini. Deprecated, shutdown 2026-12-11. Default effort unverified (medium). */
+export const CAPS_GPT_5_MINI_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["minimal", "low", "medium", "high"], default: "medium" },
+  speedFast: true,
+}
+
+/** gpt-5-mini on Chat Completions. Tools work. */
+export const CAPS_GPT_5_MINI_CHAT: Capabilities = chatSurface(CAPS_GPT_5_MINI_RESPONSES)
+
+/** gpt-5-nano. Deprecated, shutdown 2026-12-11. Default effort unverified (medium). */
+export const CAPS_GPT_5_NANO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["minimal", "low", "medium", "high"], default: "medium" },
+  speedFast: false,
+}
+
+/** gpt-5-nano on Chat Completions. Tools work. */
+export const CAPS_GPT_5_NANO_CHAT: Capabilities = chatSurface(CAPS_GPT_5_NANO_RESPONSES)
+
+/**
+ * gpt-5-pro. Responses only. Deprecated, shutdown 2026-12-11. Only effort
+ * high. Max output 272K.
+ */
+export const CAPS_GPT_5_PRO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  maxOutputTokens: 272_000,
+  effort: { levels: ["high"], default: "high" },
+  speedFast: false,
+}
+
+/** chat-latest: moving alias to the latest ChatGPT Instant model. Only effort medium is accepted. */
+export const CAPS_CHAT_LATEST_RESPONSES: Capabilities = {
+  ...CAPS_GPT_5_RESPONSES,
+  effort: { levels: ["medium"], default: "medium" },
+  speedFast: false,
+}
+
+/** chat-latest on Chat Completions. Tools work at the default effort. */
+export const CAPS_CHAT_LATEST_CHAT: Capabilities = chatSurface(CAPS_CHAT_LATEST_RESPONSES)
+
+/** o1. Deprecated, shutdown 2026-10-23. Effort low|medium|high. */
+export const CAPS_O1_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
+
+/** o1 on Chat Completions. */
+export const CAPS_O1_CHAT: Capabilities = { ...CAPS_O3_CHAT }
+
+/** o1-pro. Responses only. Deprecated, shutdown 2026-10-23. */
+export const CAPS_O1_PRO_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
+
+/** o3-mini. Deprecated, shutdown 2026-10-23. Text input only. */
+export const CAPS_O3_MINI_RESPONSES: Capabilities = {
+  ...CAPS_O3_RESPONSES,
+  modalities: { image: false, audio: false, pdf: false, video: false },
+}
+
+/** o3-mini on Chat Completions. */
+export const CAPS_O3_MINI_CHAT: Capabilities = {
+  ...CAPS_O3_CHAT,
+  modalities: { image: false, audio: false, pdf: false, video: false },
+}
+
+/** o3-pro. Responses only. Deprecated, shutdown 2026-12-11. */
+export const CAPS_O3_PRO_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
+
+/** gpt-4.1-mini on Chat Completions. Non-reasoning. Priority honored. */
+export const CAPS_GPT_41_MINI_CHAT: Capabilities = { ...CAPS_GPT_41_CHAT, speedFast: true }
+
+/** gpt-4.1-mini on Responses. */
+export const CAPS_GPT_41_MINI_RESPONSES: Capabilities = {
+  ...CAPS_GPT_41_MINI_CHAT,
+  serverSideHistory: true,
+  serverTools: ["web_search", "file_search", "code_interpreter"],
+}
+
+/** gpt-4.1-nano on Chat Completions. Deprecated, shutdown 2026-10-23. Priority honored. */
+export const CAPS_GPT_41_NANO_CHAT: Capabilities = { ...CAPS_GPT_41_CHAT, speedFast: true }
+
+/** gpt-4.1-nano on Responses. */
+export const CAPS_GPT_41_NANO_RESPONSES: Capabilities = {
+  ...CAPS_GPT_41_NANO_CHAT,
+  serverSideHistory: true,
+  serverTools: ["web_search", "file_search", "code_interpreter"],
 }
