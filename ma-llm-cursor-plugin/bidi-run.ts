@@ -248,7 +248,8 @@ async function* readBidiUntilPauseOrEnd(
       })
       if (next.done) {
         cursorBidiLog("read.envelope-done")
-        for (const event of session.translator.finishIfStarted()) {
+        // finishOnClose: zero-content stream is an error (usage cap), not silence.
+        for (const event of session.translator.finishOnClose()) {
           cursorBidiLog("read.event", { type: event.type })
           yield event
         }

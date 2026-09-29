@@ -118,6 +118,11 @@ export class CursorBidiEnvelopeTranslator {
           upstreamType: (parsed.code ?? "connect_end_stream").slice(0, 200),
           cause,
         })
+        return { events, streamEnded: true, pauseForToolUse: false }
+      }
+      if (!this.started && !this.sawToolUse) {
+        events.push(this.emptyStreamError())
+        return { events, streamEnded: true, pauseForToolUse: false }
       }
       events.push(...this.finish(this.sawToolUse ? "tool_use" : "end_turn"))
       return { events, streamEnded: true, pauseForToolUse: false }
@@ -156,6 +161,31 @@ export class CursorBidiEnvelopeTranslator {
   finishIfStarted(): CanonicalEvent[] {
     if (!this.started) return []
     return this.finish(this.sawToolUse ? "tool_use" : "end_turn")
+  }
+
+  /**
+   * Terminal events when the wire closes. Unlike {@link finishIfStarted}, a
+   * stream that produced no content at all is an error, not a silent empty
+   * turn. Cursor answers HTTP 200 and then closes at once when the account is
+   * at its usage limit, so the user saw "no reply, no error".
+   */
+  finishOnClose(): CanonicalEvent[] {
+    if (this.started || this.sawToolUse) return this.finishIfStarted()
+    return [this.emptyStreamError()]
+  }
+
+  private emptyStreamError(): CanonicalEvent {
+    return {
+      type: "stream_error",
+      retryable: false,
+      category: "api",
+      upstreamType: "cursor_empty_stream",
+      cause: new Error(
+        "Cursor closed the stream with no content (HTTP 200, zero frames of output). " +
+          "This usually means the account hit its usage limit or the request was rejected. " +
+          "Check cursor.com usage, or try another Cursor credential.",
+      ),
+    }
   }
 
   private openMessage(): CanonicalEvent[] {
@@ -354,5 +384,5 @@ export async function* translateCursorBidiEnvelopes(
     for (const event of events) yield event
     if (pauseForToolUse || streamEnded) return
   }
-  for (const event of translator.finishIfStarted()) yield event
+  for (const event of translator.finishOnClose()) yield event
 }
