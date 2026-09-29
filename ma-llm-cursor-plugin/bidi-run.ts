@@ -60,11 +60,39 @@ export type CursorBidiRunOpts = {
   networkClient: NetworkClient
 }
 
-/** Whether this request should use the bidi tool loop (vs unary NetworkClient). */
-export function shouldUseCursorBidi(req: CanonicalRequest, networkClient?: unknown): boolean {
+/**
+ * Whether this request should use the bidi wire (vs unary NetworkClient).
+ *
+ * Tool-less requests (context compaction, titles, summaries) need bidi too: the
+ * server sends KvServerMessage set_blob and waits for the ack before
+ * turn_ended, and only the bidi wire can answer. On the unary path those turns
+ * hung until the host watchdog (live, 2026-09-28).
+ */
+export function shouldUseCursorBidi(_req: CanonicalRequest, networkClient?: unknown): boolean {
   if (process.env.MA_CURSOR_BIDI === "0") return false
-  if (!networkClient) return false
-  return cursorToolsEnabledOnWire(req)
+  return Boolean(networkClient)
+}
+
+/**
+ * Write a read-loop ack (KV, interaction, mcp_state, exec throw). When the server
+ * already closed its side, nothing waits for the ack, so skip it instead of
+ * failing the turn on the envelopes still queued.
+ */
+function writeAck(session: CursorBidiSession, payload: Uint8Array): void {
+  if (session.wire.isClosed()) {
+    cursorBidiLog("read.ack-skipped-closed", { protoBytes: payload.length })
+    return
+  }
+  session.wire.writeProto(payload)
+}
+
+/**
+ * Session key for a Run. Tool-less side calls get their own key, so they never
+ * close an open tool session (a pending exec) that shares the host session id.
+ */
+function bidiSessionKeyFor(req: CanonicalRequest, sessionId: string): string {
+  const base = sessionId || "default"
+  return cursorToolsEnabledOnWire(req) ? base : `${base}:notools`
 }
 
 /**
@@ -73,9 +101,11 @@ export function shouldUseCursorBidi(req: CanonicalRequest, networkClient?: unkno
 export async function* runCursorBidi(
   req: CanonicalRequest,
   _model: ModelView,
-  opts: CursorBidiRunOpts,
+  runOpts: CursorBidiRunOpts,
 ): AsyncGenerator<CanonicalEvent> {
-  const sessionKey = opts.sessionId || "default"
+  // Every later use (continue, read loop, clear) keys on opts.sessionId.
+  const opts = { ...runOpts, sessionId: bidiSessionKeyFor(req, runOpts.sessionId) }
+  const sessionKey = opts.sessionId
   const existing = getCursorBidiSession(sessionKey)
 
   if (existing && requestHasToolResultContinuation(req)) {
@@ -354,7 +384,7 @@ async function* readBidiUntilPauseOrEnd(
           id: kv.id,
           blobBytes: kv.kind === "set" ? kv.blobData.byteLength : 0,
         })
-        session.wire.writeProto(encodeAgentClientMessageKvReply(kv, session.blobStore))
+        writeAck(session, encodeAgentClientMessageKvReply(kv, session.blobStore))
         continue
       }
 
@@ -363,7 +393,7 @@ async function* readBidiUntilPauseOrEnd(
       const query = decodeInteractionQuery(next.value.payload)
       if (query) {
         cursorBidiLog("read.interaction-query", { id: query.id, queryField: query.queryField })
-        session.wire.writeProto(encodeInteractionRejection(query))
+        writeAck(session, encodeInteractionRejection(query))
         continue
       }
 
@@ -378,14 +408,15 @@ async function* readBidiUntilPauseOrEnd(
           kickOnly: mcpState.kickOnly,
           toolCount: session.mcpTools?.length ?? 0,
         })
-        session.wire.writeProto(
+        writeAck(
+          session,
           encodeAgentClientMcpStateResult(
             mcpState,
             session.mcpTools ?? [],
             mcpState.serverIdentifiers,
           ),
         )
-        session.wire.writeProto(encodeAgentClientMessageExecStreamClose(mcpState.id))
+        writeAck(session, encodeAgentClientMessageExecStreamClose(mcpState.id))
         continue
       }
 
@@ -400,13 +431,14 @@ async function* readBidiUntilPauseOrEnd(
           fieldNo: unsupported.fieldNo,
           name: unsupported.name,
         })
-        session.wire.writeProto(
+        writeAck(
+          session,
           encodeAgentClientMessageExecThrow(
             execId,
             `minimal-agent has no handler for server exec ${unsupported.name}`,
           ),
         )
-        session.wire.writeProto(encodeAgentClientMessageExecStreamClose(execId))
+        writeAck(session, encodeAgentClientMessageExecStreamClose(execId))
         continue
       }
 
