@@ -48,6 +48,11 @@ models, regenerates `static-catalog-part-*.ts`, and writes
 `tmp/available-models-snapshot.json`. Requires `cursor-oauth-2` in
 `~/.minimal-agent/auth.jsonc` (or `CURSOR_ACCESS_TOKEN`).
 
+CLI drift fixture (`__fixtures__/cursor-cli-models.YYYY.MM.DD.txt`): refresh with
+`cursor-agent models > __fixtures__/cursor-cli-models.$(date +%Y.%m.%d).txt`
+(outside the plugin cwd if the CLI would write session junk), then point
+`catalog-cli-drift.test.ts` at the new file.
+
 ## Quota footer
 
 The quota-status bar uses the same `month` / `ondemand` windows as Grok.
