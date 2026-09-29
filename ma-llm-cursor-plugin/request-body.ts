@@ -237,10 +237,22 @@ export function resolveCursorRequestedModelId(
     }
   }
 
+  // Bare parent with no explicit effort/speed: use catalog defaultRunModelId
+  // (server default-non-max, or medium for grok-4.5/4.6). Never fall back to
+  // the lowest effort.level when the ladder has no medium.
+  const hasExplicitTier =
+    req?.effort !== undefined || req?.speed === "fast" || req?.speed === "normal"
+  if (!hasExplicitTier && spec?.defaultRunModelId) {
+    return {
+      modelId: spec.defaultRunModelId,
+      isVariantStringRepresentation: false,
+      sendParameters: false,
+    }
+  }
+
   const lookup = req ? desiredSkuLookup(req, model) : undefined
   if (lookup) {
-    // Prefer indexed SKU, then constructed grok slug, then catalog default.
-    // Constructed medium must win over server high-fast when the index misses.
+    // Indexed SKU, then constructed grok slug, then catalog default.
     const fromGrok = grokExplodedSku(lookup.parent, lookup.effort, lookup.fast === true)
     const sku =
       lookupCursorRunSku(lookup.parent, { effort: lookup.effort, fast: lookup.fast }) ??
