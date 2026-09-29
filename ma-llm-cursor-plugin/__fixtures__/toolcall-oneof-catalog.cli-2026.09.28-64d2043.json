@@ -1,0 +1,416 @@
+[
+  {
+    "field_number": 1,
+    "proto_name": "shell_tool_call",
+    "oneof_case": "shellToolCall",
+    "oneof_index": 0
+  },
+  {
+    "field_number": 3,
+    "proto_name": "delete_tool_call",
+    "oneof_case": "deleteToolCall",
+    "oneof_index": 1
+  },
+  {
+    "field_number": 4,
+    "proto_name": "glob_tool_call",
+    "oneof_case": "globToolCall",
+    "oneof_index": 2
+  },
+  {
+    "field_number": 5,
+    "proto_name": "grep_tool_call",
+    "oneof_case": "grepToolCall",
+    "oneof_index": 3
+  },
+  {
+    "field_number": 8,
+    "proto_name": "read_tool_call",
+    "oneof_case": "readToolCall",
+    "oneof_index": 4
+  },
+  {
+    "field_number": 9,
+    "proto_name": "update_todos_tool_call",
+    "oneof_case": "updateTodosToolCall",
+    "oneof_index": 5
+  },
+  {
+    "field_number": 10,
+    "proto_name": "read_todos_tool_call",
+    "oneof_case": "readTodosToolCall",
+    "oneof_index": 6
+  },
+  {
+    "field_number": 12,
+    "proto_name": "edit_tool_call",
+    "oneof_case": "editToolCall",
+    "oneof_index": 7
+  },
+  {
+    "field_number": 13,
+    "proto_name": "ls_tool_call",
+    "oneof_case": "lsToolCall",
+    "oneof_index": 8
+  },
+  {
+    "field_number": 14,
+    "proto_name": "read_lints_tool_call",
+    "oneof_case": "readLintsToolCall",
+    "oneof_index": 9
+  },
+  {
+    "field_number": 15,
+    "proto_name": "mcp_tool_call",
+    "oneof_case": "mcpToolCall",
+    "oneof_index": 10
+  },
+  {
+    "field_number": 16,
+    "proto_name": "sem_search_tool_call",
+    "oneof_case": "semSearchToolCall",
+    "oneof_index": 11
+  },
+  {
+    "field_number": 17,
+    "proto_name": "create_plan_tool_call",
+    "oneof_case": "createPlanToolCall",
+    "oneof_index": 12
+  },
+  {
+    "field_number": 18,
+    "proto_name": "web_search_tool_call",
+    "oneof_case": "webSearchToolCall",
+    "oneof_index": 13
+  },
+  {
+    "field_number": 19,
+    "proto_name": "task_tool_call",
+    "oneof_case": "taskToolCall",
+    "oneof_index": 14
+  },
+  {
+    "field_number": 20,
+    "proto_name": "list_mcp_resources_tool_call",
+    "oneof_case": "listMcpResourcesToolCall",
+    "oneof_index": 15
+  },
+  {
+    "field_number": 21,
+    "proto_name": "read_mcp_resource_tool_call",
+    "oneof_case": "readMcpResourceToolCall",
+    "oneof_index": 16
+  },
+  {
+    "field_number": 22,
+    "proto_name": "apply_agent_diff_tool_call",
+    "oneof_case": "applyAgentDiffToolCall",
+    "oneof_index": 17
+  },
+  {
+    "field_number": 23,
+    "proto_name": "ask_question_tool_call",
+    "oneof_case": "askQuestionToolCall",
+    "oneof_index": 18
+  },
+  {
+    "field_number": 24,
+    "proto_name": "fetch_tool_call",
+    "oneof_case": "fetchToolCall",
+    "oneof_index": 19
+  },
+  {
+    "field_number": 25,
+    "proto_name": "switch_mode_tool_call",
+    "oneof_case": "switchModeToolCall",
+    "oneof_index": 20
+  },
+  {
+    "field_number": 28,
+    "proto_name": "generate_image_tool_call",
+    "oneof_case": "generateImageToolCall",
+    "oneof_index": 21
+  },
+  {
+    "field_number": 29,
+    "proto_name": "record_screen_tool_call",
+    "oneof_case": "recordScreenToolCall",
+    "oneof_index": 22
+  },
+  {
+    "field_number": 30,
+    "proto_name": "computer_use_tool_call",
+    "oneof_case": "computerUseToolCall",
+    "oneof_index": 23
+  },
+  {
+    "field_number": 31,
+    "proto_name": "write_shell_stdin_tool_call",
+    "oneof_case": "writeShellStdinToolCall",
+    "oneof_index": 24
+  },
+  {
+    "field_number": 32,
+    "proto_name": "reflect_tool_call",
+    "oneof_case": "reflectToolCall",
+    "oneof_index": 25
+  },
+  {
+    "field_number": 33,
+    "proto_name": "setup_vm_environment_tool_call",
+    "oneof_case": "setupVmEnvironmentToolCall",
+    "oneof_index": 26
+  },
+  {
+    "field_number": 34,
+    "proto_name": "truncated_tool_call",
+    "oneof_case": "truncatedToolCall",
+    "oneof_index": 27
+  },
+  {
+    "field_number": 35,
+    "proto_name": "start_grind_execution_tool_call",
+    "oneof_case": "startGrindExecutionToolCall",
+    "oneof_index": 28
+  },
+  {
+    "field_number": 36,
+    "proto_name": "start_grind_planning_tool_call",
+    "oneof_case": "startGrindPlanningToolCall",
+    "oneof_index": 29
+  },
+  {
+    "field_number": 37,
+    "proto_name": "web_fetch_tool_call",
+    "oneof_case": "webFetchToolCall",
+    "oneof_index": 30
+  },
+  {
+    "field_number": 38,
+    "proto_name": "report_bugfix_results_tool_call",
+    "oneof_case": "reportBugfixResultsToolCall",
+    "oneof_index": 31
+  },
+  {
+    "field_number": 39,
+    "proto_name": "ai_attribution_tool_call",
+    "oneof_case": "aiAttributionToolCall",
+    "oneof_index": 32
+  },
+  {
+    "field_number": 40,
+    "proto_name": "pr_management_tool_call",
+    "oneof_case": "prManagementToolCall",
+    "oneof_index": 33
+  },
+  {
+    "field_number": 41,
+    "proto_name": "mcp_auth_tool_call",
+    "oneof_case": "mcpAuthToolCall",
+    "oneof_index": 34
+  },
+  {
+    "field_number": 42,
+    "proto_name": "await_tool_call",
+    "oneof_case": "awaitToolCall",
+    "oneof_index": 35
+  },
+  {
+    "field_number": 43,
+    "proto_name": "blame_by_file_path_tool_call",
+    "oneof_case": "blameByFilePathToolCall",
+    "oneof_index": 36
+  },
+  {
+    "field_number": 44,
+    "proto_name": "get_mcp_tools_tool_call",
+    "oneof_case": "getMcpToolsToolCall",
+    "oneof_index": 37
+  },
+  {
+    "field_number": 45,
+    "proto_name": "report_bug_tool_call",
+    "oneof_case": "reportBugToolCall",
+    "oneof_index": 38
+  },
+  {
+    "field_number": 46,
+    "proto_name": "set_active_branch_tool_call",
+    "oneof_case": "setActiveBranchToolCall",
+    "oneof_index": 39
+  },
+  {
+    "field_number": 48,
+    "proto_name": "communicate_update_tool_call",
+    "oneof_case": "communicateUpdateToolCall",
+    "oneof_index": 40
+  },
+  {
+    "field_number": 49,
+    "proto_name": "send_final_summary_tool_call",
+    "oneof_case": "sendFinalSummaryToolCall",
+    "oneof_index": 41
+  },
+  {
+    "field_number": 50,
+    "proto_name": "update_pr_code_tour_tool_call",
+    "oneof_case": "updatePrCodeTourToolCall",
+    "oneof_index": 42
+  },
+  {
+    "field_number": 51,
+    "proto_name": "replace_env_tool_call",
+    "oneof_case": "replaceEnvToolCall",
+    "oneof_index": 43
+  },
+  {
+    "field_number": 52,
+    "proto_name": "edit_pr_labels_tool_call",
+    "oneof_case": "editPrLabelsToolCall",
+    "oneof_index": 44
+  },
+  {
+    "field_number": 53,
+    "proto_name": "record_ci_investigation_findings_tool_call",
+    "oneof_case": "recordCiInvestigationFindingsToolCall",
+    "oneof_index": 45
+  },
+  {
+    "field_number": 55,
+    "proto_name": "send_message_tool_call",
+    "oneof_case": "sendMessageToolCall",
+    "oneof_index": 46
+  },
+  {
+    "field_number": 56,
+    "proto_name": "fetch_cloud_agent_data_tool_call",
+    "oneof_case": "fetchCloudAgentDataToolCall",
+    "oneof_index": 47
+  },
+  {
+    "field_number": 58,
+    "proto_name": "send_to_user_tool_call",
+    "oneof_case": "sendToUserToolCall",
+    "oneof_index": 48
+  },
+  {
+    "field_number": 61,
+    "proto_name": "pi_read_tool_call",
+    "oneof_case": "piReadToolCall",
+    "oneof_index": 49
+  },
+  {
+    "field_number": 62,
+    "proto_name": "pi_bash_tool_call",
+    "oneof_case": "piBashToolCall",
+    "oneof_index": 50
+  },
+  {
+    "field_number": 63,
+    "proto_name": "pi_edit_tool_call",
+    "oneof_case": "piEditToolCall",
+    "oneof_index": 51
+  },
+  {
+    "field_number": 64,
+    "proto_name": "pi_write_tool_call",
+    "oneof_case": "piWriteToolCall",
+    "oneof_index": 52
+  },
+  {
+    "field_number": 65,
+    "proto_name": "pi_grep_tool_call",
+    "oneof_case": "piGrepToolCall",
+    "oneof_index": 53
+  },
+  {
+    "field_number": 66,
+    "proto_name": "pi_find_tool_call",
+    "oneof_case": "piFindToolCall",
+    "oneof_index": 54
+  },
+  {
+    "field_number": 67,
+    "proto_name": "pi_ls_tool_call",
+    "oneof_case": "piLsToolCall",
+    "oneof_index": 55
+  },
+  {
+    "field_number": 68,
+    "proto_name": "connect_scm_tool_call",
+    "oneof_case": "connectScmToolCall",
+    "oneof_index": 56
+  },
+  {
+    "field_number": 69,
+    "proto_name": "search_conversations_tool_call",
+    "oneof_case": "searchConversationsToolCall",
+    "oneof_index": 57
+  },
+  {
+    "field_number": 70,
+    "proto_name": "create_goal_tool_call",
+    "oneof_case": "createGoalToolCall",
+    "oneof_index": 58
+  },
+  {
+    "field_number": 71,
+    "proto_name": "update_goal_tool_call",
+    "oneof_case": "updateGoalToolCall",
+    "oneof_index": 59
+  },
+  {
+    "field_number": 72,
+    "proto_name": "adopt_tool_call",
+    "oneof_case": "adoptToolCall",
+    "oneof_index": 60
+  },
+  {
+    "field_number": 73,
+    "proto_name": "get_agent_status_tool_call",
+    "oneof_case": "getAgentStatusToolCall",
+    "oneof_index": 61
+  },
+  {
+    "field_number": 74,
+    "proto_name": "send_to_agent_tool_call",
+    "oneof_case": "sendToAgentToolCall",
+    "oneof_index": 62
+  },
+  {
+    "field_number": 75,
+    "proto_name": "read_agent_transcript_tool_call",
+    "oneof_case": "readAgentTranscriptToolCall",
+    "oneof_index": 63
+  },
+  {
+    "field_number": 76,
+    "proto_name": "create_agent_tool_call",
+    "oneof_case": "createAgentToolCall",
+    "oneof_index": 64
+  },
+  {
+    "field_number": 77,
+    "proto_name": "stop_agent_tool_call",
+    "oneof_case": "stopAgentToolCall",
+    "oneof_index": 65
+  },
+  {
+    "field_number": 78,
+    "proto_name": "get_pr_code_tour_tool_call",
+    "oneof_case": "getPrCodeTourToolCall",
+    "oneof_index": 66
+  },
+  {
+    "field_number": 79,
+    "proto_name": "write_canvas_tool_call",
+    "oneof_case": "writeCanvasToolCall",
+    "oneof_index": 67
+  },
+  {
+    "field_number": 80,
+    "proto_name": "read_canvas_tool_call",
+    "oneof_case": "readCanvasToolCall",
+    "oneof_index": 68
+  }
+]
