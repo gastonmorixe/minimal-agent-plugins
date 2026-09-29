@@ -1,6 +1,8 @@
 /**
  * Drift: every official CLI model id must resolve in the Cursor static registry.
  * Fixture: cursor-agent models list from CLI build 2026.09.28-64d2043.
+ * Refresh: `cursor-agent models > __fixtures__/cursor-cli-models.YYYY.MM.DD.txt`
+ * then update the path below (see README "Refresh model registry").
  */
 import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
