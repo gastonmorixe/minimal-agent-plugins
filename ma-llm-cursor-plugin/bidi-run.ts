@@ -36,6 +36,7 @@ import {
   encodeShellStreamExecFrames,
 } from "./proto/client-message.ts"
 import { decodeAgentServerMessage } from "./proto/exec-server-decode.ts"
+import { decodeInteractionQuery, encodeInteractionRejection } from "./proto/interaction-query.ts"
 import { decodeKvServerMessage, encodeAgentClientMessageKvReply } from "./proto/kv.ts"
 import { resolveCursorWireAgentMode } from "./request-body.ts"
 import { CursorBidiEnvelopeTranslator } from "./response-stream-bidi.ts"
@@ -265,6 +266,15 @@ async function* readBidiUntilPauseOrEnd(
           blobBytes: kv.kind === "set" ? kv.blobData.byteLength : 0,
         })
         session.wire.writeProto(encodeAgentClientMessageKvReply(kv, session.blobStore))
+        continue
+      }
+
+      // interaction_query (#7): the server waits for interaction_response (#6).
+      // MA has no approval UI for Cursor-native flows, so reject instead of hanging.
+      const query = decodeInteractionQuery(next.value.payload)
+      if (query) {
+        cursorBidiLog("read.interaction-query", { id: query.id, queryField: query.queryField })
+        session.wire.writeProto(encodeInteractionRejection(query))
         continue
       }
 
