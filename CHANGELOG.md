@@ -6,6 +6,122 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Changed
+
+- 2026-09-28: **Cursor models now see only minimal-agent tools.** Work by Eric
+  (`9a34c325`), reviewed by Margaret (`740642b5`).
+  - What changed: with MA tools on, the plugin sends
+    `x-cursor-agent-allowed-tools: mcp_tool_call,get_mcp_tools_tool_call` and no
+    exclude header (`eb1c76f`).
+  - Why: the exclude header blocked native calls, but the server still described
+    every native Cursor tool to the model, so the model listed Shell, StrReplace,
+    TodoWrite and others. With the allowlist, the model lists only
+    GetDynamicTools, CallDynamicTool and minimal-agent tools.
+  - `get_mcp_tools_tool_call` (GetDynamicTools) is required. Without it the server
+    rejects the Run with "Required tool GET_MCP_TOOLS not found in allTools".
+  - Self-heal (`eb1c76f`, `3faf97a`):
+    - When the server demands another tool before any output reached the host,
+      the plugin learns the tool, retries the Run once with it allowed, and keeps
+      it allowed for later Runs in the same process.
+    - A second error, or a tool name that is not in the catalog, is shown as an
+      error.
+    - A leading `message_start` does not block the retry.
+  - Kill switch: `MA_CURSOR_TOOL_FILTER=exclude` restores the old exclude list.
+    Runs with tools off (toolChoice none) still send the exclude list.
+  - Evidence:
+    - Live A/B of 5 header variants:
+      - The exclude list alone left the model listing 6 base and 13 "cursor"
+        native names.
+      - The allowlist with only `mcp_tool_call` made the server reject the Run
+        (twice, with and without the exclude list).
+      - The allowlist with `get_mcp_tools_tool_call` worked in 3 of 3 runs.
+    - Live matrix on cursor-auto, Claude Opus 5.5, GPT 5.6 Sol, Grok 4.7 and
+      Composer 2.5, in agent, ask and plan modes, with the full 42-tool MA set.
+      0 "Required tool" errors, 0 unsupported execs.
+    - A real TUI session with the full tool set.
+  - This corrects the earlier 2026-09-28 entry "Cursor provider no longer gets
+    stuck after one or two prompts". Its snake_case exclude fix (`c6c7823`)
+    blocked native calls, but it did not hide native tools from the model's
+    listing. The allowlist does.
+
+- 2026-09-28: **Cursor model catalog refreshed to CLI 2026.09.28.** Work by Debra
+  (`4cd8c427`) and Adrian (`9f066079`), reviewed by Margaret (`740642b5`).
+  - Registry: 298 to 375 static rows, 471 registered ids. All 246 ids that the
+    Cursor CLI lists now resolve (42 did not before).
+  - When the server sends only one variant of a model, the plugin synthesizes the
+    effort and fast SKUs. Probed live with HTTP 200: grok-4.7-low,
+    gemini-3.8-flash-low, claude-sonnet-5-5-low, muse-spark-1.3-minimal.
+  - Hidden and long-context models are requested and registered. They are left
+    out of the live model list but are still selectable with `--model`.
+  - `cursor-kimi` and `cursor-kimi-latest` now resolve to kimi-k2.7-code.
+    kimi-k3 is a separate model.
+  - A bare model id sends the server's default non-max SKU. grok-4.5 and
+    grok-4.6 stay on medium.
+  - The muse-spark `minimal` effort is recognized.
+  - A CLI drift fixture and test guard the catalog. Regenerate with
+    `bun run generate:static-catalog`.
+  - Commits: `b6e84a3`, `e5a9bfa`, `fbed672`, `1e5e8d2`, `b9dad15`, `fbc8482`,
+    `35dcac0`, `9652ec9`.
+  - Known nit: a bare grok-4.7 with speed fast and no effort sends the
+    `-medium-fast` SKU.
+
+### Fixed
+
+- 2026-09-28: **Cursor requests without tools no longer hang.** Context
+  compaction, titles and summaries no longer stall. Compaction is part of what
+  users saw as "stuck after one or two prompts". Work by Eric (`9a34c325`),
+  reviewed by Margaret (`740642b5`).
+  - Root cause: a Run with no tools took the unary path. The server sends
+    KvServerMessage set_blob and waits for the ack before turn_ended, and only the
+    bidi wire can answer, so these turns hung until the host watchdog. In one live
+    session, compaction stalled for about 8 minutes and the user had to interrupt.
+  - This bug is older than this week's regression. The live e2e "cursor-auto text
+    round-trip" timed out at 60 s in both baseline runs, including the one pinned
+    to client version `cli-2026.07.23`.
+  - Follows the earlier 2026-09-28 entry "Cursor provider no longer gets stuck
+    after one or two prompts", which fixed Runs with tools.
+  - Fixes:
+    - `1be6890`: use the bidi wire whenever a network client exists, tools or not.
+      The unary path stays as the fallback without a network client, or with
+      `MA_CURSOR_BIDI=0`. mcp_state on a tool-less Run is answered with an empty
+      server list. Read-loop acks are skipped when the server already closed its
+      side.
+    - `6a31f1d`: each tool-less Run gets a unique session key, so a compaction
+      and a title call at the same time do not close each other, and neither
+      closes an open tool session with a pending exec.
+    - `0d07aad`: the session is cleaned up when the caller stops early (Esc, a
+      watchdog, a host retry), unless a pending exec must survive for its
+      continuation. Before this, each abandoned tool-less Run leaked an open h2
+      wire and its heartbeat timer.
+  - Evidence: the live e2e "cursor-auto text round-trip" passes in 3.4 s (it was
+    a 60 s timeout), and a real `/compact` finished in about 5 s.
+
+### Known issues
+
+- Cursor debug mode (`cursor-agent-mode: debug`) fails with "The debug
+  configuration was not set up properly", with either tool header. The tool
+  filter does not cause it. It is not fixed.
+- With the allowlist, a server-required tool that is not in the plugin catalog
+  fails the Run with the raw server error and no retry. Use
+  `MA_CURSOR_TOOL_FILTER=exclude` as the fallback.
+- MA does not send Cursor `conversation_state` or store checkpoints. So Cursor
+  server-side auto-compaction never applies to MA sessions. Cursor staff have
+  said it starts at about 90% of the window (forum post, cited in the CLI
+  2026.09.28 reverse-engineering report 04). We did not measure this.
+  - MA compaction is host-side. Core compacts on its own only when the provider
+    returns a context-length error (`src/host/context-exceeded-recovery.ts`). There
+    is no percentage threshold in core.
+  - With Cursor, MA's own compaction is a tool-less Cursor request. That is why
+    the tool-less fix above matters for long sessions.
+  - There is no per-provider switch for MA auto-compaction yet. Only the global
+    `MINIMAL_AGENT_AUTO_COMPACT=0` exists.
+- The allowlist and exclude behavior is verified against server behavior at CLI
+  2026.09.28 only. A server change could reject the allowlist.
+  `MA_CURSOR_TOOL_FILTER=exclude` is the fallback.
+- The plugins CI lint step fails on a fresh install (oxlint 1.86 with
+  oxlint-tsgolint 0.24, `bun.lock` is gitignored). It passes locally with oxlint
+  1.73.0.
+
 ### Fixed
 
 - 2026-09-28: **Cursor provider no longer gets stuck after one or two prompts**,
