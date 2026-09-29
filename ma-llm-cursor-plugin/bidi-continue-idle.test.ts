@@ -148,7 +148,12 @@ describe("cursor bidi continuation idle guard", () => {
     const beat = setInterval(() => ctrl?.enqueue(heartbeatFrame()), 20)
     try {
       const started = Date.now()
-      const events: { type: string; retryable?: boolean; category?: string }[] = []
+      const events: {
+        type: string
+        retryable?: boolean
+        category?: string
+        upstreamType?: string
+      }[] = []
       let thrown: unknown
       const run = (async () => {
         try {
