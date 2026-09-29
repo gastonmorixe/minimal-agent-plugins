@@ -13,6 +13,7 @@
     "format:check": "biome format .",
     "biome:check": "biome check .",
     "biome:fix": "biome check --write .",
-    "check": "bun run ../scripts/check.ts"
+    "check": "bun run ../scripts/check.ts",
+    "generate:static-catalog": "bun run scripts/generate-static-catalog.ts"
   }
 }

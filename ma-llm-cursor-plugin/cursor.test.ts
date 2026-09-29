@@ -325,7 +325,8 @@ describe("capabilities seed", () => {
     }
     registerCursorModels(models as never)
     const namespaced = [...entries.keys()].filter((id) => id.startsWith("cursor-"))
-    expect(namespaced.length).toBe(299)
+    // Count tracks static catalog + sparse-variant fill + cursor-auto + kimi aliases.
+    expect(namespaced.length).toBe(403)
     expect(entries.has("grok-4.6")).toBe(true)
     expect(entries.get("grok-4.6")?.vendorIds?.cursor).toBe("grok-4.6")
     const fast = entries.get("cursor-grok-4.6-high-fast")
@@ -347,6 +348,28 @@ describe("capabilities seed", () => {
     expect(vision?.capabilities.modalities?.image).toBe(true)
     const auto = entries.get("cursor-auto")
     expect(auto?.vendorIds?.cursor).toBe("default")
+
+    // HEAD aliases kept; live catalog dropped bare kimi ids. Canonical is kimi-k2.7-code (not kimi-k3).
+    for (const aliasId of ["cursor-kimi", "cursor-kimi-latest"] as const) {
+      const kimi = entries.get(aliasId) as
+        | { tags?: string[]; vendorIds?: { cursor?: string } }
+        | undefined
+      expect(kimi).toBeTruthy()
+      expect(kimi?.tags?.includes("alias")).toBe(true)
+      expect(kimi?.tags?.includes("canonical:kimi-k2.7-code")).toBe(true)
+      expect(kimi?.vendorIds?.cursor).toBe("kimi-k2.7-code")
+    }
+
+    // Muse Spark: CLI/fixture advertise minimal; parent effortLevels must include it.
+    const muse = entries.get("cursor-muse-spark-1.3")
+    expect(muse?.capabilities.effort.levels).toContain("minimal")
+    expect(entries.has("cursor-muse-spark-1.3-minimal")).toBe(true)
+
+    // Sonnet: raw AvailableModels supportsThinking may be false; effort ladder still
+    // forces thinking.visible via deriveCursorCapabilities (intentional).
+    const sonnet = entries.get("cursor-claude-sonnet-5-5")
+    expect(sonnet?.capabilities.thinking.visible).toBe(true)
+    expect(sonnet?.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
     expect(auto?.capabilities.thinking.visible).toBe(false)
     registerCursorAdHocModelInto(models as never, "cursor-adhoc-test")
     expect(entries.get("cursor-adhoc-test")?.capabilities.effort.levels).toEqual([])
