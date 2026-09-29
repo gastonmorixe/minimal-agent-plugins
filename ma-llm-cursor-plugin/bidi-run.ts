@@ -157,9 +157,12 @@ export async function* runCursorBidi(
 
   try {
     yield* readBidiUntilPauseOrEnd(session, opts)
-  } catch (err) {
-    clearCursorBidiSession(sessionKey)
-    throw err
+  } finally {
+    // Runs on normal end, throw, and early return (the caller stops iterating:
+    // Esc, a watchdog, a host retry). Only a tool pause with a pending exec
+    // keeps the session, for the continuation. Anything else would leak an
+    // open wire: tool-less keys are unique and never overwritten.
+    if (!session.pendingExec) clearCursorBidiSession(sessionKey, session)
   }
 }
 
