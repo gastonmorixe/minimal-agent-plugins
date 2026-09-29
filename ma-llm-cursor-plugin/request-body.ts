@@ -387,9 +387,35 @@ function blockText(block: CanonicalBlock): string | null {
   return null
 }
 
+/** Per tool result cap in the flattened history, so a huge result cannot blow up a fresh Run. */
+const FLATTEN_TOOL_RESULT_MAX_CHARS = 20_000
+
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text
+  return `${text.slice(0, max)}\n[truncated ${text.length - max} chars]`
+}
+
+function toolResultText(block: Extract<CanonicalBlock, { type: "tool_result" }>): string {
+  const body = block.content
+    .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
+    .join("\n")
+    .trim()
+  const label = block.isError ? "tool_result (error)" : "tool_result"
+  return `[${label} ${block.toolUseId}]\n${clip(body || "(empty)", FLATTEN_TOOL_RESULT_MAX_CHARS)}`
+}
+
 function messageText(msg: CanonicalMessage): string {
   const texts: string[] = []
   for (const block of msg.content) {
+    if (block.type === "tool_use") {
+      // Keep the call so the model sees what it asked for, paired by id with its result.
+      texts.push(`[tool_use ${block.id}] ${block.name} ${JSON.stringify(block.input ?? {})}`)
+      continue
+    }
+    if (block.type === "tool_result") {
+      texts.push(toolResultText(block))
+      continue
+    }
     const t = blockText(block)
     if (t) texts.push(t)
   }
