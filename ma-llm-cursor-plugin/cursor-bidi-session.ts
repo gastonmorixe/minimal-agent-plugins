@@ -60,6 +60,11 @@ export function clearCursorBidiSession(sessionId: string, expected?: CursorBidiS
   sessions.delete(sessionId)
 }
 
+/** Test-only: ids of the open sessions. */
+export function cursorBidiSessionKeysForTests(): string[] {
+  return [...sessions.keys()]
+}
+
 /** Test-only: reset all sessions. */
 export function resetCursorBidiSessionsForTests(): void {
   for (const id of [...sessions.keys()]) clearCursorBidiSession(id)

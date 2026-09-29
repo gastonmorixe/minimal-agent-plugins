@@ -87,12 +87,13 @@ function writeAck(session: CursorBidiSession, payload: Uint8Array): void {
 }
 
 /**
- * Session key for a Run. Tool-less side calls get their own key, so they never
- * close an open tool session (a pending exec) that shares the host session id.
+ * Session key for a Run. Tool-less side calls (compaction, titles, summaries)
+ * never pend an exec or continue, so each one gets a unique key: it never
+ * closes an open tool session, or another tool-less run, on the same host id.
  */
 function bidiSessionKeyFor(req: CanonicalRequest, sessionId: string): string {
   const base = sessionId || "default"
-  return cursorToolsEnabledOnWire(req) ? base : `${base}:notools`
+  return cursorToolsEnabledOnWire(req) ? base : `${base}:notools:${crypto.randomUUID()}`
 }
 
 /**
