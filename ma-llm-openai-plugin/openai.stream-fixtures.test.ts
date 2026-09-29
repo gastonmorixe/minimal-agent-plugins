@@ -433,6 +433,43 @@ describe("OpenAI — service_tier (provider-neutral serviceTier mapping)", () =>
     expect(body.service_tier).toBeUndefined()
   })
 
+  it("Responses: sends ultrafast for gpt-6-astra, Chat drops it, speed:fast stays priority", () => {
+    bootstrap()
+    const astra = { modelId: "gpt-6-astra", messages: [userText("hi")] }
+    expect(
+      buildOpenAIResponsesBody({ ...astra, serviceTier: "ultrafast" }, resolveModel("gpt-6-astra"))
+        .service_tier,
+    ).toBe("ultrafast")
+    expect(
+      buildOpenAIResponsesBody({ ...astra, speed: "fast" }, resolveModel("gpt-6-astra"))
+        .service_tier,
+    ).toBe("priority")
+    const chat = buildOpenAIChatBody(
+      { modelId: "gpt-6-astra-chat", messages: [userText("hi")], serviceTier: "ultrafast" },
+      resolveModel("gpt-6-astra-chat"),
+    )
+    expect(chat.service_tier).toBeUndefined()
+    // Not accepted by the API on these models (live 400): dropped, not sent.
+    for (const id of ["gpt-6.1-sol", "gpt-6-luna", "gpt-5.5"]) {
+      const b = buildOpenAIResponsesBody(
+        { modelId: id, messages: [userText("hi")], serviceTier: "ultrafast" },
+        resolveModel(id),
+      )
+      expect(b.service_tier).toBeUndefined()
+    }
+  })
+
+  it("Responses: speed:fast on gpt-6.1-sol, gpt-6-sol, gpt-6-luna maps to priority", () => {
+    bootstrap()
+    for (const id of ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"]) {
+      const body = buildOpenAIResponsesBody(
+        { modelId: id, messages: [userText("hi")], speed: "fast" },
+        resolveModel(id),
+      )
+      expect(body.service_tier).toBe("priority")
+    }
+  })
+
   it("Responses: omits service_tier when unset", () => {
     bootstrap()
     const body = buildOpenAIResponsesBody(req(), resolveModel("gpt-5.5"))

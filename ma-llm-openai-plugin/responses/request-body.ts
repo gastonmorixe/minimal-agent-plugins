@@ -52,7 +52,7 @@ export interface OpenAIResponsesRequestBody {
   stream?: boolean
   store?: boolean
   /** Compute/capacity lane. `auto|default|flex|scale|priority`. */
-  service_tier?: "auto" | "default" | "flex" | "scale" | "priority"
+  service_tier?: "auto" | "default" | "flex" | "scale" | "priority" | "ultrafast"
   include?: string[]
   metadata?: Record<string, string>
   user?: string
@@ -78,7 +78,29 @@ export interface OpenAIResponsesRequestBody {
  * (`additional_speed_tiers`, service-tier display name) but the request
  * value is still `"priority"` (Codex Fast request value).
  */
-export const OPENAI_SERVICE_TIERS = new Set(["auto", "default", "flex", "scale", "priority"])
+export const OPENAI_SERVICE_TIERS = new Set([
+  "auto",
+  "default",
+  "flex",
+  "scale",
+  "priority",
+  "ultrafast",
+])
+
+/**
+ * Ultrafast is Responses-API only (developers.openai.com/api/docs/guides/ultrafast-mode,
+ * 2026-09-29: `gpt-6-astra` with `service_tier: "ultrafast"`, preview for
+ * gpt-5.6-sol). The Codex catalog lists no Ultrafast tier, so it is never
+ * implied by `speed:"fast"`. Callers opt in with `serviceTier: "ultrafast"`.
+ */
+export const OPENAI_ULTRAFAST_SERVICE_TIER = "ultrafast"
+
+/**
+ * Wire model ids that accept `service_tier: "ultrafast"`. Verified live on
+ * 2026-09-29 with an API key: `gpt-6-astra` returns 200 (tier=ultrafast),
+ * `gpt-6.1-sol` and `gpt-6-luna` return 400 "Invalid service_tier argument".
+ */
+export const OPENAI_ULTRAFAST_MODELS: ReadonlySet<string> = new Set(["gpt-6-astra"])
 
 /** Wire value for Codex / ChatGPT Fast mode (`speed:"fast"` / `/fast`). */
 export const OPENAI_FAST_SERVICE_TIER = "priority"
@@ -94,11 +116,14 @@ export function resolveOpenAIServiceTier(opts: {
   vendorTier?: string
   serviceTier?: string
   speedFast?: boolean
+  /** Ultrafast is valid on the Responses surface only. Chat drops it. */
+  allowUltrafast?: boolean
 }): string | undefined {
   const raw =
     opts.vendorTier ?? opts.serviceTier ?? (opts.speedFast ? OPENAI_FAST_SERVICE_TIER : undefined)
   if (raw === undefined) return undefined
   const wire = raw === "fast" ? OPENAI_FAST_SERVICE_TIER : raw
+  if (wire === OPENAI_ULTRAFAST_SERVICE_TIER && !opts.allowUltrafast) return undefined
   return OPENAI_SERVICE_TIERS.has(wire) ? wire : undefined
 }
 
@@ -253,6 +278,7 @@ export function buildOpenAIResponsesBody(
     vendorTier: vendor?.serviceTier,
     serviceTier: req.serviceTier,
     speedFast: req.speed === "fast" && model.capabilities.speedFast,
+    allowUltrafast: OPENAI_ULTRAFAST_MODELS.has(body.model),
   })
   if (tier !== undefined) {
     body.service_tier = tier as NonNullable<OpenAIResponsesRequestBody["service_tier"]>

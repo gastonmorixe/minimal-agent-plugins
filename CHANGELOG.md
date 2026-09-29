@@ -6,6 +6,28 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Added
+
+- 2026-09-29: **OpenAI provider: GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna, Ultrafast, and
+  the older models the API still serves.** Work by Fernando (`a1f4e699`).
+  - New models (Responses plus `-chat` where the API allows it): `gpt-6.1-sol`
+    ($2/$10), `gpt-6-sol` ($2/$10), `gpt-6-luna` ($0.10/$0.50). Data comes from the
+    model cards and live probes with an API key.
+  - Live effort ladders: `gpt-6.1-sol` low to max (no `none`). `gpt-6-sol` and
+    `gpt-6-luna` none to max. Chat Completions: `gpt-6.1-sol` rejects function
+    tools at every effort. `gpt-6-sol` and `gpt-6-luna` take tools only with
+    effort `none`. The `-chat` caps flag tools off to match.
+  - `service_tier: "ultrafast"` is sent only for `gpt-6-astra` on Responses. The API
+    returns 400 for it on every other model. Chat drops it. `speed:"fast"` still
+    maps to `priority`.
+  - `ultra` effort stays in the Codex-listed ladders (`gpt-6.1-sol`, `gpt-6-astra`,
+    `gpt-6-sol`, `gpt-5.6-sol`, `gpt-5.6-terra`). Both the API and the Codex wire
+    rejected it on the test account (2026-09-29). It may be gated to higher plans.
+  - Ids the API lists but that return 404 (removed 2026-07-23 and 2026-08-10) are
+    not registered. The list is in `models.ts`.
+  - Sub-agent scout pick is unchanged: `gpt-6-luna-chat` has no `fast` tag because
+    its tools work only with effort `none`.
+
 ### Changed
 
 - 2026-09-28: **Cursor models now see only minimal-agent tools.** Work by Eric

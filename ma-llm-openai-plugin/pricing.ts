@@ -161,6 +161,40 @@ export const PRICING_GPT_6_ASTRA: MTokRate = {
 }
 
 /**
+ * gpt-6.1-sol pricing (2026-09-29 model card). Short-context Standard:
+ * $2 / $10, cached input $0.10, cache write $2.50. Long context (over 272K) is
+ * 2x input/cache and 1.5x output, not modeled here.
+ */
+export const PRICING_GPT_6_1_SOL: MTokRate = {
+  inputUSD: 2,
+  outputUSD: 10,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.1,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 10,
+}
+
+/** gpt-6-sol pricing (2026-09-29 model card): $2 / $10, cached input $0.20. */
+export const PRICING_GPT_6_SOL: MTokRate = {
+  inputUSD: 2,
+  outputUSD: 10,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.2,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 10,
+}
+
+/** gpt-6-luna pricing (2026-09-29 model card): $0.10 / $0.50, cached $0.01. */
+export const PRICING_GPT_6_LUNA: MTokRate = {
+  inputUSD: 0.1,
+  outputUSD: 0.5,
+  cacheWriteUSD: 0.125,
+  cacheReadUSD: 0.01,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 0.5,
+}
+
+/**
  * gpt-5.6 Sol pricing. Short-context Standard promo: $4 / $20 (pricing
  * page 2026-09-08; promo through at least 2026-11-21). Explicit cache
  * writes are 1.25x uncached input.
@@ -198,4 +232,138 @@ export const PRICING_GPT_5_6_LUNA: MTokRate = {
   cacheReadUSD: 0.02,
   webSearchPerCallUSD: 0,
   reasoningUSD: 1.2,
+}
+
+// Remaining API models (2026-09-29, research/models-*.json). cacheWriteUSD
+// mirrors input. Pro models have no cached discount: cacheReadUSD = input.
+
+/** gpt-5.1 pricing. */
+export const PRICING_GPT_5_1: MTokRate = {
+  inputUSD: 1.25,
+  outputUSD: 10,
+  cacheWriteUSD: 1.25,
+  cacheReadUSD: 0.125,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 10,
+}
+
+/** gpt-5.2 and gpt-5.3-codex pricing. */
+export const PRICING_GPT_5_2: MTokRate = {
+  inputUSD: 1.75,
+  outputUSD: 14,
+  cacheWriteUSD: 1.75,
+  cacheReadUSD: 0.175,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 14,
+}
+
+/** gpt-5.2 Pro pricing. No cached input discount. */
+export const PRICING_GPT_5_2_PRO: MTokRate = {
+  inputUSD: 21,
+  outputUSD: 168,
+  cacheWriteUSD: 21,
+  cacheReadUSD: 21,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 168,
+}
+
+/** gpt-5.3-codex pricing. Same rates as gpt-5.2. */
+export const PRICING_GPT_5_3_CODEX: MTokRate = { ...PRICING_GPT_5_2 }
+
+/** gpt-5-mini pricing. */
+export const PRICING_GPT_5_MINI: MTokRate = {
+  inputUSD: 0.25,
+  outputUSD: 2,
+  cacheWriteUSD: 0.25,
+  cacheReadUSD: 0.025,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 2,
+}
+
+/** gpt-5-nano pricing. */
+export const PRICING_GPT_5_NANO: MTokRate = {
+  inputUSD: 0.05,
+  outputUSD: 0.4,
+  cacheWriteUSD: 0.05,
+  cacheReadUSD: 0.005,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 0.4,
+}
+
+/** gpt-5-pro pricing. No cached input discount. */
+export const PRICING_GPT_5_PRO: MTokRate = {
+  inputUSD: 15,
+  outputUSD: 120,
+  cacheWriteUSD: 15,
+  cacheReadUSD: 15,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 120,
+}
+
+/** chat-latest pricing. */
+export const PRICING_CHAT_LATEST: MTokRate = {
+  inputUSD: 5,
+  outputUSD: 30,
+  cacheWriteUSD: 5,
+  cacheReadUSD: 0.5,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 30,
+}
+
+/** o1 pricing. */
+export const PRICING_O1: MTokRate = {
+  inputUSD: 15,
+  outputUSD: 60,
+  cacheWriteUSD: 15,
+  cacheReadUSD: 7.5,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 60,
+}
+
+/** o1-pro pricing. No cached input discount. */
+export const PRICING_O1_PRO: MTokRate = {
+  inputUSD: 150,
+  outputUSD: 600,
+  cacheWriteUSD: 150,
+  cacheReadUSD: 150,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 600,
+}
+
+/** o3-mini pricing. */
+export const PRICING_O3_MINI: MTokRate = {
+  inputUSD: 1.1,
+  outputUSD: 4.4,
+  cacheWriteUSD: 1.1,
+  cacheReadUSD: 0.55,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 4.4,
+}
+
+/** o3-pro pricing. No cached input discount. */
+export const PRICING_O3_PRO: MTokRate = {
+  inputUSD: 20,
+  outputUSD: 80,
+  cacheWriteUSD: 20,
+  cacheReadUSD: 20,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 80,
+}
+
+/** gpt-4.1-mini pricing. */
+export const PRICING_GPT_41_MINI: MTokRate = {
+  inputUSD: 0.4,
+  outputUSD: 1.6,
+  cacheWriteUSD: 0.4,
+  cacheReadUSD: 0.1,
+  webSearchPerCallUSD: 0,
+}
+
+/** gpt-4.1-nano pricing. */
+export const PRICING_GPT_41_NANO: MTokRate = {
+  inputUSD: 0.1,
+  outputUSD: 0.4,
+  cacheWriteUSD: 0.1,
+  cacheReadUSD: 0.025,
+  webSearchPerCallUSD: 0,
 }
