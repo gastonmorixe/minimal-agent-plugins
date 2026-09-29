@@ -8,6 +8,7 @@ import type { CursorBidiWire } from "./connect/bidi-wire.ts"
 import type { ConnectEnvelope } from "./connect/stream.ts"
 import type { DecodedExecMcpArgs } from "./proto/exec-server-decode.ts"
 import type { CursorBlobStore } from "./proto/kv.ts"
+import type { CursorMcpToolWire } from "./proto/mcp-tools.ts"
 import type { CursorBidiEnvelopeTranslator } from "./response-stream-bidi.ts"
 
 export type CursorBidiPendingExec = DecodedExecMcpArgs
@@ -23,6 +24,8 @@ export type CursorBidiSession = {
   pendingExec: CursorBidiPendingExec | null
   /** Local answers for KvServerMessage get/set blob (required for turn_ended). */
   blobStore: CursorBlobStore
+  /** MA tools as MCP rows, answered on the server's mcp_state exec request. */
+  mcpTools?: CursorMcpToolWire[]
 }
 
 const sessions = new Map<string, CursorBidiSession>()
