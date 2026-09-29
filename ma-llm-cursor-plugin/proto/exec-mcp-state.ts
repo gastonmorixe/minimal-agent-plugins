@@ -97,7 +97,10 @@ export function encodeAgentClientMcpStateResult(
   tools: readonly CursorMcpToolWire[],
   requestedIds: readonly string[] = [],
 ): Uint8Array {
-  const wanted = requestedIds.length === 0 || requestedIds.includes(CURSOR_MA_MCP_PROVIDER_ID)
+  // No MA tools (tool-less Run): report no servers rather than an empty one.
+  const wanted =
+    tools.length > 0 &&
+    (requestedIds.length === 0 || requestedIds.includes(CURSOR_MA_MCP_PROVIDER_ID))
   const servers = wanted ? [encMsg(1, encMcpStateServer(tools))] : []
   const success = concat(...servers)
   const result = encMsg(1, success)

@@ -105,6 +105,10 @@ function makeFakeClient(
         ok: true,
         text: async () => "",
         json: async <T = unknown>() => undefined as unknown as T,
+        // The host Http2Transport exposes a writable request stream. Every Run,
+        // tool-less or not, uses the bidi wire (KV acks need it).
+        writeRequestBody() {},
+        endRequestBody() {},
       }
       return Promise.resolve(res)
     },
