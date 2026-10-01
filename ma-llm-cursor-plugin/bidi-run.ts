@@ -31,6 +31,7 @@ import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ModelView } from "./lib/provider-plugin.ts"
+import { findUnregisteredMcpExec } from "./mcp-exec-guard.ts"
 import {
   encodeAgentClientMessageConversationAction,
   extractCheckpointBytes,
@@ -497,6 +498,30 @@ async function* readBidiUntilPauseOrEnd(
           ),
         )
         writeAck(session, encodeAgentClientMessageExecStreamClose(execId))
+        continue
+      }
+
+      // MCP exec for a tool MA never registered (the GetDynamicTools /
+      // CallDynamicTool bridge the allowlist exposes). Answer on the wire so the
+      // host never sees "Unknown tool" and the model gets the real tool list.
+      const unregistered = findUnregisteredMcpExec(next.value.payload, session.mcpTools ?? [])
+      if (unregistered) {
+        const { exec } = unregistered
+        cursorBidiLog("read.exec-unregistered-mcp", {
+          id: exec.id,
+          toolName: exec.maToolName ?? exec.toolName,
+          ok: unregistered.ok,
+        })
+        writeAck(
+          session,
+          encodeAgentClientMessageExecResult({
+            id: exec.id,
+            execId: exec.execId,
+            resultText: unregistered.replyText,
+            isError: !unregistered.ok,
+          }),
+        )
+        writeAck(session, encodeAgentClientMessageExecStreamClose(exec.id))
         continue
       }
 
