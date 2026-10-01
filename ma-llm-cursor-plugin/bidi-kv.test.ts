@@ -59,6 +59,7 @@ const req: CanonicalRequest = {
   messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
   tools: [
     { name: "ModelInfo", description: "meta", inputSchema: { type: "object", properties: {} } },
+    { name: "WebSearch", description: "search", inputSchema: { type: "object", properties: {} } },
   ],
 }
 

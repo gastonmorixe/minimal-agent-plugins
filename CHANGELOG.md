@@ -89,6 +89,15 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-10-01: **Cursor calls to the GetDynamicTools bridge no longer end in
+  "Unknown tool".** The allowlist keeps `get_mcp_tools_tool_call` on, so the
+  server shows the model its GetDynamicTools / CallDynamicTool bridge, and the
+  model sometimes calls those names. They arrive as MCP execs for a tool MA
+  never registered, and the host answered "Unknown tool". The plugin now
+  answers them on the wire (`mcp-exec-guard.ts`): GetDynamicTools gets the real
+  MA tool list, and any other unknown name gets an error plus the list, so the
+  model calls the real tool next. Coverage in `bidi-unregistered-mcp.test.ts`.
+
 - 2026-10-01: **Cursor no longer writes fake tool calls as text on long
   sessions.** Work by Nancy (`f6dd2a25`).
   - Root cause: each new user prompt opened a fresh Run with an empty
