@@ -230,9 +230,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 - With the allowlist, a server-required tool that is not in the plugin catalog
   fails the Run with the raw server error and no retry. Use
   `MA_CURSOR_TOOL_FILTER=exclude` as the fallback.
-- MA does not send Cursor `conversation_state` or store checkpoints. So Cursor
-  server-side auto-compaction never applies to MA sessions. Cursor staff have
-  said it starts at about 90% of the window (forum post, cited in the CLI
+- Update 2026-10-01: MA now carries Cursor `conversation_state` and checkpoints
+  across fresh Runs (see Fixed, "fake tool calls as text"). Whether Cursor
+  server-side auto-compaction now applies to MA sessions is not yet measured.
+  Original note: MA did not send Cursor `conversation_state` or store
+  checkpoints, so Cursor server-side auto-compaction never applied. Cursor staff
+  have said it starts at about 90% of the window (forum post, cited in the CLI
   2026.09.28 reverse-engineering report 04). We did not measure this.
   - MA compaction is host-side. Core compacts on its own only when the provider
     returns a context-length error (`src/host/context-exceeded-recovery.ts`). There
