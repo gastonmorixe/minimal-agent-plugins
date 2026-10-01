@@ -14,8 +14,11 @@
 
 import { cursorApiKeyAuth, resolveCursorAccessToken } from "./auth.ts"
 import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
+import { requestHasToolResultContinuation } from "./bidi-tool-results.ts"
 import { agentRunUrl } from "./connect/hosts.ts"
 import { connectFrameProto, connectStreamPost } from "./connect/stream.ts"
+import { cursorCarryEnabled, getCursorCarryState, planCursorCarry } from "./conversation-carry.ts"
+import { cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
@@ -107,7 +110,17 @@ export const cursorAdapter: ProviderAdapterView = {
     // Wire host/bidi session key into AgentRunRequest.conversation_id via metadata.
     // Continues reuse the open stream (Megan); this only stabilizes the initial Run id.
     const reqForWire = applyCursorSessionToRequest(req, bidiSessionKey)
-    const protoBody = buildCursorAgentRunBody(reqForWire, model)
+    // Carry the server's own conversation state into a fresh Run instead of
+    // folding the transcript into text (conversation-carry.ts). Tool-result
+    // continuations reuse the open wire and never need it.
+    const carry =
+      cursorCarryEnabled() &&
+      cursorToolsEnabledOnWire(reqForWire) &&
+      shouldUseCursorBidi(reqForWire, networkClient) &&
+      !requestHasToolResultContinuation(reqForWire)
+        ? planCursorCarry(getCursorCarryState(bidiSessionKey), reqForWire.messages)
+        : undefined
+    const protoBody = buildCursorAgentRunBody(reqForWire, model, carry)
     const url = agentRunUrl()
 
     ctx.debug?.header(`POST ${url}`)
@@ -115,6 +128,7 @@ export const cursorAdapter: ProviderAdapterView = {
     ctx.debug?.kv("surface", CURSOR_SURFACE_AGENT_RUN)
     ctx.debug?.kv("bidi", String(shouldUseCursorBidi(reqForWire, networkClient)))
     ctx.debug?.kv("bidiSession", bidiSessionKey)
+    ctx.debug?.kv("carry", carry ? `checkpoint ${carry.state.checkpoint.byteLength}B` : "none")
     ctx.debug?.headers(headers)
 
     try {
@@ -137,6 +151,7 @@ export const cursorAdapter: ProviderAdapterView = {
             sessionId: bidiSessionKey,
             modelId: model.id,
             networkClient,
+            carryBlobs: carry?.state.blobs,
           })
         // Self-heal the tool allowlist: when the server demands a tool we did
         // not allow, and no content reached the host yet, learn it and retry once.

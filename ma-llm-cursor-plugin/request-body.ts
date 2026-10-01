@@ -13,6 +13,7 @@
  */
 
 import { effortParamIdFromTags, fastParamIdFromTags, isCursorFastParamId } from "./capabilities.ts"
+import type { CursorCarryPlan } from "./conversation-carry.ts"
 import { buildCursorToolWirePolicy } from "./cursor-tool-policy.ts"
 import { getCursorEncodeSpec, lookupCursorRunSku } from "./encode-spec.ts"
 import type { CanonicalBlock, CanonicalMessage } from "./lib/canonical-messages.ts"
@@ -328,7 +329,11 @@ export function resolveCursorConversationGroupId(req: CanonicalRequest): string 
  * Build the protobuf body for AgentService/Run (AgentClientMessage).
  * Caller wraps with Connect frame via connectFrameProto.
  */
-export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView): Uint8Array {
+export function buildCursorAgentRunBody(
+  req: CanonicalRequest,
+  model: ModelView,
+  carry?: CursorCarryPlan,
+): Uint8Array {
   // MVP: spike-proven shape is a single user UserMessage.text only.
   // Do NOT send MA system blocks as Cursor customSystemPrompt — live API
   // returned invalid_argument "unknown option '--system-prompt'" (2026-07-23).
@@ -340,9 +345,11 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
     const t = blockText(block)
     if (t) systemParts.push(t)
   }
-  const userText = summarizeMessages(req.messages)
+  // With a carried checkpoint the server already holds system + history:
+  // send only the new user text (conversation-carry.ts).
+  const userText = carry ? carry.userText : summarizeMessages(req.messages)
   const text =
-    systemParts.length > 0
+    !carry && systemParts.length > 0
       ? `${systemParts.join("\n\n")}\n\n${userText || "(empty)"}`
       : userText || "(empty)"
 
@@ -365,6 +372,7 @@ export function buildCursorAgentRunBody(req: CanonicalRequest, model: ModelView)
     mcpTools: toolPolicy.mcpTools.length > 0 ? toolPolicy.mcpTools : undefined,
     conversationId,
     conversationGroupId,
+    conversationState: carry?.state.checkpoint,
   }
   return encodeAgentClientMessageRun(opts)
 }

@@ -89,6 +89,21 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-10-01: **Cursor no longer writes fake tool calls as text on long
+  sessions.** Work by Nancy (`f6dd2a25`).
+  - Root cause: each new user prompt opened a fresh Run with an empty
+    `conversation_state` and the whole transcript folded into one user text.
+    In one session that text was about 500k characters with about 160 past
+    tool calls. The model copied that pattern as plain text
+    (`[tool_use id] Name {...}`) and ran no tool.
+  - Fix: keep the server's checkpoint (`conversation_checkpoint_update` #3)
+    and KV blobs from the last clean turn, and send them back on the next
+    fresh Run with only the new user text, as the official CLI does. The
+    state persists under `~/.minimal-agent/cursor-carry/`. Falls back to the
+    fold when the transcript does not match. Kill switch `MA_CURSOR_CARRY=0`.
+  - Proof: a live end-to-end test makes a real tool call and recalls an
+    earlier tool result from a fresh Run.
+
 - 2026-09-28: **Cursor requests without tools no longer hang.** Context
   compaction, titles and summaries no longer stall. Compaction is part of what
   users saw as "stuck after one or two prompts". Work by Eric (`9a34c325`),

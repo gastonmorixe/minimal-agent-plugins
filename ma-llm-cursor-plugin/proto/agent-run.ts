@@ -78,6 +78,11 @@ export type AgentRunEncodeOpts = {
   customSystemPrompt?: string
   /** MA tools as agent.v1.McpTools (field 4). Omitted when empty. */
   mcpTools?: readonly CursorMcpToolWire[]
+  /**
+   * AgentRunRequest.conversation_state (field 1): the server's last
+   * conversation_checkpoint_update. Empty when undefined (a new conversation).
+   */
+  conversationState?: Uint8Array
 }
 
 function encRequestContextEnv(opts: AgentRunEncodeOpts): Uint8Array {
@@ -160,7 +165,8 @@ function encModelDetails(opts: AgentRunEncodeOpts): Uint8Array {
 export function encodeAgentRunRequest(opts: AgentRunEncodeOpts): Uint8Array {
   const cid = opts.conversationId ?? crypto.randomUUID()
   const parts = [
-    encMsg(1, new Uint8Array(0)), // empty conversation_state (no invented rebuild)
+    // Server-issued checkpoint when carried, else empty (never an invented rebuild).
+    encMsg(1, opts.conversationState ?? new Uint8Array(0)),
     encMsg(2, encConversationAction(opts)),
     encMsg(3, encModelDetails(opts)),
     encString(5, cid),
@@ -334,6 +340,22 @@ export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[
     }
   }
   return events
+}
+
+/**
+ * Raw AgentServerMessage.conversation_checkpoint_update (#3) body, or undefined.
+ * The client stores it and sends it back as the next Run's conversation_state.
+ */
+export function extractCheckpointBytes(payload: Uint8Array): Uint8Array | undefined {
+  let found: Uint8Array | undefined
+  try {
+    for (const f of decodeFields(payload)) {
+      if (f.no === 3 && f.wire === 2) found = fieldBytes(f) ?? found
+    }
+  } catch {
+    return undefined
+  }
+  return found
 }
 
 /** Parsed Connect end-stream trailer (sanitized for logs / Error.message). */
