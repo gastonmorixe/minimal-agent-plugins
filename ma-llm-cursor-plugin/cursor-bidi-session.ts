@@ -6,6 +6,7 @@
 
 import type { CursorBidiWire } from "./connect/bidi-wire.ts"
 import type { ConnectEnvelope } from "./connect/stream.ts"
+import type { CanonicalMessage } from "./lib/canonical-messages.ts"
 import type { DecodedExecMcpArgs } from "./proto/exec-server-decode.ts"
 import type { CursorBlobStore } from "./proto/kv.ts"
 import type { CursorMcpToolWire } from "./proto/mcp-tools.ts"
@@ -26,6 +27,16 @@ export type CursorBidiSession = {
   blobStore: CursorBlobStore
   /** MA tools as MCP rows, answered on the server's mcp_state exec request. */
   mcpTools?: CursorMcpToolWire[]
+  /**
+   * Conversation carry (conversation-carry.ts). Set only for tool-enabled runs.
+   * `messages` is the transcript of the request that drives the wire now.
+   */
+  carry?: {
+    hostSessionId: string
+    messages: readonly CanonicalMessage[]
+    /** Latest conversation_checkpoint_update body seen on this wire. */
+    checkpoint?: Uint8Array
+  }
 }
 
 const sessions = new Map<string, CursorBidiSession>()

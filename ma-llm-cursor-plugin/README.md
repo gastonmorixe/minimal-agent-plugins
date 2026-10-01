@@ -395,6 +395,24 @@ in between. So the host parsed `safeParseToolInput("") → {}`.
 | `MA_CURSOR_DEBUG_EXEC=1` | Logs raw protobuf fields in exec_server_message              |
 | `MINIMAL_AGENT_NET_DBG=1`| Binary captures to `~/.minimal-agent/net-dbg/`               |
 | `MA_CURSOR_BIDI=0`       | Force unary fallback (no bidi, one POST per loop step)       |
+| `MA_CURSOR_CARRY=0`      | Turn off conversation carry: fold the whole transcript into the user text again |
+| `MA_CURSOR_CARRY_DIR`    | Carry state directory (default `~/.minimal-agent/cursor-carry`, empty string keeps it in memory only) |
+
+## Conversation carry
+
+Each new user prompt opens a fresh `AgentService/Run`. The plugin keeps the
+server's own state from the last clean turn: the
+`conversation_checkpoint_update` (#3) and the KV blobs the server set. The next
+fresh Run sends that checkpoint as `conversation_state` (#1) plus only the new
+user text, and answers `get_blob` from the kept blobs. This is how the official
+CLI resumes. The plugin falls back to the text fold when the new request does
+not extend the covered transcript exactly (edits, compaction, unseen tool
+blocks, tool-result retries). See `conversation-carry.ts`.
+
+Why: the text fold put every past tool call into one user message. On long
+sessions (about 500k characters, about 160 tool calls) the model copied those
+records as plain text and made no real tool calls. `UserMessageAction.conversation_history`
+(#7) is not a fix: the server ignores it, also for the official CLI.
 
 ## Models
 

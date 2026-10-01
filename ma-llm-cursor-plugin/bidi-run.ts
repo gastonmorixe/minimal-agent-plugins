@@ -16,6 +16,11 @@ import {
 } from "./bidi-tool-results.ts"
 import { openCursorBidiWire } from "./connect/bidi-wire.ts"
 import {
+  clearCursorCarryState,
+  fingerprintMessages,
+  setCursorCarryState,
+} from "./conversation-carry.ts"
+import {
   type CursorBidiSession,
   clearCursorBidiSession,
   getCursorBidiSession,
@@ -28,6 +33,7 @@ import type { NetworkClient } from "./lib/net-types.ts"
 import type { ModelView } from "./lib/provider-plugin.ts"
 import {
   encodeAgentClientMessageConversationAction,
+  extractCheckpointBytes,
   extractServerTextEvents,
 } from "./proto/agent-run.ts"
 import {
@@ -46,7 +52,11 @@ import {
   findUnsupportedExec,
 } from "./proto/exec-server-decode.ts"
 import { decodeInteractionQuery, encodeInteractionRejection } from "./proto/interaction-query.ts"
-import { decodeKvServerMessage, encodeAgentClientMessageKvReply } from "./proto/kv.ts"
+import {
+  type CursorBlobStore,
+  decodeKvServerMessage,
+  encodeAgentClientMessageKvReply,
+} from "./proto/kv.ts"
 import { resolveCursorWireAgentMode } from "./request-body.ts"
 import { CursorBidiEnvelopeTranslator } from "./response-stream-bidi.ts"
 
@@ -58,6 +68,36 @@ export type CursorBidiRunOpts = {
   sessionId: string
   modelId: string
   networkClient: NetworkClient
+  /**
+   * Blobs from the carried conversation (conversation-carry.ts). The server
+   * fetches earlier turn data with get_blob, so the store starts with them.
+   */
+  carryBlobs?: CursorBlobStore
+}
+
+/**
+ * Save the server conversation state after a clean turn end, so the next fresh
+ * Run can send it back instead of folding the transcript into text.
+ */
+function saveCarry(session: CursorBidiSession): void {
+  const carry = session.carry
+  if (!carry?.checkpoint) return
+  setCursorCarryState(carry.hostSessionId, {
+    checkpoint: carry.checkpoint,
+    blobs: session.blobStore,
+    coveredCount: carry.messages.length,
+    fingerprint: fingerprintMessages(carry.messages),
+  })
+  cursorBidiLog("carry.saved", {
+    coveredCount: carry.messages.length,
+    checkpointBytes: carry.checkpoint.byteLength,
+    blobCount: session.blobStore.size,
+  })
+}
+
+/** Turn ended in error or was abandoned: the stored state no longer matches. */
+function dropCarry(session: CursorBidiSession): void {
+  if (session.carry) clearCursorCarryState(session.carry.hostSessionId)
 }
 
 /**
@@ -150,8 +190,12 @@ export async function* runCursorBidi(
     translator,
     conversationId,
     pendingExec: null,
-    blobStore: new Map(),
+    blobStore: new Map(opts.carryBlobs ?? []),
     mcpTools: buildCursorToolWirePolicy(req).mcpTools,
+    // Tool-less side calls (compaction, titles) never touch the carry state.
+    carry: cursorToolsEnabledOnWire(req)
+      ? { hostSessionId: runOpts.sessionId || "default", messages: req.messages }
+      : undefined,
   }
   setCursorBidiSession(sessionKey, session)
 
@@ -249,6 +293,8 @@ async function* continueBidiSession(
     session.wire.writeProto(conversationAction)
   }
 
+  // The wire now answers this longer transcript (tool result + any follow-up).
+  if (session.carry) session.carry.messages = req.messages
   for (const payload of payloads) session.wire.writeProto(payload)
   session.wire.writeProto(streamClose)
   session.pendingExec = null
@@ -345,6 +391,7 @@ async function* readBidiUntilPauseOrEnd(
           silentMs: Date.now() - lastProgressAt,
         })
         onAbort()
+        dropCarry(session)
         clearCursorBidiSession(sessionKey, session)
         // The abandoned next() settles once the wire closes. Ignore its outcome.
         pending.catch(() => {})
@@ -373,12 +420,19 @@ async function* readBidiUntilPauseOrEnd(
       if (next.done) {
         cursorBidiLog("read.envelope-done")
         // finishOnClose: zero-content stream is an error (usage cap), not silence.
+        // A close without turn_ended is not a clean end: do not trust the state.
+        dropCarry(session)
         for (const event of session.translator.finishOnClose()) {
           cursorBidiLog("read.event", { type: event.type })
           yield event
         }
         if (!session.pendingExec) clearCursorBidiSession(sessionKey)
         return
+      }
+
+      if (session.carry) {
+        const checkpoint = extractCheckpointBytes(next.value.payload)
+        if (checkpoint) session.carry.checkpoint = checkpoint
       }
 
       const kv = decodeKvServerMessage(next.value.payload)
@@ -481,11 +535,14 @@ async function* readBidiUntilPauseOrEnd(
             })
             return
           }
+          if (sawStreamError) dropCarry(session)
+          else saveCarry(session)
           clearCursorBidiSession(sessionKey)
           return
         }
       }
       if (sawStreamError) {
+        dropCarry(session)
         clearCursorBidiSession(sessionKey)
         return
       }
@@ -501,6 +558,7 @@ async function* readBidiUntilPauseOrEnd(
       }
 
       if (streamEnded) {
+        saveCarry(session)
         clearCursorBidiSession(sessionKey)
         return
       }

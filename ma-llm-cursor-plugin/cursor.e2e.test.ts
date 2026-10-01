@@ -16,6 +16,7 @@ import { describe, expect, test } from "bun:test"
 import { cursorAdapter } from "./adapter.ts"
 import { CURSOR_API_KEY_AUTH, readCursorApiKey } from "./auth.ts"
 import { cursorCaps } from "./capabilities.ts"
+import { getCursorCarryState } from "./conversation-carry.ts"
 import { resetCursorBidiSessionsForTests } from "./cursor-bidi-session.ts"
 import { parseJsonc } from "./lib/jsonc.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
@@ -351,6 +352,99 @@ describe("cursor provider live (E2E=1)", () => {
       }
     },
     70_000,
+  )
+
+  test.skipIf(skip)(
+    "conversation carry: fresh Run recalls a past tool result and makes a real call",
+    async () => {
+      delete process.env.MA_CURSOR_STREAM_TRANSPORT
+      process.env.MA_CURSOR_CARRY_DIR = ""
+      const auth = await loadCursorAuthFromStore()
+      const networkClient = await createE2ENetworkClient()
+      const sessionId = `e2e-cursor-carry-${crypto.randomUUID()}`
+      const model = {
+        id: "cursor-auto",
+        providerId: "cursor",
+        surfaceId: CURSOR_SURFACE_AGENT_RUN,
+        displayName: "Auto (Cursor)",
+        capabilities: cursorCaps(),
+        pricing: ZERO_PRICING,
+        vendorIds: { cursor: "default" },
+      }
+      const tools = [
+        {
+          name: "VaultLookup",
+          description: "Look up a vault code by key. Returns the code.",
+          inputSchema: {
+            type: "object",
+            properties: { key: { type: "string" } },
+            required: ["key"],
+          },
+        },
+        {
+          name: "ModelInfo",
+          description: "Return session model metadata as JSON text.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ]
+      type Msg = Parameters<typeof cursorAdapter.run>[0]["messages"][number]
+      const messages: Msg[] = []
+      const run = async (label: string) => {
+        const gen = cursorAdapter.run({ modelId: "cursor-auto", messages, tools }, model, {
+          auth,
+          sessionId,
+          networkClient,
+        })
+        const phase = await consumeWithTimeout(label, gen, { timeoutMs: 45_000 })
+        const start = phase.events.find((e) => e.type === "tool_use_start") as
+          | { id: string; name: string }
+          | undefined
+        return { text: phase.text, start }
+      }
+      const answer = (id: string, name: string, input: unknown, result: string) => {
+        messages.push({ role: "assistant", content: [{ type: "tool_use", id, name, input }] })
+        messages.push({
+          role: "user",
+          content: [
+            { type: "tool_result", toolUseId: id, content: [{ type: "text", text: result }] },
+          ],
+        })
+      }
+      try {
+        messages.push({
+          role: "user",
+          content: [{ type: "text", text: "Call VaultLookup with key main. Then say done." }],
+        })
+        const t1 = await run("carry-t1")
+        expect(t1.start?.name).toBe("VaultLookup")
+        answer(t1.start!.id, "VaultLookup", { key: "main" }, "vault code = PURPLE-4217")
+        const t1b = await run("carry-t1b")
+        messages.push({ role: "assistant", content: [{ type: "text", text: t1b.text || "done" }] })
+        expect(getCursorCarryState(sessionId)?.coveredCount).toBe(messages.length - 1)
+
+        // Fresh Run: carried checkpoint, only the new user text on the wire.
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "First call the ModelInfo tool. After that, tell me the vault code from the earlier lookup.",
+            },
+          ],
+        })
+        const t2 = await run("carry-t2")
+        expect(t2.start?.name).toBe("ModelInfo")
+        expect(t2.text).not.toMatch(/tool_use|earlier tool call/i)
+        answer(t2.start!.id, "ModelInfo", {}, '{"model":"cursor-auto"}')
+        const t2b = await run("carry-t2b")
+        expect(t2b.text.toUpperCase()).toContain("PURPLE-4217")
+      } finally {
+        delete process.env.MA_CURSOR_CARRY_DIR
+        resetCursorBidiSessionsForTests()
+        await networkClient.close?.()
+      }
+    },
+    150_000,
   )
 
   test.skipIf(skip)(
