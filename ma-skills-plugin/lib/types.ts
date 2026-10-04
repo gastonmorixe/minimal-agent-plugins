@@ -227,8 +227,9 @@ export interface Skill {
 }
 
 /**
- * A discovered SKILL.md that failed validation. Surfaced in `Skill list`
- * output so the user can fix it; never returned by `Skill read` etc.
+ * A discovered SKILL.md that failed validation. Boot discovery emits a host
+ * `log.warn` (`skill-load`) per entry. Also listed in `Skill list` so the
+ * user can fix it. Never returned by `Skill read`.
  */
 export interface BrokenSkill {
   /** Best-effort dir-name-derived id (may not match a valid `name`). */

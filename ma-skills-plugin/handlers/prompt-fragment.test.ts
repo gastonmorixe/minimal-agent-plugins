@@ -232,6 +232,21 @@ describe("renderFragment — broken", () => {
   })
 })
 
+describe("renderFragment — catalog cap", () => {
+  test("notes omitted count and that Skill tool still sees them", () => {
+    const r = renderFragment(
+      { skills: [skill({ name: "a", description: "Alpha." })], broken: [], shadowed: [] },
+      CWD,
+      HOME,
+      { omittedCount: 22, maxSkills: 64 },
+    )
+    expect(r).toContain("capped at 64")
+    expect(r).toContain("22 more on disk")
+    expect(r).toContain("`Skill list`")
+    expect(r).toContain("maxSkills")
+  })
+})
+
 describe("renderFragment — shadowed", () => {
   test("shadowed section present when any shadowed", () => {
     const r = renderFragment(

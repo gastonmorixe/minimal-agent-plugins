@@ -39,7 +39,7 @@ Skill {action: "info", name: "<name>"}       # show one skill's frontmatter
 Skill {action: "read", name: "<name>"}       # load full SKILL.md body
 ```
 
-- **`list`** returns a JSON catalog plus broken/shadowed diagnostics. Use it when you're unsure what's available or when the user asks "what skills do I have?".
+- **`list`** returns a JSON catalog plus broken/shadowed diagnostics. Use it when you're unsure what's available or when the user asks "what skills do I have?". This list is **not** capped by `maxSkills` (that cap only trims the Level-1 system-prompt table).
 - **`info`** is cheap. Pure metadata, no body load. Use it to verify scope/license/compatibility before activating.
 - **`read`** is how you **activate** a skill. The tool returns the full SKILL.md body plus a trailer listing bundled sibling files (`scripts/`, `references/`, etc.) you can `Read` next, and any `allowed-tools` field for self-enforcement (see below).
 
