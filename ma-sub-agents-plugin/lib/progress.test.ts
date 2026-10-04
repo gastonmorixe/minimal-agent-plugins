@@ -16,7 +16,7 @@ describe("parseProgress", () => {
     ).toEqual(ZERO_PROGRESS)
   })
 
-  it("counts tool_use blocks and sums billed tokens across assistant turns", () => {
+  it("counts tool_use blocks and uses last-turn contextSize, not a billed sum", () => {
     const text = jsonl(
       {
         kind: "assistant",
@@ -35,9 +35,32 @@ describe("parseProgress", () => {
     )
     const p = parseProgress(text)
     expect(p.tools).toBe(2)
-    expect(p.tokens).toBe(1000 + 200 + 1500 + 120)
+    expect(p.tokens).toBe(1500)
     expect(p.lastTool).toBe("Read")
     expect(p.lastActivity).toBe("Read: src/x.ts") // most recent activity, with its arg
+  })
+
+  it("includes cache read and create in last-turn contextSize", () => {
+    const text = jsonl(
+      {
+        kind: "assistant",
+        content: [{ type: "tool_use", name: "Grep", input: { pattern: "x" } }],
+        usage: { input_tokens: 1000, output_tokens: 50, cache_read_input_tokens: 8000 },
+      },
+      {
+        kind: "assistant",
+        content: [{ type: "tool_use", name: "Read", input: { file_path: "src/x.ts" } }],
+        usage: {
+          input_tokens: 1200,
+          output_tokens: 80,
+          cache_read_input_tokens: 9000,
+          cache_creation_input_tokens: 300,
+        },
+      },
+    )
+    const p = parseProgress(text)
+    expect(p.tools).toBe(2)
+    expect(p.tokens).toBe(1200 + 9000 + 300)
   })
 
   it("uses a text snippet as lastActivity when the latest block is prose", () => {

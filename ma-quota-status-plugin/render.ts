@@ -692,17 +692,18 @@ export function renderQuotaFooter(
    * Order rationale:
    *   1. Tighten separators 4 → 3 → 2 (free, no information loss).
    *   2. Drop overage (opt-in noise, rare).
-   *   3. Shorten effort to value-only ("medium").
-   *   4. Drop sid (forensics anchor, recoverable from log files).
-   *   5. Shorten effort to 3-char ("med").
-   *   6. Shrink bars 8 → 7 → 6 → 5 → 4 cells (precision loss but no
-   *      information loss; quota+session bars shrink together to keep
-   *      the visual tier coherent).
-   *   7. Drop effort entirely.
-   *   8. Drop session bar (keep trailing live count).
-   *   9. Drop reset clauses.
-   *  10. Drop session block entirely.
-   *  11. Drop 7d window (keep 5h irreducible).
+   *   3. Shorten effort to value-only ("medium"), then 3-char ("med").
+   *   4. Shrink bars 8 → 7 → 6 → 5 → 4 cells WHILE KEEPING sid+name.
+   *      Graphs yield first so the identity anchor (and host TPS budget
+   *      the caller reserved) still fit. Truncation of sid/name is a
+   *      last resort, not the first squeeze.
+   *   5. Drop sid (and the name that rides it) only after bars are at
+   *      BAR_CELLS_MIN.
+   *   6. Drop effort entirely.
+   *   7. Drop session bar (keep trailing live count).
+   *   8. Drop reset clauses.
+   *   9. Drop session block entirely.
+   *  10. Drop 7d window (keep 5h irreducible).
    */
   const baseRich: BuildCfg = {
     sep: SEP_MAX,
@@ -715,95 +716,59 @@ export function renderQuotaFooter(
     withEffort: true,
     withSid: true,
   }
+  const leanTail: BuildCfg = {
+    ...baseRich,
+    sep: SEP_MIN,
+    withOverage: false,
+    effortFmt: "short",
+    withSid: true,
+  }
   const candidates: BuildCfg[] = [
     baseRich,
     { ...baseRich, sep: 3 },
     { ...baseRich, sep: SEP_MIN },
     { ...baseRich, sep: SEP_MIN, withOverage: false },
     { ...baseRich, sep: SEP_MIN, withOverage: false, effortFmt: "value" },
-    { ...baseRich, sep: SEP_MIN, withOverage: false, effortFmt: "value", withSid: false },
-    { ...baseRich, sep: SEP_MIN, withOverage: false, effortFmt: "short", withSid: false },
+    { ...leanTail },
+    { ...leanTail, barCells: 7 },
+    { ...leanTail, barCells: 6 },
+    { ...leanTail, barCells: 5 },
+    { ...leanTail, barCells: BAR_CELLS_MIN },
+    { ...leanTail, barCells: BAR_CELLS_MIN, withSid: false },
     {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
-      barCells: 7,
-    },
-    {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
-      barCells: 6,
-    },
-    {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
-      barCells: 5,
-    },
-    {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
+      ...leanTail,
       barCells: BAR_CELLS_MIN,
-    },
-    {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
       withSid: false,
-      barCells: BAR_CELLS_MIN,
       withEffort: false,
     },
     {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
+      ...leanTail,
       barCells: BAR_CELLS_MIN,
+      withSid: false,
       withEffort: false,
       withSessionBar: false,
     },
     {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
+      ...leanTail,
       barCells: BAR_CELLS_MIN,
+      withSid: false,
       withEffort: false,
       withSessionBar: false,
       withReset: false,
     },
     {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
+      ...leanTail,
       barCells: BAR_CELLS_MIN,
+      withSid: false,
       withEffort: false,
       withSessionBar: false,
       withReset: false,
       withSession: false,
     },
     {
-      ...baseRich,
-      sep: SEP_MIN,
-      withOverage: false,
-      effortFmt: "short",
-      withSid: false,
+      ...leanTail,
       barCells: BAR_CELLS_MIN,
+      withSid: false,
       withEffort: false,
       withSessionBar: false,
       withReset: false,
