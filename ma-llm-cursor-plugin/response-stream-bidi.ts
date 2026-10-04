@@ -28,6 +28,7 @@ export type TranslateCursorBidiOpts = {
   modelId: string
   messageId?: string
   onExecMcp?: (exec: DecodedExecMcpArgs) => void
+  resolveExecMcp?: (payload: Uint8Array) => DecodedExecMcpArgs | undefined
 }
 
 export type BidiTranslatorPush = {
@@ -139,7 +140,8 @@ export class CursorBidiEnvelopeTranslator {
       endStream: frame.endStream,
     })
 
-    const execFromField2 = decodeAgentServerExec(frame.payload)
+    const execFromField2 =
+      this.opts.resolveExecMcp?.(frame.payload) ?? decodeAgentServerExec(frame.payload)
     if (execFromField2) {
       const events = this.emitExecMcpToolUse(execFromField2)
       if (events.length > 0) {
@@ -261,6 +263,9 @@ export class CursorBidiEnvelopeTranslator {
     // Core adapter-legacy rejects ids/names outside [a-zA-Z0-9_-]{1,64}.
     const id = sanitizeToolUseToken(rawId, "tool")
     const name = sanitizeToolUseToken(rawName, "Tool")
+    // Host tool_result matching uses pending.toolCallId (bidi-run continue).
+    // Wire mcp_result correlation uses pending.id, not this string.
+    exec.hostToolCallId = id
     exec.toolCallId = id
     exec.maToolName = name
     if (this.emittedExecToolCallIds.has(id)) {
