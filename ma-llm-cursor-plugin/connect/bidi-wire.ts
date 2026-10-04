@@ -63,7 +63,7 @@ export async function openCursorBidiWire(opts: OpenCursorBidiWireOpts): Promise<
     keepRequestOpen: true,
     capture: {
       requestBody: `base64:${Buffer.from(framed).toString("base64")}`,
-      responseBody: false,
+      responseBody: true,
     },
   })
   if (!response.ok) {

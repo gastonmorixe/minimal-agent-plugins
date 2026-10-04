@@ -89,6 +89,22 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-10-04: **Cursor raw response streams are saved when network debugging is
+  enabled.** Removed the provider's response-capture veto in both bidi and unary
+  paths. `MINIMAL_AGENT_NET_DBG=1` now records the original binary Connect frames
+  in `*-04-res-body.txt`, allowing inspection of discovery, tool, checkpoint and
+  KV events that are absent from the transcript. Logging still follows the host
+  debug flag.
+
+- 2026-10-03: **Cursor tool discovery now returns full input schemas and
+  descriptions.** The earlier `GetDynamicTools` bridge fix returned only short
+  name/description rows, so asking for schemas still left the model guessing
+  Read's `file_path`, Task's `id` and string children, and subagents' `task`.
+  Both discovery and unknown-tool recovery now include the exact registered
+  JSON schemas and complete descriptions. Offline regression coverage checks
+  the actual bidi MCP result. See
+  [`tool-discovery-schema-postmortem.md`](ma-llm-cursor-plugin/docs/tool-discovery-schema-postmortem.md).
+
 - 2026-10-01: **Cursor calls to the GetDynamicTools bridge no longer end in
   "Unknown tool".** The allowlist keeps `get_mcp_tools_tool_call` on, so the
   server shows the model its GetDynamicTools / CallDynamicTool bridge, and the

@@ -179,9 +179,8 @@ async function* connectStreamViaNetworkClient(
       // would also make net-dbg redaction look "successful" while destroying
       // the bytes. Base64 is exact for replay; it is opaque to redactBody.
       requestBody: `base64:${Buffer.from(opts.body).toString("base64")}`,
-      // Response frames are long-lived model output. Status/headers still land
-      // in net-dbg; duplicating the stream body on disk is noise for audits.
-      responseBody: false,
+      // The host logger appends original binary response chunks when enabled.
+      responseBody: true,
     },
   })
   if (!response.ok) {

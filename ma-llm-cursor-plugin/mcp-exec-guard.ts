@@ -10,12 +10,19 @@
  * @module llm/providers/cursor/mcp-exec-guard
  */
 
+import { readFileSync } from "node:fs"
+
 import type { DecodedExecMcpArgs } from "./proto/exec-server-decode.ts"
 import { decodeAgentServerExec } from "./proto/exec-server-decode.ts"
 import type { CursorMcpToolWire } from "./proto/mcp-tools.ts"
 
 /** Bridge tool the model uses to list MCP tools. */
 const LIST_BRIDGE_TOOL = "GetDynamicTools"
+
+const TOOL_CATALOG_PREAMBLE = readFileSync(
+  new URL("./prompts/tool-catalog.md", import.meta.url),
+  "utf8",
+).trim()
 
 /** An MCP exec for a tool MA does not have, with the reply text to send. */
 export type UnregisteredMcpExec = {
@@ -27,12 +34,9 @@ export type UnregisteredMcpExec = {
 
 function toolCatalogText(tools: readonly CursorMcpToolWire[]): string {
   const rows = tools.map(
-    (t) => `- ${t.toolName}: ${t.description.split("\n")[0]?.slice(0, 160) ?? ""}`,
+    (t) => `## ${t.toolName}\n${t.description}\n\ninput_schema: ${t.inputSchemaJson}`,
   )
-  return [
-    `Available tools (call each one directly by its exact name, no wrapper tool):`,
-    ...rows,
-  ].join("\n")
+  return [TOOL_CATALOG_PREAMBLE, ...rows].join("\n\n")
 }
 
 /**

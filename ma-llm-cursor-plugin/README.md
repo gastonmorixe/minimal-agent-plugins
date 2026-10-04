@@ -93,11 +93,31 @@ The supported extension point is **MCP**:
 
 1. Client sends tool **definitions** in `AgentRunRequest.mcp_tools`.
 2. Model invokes them via `ToolCall.mcp_tool_call` (not `grep_tool_call`, etc.).
-3. Client sends **exclude** headers so native tools do not compete with MA's.
+3. Client sends `x-cursor-agent-allowed-tools: mcp_tool_call,get_mcp_tools_tool_call`
+   so the model sees MA's MCP tools and Cursor's discovery bridge.
 
-This plugin does exactly that: MA's tool list → MCP wire shape, native oneofs excluded.
+`MA_CURSOR_TOOL_FILTER=exclude` restores the older exclude-header policy. That
+policy blocks native calls but does not hide native tool descriptions from the model.
 
-### Per-turn flow (with bidi — default when tools are enabled)
+### Tool discovery and schemas
+
+Cursor sometimes dispatches `GetDynamicTools` as an MCP exec even though MA
+did not register a tool with that name. The plugin answers it on the same
+stream with the complete MA tool catalog: exact names, full descriptions, and
+each tool's JSON `input_schema`. It also returns this catalog when rejecting an
+unknown MCP tool such as `CallDynamicTool`, so the model can call a registered
+tool directly.
+
+The catalog must preserve required fields, enums and nested schemas. The
+2026-10-01 bridge fix returned only the first 160 characters of each description's
+first line and omitted schemas entirely. That made repeated schema discovery
+unable to correct arguments such as Read's `path` instead of `file_path`, Task's
+`task_id` instead of `id`, or a subagent's `prompt` instead of `task`.
+
+Details and regression coverage:
+[`docs/tool-discovery-schema-postmortem.md`](docs/tool-discovery-schema-postmortem.md).
+
+### Per-turn flow (with bidi — default)
 
 ```mermaid
 sequenceDiagram
@@ -124,9 +144,10 @@ When the session has tools enabled (and `MA_CURSOR_BIDI` is not `0`):
    `exec_client_message` with `mcp_result` on the **same** stream (session stored by `sessionId`).
 5. Cursor continues on that stream — no second POST with folded history for tool rounds.
 
-Text-only / `toolChoice: none` sessions still use the unary NetworkClient path (one POST, no bidi).
+Text-only / `toolChoice: none` sessions also use bidi by default so the client
+can answer KV and MCP-state requests. `MA_CURSOR_BIDI=0` selects the unary fallback.
 
-### Per-turn flow (unary fallback — no tools)
+### Per-turn flow (unary fallback — `MA_CURSOR_BIDI=0`)
 
 ```mermaid
 sequenceDiagram
@@ -170,11 +191,17 @@ Disable bidi with `MA_CURSOR_BIDI=0` to revert to one POST per agent loop step (
 | -------------------- | ------------------------------------------------------------------------------------------ |
 | MCP tool definitions | `AgentRunRequest.mcp_tools` (protobuf field 4)                                             |
 | Provider id on wire  | `minimal-agent` (`cursor-tool-policy.ts`)                                                  |
-| Exclude native tools | Header `x-cursor-agent-exclude-tools` (all oneofs except `mcpToolCall` when tools enabled) |
+| Filter native tools | Header `x-cursor-agent-allowed-tools` (MCP calls + discovery); exclude header for tool-less runs or the kill switch |
 | Tool call decode     | `proto/tool-call-decode.ts` → canonical `tool_use_*`                                       |
-| Built-in catalog     | `cursor-builtin-tools.ts` (from Cursor bundle 2026.07.23)                                  |
+| Built-in catalog     | `cursor-builtin-tools.ts` (checked against Cursor CLI bundle 2026.09.28-64d2043)             |
 
 `MINIMAL_AGENT_NET_DBG=1` writes binary-safe captures under `~/.minimal-agent/net-dbg/`.
+Run requests are stored as `base64:`-prefixed text; `*-04-res-body.txt` contains
+the original binary Connect response stream, including tool and KV frames.
+Both bidi and unary paths permit response capture. Logging remains disabled
+unless the host starts with `MINIMAL_AGENT_NET_DBG=1`; restart existing processes
+to load a changed setting or plugin. The request capture contains the initial
+Run body; later bidi client writes are not included in that file.
 
 ### Conversation identity (plugin vs CLI)
 
