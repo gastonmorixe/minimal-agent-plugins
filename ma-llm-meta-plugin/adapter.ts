@@ -1,8 +1,17 @@
 /**
- * Meta Model API `ProviderAdapter` — OpenAI Chat Completions against api.meta.ai.
+ * Meta Model API `ProviderAdapter` — dual surface (Chat Completions + Responses).
  *
- * Reuses the shared OpenAI wire layer (`buildOpenAIChatBody`,
- * `translateOpenAIChatStream`, …). Auth: API key and Muse Code OAuth.
+ * Architecture mirrors `ma-llm-openai-plugin` / `ma-llm-grok-plugin`:
+ * - Dispatch on `model.surfaceId`
+ * - Host injects `ctx.networkClient` + `ctx.auth`
+ * - Tag HTTP errors with `streamErrorType` for retries
+ * - Session rate-limit headers + usage accumulation for the footer
+ *
+ * Wire helpers:
+ * - Chat: shared OpenAI chat layer (`lib/openai-chat.ts`)
+ * - Responses: vendored OpenAI Responses body/stream translators (Meta defaults)
+ *
+ * Auth: API key and Muse Code OAuth (minted key as Bearer).
  *
  * @module llm/providers/meta/adapter
  */
@@ -31,6 +40,11 @@ import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib
 import { parseSse } from "./lib/sse-parser.ts"
 import { listMetaLiveModels } from "./live-models.ts"
 import { findMetaModelByTags, registerMetaModel, registerMetaModels } from "./models.ts"
+import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
+import {
+  type OpenAIResponsesEvent,
+  translateOpenAIResponsesStream,
+} from "./responses/response-stream.ts"
 import {
   accumulateMetaUsage,
   fetchMetaSessionInfo,
@@ -42,13 +56,14 @@ import {
   META_DEFAULT_HEADERS,
   META_DEV_CONSOLE_URL,
   META_USER_AGENT,
+  RESPONSES_URL,
 } from "./wire-constants.ts"
 
-/** Meta Model API adapter. OpenAI Chat Completions on api.meta.ai. */
+/** Meta Model API adapter. Chat Completions + Responses on api.meta.ai. */
 export const metaAdapter: ProviderAdapter = {
   id: "meta",
   displayName: "Meta (Model API)",
-  surfaces: ["openai-chat-completions"] satisfies ReadonlyArray<SurfaceId>,
+  surfaces: ["openai-chat-completions", "openai-responses"] satisfies ReadonlyArray<SurfaceId>,
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
@@ -80,39 +95,100 @@ export const metaAdapter: ProviderAdapter = {
     const headers = buildOpenAIHeaders({ auth, userAgent: META_USER_AGENT })
     Object.assign(headers, META_DEFAULT_HEADERS)
 
-    const body = buildOpenAIChatBody(req, model) as unknown as Record<string, unknown>
-
-    ctx.debug?.header(`POST ${CHAT_COMPLETIONS_URL}`)
-    ctx.debug?.kv("model", String(body.model ?? model.id))
-    ctx.debug?.kv("provider", "meta")
-    ctx.debug?.headers(headers)
-    ctx.debug?.body(body)
-
     const networkClient = ctx.networkClient as NetworkClient | undefined
     if (!networkClient) throw new Error("meta: no network client on RunContext")
-    const response = await networkClient.request({
-      label: "meta.chat.completions",
-      method: "POST",
-      url: CHAT_COMPLETIONS_URL,
-      headers,
-      body: JSON.stringify(body),
-      signal: req.signal,
-    })
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw taggedHttpError("Meta Model API", response.status, text)
-    }
-    setMetaRateLimits(response.headers)
-    if (!response.body) {
-      throw new Error("Meta Model API: empty response body for stream")
-    }
-    for await (const ev of translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))) {
-      if (isEvent(ev, "message_delta")) {
-        accumulateMetaUsage(ev.usage)
+    const wireModelId = model.vendorIds?.firstParty ?? req.modelId
+
+    if (model.surfaceId === "openai-chat-completions") {
+      const body = buildOpenAIChatBody(req, model)
+      body.model = wireModelId
+
+      ctx.debug?.header(`POST ${CHAT_COMPLETIONS_URL}`)
+      ctx.debug?.kv("model", body.model)
+      ctx.debug?.kv("provider", "meta")
+      ctx.debug?.kv("surface", "chat")
+      ctx.debug?.headers(headers)
+      ctx.debug?.body(body)
+
+      const response = await networkClient.request({
+        label: "meta.chat.completions",
+        method: "POST",
+        url: CHAT_COMPLETIONS_URL,
+        headers,
+        body: JSON.stringify(body),
+        signal: req.signal,
+      })
+
+      if (!response.ok) {
+        throw taggedHttpError("Meta Model API", response.status, await response.text())
       }
-      yield ev
+      setMetaRateLimits(response.headers)
+      if (!response.body) {
+        throw new Error("Meta Model API: empty response body for stream")
+      }
+      for await (const ev of translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))) {
+        if (isEvent(ev, "message_delta")) {
+          accumulateMetaUsage(ev.usage)
+        }
+        yield ev
+      }
+      return
     }
+
+    if (model.surfaceId === "openai-responses") {
+      const body = buildOpenAIResponsesBody(req, model)
+      body.model = wireModelId
+      // Defense in depth (OpenAI adapter parity): request-body stamps
+      // prompt_cache_key from vendor.promptCacheKey / metadata.sessionId.
+      // Live 68a0d8fb net-dbg showed key ABSENT on every Responses body when
+      // those fields are unset. Fall back to RunContext.sessionId so Meta
+      // always gets sticky routing like Codex / OpenAI.
+      if (!body.prompt_cache_key && ctx.sessionId) {
+        body.prompt_cache_key = ctx.sessionId
+        ctx.debug?.kv("prompt_cache_key", "from ctx.sessionId")
+      }
+      // Keep store false by default. Drop previous_response_id unless host opts into store.
+      if (body.store !== true && body.previous_response_id !== undefined) {
+        delete body.previous_response_id
+        ctx.debug?.kv("previous_response_id", "dropped (store!=true)")
+      }
+
+      ctx.debug?.header(`POST ${RESPONSES_URL}`)
+      ctx.debug?.kv("model", body.model)
+      ctx.debug?.kv("provider", "meta")
+      ctx.debug?.kv("surface", "responses")
+      ctx.debug?.headers(headers)
+      ctx.debug?.body(body)
+
+      const response = await networkClient.request({
+        label: "meta.responses",
+        method: "POST",
+        url: RESPONSES_URL,
+        headers,
+        body: JSON.stringify(body),
+        signal: req.signal,
+      })
+
+      if (!response.ok) {
+        throw taggedHttpError("Meta Responses API", response.status, await response.text())
+      }
+      setMetaRateLimits(response.headers)
+      if (!response.body) {
+        throw new Error("Meta Responses API: empty response body for stream")
+      }
+      for await (const ev of translateOpenAIResponsesStream(
+        parseSse<OpenAIResponsesEvent>(response.body),
+      )) {
+        if (isEvent(ev, "message_delta")) {
+          accumulateMetaUsage(ev.usage)
+        }
+        yield ev
+      }
+      return
+    }
+
+    throw new Error(`Meta adapter: model ${model.id} has unsupported surface "${model.surfaceId}"`)
   },
 
   recommendSubagentModels(): SubagentModelRecommendation[] {
@@ -191,7 +267,7 @@ export const metaProviderPlugin: ProviderPlugin = {
   fetchSessionInfo: fetchMetaSessionInfo,
   primeSessionInfo: primeMetaSessionInfo,
   modelVersionToken(modelId: string): string | undefined {
-    // muse-spark-1.2 → 1.2 ; muse-spark-1.2-contributor → 1.2-contributor
+    // muse-spark-1.2 → 1.2 ; muse-spark-1.2-chat → 1.2-chat
     const m = /^muse-spark-(.+)$/.exec(modelId)
     return m?.[1]
   },
