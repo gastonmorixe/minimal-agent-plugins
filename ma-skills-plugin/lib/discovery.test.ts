@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { defaultConfig, type SkillsConfig } from "./config.ts"
 import {
+  capSkillsForPrompt,
   dirIdOf,
   discoverSkills,
   findSkill,
@@ -284,7 +285,7 @@ describe("discoverSkills — precedence + dedup", () => {
     expect(r.broken[0].dirName).toBe("bad")
   })
 
-  test("maxSkills trims overflow", () => {
+  test("maxSkills trims overflow via capSkillsForPrompt", () => {
     const cwd = TMP_CWD()
     const home = TMP_HOME()
     const root = join(home, ".minimal-agent", "skills")
@@ -292,7 +293,11 @@ describe("discoverSkills — precedence + dedup", () => {
       makeSkill(root, `s-${n}`, `name: s-${n}\ndescription: ${n}`)
     }
     const r = discoverSkills({ ...defaultConfig(), maxSkills: 3 }, cwd, home)
-    expect(r.skills).toHaveLength(3)
+    // discoverSkills keeps the full catalog; the prompt Level-1 table caps.
+    expect(r.skills).toHaveLength(5)
+    const capped = capSkillsForPrompt(r.skills, 3)
+    expect(capped.catalog).toHaveLength(3)
+    expect(capped.omitted).toHaveLength(2)
   })
 
   test("projectClaudeCode opt-in scans .claude/skills", () => {

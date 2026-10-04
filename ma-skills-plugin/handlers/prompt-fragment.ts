@@ -33,7 +33,8 @@ import { homedir } from "node:os"
 import { relative } from "node:path"
 
 import { loadSkillsConfig } from "../lib/config.ts"
-import { discoverSkills } from "../lib/discovery.ts"
+import { capSkillsForPrompt, discoverSkills } from "../lib/discovery.ts"
+import { warnBrokenSkills, warnSkillCatalogCap } from "../lib/report-broken.ts"
 import type {
   BrokenSkill,
   DiscoveryResult,
@@ -57,10 +58,7 @@ const SCOPE_LABEL: Record<SkillScope, string> = {
 }
 
 /**
- * Maximum number of skills enumerated in the fragment. Higher than
- * config.maxSkills shouldn't ever happen because discovery already
- * clamps, but keeping a belt-and-suspenders bound here means the
- * fragment can't accidentally balloon the system prompt.
+ * Hard ceiling on the Level-1 table even if config.maxSkills is set high.
  */
 const MAX_FRAGMENT_ENTRIES = 128
 
@@ -76,15 +74,24 @@ const DESC_CLIP = 240
 // Pure renderers (exported for tests)
 // ---------------------------------------------------------------------------
 
+/** Optional Level-1 cap note. `maxSkills` hid these packs from the table. */
+export interface CatalogCapNote {
+  /** How many valid skills were left out of the Level-1 table. */
+  omittedCount: number
+  /** Config cap that produced the omission. */
+  maxSkills: number
+}
+
 /**
  * Render the full fragment from a discovery result + cwd/home (for path
- * shortening). Pure — exported so tests can drive it without mocking the
+ * shortening). Pure. Exported so tests can drive it without mocking the
  * config / fs.
  */
 export function renderFragment(
   result: DiscoveryResult,
   cwd: string = process.cwd(),
   home: string = homedir(),
+  cap?: CatalogCapNote,
 ): string {
   if (result.skills.length === 0 && result.broken.length === 0) {
     // Nothing to say.
@@ -101,6 +108,13 @@ export function renderFragment(
     )
     lines.push("")
     lines.push(renderTable(result.skills, cwd, home))
+    lines.push("")
+  }
+
+  if (cap && cap.omittedCount > 0) {
+    lines.push(
+      `The table above is capped at ${cap.maxSkills} skills (${cap.omittedCount} more on disk). \`Skill list\`, \`Skill info\`, and \`Skill read\` still see every valid skill. Raise \`plugins["ma-skills"].maxSkills\` to list more here.`,
+    )
     lines.push("")
   }
 
@@ -202,15 +216,27 @@ function renderMarkdownTable(rows: string[][]): string {
  * session start. Reads user config, runs discovery, returns the
  * formatted markdown.
  *
- * Errors are caught and logged to ctx.stderr (so we don't break boot)
- * but result in an empty fragment.
+ * Errors are caught and logged on `ctx.log` (so we don't break boot)
+ * but result in an empty fragment. Broken skills also emit `ctx.log.warn`
+ * (`skill-load`) so core can show the last-warn slot. Overflow past
+ * `maxSkills` emits `skill-catalog` and is omitted from this table only.
  */
 const handler: PromptFragmentHandler = (ctx: PromptFragmentContext): string => {
   try {
     const config = loadSkillsConfig()
     if (!config.enabled) return ""
     const result = discoverSkills(config, ctx.cwd, homedir())
-    return renderFragment(result, ctx.cwd, homedir())
+    warnBrokenSkills(ctx.log, result.broken)
+    const { catalog, omitted } = capSkillsForPrompt(result.skills, config.maxSkills)
+    warnSkillCatalogCap(ctx.log, omitted, config.maxSkills)
+    return renderFragment(
+      { ...result, skills: catalog },
+      ctx.cwd,
+      homedir(),
+      omitted.length > 0
+        ? { omittedCount: omitted.length, maxSkills: config.maxSkills }
+        : undefined,
+    )
   } catch (e) {
     // Route through the structured diagnostic logger (file log + TUI
     // surface). `ctx.log` is auto-prefixed by the loader, so the

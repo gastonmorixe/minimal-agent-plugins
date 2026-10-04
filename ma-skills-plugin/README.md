@@ -49,6 +49,10 @@ automatically. The startup tree's `tools` row will include
 
 Collisions resolved by skill `name`. Closer-to-user wins. Lower-precedence
 collisions are listed under "Shadowed" in the catalog (and `Skill list`).
+A SKILL.md that fails validation is skipped. The plugin reports it with
+`ctx.log.warn` (core last-warn + file log) and still lists it under Broken
+in the catalog / `Skill list`. `maxSkills` caps only the Level-1 prompt
+table. `Skill list` / `info` / `read` still resolve packs past the cap.
 
 ## Progressive disclosure
 
@@ -85,7 +89,7 @@ User config at `~/.minimal-agent/config.jsonc` under `plugins["ma-skills"]`:
         "userAgent": true,
       },
       "extraRoots": [],
-      "maxSkills": 64,
+      "maxSkills": 64, // Level-1 prompt table only. Skill tool is uncapped.
       "allowReservedNames": false, // permit `claude`/`anthropic` in names
     },
   },

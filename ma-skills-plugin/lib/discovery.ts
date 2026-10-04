@@ -184,9 +184,9 @@ export function walkRoot(
  * roots both contain a skill with the same `name`, the higher-precedence
  * one is kept and the lower-precedence one is reported in `shadowed`.
  *
- * `maxSkills` clamps the total. Skills past the cap are dropped silently
- * — the prompt-fragment / `Skill list` can decide whether to surface a
- * warning to the user.
+ * `maxSkills` does **not** apply here. The Skill tool (`list` / `info` /
+ * `read`) must resolve every valid pack. The prompt fragment caps the
+ * Level-1 table with {@link capSkillsForPrompt} and warns on overflow.
  */
 export function discoverSkills(
   config: SkillsConfig,
@@ -216,9 +216,19 @@ export function discoverSkills(
     }
   }
 
-  // Apply maxSkills cap to keep prompt overhead bounded.
-  const trimmed = skills.slice(0, config.maxSkills)
-  return { skills: trimmed, broken, shadowed }
+  return { skills, broken, shadowed }
+}
+
+/** Slice used only by the Level-1 prompt catalog. */
+export function capSkillsForPrompt(
+  skills: readonly Skill[],
+  maxSkills: number,
+): { catalog: Skill[]; omitted: Skill[] } {
+  if (skills.length <= maxSkills) return { catalog: [...skills], omitted: [] }
+  return {
+    catalog: skills.slice(0, maxSkills),
+    omitted: skills.slice(maxSkills),
+  }
 }
 
 /** Convenience: lookup a skill by name in a discovery result. */

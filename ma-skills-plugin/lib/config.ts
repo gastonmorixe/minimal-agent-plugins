@@ -58,7 +58,7 @@ export interface SkillsConfig {
   roots: RootsConfig
   /** Extra absolute paths to scan, lowest precedence. */
   extraRoots: string[]
-  /** Cap on number of discovered skills; warn if exceeded. */
+  /** Cap on the Level-1 prompt catalog. Skill list/info/read are uncapped. */
   maxSkills: number
   /** When true, allow `anthropic`/`claude` substring in skill names. */
   allowReservedNames: boolean
