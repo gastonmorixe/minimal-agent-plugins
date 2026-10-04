@@ -19,6 +19,7 @@ import {
   findAppleProjectRoot,
   findConfigRoot,
   resolveBinUp,
+  resolveVendorBinUp,
   TYPE_CONFIG_SIGNALS,
 } from "./detect.ts"
 
@@ -627,5 +628,115 @@ describe("findAppleProjectRoot", () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+})
+
+describe("php and pint detection", () => {
+  function makeVendorBin(root: string, name: string): string {
+    const binDir = join(root, "vendor", "bin")
+    mkdirSync(binDir, { recursive: true })
+    const p = join(binDir, name)
+    writeFileSync(p, "#!/bin/sh\nexit 0\n")
+    chmodSync(p, 0o755)
+    return p
+  }
+
+  function makePathBin(dir: string, name: string): string {
+    mkdirSync(dir, { recursive: true })
+    const p = join(dir, name)
+    writeFileSync(p, "#!/bin/sh\nexit 0\n")
+    chmodSync(p, 0o755)
+    return p
+  }
+
+  it("resolveVendorBinUp finds vendor/bin walking up", () => {
+    const root = scratch()
+    try {
+      const bin = makeVendorBin(root, "pint")
+      const nested = join(root, "app", "Models")
+      mkdirSync(nested, { recursive: true })
+      expect(resolveVendorBinUp("pint", nested)).toBe(bin)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("detects php from PATH when composer.json is present", () => {
+    const root = scratch()
+    const pathDir = join(root, "fake-path")
+    try {
+      makePathBin(pathDir, "php")
+      writeFileSync(join(root, "composer.json"), JSON.stringify({ name: "app/app" }))
+      const tools = detectTools(root, { path: pathDir })
+      const php = byId(tools, "php")
+      expect(php).toBeDefined()
+      expect(php?.kind).toBe("type")
+      expect(php?.bin).toBe(join(pathDir, "php"))
+      expect(php?.persistent).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("detects pint from vendor/bin when laravel/pint is a composer dep", () => {
+    const root = scratch()
+    try {
+      const bin = makeVendorBin(root, "pint")
+      writeFileSync(
+        join(root, "composer.json"),
+        JSON.stringify({
+          require: { php: "^8.3" },
+          "require-dev": { "laravel/pint": "^1.15" },
+        }),
+      )
+      const tools = detectTools(root, { path: "" })
+      const pint = byId(tools, "pint")
+      expect(pint).toBeDefined()
+      expect(pint?.kind).toBe("format")
+      expect(pint?.bin).toBe(bin)
+      expect(pint?.configFound).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("does not invent pint without pint.json or laravel/pint", () => {
+    const root = scratch()
+    try {
+      makeVendorBin(root, "pint")
+      writeFileSync(join(root, "composer.json"), JSON.stringify({ name: "app/app" }))
+      const tools = detectTools(root, { path: "" })
+      expect(byId(tools, "pint")).toBeUndefined()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("detectToolsForFile picks php+pint for a .php path under composer", () => {
+    const root = scratch()
+    const pathDir = join(root, "fake-path")
+    try {
+      makePathBin(pathDir, "php")
+      makeVendorBin(root, "pint")
+      writeFileSync(
+        join(root, "composer.json"),
+        JSON.stringify({ "require-dev": { "laravel/pint": "*" } }),
+      )
+      const file = join(root, "app", "Models", "User.php")
+      mkdirSync(join(root, "app", "Models"), { recursive: true })
+      writeFileSync(file, "<?php\n")
+      const tools = detectToolsForFile(file, { path: pathDir })
+      expect(byId(tools, "php")?.configRoot).toBe(root)
+      expect(byId(tools, "pint")?.configRoot).toBe(root)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("TYPE_CONFIG_SIGNALS and FORMAT_CONFIG_SIGNALS include composer roots", () => {
+    expect(TYPE_CONFIG_SIGNALS).toContain("composer.json")
+    expect(TYPE_CONFIG_SIGNALS).toContain("artisan")
+    expect(FORMAT_CONFIG_SIGNALS).toContain("pint.json")
+    expect(FORMAT_CONFIG_SIGNALS).toContain("composer.json")
   })
 })

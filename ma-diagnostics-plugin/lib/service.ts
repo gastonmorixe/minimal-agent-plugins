@@ -36,11 +36,13 @@ export interface ProviderFactories {
   makeTsLsp(bin: string, root: string, id: string): DiagnosticProvider
   makeBiome(bin: string, root: string): DiagnosticProvider
   makePrettier(bin: string, root: string): DiagnosticProvider
+  makePint(bin: string, root: string): DiagnosticProvider
   makeOxlint(bin: string, root: string): DiagnosticProvider
   makeEslint(bin: string, root: string): DiagnosticProvider
   /** Spawn-per-call `tsc --noEmit` provider (TypeScript 6-and-earlier fallback). */
   makeTsc(bin: string, root: string): DiagnosticProvider
   makeTscDirect(bin: string, root: string): DiagnosticProvider
+  makePhp(bin: string, root: string): DiagnosticProvider
   makeSourceKit(bin: string, root: string): DiagnosticProvider
 }
 
@@ -107,10 +109,14 @@ export class DiagnosticsService {
           providers.push(this.factories.makeTsc(t.bin, cwd))
         }
         this.tscBin = t.bin
+      } else if (t.id === "php" && this.config.type) {
+        providers.push(this.factories.makePhp(t.bin, cwd))
       } else if (t.id === "biome" && this.config.format) {
         providers.push(this.factories.makeBiome(t.bin, cwd))
       } else if (t.id === "prettier" && this.config.format) {
         providers.push(this.factories.makePrettier(t.bin, cwd))
+      } else if (t.id === "pint" && this.config.format) {
+        providers.push(this.factories.makePint(t.bin, cwd))
       } else if (t.id === "oxlint" && this.config.lint) {
         providers.push(this.factories.makeOxlint(t.bin, cwd))
       } else if (t.id === "eslint" && this.config.lint) {

@@ -69,6 +69,11 @@ interface ToolSpec {
   persistent: boolean
   /** When true, resolve the binary from PATH instead of node_modules/.bin. */
   fromPath?: boolean
+  /**
+   * When true, resolve `vendor/bin/<binName>` (Composer) walking ancestors,
+   * then fall back to PATH. Used for PHP tools like Laravel Pint.
+   */
+  fromVendor?: boolean
 }
 
 /**
@@ -109,6 +114,20 @@ const REGISTRY: ToolSpec[] = [
     requiresConfig: true,
     requiresAnyOf: ["tsconfig.json", "jsconfig.json"],
     persistent: false,
+  },
+  {
+    // PHP syntax via `php -l`. PATH binary. Activates for Composer/Laravel
+    // roots (composer.json / artisan). Ad-hoc `.php` files can still opt in
+    // through detectToolsForFile fallback, like sourcekit-lsp.
+    id: "php",
+    kind: "type",
+    binName: "php",
+    configFiles: ["composer.json", "artisan"],
+    depNames: [],
+    requiresConfig: false,
+    requiresAnyOf: ["composer.json", "artisan"],
+    persistent: false,
+    fromPath: true,
   },
   {
     id: "oxlint",
@@ -156,6 +175,19 @@ const REGISTRY: ToolSpec[] = [
     // Biome owns format when its config is present; skip prettier entirely.
     suppressedBy: ["biome"],
     persistent: false,
+  },
+  {
+    // Laravel Pint (PHP-CS-Fixer wrapper). Composer `vendor/bin/pint` or PATH.
+    // Requires pint.json and/or a laravel/pint composer dependency so we never
+    // invent style rules for a bare PHP tree.
+    id: "pint",
+    kind: "format",
+    binName: "pint",
+    configFiles: ["pint.json"],
+    depNames: ["laravel/pint"],
+    requiresConfig: true,
+    persistent: false,
+    fromVendor: true,
   },
   {
     // ESLint (flat config era). Coexists with oxlint: they check different
@@ -214,6 +246,27 @@ function readDeps(root: string): Record<string, string> {
   }
 }
 
+/** Read composer.json require maps, tolerant of a missing/malformed file. */
+function readComposerDeps(root: string): Record<string, string> {
+  const composerPath = join(root, "composer.json")
+  if (!existsSync(composerPath)) return {}
+  try {
+    const pkg = JSON.parse(readFileSync(composerPath, "utf8")) as Record<string, unknown>
+    const out: Record<string, string> = {}
+    for (const key of ["require", "require-dev"]) {
+      const map = pkg[key]
+      if (map && typeof map === "object") {
+        for (const [k, v] of Object.entries(map as Record<string, unknown>)) {
+          if (typeof v === "string") out[k] = v
+        }
+      }
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
 /**
  * Walk ancestors of `startDir` looking for `node_modules/.bin/<binName>`.
  * Supports hoisted workspaces where the package has config (tsconfig, biome)
@@ -226,6 +279,26 @@ export function resolveBinUp(binName: string, startDir: string, maxDepth = 12): 
   let dir = startDir
   for (let depth = 0; depth < maxDepth; depth++) {
     const candidate = join(dir, "node_modules", ".bin", binName)
+    if (existsSync(candidate)) return candidate
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return null
+}
+
+/**
+ * Walk ancestors of `startDir` looking for `vendor/bin/<binName>` (Composer).
+ * Returns the absolute binary path, or null when nothing is found.
+ */
+export function resolveVendorBinUp(
+  binName: string,
+  startDir: string,
+  maxDepth = 12,
+): string | null {
+  let dir = startDir
+  for (let depth = 0; depth < maxDepth; depth++) {
+    const candidate = join(dir, "vendor", "bin", binName)
     if (existsSync(candidate)) return candidate
     const parent = dirname(dir)
     if (parent === dir) break
@@ -339,6 +412,9 @@ const PROJECT_SIGNALS = [
   "*.xcworkspace",
   "tsconfig.json",
   "jsconfig.json",
+  "composer.json",
+  "artisan",
+  "pint.json",
   "biome.json",
   "biome.jsonc",
   ".oxlintrc.json",
@@ -349,9 +425,15 @@ const PROJECT_SIGNALS = [
   "eslint.config.mjs",
 ]
 
-/** TypeScript / JS project signals (type providers). */
-export const TYPE_CONFIG_SIGNALS = ["tsconfig.json", "jsconfig.json"] as const
-/** Biome config signals (format provider). */
+/** TypeScript / JS / PHP project signals (type providers). */
+export const TYPE_CONFIG_SIGNALS = [
+  "tsconfig.json",
+  "jsconfig.json",
+  // PHP / Laravel roots (php -l).
+  "composer.json",
+  "artisan",
+] as const
+/** Biome / Prettier / Pint config signals (format providers). */
 export const FORMAT_CONFIG_SIGNALS = [
   "biome.json",
   "biome.jsonc",
@@ -366,6 +448,9 @@ export const FORMAT_CONFIG_SIGNALS = [
   "prettier.config.cjs",
   "prettier.config.mjs",
   "prettier.config.ts",
+  // Laravel Pint (composer dep may also activate when composer.json is the root).
+  "pint.json",
+  "composer.json",
 ] as const
 /** Oxlint + ESLint config signals (lint providers). */
 export const LINT_CONFIG_SIGNALS = [
@@ -466,7 +551,7 @@ export function detectTools(
   root: string,
   options: DetectOptions & { fallback?: boolean } = {},
 ): DetectedTool[] {
-  const deps = readDeps(root)
+  const deps = { ...readDeps(root), ...readComposerDeps(root) }
   const tsMajor =
     options.typescriptMajor !== undefined ? options.typescriptMajor : readTypescriptMajor(root)
   const out: DetectedTool[] = []
@@ -477,7 +562,9 @@ export function detectTools(
 
     let bin: string | null
     let binRoot: string | undefined
-    if (spec.fromPath) {
+    if (spec.fromVendor) {
+      bin = resolveVendorBinUp(spec.binName, root) ?? resolveFromPath(spec.binName, options.path)
+    } else if (spec.fromPath) {
       bin = resolveFromPath(spec.binName, options.path)
     } else {
       bin = resolveBinUp(spec.binName, root)
@@ -492,7 +579,7 @@ export function detectTools(
     // A tool that requires config is skipped when none of its requiresAnyOf
     // files (or wildcard patterns) are present. In fallback mode, PATH-based
     // tools skip this check: they may provide value even without project context.
-    const skipSignalCheck = spec.fromPath && options.fallback
+    const skipSignalCheck = (spec.fromPath || spec.fromVendor) && options.fallback
     if (!skipSignalCheck && spec.requiresAnyOf && !anyPatternMatches(root, spec.requiresAnyOf)) {
       continue
     }
@@ -567,6 +654,16 @@ export function detectToolsForFile(
     for (const t of detectTools(fallbackRoot, { ...options, fallback: true })) {
       if (t.id !== "sourcekit-lsp") continue
       out.push({ ...t, configRoot: appleRoot ?? fallbackRoot })
+      break
+    }
+  }
+
+  // php -l can still parse a lone `.php` file when no composer/artisan root exists.
+  if (!seen.has("php") && /\.php$/i.test(filePath)) {
+    const fallbackRoot = options.fallbackRoot ?? typeRoot ?? formatRoot ?? dirname(filePath)
+    for (const t of detectTools(fallbackRoot, { ...options, fallback: true })) {
+      if (t.id !== "php") continue
+      out.push({ ...t, configRoot: typeRoot ?? fallbackRoot })
       break
     }
   }
