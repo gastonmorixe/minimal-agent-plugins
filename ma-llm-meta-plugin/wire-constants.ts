@@ -17,7 +17,7 @@ export const META_OPENAI_BASE = `${META_API_BASE_URL}/v1`
 /** Chat Completions endpoint. */
 export const CHAT_COMPLETIONS_URL = `${META_OPENAI_BASE}/chat/completions`
 
-/** Responses API endpoint (OpenAI Responses shape; phase-2 adapter optional). */
+/** Responses API endpoint (OpenAI Responses shape; primary Muse agent surface). */
 export const RESPONSES_URL = `${META_OPENAI_BASE}/responses`
 
 /** Anthropic Messages compatibility endpoint (phase-2). */

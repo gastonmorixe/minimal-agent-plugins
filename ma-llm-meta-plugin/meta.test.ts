@@ -32,7 +32,12 @@ import {
   parseMetaQuotaWindows,
   setMetaRateLimits,
 } from "./session-info.ts"
-import { CHAT_COMPLETIONS_URL, META_OPENAI_BASE, MODELS_URL } from "./wire-constants.ts"
+import {
+  CHAT_COMPLETIONS_URL,
+  META_OPENAI_BASE,
+  MODELS_URL,
+  RESPONSES_URL,
+} from "./wire-constants.ts"
 
 function fakeNetworkClient(status: number, body: string, headers?: Headers) {
   return {
@@ -112,22 +117,45 @@ describe("meta plugin shape", () => {
     expect(metaProviderPlugin.listLiveModels).toBeDefined()
   })
 
-  it("registers three Muse Spark models", () => {
+  it("exposes chat + responses surfaces", () => {
+    expect(metaAdapter.surfaces).toEqual(["openai-chat-completions", "openai-responses"])
+  })
+
+  it("registers Muse Spark Responses + Chat companions", () => {
     const r = makeTestRegistry()
     const ids = registerMetaModels(r.models)
-    expect(ids).toHaveLength(3)
+    expect(ids).toHaveLength(10)
+    expect(ids).toContain("muse-spark-1.3")
+    expect(ids).toContain("muse-spark-1.3-chat")
+    expect(ids).toContain("muse-spark-1.3-contributor")
+    expect(ids).toContain("muse-spark-1.3-contributor-chat")
     expect(ids).toContain("muse-spark-1.2")
+    expect(ids).toContain("muse-spark-1.2-chat")
     expect(ids).toContain("muse-spark-1.1")
+    expect(ids).toContain("muse-spark-1.1-chat")
     expect(ids).toContain("muse-spark-1.2-contributor")
-    expect(listMetaBuiltinModelIds()).toHaveLength(3)
-    expect(META_DEFAULT_MODEL_ID).toBe("muse-spark-1.2")
+    expect(ids).toContain("muse-spark-1.2-contributor-chat")
+    expect(listMetaBuiltinModelIds()).toHaveLength(10)
+    expect(META_DEFAULT_MODEL_ID).toBe("muse-spark-1.3")
   })
 
   it("bootstrap registers adapter + models", () => {
     const r = setup()
     expect(r.resolveProvider("meta").id).toBe("meta")
-    expect(r.resolveModel("muse-spark-1.2").providerId).toBe("meta")
-    expect(r.resolveModel("muse-spark-1.2").surfaceId).toBe("openai-chat-completions")
+    expect(r.resolveModel("muse-spark-1.3").providerId).toBe("meta")
+    expect(r.resolveModel("muse-spark-1.3").surfaceId).toBe("openai-responses")
+    expect(r.resolveModel("muse-spark-1.3").capabilities.thinking.visible).toBe(true)
+    expect(r.resolveModel("muse-spark-1.3").capabilities.serverSideHistory).toBe(false)
+    expect(r.resolveModel("muse-spark-1.3").vendorIds?.firstParty).toBe("muse-spark-1.3")
+    // Docs 2026-10-04: Standard 1.3 alone accepts effort `max`
+    expect(r.resolveModel("muse-spark-1.3").capabilities.effort.levels).toContain("max")
+    expect(r.resolveModel("muse-spark-1.3-contributor").capabilities.effort.levels).not.toContain(
+      "max",
+    )
+    expect(r.resolveModel("muse-spark-1.3-chat").surfaceId).toBe("openai-chat-completions")
+    expect(r.resolveModel("muse-spark-1.3-chat").capabilities.thinking.visible).toBe(false)
+    expect(r.resolveModel("muse-spark-1.3-chat").vendorIds?.firstParty).toBe("muse-spark-1.3")
+    expect(r.resolveModel("muse-spark-1.2").surfaceId).toBe("openai-responses")
   })
 
   it("ad-hoc model registers bare Meta slug", () => {
@@ -137,10 +165,11 @@ describe("meta plugin shape", () => {
   })
 
   it("modelVersionToken strips muse-spark- prefix", () => {
-    expect(metaProviderPlugin.modelVersionToken?.("muse-spark-1.2")).toBe("1.2")
-    expect(metaProviderPlugin.modelVersionToken?.("muse-spark-1.2-contributor")).toBe(
-      "1.2-contributor",
+    expect(metaProviderPlugin.modelVersionToken?.("muse-spark-1.3")).toBe("1.3")
+    expect(metaProviderPlugin.modelVersionToken?.("muse-spark-1.3-contributor")).toBe(
+      "1.3-contributor",
     )
+    expect(metaProviderPlugin.modelVersionToken?.("muse-spark-1.2")).toBe("1.2")
     expect(metaProviderPlugin.modelVersionToken?.("other")).toBeUndefined()
   })
 
@@ -148,9 +177,9 @@ describe("meta plugin shape", () => {
     setup()
     const recs = metaAdapter.recommendSubagentModels?.() ?? []
     const byRole = Object.fromEntries(recs.map((r) => [r.role, r.modelId]))
-    expect(byRole.scout).toBe("muse-spark-1.2-contributor")
+    expect(byRole.scout).toBe("muse-spark-1.3-contributor")
     expect(byRole.balanced).toBe("muse-spark-1.1")
-    expect(byRole.deep).toBe("muse-spark-1.2")
+    expect(byRole.deep).toBe("muse-spark-1.3")
   })
 })
 
@@ -262,6 +291,7 @@ describe("meta wire constants", () => {
   it("points at api.meta.ai/v1", () => {
     expect(META_OPENAI_BASE).toBe("https://api.meta.ai/v1")
     expect(CHAT_COMPLETIONS_URL).toBe("https://api.meta.ai/v1/chat/completions")
+    expect(RESPONSES_URL).toBe("https://api.meta.ai/v1/responses")
     expect(MODELS_URL).toBe("https://api.meta.ai/v1/models")
   })
 })
@@ -346,5 +376,110 @@ describe("meta adapter errors", () => {
       ),
     )
     expect(err?.message).toMatch(/missing api-key/i)
+  })
+
+  it("POSTs Responses and omits previous_response_id by default", async () => {
+    setup()
+    const model = reg.resolveModel("muse-spark-1.2")
+    let postedUrl = ""
+    let postedBody = ""
+    const client = {
+      async request(input: { url: string; body?: string }) {
+        postedUrl = input.url
+        postedBody = input.body ?? ""
+        throw new Error("request captured")
+      },
+    } as unknown as NetworkClient
+    await drainCatch(
+      metaAdapter.run(
+        {
+          modelId: model.id,
+          messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+          previousResponseId: "resp_should_not_wire",
+          stream: true,
+        },
+        model,
+        {
+          auth: { kind: "api-key", key: "LLM_test" },
+          sessionId: "sess-meta-cache-1",
+          networkClient: client,
+        } as RunContext,
+      ),
+    )
+    expect(postedUrl).toBe(RESPONSES_URL)
+    const body = JSON.parse(postedBody) as {
+      store?: boolean
+      previous_response_id?: string
+      include?: string[]
+      model?: string
+      prompt_cache_key?: string
+    }
+    expect(body.model).toBe("muse-spark-1.2")
+    expect(body.store).toBe(false)
+    expect(body.previous_response_id).toBeUndefined()
+    expect(body.include).toContain("reasoning.encrypted_content")
+    // OpenAI-parity: when request metadata.sessionId is unset, stamp from ctx.
+    expect(body.prompt_cache_key).toBe("sess-meta-cache-1")
+  })
+
+  it("Responses prompt_cache_key prefers metadata.sessionId over ctx.sessionId", async () => {
+    setup()
+    const model = reg.resolveModel("muse-spark-1.3")
+    let postedBody = ""
+    const client = {
+      async request(input: { body?: string }) {
+        postedBody = input.body ?? ""
+        throw new Error("request captured")
+      },
+    } as unknown as NetworkClient
+    await drainCatch(
+      metaAdapter.run(
+        {
+          modelId: model.id,
+          messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+          metadata: { sessionId: "from-metadata" },
+          stream: true,
+        },
+        model,
+        {
+          auth: { kind: "api-key", key: "LLM_test" },
+          sessionId: "from-ctx",
+          networkClient: client,
+        } as RunContext,
+      ),
+    )
+    const body = JSON.parse(postedBody) as { prompt_cache_key?: string }
+    expect(body.prompt_cache_key).toBe("from-metadata")
+  })
+
+  it("POSTs Chat Completions for *-chat companions", async () => {
+    setup()
+    const model = reg.resolveModel("muse-spark-1.2-chat")
+    let postedUrl = ""
+    let postedBody = ""
+    const client = {
+      async request(input: { url: string; body?: string }) {
+        postedUrl = input.url
+        postedBody = input.body ?? ""
+        throw new Error("request captured")
+      },
+    } as unknown as NetworkClient
+    await drainCatch(
+      metaAdapter.run(
+        {
+          modelId: model.id,
+          messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+          stream: true,
+        },
+        model,
+        {
+          auth: { kind: "api-key", key: "LLM_test" },
+          networkClient: client,
+        } as RunContext,
+      ),
+    )
+    expect(postedUrl).toBe(CHAT_COMPLETIONS_URL)
+    const body = JSON.parse(postedBody) as { model?: string }
+    expect(body.model).toBe("muse-spark-1.2")
   })
 })

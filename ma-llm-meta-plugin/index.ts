@@ -25,8 +25,20 @@ export {
 } from "./auth.ts"
 export {
   CAPS_MUSE_SPARK_1_1,
+  CAPS_MUSE_SPARK_1_1_CHAT,
+  CAPS_MUSE_SPARK_1_1_RESPONSES,
   CAPS_MUSE_SPARK_1_2,
+  CAPS_MUSE_SPARK_1_2_CHAT,
   CAPS_MUSE_SPARK_1_2_CONTRIBUTOR,
+  CAPS_MUSE_SPARK_1_2_CONTRIBUTOR_CHAT,
+  CAPS_MUSE_SPARK_1_2_CONTRIBUTOR_RESPONSES,
+  CAPS_MUSE_SPARK_1_2_RESPONSES,
+  CAPS_MUSE_SPARK_1_3,
+  CAPS_MUSE_SPARK_1_3_CHAT,
+  CAPS_MUSE_SPARK_1_3_CONTRIBUTOR,
+  CAPS_MUSE_SPARK_1_3_CONTRIBUTOR_CHAT,
+  CAPS_MUSE_SPARK_1_3_CONTRIBUTOR_RESPONSES,
+  CAPS_MUSE_SPARK_1_3_RESPONSES,
 } from "./capabilities.ts"
 export { listMetaLiveModels } from "./live-models.ts"
 export {
@@ -43,7 +55,14 @@ export {
   PRICING_MUSE_SPARK_1_1,
   PRICING_MUSE_SPARK_1_2,
   PRICING_MUSE_SPARK_1_2_CONTRIBUTOR,
+  PRICING_MUSE_SPARK_1_3,
+  PRICING_MUSE_SPARK_1_3_CONTRIBUTOR,
 } from "./pricing.ts"
+export {
+  buildOpenAIResponsesBody,
+  META_ENCRYPTED_REASONING_INCLUDE,
+} from "./responses/request-body.ts"
+export { translateOpenAIResponsesStream } from "./responses/response-stream.ts"
 export {
   accumulateMetaUsage,
   clearMetaRateLimits,
