@@ -20,8 +20,12 @@ resolves binaries from that root's `node_modules/.bin` **or an ancestor's**
 | ------------------------- | -------------------------- | -------------------------------------------- | ------------------- |
 | **tsgo** (type)           | tsconfig + bin             | persistent `tsgo --lsp` (reused)             | ~2-3ms warm         |
 | **tsc** (type)            | tsconfig + bin, no tsgo    | `tsc --lsp` when TS≥7, else spawn `--noEmit` | ~2-3ms / ~300-800ms |
+| **php** (type)            | PATH `php` + composer/artisan | spawn `php -l` (project php, no version pin) | ~10-50ms          |
 | **biome** (format)        | bin / biome.json           | spawn `check --reporter=json`                | ~55ms               |
+| **prettier** (format)     | prettier config + bin      | spawn `--check` (suppressed by biome)        | ~50-150ms           |
+| **pint** (format)         | vendor/bin or PATH + pint.json / laravel/pint | `pint --test --format=json -v -- <file>` | ~100-800ms |
 | **oxlint** (lint)         | bin / .oxlintrc            | spawn `-f json` (opt-in)                     | ~400ms              |
+| **eslint** (lint)         | eslint config + bin        | spawn `--format json` (opt-in)               | varies              |
 | **sourcekit-lsp** (apple) | Package.swift / .xcodeproj | persistent LSP (reused)                      | ~2-5ms warm         |
 
 **Type provider priority**: `tsgo` wins when both `tsgo` and `tsc` are present.
@@ -34,8 +38,9 @@ A project with none of these installed gets a silent no-op.
 ### Config root vs install root (hoisted monorepos)
 
 After each Edit/Write the plugin walks up from the **edited file** with
-**per-tool** signals (type → `tsconfig`/`jsconfig`, format → `biome.json`,
-lint → oxlint configs, apple → `Package.swift` / Xcode). That directory is the
+**per-tool** signals (type → `tsconfig`/`jsconfig`/`composer.json`/`artisan`,
+format → `biome.json` / prettier / `pint.json` / `composer.json`, lint → oxlint
+or eslint configs, apple → `Package.swift` / Xcode). That directory is the
 tool's **config root** (LSP `rootUri` / tool `cwd`). Binaries may live higher
 up when the package manager hoists deps, e.g.:
 
@@ -216,10 +221,17 @@ The agent owns all rendering; this plugin only supplies data.
 REGISTRY scan order:
   1. tsgo           (kind: type, persistent, requires tsconfig)
   2. tsc            (kind: type, suppressedBy: ["tsgo"], requires tsconfig)
-  3. oxlint         (kind: lint, optional config, opt-in)
-  4. biome          (kind: format, optional config)
-  5. sourcekit-lsp  (kind: apple, persistent, from PATH, optional signal)
+  3. php            (kind: type, from PATH, composer.json / artisan)
+  4. oxlint         (kind: lint, optional config, opt-in)
+  5. biome          (kind: format, optional config)
+  6. prettier       (kind: format, requires config, suppressedBy biome)
+  7. pint           (kind: format, vendor/bin or PATH, requires pint.json / laravel/pint)
+  8. eslint         (kind: lint, requires config, opt-in)
+  9. sourcekit-lsp  (kind: apple, persistent, from PATH, optional signal)
 ```
+
+PHP / Pint use the binaries the project already has. The plugin does not pin
+PHP or Pint versions. See [`docs/php-linting.md`](docs/php-linting.md).
 
 When a tool has `suppressedBy`, it is skipped if the suppressing tool was
 already detected. This ensures only one type provider is active per project.

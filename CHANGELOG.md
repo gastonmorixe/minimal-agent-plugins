@@ -8,6 +8,15 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-10-04: **`ma-diagnostics-plugin` checks PHP syntax and Laravel Pint style
+  after Edit/Write.** Detects PATH `php` for `php -l` (type gate) and
+  `vendor/bin/pint` or PATH `pint` for check-only
+  `pint --test --format=json -v -- <file>` (format gate). Activates on
+  Composer/Laravel roots (`composer.json` / `artisan`, plus `pint.json` or a
+  `laravel/pint` dep for Pint). No PHP/Pint version pins: the project binary
+  wins. Exit 1 from Pint is treated as findings, not a runner failure. See
+  [`ma-diagnostics-plugin/docs/php-linting.md`](ma-diagnostics-plugin/docs/php-linting.md).
+
 - 2026-09-29: **OpenAI provider: GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna, Ultrafast, and
   the older models the API still serves.** Work by Fernando (`a1f4e699`).
   - New models (Responses plus `-chat` where the API allows it): `gpt-6.1-sol`
