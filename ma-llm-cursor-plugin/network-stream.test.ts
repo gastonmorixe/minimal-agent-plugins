@@ -16,8 +16,8 @@
  * - `application/connect+proto` on content-type/accept → Connect streaming wire
  * - framed body (flags 0 + length greater than 5) → AgentClientMessage is Connect-enveloped
  * - `capture.requestBody: base64:…` → binary-safe net-dbg (UTF-8 would corrupt)
- * - `capture.responseBody: false` → status/headers still logged; avoid duplicating
- *   long streamed model output on disk
+ * - `capture.responseBody: true` → net-dbg saves the original response frames
+ *   when the host logger is enabled
  * - signal identity → cancel must reach the host client, not only local generators
  *
  * Ownership: tests only. Product path is `adapter.ts` + `connect/stream.ts`.
@@ -187,11 +187,10 @@ describe("cursorAdapter.run — NetworkClient h2 connect+proto seam", () => {
       expect(call.allowFetchFallback).toBe(false)
 
       // Binary capture must be base64-prefixed; UTF-8 capture corrupts protobuf.
-      // responseBody false: stream is consumed by the translator; host still sees chunks
-      // via the response body stream without a second full-body snapshot requirement.
+      // The host appends raw response chunks when MINIMAL_AGENT_NET_DBG=1.
       expect(call.capture).toEqual({
         requestBody: `base64:${Buffer.from(body).toString("base64")}`,
-        responseBody: false,
+        responseBody: true,
       })
 
       // Same AbortSignal instance — identity matters for host abort wiring.
@@ -205,6 +204,22 @@ describe("cursorAdapter.run — NetworkClient h2 connect+proto seam", () => {
       if (prevTransport === undefined) delete process.env.MA_CURSOR_STREAM_TRANSPORT
       else process.env.MA_CURSOR_STREAM_TRANSPORT = prevTransport
     }
+  })
+
+  test("unary fallback permits capture of the original response bytes", async () => {
+    const fixture = await loadFixtureBytes()
+    const { client, calls } = makeFakeClient({ body: bytesToStream(fixture) })
+    const chunks = await Array.fromAsync(
+      connectStreamPost({
+        url: agentRunUrl(),
+        headers: { "content-type": CURSOR_STREAM_CONTENT_TYPE },
+        body: new Uint8Array([0, 0, 0, 0, 0]),
+        networkClient: client,
+      }),
+    )
+
+    expect(calls[0]?.capture?.responseBody).toBe(true)
+    expect(Buffer.concat(chunks)).toEqual(Buffer.from(fixture))
   })
 
   test("rejects an already-aborted request before calling NetworkClient", async () => {

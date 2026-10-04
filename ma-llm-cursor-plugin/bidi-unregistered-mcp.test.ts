@@ -15,7 +15,14 @@ import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient, NetworkResponse } from "./lib/net-types.ts"
 import { findUnregisteredMcpExec } from "./mcp-exec-guard.ts"
-import { concat, encMsg, encString, encVarintField, getFirstMsg } from "./proto/wire.ts"
+import {
+  concat,
+  encMsg,
+  encString,
+  encVarintField,
+  getFirstMsg,
+  getRepeatedString,
+} from "./proto/wire.ts"
 
 const TOOLS = [
   {
@@ -37,7 +44,27 @@ describe("findUnregisteredMcpExec", () => {
     const hit = findUnregisteredMcpExec(mcpExec("GetDynamicTools"), TOOLS)
     expect(hit?.ok).toBe(true)
     expect(hit?.replyText).toContain("ModelInfo")
-    expect(hit?.replyText).not.toContain("Second line")
+    expect(hit?.replyText).toContain("Second line")
+  })
+
+  test("GetDynamicTools exposes the exact input schema and complete description", () => {
+    const description = `Read a file.\n${"Detailed instructions. ".repeat(12)}Use file_path, not path.`
+    const inputSchema = {
+      type: "object",
+      properties: { file_path: { type: "string" } },
+      required: ["file_path"],
+      additionalProperties: false,
+    }
+    const hit = findUnregisteredMcpExec(mcpExec("GetDynamicTools"), [
+      {
+        ...TOOLS[0]!,
+        toolName: "Read",
+        description,
+        inputSchemaJson: JSON.stringify(inputSchema),
+      },
+    ])
+    expect(hit?.replyText).toContain(JSON.stringify(inputSchema))
+    expect(hit?.replyText).toContain(description)
   })
 
   test("CallDynamicTool gets an error reply that lists the real tools", () => {
@@ -45,6 +72,8 @@ describe("findUnregisteredMcpExec", () => {
     expect(hit?.ok).toBe(false)
     expect(hit?.replyText).toContain('"CallDynamicTool" does not exist')
     expect(hit?.replyText).toContain("ModelInfo")
+    expect(hit?.replyText).toContain(TOOLS[0]!.description)
+    expect(hit?.replyText).toContain(`input_schema: ${TOOLS[0]!.inputSchemaJson}`)
   })
 
   test("a registered tool passes through", () => {
@@ -79,7 +108,49 @@ const req: CanonicalRequest = {
   modelId: "cursor-auto",
   messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
   tools: [
-    { name: "ModelInfo", description: "meta", inputSchema: { type: "object", properties: {} } },
+    {
+      name: "Read",
+      description: "Read a file.\nUse file_path for the file to read.",
+      inputSchema: {
+        type: "object",
+        properties: { file_path: { type: "string" } },
+        required: ["file_path"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "Task",
+      description: "Manage the plan.\nChildren are strings; updates use id.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          action: { type: "string", enum: ["add_many", "update"] },
+          id: { type: "string" },
+          tasks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                children: { type: "array", items: { type: "string" } },
+              },
+              required: ["title"],
+            },
+          },
+        },
+        required: ["action"],
+      },
+    },
+    {
+      name: "SubAgentsSpawnAgent",
+      description: "Spawn an agent.\nA clear task is required.",
+      inputSchema: {
+        type: "object",
+        properties: { task: { type: "string" }, name: { type: "string" } },
+        required: ["task"],
+        additionalProperties: false,
+      },
+    },
   ],
 }
 
@@ -119,9 +190,12 @@ describe("cursor bidi unregistered MCP exec", () => {
     const client = fakeClient(stream, (chunk) => {
       for (const frame of parseConnectFrames(chunk)) {
         const exec = getFirstMsg(frame.payload, 2)
-        // ExecClientMessage.mcp_result (#11) = McpResult; dump text for a contains check.
+        // Decode the actual text delivered to the model, not a UTF-8 dump of protobuf.
         const result = exec ? getFirstMsg(exec, 11) : undefined
-        if (result) mcpReply = new TextDecoder().decode(result)
+        const success = result ? getFirstMsg(result, 1) : undefined
+        const content = success ? getFirstMsg(success, 1) : undefined
+        const text = content ? getFirstMsg(content, 1) : undefined
+        if (text) mcpReply = getRepeatedString(text, 1)[0] ?? ""
         if (getFirstMsg(frame.payload, 5)) closed = true
       }
       if (mcpReply && closed && ctrl) {
@@ -151,7 +225,11 @@ describe("cursor bidi unregistered MCP exec", () => {
     )
     await Promise.race([run, timeout])
 
-    expect(mcpReply).toContain("ModelInfo")
+    for (const tool of req.tools ?? []) {
+      expect(mcpReply).toContain(tool.name)
+      expect(mcpReply).toContain(tool.description)
+      expect(mcpReply).toContain(JSON.stringify(tool.inputSchema))
+    }
     expect(closed).toBe(true)
     expect(events.some((e) => e.type === "tool_use_start")).toBe(false)
     expect(text).toBe("AFTER")
