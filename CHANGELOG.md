@@ -8,6 +8,18 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-10-04: **`ma-llm-meta-plugin` is Responses-primary for Muse Spark.** Bare
+  ids (`muse-spark-1.3` default, `1.2`, `1.1`, contributors) use
+  `openai-responses` with Chat companions (`*-chat`). Defaults: `store:false`,
+  `include:["reasoning.encrypted_content"]`, drop `previous_response_id` unless
+  store is true. `prompt_cache_key` from vendor / `metadata.sessionId`, then
+  `ctx.sessionId` fallback (OpenAI parity). Catalog refreshed for live
+  `muse-spark-1.3` (+ contributor). Effort: Standard 1.3 includes `max`;
+  Contributor omits it. Offline: `bun test` in the package 26 pass. Live:
+  encrypted Responses + key on wire with Muse Code OAuth. See
+  [`ma-llm-meta-plugin/README.md`](ma-llm-meta-plugin/README.md) and
+  [`ma-llm-meta-plugin/docs/prompt-cache.md`](ma-llm-meta-plugin/docs/prompt-cache.md).
+
 - 2026-10-04: **`ma-diagnostics-plugin` checks PHP syntax and Laravel Pint style
   after Edit/Write.** Detects PATH `php` for `php -l` (type gate) and
   `vendor/bin/pint` or PATH `pint` for check-only
@@ -38,6 +50,19 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
     its tools work only with effort `none`.
 
 ### Changed
+
+- 2026-10-04: **`ma-skills-plugin` caps only the Level-1 prompt catalog.**
+  `plugins["ma-skills"].maxSkills` (default 64) still bounds the system-prompt
+  table. `Skill list` / `info` / `read` scan every valid pack. Overflow emits one
+  `ctx.log.warn("skill-catalog", ...)` and a short fragment note. Broken SKILL.md
+  files still warn via `skill-load`.
+
+- 2026-10-04: **`ma-skills-plugin` warns through the host logger when a SKILL.md
+  fails to load.** Boot discovery still skips the broken pack. It now calls
+  `ctx.log.warn("skill-load", ...)` once per failure (name + first parse error +
+  structured `dir`/`scope`/`reason`). Core owns the TUI last-warn slot. The
+  plugin does not write stderr or extra ANSI for this. The catalog fragment and
+  `Skill list` still list broken skills for the model.
 
 - 2026-09-28: **Cursor models now see only minimal-agent tools.** Work by Eric
   (`9a34c325`), reviewed by Margaret (`740642b5`).
@@ -97,6 +122,40 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
     `-medium-fast` SKU.
 
 ### Fixed
+
+- 2026-10-04: **Prompt cache behavior documented per provider.** Work by Matthew (`68a0d8fb`) with Jonathan (`b63d615f`) and Donna (`fcc46867`).
+  - Meta: automatic prefix KV cache, no `cache_control`. Responses maps `input_tokens_details.cached_tokens`. Live session hit 29.5 percent. `prompt_cache_key` is sent. `prompt_cache_retention` is declared but NOT wired on meta Responses (OpenAI sibling does wire it). Doc updated. See [`ma-llm-meta-plugin/docs/prompt-cache.md`](ma-llm-meta-plugin/docs/prompt-cache.md).
+  - OpenAI: automatic prefix cache, routing keys only. One live hit at 63 percent then drop on prefix churn. See [`ma-llm-openai-plugin/docs/prompt-cache.md`](ma-llm-openai-plugin/docs/prompt-cache.md).
+  - Cursor: reports no cache counters. Wire can carry `cache_read` at 79 percent but mapper drops it. `cursor-auto` rejects effort flags. See [`ma-llm-cursor-plugin/docs/prompt-cache.md`](ma-llm-cursor-plugin/docs/prompt-cache.md).
+  - Grok: sticky `prompt_cache_key` routing, reads `cached_tokens`, create stays empty. No live data: quota dead plus 3 creds dead. See [`ma-llm-grok-plugin/docs/prompt-cache.md`](ma-llm-grok-plugin/docs/prompt-cache.md).
+  - Full probes: `research/2026-10-04-subagent-bugs/findings.md`.
+
+- 2026-10-04: **Sub-agent fleet token count is last-turn contextSize, not a
+  billed integral.** Work by Donna (`fcc46867`) with Matthew (`68a0d8fb`).
+  - Before: `parseProgress` did `tokens += input + output` on every assistant
+    turn. On Cursor, `input_tokens` is checkpoint `used_tokens` (absolute
+    conversation size, output always 0), so 7 tools in ~47s showed `248k`
+    (`247833`) while the window was `36718`. A 48-tool explorer showed `2.76M`
+    with last context `90724`. Net-dbg on that A5 worker had **one**
+    `AgentService/Run`, so the UI was not counting 7 prefills.
+  - After: `tokens = input + cacheRead + cacheCreate`, replaced each turn with
+    `usage`. Matches host `session-tokens.ts` `contextSize`. Fleet footer still
+    sums those last footprints across workers (concurrent windows).
+  - Meta/OpenAI still report per-turn prefill plus `cached_tokens`. The old sum
+    was closer to billed work there and still not footprint (Matthew:
+    lead last window ~98k with ~69k cache read, widget factor ~4-5).
+  - Not in this patch: billed growth sum, cache overspend, Cursor usage mapping,
+    tokens on stopped/failed handles, extra Runs after bidi drop.
+  - Tests: `ma-sub-agents-plugin` `bun test` 293 pass, 0 fail.
+  - Write-up:
+    [`ma-sub-agents-plugin/docs/fleet-token-count.md`](ma-sub-agents-plugin/docs/fleet-token-count.md).
+
+- 2026-10-04: **Quota footer keeps session id and name while shrinking bars.**
+  Squeeze order now shortens separators and effort, then shrinks bars 8 to 4
+  cells with `withSid: true`, and only drops sid/name after `BAR_CELLS_MIN`.
+  Identity stays visible longer under tight host TPS budgets.
+  - Code: `ma-quota-status-plugin/render.ts`.
+  - Tests: `ma-quota-status-plugin/render.test.ts`.
 
 - 2026-10-04 14:18:57 -0400: **Cursor MCP bridge and history fold no longer
   break tool calls.** Work by George (`3c3002a8`).

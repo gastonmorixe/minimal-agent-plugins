@@ -687,29 +687,46 @@ describe("renderQuotaFooter", () => {
       expect(out.indexOf("effort")).toBeLessThan(out.indexOf("b1d82846"))
     })
 
-    it("drops sid BEFORE dropping effort in the degradation ladder", () => {
-      // Forensics anchor is the second-loosest priority on the tail
-      // end (after the opt-in overage). Effort, which reflects the
-      // live wire config, sticks around longer (in some compressed
-      // form — `medium` then `med` — before being dropped itself).
+    it("keeps sid while bars shrink; drops sid only after bars are at min", () => {
+      // Graphs yield first. Sid+name stay through barCells 8→4. Sid
+      // drops only once every bar is already at BAR_CELLS_MIN (4).
       const windows: QuotaWindow[] = [
-        { id: "5h", utilization: 0.21 },
-        { id: "7d", utilization: 0.08 },
+        { id: "month", utilization: 1 },
+        { id: "ondemand", utilization: 1 },
       ]
-      // cols chosen so the ladder lands on
-      // {sep:2, effortFmt:"value", withSid:false}. The previous step
-      // (sid still on) is ~72 cells; this step is ~62 cells.
-      const out = stripAnsi(
-        renderQuotaFooter(windows, SOME_TOKENS, {
-          cols: 65,
-          contextWindow: 200_000,
-          effort: "medium",
-          sid: "b1d82846",
-        }),
-      )
-      // Sid dropped, effort survived (in compressed form).
-      expect(out).not.toContain("b1d82846")
-      expect(out).toContain("medium")
+      const base = {
+        contextWindow: 128_000,
+        effort: "medium" as const,
+        modelLabel: "cur-cursor-auto",
+        sid: "a58a2b9e",
+        name: "Samuel",
+      }
+      const tokens: SessionTokens = {
+        ...SOME_TOKENS,
+        contextSize: 19_600,
+      }
+      const barLens = (s: string): number[] =>
+        (s.match(/[█▏▎▍▌▋▊▉]+[░]*|[░]{4,8}/g) ?? []).map((b) => b.length)
+
+      // Mid pressure: bars must shrink AND sid+name must survive.
+      const mid = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols: 85 }))
+      expect(mid).toContain("a58a2b9e")
+      expect(mid).toContain("Samuel")
+      for (const n of barLens(mid)) expect(n).toBeLessThan(8)
+      for (const n of barLens(mid)) expect(n).toBeGreaterThanOrEqual(4)
+
+      // Tighter: still keep identity at bar floor.
+      const floor = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols: 80 }))
+      expect(floor).toContain("a58a2b9e")
+      expect(floor).toContain("Samuel")
+      for (const n of barLens(floor)) expect(n).toBe(4)
+
+      // Past identity budget: sid may drop, but only with bars already at 4.
+      const lean = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols: 75 }))
+      expect(lean).not.toContain("a58a2b9e")
+      for (const n of barLens(lean)) expect(n).toBe(4)
+      // Effort still present in some compressed form at this step.
+      expect(lean).toMatch(/\bmed(?:ium)?\b/)
     })
 
     it("drops sid AFTER dropping the opt-in overage segment", () => {
@@ -781,21 +798,106 @@ describe("renderQuotaFooter", () => {
     it("drops the name together with the sid under width pressure", () => {
       // The name is part of the sid anchor, so when the ladder drops the
       // sid the name goes with it (they're one unit, not two segments).
+      // Cols must be past the bar-floor-with-sid step (~80 for the
+      // month/ondemand/context fixture); 65 was the OLD ladder's
+      // drop-sid-with-full-bars width and is no longer the drop point.
       const windows: QuotaWindow[] = [
-        { id: "5h", utilization: 0.21 },
-        { id: "7d", utilization: 0.08 },
+        { id: "month", utilization: 1 },
+        { id: "ondemand", utilization: 1 },
       ]
+      const tokens: SessionTokens = { ...SOME_TOKENS, contextSize: 19_600 }
       const out = stripAnsi(
-        renderQuotaFooter(windows, SOME_TOKENS, {
-          cols: 65,
-          contextWindow: 200_000,
+        renderQuotaFooter(windows, tokens, {
+          cols: 75,
+          contextWindow: 128_000,
           effort: "medium",
+          modelLabel: "cur-cursor-auto",
           sid: "4bbc45d6",
           name: "Jerry",
         }),
       )
       expect(out).not.toContain("4bbc45d6")
       expect(out).not.toContain("Jerry")
+    })
+  })
+
+  describe("compression pressure: graphs shrink before identity truncates", () => {
+    // REGRESSION: previously the ladder dropped sid at ~90 cols while
+    // bars stayed at 8 cells. Host flush then ellipsis-truncated the
+    // name / ate TPS space. Graphs must yield first across many widths.
+    const windows: QuotaWindow[] = [
+      { id: "month", utilization: 1 },
+      { id: "ondemand", utilization: 1 },
+    ]
+    const tokens: SessionTokens = { ...SOME_TOKENS, contextSize: 19_600 }
+    const base = {
+      contextWindow: 128_000,
+      effort: "medium" as const,
+      modelLabel: "cur-cursor-auto",
+      sid: "a58a2b9e",
+      name: "Samuel",
+    }
+    const barLens = (s: string): number[] =>
+      (s.match(/[█▏▎▍▌▋▊▉]+[░]*|[░]{4,8}/g) ?? []).map((b) => b.length)
+
+    it("never drops sid while any bar is still wider than BAR_CELLS_MIN", () => {
+      for (let cols = 50; cols <= 120; cols++) {
+        const out = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols }))
+        const lens = barLens(out)
+        if (lens.some((n) => n > 4)) {
+          expect(out, `cols=${cols} still has wide bars`).toContain("a58a2b9e")
+          expect(out, `cols=${cols} still has wide bars`).toContain("Samuel")
+        }
+      }
+    })
+
+    it("when sid is absent, every bar is already at BAR_CELLS_MIN", () => {
+      for (let cols = 50; cols <= 120; cols++) {
+        const out = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols }))
+        if (!out.includes("a58a2b9e")) {
+          for (const n of barLens(out)) {
+            expect(n, `cols=${cols} dropped sid with barCells=${n}`).toBe(4)
+          }
+        }
+      }
+    })
+
+    it("mid-band widths (70..95) keep sid+name by shrinking bars, not by truncating", () => {
+      // These are the widths that previously failed: full 8-cell bars
+      // and no sid. After the fix they must show identity with leaner bars.
+      for (const cols of [70, 75, 80, 85, 90, 95]) {
+        const out = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols }))
+        expect(out.length).toBeLessThanOrEqual(cols)
+        expect(out.includes("…") || out.includes("..."), `cols=${cols} ellipsis`).toBe(
+          false,
+        )
+        if (cols >= 80) {
+          expect(out, `cols=${cols}`).toContain("a58a2b9e")
+          expect(out, `cols=${cols}`).toContain("Samuel")
+          const lens = barLens(out)
+          expect(lens.length).toBeGreaterThan(0)
+          if (cols <= 90) {
+            for (const n of lens) expect(n, `cols=${cols}`).toBeLessThanOrEqual(7)
+          }
+        }
+      }
+    })
+
+    it("usable budget reduced by a TPS reservation still shrinks bars before dropping sid", () => {
+      // Mirrors handler: usableCols = terminalCols - footerReservedWidth.
+      // A ~8-cell TPS tail ("  28/tps") must make bars shrink, not strip sid.
+      const terminalCols = 88
+      const tpsReserve = 8
+      const out = stripAnsi(
+        renderQuotaFooter(windows, tokens, {
+          ...base,
+          cols: terminalCols - tpsReserve,
+        }),
+      )
+      expect(out.length).toBeLessThanOrEqual(terminalCols - tpsReserve)
+      expect(out).toContain("a58a2b9e")
+      expect(out).toContain("Samuel")
+      for (const n of barLens(out)) expect(n).toBeLessThan(8)
     })
   })
 

@@ -1,7 +1,7 @@
 /**
  * Live progress derivation: read a worker's OWN session JSONL (which a real
  * `minimal-agent` child writes append-only as it works) and distill a
- * {@link Progress} — tool count, billed tokens, and what it's doing right now.
+ * {@link Progress} — tool count, last-turn contextSize, and what it's doing right now.
  * This is what makes the fleet widget show real activity instead of zeros.
  *
  * Pure parser (text in, Progress out) + a tolerant tail reader. Reading the
@@ -32,9 +32,8 @@ interface MaybeRecord {
  * Normalize a saved `usage` payload into the four billed counters (missing →
  * 0). LOCAL re-declaration of the host's `billedUsageOf` pure helper (source
  * of truth: `src/session-usage.ts`); re-declared here so the plugin imports
- * nothing from the host repo (the decoupling contract). The fleet widget sums
- * `input + output` only — the honest monotonic billed-work number, with
- * cache re-reads excluded (they'd inflate it; see session-tokens cacheRead).
+ * nothing from the host repo (the decoupling contract). The fleet widget uses
+ * last-turn contextSize (`input + cacheRead + cacheCreate`), replace-not-accumulate.
  */
 function billedUsageOf(u: MaybeUsage | undefined): {
   input: number
@@ -76,9 +75,10 @@ function toolActivity(b: MaybeBlock): string {
  * Parse a worker's JSONL transcript into live {@link Progress}.
  *
  *  - `tools`  = number of `tool_use` blocks across assistant records.
- *  - `tokens` = sum of (input + output) tokens across assistant `usage`,
- *    read via the shared {@link billedUsageOf} normalizer (the honest billed
- *    total, which grows monotonically).
+ *  - `tokens` = last assistant turn contextSize (`input + cacheRead + cacheCreate`).
+ *    Replace-not-accumulate. Matches host `session-tokens.ts` contextSize.
+ *    Summing input+output per turn inflated Cursor checkpoint `used_tokens`
+ *    by turn count (Donna + Matthew 2026-10-04).
  *  - `lastTool` / `lastActivity` = the most recent tool (or a text snippet),
  *    so the widget can show "what is it doing".
  */
@@ -108,13 +108,12 @@ export function parseProgress(jsonlText: string): Progress {
         lastActivity = b.text.replace(/\s+/g, " ").trim().slice(0, 60)
       }
     }
-    // Reuse the shared billed-usage normalizer so the field names + zero
-    // handling match the `--sessions` aggregator. The fleet widget wants a
-    // monotonic "billed work" number, so we sum input+output only (cache
-    // re-reads would inflate it; see session-tokens.ts cacheRead docstring).
+    // Last-turn contextSize, not a billed integral. Cache read/create belong
+    // in the window (host session-tokens.ts). Skip turns with no usage payload
+    // so a tool-only record does not zero the previous footprint.
     if (rec.usage) {
       const b = billedUsageOf(rec.usage)
-      tokens += b.input + b.output
+      tokens = b.input + b.cacheRead + b.cacheCreate
     }
   }
 

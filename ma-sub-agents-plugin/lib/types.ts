@@ -95,7 +95,7 @@ export interface Budget {
 export interface Progress {
   /** Tool calls the worker has made so far. */
   readonly tools: number
-  /** Tokens the worker has consumed so far. */
+  /** Last-turn contextSize (input + cacheRead + cacheCreate). Not a billed integral. */
   readonly tokens: number
   /** Name of the most recent tool, for the widget's "what's it doing" column. */
   readonly lastTool?: string
@@ -113,7 +113,7 @@ export const ZERO_PROGRESS: Progress = { tools: 0, tokens: 0 }
 export interface ResultDigest {
   /** The worker's final synthesis, clipped. */
   readonly short: string
-  /** Total tokens the worker spent. */
+  /** Last-turn contextSize copied from live progress (not a billed integral). */
   readonly tokens: number
   /** Total tool calls the worker made. */
   readonly tools: number
@@ -293,7 +293,7 @@ export interface FleetStats {
   readonly incomplete: number
   readonly failed: number
   readonly stopped: number
-  /** Sum of tokens across all workers (running progress + finished results). */
+  /** Sum of last-turn contextSize across workers (running + done + incomplete). */
   readonly tokens: number
 }
 

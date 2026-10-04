@@ -63,4 +63,4 @@ There is a layered fallback if a worker never calls `SubAgentsReportResult`: the
 - Workers cannot spawn workers (the nesting ban) and cannot delegate the final write. A worker does its whole unit itself, including writing any output file. Decompose from HERE: if a unit is too big for one leaf worker, you split it, the worker can't.
 - Pair this with the task list. Give a worker a `task` that maps to one of your todos, and mark the todo done when the worker's result checks out.
 
-The live fleet panel below your prompt shows every running worker breathing. The `<ma::agent::subagents>` line each turn is your fleet's running state. Watch the token count: it's the honest cost of delegation.
+The live fleet panel below your prompt shows every running worker breathing. The `<ma::agent::subagents>` line each turn is your fleet's running state. The token figure is last-turn contextSize (`input + cacheRead + cacheCreate`), not a billed integral. See `docs/fleet-token-count.md`.
