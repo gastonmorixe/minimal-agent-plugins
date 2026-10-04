@@ -98,6 +98,23 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-10-04 14:18:57 -0400: **Cursor MCP bridge and history fold no longer
+  break tool calls.** Work by George (`3c3002a8`).
+  - `CallDynamicTool` is a real server bridge, not a missing MA tool. Structured
+    calls unwrap to a registered target after namespace, name, and argument
+    checks. Recursive wrappers and unknown targets fail on the wire. Assistant
+    prose that looks like a tool call is never executed.
+  - Advertised MCP targets are validated against their schemas before host
+    dispatch (example: Task `{id:"6a"}` without `action`). Read still accepts
+    `path` as an alias for `file_path`. Custom tools get no inferred aliases.
+  - When conversation carry is absent, folded history labels past tool_use and
+    tool_result as non-executable data. Fake `CallDynamicToolnamespace...`
+    assistant text is stripped. The latest user text is kept.
+  - The GetDynamicTools catalog still prints full schemas. The catalog prompt
+    states that the server bridge exists and still prefers direct MA names.
+  - Coverage in `mcp-contract.test.ts` and `bidi-unregistered-mcp.test.ts`.
+    Offline: `bun run check` exit 0. Live E2E still skipped without `E2E=1`.
+
 - 2026-10-04: **Cursor raw response streams are saved when network debugging is
   enabled.** Removed the provider's response-capture veto in both bidi and unary
   paths. `MINIMAL_AGENT_NET_DBG=1` now records the original binary Connect frames

@@ -15,6 +15,8 @@ export type DecodedExecMcpArgs = {
   /** ExecServerMessage.exec_id (field 15, string). */
   execId: string
   toolCallId: string
+  /** Canonical host id, separate from the original wire correlation. */
+  hostToolCallId?: string
   providerIdentifier?: string
   toolName?: string
   maToolName?: string

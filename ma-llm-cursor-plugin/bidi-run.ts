@@ -31,7 +31,7 @@ import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ModelView } from "./lib/provider-plugin.ts"
-import { findUnregisteredMcpExec } from "./mcp-exec-guard.ts"
+import { resolveCursorMcpExec } from "./mcp-exec-guard.ts"
 import {
   encodeAgentClientMessageConversationAction,
   extractCheckpointBytes,
@@ -184,7 +184,17 @@ export async function* runCursorBidi(
 
   const conversationId = crypto.randomUUID()
   const envelopeGen = wire.envelopes(opts.signal)
-  const translator = new CursorBidiEnvelopeTranslator({ modelId: opts.modelId })
+  const mcpTools = buildCursorToolWirePolicy(req).mcpTools
+  const translator = new CursorBidiEnvelopeTranslator({
+    modelId: opts.modelId,
+    // Unwrap CallDynamicTool / validate schemas before host tool_use.
+    // Discovery and rejected bridge calls are answered above the translator.
+    resolveExecMcp: (payload) => {
+      const resolved = resolveCursorMcpExec(payload, mcpTools)
+      if (!resolved || resolved.reply) return undefined
+      return resolved.exec
+    },
+  })
   const session: CursorBidiSession = {
     wire,
     envelopeGen,
@@ -192,7 +202,7 @@ export async function* runCursorBidi(
     conversationId,
     pendingExec: null,
     blobStore: new Map(opts.carryBlobs ?? []),
-    mcpTools: buildCursorToolWirePolicy(req).mcpTools,
+    mcpTools,
     // Tool-less side calls (compaction, titles) never touch the carry state.
     carry: cursorToolsEnabledOnWire(req)
       ? { hostSessionId: runOpts.sessionId || "default", messages: req.messages }
@@ -501,24 +511,24 @@ async function* readBidiUntilPauseOrEnd(
         continue
       }
 
-      // MCP exec for a tool MA never registered (the GetDynamicTools /
-      // CallDynamicTool bridge the allowlist exposes). Answer on the wire so the
-      // host never sees "Unknown tool" and the model gets the real tool list.
-      const unregistered = findUnregisteredMcpExec(next.value.payload, session.mcpTools ?? [])
-      if (unregistered) {
-        const { exec } = unregistered
-        cursorBidiLog("read.exec-unregistered-mcp", {
+      // MCP bridge / schema gate. GetDynamicTools and invalid CallDynamicTool
+      // get a wire reply here. Valid CallDynamicTool unwraps for the translator
+      // via resolveExecMcp. Assistant prose is never executed.
+      const mcpResolved = resolveCursorMcpExec(next.value.payload, session.mcpTools ?? [])
+      if (mcpResolved?.reply) {
+        const { exec, replyText, ok } = mcpResolved.reply
+        cursorBidiLog("read.exec-mcp-bridge", {
           id: exec.id,
           toolName: exec.maToolName ?? exec.toolName,
-          ok: unregistered.ok,
+          ok,
         })
         writeAck(
           session,
           encodeAgentClientMessageExecResult({
             id: exec.id,
             execId: exec.execId,
-            resultText: unregistered.replyText,
-            isError: !unregistered.ok,
+            resultText: replyText,
+            isError: !ok,
           }),
         )
         writeAck(session, encodeAgentClientMessageExecStreamClose(exec.id))

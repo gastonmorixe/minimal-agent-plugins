@@ -14,6 +14,7 @@ import { resetCursorBidiSessionsForTests } from "./cursor-bidi-session.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient, NetworkResponse } from "./lib/net-types.ts"
+import { exec as mcpExecWithInput } from "./mcp-contract.test.ts"
 import { findUnregisteredMcpExec } from "./mcp-exec-guard.ts"
 import {
   concat,
@@ -67,13 +68,24 @@ describe("findUnregisteredMcpExec", () => {
     expect(hit?.replyText).toContain(description)
   })
 
-  test("CallDynamicTool gets an error reply that lists the real tools", () => {
+  test("bare CallDynamicTool without args is rejected as a bridge shape error", () => {
     const hit = findUnregisteredMcpExec(mcpExec("CallDynamicTool"), TOOLS)
     expect(hit?.ok).toBe(false)
-    expect(hit?.replyText).toContain('"CallDynamicTool" does not exist')
-    expect(hit?.replyText).toContain("ModelInfo")
-    expect(hit?.replyText).toContain(TOOLS[0]!.description)
-    expect(hit?.replyText).toContain(`input_schema: ${TOOLS[0]!.inputSchemaJson}`)
+    expect(hit?.replyText).toContain(
+      "CallDynamicTool requires namespace, toolName, and object arguments",
+    )
+  })
+
+  test("CallDynamicTool unwraps a registered target and does not wire-reply", () => {
+    const hit = findUnregisteredMcpExec(
+      mcpExecWithInput("CallDynamicTool", {
+        namespace: "minimal-agent",
+        toolName: "ModelInfo",
+        arguments: {},
+      }),
+      TOOLS,
+    )
+    expect(hit).toBeUndefined()
   })
 
   test("a registered tool passes through", () => {

@@ -422,16 +422,38 @@ function toolResultText(block: Extract<CanonicalBlock, { type: "tool_result" }>)
     .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
     .join("\n")
     .trim()
-  const label = block.isError ? "tool_result (error)" : "tool_result"
+  const label = block.isError ? "non-executable past result (error)" : "non-executable past result"
   return `[${label} ${block.toolUseId}]\n${clip(body || "(empty)", FLATTEN_TOOL_RESULT_MAX_CHARS)}`
+}
+
+/**
+ * Strip imitable fake bridge-call prose from assistant history only.
+ * Latest user text is never passed through this (messageText applies it
+ * only for assistant role), so a user asking about the syntax is kept.
+ */
+function sanitizeAssistantHistoryText(text: string): string {
+  return text
+    .replace(
+      /\[tool_use[^\]]*\]\s*CallDynamicTool\S*/gi,
+      "[non-executable past bridge call omitted]",
+    )
+    .replace(
+      /\[tool_use[^\]]*\]\s*GetDynamicTools\S*/gi,
+      "[non-executable past bridge call omitted]",
+    )
+    .replace(/CallDynamicToolnamespaces?\S+/g, "[non-executable past bridge call omitted]")
+    .replace(/GetDynamicToolsnamespaces?\S+/g, "[non-executable past bridge call omitted]")
 }
 
 function messageText(msg: CanonicalMessage): string {
   const texts: string[] = []
   for (const block of msg.content) {
     if (block.type === "tool_use") {
-      // Keep the call so the model sees what it asked for, paired by id with its result.
-      texts.push(`[tool_use ${block.id}] ${block.name} ${JSON.stringify(block.input ?? {})}`)
+      // Label as non-executable so a fold fallback cannot be copied as a
+      // live tool call (2026-10-01 / 2026-10-04 fake CallDynamicTool prose).
+      texts.push(
+        `[non-executable past action ${block.id}] ${block.name} ${JSON.stringify(block.input ?? {})}`,
+      )
       continue
     }
     if (block.type === "tool_result") {
@@ -439,7 +461,9 @@ function messageText(msg: CanonicalMessage): string {
       continue
     }
     const t = blockText(block)
-    if (t) texts.push(t)
+    if (t) {
+      texts.push(msg.role === "assistant" ? sanitizeAssistantHistoryText(t) : t)
+    }
   }
   return texts.join("\n")
 }
