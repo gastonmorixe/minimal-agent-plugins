@@ -180,10 +180,12 @@ export default async function handle(ctx: LiveAreaHandlerContext): Promise<strin
   })
   const sessionTokens = sessionInfo.tokens()
 
-  // Usable width for this line: terminal cols minus what the host appends
-  // at flush time (decoration suffix + footer tails). Shared by both the
-  // custom-script path and the built-in renderer below.
-  const usableCols = cols() - (ctx.footerReservedWidth ?? 0)
+  // Usable width for this line: terminal cols minus the host reservation
+  // (live-area cols-1 wrap cell + decoration suffix + footer tails).
+  // Floor at 1 so an older host that still reports 0 (or omits the field)
+  // still shrinks before the editor ellipsis-truncates the trailing name.
+  // Shared by both the custom-script path and the built-in renderer below.
+  const usableCols = cols() - Math.max(1, ctx.footerReservedWidth ?? 1)
 
   // Full-custom renderer escape hatch: hand the session metadata to the user's
   // script and use its output. On any failure/empty/timeout we fall through to

@@ -123,6 +123,8 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-10-10: **Quota footer identity no longer gets ellipsis-cut at full terminal width.** The host live area paints every footer row at `cols - 1` (wrap-safety clamp). The quota renderer budgeted the full `COLUMNS`, so the bar ladder kept wide bars and the editor then cut the trailing session name. `footerReservedWidth` now always includes that wrap cell (plus suffix and tails). The handler subtracts `max(1, reserve)` so an older host that reports `0` or omits the field still shrinks by one cell. Regression: 111-col two-window footer keeps the sid and name with leaner bars.
+
 - 2026-10-04: **Prompt cache behavior documented per provider.** Work by Matthew (`68a0d8fb`) with Jonathan (`b63d615f`) and Donna (`fcc46867`).
   - Meta: automatic prefix KV cache, no `cache_control`. Responses maps `input_tokens_details.cached_tokens`. Live session hit 29.5 percent. `prompt_cache_key` is sent. `prompt_cache_retention` is declared but NOT wired on meta Responses (OpenAI sibling does wire it). Doc updated. See [`ma-llm-meta-plugin/docs/prompt-cache.md`](ma-llm-meta-plugin/docs/prompt-cache.md).
   - OpenAI: automatic prefix cache, routing keys only. One live hit at 63 percent then drop on prefix churn. See [`ma-llm-openai-plugin/docs/prompt-cache.md`](ma-llm-openai-plugin/docs/prompt-cache.md).

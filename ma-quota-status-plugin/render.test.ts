@@ -868,9 +868,7 @@ describe("renderQuotaFooter", () => {
       for (const cols of [70, 75, 80, 85, 90, 95]) {
         const out = stripAnsi(renderQuotaFooter(windows, tokens, { ...base, cols }))
         expect(out.length).toBeLessThanOrEqual(cols)
-        expect(out.includes("…") || out.includes("..."), `cols=${cols} ellipsis`).toBe(
-          false,
-        )
+        expect(out.includes("…") || out.includes("..."), `cols=${cols} ellipsis`).toBe(false)
         if (cols >= 80) {
           expect(out, `cols=${cols}`).toContain("a58a2b9e")
           expect(out, `cols=${cols}`).toContain("Samuel")
@@ -898,6 +896,48 @@ describe("renderQuotaFooter", () => {
       expect(out).toContain("a58a2b9e")
       expect(out).toContain("Samuel")
       for (const n of barLens(out)) expect(n).toBeLessThan(8)
+    })
+
+    it("REGRESSION: wrap-cell reserve at 111 cols shrinks bars so identity fits", () => {
+      // Live bug: renderer budgeted full COLUMNS (111). Ladder kept 7-cell
+      // bars at width 111. Editor then clamped to cols-1 and ellipsis-cut
+      // the trailing name. Handler now passes terminalCols - max(1, reserve).
+      // Reset clauses are load-bearing: without them the line is short enough
+      // that even cols=111 fits at bar=8 and the wrap-cell gap never shows.
+      const terminalCols = 111
+      const wrapReserve = 1
+      const now = Date.UTC(2026, 9, 10, 17, 0, 0)
+      const resetAtMs = now + (3 * 24 + 6) * 3600_000
+      const live = {
+        contextWindow: 128_000,
+        modelLabel: "cur-cursor-auto",
+        sid: "b43acb2c",
+        name: "Janice",
+        now: () => now,
+      }
+      const toks: SessionTokens = { ...SOME_TOKENS, contextSize: 39_700 }
+      const wins: QuotaWindow[] = [
+        { id: "month", utilization: 1, resetAtMs },
+        { id: "ondemand", utilization: 1, resetAtMs },
+      ]
+      const bare = stripAnsi(renderQuotaFooter(wins, toks, { ...live, cols: terminalCols }))
+      const reserved = stripAnsi(
+        renderQuotaFooter(wins, toks, {
+          ...live,
+          cols: terminalCols - wrapReserve,
+        }),
+      )
+      // Without the wrap cell, the ladder picks a form that fills the full
+      // terminal width (host clamp would then cut the name).
+      expect(bare.length).toBeGreaterThan(terminalCols - wrapReserve)
+      expect(bare.length).toBeLessThanOrEqual(terminalCols)
+      for (const n of barLens(bare)) expect(n).toBeGreaterThan(4)
+      // With wrap reserve: leaner bars, full identity, no ellipsis.
+      expect(reserved.length).toBeLessThanOrEqual(terminalCols - wrapReserve)
+      expect(reserved).toContain("b43acb2c")
+      expect(reserved).toContain("Janice")
+      expect(reserved.includes("…") || reserved.includes("...")).toBe(false)
+      for (const n of barLens(reserved)) expect(n).toBeLessThan(barLens(bare)[0]!)
     })
   })
 
