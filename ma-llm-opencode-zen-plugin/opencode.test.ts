@@ -39,7 +39,7 @@ describe("llm-opencode-zen", () => {
 
   it("registers every live Zen model with the documented surface", () => {
     const reg = setup()
-    expect(LIVE_MODEL_IDS).toHaveLength(64)
+    expect(LIVE_MODEL_IDS).toHaveLength(82)
     for (const id of LIVE_MODEL_IDS) {
       const model = reg.resolveModel(id)
       expect(model.providerId).toBe("opencode-zen")
@@ -56,7 +56,7 @@ describe("llm-opencode-zen", () => {
 
   it("validates a Chat request and exposes all wire endpoints", () => {
     const reg = setup()
-    const model = reg.resolveModel("x-preview-f-free")
+    const model = reg.resolveModel("space-bunny-free")
     const request: CanonicalRequest = { modelId: model.id, messages: [userText("hello")] }
     expect(reg.resolveProvider("opencode-zen").validate(request, model).ok).toBe(true)
     expect(OPENCODE_ZEN_CHAT_URL).toBe("https://opencode.ai/zen/v1/chat/completions")
