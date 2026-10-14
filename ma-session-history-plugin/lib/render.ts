@@ -32,7 +32,7 @@ export function renderWindow(w: RecordWindow, anchor: "start" | "end", offset: n
     if (r.preview.length > 0) {
       for (const ln of r.preview.split("\n")) lines.push(`    ${ln}`)
       if (r.clipped)
-        lines.push(`    … (${r.fullChars} chars total; raise previewChars to see more)`)
+        lines.push(`    ... (${r.fullChars} chars total. Raise previewChars to see more.)`)
     }
   }
   const hint = nextWindowHint(w, anchor, offset)

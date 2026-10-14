@@ -149,7 +149,7 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
     if (raw.eval_mode === "value" && out.selector) {
       return {
         ok: false,
-        error: "`eval_mode: value` cannot be combined with `selector`; use `eval_mode: page`",
+        error: "`eval_mode: value` cannot be combined with `selector`. Use `eval_mode: page`",
       }
     }
     out.evalMode = raw.eval_mode as EvalMode

@@ -412,7 +412,7 @@ export async function* translateOpenAIResponsesStream(
           category,
           upstreamType: streamErrorType,
           cause: new Error(
-            `OpenAI Responses failed: ${code ?? "unknown"} — ${f.response.error?.message ?? ""}`,
+            `OpenAI Responses failed: ${code ?? "unknown"}: ${f.response.error?.message ?? ""}`,
           ),
         }
         break
@@ -442,7 +442,7 @@ export async function* translateOpenAIResponsesStream(
           category,
           upstreamType: streamErrorType,
           cause: new Error(
-            `OpenAI Responses error: ${code ?? "unknown"} — ${e.error?.message ?? ""}`,
+            `OpenAI Responses error: ${code ?? "unknown"}: ${e.error?.message ?? ""}`,
           ),
         }
         break

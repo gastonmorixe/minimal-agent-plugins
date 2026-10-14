@@ -180,10 +180,10 @@ function renderAllFailed(err: WebSearchAllFailedError): string {
     // already retried with backoff — tell the model it may just need to
     // try again shortly instead of treating the result as conclusive.
     lines.push("")
-    lines.push("All failures look transient (rate limit / upstream / network) and the")
-    lines.push("search already retried with backoff. Retry the search in a few seconds")
-    lines.push("— the provider may have recovered — or use a different/more specific")
-    lines.push("query. Do not treat this as a final answer.")
+    lines.push("All failures look transient (rate limit / upstream / network). The search")
+    lines.push("already retried with backoff. The provider may have recovered, so retry")
+    lines.push("the search in a few seconds. Or use a different or more specific query.")
+    lines.push("Do not treat this as a final answer.")
   }
   return lines.join("\n")
 }

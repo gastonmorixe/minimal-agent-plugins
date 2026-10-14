@@ -206,7 +206,7 @@ export async function summarize(
   if (outputLen > inputLen * MAX_OUTPUT_RATIO) {
     throw new SummarizeError(
       "too-long",
-      `output ${outputLen} chars exceeds input ${inputLen} — didn't compress`,
+      `output ${outputLen} chars exceeds input ${inputLen}: did not compress`,
     )
   }
 

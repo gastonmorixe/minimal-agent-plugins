@@ -28,7 +28,7 @@ export default async function spawn(ctx: TUIContext): Promise<TUIResult> {
   if (!deps) {
     return {
       kind: "tool_result",
-      content: "SpawnAgent: no session id available; cannot spawn.",
+      content: "SpawnAgent: no session id available. Cannot spawn.",
       is_error: true,
     }
   }
@@ -40,8 +40,8 @@ export default async function spawn(ctx: TUIContext): Promise<TUIResult> {
   const disp = renderSpawnDisplay(rec, true)
   const content =
     `Spawned sub-agent ${rec.id} (${rec.type} · ${rec.model} · ${rec.isolation}), running in background as session ${rec.sid}. ` +
-    `It works concurrently; you are NOT blocked. Track it with ListAgents or AgentStatus ${rec.id}; ` +
-    `when it finishes you'll get a one-line digest between turns and can pull the full deliverable with AgentResult ${rec.id}.`
+    `It works concurrently. You are not blocked. Track it with ListAgents or AgentStatus ${rec.id}. ` +
+    `When it finishes you'll get a one-line digest between turns and can pull the full deliverable with AgentResult ${rec.id}.`
   return {
     kind: "tool_result",
     content,

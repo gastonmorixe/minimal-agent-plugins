@@ -90,13 +90,13 @@ export function completionDigest(r: SubagentRecord): string {
   switch (r.status.kind) {
     case "done": {
       const short = clip(r.status.result.short, 220)
-      return `Sub-agent ${r.id} (${r.label}) finished: ${short} — pull the full result with AgentResult ${r.id}.`
+      return `Sub-agent ${r.id} (${r.label}) finished: ${short}. Pull the full result with AgentResult ${r.id}.`
     }
     case "incomplete": {
       const salvaged = r.status.salvage
-        ? ` Its findings WERE salvaged (it produced a summary but not the required file) — read them with AgentResult ${r.id} before deciding, you may not need a full re-run.`
+        ? ` Its findings were salvaged (it produced a summary but not the required file). Read them with AgentResult ${r.id} before you decide. You may not need a full re-run.`
         : ` Inspect it with AgentResult ${r.id} and re-spawn if you still need the work.`
-      return `Sub-agent ${r.id} (${r.label}) finished ⚠ INCOMPLETE — deliverable contract not met (${clip(r.status.reason, 120)}). Not a clean success.${salvaged}`
+      return `Sub-agent ${r.id} (${r.label}) finished INCOMPLETE: deliverable contract not met (${clip(r.status.reason, 120)}). Not a clean success.${salvaged}`
     }
     case "failed":
       return `Sub-agent ${r.id} (${r.label}) failed: ${clip(r.status.error, 160)}.`
@@ -249,7 +249,7 @@ function step(
       endedAt: now,
       error: hadBudget
         ? "timed out (budget deadline exceeded)"
-        : `timed out (no progress; exceeded ${DEFAULT_DEADLINE_SEC}s default hard deadline — likely wedged)`,
+        : `timed out (no progress, exceeded ${DEFAULT_DEADLINE_SEC}s default hard deadline, likely wedged)`,
     }
     return {
       status,

@@ -181,7 +181,7 @@ describe("add() with parent (subtask)", () => {
     const s = withRand(["1"])
     const p = s.add({ title: "parent" })
     const c = s.add({ title: "child", parent: p.id })
-    expect(() => s.add({ title: "gc", parent: c.id })).toThrow(/depth-2 nesting is not allowed/)
+    expect(() => s.add({ title: "gc", parent: c.id })).toThrow(/Depth-2 nesting is not allowed/)
   })
 })
 

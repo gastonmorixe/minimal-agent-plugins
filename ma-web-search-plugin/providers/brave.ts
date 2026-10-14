@@ -257,7 +257,7 @@ function formatRetryNotice(
   // `info.attempt` is the attempt that just failed; the upcoming retry is
   // the next number.
   const next = Math.min(info.attempt + 1, maxAttempts)
-  return `brave: HTTP ${status} — retrying in ~${secs}s (attempt ${next}/${maxAttempts})`
+  return `brave: HTTP ${status}: retrying in ~${secs}s (attempt ${next}/${maxAttempts})`
 }
 
 class BraveProvider implements WebSearchProvider {

@@ -1,6 +1,6 @@
 # ChromeCDP
 
-Use `ChromeCDP` to drive an already-running Chrome/Chromium over the DevTools Protocol: read open tabs, run JavaScript in a page or a cross-origin iframe, navigate, open/close/focus tabs, drive/track downloads, and (via the generic `send` passthrough) call any CDP method and inspect the protocol's async event stream. It acts inside the user's real, logged-in browser.
+Use `ChromeCDP` to drive an already-running Chrome/Chromium over the DevTools Protocol. Read open tabs, run JavaScript in a page or a cross-origin iframe, navigate, open/close/focus tabs, and drive/track downloads. The generic `send` passthrough calls any CDP method and lets you inspect the protocol's async event stream. It acts inside the user's real, logged-in browser.
 
 ## When to use `ChromeCDP` vs `Fetch`
 
@@ -9,25 +9,25 @@ Use `ChromeCDP` to drive an already-running Chrome/Chromium over the DevTools Pr
 
 ## Actions
 
-- `ping` - daemon + browser liveness.
-- `targets` - list open page tabs as `{id,title,url}`. Start here to get a `target` id.
-- `alltargets` - every target including iframes and workers.
-- `eval` - run JS in a tab. Needs `target` + `expr`. Result is returned by value. A thrown error comes back as `{"__error":"..."}` (not a crash).
-- `frameeval` - run JS in a cross-origin child frame, matched by `urlSub` against frame URLs. Needs `target` + `urlSub` + `expr`. Use for embedded logins / payment iframes that are separate CDP targets.
-- `nav` - navigate a tab. Needs `target` + `url`.
-- `newtab` - open a tab (optional `url`, defaults about:blank). Returns `{id}`.
-- `setdownload` - set a tab's download directory. Needs `target` + `dir` (absolute).
-- `downloads` - list tracked downloads with `state` (begin|inProgress|completed|canceled).
-- `closetarget` - close a tab. Needs `target`.
-- `activatetarget` - focus/bring-to-front a tab. Needs `target`.
-- `getinfo` - the full `TargetInfo` for one tab. Needs `target`.
-- `send` - **the escape hatch.** Call any CDP method. Needs `method` (`Domain.method`), optional `params` (object), optional `target` (scopes the call to that tab's session) or `sessionId` (advanced, explicit). Returns `{result, sessionId}`. A protocol error comes back as `{result:{__error:"..."}}`, never a crash.
-- `events` - drain buffered CDP events (the async push stream). Optional `filter` (substring on method name), `since` (cursor for incremental draining), `sessionId`, `limit`, `clear`. Returns `{recording, cursor, buffered, dropped, count, events}`.
-- `record` - toggle event buffering. `on` (default true), optional `clear`. (You rarely need this: `send`-ing any `*.enable` flips recording on automatically.)
+- `ping`: daemon + browser liveness.
+- `targets`: list open page tabs as `{id,title,url}`. Start here to get a `target` id.
+- `alltargets`: every target including iframes and workers.
+- `eval`: run JS in a tab. Needs `target` + `expr`. Result is returned by value. A thrown error comes back as `{"__error":"..."}` (not a crash).
+- `frameeval`: run JS in a cross-origin child frame, matched by `urlSub` against frame URLs. Needs `target` + `urlSub` + `expr`. Use for embedded logins / payment iframes that are separate CDP targets.
+- `nav`: navigate a tab. Needs `target` + `url`.
+- `newtab`: open a tab (optional `url`, defaults about:blank). Returns `{id}`.
+- `setdownload`: set a tab's download directory. Needs `target` + `dir` (absolute).
+- `downloads`: list tracked downloads with `state` (begin|inProgress|completed|canceled).
+- `closetarget`: close a tab. Needs `target`.
+- `activatetarget`: focus/bring-to-front a tab. Needs `target`.
+- `getinfo`: the full `TargetInfo` for one tab. Needs `target`.
+- `send`: **the escape hatch.** Call any CDP method. Needs `method` (`Domain.method`), optional `params` (object), optional `target` (scopes the call to that tab's session) or `sessionId` (advanced, explicit). Returns `{result, sessionId}`. A protocol error comes back as `{result:{__error:"..."}}`, never a crash.
+- `events`: drain buffered CDP events (the async push stream). Optional `filter` (substring on method name), `since` (cursor for incremental draining), `sessionId`, `limit`, `clear`. Returns `{recording, cursor, buffered, dropped, count, events}`.
+- `record`: toggle event buffering. `on` (default true), optional `clear`. (You rarely need this: `send`-ing any `*.enable` flips recording on automatically.)
 
 ## The generic `send` passthrough: full protocol surface
 
-CDP is just JSON-RPC, so `send` forwards any `method`+`params` and gives you the whole protocol without per-domain wiring. A few high-value examples:
+CDP is plain JSON-RPC, so `send` forwards any `method`+`params` and gives you the whole protocol without per-domain wiring. A few high-value examples:
 
 - **Screenshot / PDF:** `send Page.captureScreenshot {format:"png"}` (base64 in `result.data`), `send Page.printToPDF {}`.
 - **Performance metrics:** `send Performance.enable {}` then `send Performance.getMetrics {}` returns `{metrics:[{name,value}]}` (JSHeapUsedSize, Nodes, LayoutCount, ScriptDuration, ...).

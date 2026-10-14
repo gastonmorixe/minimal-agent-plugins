@@ -554,14 +554,14 @@ describe("main — help / no command", () => {
     const io = makeIO()
     const code = await main(["--help"], io)
     expect(code).toBe(0)
-    expect(io.out.join("")).toContain("memory — manage saved memories")
+    expect(io.out.join("")).toContain("memory: manage saved memories")
   })
 
   it("no command prints HELP and exits 1 (usage error)", async () => {
     const io = makeIO()
     const code = await main([], io)
     expect(code).toBe(1)
-    expect(io.out.join("")).toContain("memory — manage saved memories")
+    expect(io.out.join("")).toContain("memory: manage saved memories")
   })
 
   it("bad flag prints HELP, exit 1", async () => {

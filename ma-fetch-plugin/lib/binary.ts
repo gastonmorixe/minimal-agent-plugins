@@ -150,7 +150,7 @@ export function formatBinaryWithheld(opts: {
   if (opts.sha256) attrs.push(`sha256="${escapeAttr(opts.sha256)}"`)
   attrs.push(`tool="Fetch"`)
   const tag = `<ma::agent::binary-result ${attrs.join(" ")} />`
-  const prose = `Binary body withheld from model context (not valid text; dumping it wastes tokens).${
+  const prose = `Binary body withheld from model context (not valid text, and dumping it wastes tokens).${
     opts.path ? " Full bytes saved at the path above." : ""
   } Re-call with binary=true for base64 when small enough, Read the saved path, or ask the user to attach the file.`
   return `${tag}\n\n${prose}`

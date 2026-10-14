@@ -17,6 +17,6 @@ export async function connectUnaryPost(_opts: {
   signal?: AbortSignal
 }): Promise<Uint8Array> {
   throw new Error(
-    "cursor connect unary: not implemented (Phase 2.2 / 3 — HTTP/2 application/proto client)",
+    "cursor connect unary: not implemented (Phase 2.2 / 3: HTTP/2 application/proto client)",
   )
 }

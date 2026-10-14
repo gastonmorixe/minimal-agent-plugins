@@ -25,29 +25,29 @@ All coordinates are **logical points**, **top-left origin**, spanning all displa
 
 ## The AX-first workflow
 
-1. `Computer{action:"apps"}` - find the target app (pid + bundleId), or just target the frontmost app by omitting both.
-2. `Computer{action:"snapshot", bundleId:"com.apple.TextEdit"}` - get a flat list of elements, each with a handle (`e7`), role, title, value, bbox, and supported actions. Lower `maxNodes` if it's large.
-3. `Computer{action:"find", role:"AXButton", title:"Bold"}` - or search directly instead of dumping the whole tree.
+1. `Computer{action:"apps"}`: find the target app (pid + bundleId), or target the frontmost app by omitting both.
+2. `Computer{action:"snapshot", bundleId:"com.apple.TextEdit"}`: get a flat list of elements, each with a handle (`e7`), role, title, value, bbox, and supported actions. Lower `maxNodes` if it's large.
+3. `Computer{action:"find", role:"AXButton", title:"Bold"}`: search directly instead of dumping the whole tree.
 4. Act on a handle:
-   - `Computer{action:"perform", el:"e7", axAction:"AXPress"}` - click a button (preferred over a coordinate click).
-   - `Computer{action:"setValue", el:"e12", value:"new text"}` - set a text field's contents directly.
-   - `Computer{action:"getValue", el:"e12"}` / `Computer{action:"describe", el:"e12"}` - read.
+   - `Computer{action:"perform", el:"e7", axAction:"AXPress"}`: click a button (preferred over a coordinate click).
+   - `Computer{action:"setValue", el:"e12", value:"new text"}`: set a text field's contents directly.
+   - `Computer{action:"getValue", el:"e12"}` / `Computer{action:"describe", el:"e12"}`: read.
 
-Element handles stay valid until the UI changes. If you get a `409` "stale; re-snapshot", just `snapshot` again and use the new handles.
+Element handles stay valid until the UI changes. If you get a `409` "stale, re-snapshot", run `snapshot` again and use the new handles.
 
 ## When AX isn't enough (raw input)
 
-- Move/click: `Computer{action:"mouse", op:"click", x:260, y:150}` (op: move, click, doubleclick, rightclick, middleclick, down, up, drag, scroll; `button`: left/right/center; `clicks`: 1/2/3).
+- Move/click: `Computer{action:"mouse", op:"click", x:260, y:150}` (op: move, click, doubleclick, rightclick, middleclick, down, up, drag, scroll. `button`: left/right/center. `clicks`: 1/2/3).
 - Drag: `Computer{action:"mouse", op:"drag", x:100, y:100, toX:400, toY:300}`.
 - Scroll: `Computer{action:"mouse", op:"scroll", dy:-3, x:500, y:400}` (dy +up/-down lines).
-- Type text: `Computer{action:"type", text:"hello world"}` - injects literal Unicode into the focused field (handles emoji/CJK). Click or focus the field first.
+- Type text: `Computer{action:"type", text:"hello world"}`: injects literal Unicode into the focused field (handles emoji/CJK). Click or focus the field first.
 - Keys/shortcuts: `Computer{action:"key", combo:"cmd+c"}` or `Computer{action:"keypress", key:"return"}` / `{key:"tab", modifiers:["shift"]}`.
 - See the screen: `Computer{action:"screenshot"}` returns a PNG path (or `format:"base64"` for inline bytes, area via `mode:"area", x,y,w,h`).
 
-## Safety - this controls the user's real machine
+## Safety: this controls the user's real machine
 
 - There is **no sandbox**. A click or keystroke goes to whatever is on screen. Be deliberate. Read before you write: `snapshot`/`screenshot` to confirm state, then act.
-- Prefer AX `perform`/`setValue` over coordinate input - it targets a named element, not a guessed pixel.
+- Prefer AX `perform`/`setValue` over coordinate input. It targets a named element, not a guessed pixel.
 - Typing into a **password/secure field is blocked** by macOS. The tool returns a warning rather than silently failing.
 - Every mutating action is rate-limited and logged to `~/Library/Logs/ma-computer-use/actions.log`. A kill switch (`bun run bin/cud.ts disable`) makes the helper refuse all input until re-enabled.
 - Don't drive destructive flows (delete, erase, log out, purchases, security settings) without the user explicitly asking for that exact action.

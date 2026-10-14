@@ -75,6 +75,47 @@ function isWritingStyleQuoteExample(file: PromptFile): boolean {
   return file.rel === "ma-agent-writing-style-plugin/PROMPT.md"
 }
 
+/**
+ * Blank out code fences, inline code spans, and URLs so prose rules do not
+ * fire on code. Length and newlines are kept, so line numbers stay correct.
+ */
+function maskNonProse(text: string): string {
+  const blank = (s: string): string => s.replace(/[^\n]/g, " ")
+  return text
+    .replace(/^[ \t]*(```|~~~)[^\n]*\n[\s\S]*?^[ \t]*\1[^\n]*$/gm, blank)
+    .replace(/^(?: {4,}|\t)[^\n]*$/gm, blank)
+    .replace(/`[^`\n]*`/g, blank)
+    .replace(/\bhttps?:\/\/\S+/g, blank)
+}
+
+/**
+ * In a manifest, only `description` values reach the model as prose. Blank
+ * everything else (keys, icons, enums) and keep line numbers.
+ */
+function manifestDescriptionsOnly(text: string): string {
+  const keep = /"description"\s*:\s*"((?:[^"\\]|\\.)*)"/g
+  let out = ""
+  let last = 0
+  let match: RegExpExecArray | null
+  while ((match = keep.exec(text)) !== null) {
+    const start = match.index + match[0].length - match[1].length - 1
+    out += text.slice(last, start).replace(/[^\n]/g, " ") + match[1]
+    last = start + match[1].length
+  }
+  return out + text.slice(last).replace(/[^\n]/g, " ")
+}
+
+function proseFiles(): PromptFile[] {
+  // modelFacingFiles() builds fresh objects per call, so in-place is safe.
+  return modelFacingFiles().map((file) =>
+    Object.assign(file, {
+      text: maskNonProse(
+        basename(file.rel) === "manifest.json" ? manifestDescriptionsOnly(file.text) : file.text,
+      ),
+    }),
+  )
+}
+
 describe("external plugin prompt audit", () => {
   test("does not reference stale tag namespaces", () => {
     const bad = violations(modelFacingFiles(), /<tui::|<ma::tui|<ma::plugin::/g, "stale namespace")
@@ -134,6 +175,38 @@ describe("external plugin prompt audit", () => {
       isStyleRulesPlugin,
     )
     expect([...aiWords, ...aiVerbs]).toEqual([])
+  })
+
+  // Writing-style rules from ma-agent-writing-style-plugin/PROMPT.md. That
+  // plugin quotes the banned items as examples, so it is exempt.
+  test("keeps model-facing prose free of semicolons", () => {
+    const bad = violations(proseFiles(), /;/g, "semicolon in prose", isWritingStyleQuoteExample)
+    expect(bad).toEqual([])
+  })
+
+  test("keeps model-facing prose free of emoji", () => {
+    const bad = violations(
+      proseFiles(),
+      /\p{Extended_Pictographic}/gu,
+      "emoji",
+      isWritingStyleQuoteExample,
+    )
+    expect(bad).toEqual([])
+  })
+
+  test("keeps model-facing prose free of sycophancy, disclaimers, and signposting", () => {
+    const bad = violations(
+      proseFiles(),
+      /great question|\babsolutely!|\bcertainly!|i hope this helps|let me know if you'd like|as an ai language model|let's dive in|here's what you need to know|without further ado/gi,
+      "sycophancy or signposting",
+      isWritingStyleQuoteExample,
+    )
+    expect(bad).toEqual([])
+  })
+
+  test("does not put a thematic break before a heading", () => {
+    const bad = violations(promptFiles(), /^---[ \t]*\n(?:[ \t]*\n)*#/gm, "--- before heading")
+    expect(bad).toEqual([])
   })
 
   test("does not reintroduce known stale prompt wording", () => {

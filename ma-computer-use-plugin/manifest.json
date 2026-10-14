@@ -11,7 +11,7 @@
         "type": "tool",
         "tool": {
           "name": "Computer",
-          "description": "Control this Mac. Two layers, prefer the first: (1) Accessibility (structured, reliable), inspect the UI tree and act on real elements by stable handle. (2) Raw input (last resort), synthesize mouse/keyboard at screen coordinates plus screenshots, for canvas/Electron/web UIs where the AX tree is thin. Backed by a signed helper (ComputerUseHelper.app) holding macOS Accessibility + Screen Recording permissions, and it auto-starts. Coordinates are logical points, top-left origin, across all displays (AX bbox is the same space, so click an element's bbox center directly). Handles like 'e7' come from snapshot/find/elementAtPoint/focused and stay valid until the UI changes (else 409 'stale; re-snapshot'). Check 'perms' first on any permission error.",
+          "description": "Control this Mac. Two layers, prefer the first: (1) Accessibility (structured, reliable), inspect the UI tree and act on real elements by stable handle. (2) Raw input (last resort), synthesize mouse/keyboard at screen coordinates plus screenshots, for canvas/Electron/web UIs where the AX tree is thin. Backed by a signed helper (ComputerUseHelper.app) holding macOS Accessibility + Screen Recording permissions, and it auto-starts. Coordinates are logical points, top-left origin, across all displays (AX bbox is the same space, so click an element's bbox center directly). Handles like 'e7' come from snapshot/find/elementAtPoint/focused and stay valid until the UI changes (else 409 'stale, re-snapshot'). Check 'perms' first on any permission error.",
           "input_schema": {
             "type": "object",
             "properties": {

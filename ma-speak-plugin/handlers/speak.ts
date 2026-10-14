@@ -51,7 +51,7 @@ export function validateInput(raw: Record<string, unknown>, config: SpeakConfig)
   if (text.length > config.defaults.maxChars) {
     return {
       ok: false,
-      error: `\`text\` is ${text.length} characters; the limit is ${config.defaults.maxChars}. Speak a shorter passage or split it across calls.`,
+      error: `\`text\` is ${text.length} characters. The limit is ${config.defaults.maxChars}. Speak a shorter passage or split it across calls.`,
     }
   }
 

@@ -399,7 +399,7 @@ async function completeMuseDeviceCodeLogin(
     })
 
     if (response.status >= 300 && response.status < 400) {
-      throw new Error("Muse Code sign-in service redirected the token request; not following it")
+      throw new Error("Muse Code sign-in service redirected the token request. Not following it")
     }
 
     const bodyText = await response.text()

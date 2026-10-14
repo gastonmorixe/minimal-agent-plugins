@@ -55,7 +55,7 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
       content:
         "ReportResult is the SUB-AGENT completion tool: it records a worker's result for its lead. " +
         "This session is not a sub-agent (no result path in the environment), so there is nothing to report. " +
-        "If you are the lead, just reply normally; to read a finished worker's result use AgentResult.",
+        "If you are the lead, reply normally. To read a finished worker's result, use AgentResult.",
       is_error: true,
     }
   }
@@ -83,12 +83,12 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
       ? ` Recorded ${parsed.value.artifacts.length} artifact path(s).`
       : ""
   const stateNote = parsed.value.incomplete
-    ? " Flagged INCOMPLETE — the lead will treat the work as unverified."
+    ? " Flagged INCOMPLETE: the lead will treat the work as unverified."
     : ""
   return {
     kind: "tool_result",
     content:
       `Result recorded. Your deliverable has been handed back to the lead.${artifactNote}${stateNote} ` +
-      "You can stop now; nothing else is required.",
+      "You can stop now. Nothing else is required.",
   }
 }

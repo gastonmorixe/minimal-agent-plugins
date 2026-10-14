@@ -422,7 +422,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
         ok: false,
         error:
           `\`tasks\`, \`items\`, and \`titles\` are mutually exclusive for action="${action}"; ` +
-          "send exactly one. Prefer `tasks`. Retry once; do not re-add titles that may already exist.",
+          "send exactly one. Prefer `tasks`. Retry once. Do not re-add titles that may already exist.",
       }
     }
     // Normalize aliases onto `tasks` for the handler.
@@ -441,7 +441,7 @@ function validateInput(raw: Record<string, unknown>): Validation {
         ok: false,
         error:
           "`parent` cannot be combined with `tasks`/`items`: tree form always creates top-level roots. " +
-          "To add a flat batch below a top-level parent, use `titles`; subtasks cannot have children.",
+          "To add a flat batch below a top-level parent, use `titles`. Subtasks cannot have children.",
       }
     }
     if (out.after !== undefined) {
@@ -635,7 +635,7 @@ function err(message: string): TUIResult {
 
 /** Report a missing reference without exposing legacy internal identifiers. */
 function idNotFound(ref: string | number): TUIResult {
-  return err(`id "${ref}" not found; use a current id from the task board`)
+  return err(`id "${ref}" not found. Use a current id from the task board`)
 }
 
 /**
@@ -816,7 +816,7 @@ function doAddMany(store: TaskStore, input: ParsedInput): TUIResult {
     const parent = store.resolve(input.parent)
     if (parent === null) return err(`parent "${input.parent}" not found`)
     if (parent.parent !== null) {
-      return err(`parent "${input.parent}" is a subtask; depth-2 nesting is not allowed`)
+      return err(`parent "${input.parent}" is a subtask. Depth-2 nesting is not allowed`)
     }
     parentId = parent.id
     const existingKids = store.list().filter((t) => t.parent === parentId).length
@@ -1021,7 +1021,7 @@ function errAlreadyDone(store: TaskStore, id: string): TUIResult {
   if (hasKids) {
     return err(
       `${id} is already done (likely auto-promoted when its last child finished). ` +
-        "Do not call done on the parent after finishing the last child — one done on the child is enough",
+        "Do not call done on the parent after finishing the last child. One done on the child is enough",
     )
   }
   return err(`${id} is already done. Do not call done again`)

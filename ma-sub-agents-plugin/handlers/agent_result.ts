@@ -95,7 +95,7 @@ export default async function agentResult(ctx: TUIContext): Promise<TUIResult> {
   const blindTerminal = rec.status.kind === "failed" || rec.status.kind === "incomplete"
   if (blindDone || blindTerminal) {
     const tail = tailLog(`${sessionsDir}/${rec.sid}.log`, 20)
-    if (tail) content += `\n\nLast output (log tail — the worker's stdout/stderr):\n${tail}`
+    if (tail) content += `\n\nLast output (log tail of the worker's stdout/stderr):\n${tail}`
   }
   const disp = renderResultDisplay(rec, true)
   return {

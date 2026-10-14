@@ -367,7 +367,7 @@ export function buildReadContent(skill: Skill, siblings: string[], body: string)
   trailerLines.push(`Skill loaded: ${skill.front.name} (${SCOPE_LABEL[skill.scope]})`)
   trailerLines.push(`Skill dir:    ${skill.dir}`)
   if (siblings.length === 0) {
-    trailerLines.push("Bundled:      (none — SKILL.md only)")
+    trailerLines.push("Bundled:      (none: SKILL.md only)")
   } else {
     trailerLines.push(`Bundled:      ${siblings.join("  ·  ")}`)
     trailerLines.push("")

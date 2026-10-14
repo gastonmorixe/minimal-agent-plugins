@@ -3,7 +3,7 @@
   "name": "Sub-agents",
   "version": "0.1.0",
   "capabilities": ["models:read"],
-  "description": "Delegation: spawn background minimal-agent workers, steer them, review their work, fold results back. A worker is a real headless agent process with its own session id, supervised by a 1s heartbeat that reaps exits, paints a live fleet widget, and injects each finished worker's distilled result between turns. State lives at ~/.minimal-agent/sessions/<leadSid>.subagents.jsonl. Disable with MINIMAL_AGENT_DISABLE_SUBAGENTS=1.",
+  "description": "Delegation: spawn background minimal-agent workers, steer them, review their work, fold results back. A worker is a real headless agent process with its own session id. A 1s heartbeat supervises it: it reaps exits, paints a live fleet widget, and injects each finished worker's distilled result between turns. State lives at ~/.minimal-agent/sessions/<leadSid>.subagents.jsonl. Disable with MINIMAL_AGENT_DISABLE_SUBAGENTS=1.",
   "tuis": [
     {
       "id": "spawn_agent",
@@ -33,7 +33,7 @@
               },
               "effort": {
                 "type": "string",
-                "description": "Optional reasoning effort for the worker. Only pass a value the target model actually accepts (check ModelInfo for the lead/worker model: effort.levels). Do not invent levels from a universal menu: models differ (e.g. some accept low/medium/high, others medium/high/max only). Prefer omitting effort so the model default applies - safer than guessing. An unsupported value fails the spawn (or used to crash the child at boot)."
+                "description": "Optional reasoning effort for the worker. Only pass a value the target model accepts (check ModelInfo for the lead/worker model: effort.levels). Do not invent levels from a universal menu: models differ (e.g. some accept low/medium/high, others medium/high/max only). Prefer omitting effort so the model default applies. That is safer than guessing. An unsupported value fails the spawn (or used to crash the child at boot)."
               },
               "isolation": {
                 "type": "string",

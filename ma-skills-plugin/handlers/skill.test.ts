@@ -274,10 +274,10 @@ describe("buildReadContent / buildReadDisplay", () => {
     expect(c).toContain("Use `Read`")
   })
 
-  test("no siblings → '(none — SKILL.md only)'", () => {
+  test("no siblings → '(none: SKILL.md only)'", () => {
     const s = skill({ name: "demo", description: "x" })
     const c = buildReadContent(s, [], "body")
-    expect(c).toContain("(none — SKILL.md only)")
+    expect(c).toContain("(none: SKILL.md only)")
   })
 
   test("includes allowed-tools self-enforcement hint when present", () => {

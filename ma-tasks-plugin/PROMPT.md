@@ -28,7 +28,7 @@ Use `Task` to plan and track multi-step work the user can watch in real time. Th
 
 2. **Start, then work.** `Task({ action: "start", id: "1a" })` using the exact id from the latest tool result or turn attachment. Starting a child auto-starts its parent. Multiple `doing` rows are fine.
 
-3. **Done when finished.** `Task({ action: "done", id: "1a" })`. Completing a child while siblings remain open keeps the parent `doing`; the last open child auto-promotes the parent (and may return `all_done`). **Never also `done` the parent** - that is a hard error if the parent is already done.
+3. **Done when finished.** `Task({ action: "done", id: "1a" })`. Completing a child while siblings remain open keeps the parent `doing`. The last open child auto-promotes the parent (and may return `all_done`). **Never also `done` the parent.** That is a hard error if the parent is already done.
 
 4. **Mid-flight substeps.** `Task({ action: "add", title: "...", parent: "1" })` then `start` the child id from that tool result.
 
@@ -50,7 +50,7 @@ Ids never change when tasks are reordered or removed. Gaps are normal. Always co
 
 ## `canceled` is "abandoned", not "done"
 
-`canceled` means the work was given up on. `done` means the work finished. The renderer paints them oppositely (lime ✔ vs red ✘), so picking the wrong verb reads as the opposite of intent.
+`canceled` means the work was given up on. `done` means the work finished. The renderer paints them oppositely (a lime check mark vs a red cross), so picking the wrong verb reads as the opposite of intent.
 
 - **Phase / section headers.** If you add `"PHASE 1: Setup"` and its subtasks finish, the header is `done`, not `canceled`. The phase IS done.
 - **Parents with terminal children.** The last open child auto-promotes the parent when every child is `done` or `canceled`. A canceled child stays canceled as audit history. Do not also `done` the parent (hard error).
@@ -58,11 +58,11 @@ Ids never change when tasks are reordered or removed. Gaps are normal. Always co
 
 ## Don't
 
-- Don't stringify arrays. Pass real `tasks` / `titles` arrays. On validation failure, retry **once** - never drip-`add` duplicates.
+- Don't stringify arrays. Pass real `tasks` / `titles` arrays. On validation failure, retry **once**. Do not drip-`add` duplicates.
 - Don't invent ids. Copy the canonical id from the board or latest tool result.
 - Don't echo the task list as prose.
-- Don't `remove` to "clean up" finished work - use `canceled` only when abandoning.
+- Don't `remove` to "clean up" finished work. Use `canceled` only when abandoning.
 - Don't reach for `canceled` when you mean `done`.
-- Don't demote a started task back to `todo` just because you started another.
-- Don't `done` a parent after (or with) its last child - hard error if already done.
+- Don't demote a started task back to `todo` because you started another.
+- Don't `done` a parent after (or with) its last child. It is a hard error if the parent is already done.
 - Don't nest deeper than depth 2.

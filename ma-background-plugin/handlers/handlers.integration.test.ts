@@ -202,6 +202,6 @@ describe("BackgroundStop", () => {
 
   test("stop all with no jobs reports nothing to stop", async () => {
     const res = await bgStop(ctx({}))
-    if (res.kind === "tool_result") expect(res.content).toContain("nothing to stop")
+    if (res.kind === "tool_result") expect(res.content).toContain("Nothing to stop")
   })
 })

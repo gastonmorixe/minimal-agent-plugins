@@ -62,7 +62,7 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
   if (!isActive(rec.status)) {
     return {
       kind: "tool_result",
-      content: `Job ${rec.id} was already ${rec.status.kind}; nothing to stop.`,
+      content: `Job ${rec.id} was already ${rec.status.kind}. Nothing to stop.`,
       displayHeader: rec.id,
       display: jobLine(rec, nowMs),
     }
@@ -119,7 +119,7 @@ function stopAll(
   if (active.length === 0) {
     return {
       kind: "tool_result",
-      content: "No running background jobs; nothing to stop.",
+      content: "No running background jobs. Nothing to stop.",
       display: dim("(nothing running)"),
     }
   }

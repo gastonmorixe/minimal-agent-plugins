@@ -55,7 +55,7 @@ export function runStop(registry: SpeechRegistry, id: string | undefined, now: n
   if (existing.state !== "speaking") {
     return {
       kind: "tool_result",
-      content: `Speech job ${id} was already ${existing.state}; nothing to stop.`,
+      content: `Speech job ${id} was already ${existing.state}. Nothing to stop.`,
       displayHeader: id,
       display: renderJobLine(existing, now),
     }
@@ -76,7 +76,7 @@ function stopAll(registry: SpeechRegistry, now: number): TUIResult {
   if (active.length === 0) {
     return {
       kind: "tool_result",
-      content: "No speech is playing; nothing to stop.",
+      content: "No speech is playing. Nothing to stop.",
       displayHeader: "nothing playing",
       display: dim("(no active speech)"),
     }

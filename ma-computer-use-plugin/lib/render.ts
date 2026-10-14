@@ -109,7 +109,7 @@ export function renderContent(body: unknown, maxChars = 24_000): string {
   }
   const json = JSON.stringify(printable, null, 2)
   if (json.length <= maxChars) return json
-  return `${json.slice(0, maxChars)}\n… (${json.length - maxChars} more chars truncated; narrow the query, e.g. lower maxNodes or use find)`
+  return `${json.slice(0, maxChars)}\n... (${json.length - maxChars} more chars truncated. Narrow the query, e.g. lower maxNodes or use find)`
 }
 
 /** True when the daemon body represents a failure the model should treat as an error. */

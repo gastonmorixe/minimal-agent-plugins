@@ -29,7 +29,7 @@ export default async function inboxHandler(ctx: TUIContext): Promise<TUIResult> 
   if (!self) {
     return {
       kind: "tool_result",
-      content: "Inbox: no session id available; intercom is inactive for this run.",
+      content: "Inbox: no session id available. Intercom is inactive for this run.",
       is_error: true,
     }
   }

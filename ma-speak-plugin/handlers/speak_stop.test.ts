@@ -46,7 +46,7 @@ describe("runStop - by id", () => {
     expect(ctrl.stopped).toBe(0)
     if (res.kind === "tool_result") {
       expect(res.is_error).toBeUndefined()
-      expect(res.content).toMatch(/already done; nothing to stop/)
+      expect(res.content).toMatch(/already done\. Nothing to stop/)
     }
   })
 })

@@ -195,7 +195,7 @@ export function resolveNamespace(deps?: StoreDeps): string | null {
   if (!NAMESPACE_RE.test(trimmed)) {
     throw new Error(
       `${MEMORY_NAMESPACE_ENV}: invalid namespace "${trimmed}" ` +
-        `(must match ${NAMESPACE_RE.source} — letters, digits, _, ., -)`,
+        `(must match ${NAMESPACE_RE.source}: letters, digits, _, ., -)`,
     )
   }
   return trimmed
@@ -503,7 +503,7 @@ export class MemoryStore {
   clear(): number {
     if (this.kind !== "short-term") {
       throw new Error(
-        `memory.clear: refused — only short-term scope allows clear (got ${this.kind})`,
+        `memory.clear: refused. Only short-term scope allows clear (got ${this.kind})`,
       )
     }
     const before = this.list().length

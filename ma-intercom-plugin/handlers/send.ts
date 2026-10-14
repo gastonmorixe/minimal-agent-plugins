@@ -24,7 +24,7 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
   if (!deps) {
     return {
       kind: "tool_result",
-      content: "Send: no session id available; intercom is inactive for this run.",
+      content: "Send: no session id available. Intercom is inactive for this run.",
       is_error: true,
     }
   }

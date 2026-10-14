@@ -2,7 +2,7 @@
   "id": "policy-ref",
   "name": "Policy reference (fixture)",
   "version": "0.1.0",
-  "description": "Reference lifecycle policy plugin: denies Bash commands matching rm -rf / and redacts sk- API-key-shaped tokens in message.willSend. Disabled by default; enable with --enable-plugin policy-ref to prove the seams.",
+  "description": "Reference lifecycle policy plugin: denies Bash commands matching rm -rf / and redacts sk- API-key-shaped tokens in message.willSend. Disabled by default. Enable with --enable-plugin policy-ref to prove the seams.",
   "enabled": false,
   "hooks": [
     {

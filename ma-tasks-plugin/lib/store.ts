@@ -702,7 +702,7 @@ export class TaskStore {
       }
       if (t.parent !== null) {
         throw new TaskStoreError(
-          `TaskStore.reorder: id "${ref}" is a subtask; reorder operates on top-level tasks only`,
+          `TaskStore.reorder: id "${ref}" is a subtask. Reorder operates on top-level tasks only`,
         )
       }
       if (seen.has(t.id)) {
@@ -753,7 +753,7 @@ export class TaskStore {
     const tasks = state.tasks
     if (!force && tasks.some((t) => t.status === "doing")) {
       throw new TaskStoreError(
-        `TaskStore.clear: refusing to clear with tasks in "doing" state; pass force: true to override`,
+        `TaskStore.clear: refusing to clear with tasks in "doing" state. Pass force: true to override`,
       )
     }
     this.writeState(state.meta, [])
@@ -771,7 +771,7 @@ export class TaskStore {
     }
     if (parent.parent !== null) {
       throw new TaskStoreError(
-        `TaskStore: "${ref}" is itself a subtask; depth-2 nesting is not allowed`,
+        `TaskStore: "${ref}" is itself a subtask. Depth-2 nesting is not allowed`,
       )
     }
     return parent
