@@ -57,7 +57,7 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
   if (!deps) {
     return {
       kind: "tool_result",
-      content: "BackgroundRun: no session id available; cannot start a job.",
+      content: "BackgroundRun: no session id available. Cannot start a job.",
       is_error: true,
     }
   }
@@ -79,9 +79,9 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     : `times out in ${formatDuration(rec.timeoutMs)}${dur.value.clamped ? " (clamped to the max)" : ""}`
   const content =
     `Started background job ${rec.id} (pid ${rec.runnerPid}): \`${rec.command}\`. ` +
-    `It runs in the background; you are NOT blocked. It ${timeoutNote}. ` +
-    `Check it with BackgroundStatus ${rec.id} or read output with BackgroundLogs ${rec.id}; ` +
-    `stop it with BackgroundStop ${rec.id}. You'll get a one-line digest between turns when it finishes.`
+    `It runs in the background. You are not blocked. It ${timeoutNote}. ` +
+    `Check it with BackgroundStatus ${rec.id} or read output with BackgroundLogs ${rec.id}. ` +
+    `Stop it with BackgroundStop ${rec.id}. You'll get a one-line digest between turns when it finishes.`
 
   const nowMs = Date.parse(rec.spawnedAt)
   return {

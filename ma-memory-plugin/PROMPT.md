@@ -48,7 +48,7 @@ So a typical flow looks like:
     MemoryTool({action: "read", scope: "project", id: "mpfm-..."})
        -> full body of the one that looked most relevant
 
-Don't fetch full bodies for every match. Skim previews, then `read` the one or two you actually need.
+Don't fetch full bodies for every match. Skim previews, then `read` the one or two you need.
 
 ## Three scopes: pick deliberately when saving
 
@@ -157,4 +157,4 @@ The latest N persistent memories (default 10) are pre-loaded at session start un
 
 - **Persistent** (`global`, `project`): `<base36-millis>-<rand4hex>`, e.g. `lwq8tg-a8f3`. Sortable by time, opaque to you.
 - **Short-term**: integer auto-incrementing per session, e.g. `1`, `2`, `3`. Never reuses gaps left by removes. Id 4 follows even after id 2 was deleted.
-- **Legacy** (untagged bullets in pre-v0.3 files): `legacy:<sha12>`, derived from the line text. Addressable by `MemoryTool` actions just like normal ids. The user can stamp persistent ids onto legacy bullets via the CLI's `rewrite-ids` command.
+- **Legacy** (untagged bullets in pre-v0.3 files): `legacy:<sha12>`, derived from the line text. Addressable by `MemoryTool` actions like normal ids. The user can stamp persistent ids onto legacy bullets via the CLI's `rewrite-ids` command.

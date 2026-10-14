@@ -423,7 +423,7 @@ export function summarize(route: Route, body: unknown): string {
 export function renderContent(body: unknown, maxChars = 20_000): string {
   const json = JSON.stringify(body, null, 2)
   if (json.length <= maxChars) return json
-  return `${json.slice(0, maxChars)}\n… (${json.length - maxChars} more chars truncated)`
+  return `${json.slice(0, maxChars)}\n... (${json.length - maxChars} more chars truncated)`
 }
 
 /** True when the daemon body represents a failure the model should treat as an error. */

@@ -70,7 +70,7 @@
               },
               "filter": {
                 "type": "string",
-                "description": "For `events`: case-insensitive substring matched against the CDP method name (e.g. \"Network.responseReceived\" or just \"Network\")."
+                "description": "For `events`: case-insensitive substring matched against the CDP method name (e.g. \"Network.responseReceived\" or only \"Network\")."
               },
               "since": {
                 "type": "number",

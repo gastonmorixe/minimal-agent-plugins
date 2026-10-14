@@ -4,9 +4,9 @@ You can delegate work to **sub-agents**: background `minimal-agent` workers that
 
 ## When to delegate (and when not)
 
-Delegate when a unit of work is **self-contained** and either (a) would flood your context with output you won't reuse (searching a big codebase, running a test suite, reading logs, fetching docs), or (b) is **genuinely independent** of other work so it can run in parallel.
+Delegate when a unit of work is **self-contained** and meets one of two tests. (a) It would flood your context with output you won't reuse (searching a big codebase, running a test suite, reading logs, fetching docs). (b) It is **genuinely independent** of other work, so it can run in parallel.
 
-Do not delegate when the task needs tight back-and-forth with you, shares a lot of evolving context, or is a quick edit you can just do. A sub-agent starts fresh and costs real tokens. A fleet costs ~15x a single chat. Spawning is deliberate, not reflexive.
+Do not delegate when the task needs tight back-and-forth with you, shares a lot of evolving context, or is a quick edit you can do yourself. A sub-agent starts fresh and costs real tokens. A fleet costs ~15x a single chat. Spawning is deliberate, not reflexive.
 
 ## Scale effort to complexity
 
@@ -43,7 +43,7 @@ When a worker finishes you get a one-line digest automatically between turns, th
 
 ## Isolation
 
-- `fresh` (default): the worker gets a clean context (just your task plus its system prompt). Maximum context compression. Best for most delegation.
+- `fresh` (default): the worker gets a clean context (only your task plus its system prompt). Maximum context compression. Best for most delegation.
 - `fork`: the worker inherits THIS conversation's full history (and shares the prompt cache), so you can hand off a side task without re-explaining. Use when the background matters.
 
 ## How a worker finishes
@@ -56,7 +56,7 @@ There is a layered fallback if a worker never calls `SubAgentsReportResult`: the
 
 - Review, don't trust. Read a worker's `SubAgentsAgentResult` (and, for code, the actual diff) before acting on it.
 - **Verify the deliverable exists before you mark a todo done.** When a worker's job was to produce a file, `stat`/`ls` it (or grep its content) first. A worker reporting `done` with a placeholder or distilled summary may not have produced the artifact at all.
-- **Treat `incomplete` as a red flag, never a pass.** An `incomplete` worker exited cleanly but did not meet its deliverable contract (no result captured, or a required `expectArtifacts` file is missing/empty), so the system has already refused to tick its todo green. Pull `SubAgentsAgentResult <id>` and read why. When a worker produced a summary but not the required FILE, its findings are salvaged onto the `incomplete` result and `SubAgentsAgentResult` shows them under "salvaged findings". Read those first. Often you can use the work directly, or just write the file yourself from it, rather than paying for a full re-run. Re-spawn (with a sharper task and `expectArtifacts`) only when the salvaged work is genuinely insufficient. Do not paper over it.
+- **Treat `incomplete` as a red flag, never a pass.** An `incomplete` worker exited cleanly but did not meet its deliverable contract (no result captured, or a required `expectArtifacts` file is missing/empty), so the system has already refused to tick its todo green. Pull `SubAgentsAgentResult <id>` and read why. When a worker produced a summary but not the required FILE, its findings are salvaged onto the `incomplete` result and `SubAgentsAgentResult` shows them under "salvaged findings". Read those first. Often you can use the work directly, or write the file yourself from it, rather than paying for a full re-run. Re-spawn (with a sharper task and `expectArtifacts`) only when the salvaged work is genuinely insufficient. Do not paper over it.
 - **Make file-producing delegations enforce themselves.** Pass `expectArtifacts: ["/abs/path"]` on any spawn whose whole point is to produce a file. The supervisor then refuses to call the worker `done` unless the path exists and is non-empty, so a forgetful or lying worker becomes `incomplete` automatically instead of relying on your vigilance.
 - A digest that reads "distilled from the worker's final message" means the worker wrote no structured result, so its summary is best-effort and lists no artifacts. Trust it less.
 - You own git and the full gate. Workers default to no-commit and targeted tests. Only an `integrator` (or you) stages and commits, with explicit paths.

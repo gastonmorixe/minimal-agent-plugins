@@ -39,5 +39,5 @@ export default function identityFragment(ctx: PromptFragmentContext): string {
   const raw = ctx.env?.[NAME_ENV] ?? ""
   const name = raw.trim()
   if (!name) return ""
-  return `You are working as ${name}. It is the name people use to refer to you in this session; answer to it naturally when addressed.`
+  return `You are working as ${name}. It is the name people use to refer to you in this session. Answer to it naturally when addressed.`
 }

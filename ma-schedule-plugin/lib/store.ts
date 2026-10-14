@@ -232,7 +232,7 @@ export class CronStore {
   create(input: CronCreateInput, now: number = Date.now()): StoreResult<CronEntry> {
     const entries = this.load()
     if (entries.length >= MAX_TASKS) {
-      return { ok: false, error: `task limit reached (${MAX_TASKS}); delete one first` }
+      return { ok: false, error: `task limit reached (${MAX_TASKS}). Delete one first` }
     }
     const id = generateId((x) => entries.some((e) => e.id === x), this.rand)
     const entry: CronEntry = {

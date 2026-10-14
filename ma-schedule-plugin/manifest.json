@@ -2,7 +2,7 @@
   "id": "schedule",
   "name": "Schedule",
   "version": "0.1.0",
-  "description": "Run prompts on a schedule. Adds the ScheduleCronCreate/ScheduleCronList/ScheduleCronDelete tools (the model schedules tasks from natural language like 'remind me at 3pm' or 'every 5 minutes check the deploy'), a 1-second heartbeat that injects each due task's prompt between turns via the prompt.inject port, and the /loop and /schedule commands. Tasks are session-scoped at ~/.minimal-agent/sessions/<sid>.cron.json and restored (unexpired) on --resume. Disable with MINIMAL_AGENT_DISABLE_CRON=1.",
+  "description": "Run prompts on a schedule. Adds the ScheduleCronCreate/ScheduleCronList/ScheduleCronDelete tools. The model schedules tasks from natural language like 'remind me at 3pm' or 'every 5 minutes check the deploy'. A 1-second heartbeat injects each due task's prompt between turns via the prompt.inject port. Also adds the /loop and /schedule commands. Tasks are session-scoped at ~/.minimal-agent/sessions/<sid>.cron.json and restored (unexpired) on --resume. Disable with MINIMAL_AGENT_DISABLE_CRON=1.",
   "tuis": [
     {
       "id": "cron_create",

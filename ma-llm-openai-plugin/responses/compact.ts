@@ -195,7 +195,7 @@ export function compactOutputToMessages(
   if (out.length === 0) {
     out.push({
       role: "user",
-      content: `${COMPACTION_MARKER_PREFIX}kind="remote-empty" />\n[context compacted by provider; no retained items]`,
+      content: `${COMPACTION_MARKER_PREFIX}kind="remote-empty" />\n[context compacted by provider: no retained items]`,
     })
   }
   return out

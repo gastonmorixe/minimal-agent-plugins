@@ -702,7 +702,7 @@ export function validateFrontmatter(
     const m = raw.metadata
     if (typeof m === "string") {
       errors.push({
-        message: "frontmatter field `metadata` must be a nested map (string→string)",
+        message: "frontmatter field `metadata` must be a nested map (string to string)",
       })
     } else {
       // Coerce every value to string (YAML may have produced numbers in a
@@ -765,7 +765,7 @@ function validateName(name: string, opts: ParseOptions): string | null {
   if (name.length > 64)
     return `frontmatter field \`name\` exceeds 64 characters (got ${name.length})`
   if (!NAME_RE.test(name)) {
-    return `frontmatter field \`name\` must match ${NAME_RE} (lowercase letters, digits, single hyphens; no leading/trailing hyphen; no consecutive hyphens)`
+    return `frontmatter field \`name\` must match ${NAME_RE} (lowercase letters, digits, and single hyphens. No leading or trailing hyphen. No consecutive hyphens.)`
   }
   if (/<[^>]+>/.test(name)) {
     return "frontmatter field `name` must not contain XML tags"

@@ -95,7 +95,7 @@ export function parseDuration(
 
   if (INFINITE_TOKENS.has(s)) {
     if (!opts.allowInfinite) {
-      return err('an infinite timeout is not enabled; set a concrete duration like "30m" or "2h"')
+      return err('an infinite timeout is not enabled. Set a concrete duration like "30m" or "2h"')
     }
     return ok({ ms: INFINITE_MS, clamped: false, infinite: true })
   }
@@ -103,14 +103,14 @@ export function parseDuration(
   // Match "<number><optional unit>". A bare number means seconds.
   const m = s.match(/^(\d+(?:\.\d+)?)\s*([a-z]*)$/)
   if (!m) {
-    return err(`could not parse timeout "${raw}"; use forms like "90s", "10m", "2h", "1d"`)
+    return err(`could not parse timeout "${raw}". Use forms like "90s", "10m", "2h", "1d"`)
   }
   const value = Number.parseFloat(m[1])
   if (!Number.isFinite(value)) return err(`could not parse timeout "${raw}"`)
   const unit = m[2] === "" ? "s" : m[2]
   const unitMs = UNIT_MS[unit]
   if (unitMs === undefined) {
-    return err(`unknown time unit "${unit}"; use ms, s, m, h, or d`)
+    return err(`unknown time unit "${unit}". Use ms, s, m, h, or d`)
   }
   return finiteOrInfinite(Math.round(value * unitMs), opts, minMs)
 }
@@ -124,7 +124,7 @@ function finiteOrInfinite(
   if (ms === 0) {
     // A literal 0 ms request is treated as infinite, gated the same way.
     if (!opts.allowInfinite) {
-      return err('an infinite timeout is not enabled; set a concrete duration like "30m" or "2h"')
+      return err('an infinite timeout is not enabled. Set a concrete duration like "30m" or "2h"')
     }
     return ok({ ms: INFINITE_MS, clamped: false, infinite: true })
   }

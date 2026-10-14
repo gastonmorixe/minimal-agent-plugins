@@ -47,7 +47,7 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
   if (!deps) {
     return {
       kind: "tool_result",
-      content: "Peers: no session id available; intercom is inactive for this run.",
+      content: "Peers: no session id available. Intercom is inactive for this run.",
       is_error: true,
     }
   }

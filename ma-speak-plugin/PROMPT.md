@@ -14,7 +14,7 @@ The plugin adds three tools: `Speak` (start talking), `SpeakStatus` (is it still
 ## When not to use `Speak`
 
 - The user hasn't asked for audio and a written answer is the norm. Don't narrate everything.
-- The content is code, a long URL, a table, or dense markdown. Spoken aloud it sounds like noise. Paraphrase it into plain sentences first, or just don't speak it.
+- The content is code, a long URL, a table, or dense markdown. Spoken aloud it sounds like noise. Paraphrase it into plain sentences first, or do not speak it.
 - You're in a context where audio would be intrusive and the user didn't opt in.
 
 ## How it behaves

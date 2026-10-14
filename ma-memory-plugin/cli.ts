@@ -107,7 +107,7 @@ const VALID_COMMANDS = new Set([
   "path",
 ])
 
-const HELP = `memory — manage saved memories from a shell.
+const HELP = `memory: manage saved memories from a shell.
 
 Usage:
   bun run plugins/memory/cli.ts <command> [args] [flags]

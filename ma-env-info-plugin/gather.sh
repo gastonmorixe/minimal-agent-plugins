@@ -128,7 +128,7 @@ rm -f /tmp/env-info-$$.out
 {
   echo '# Environment'
   echo
-  echo 'Host snapshot at session start (frozen for the session; re-query with `Bash` for fresh values). Prefer relative paths from `cwd=`; do not invent sibling absolute project roots.'
+  echo 'Host snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.'
   echo
   echo '```ini'
   cat "/tmp/env-info-$$.sorted"

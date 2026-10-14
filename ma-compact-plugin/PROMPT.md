@@ -8,7 +8,7 @@ Use `CompactContext` to queue a context compaction: the host checkpoints the con
 ## When to call it yourself (auto)
 
 - `SessionInfo` shows high context fullness (70%+ is a good rule).
-- History is very long and recall is degrading.
+- History is long and recall is degrading.
 - Before a big new task phase, to start from a clean checkpoint.
 
 ## What it does

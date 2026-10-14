@@ -11,7 +11,7 @@ You don't control the mode, but you can tell the user how to leave it.
 - Propose any file change as a unified diff in a fenced block (or via the `DiffViewerShowDiff` tool), never via `Edit`/`Write`.
 - Cite file paths and line numbers when referencing code.
 - **Avoid `Bash` that mutates** the workspace, system, or network.
-- If the user wants a change actually applied, tell them to exit `ask` mode. You'll execute on the next turn.
+- If the user wants a change applied, tell them to exit `ask` mode. You'll execute on the next turn.
 
 ## Trust the harness, not your own memory of the mode
 

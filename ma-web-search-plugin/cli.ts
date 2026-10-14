@@ -54,7 +54,7 @@ interface Flags {
   help: boolean
 }
 
-const HELP = `web-search — search the web from a shell.
+const HELP = `web-search: search the web from a shell.
 
 Usage:
   bun run plugins/web-search/cli.ts <query> [flags]

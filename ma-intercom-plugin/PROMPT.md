@@ -6,7 +6,7 @@ Intercom is peer-to-peer between independent top-level sessions. It differs from
 
 ## Seeing other sessions
 
-`IntercomPeers({action:"list"})` returns the roster: every messageable session with its short id (the 6-char handle everyone uses), its derived liveness, its model, its cwd, and what it is working on. Only sessions actually running intercom appear, so anyone on the list can receive a message from you. A row reads like this:
+`IntercomPeers({action:"list"})` returns the roster: every messageable session with its short id (the 6-char handle everyone uses), its derived liveness, its model, its cwd, and what it is working on. Only sessions running intercom appear, so anyone on the list can receive a message from you. A row reads like this:
 
     a1b2c3d4  [online]  claude-opus-4   minimal-agent - refactoring auth
     d4e5f6a7  [idle]    claude-sonnet   api-gateway - waiting on review
@@ -21,14 +21,14 @@ Liveness is derived, not self-claimed. A session publishes a heartbeat (its pid 
 
 A session that died without cleaning up still reads correctly (stale, then dead), and one that is merely quiet between turns still reads `online`. Trust the verdict. Pass `liveOnly:true` to hide the dead and offline sessions and see only reachable peers.
 
-`IntercomPeers({action:"inspect", peer:"a1b2c3d4"})` is the deep dive on one session. It gathers that peer's state from across plugins: its task list, recent activity, background jobs, and sub-agent fleet, plus an optional transcript excerpt. Use it to understand what a peer is actually doing before you message it, not just that it is alive. Choose sections with `include:["tasks","activity","jobs","fleet","transcript"]`. The default is tasks, activity, and jobs.
+`IntercomPeers({action:"inspect", peer:"a1b2c3d4"})` is the deep dive on one session. It gathers that peer's state from across plugins: its task list, recent activity, background jobs, and sub-agent fleet, plus an optional transcript excerpt. Use it to understand what a peer is doing before you message it. Liveness alone does not tell you that. Choose sections with `include:["tasks","activity","jobs","fleet","transcript"]`. The default is tasks, activity, and jobs.
 
 ## Messaging
 
 `IntercomSend({to, body, kind})` delivers a message to one peer or a group.
 
 - `to` is a peer's short id or full session id, or `"all"` to reach every reachable session, or `"project"` to reach sessions in your project directory.
-- `body` is the message text. Prefer short, self-contained messages; the system
+- `body` is the message text. Prefer short, self-contained messages. The system
   only clamps absurdly large bodies (safety ceiling ~256k chars) so runaway
   dumps cannot flood peers.
 - `kind` is `"message"` (default) or `"interrupt"`:
@@ -71,7 +71,7 @@ Two things to keep in mind:
 
 ## Good habits
 
-- Before you broadcast, run `IntercomPeers list` so you know who will actually receive it.
+- Before you broadcast, run `IntercomPeers list` so you know who will receive it.
 - Run `IntercomPeers inspect` on a peer before you ask something its task list already answers.
-- Prefer short, self-contained messages. The recipient is a different session with none of your context, so say who you are and what you need. Long plans and reviews are fine; multi-megabyte dumps will be clipped at the safety ceiling.
+- Prefer short, self-contained messages. The recipient is a different session with none of your context, so say who you are and what you need. Long plans and reviews are fine. Multi-megabyte dumps will be clipped at the safety ceiling.
 - Do not chatter. Use intercom for coordination that matters: handing off a result, claiming a shared resource, flagging a blocker, asking a peer to stop. It is not a place for running commentary.

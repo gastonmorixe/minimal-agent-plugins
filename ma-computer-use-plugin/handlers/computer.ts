@@ -98,7 +98,7 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
       content:
         "Computer: the ComputerUseHelper.app is not built yet. Build it once with:\n" +
         "  cd ma-computer-use-plugin && bun run bin/cud.ts build\n" +
-        "Then grant permissions: bun run bin/cud.ts prompt (enable ComputerUseHelper in System Settings → Accessibility + Screen Recording).",
+        "Then grant permissions: bun run bin/cud.ts prompt (enable ComputerUseHelper in System Settings > Accessibility + Screen Recording).",
       is_error: true,
       displayHeader: red("helper not built"),
     }

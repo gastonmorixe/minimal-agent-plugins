@@ -140,7 +140,7 @@ async function run(
       const sid = await resolveSid(req.sid, sessions, cwd)
       if (!sid.ok) return err(sid.error)
       const blobs = host.blobs
-      if (!blobs) return err("blobs:read capability missing — cannot read raw tool outputs.")
+      if (!blobs) return err("blobs:read capability missing. Cannot read raw tool outputs.")
       const blob = await blobs.read(sid.sid, req.toolUseId, { maxBytes: req.maxBytes })
       if (!blob) {
         return err(
@@ -206,8 +206,8 @@ async function resolveSid(
     return {
       ok: false,
       error:
-        `Ambiguous session id prefix ${JSON.stringify(sid)} — ${matches.length} sessions match: ` +
-        `${shown.join(", ")}${matches.length > shown.length ? ", …" : ""}. Use a longer prefix.`,
+        `Ambiguous session id prefix ${JSON.stringify(sid)}: ${matches.length} sessions match: ` +
+        `${shown.join(", ")}${matches.length > shown.length ? ", ..." : ""}. Use a longer prefix.`,
     }
   }
   // No prefix match in the index — pass through unchanged so the action's own
@@ -228,7 +228,7 @@ function err(message: string): ToolResultSlice {
 }
 
 function unknownSid(sid: string): string {
-  return `Unknown session id ${JSON.stringify(sid)} — no transcript file on disk. Use {action:"list"} to see saved sessions.`
+  return `Unknown session id ${JSON.stringify(sid)}. No transcript file on disk. Use {action:"list"} to see saved sessions.`
 }
 
 function shortSid(sid: string): string {

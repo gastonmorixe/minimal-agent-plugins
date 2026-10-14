@@ -91,7 +91,7 @@ export function statusContent(job: SpeechJob): string {
     case "speaking":
       return `Speech job ${job.id} is still speaking (${job.charCount} chars, pid ${job.pid || "?"}).`
     case "done":
-      return `Speech job ${job.id} finished; the text was read aloud.`
+      return `Speech job ${job.id} finished. The text was read aloud.`
     case "failed":
       return `Speech job ${job.id} failed: ${job.failureReason ?? "the text could not be spoken."}`
     case "stopped":

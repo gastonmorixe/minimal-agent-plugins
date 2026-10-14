@@ -79,7 +79,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
     if (rawNextAtMs <= now) {
       return {
         kind: "tool_result",
-        content: `nextAtMs (${rawNextAtMs}) is in the past; the task would fire immediately. Use a future timestamp.`,
+        content: `nextAtMs (${rawNextAtMs}) is in the past. The task would fire immediately. Use a future timestamp.`,
         is_error: true,
       }
     }
@@ -91,7 +91,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
 
   const e = updated
   const info = taskInfo(e, now)
-  const body = wrapText(`Rescheduled — next fire at ${clockHHMMSS(e.nextAtMs ?? now)}`, 72)
+  const body = wrapText(`Rescheduled. Next fire at ${clockHHMMSS(e.nextAtMs ?? now)}`, 72)
   if (e.intervalMs) {
     const label = rawEvery || `${Math.round(e.intervalMs / 1000)}s`
     body.push(`New cadence: every ${label}`)

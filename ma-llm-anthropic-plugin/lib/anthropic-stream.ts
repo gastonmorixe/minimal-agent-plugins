@@ -267,7 +267,7 @@ export async function* translateAnthropicStream(
           retryable: isRetryableErrorCategory(errType),
           category: categorizeUpstream(errType),
           upstreamType: errType,
-          cause: new Error(`Anthropic stream error: ${errType} — ${errMessage}`),
+          cause: new Error(`Anthropic stream error: ${errType}: ${errMessage}`),
         }
         break
       }

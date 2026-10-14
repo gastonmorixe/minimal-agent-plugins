@@ -16,7 +16,7 @@ Use `WebSearch` to find current information on the open web. It returns ranked h
 
 ## How to call it well
 
-- **Pass the search string as `query`.** That is the only required field. Do not use `search_term` or `explanation` (other tools' schemas); this tool's schema is `query`.
+- **Pass the search string as `query`.** That is the only required field. Do not use `search_term` or `explanation` (other tools' schemas). This tool's schema is `query`.
 - **Keep queries short.** 2-6 well-chosen keywords beat full sentences for almost every provider.
 - **Use `type: "news"` for time-sensitive lookups** (recent events, breaking news, "what happened with X this week"). Default `web` for reference, docs, and general lookups.
 - **Default `count` is 10.** The top 5 are usually all that matter. Drop to `count: 5` when you don't need depth.
@@ -32,4 +32,4 @@ Results come from a configurable provider chain (Brave by default). Failed or un
 
 The tool already retries transient failures (rate limits `429`, upstream `502/503/504`, network errors) up to 3 times with backoff before reporting an error, so you don't need to re-fire immediately. Retry backoffs are surfaced to the user as `retrying in ~Ns (attempt 2/3)` lines.
 
-When the final error says failures look **transient**, the provider was rate-limited or flaky, not broken: wait a few seconds and retry with the same or a more specific query. When it says the API key is missing/wrong, fix config instead of retrying; retrying won't help.
+When the final error says failures look **transient**, the provider was rate-limited or flaky, not broken: wait a few seconds and retry with the same or a more specific query. When it says the API key is missing/wrong, fix config instead of retrying. Retrying won't help.
