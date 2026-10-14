@@ -2,99 +2,102 @@
  * OpenCode Go model registry entries.
  *
  * Triple-surface: OpenAI Chat Completions (DeepSeek, GLM, Kimi, MiMo, Hy,
- * LongCat, Omen, Grok 4.5), Anthropic Messages (MiniMax, Qwen), and OpenAI
- * Responses (GPT-5.6 Luna, Grok 4.6, Muse Spark Contributor) share the same
- * provider id but dispatch through their respective wire translators.
+ * LongCat, Omen, Space Bunny, Step), Anthropic Messages (MiniMax, Qwen,
+ * Claude Haiku), and OpenAI Responses (GPT Luna, Grok, Muse Spark
+ * Contributor) share the same provider id but dispatch through their
+ * respective wire translators.
  *
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
  * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
  * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
- * (2026-09-10).
+ * (2026-10-11).
  *
  * @module llm/providers/opencode/models
  */
 
 import {
+  CAPS_CLAUDE_HAIKU_5_5,
   CAPS_DEEPSEEK_FLASH,
   CAPS_DEEPSEEK_V4_1_FLASH,
   CAPS_DEEPSEEK_V4_FLASH,
   CAPS_DEEPSEEK_V4_FLASH_VISION_EXP,
   CAPS_DEEPSEEK_V4_PRO,
-  CAPS_GLM_5,
   CAPS_GLM_5_1,
   CAPS_GLM_5_2,
   CAPS_GLM_5_3,
   CAPS_GLM_5_3_FLASH,
   CAPS_GPT_5_6_LUNA,
-  CAPS_GROK_4_5,
+  CAPS_GPT_6_LUNA,
   CAPS_GROK_4_6,
+  CAPS_GROK_4_7,
   CAPS_HY3,
-  CAPS_HY3_PREVIEW,
   CAPS_HY4_PREVIEW,
-  CAPS_KIMI_K2_5,
   CAPS_KIMI_K2_6,
   CAPS_KIMI_K2_7_CODE,
   CAPS_KIMI_K3,
   CAPS_LONGCAT_2_0,
+  CAPS_LONGCAT_2_5_PREVIEW_FREE,
   CAPS_MIMO_V2_5,
   CAPS_MIMO_V2_5_PRO,
-  CAPS_MIMO_V2_OMNI,
-  CAPS_MIMO_V2_PRO,
+  CAPS_MIMO_V2_6_FLASH,
+  CAPS_MIMO_V2_6_PRO,
   CAPS_MINIMAX_M2_5,
   CAPS_MINIMAX_M2_7,
   CAPS_MINIMAX_M3,
   CAPS_MUSE_SPARK_1_2_CONTRIBUTOR,
   CAPS_MUSE_SPARK_1_3_CONTRIBUTOR,
   CAPS_OMEN_ALPHA,
-  CAPS_QWEN3_5_PLUS,
   CAPS_QWEN3_6_PLUS,
   CAPS_QWEN3_7_MAX,
   CAPS_QWEN3_7_PLUS,
   CAPS_QWEN3_8_FLASH,
   CAPS_QWEN3_8_MAX,
+  CAPS_SPACE_BUNNY,
+  CAPS_STEP_5_PREVIEW_FREE,
 } from "./capabilities.ts"
 import type { Capabilities } from "./lib/capabilities.ts"
 import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
+  PRICING_CLAUDE_HAIKU_5_5,
   PRICING_DEEPSEEK_FLASH,
   PRICING_DEEPSEEK_V4_1_FLASH,
   PRICING_DEEPSEEK_V4_FLASH,
   PRICING_DEEPSEEK_V4_FLASH_VISION_EXP,
   PRICING_DEEPSEEK_V4_PRO,
-  PRICING_GLM_5,
   PRICING_GLM_5_1,
   PRICING_GLM_5_2,
   PRICING_GLM_5_3,
   PRICING_GLM_5_3_FLASH,
   PRICING_GPT_5_6_LUNA,
-  PRICING_GROK_4_5,
+  PRICING_GPT_6_LUNA,
   PRICING_GROK_4_6,
+  PRICING_GROK_4_7,
   PRICING_HY3,
-  PRICING_HY3_PREVIEW,
   PRICING_HY4_PREVIEW,
-  PRICING_KIMI_K2_5,
   PRICING_KIMI_K2_6,
   PRICING_KIMI_K2_7_CODE,
   PRICING_KIMI_K3,
   PRICING_LONGCAT_2_0,
+  PRICING_LONGCAT_2_5_PREVIEW_FREE,
   PRICING_MIMO_V2_5,
   PRICING_MIMO_V2_5_PRO,
-  PRICING_MIMO_V2_OMNI,
-  PRICING_MIMO_V2_PRO,
+  PRICING_MIMO_V2_6_FLASH,
+  PRICING_MIMO_V2_6_PRO,
   PRICING_MINIMAX_M2_5,
   PRICING_MINIMAX_M2_7,
   PRICING_MINIMAX_M3,
   PRICING_MUSE_SPARK_1_2_CONTRIBUTOR,
   PRICING_MUSE_SPARK_1_3_CONTRIBUTOR,
   PRICING_OMEN_ALPHA,
-  PRICING_QWEN3_5_PLUS,
   PRICING_QWEN3_6_PLUS,
   PRICING_QWEN3_7_MAX,
   PRICING_QWEN3_7_PLUS,
   PRICING_QWEN3_8_FLASH,
   PRICING_QWEN3_8_MAX,
+  PRICING_SPACE_BUNNY,
+  PRICING_STEP_5_PREVIEW_FREE,
 } from "./pricing.ts"
 
 const estimateTokens = makeCharRatioEstimator(3.8)
@@ -218,13 +221,6 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_GLM_5_1,
       surfaceId: "openai-chat-completions",
     }),
-    makeSpec("glm-5", {
-      displayName: "GLM-5",
-      tags: ["opencode", "openai-compatible", "glm"],
-      capabilities: CAPS_GLM_5,
-      pricing: PRICING_GLM_5,
-      surfaceId: "openai-chat-completions",
-    }),
     makeSpec("kimi-k2.7-code", {
       displayName: "Kimi K2.7 Code",
       tags: ["opencode", "openai-compatible", "kimi"],
@@ -239,13 +235,6 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_KIMI_K2_6,
       surfaceId: "openai-chat-completions",
     }),
-    makeSpec("kimi-k2.5", {
-      displayName: "Kimi K2.5",
-      tags: ["opencode", "openai-compatible", "kimi"],
-      capabilities: CAPS_KIMI_K2_5,
-      pricing: PRICING_KIMI_K2_5,
-      surfaceId: "openai-chat-completions",
-    }),
     makeSpec("kimi-k3", {
       displayName: "Kimi K3",
       tags: ["opencode", "openai-compatible", "kimi", "flagship"],
@@ -253,25 +242,11 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_KIMI_K3,
       surfaceId: "openai-chat-completions",
     }),
-    makeSpec("grok-4.5", {
-      displayName: "Grok 4.5",
-      tags: ["opencode", "openai-compatible", "grok"],
-      capabilities: CAPS_GROK_4_5,
-      pricing: PRICING_GROK_4_5,
-      surfaceId: "openai-chat-completions",
-    }),
     makeSpec("hy3", {
       displayName: "Hy3",
       tags: ["opencode", "openai-compatible", "hy"],
       capabilities: CAPS_HY3,
       pricing: PRICING_HY3,
-      surfaceId: "openai-chat-completions",
-    }),
-    makeSpec("hy3-preview", {
-      displayName: "Hy3 Preview",
-      tags: ["opencode", "openai-compatible", "hy"],
-      capabilities: CAPS_HY3_PREVIEW,
-      pricing: PRICING_HY3_PREVIEW,
       surfaceId: "openai-chat-completions",
     }),
     makeSpec("hy4-preview", {
@@ -286,6 +261,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode", "openai-compatible", "longcat"],
       capabilities: CAPS_LONGCAT_2_0,
       pricing: PRICING_LONGCAT_2_0,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("longcat-2.5-preview-free", {
+      displayName: "LongCat-2.5 Preview Free",
+      tags: ["opencode", "openai-compatible", "longcat", "free", "cheap"],
+      capabilities: CAPS_LONGCAT_2_5_PREVIEW_FREE,
+      pricing: PRICING_LONGCAT_2_5_PREVIEW_FREE,
       surfaceId: "openai-chat-completions",
     }),
     makeSpec("omen-alpha", {
@@ -309,18 +291,32 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_MIMO_V2_5_PRO,
       surfaceId: "openai-chat-completions",
     }),
-    makeSpec("mimo-v2-pro", {
-      displayName: "MiMo-V2-Pro",
+    makeSpec("mimo-v2.6-flash", {
+      displayName: "MiMo-V2.6-Flash",
       tags: ["opencode", "openai-compatible", "mimo"],
-      capabilities: CAPS_MIMO_V2_PRO,
-      pricing: PRICING_MIMO_V2_PRO,
+      capabilities: CAPS_MIMO_V2_6_FLASH,
+      pricing: PRICING_MIMO_V2_6_FLASH,
       surfaceId: "openai-chat-completions",
     }),
-    makeSpec("mimo-v2-omni", {
-      displayName: "MiMo-V2-Omni",
+    makeSpec("mimo-v2.6-pro", {
+      displayName: "MiMo-V2.6-Pro",
       tags: ["opencode", "openai-compatible", "mimo"],
-      capabilities: CAPS_MIMO_V2_OMNI,
-      pricing: PRICING_MIMO_V2_OMNI,
+      capabilities: CAPS_MIMO_V2_6_PRO,
+      pricing: PRICING_MIMO_V2_6_PRO,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("space-bunny", {
+      displayName: "Space Bunny",
+      tags: ["opencode", "openai-compatible", "space-bunny"],
+      capabilities: CAPS_SPACE_BUNNY,
+      pricing: PRICING_SPACE_BUNNY,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("step-5-preview-free", {
+      displayName: "Step 5 Preview Free",
+      tags: ["opencode", "openai-compatible", "step", "free", "cheap"],
+      capabilities: CAPS_STEP_5_PREVIEW_FREE,
+      pricing: PRICING_STEP_5_PREVIEW_FREE,
       surfaceId: "openai-chat-completions",
     }),
 
@@ -332,11 +328,25 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_GPT_5_6_LUNA,
       surfaceId: "openai-responses",
     }),
+    makeSpec("gpt-6-luna", {
+      displayName: "GPT-6 Luna",
+      tags: ["opencode", "openai-responses", "gpt"],
+      capabilities: CAPS_GPT_6_LUNA,
+      pricing: PRICING_GPT_6_LUNA,
+      surfaceId: "openai-responses",
+    }),
     makeSpec("grok-4.6", {
       displayName: "Grok 4.6",
       tags: ["opencode", "openai-responses", "grok"],
       capabilities: CAPS_GROK_4_6,
       pricing: PRICING_GROK_4_6,
+      surfaceId: "openai-responses",
+    }),
+    makeSpec("grok-4.7", {
+      displayName: "Grok 4.7",
+      tags: ["opencode", "openai-responses", "grok"],
+      capabilities: CAPS_GROK_4_7,
+      pricing: PRICING_GROK_4_7,
       surfaceId: "openai-responses",
     }),
     makeSpec("muse-spark-1.2-contributor", {
@@ -411,11 +421,11 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_QWEN3_6_PLUS,
       surfaceId: "anthropic-messages",
     }),
-    makeSpec("qwen3.5-plus", {
-      displayName: "Qwen3.5 Plus",
-      tags: ["opencode", "anthropic-compatible", "qwen"],
-      capabilities: CAPS_QWEN3_5_PLUS,
-      pricing: PRICING_QWEN3_5_PLUS,
+    makeSpec("claude-haiku-5-5", {
+      displayName: "Claude Haiku 5.5",
+      tags: ["opencode", "anthropic-compatible", "claude"],
+      capabilities: CAPS_CLAUDE_HAIKU_5_5,
+      pricing: PRICING_CLAUDE_HAIKU_5_5,
       surfaceId: "anthropic-messages",
     }),
   ]

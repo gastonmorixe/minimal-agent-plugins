@@ -6,14 +6,13 @@
  * limits. We record the Go list prices so cost estimates reflect real
  * quota burn.
  *
- * Source precedence (2026-09-07):
+ * Source precedence (2026-10-11):
  * 1. Docs pricing table at `opencode.ai/docs/go` (authoritative Go list rates)
- * 2. models.dev `opencode-go` cost block when docs omit a slug (deprecated /
- *    catalog-only IDs still on live `/v1/models`)
+ * 2. models.dev `opencode-go` cost block when docs omit a slug (new or
+ *    catalog-only IDs on live `/v1/models`)
  * 3. Clone only for preview siblings with no distinct published rate
  *
  * Conflicts resolved toward docs when both publish a number:
- * - grok-4.5 cache_read: docs $0.30 vs models.dev $0.50 → docs
  * - grok-4.6 cache_read: docs $0.50 matches models.dev base ≤200K
  * - glm-5.3-flash: docs $0.15/$0.50/$0.03 vs models.dev $0.075/$0.25/$0.015 → docs
  * - minimax-m2.5 cache_read: docs $0.06 vs models.dev $0.03 → docs
@@ -137,18 +136,6 @@ export const PRICING_GLM_5_1: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/**
- * Source: models.dev opencode-go (2026-07-30). Not on docs/go pricing table
- * (deprecated / catalog-only; still on live `/v1/models`).
- */
-export const PRICING_GLM_5: MTokRate = {
-  inputUSD: 1.0,
-  outputUSD: 3.2,
-  cacheWriteUSD: 0,
-  cacheReadUSD: 0.2,
-  webSearchPerCallUSD: 0,
-}
-
 /** Source: docs/go pricing table (2026-07-30). models.dev agrees. */
 export const PRICING_KIMI_K2_7_CODE: MTokRate = {
   inputUSD: 0.95,
@@ -167,35 +154,10 @@ export const PRICING_KIMI_K2_6: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/**
- * Source: models.dev opencode-go (2026-07-30). Not on docs/go pricing table
- * (deprecated; still on live `/v1/models`).
- */
-export const PRICING_KIMI_K2_5: MTokRate = {
-  inputUSD: 0.6,
-  outputUSD: 3.0,
-  cacheWriteUSD: 0,
-  cacheReadUSD: 0.1,
-  webSearchPerCallUSD: 0,
-}
-
 /** Source: docs/go pricing table (2026-07-30). models.dev agrees. */
 export const PRICING_KIMI_K3: MTokRate = {
   inputUSD: 3.0,
   outputUSD: 15.0,
-  cacheWriteUSD: 0,
-  cacheReadUSD: 0.3,
-  webSearchPerCallUSD: 0,
-}
-
-/**
- * Source: docs/go pricing table (2026-07-30).
- * Note: models.dev cache_read is $0.50; docs list $0.30 — prefer docs.
- * models.dev also publishes \>200K tier ($4/$12/$1); we keep base Go list rate.
- */
-export const PRICING_GROK_4_5: MTokRate = {
-  inputUSD: 2.0,
-  outputUSD: 6.0,
   cacheWriteUSD: 0,
   cacheReadUSD: 0.3,
   webSearchPerCallUSD: 0,
@@ -220,14 +182,6 @@ export const PRICING_HY3: MTokRate = {
   cacheWriteUSD: 0,
   cacheReadUSD: 0.035,
   webSearchPerCallUSD: 0,
-}
-
-/**
- * Preview slug on live `/v1/models` only — absent from docs/go and models.dev.
- * Cloned from Hy3 list price (same family) until a distinct rate is published.
- */
-export const PRICING_HY3_PREVIEW: MTokRate = {
-  ...PRICING_HY3,
 }
 
 /** Source: docs/go pricing table (2026-09-07). models.dev agrees. */
@@ -276,26 +230,53 @@ export const PRICING_MIMO_V2_5_PRO: MTokRate = {
 }
 
 /**
- * Source: models.dev opencode-go (2026-07-30). Not on docs/go pricing table
- * (deprecated; still on live `/v1/models`).
+ * Source: models.dev opencode-go (2026-09-22). Free preview has no published
+ * Go list rate; Docs/go has no entry at refresh time.
  */
-export const PRICING_MIMO_V2_PRO: MTokRate = {
-  inputUSD: 1.0,
-  outputUSD: 3.0,
+export const PRICING_LONGCAT_2_5_PREVIEW_FREE: MTokRate = {
+  inputUSD: 0,
+  outputUSD: 0,
   cacheWriteUSD: 0,
-  cacheReadUSD: 0.2,
+  cacheReadUSD: 0,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: models.dev opencode-go (2026-09-22). */
+export const PRICING_MIMO_V2_6_FLASH: MTokRate = {
+  inputUSD: 0.14,
+  outputUSD: 0.28,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.0028,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: models.dev opencode-go (2026-09-22). */
+export const PRICING_MIMO_V2_6_PRO: MTokRate = {
+  inputUSD: 0.435,
+  outputUSD: 0.87,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.003625,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: models.dev opencode-go (2026-09-23). */
+export const PRICING_SPACE_BUNNY: MTokRate = {
+  inputUSD: 0.15,
+  outputUSD: 0.6,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.03,
   webSearchPerCallUSD: 0,
 }
 
 /**
- * Source: models.dev opencode-go (2026-07-30). Not on docs/go pricing table
- * (deprecated; still on live `/v1/models`).
+ * Source: models.dev opencode-go (2026-09-20). Free preview has no published
+ * Go list rate; Docs/go has no entry at refresh time.
  */
-export const PRICING_MIMO_V2_OMNI: MTokRate = {
-  inputUSD: 0.4,
-  outputUSD: 2.0,
+export const PRICING_STEP_5_PREVIEW_FREE: MTokRate = {
+  inputUSD: 0,
+  outputUSD: 0,
   cacheWriteUSD: 0,
-  cacheReadUSD: 0.08,
+  cacheReadUSD: 0,
   webSearchPerCallUSD: 0,
 }
 
@@ -367,18 +348,6 @@ export const PRICING_QWEN3_6_PLUS: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/**
- * Source: models.dev opencode-go (2026-07-30). Not on docs/go pricing table
- * (deprecated; still on live `/v1/models`).
- */
-export const PRICING_QWEN3_5_PLUS: MTokRate = {
-  inputUSD: 0.2,
-  outputUSD: 1.2,
-  cacheWriteUSD: 0.25,
-  cacheReadUSD: 0.02,
-  webSearchPerCallUSD: 0,
-}
-
 /** Source: docs/go pricing table (2026-08-05). models.dev agrees. */
 export const PRICING_QWEN3_8_MAX: MTokRate = {
   inputUSD: 2.0,
@@ -421,5 +390,43 @@ export const PRICING_GPT_5_6_LUNA: MTokRate = {
   outputUSD: 1.2,
   cacheWriteUSD: 0.25,
   cacheReadUSD: 0.02,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: models.dev opencode-go base rate (2026-09-22): $0.10/$0.50/$0.01/$0.125.
+ * No docs/go entry at refresh time; docs entry for the 5.6 sibling is kept
+ * on the sibling record.
+ */
+export const PRICING_GPT_6_LUNA: MTokRate = {
+  inputUSD: 0.1,
+  outputUSD: 0.5,
+  cacheWriteUSD: 0.125,
+  cacheReadUSD: 0.01,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: models.dev opencode-go base (2026-09-21): $2/$6/$0.50.
+ * Docs/go has no 4.7 entry at refresh time; keep the Grok 4.6 docs tiers
+ * on that sibling record.
+ */
+export const PRICING_GROK_4_7: MTokRate = {
+  inputUSD: 2.0,
+  outputUSD: 6.0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.5,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: models.dev opencode-go (2026-10-07), base rate: $0.10/$0.50/$0.01/$0.125.
+ * No docs/go entry at refresh time; messages-surface Haiku keeps cache writes.
+ */
+export const PRICING_CLAUDE_HAIKU_5_5: MTokRate = {
+  inputUSD: 0.1,
+  outputUSD: 0.5,
+  cacheWriteUSD: 0.125,
+  cacheReadUSD: 0.01,
   webSearchPerCallUSD: 0,
 }

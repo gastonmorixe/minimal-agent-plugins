@@ -3,15 +3,15 @@
  *
  * Three wire surfaces:
  * - **Chat**: OpenAI Chat Completions (`/v1/chat/completions`).
- *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, LongCat, Omen, Grok 4.5.
+ *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, LongCat, Omen, Space Bunny, Step.
  * - **Messages**: Anthropic Messages (`/v1/messages`).
- *   Used by MiniMax, Qwen.
+ *   Used by MiniMax, Qwen, Claude Haiku.
  * - **Responses**: OpenAI Responses (`/v1/responses`).
- *   Used by GPT-5.6 Luna, Grok 4.6, Muse Spark Contributor.
+ *   Used by GPT Luna, Grok, Muse Spark Contributor.
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
  *
- * Source precedence (2026-09-07):
+ * Source precedence (2026-10-11):
  * 1. Live IDs from `https://opencode.ai/zen/go/v1/models` (must stay in sync)
  * 2. Context / maxOutput / modalities from models.dev `opencode-go` provider
  * 3. Docs (`opencode.ai/docs/go`) for surface/endpoint mapping; no window sizes
@@ -54,9 +54,6 @@ const M_TIV = { image: true, audio: false, pdf: false, video: true } as const
 
 /** Text + image + video + audio (omnimodal). */
 const M_TIVA = { image: true, audio: true, pdf: false, video: true } as const
-
-/** Text + image + audio + pdf (legacy MiMo Omni). */
-const M_TIAP = { image: true, audio: true, pdf: true, video: false } as const
 
 /** Text + image + video + audio + pdf. */
 const M_ALL = { image: true, audio: true, pdf: true, video: true } as const
@@ -119,8 +116,12 @@ function thinkResponses(
  * on the wire (omit `thinking`; do not send `output_config.effort:"none"`).
  */
 function thinkAdaptive(
-  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh"> = ["low", "medium", "high"],
-  df: "none" | "low" | "medium" | "high" | "xhigh" = "medium",
+  levels: ReadonlyArray<"none" | "low" | "medium" | "high" | "xhigh" | "max"> = [
+    "low",
+    "medium",
+    "high",
+  ],
+  df: "none" | "low" | "medium" | "high" | "xhigh" | "max" = "medium",
 ) {
   return {
     thinking: { adaptive: true, extended: false, visible: true, interleaved: true } as const,
@@ -282,16 +283,6 @@ export const CAPS_GLM_5_1: Capabilities = {
 }
 
 /**
- * GLM-5 — deprecated on models.dev; still on live `/v1/models`.
- * Caps: models.dev opencode-go (2026-07-30) — 202_752 ctx / 32_768 out.
- * Not listed on docs/go model list; retained for API ID sync.
- */
-export const CAPS_GLM_5: Capabilities = {
-  ...chatBase(202_752, 32_768, M_TEXT),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/**
  * Kimi K2.7 Code — 262K ctx, 262K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
  * Thinking always on (mandatory preserve_thinking).
@@ -311,15 +302,6 @@ export const CAPS_KIMI_K2_6: Capabilities = {
 }
 
 /**
- * Kimi K2.5 — deprecated on models.dev; still on live `/v1/models`.
- * Caps: models.dev opencode-go (2026-07-30). Same multimodal + thinking shape as K2.6.
- */
-export const CAPS_KIMI_K2_5: Capabilities = {
-  ...chatBase(262_144, 65_536, M_TIV),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/**
  * Kimi K3 — 1_048_576 ctx, 131K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
  * Thinking always on; Moonshot exposes reasoning_effort "max" only.
@@ -330,32 +312,11 @@ export const CAPS_KIMI_K3: Capabilities = {
 }
 
 /**
- * Grok 4.5 — 500K ctx, 500K output, text+image.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs chat path for
- * legacy ID still on live `/v1/models` (docs endpoints now list Grok 4.6 on
- * Responses). Efforts: low | medium | high (default high).
- */
-export const CAPS_GROK_4_5: Capabilities = {
-  ...chatBase(500_000, 500_000, M_TI),
-  ...thinkExtended(["low", "medium", "high"], "high"),
-}
-
-/**
  * Hy3 — 256K ctx, 64K output, text-only.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
  * Efforts: none | low | high ("none" = thinking off / reasoning_effort none).
  */
 export const CAPS_HY3: Capabilities = {
-  ...chatBase(256_000, 64_000, M_TEXT),
-  ...thinkExtended(["none", "low", "high"], "high"),
-}
-
-/**
- * Hy3 Preview — on live `/v1/models` but absent from models.dev and docs/go.
- * Caps cloned from Hy3 (same family / preview slug) until secondary sources
- * publish distinct limits. Do not invent alternate numbers.
- */
-export const CAPS_HY3_PREVIEW: Capabilities = {
   ...chatBase(256_000, 64_000, M_TEXT),
   ...thinkExtended(["none", "low", "high"], "high"),
 }
@@ -381,6 +342,16 @@ export const CAPS_LONGCAT_2_0: Capabilities = {
 }
 
 /**
+ * LongCat-2.5 Preview Free — 1M ctx, 131K output, text+image.
+ * Caps: models.dev opencode-go (2026-09-25). Surface: Chat (same family as
+ * LongCat-2.0 on docs endpoints table). Reasoning toggle only (models.dev).
+ */
+export const CAPS_LONGCAT_2_5_PREVIEW_FREE: Capabilities = {
+  ...chatBase(1_000_000, 131_072, M_TI),
+  ...thinkExtended(["none", "medium"], "medium"),
+}
+
+/**
  * Omen Alpha — 500K ctx, 128K output, text+image.
  * Caps: models.dev opencode-go (2026-09-04). Surface: docs endpoints table.
  * Efforts: low | high (models.dev reasoning_options).
@@ -388,6 +359,27 @@ export const CAPS_LONGCAT_2_0: Capabilities = {
 export const CAPS_OMEN_ALPHA: Capabilities = {
   ...chatBase(500_000, 128_000, M_TI),
   ...thinkExtended(["low", "high"], "high"),
+}
+
+/**
+ * Space Bunny — 1_048_576 ctx, 524_288 output, text+image+video.
+ * Caps: models.dev opencode-go (2026-09-23). Surface: Chat (Assumed,
+ * open-weight-style family on the Chat surface).
+ * Efforts: low | medium | high | xhigh | max (models.dev).
+ */
+export const CAPS_SPACE_BUNNY: Capabilities = {
+  ...chatBase(1_048_576, 524_288, M_TIV),
+  ...thinkExtended(["low", "medium", "high", "xhigh", "max"], "medium"),
+}
+
+/**
+ * Step 5 Preview Free — 1M ctx, 65_536 output, text+image+video.
+ * Caps: models.dev opencode-go (2026-09-20). Surface: Chat.
+ * Efforts: low | medium | high (models.dev).
+ */
+export const CAPS_STEP_5_PREVIEW_FREE: Capabilities = {
+  ...chatBase(1_000_000, 65_536, M_TIV),
+  ...thinkExtended(["low", "medium", "high"], "medium"),
 }
 
 /**
@@ -409,20 +401,22 @@ export const CAPS_MIMO_V2_5_PRO: Capabilities = {
 }
 
 /**
- * MiMo V2 Pro — deprecated on models.dev; still on live `/v1/models`.
- * Caps: models.dev opencode-go (2026-07-30).
+ * MiMo V2.6 Flash — 1_048_576 ctx, 131K output, text+image+audio+video.
+ * Caps: models.dev opencode-go (2026-09-22). Surface: Chat.
+ * models.dev lists reasoning with empty options; single medium level.
  */
-export const CAPS_MIMO_V2_PRO: Capabilities = {
-  ...chatBase(1_048_576, 128_000, M_TEXT),
+export const CAPS_MIMO_V2_6_FLASH: Capabilities = {
+  ...chatBase(1_048_576, 131_072, M_TIVA),
   ...thinkExtended(["medium"], "medium"),
 }
 
 /**
- * MiMo V2 Omni — deprecated on models.dev; still on live `/v1/models`.
- * Caps: models.dev opencode-go (2026-07-30) — 262K ctx, text+image+audio+pdf.
+ * MiMo V2.6 Pro — 1_048_576 ctx, 131K output, text+image+audio+video.
+ * Caps: models.dev opencode-go (2026-09-22). Surface: Chat.
+ * models.dev lists reasoning with empty options; single medium level.
  */
-export const CAPS_MIMO_V2_OMNI: Capabilities = {
-  ...chatBase(262_144, 128_000, M_TIAP),
+export const CAPS_MIMO_V2_6_PRO: Capabilities = {
+  ...chatBase(1_048_576, 131_072, M_TIVA),
   ...thinkExtended(["medium"], "medium"),
 }
 
@@ -512,13 +506,13 @@ export const CAPS_QWEN3_6_PLUS: Capabilities = {
 }
 
 /**
- * Qwen3.5 Plus — deprecated on models.dev; still on live `/v1/models`.
- * Caps: models.dev opencode-go (2026-07-30) — 262K ctx / 65K out.
- * Reasoning toggle (models.dev): `--effort none` turns thinking off.
+ * Claude Haiku 5.5 — 1M ctx, 128K output, text+image+pdf.
+ * Caps: models.dev opencode-go (2026-10-07). Surface: Messages (`@ai-sdk/anthropic`).
+ * Reasoning toggle + effort low | medium | high | xhigh | max (models.dev).
  */
-export const CAPS_QWEN3_5_PLUS: Capabilities = {
-  ...msgBase(262_144, 65_536, M_TIV),
-  ...thinkAdaptive(THINK_TOGGLE),
+export const CAPS_CLAUDE_HAIKU_5_5: Capabilities = {
+  ...msgBase(1_000_000, 128_000, M_TIP),
+  ...thinkAdaptive(["none", "low", "medium", "high", "xhigh", "max"], "medium"),
 }
 
 // ===========================================================================
@@ -607,6 +601,62 @@ export const CAPS_GPT_5_6_LUNA: Capabilities = {
   ...thinkResponses(["none", "low", "medium", "high", "xhigh", "max"], "medium"),
   acceptsTemperature: false,
   acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_STRICT },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...M_TIP },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
+ * GPT-6 Luna — 1.05M ctx, 128K output, text+image+pdf.
+ * Caps: models.dev opencode-go (2026-09-22). Surface: Responses (`@ai-sdk/openai`).
+ * Reasoning model: no temperature/top_p (models.dev).
+ * Efforts: none | low | medium | high | xhigh | max (models.dev).
+ */
+export const CAPS_GPT_6_LUNA: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_050_000,
+  maxOutputTokens: 128_000,
+  maxOutputTokensBatch: null,
+  ...thinkResponses(["none", "low", "medium", "high", "xhigh", "max"], "medium"),
+  acceptsTemperature: false,
+  acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: false,
+  speedFast: false,
+  caching: { ...CACHING_AUTO },
+  tools: { ...TOOLS_STRICT },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...M_TIP },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
+ * Grok 4.7 — 500K ctx, 500K output, text+image+pdf on Responses.
+ * Caps: models.dev opencode-go (2026-09-21). Surface: Responses (Assumed,
+ * same as Grok 4.6; docs/go endpoint table unreachable at refresh time).
+ * Efforts: low | medium | high | xhigh (default high). Accepts temperature.
+ */
+export const CAPS_GROK_4_7: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 500_000,
+  maxOutputTokens: 500_000,
+  maxOutputTokensBatch: null,
+  ...thinkResponses(["low", "medium", "high", "xhigh"], "high"),
+  acceptsTemperature: true,
+  acceptsTopP: true,
   acceptsTopK: false,
   acceptsSeed: false,
   acceptsStopSequences: false,

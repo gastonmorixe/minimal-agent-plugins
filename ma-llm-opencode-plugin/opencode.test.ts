@@ -123,45 +123,46 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-09-10 (authoritative ID list).
+    // Live /v1/models snapshot 2026-10-11 (authoritative ID list).
     const ids = [
+      "claude-haiku-5-5",
       "deepseek-flash",
       "deepseek-v4-flash",
       "deepseek-v4-flash-vision-exp",
       "deepseek-v4-pro",
       "deepseek-v4.1-flash",
-      "glm-5",
       "glm-5.1",
       "glm-5.2",
       "glm-5.3",
       "glm-5.3-flash",
       "gpt-5.6-luna",
-      "grok-4.5",
+      "gpt-6-luna",
       "grok-4.6",
+      "grok-4.7",
       "hy3",
-      "hy3-preview",
       "hy4-preview",
-      "kimi-k2.5",
       "kimi-k2.6",
       "kimi-k2.7-code",
       "kimi-k3",
       "longcat-2.0",
-      "mimo-v2-omni",
-      "mimo-v2-pro",
+      "longcat-2.5-preview-free",
       "mimo-v2.5",
       "mimo-v2.5-pro",
+      "mimo-v2.6-flash",
+      "mimo-v2.6-pro",
       "minimax-m2.5",
       "minimax-m2.7",
       "minimax-m3",
       "muse-spark-1.2-contributor",
       "muse-spark-1.3-contributor",
       "omen-alpha",
-      "qwen3.5-plus",
       "qwen3.6-plus",
       "qwen3.7-max",
       "qwen3.7-plus",
       "qwen3.8-flash",
       "qwen3.8-max",
+      "space-bunny",
+      "step-5-preview-free",
     ]
     for (const id of ids) {
       const m = resolveModel(id)
@@ -169,21 +170,15 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     }
   })
 
-  it("applies models.dev caps and docs/go pricing (2026-08-05)", () => {
+  it("applies models.dev caps and docs/go pricing (2026-10-11)", () => {
     setup()
     // Caps refreshed from models.dev where they previously drifted.
-    expect(resolveModel("glm-5").capabilities.contextWindow).toBe(202_752)
-    expect(resolveModel("glm-5").capabilities.maxOutputTokens).toBe(32_768)
+    expect(resolveModel("glm-5.1").capabilities.contextWindow).toBe(202_752)
     expect(resolveModel("glm-5.1").capabilities.maxOutputTokens).toBe(32_768)
     expect(resolveModel("kimi-k2.7-code").capabilities.maxOutputTokens).toBe(262_144)
     expect(resolveModel("minimax-m2.5").capabilities.maxOutputTokens).toBe(65_536)
-    expect(resolveModel("grok-4.5").capabilities.maxOutputTokens).toBe(500_000)
-    // hy3-preview clones hy3 (no secondary source for distinct caps).
-    expect(resolveModel("hy3-preview").capabilities.contextWindow).toBe(
-      resolveModel("hy3").capabilities.contextWindow,
-    )
-    // Docs/go wins over models.dev on grok cache_read ($0.30 vs $0.50).
-    expect(resolveModel("grok-4.5").pricing?.cacheReadUSD).toBe(0.3)
+    expect(resolveModel("grok-4.6").capabilities.maxOutputTokens).toBe(500_000)
+    // Docs-only cache_write (models.dev omits it).
     expect(resolveModel("minimax-m2.7").pricing?.cacheWriteUSD).toBe(0.375)
     // DeepSeek Off-Peak tiers refreshed 2026-09-10 (docs/go + models.dev agree).
     expect(resolveModel("deepseek-v4-flash").pricing?.inputUSD).toBe(0.15)
@@ -307,23 +302,11 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "max",
     ])
 
-    // Hy3 (+ preview): models.dev effort none|low|high (none = thinking off).
+    // Hy3: models.dev effort none|low|high (none = thinking off).
     expect([...resolveModel("hy3").capabilities.effort.levels]).toEqual(["none", "low", "high"])
-    expect([...resolveModel("hy3-preview").capabilities.effort.levels]).toEqual([
-      "none",
-      "low",
-      "high",
-    ])
 
     // models.dev reasoning toggle → effort includes none (Messages thinking-off).
-    for (const id of [
-      "minimax-m3",
-      "qwen3.8-max",
-      "qwen3.7-max",
-      "qwen3.7-plus",
-      "qwen3.6-plus",
-      "qwen3.5-plus",
-    ]) {
+    for (const id of ["minimax-m3", "qwen3.8-max", "qwen3.7-max", "qwen3.7-plus", "qwen3.6-plus"]) {
       expect([...resolveModel(id).capabilities.effort.levels]).toEqual([
         "none",
         "low",
@@ -350,9 +333,54 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "high",
     ])
 
-    // 2026-09-07 live catalog additions: surface + pricing smoke.
+    // 2026-10-11 live catalog additions: surface + pricing smoke.
     expect(resolveModel("grok-4.6").surfaceId).toBe("openai-responses")
     expect(resolveModel("grok-4.6").pricing?.cacheReadUSD).toBe(0.5)
+    expect(resolveModel("grok-4.7").surfaceId).toBe("openai-responses")
+    expect(resolveModel("grok-4.7").capabilities.maxOutputTokens).toBe(500_000)
+    expect(resolveModel("grok-4.7").pricing?.cacheReadUSD).toBe(0.5)
+    expect([...resolveModel("grok-4.7").capabilities.effort.levels]).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+    ])
+    expect(resolveModel("gpt-6-luna").surfaceId).toBe("openai-responses")
+    expect(resolveModel("gpt-6-luna").pricing?.inputUSD).toBe(0.1)
+    expect(resolveModel("gpt-6-luna").pricing?.outputUSD).toBe(0.5)
+    expect(resolveModel("gpt-6-luna").capabilities.acceptsTemperature).toBe(false)
+    expect([...resolveModel("gpt-6-luna").capabilities.effort.levels]).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
+    expect(resolveModel("claude-haiku-5-5").surfaceId).toBe("anthropic-messages")
+    expect(resolveModel("claude-haiku-5-5").capabilities.contextWindow).toBe(1_000_000)
+    expect(resolveModel("claude-haiku-5-5").capabilities.maxOutputTokens).toBe(128_000)
+    expect(resolveModel("claude-haiku-5-5").capabilities.modalities).toEqual({
+      image: true,
+      audio: false,
+      pdf: true,
+      video: false,
+    })
+    expect([...resolveModel("claude-haiku-5-5").capabilities.effort.levels]).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
+    expect(resolveModel("claude-haiku-5-5").pricing?.inputUSD).toBe(0.1)
+    expect(resolveModel("mimo-v2.6-flash").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("mimo-v2.6-flash").capabilities.contextWindow).toBe(1_048_576)
+    expect(resolveModel("mimo-v2.6-pro").pricing?.inputUSD).toBe(0.435)
+    expect(resolveModel("longcat-2.5-preview-free").pricing?.inputUSD).toBe(0)
+    expect(resolveModel("space-bunny").capabilities.maxOutputTokens).toBe(524_288)
+    expect(resolveModel("step-5-preview-free").capabilities.maxOutputTokens).toBe(65_536)
     expect(resolveModel("muse-spark-1.3-contributor").surfaceId).toBe("openai-responses")
     expect(resolveModel("muse-spark-1.3-contributor").pricing?.inputUSD).toBe(0.1)
     expect(resolveModel("glm-5.3-flash").surfaceId).toBe("openai-chat-completions")

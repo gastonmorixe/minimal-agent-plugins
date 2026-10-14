@@ -8,6 +8,34 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-10-14: **OpenCode Go and Zen catalogs refreshed (live `/v1/models`
+  2026-10-11).** Go adds `claude-haiku-5-5` (Messages), `gpt-6-luna` and
+  `grok-4.7` (Responses), and `longcat-2.5-preview-free`, `mimo-v2.6-flash`,
+  `mimo-v2.6-pro`, `space-bunny`, `step-5-preview-free` (Chat). Zen
+  `LIVE_MODEL_IDS` goes from 64 to 82. Pricing comes from docs/go first, then
+  models.dev. Coverage in each package's `opencode.test.ts`.
+
+### Removed
+
+- 2026-10-14: **OpenCode ids gone from the live catalogs.** Go drops `glm-5`,
+  `kimi-k2.5`, `grok-4.5`, `hy3-preview`, `mimo-v2-pro`, `mimo-v2-omni`, and
+  `qwen3.5-plus`. Zen drops `claude-sonnet-4`, `x-preview-f-free`,
+  `deepseek-v4-flash-free`, `mimo-v2.5-free`, `hy3-free`,
+  `nemotron-3-ultra-free`, and `laguna-s-2.1-free`. A saved config or
+  `--model` that names one of these no longer resolves under that provider.
+
+### Changed
+
+- 2026-10-14: **Model-facing plugin prose follows the writing-style rules.**
+  PROMPT.md files, manifest descriptions, tool result and error strings in
+  about 30 plugins, the identity fragment, env-info `gather.sh`, and
+  `result-protocol.tmpl.md` drop semicolons, em dashes, unicode arrows,
+  ellipses, warning glyphs, and filler words. Stream translators now format
+  error `cause` as `X: msg` (it was `X — msg`). No other behavior change.
+  `scripts/prompt-audit.test.ts` masks code and URLs, reads only manifest
+  `description` values, and enforces no semicolons, no emoji, no sycophancy
+  or signposting, and no `---` before a heading. Work by Edward (`dc78a09d`).
+
 - 2026-10-04: **`ma-llm-meta-plugin` is Responses-primary for Muse Spark.** Bare
   ids (`muse-spark-1.3` default, `1.2`, `1.1`, contributors) use
   `openai-responses` with Chat companions (`*-chat`). Defaults: `store:false`,
