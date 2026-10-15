@@ -98,7 +98,9 @@ describe("precedence", () => {
 describe("specificity", () => {
   test("exact id > longest glob > shorter glob > family > *", () => {
     const spec = "*:warn,secret:off,secret.*:on,secret.openai.*:high,secret.openai.api-key:low"
-    const p = r({ config: { spec } })
+    const knownIds = new Set(["secret.openai.api-key", "secret.openai.svcacct"])
+    const p = r({ config: { spec }, knownIds })
+    expect(p.dropped).toEqual([])
     expect(ruleSetting(p, "secret.openai.api-key").level).toBe("low")
     expect(ruleSetting(p, "secret.openai.svcacct").level).toBe("high")
     expect(ruleSetting(p, "secret.github.token").status).toBe("on")
@@ -199,16 +201,18 @@ describe("lead floor (tighten only)", () => {
     expect(c.cat.escalate_after).toBe(2)
     expect(c.features.redactor.scope).toBe("history")
     expect(ruleSetting(c, "pii.card").level).toBe("mid")
-    const clauses = c.dropped.map((d) => d.clause)
-    expect(clauses).toContain("profile:steer")
-    expect(clauses).toContain("pii.email:low")
-    expect(clauses).toContain("cmd.cat:off")
-    expect(clauses).toContain("cmd.cat:escalate_after=0")
-    expect(clauses).toContain("redactor:scope=prompt")
-    expect(clauses).toContain("pii.*:off")
-    // A child reset only clears the child's own lower sources. The lead layer stays.
-    expect(clauses).not.toContain("pii.email:level=default")
-    for (const d of c.dropped) expect(d.reason).toMatch(/loosens lead/)
+    // B7 fix3: a drop names only a valid target and a known key, no clause text.
+    const clauses = c.dropped.map((d) => `${d.target}:${d.key}`)
+    expect(clauses).toContain("profile:profile")
+    expect(clauses).toContain("pii.email:level")
+    expect(clauses).toContain("cmd.cat:status")
+    expect(clauses).toContain("cmd.cat:escalate_after")
+    expect(clauses).toContain("redactor:scope")
+    expect(clauses).toContain("pii.*:status")
+    // A child reset only clears the child's own lower sources. The lead layer
+    // stays. Only the `pii.email:low` level is dropped, not the reset.
+    expect(clauses.filter((x) => x === "pii.email:level").length).toBe(1)
+    for (const d of c.dropped) expect(d.reason).toMatch(/^loosens lead (floor|profile)$/)
     expect(c.dropped.every((d) => d.source === "env")).toBe(true)
   })
   test("kill switch cannot loosen a floored child", () => {
@@ -231,7 +235,7 @@ describe("lead floor (tighten only)", () => {
     })
     expect(ruleSetting(g, "pii.email").level).toBe("high")
     expect(ruleSetting(g, "pii.card").level).toBe("high")
-    expect(g.dropped.map((d) => d.clause)).toEqual(["pii.email:low"])
+    expect(g.dropped.map((d) => `${d.target}:${d.key}`)).toEqual(["pii.email:level"])
   })
 })
 

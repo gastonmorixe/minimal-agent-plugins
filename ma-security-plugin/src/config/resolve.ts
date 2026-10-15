@@ -6,7 +6,14 @@
 
 import { createHash } from "node:crypto"
 
-import { buildClauses, classifyTarget, parseRulesObject, parseSpec } from "./grammar.ts"
+import {
+  BUILTIN_KNOWN_IDS,
+  buildClauses,
+  classifyTarget,
+  drop,
+  parseRulesObject,
+  parseSpec,
+} from "./grammar.ts"
 import {
   CAT_DEFAULTS,
   CAT_IDS,
@@ -30,6 +37,7 @@ import type {
   Features,
   Level,
   OverrideMap,
+  ParseResult,
   PathDecision,
   ProfileName,
   ResolvedPolicy,
@@ -614,16 +622,20 @@ interface LeadFloor {
 const MALFORMED_FLOOR: LeadFloor = { profile: DEFAULT_PROFILE, layers: [] }
 
 /** Parse `MINIMAL_AGENT_SECURITY_RESOLVED`. Every clause is validated again. */
-function parseLead(raw: string, drops: SourcedDrop[]): LeadFloor {
+function parseLead(
+  raw: string,
+  drops: SourcedDrop[],
+  known: ReadonlySet<string> = BUILTIN_KNOWN_IDS,
+): LeadFloor {
   let data: unknown
   try {
     data = JSON.parse(raw)
   } catch {
-    drops.push({ source: "lead", clause: "<resolved>", reason: "lead policy is not JSON" })
+    drops.push({ source: "lead", ...drop("", null, "lead policy is not JSON") })
     return MALFORMED_FLOOR
   }
   if (!isObj(data) || data.v !== 1 || !PROFILES.includes(data.profile as ProfileName)) {
-    drops.push({ source: "lead", clause: "<resolved>", reason: "lead policy has a bad shape" })
+    drops.push({ source: "lead", ...drop("", null, "lead policy has a bad shape") })
     return MALFORMED_FLOOR
   }
   const layers: Layer[] = []
@@ -636,9 +648,9 @@ function parseLead(raw: string, drops: SourcedDrop[]): LeadFloor {
       if (!isObj(keys)) continue
       for (const [k, v] of Object.entries(keys)) {
         const items = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []
-        const out = buildClauses(`${t}:${k}=${items.join("|")}`, t, k, items, false)
-        if (typeof out === "string") {
-          drops.push({ source: "lead", clause: `${t}:${k}`, reason: out })
+        const out = buildClauses(t, k, items, false, known)
+        if (!Array.isArray(out)) {
+          drops.push({ source: "lead", ...out })
           continue
         }
         for (const c of out) addClause(targets, c)
@@ -689,15 +701,13 @@ function safeGet(o: unknown, key: string): unknown {
 /** Fallback after an internal error (review m9). Keeps the lead floor and the
  * configured profile. Drops every clause. Never fails open. */
 function fallbackPolicy(input: unknown): ResolvedPolicy {
-  const drops: SourcedDrop[] = [
-    { source: "builtin", clause: "<resolve>", reason: "internal resolve error: clauses dropped" },
-  ]
+  const drops: SourcedDrop[] = [{ source: "builtin", ...drop("", null, "internal resolve error") }]
   const origin: Origin = { profile: "builtin" }
   let profile: ProfileName = DEFAULT_PROFILE
   let lead: LeadFloor | null = null
   try {
     const raw = safeGet(safeGet(input, "env"), "MINIMAL_AGENT_SECURITY_RESOLVED")
-    if (typeof raw === "string" && raw.trim() !== "") lead = parseLead(raw, drops)
+    if (typeof raw === "string" && raw.trim() !== "") lead = parseLead(raw, drops, knownOf(input))
     const cp = safeGet(safeGet(input, "config"), "profile")
     if (typeof cp === "string" && PROFILES.includes(cp.trim() as ProfileName)) {
       profile = cp.trim() as ProfileName
@@ -714,54 +724,54 @@ function fallbackPolicy(input: unknown): ResolvedPolicy {
   }
 }
 
+/** The known id set: built-in ids plus any ids the caller passes (B4 rule
+ * packs). A bad option falls back to the built-in set. */
+function knownOf(input: unknown): ReadonlySet<string> {
+  const extra = safeGet(input, "knownIds")
+  if (!(extra instanceof Set) || extra.size === 0) return BUILTIN_KNOWN_IDS
+  const out = new Set<string>(BUILTIN_KNOWN_IDS)
+  for (const id of extra)
+    if (typeof id === "string" && typeof classifyTarget(id) !== "string") out.add(id)
+  return out
+}
+
 function resolveInner(input: ResolveInput): ResolvedPolicy {
   const drops: SourcedDrop[] = []
+  const known = knownOf(input)
   const env = input.env ?? {}
   const cfg = isObj(input.config) ? input.config : {}
   if (input.config !== undefined && input.config !== null && !isObj(input.config)) {
-    drops.push({ source: "config.rules", clause: "plugins.security", reason: "not an object" })
+    drops.push({ source: "config.rules", ...drop("", null, "config is not an object") })
   }
 
   const lead =
     typeof env.MINIMAL_AGENT_SECURITY_RESOLVED === "string" &&
     env.MINIMAL_AGENT_SECURITY_RESOLVED.trim() !== ""
-      ? parseLead(env.MINIMAL_AGENT_SECURITY_RESOLVED, drops)
+      ? parseLead(env.MINIMAL_AGENT_SECURITY_RESOLVED, drops, known)
       : null
   // A present lead is a floor. A malformed one is MALFORMED_FLOOR (steer).
 
   let disabled = disabledFlag(env.MINIMAL_AGENT_SECURITY_DISABLED)
   if (disabled && lead && lead.profile !== "off") {
-    drops.push({
-      source: "env.disabled",
-      clause: "MINIMAL_AGENT_SECURITY_DISABLED=1",
-      reason: "lead floor: a child may only tighten",
-    })
+    drops.push({ source: "env.disabled", ...drop("", null, "disabled under lead floor") })
     disabled = false
   }
 
   const sources: SourceInput[] = []
-  const add = (
-    source: SourceName,
-    parsed: { clauses: readonly Clause[]; dropped: readonly { clause: string; reason: string }[] },
-  ): void => {
+  const add = (source: SourceName, parsed: ParseResult): void => {
     for (const d of parsed.dropped) drops.push({ source, ...d })
     sources.push({ source, clauses: parsed.clauses })
   }
   if (cfg.profile !== undefined) {
     const p = typeof cfg.profile === "string" ? cfg.profile.trim() : ""
-    const out = buildClauses(`profile:${p}`, "profile", null, [p], false)
-    if (typeof out === "string") {
-      drops.push({
-        source: "config.profile",
-        clause: `profile:${String(cfg.profile)}`,
-        reason: out,
-      })
-    } else sources.push({ source: "config.profile", clauses: out })
+    const out = buildClauses("profile", null, [p], false)
+    if (!Array.isArray(out)) drops.push({ source: "config.profile", ...out })
+    else sources.push({ source: "config.profile", clauses: out })
   }
-  add("config.rules", parseRulesObject(cfg.rules))
-  add("config.spec", parseSpec(cfg.spec))
-  add("env", parseSpec(env.MINIMAL_AGENT_SECURITY_SPEC))
-  add("plugin-opt", parseSpec(input.pluginOpt))
+  add("config.rules", parseRulesObject(cfg.rules, known))
+  add("config.spec", parseSpec(cfg.spec, known))
+  add("env", parseSpec(env.MINIMAL_AGENT_SECURITY_SPEC, known))
+  add("plugin-opt", parseSpec(input.pluginOpt, known))
 
   const origin: Origin = {}
   if (disabled) {
@@ -785,8 +795,7 @@ function resolveInner(input: ResolveInput): ResolvedPolicy {
     if (profileClause) {
       drops.push({
         source: profileClause.source,
-        clause: profileClause.clause.raw,
-        reason: `loosens lead profile ${lead.profile}`,
+        ...drop("profile", "profile", "loosens lead profile"),
       })
     }
     profile = lead.profile
@@ -803,9 +812,8 @@ function resolveInner(input: ResolveInput): ResolvedPolicy {
     for (const c of s.clauses) {
       if (c.kind === "profile") continue
       if (floor) {
-        const why = clauseLoosens(profile, floorLayers, floor, c, s.source)
-        if (why) {
-          drops.push({ source: s.source, clause: c.raw, reason: `loosens lead floor (${why})` })
+        if (clauseLoosens(profile, floorLayers, floor, c, s.source)) {
+          drops.push({ source: s.source, ...drop(c.target, c.key, "loosens lead floor", known) })
           continue
         }
       }

@@ -14,7 +14,7 @@ function r(input: ResolveInput) {
 }
 
 function dropped(p: ReturnType<typeof r>): string[] {
-  return p.dropped.map((d) => d.clause)
+  return p.dropped.map((d) => `${d.target}:${d.key}`)
 }
 
 describe("M1 guard:off does not turn CAT off", () => {
@@ -52,7 +52,7 @@ describe("M2 malformed lead floor never fails open", () => {
       expect(ruleSetting(p, "pii.email").level).toBe("low")
       expect(p.dropped.some((d) => d.source === "lead")).toBe(true)
       expect(p.dropped.some((d) => d.source === "env.disabled")).toBe(true)
-      expect(dropped(p)).toContain("pii.email:off")
+      expect(dropped(p)).toContain("pii.email:status")
     })
   }
 })
@@ -89,8 +89,8 @@ describe("M3 floor holes", () => {
   for (const clause of looser) {
     test(`feature key dropped: ${clause}`, () => {
       const c = r({ env: { ...env, [SPEC]: clause } })
-      expect(dropped(c)).toEqual([clause])
-      expect(c.dropped[0]?.reason).toMatch(/loosens lead floor/)
+      expect(dropped(c)).toEqual([clause.slice(0, clause.indexOf("="))])
+      expect(c.dropped[0]?.reason).toBe("loosens lead floor")
     })
   }
   test("tighter feature keys are kept", () => {
@@ -115,7 +115,7 @@ describe("M4 vault:tools allowlist", () => {
     test(`vault:tools rejects ${tool}`, () => {
       const out = parseSpec(`vault:tools=Edit|${tool}`)
       expect(out.clauses).toEqual([])
-      expect(out.dropped[0]?.reason).toMatch(/vault/)
+      expect(out.dropped[0]?.reason).toBe("vault tool not allowed")
     })
   }
   test("Edit and Write are accepted", () => {
@@ -169,7 +169,7 @@ describe("m7 ask outside strict", () => {
     for (const spec of ["cmd.cat:ask", "cmd.cat:warn", "cmd.cat:status=ask"]) {
       const out = parseSpec(spec)
       expect(out.clauses).toEqual([])
-      expect(out.dropped[0]?.reason).toMatch(/cmd.cat status/)
+      expect(out.dropped[0]?.reason).toBe("CAT status takes on or off")
     }
     expect(r({ config: { spec: "cmd.cat:ask" } }).cat.status).toBe("on")
   })
@@ -228,7 +228,7 @@ describe("m9 fallbacks keep the floor", () => {
 describe("m10 timeout_ms minimum", () => {
   test("timeout_ms below 100 is dropped", () => {
     for (const spec of ["guard:timeout_ms=0", "redactor:timeout_ms=99"]) {
-      expect(parseSpec(spec).dropped[0]?.reason).toMatch(/out of range 100/)
+      expect(parseSpec(spec).dropped[0]?.reason).toBe("out of range")
     }
     expect(parseSpec("guard:timeout_ms=100").clauses.length).toBe(1)
   })

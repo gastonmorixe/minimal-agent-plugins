@@ -6,7 +6,7 @@ import { CAT_IDS, KNOWN_IDS } from "./profiles.ts"
 import { resolvePolicy, ruleSetting } from "./resolve.ts"
 
 function dropped(spec: string): string[] {
-  return resolvePolicy({ config: { spec } }).dropped.map((d) => d.clause)
+  return resolvePolicy({ config: { spec } }).dropped.map((d) => `${d.target}:${d.key}`)
 }
 
 describe("MAJOR 1 exact CAT id takes only on or off", () => {
@@ -19,7 +19,12 @@ describe("MAJOR 1 exact CAT id takes only on or off", () => {
             expect(p.floored).toBe(false)
             expect(ruleSetting(p, id).decision).toBe("deny")
             expect(ruleSetting(p, id).status).toBe("on")
-            expect(p.dropped.map((d) => d.clause)).toContain(clause)
+            expect(p.dropped).toContainEqual({
+              source: "config.spec",
+              target: id,
+              key: "status",
+              reason: "CAT status takes on or off",
+            })
           }
         })
       }
@@ -140,6 +145,6 @@ describe("MINOR 4 hash canonical numbers", () => {
     expect(a.hash).toBe(b.hash)
   })
   test("out of range exponent is still dropped", () => {
-    expect(dropped("entropy:threshold=1e9")).toEqual(["entropy:threshold=1e9"])
+    expect(dropped("entropy:threshold=1e9")).toEqual(["entropy:threshold"])
   })
 })

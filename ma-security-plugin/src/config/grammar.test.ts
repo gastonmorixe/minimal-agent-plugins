@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test"
 
-import { parseRulesObject, parseSpec } from "./grammar.ts"
+import { BUILTIN_KNOWN_IDS, parseRulesObject, parseSpec } from "./grammar.ts"
+import type { DropReason } from "./types.ts"
+
+/** Rule-pack ids the B4 index will pass. The built-in tables do not list them. */
+const PACK = new Set([...BUILTIN_KNOWN_IDS, "secret.openai.api-key", "secret.openai.svcacct"])
 
 function brief(spec: string): string[] {
-  return parseSpec(spec).clauses.map((c) => `${c.target}|${c.kind}|${c.key}=${c.value.join("|")}`)
+  return parseSpec(spec, PACK).clauses.map(
+    (c) => `${c.target}|${c.kind}|${c.key}=${c.value.join("|")}`,
+  )
 }
 
 function dropReasons(spec: string): string[] {
@@ -94,9 +100,7 @@ describe("parseSpec: shorthand by target", () => {
 describe("parseSpec: whitespace, empties, default", () => {
   test("whitespace trimmed and empty clauses ignored", () => {
     const r = parseSpec("  profile : strict ,, , pii.email : level = low | mid ,")
-    expect(r.dropped).toEqual([
-      { clause: "pii.email : level = low | mid", reason: "level takes one value" },
-    ])
+    expect(r.dropped).toEqual([{ target: "pii.email", key: "level", reason: "takes one value" }])
     expect(r.clauses.map((c) => c.value[0])).toEqual(["strict"])
   })
   test("empty string gives nothing", () => {
@@ -111,53 +115,56 @@ describe("parseSpec: whitespace, empties, default", () => {
 })
 
 describe("parseSpec: drop cases", () => {
-  const cases: Array<[string, string]> = [
-    ["profile", "missing ':'"],
-    ["pii.email:", "empty setting"],
-    [":on", "empty target"],
-    ["pii.email:=low", "empty key"],
-    ["profile:low", "'low' is not a profile name"],
-    ["profile:status=on", "key 'status' not valid for profile"],
-    ["pii.email:guard", "'guard' not valid for pii.email"],
-    ["cmd.sudo:low", "'low' not valid for cmd.sudo"],
-    ["audit:low", "'low' not valid for audit"],
-    ["pii.email:bogus=1", "unknown key 'bogus'"],
-    ["pii.email:bash=on", "key 'bash' not valid for pii.email"],
-    ["vault:level=mid", "key 'level' not valid for vault"],
-    ["cmd.cat:level=mid", "key 'level' not valid for cmd.cat"],
-    ["cmd.cat:escalate_window=0", "escalate_window out of range 1..1000"],
-    ["cmd.cat:escalate_window=1001", "escalate_window out of range 1..1000"],
-    ["cmd.cat:escalate_after=1001", "escalate_after out of range 0..1000"],
-    ["cmd.cat:escalate_total=x", "escalate_total needs an integer"],
-    ["cmd.cat.*:off", "cmd.cat is a fixed alias, not a glob"],
-    ["secret.*.foo:on", "glob only at the end"],
-    ["*.openai:on", "glob only at the end"],
-    ["secret.OpenAI:on", "ids are lowercase"],
-    ["secret.open_ai:on", "bad id segment 'open_ai'"],
-    ["secret..x:on", "bad id segment ''"],
-    ["foo.bar:on", "unknown target 'foo.bar'"],
-    ["redactorx:on", "unknown target 'redactorx'"],
-    ["pii.email:status=maybe", "bad status 'maybe'"],
-    ["pii.email:level=huge", "bad level 'huge'"],
-    ["redactor:scope=everywhere", "bad scope 'everywhere'"],
-    ["guard:fail=sometimes", "bad fail 'sometimes'"],
-    ["entropy:threshold=9", "threshold out of range (0, 8]"],
-    ["pii.email:on|off", "shorthand takes one word"],
-    ["path.env-file:allow=a||b", "empty item in allow"],
-    ["path.env-file:allow=a$b", "bad character in value 'a$b'"],
-    ["vault:tools=Edit|1x", "tools takes tool names"],
+  // [clause, target, key, reason]. A drop names no user text (B7 fix3).
+  const I = "<invalid-target>"
+  const U = "<unknown-key>"
+  const cases: Array<[string, string, string, DropReason]> = [
+    ["profile", I, U, "missing colon"],
+    ["pii.email:", "pii.email", U, "empty setting"],
+    [":on", I, "status", "empty target"],
+    ["pii.email:=low", "pii.email", U, "empty key"],
+    ["profile:low", "profile", "profile", "not a profile name"],
+    ["profile:status=on", "profile", "status", "key not valid for target"],
+    ["pii.email:guard", "pii.email", U, "shorthand not valid for target"],
+    ["cmd.sudo:low", "cmd.sudo", "level", "shorthand not valid for target"],
+    ["audit:low", "audit", "level", "shorthand not valid for target"],
+    ["pii.email:bogus=1", "pii.email", U, "unknown key"],
+    ["pii.email:bash=on", "pii.email", "bash", "key not valid for target"],
+    ["vault:level=mid", "vault", "level", "key not valid for target"],
+    ["cmd.cat:level=mid", "cmd.cat", "level", "key not valid for target"],
+    ["cmd.cat:escalate_window=0", "cmd.cat", "escalate_window", "out of range"],
+    ["cmd.cat:escalate_window=1001", "cmd.cat", "escalate_window", "out of range"],
+    ["cmd.cat:escalate_after=1001", "cmd.cat", "escalate_after", "out of range"],
+    ["cmd.cat:escalate_total=x", "cmd.cat", "escalate_total", "needs an integer"],
+    ["cmd.cat.*:off", I, "status", "cmd.cat is a fixed alias"],
+    ["secret.*.foo:on", I, "status", "glob only at the end"],
+    ["*.openai:on", I, "status", "glob only at the end"],
+    ["secret.OpenAI:on", I, "status", "ids are lowercase"],
+    ["secret.open_ai:on", I, "status", "bad id segment"],
+    ["secret..x:on", I, "status", "bad id segment"],
+    ["foo.bar:on", I, "status", "unknown target"],
+    ["redactorx:on", I, "status", "unknown target"],
+    ["pii.email:status=maybe", "pii.email", "status", "bad status"],
+    ["pii.email:level=huge", "pii.email", "level", "bad level"],
+    ["redactor:scope=everywhere", "redactor", "scope", "bad scope"],
+    ["guard:fail=sometimes", "guard", "fail", "bad fail"],
+    ["entropy:threshold=9", "entropy", "threshold", "out of range"],
+    ["pii.email:on|off", "pii.email", U, "shorthand takes one word"],
+    ["path.env-file:allow=a||b", "path.env-file", "allow", "empty item"],
+    ["path.env-file:allow=a$b", "path.env-file", "allow", "bad character in value"],
+    ["vault:tools=Edit|1x", "vault", "tools", "tools takes tool names"],
   ]
-  for (const [clause, reason] of cases) {
+  for (const [clause, target, key, reason] of cases) {
     test(clause, () => {
       const r = parseSpec(clause)
       expect(r.clauses).toEqual([])
-      expect(r.dropped).toEqual([{ clause, reason }])
+      expect(r.dropped).toEqual([{ target, key, reason }])
     })
   }
   test("one bad clause does not drop the rest", () => {
     const r = parseSpec("pii.email:low,bogus:on,profile:strict")
     expect(r.clauses.map((c) => c.key)).toEqual(["level", "status", "profile"])
-    expect(dropReasons("pii.email:low,bogus:on,profile:strict")).toEqual(["unknown target 'bogus'"])
+    expect(dropReasons("pii.email:low,bogus:on,profile:strict")).toEqual(["unknown target"])
   })
   test("never throws on junk input", () => {
     for (const junk of [null, undefined, 42, {}, [], "\u0000:\u0000", ":::,=,|"]) {
@@ -172,14 +179,14 @@ describe("parseRulesObject", () => {
     const r = parseRulesObject({
       redactor: { level: "mid" },
       "pii.email": { status: "on", level: "low" },
-      "path.env-file": { allow: [".env.example", ".env sample"] },
+      "path.env-file": { allow: [".env.example", ".env-sample"] },
     })
     expect(r.dropped).toEqual([])
     expect(r.clauses.map((c) => `${c.target}:${c.key}=${c.value.join("|")}`)).toEqual([
       "redactor:level=mid",
       "pii.email:status=on",
       "pii.email:level=low",
-      "path.env-file:allow=.env.example|.env sample",
+      "path.env-file:allow=.env.example|.env-sample",
     ])
   })
   test("shorthand string and numbers", () => {
@@ -192,7 +199,7 @@ describe("parseRulesObject", () => {
       "rule body is not an object",
     )
     expect(parseRulesObject({ "pii.email": { allow: [{}] } }).dropped[0]?.reason).toBe(
-      "bad JSON value for allow",
+      "bad JSON value",
     )
   })
 })
