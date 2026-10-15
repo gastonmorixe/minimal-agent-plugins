@@ -26,8 +26,6 @@ export type TargetKind = "all" | "profile" | "feature" | "family" | "glob" | "id
 /** One parsed clause. A level shorthand yields two clauses (level, status=on),
  * except on `*`, where it yields only the level. */
 export interface Clause {
-  /** Raw clause text, trimmed. */
-  readonly raw: string
   readonly target: string
   readonly kind: TargetKind
   /** Glob prefix without `.*`, family name, feature name, or the id. */
@@ -38,9 +36,72 @@ export interface Clause {
   readonly reset: boolean
 }
 
+/** Every reason a clause can be dropped for. Fixed plain strings: a reason never
+ * holds user text (B7 fix3). `dropped` reaches the model after redaction, so a
+ * token pasted into the spec by mistake must not come back through it. */
+export const DROP_REASONS = [
+  "spec is not a string",
+  "rules is not an object",
+  "rule body is not an object",
+  "bad JSON value",
+  "internal parse error",
+  "missing colon",
+  "empty target",
+  "empty setting",
+  "empty key",
+  "shorthand takes one word",
+  "glob only at the end",
+  "cmd.cat is a fixed alias",
+  "ids are lowercase",
+  "bad id segment",
+  "unknown target",
+  "not a profile name",
+  "shorthand not valid for target",
+  "unknown key",
+  "key not valid for target",
+  "empty value",
+  "empty item",
+  "bad character in value",
+  "takes one value",
+  "needs an integer",
+  "needs a number",
+  "out of range",
+  "bad status",
+  "CAT status takes on or off",
+  "bad level",
+  "bad fail",
+  "bad tag",
+  "bad bash",
+  "bad scope",
+  "scope takes tool names",
+  "tools takes tool names",
+  "vault tool not allowed",
+  "bad allow value",
+  "config is not an object",
+  "lead policy is not JSON",
+  "lead policy has a bad shape",
+  "loosens lead floor",
+  "loosens lead profile",
+  "disabled under lead floor",
+  "internal resolve error",
+] as const
+
+export type DropReason = (typeof DROP_REASONS)[number]
+
+/** Target placeholder when the clause target fails the grammar. */
+export const INVALID_TARGET = "<invalid-target>"
+/** Target placeholder when the target passes the grammar but is not a known
+ * rule id, family, feature, or glob over a known prefix (B7 fix3b). */
+export const UNKNOWN_TARGET = "<unknown-target>"
+/** Key placeholder when the clause key is not a known key. */
+export const UNKNOWN_KEY = "<unknown-key>"
+
+/** A dropped clause. No raw clause text. `target` is a known target,
+ * `<invalid-target>` or `<unknown-target>`. `key` is a known key or `<unknown-key>`. */
 export interface DroppedClause {
-  readonly clause: string
-  readonly reason: string
+  readonly target: string
+  readonly key: string
+  readonly reason: DropReason
 }
 
 export interface ParseResult {
@@ -215,4 +276,8 @@ export interface ResolveInput {
   readonly config?: unknown
   readonly env?: SecurityEnv
   readonly pluginOpt?: string
+  /** Rule ids a clause may name. Default: the built-in profile tables and CAT
+   * ids. The B4 rule index passes its rule-pack ids here. Any other id is
+   * dropped as `unknown target` and never echoed or stored. */
+  readonly knownIds?: ReadonlySet<string>
 }
