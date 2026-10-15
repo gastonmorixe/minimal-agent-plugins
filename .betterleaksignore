@@ -1,0 +1,11 @@
+# betterleaks value fingerprints (SHA-256 of the exact secret bytes).
+# Each entry suppresses that value everywhere: any rule, path, or commit.
+# Review new entries like any allowlist exception.
+
+# Public OAuth client ID. ma-llm-anthropic-plugin/oauth-login.ts:52 @10c80fbc
+473668f2b13c71009d028ff0ef74c2cf76e71cbdd33b76e69fcc42d7e59aca4b
+
+# Revoked obscura-dist fine-grained PAT (GitHub returns 401, checked
+# 2026-10-15 with betterleaks --analyze). ma-fetch-plugin/obscura-token.ts:17
+# @5e8bf137. Only this exact value is ignored: a new token still triggers.
+76598b18382d539b42e9f006b4d53dcb67d496b8257e56e9db980b4d046ac795
