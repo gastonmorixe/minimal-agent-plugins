@@ -1,0 +1,13 @@
+{
+  "name": "ma-security-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Secret redaction and tool guard plugin for minimal-agent (skeleton).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "check": "bun run ../scripts/check.ts",
+    "test": "bun test --pass-with-no-tests"
+  }
+}

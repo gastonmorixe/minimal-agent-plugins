@@ -1,0 +1,91 @@
+{
+  "id": "security",
+  "name": "Security",
+  "version": "0.1.0",
+  "description": "Secret redaction and tool guard plugin (skeleton). Hooks pass every payload through unchanged. Contributes the SecurityStatus tool and the /security command. Disabled by default. Enable with --enable-plugin security.",
+  "enabled": false,
+  "hooks": [
+    {
+      "id": "redact_send",
+      "channel": "message.willSend",
+      "handler": {
+        "type": "module",
+        "path": "./src/hooks/redact_send.ts",
+        "export": "default"
+      },
+      "priority": 0
+    },
+    {
+      "id": "guard_invoke",
+      "channel": "tool.willInvoke",
+      "handler": {
+        "type": "module",
+        "path": "./src/hooks/guard_invoke.ts",
+        "export": "default"
+      },
+      "priority": 0
+    },
+    {
+      "id": "turn_start",
+      "channel": "turn.willStart",
+      "handler": {
+        "type": "module",
+        "path": "./src/hooks/turn_start.ts",
+        "export": "default"
+      },
+      "priority": 0
+    },
+    {
+      "id": "batch_end",
+      "channel": "tool.didBatch",
+      "handler": {
+        "type": "module",
+        "path": "./src/hooks/batch_end.ts",
+        "export": "default"
+      },
+      "priority": 0
+    }
+  ],
+  "tuis": [
+    {
+      "id": "security_status_tool",
+      "trigger": {
+        "type": "tool",
+        "tool": {
+          "name": "SecurityStatus",
+          "description": "Report the security plugin state: active profile and build phase. Takes no input.",
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "explicitName": true,
+          "reason": "SecuritySecurityStatus is a stutter"
+        }
+      },
+      "handler": {
+        "type": "module",
+        "path": "./src/tools/security_status.ts",
+        "export": "default"
+      },
+      "interactive": false
+    }
+  ],
+  "commands": [
+    {
+      "name": "security",
+      "summary": "Show security plugin status",
+      "handler": {
+        "type": "module",
+        "path": "./src/commands/security.ts",
+        "export": "default"
+      }
+    }
+  ],
+  "permissions": [
+    "hooks:message.willSend",
+    "hooks:tool.willInvoke",
+    "hooks:turn.willStart",
+    "hooks:tool.didBatch"
+  ]
+}
