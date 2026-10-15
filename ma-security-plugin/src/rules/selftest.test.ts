@@ -325,6 +325,7 @@ describe("review2 MJ1 marker safety only flags hits on a marker", () => {
     render: {},
     defaults: { status: "on", level: "mid" },
     examples: { match: ["write bob@site.org now"], not_match: ["write bob@other.org now"] },
+    notes: "always gate: an email has no keyword",
   }
   const catcher: RedactRule = {
     ...good,

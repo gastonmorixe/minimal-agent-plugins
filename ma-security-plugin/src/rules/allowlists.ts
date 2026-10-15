@@ -4,8 +4,17 @@ import type { AllowlistId } from "./types.ts"
 export type Allowlist = {
   /** Regex sources tested against the whole capture ("i" flag, no "u" or "v"). */
   readonly patterns: readonly string[]
-  /** Lowercase words. A capture that contains one is allowed. */
+  /**
+   * Lowercase words. By default a capture is allowed only when the whole capture equals
+   * a word (case-insensitive). A placeholder-shaped capture that holds a word is caught
+   * by the placeholder patterns. A word is never a substring match on a longer token.
+   */
   readonly words: readonly string[]
+  /**
+   * True: a capture that CONTAINS a word is allowed. Only "stopwords" sets it, and a rule
+   * must opt in with RedactRule.allowStopwords (never a provider rule).
+   */
+  readonly substring?: true
 }
 
 /** Placeholders and template references (F7, B section 2.2). */
@@ -35,6 +44,7 @@ export const gitleaksGlobal: Allowlist = {
 /** Alphabet runs and common words that show up in fake keys. */
 export const stopwords: Allowlist = {
   patterns: [],
+  substring: true,
   words: [
     "abcdefghijklmnopqrstuvwxyz",
     "0123456789",

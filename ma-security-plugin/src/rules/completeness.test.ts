@@ -34,6 +34,45 @@ function sorted(ids: readonly string[]): boolean {
   return true
 }
 
+/**
+ * fix3 MINOR 6: index gaps in both directions, as plain data. A rule file on disk with no
+ * live rule is a gap, so an empty index with files on disk never passes vacuously.
+ */
+function indexGaps(
+  files: readonly { family: string; id: string }[],
+  live: readonly { id: string; family: string }[],
+  indexSrc: string,
+): string[] {
+  const out: string[] = []
+  const liveIds = new Set(live.map((r) => r.id))
+  if (files.length > 0 && live.length === 0)
+    out.push(`${files.length} rule files on disk but the index is empty`)
+  for (const f of files) {
+    if (!indexSrc.includes(`./${f.family}/${f.id}.ts`)) out.push(`not imported: ${f.id}`)
+    if (!liveIds.has(f.id)) out.push(`not in a rule array: ${f.id}`)
+  }
+  const fileIds = new Set(files.map((f) => f.id))
+  for (const r of live) if (!fileIds.has(r.id)) out.push(`no file: ${r.id}`)
+  return out
+}
+
+describe("fix3 MINOR 6 completeness is not vacuous", () => {
+  it("files on disk with an empty index is a gap", () => {
+    const gaps = indexGaps([{ family: "secret", id: "secret.x.y" }], [], "")
+    expect(gaps[0]).toBe("1 rule files on disk but the index is empty")
+    expect(gaps.length).toBe(3)
+  })
+  it("a live rule with no file is a gap", () => {
+    expect(indexGaps([], [{ id: "secret.x.y", family: "secret" }], "")).toEqual([
+      "no file: secret.x.y",
+    ])
+  })
+  it("the real tree has no gaps", () => {
+    const indexSrc = readFileSync(join(RULES_DIR, "index.ts"), "utf8")
+    expect(indexGaps(ruleFiles(), ALL, indexSrc)).toEqual([])
+  })
+})
+
 describe("rule index completeness", () => {
   const indexSrc = readFileSync(join(RULES_DIR, "index.ts"), "utf8")
 
