@@ -37,7 +37,7 @@ export type Example = string | { text: string; secret: Gen }
 /** Credit only. Every pattern is written by us. The row lives in src/rules/credits.ts. */
 export type InspiredBy = { tool: string; ruleId: string; url: string }
 
-/** Cheap gate in front of the regex. "keyword" needs keywords, others need a reason in notes. */
+/** Cheap gate in front of the regex. "keyword" needs keywords. All others need a reason in notes. */
 export type Gate = "keyword" | "digit-run" | "quoted-string" | "always"
 
 export type ValidatorName = "luhn" | "jwt-shape"
@@ -74,6 +74,11 @@ export type RedactRule = {
   /** Checked on the capture only. */
   entropy?: { min: number; charset: "b64" | "hex" }
   allow?: readonly AllowlistId[]
+  /**
+   * Opt in to the "stopwords" allowlist (substring match on the capture). Only for the
+   * generic key/value rule. A rule with render.publicPrefix (a provider rule) may not set it.
+   */
+  allowStopwords?: true
   render: {
     /** Kept at low and mid. From the public format only. */
     publicPrefix?: string
@@ -89,8 +94,9 @@ export type RedactRule = {
   examples: { match: readonly Example[]; not_match: readonly Example[] }
   inspiredBy?: InspiredBy
   /**
-   * Free text. "reviewed:<check>" opts out of one static shape check. Checks:
-   * "unbounded", "nested", "lazy-prefix".
+   * Free text. Required (non-blank) for every gate other than "keyword": the reason.
+   * "reviewed:<check>" opts out of one static shape check. Checks: "unbounded",
+   * "nested", "lazy-prefix", "huge-bound", "overlap". The bench gate has no opt-out.
    */
   notes?: string
 }

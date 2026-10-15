@@ -15,8 +15,12 @@ export type CompiledRedactRule = {
   readonly rule: RedactRule
   /** Null for known-value only rules (no pattern). Flags include "g", plus "d" for a capture group. */
   readonly re: RegExp | null
+  /** Tested against the whole capture. */
   readonly allowPatterns: readonly RegExp[]
+  /** Lowercase. The whole capture must equal one. */
   readonly allowWords: readonly string[]
+  /** Lowercase. A capture that contains one is allowed (stopwords opt-in only). */
+  readonly allowSubstrings: readonly string[]
 }
 
 /** One raw rule hit (no kind or layer yet). */
@@ -39,19 +43,26 @@ export function compileRedactRule(rule: RedactRule): CompiledRedactRule | string
     if (flags !== "" && flags !== "i") return `bad flags "${String(flags)}"`
     if (rule.validator !== undefined && !Object.hasOwn(VALIDATORS, rule.validator))
       return `unknown validator "${rule.validator}"`
+    // fix3 MINOR 5, fix4 MINOR 1: here so skipSelfTest cannot bypass it. Substring
+    // stopwords are for the generic kv rule, never a provider rule.
+    if (rule.allowStopwords === true && rule.render?.publicPrefix !== undefined)
+      return "allowStopwords is not allowed on a provider rule (publicPrefix set)"
     const group = rule.group ?? 0
     let re: RegExp | null = null
     if (rule.pattern !== undefined)
       re = new RegExp(rule.pattern, `${flags}g${group > 0 ? "d" : ""}`)
     const allowPatterns: RegExp[] = []
     const allowWords: string[] = []
+    const allowSubstrings: string[] = []
     for (const id of rule.allow ?? []) {
       const list = ALLOWLISTS[id]
       if (!list) return `unknown allowlist "${id}"`
+      if (list.substring && rule.allowStopwords !== true)
+        return `allowlist "${id}" needs allowStopwords: true`
       for (const p of list.patterns) allowPatterns.push(new RegExp(p, "i"))
-      for (const w of list.words) allowWords.push(w)
+      for (const w of list.words) (list.substring ? allowSubstrings : allowWords).push(w)
     }
-    return { rule, re, allowPatterns, allowWords }
+    return { rule, re, allowPatterns, allowWords, allowSubstrings }
   } catch (e) {
     return `compile: ${e instanceof Error ? e.message : String(e)}`
   }
@@ -64,7 +75,8 @@ function passesFilters(c: CompiledRedactRule, value: string): boolean {
   if (r.entropy !== undefined && shannon(value) < r.entropy.min) return false
   if (c.allowPatterns.some((p) => p.test(value))) return false
   const lower = value.toLowerCase()
-  if (c.allowWords.some((w) => lower.includes(w))) return false
+  if (c.allowWords.includes(lower)) return false
+  if (c.allowSubstrings.some((w) => lower.includes(w))) return false
   return true
 }
 
@@ -282,10 +294,159 @@ function safeRepeatBody(alts: Node[][]): boolean {
   return true
 }
 
-type ShapeFlags = { unbounded: boolean; nested: boolean; lazy: boolean; huge: boolean }
+function overlaps(a: Uint8Array, b: Uint8Array): boolean {
+  return !disjoint(a, b)
+}
+
+/**
+ * fix3 MAJOR 1: true when a sequence holds two variable atoms (min != max) with
+ * overlapping char sets that can sit next to each other in a match. Between them only
+ * assertions, lookarounds, optional atoms (min 0), or atoms whose set overlaps the first
+ * one may sit (the first run can absorb those). A disjoint required atom or a group is
+ * a hard separator. Budget is zero: one such pair is flagged (`[a-z]{1,40}[a-z0-9]{1,40}`
+ * splits a run n ways per start). Write one class instead, or opt out with
+ * "reviewed:overlap".
+ * fix4 BLOCKER 1a: groups with one alternative and no quantifier (or a count of exactly 1) are flattened
+ * into the sequence. Other groups are compared by the atoms they can start and end with.
+ * An optional group (min 0, or one that can match empty) is skipped like an optional
+ * atom. A required group is skipped only when every atom in it overlaps the first run.
+ */
+function overlapInSeq(seq: readonly Node[]): boolean {
+  const items = flattenSeq(seq)
+  for (let i = 0; i < items.length; i++) {
+    const a = items[i] as Item
+    // Left ends: a variable atom, or the variable last atoms of a group.
+    const lefts: Uint8Array[] = []
+    if (a.t === "atom") {
+      if (!variable(a.q)) continue
+      const s = charSet(a.src)
+      if (s === null) continue
+      lefts.push(s)
+    } else if (a.t === "sum") {
+      for (const e of a.last) if (e.variable && e.set !== null) lefts.push(e.set)
+    }
+    for (const setA of lefts) if (overlapAfter(items, i, setA)) return true
+  }
+  return false
+}
+
+/** One edge atom of a group: its char set (null for a backreference) and whether it varies. */
+type Edge = { set: Uint8Array | null; variable: boolean }
+/**
+ * fix4 BLOCKER 1a: a group that is not flattened, seen from outside. `first` and `last`
+ * are the atoms a match of the group can start or end with. `optional` is true when the
+ * group can match empty (min 0, or an empty alternative). `alts` is kept for the
+ * transparency test.
+ */
+type Item =
+  | Extract<Node, { t: "atom" }>
+  | { t: "assert" }
+  | { t: "sum"; first: Edge[]; last: Edge[]; optional: boolean; alts: Node[][] }
+
+/**
+ * Flatten groups with one alternative and no quantifier (or a count of exactly 1) into the sequence.
+ * Every other group becomes a summary item. Lookarounds become assertions.
+ */
+function flattenSeq(seq: readonly Node[], out: Item[] = []): Item[] {
+  for (const n of seq) {
+    if (n.t === "assert" || n.t === "look") out.push({ t: "assert" })
+    else if (n.t === "atom") out.push(n)
+    else if (n.alts.length === 1 && (n.q === null || (n.q.min === 1 && n.q.max === 1)))
+      flattenSeq(n.alts[0] as Node[], out)
+    else {
+      // A repeated group does not make its edge atoms vary: a fixed last atom still ends
+      // the group at a fixed char. Ambiguous repeated bodies are the nested check's job.
+      out.push({
+        t: "sum",
+        first: edges(n.alts, false),
+        last: edges(n.alts, true),
+        optional: (n.q !== null && n.q.min === 0) || nullable(n.alts),
+        alts: n.alts,
+      })
+    }
+  }
+  return out
+}
+
+/** True when some alternative can match the empty string. */
+function nullable(alts: Node[][]): boolean {
+  return alts.some((seq) =>
+    seq.every(
+      (n) =>
+        n.t === "assert" ||
+        n.t === "look" ||
+        (n.q !== null && n.q.min === 0) ||
+        (n.t === "group" && nullable(n.alts)),
+    ),
+  )
+}
+
+/** First (or last, when `fromEnd`) atoms a match of these alternatives can hold. */
+function edges(alts: Node[][], fromEnd: boolean): Edge[] {
+  const out: Edge[] = []
+  for (const seq of alts) {
+    const order = fromEnd ? [...seq].reverse() : seq
+    for (const n of order) {
+      if (n.t === "assert" || n.t === "look") continue
+      const optional = n.q !== null && n.q.min === 0
+      if (n.t === "atom") {
+        out.push({ set: charSet(n.src), variable: variable(n.q) })
+        if (!optional) break
+      } else {
+        out.push(...edges(n.alts, fromEnd))
+        if (!optional && !nullable(n.alts)) break
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * A required group that a run of `setA` can absorb: every alternative holds only
+ * assertions, optional atoms, or atoms that overlap `setA`.
+ */
+function transparent(alts: Node[][], setA: Uint8Array): boolean {
+  return alts.every((seq) =>
+    seq.every((n) => {
+      if (n.t === "assert" || n.t === "look") return true
+      if (n.q !== null && n.q.min === 0) return true
+      if (n.t === "group") return transparent(n.alts, setA)
+      const s = charSet(n.src)
+      return s !== null && overlaps(setA, s)
+    }),
+  )
+}
+
+/** True when a variable atom overlapping `setA` can follow item `i` (see overlapInSeq). */
+function overlapAfter(items: readonly Item[], i: number, setA: Uint8Array): boolean {
+  for (let j = i + 1; j < items.length; j++) {
+    const b = items[j] as Item
+    if (b.t === "assert") continue
+    if (b.t === "sum") {
+      if (b.first.some((e) => e.variable && e.set !== null && overlaps(setA, e.set))) return true
+      if (b.optional || transparent(b.alts, setA)) continue
+      return false
+    }
+    const setB = charSet(b.src)
+    if (setB === null) return false
+    const over = overlaps(setA, setB)
+    if (over && variable(b.q)) return true
+    if (!over && (b.q === null || b.q.min > 0)) return false
+  }
+  return false
+}
+
+type ShapeFlags = {
+  unbounded: boolean
+  nested: boolean
+  lazy: boolean
+  huge: boolean
+  overlap: boolean
+}
 
 function walk(alts: Node[][], f: ShapeFlags): void {
-  for (const seq of alts)
+  for (const seq of alts) {
+    if (!f.overlap && overlapInSeq(seq)) f.overlap = true
     for (const n of seq) {
       if (n.t === "assert") continue
       if (n.q !== null && n.q.max === null) f.unbounded = true
@@ -301,6 +462,7 @@ function walk(alts: Node[][], f: ShapeFlags): void {
         walk(n.alts, f)
       }
     }
+  }
 }
 
 /**
@@ -319,13 +481,20 @@ function leadingLazy(alts: Node[][]): boolean {
 
 /**
  * Static shape check. Returns failure reasons. `notes` with "reviewed:<check>" opts out,
- * where check is "unbounded", "nested", "lazy-prefix", or "huge-bound".
+ * where check is "unbounded", "nested", "lazy-prefix", "huge-bound", or "overlap".
  */
 export function staticShapeCheck(pattern: string, notes = ""): string[] {
   const out: string[] = []
   const { alts } = parseAlts(pattern, 0)
-  const f: ShapeFlags = { unbounded: false, nested: false, lazy: leadingLazy(alts), huge: false }
+  const f: ShapeFlags = {
+    unbounded: false,
+    nested: false,
+    lazy: leadingLazy(alts),
+    huge: false,
+    overlap: false,
+  }
   walk(alts, f)
+  if (f.overlap && !notes.includes("reviewed:overlap")) out.push("overlapping adjacent quantifiers")
   if (f.nested && !notes.includes("reviewed:nested")) out.push("nested quantifier")
   if (f.lazy && !notes.includes("reviewed:lazy-prefix")) out.push("leading lazy prefix")
   if (f.unbounded && !notes.includes("reviewed:unbounded")) out.push("unbounded quantifier")
@@ -383,6 +552,221 @@ function hitsMarker(hits: readonly RuleHit[], ranges: MarkedText["ranges"]): boo
   return hits.some((h) => ranges.some(([s, e]) => h.start < e && h.end > s))
 }
 
+/** fix3 MAJOR 2a: max length of one expanded example, in chars. */
+export const EXAMPLE_CAP = 8192
+
+/** Check every example length without generating it. Returns failure reasons. */
+function capExamples(rule: RedactRule): string[] {
+  const out: string[] = []
+  const one = (ex: Example, where: string): void => {
+    let n = 0
+    if (typeof ex === "string") n = ex.length
+    else if (typeof ex?.text === "string" && typeof ex.secret?.len === "number") {
+      const g = ex.secret
+      const parts = ex.text.split("{{S}}")
+      const value = g.len + (g.prefix ?? "").length + (g.suffix ?? "").length
+      n = ex.text.length + (parts.length - 1) * (value - 5)
+    } else n = Number.POSITIVE_INFINITY
+    if (!(n <= EXAMPLE_CAP)) out.push(`${where}: example over ${EXAMPLE_CAP} chars`)
+  }
+  rule.examples.match.forEach((ex, i) => one(ex, `match[${i}]`))
+  rule.examples.not_match.forEach((ex, i) => one(ex, `not_match[${i}]`))
+  return out
+}
+
+/**
+ * Strict CI bench budget (SPEC-v3 Performance, J section 4). 1 MB = 1e6 bytes.
+ * bench.test.ts holds every real rule to this on a 1 MB corpus and its hostile texts.
+ */
+export const BENCH_MS_PER_MB = 50
+/**
+ * fix4 MAJOR 1: load-time bench budget, 5x looser than BENCH_MS_PER_MB. The load gate
+ * runs on the user's machine, which can be slow or busy. It only has to catch
+ * catastrophic rules (those grow far past any linear budget). A good rule that is near
+ * the strict budget must not be disabled by noise. The strict 50 ms/MB stays in CI.
+ */
+export const LOAD_BENCH_MS_PER_MB = 250
+/** fix4 MAJOR 1: retries are skipped only when the best run is also over this many ms. */
+export const BENCH_SKIP_ABS_MS = 50
+/** Load bench steps in chars. Grows by 4 so a catastrophic rule fails while still small. */
+export const BENCH_STEPS: readonly number[] = [32, 128, 512, 2048, 8192, 65536]
+/** Floor of the per-step budget: timer and JIT noise on tiny inputs. */
+const BENCH_FLOOR_MS = 0.5
+const BENCH_RUNS = 3
+
+const FILLER_PREF = "aA0x=/ _-."
+const BREAKER_PREF = "\u0001\n!~#\u00a7"
+
+/** Atoms of a parsed pattern, at every depth. */
+function atoms(alts: Node[][], out: Extract<Node, { t: "atom" }>[] = []): typeof out {
+  for (const seq of alts)
+    for (const n of seq) {
+      if (n.t === "atom") out.push(n)
+      else if (n.t === "group" || n.t === "look") atoms(n.alts, out)
+    }
+  return out
+}
+
+function setSize(s: Uint8Array): number {
+  let n = 0
+  for (let c = 0; c < s.length; c++) n += s[c] as number
+  return n
+}
+
+/** A literal atom is one plain char: its set is computed cheaply. */
+function literalChar(src: string | null): string | null {
+  if (src === null) return null
+  if (src.length === 1 && !".[]()|^$\\".includes(src)) return src
+  if (src.length === 2 && src[0] === "\\" && /^[^\w\s]$/.test(src[1] as string))
+    return src[1] as string
+  return null
+}
+
+/** fix4 BLOCKER 1b: max number of hostile texts (distinct variable-atom char sets). */
+export const HOSTILE_SET_CAP = 8
+
+function fillerOf(s: Uint8Array): string {
+  const pick = FILLER_PREF.split("").find((ch) => s[ch.charCodeAt(0)] === 1)
+  return pick ?? String.fromCharCode(s.indexOf(1))
+}
+
+/**
+ * Hostile texts built from the rule's own pattern, each of length n. Each text is the
+ * leading literal prefix, then a run of one filler char, then the same again, then one
+ * breaker char that is in no class of the pattern (it fails the match at the end).
+ *
+ * fix4 BLOCKER 1b: one text per distinct variable-atom char set (min != max), each with
+ * that set's own filler char and the shared breaker. A slow run in a narrow class (like
+ * `[0-9]{1,300}` next to a wider `[A-Za-z!]?`) gets its own text. The widest set comes
+ * first. At most HOSTILE_SET_CAP texts. With no variable atom, the widest class is used.
+ *
+ * fix4 MINOR 2: the prefix is taken only when the pattern has one top-level
+ * alternative. With an empty prefix and a top-level alternation (`a{1,9}x|b{1,9}y`), the
+ * texts skip the leading literal of every branch, so a branch that needs a literal
+ * before its runs is only reached when its run char happens to be a filler. Low risk:
+ * every variable set still gets a filler run, and the CI bench adds a mixed corpus.
+ */
+export function hostileTexts(rule: RedactRule, n: number): string[] {
+  const { alts } = parseAlts(rule.pattern ?? "", 0)
+  const first = alts.length === 1 ? (alts[0] as Node[]) : []
+  let prefix = ""
+  for (const node of first) {
+    if (node.t === "assert") continue
+    const ch = node.t === "atom" && node.q === null ? literalChar(node.src) : null
+    if (ch === null) break
+    prefix += ch
+  }
+  const union = new Uint8Array(0x10000)
+  let widest: Uint8Array | null = null
+  let widestN = 0
+  const varSets: { set: Uint8Array; size: number }[] = []
+  for (const a of atoms(alts)) {
+    const ch = literalChar(a.src)
+    if (ch !== null) {
+      union[ch.toLowerCase().charCodeAt(0)] = 1
+      union[ch.toUpperCase().charCodeAt(0)] = 1
+      if (!variable(a.q)) continue
+    }
+    const s = charSet(a.src)
+    if (s === null) continue
+    if (ch === null) for (let c = 0; c < s.length; c++) if (s[c] === 1) union[c] = 1
+    const size = setSize(s)
+    if (variable(a.q) && !varSets.some((v) => v.set === s)) varSets.push({ set: s, size })
+    if (ch === null && size > widestN) {
+      widest = s
+      widestN = size
+    }
+  }
+  const fillers: string[] = []
+  const sets = varSets.length > 0 ? varSets : widest !== null ? [{ set: widest, size: 0 }] : []
+  for (const v of [...sets].sort((x, y) => y.size - x.size)) {
+    const f = fillerOf(v.set)
+    if (!fillers.includes(f)) fillers.push(f)
+    if (fillers.length >= HOSTILE_SET_CAP) break
+  }
+  if (fillers.length === 0) fillers.push("a")
+  const breaker = BREAKER_PREF.split("").find((ch) => union[ch.charCodeAt(0)] !== 1) ?? "\u0001"
+  const half = Math.floor(n / 2)
+  return fillers.map((filler) => {
+    const part = (len: number): string =>
+      len <= prefix.length ? prefix.slice(0, len) : prefix + filler.repeat(len - prefix.length)
+    return part(half) + part(Math.max(0, n - half - 1)) + (n > half ? breaker : "")
+  })
+}
+
+/** The first hostile text (widest variable set). See hostileTexts. */
+export function hostileText(rule: RedactRule, n: number): string {
+  return hostileTexts(rule, n)[0] as string
+}
+
+/**
+ * fix4 MAJOR 1: skip the retries only when the best run is over 10x the budget AND over
+ * BENCH_SKIP_ABS_MS. A single GC or JIT pause on a small step stays under that.
+ */
+export function benchSkipRetries(best: number, budget: number): boolean {
+  return best > budget * 10 && best > BENCH_SKIP_ABS_MS
+}
+
+export type BenchResult =
+  | { ok: true; msPerMb: number }
+  | { ok: false; reason: string; msPerMb: number }
+
+function bestOf(c: CompiledRedactRule, text: string, budget: number): number {
+  let best = Number.POSITIVE_INFINITY
+  for (let r = 0; r < BENCH_RUNS; r++) {
+    const t0 = performance.now()
+    scanRule(c, text, { raw: true })
+    const ms = performance.now() - t0
+    if (ms < best) best = ms
+    // Under budget: done. Far over budget (fix4: also over 50 ms): skip the retries.
+    if (best <= budget || benchSkipRetries(best, budget)) break
+  }
+  return best
+}
+
+/**
+ * fix3 MAJOR 2b: load-time bench. Runs the rule alone on its hostile texts (fix4: one
+ * per variable char set) of growing size up to 64 KB. Fails when the best of 3 runs on
+ * ANY text costs more than `msPerMb` (default LOAD_BENCH_MS_PER_MB, 250 ms/MB, floor
+ * 0.5 ms for tiny inputs). CI uses the strict BENCH_MS_PER_MB (50 ms/MB) in
+ * bench.test.ts. Steps grow by 4, so a polynomial rule fails at a small size and the
+ * loader does not hang. Sync, never throws.
+ */
+export function benchRule(
+  c: CompiledRedactRule,
+  steps = BENCH_STEPS,
+  msPerMb = LOAD_BENCH_MS_PER_MB,
+): BenchResult {
+  try {
+    if (c.re === null) return { ok: true, msPerMb: 0 }
+    scanRule(c, "warm up a", { raw: true })
+    // msPerMb of the last (largest) step: small steps are dominated by timer noise.
+    let last = 0
+    for (const n of steps) {
+      const budget = Math.max(BENCH_FLOOR_MS, (n * msPerMb) / 1e6)
+      let worst = 0
+      for (const text of hostileTexts(c.rule, n)) {
+        const ms = bestOf(c, text, budget)
+        if (ms > worst) worst = ms
+        if (ms > budget)
+          return {
+            ok: false,
+            reason: `bench: ${ms.toFixed(2)} ms on ${n} hostile chars (budget ${budget.toFixed(2)} ms, ${msPerMb} ms/MB)`,
+            msPerMb: (ms * 1e6) / n,
+          }
+      }
+      last = (worst * 1e6) / n
+    }
+    return { ok: true, msPerMb: last }
+  } catch (e) {
+    return {
+      ok: false,
+      reason: `bench internal: ${e instanceof Error ? e.message : String(e)}`,
+      msPerMb: 0,
+    }
+  }
+}
+
 function checkRedact(rule: RedactRule): string[] {
   const fails: string[] = []
   if (rule.family !== "secret" && rule.family !== "pii") fails.push("family must be secret or pii")
@@ -394,17 +778,33 @@ function checkRedact(rule: RedactRule): string[] {
     if (short.length > 0)
       fails.push(`keyword gate needs every keyword 3+ chars: ${short.join(",")}`)
   }
-  if (rule.gate !== "keyword" && rule.gate !== "always" && !rule.notes) {
+  // fix3 MINOR 2: every gate other than "keyword" (also "always") needs a reason.
+  if (rule.gate !== "keyword" && (rule.notes ?? "").trim() === "") {
     fails.push(`gate "${rule.gate}" needs a reason in notes`)
   }
   if (rule.pattern === undefined) {
     if (rule.knownValue === undefined) fails.push("no pattern and no knownValue")
+    // fix4 MINOR 1: compileRedactRule owns the allowlist checks. Run it here too, since
+    // the pattern path below is skipped.
+    const c = compileRedactRule(rule)
+    if (typeof c === "string") fails.push(c)
     return fails
   }
-  fails.push(...staticShapeCheck(rule.pattern, rule.notes))
+  const shape = staticShapeCheck(rule.pattern, rule.notes)
+  fails.push(...shape)
   const compiled = compileRedactRule(rule)
   if (typeof compiled === "string") return [...fails, compiled]
   const automaton = buildAutomaton(rule.keywords)
+
+  // fix3 MAJOR 2a: cap every example before it is generated or scanned.
+  const capped = capExamples(rule)
+  if (capped.length > 0) return [...fails, ...capped]
+  // fix3 MAJOR 2b: load-time bench. Skipped when the static check failed (a flagged
+  // shape can hang the bench, and the rule is disabled anyway).
+  if (shape.length === 0) {
+    const b = benchRule(compiled)
+    if (!b.ok) return [...fails, b.reason]
+  }
 
   const matches = rule.examples.match.map(expand)
   const misses = rule.examples.not_match.map(expand)
