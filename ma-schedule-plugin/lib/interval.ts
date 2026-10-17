@@ -6,11 +6,11 @@
  * 5-field cron expression on a "clean" boundary — i.e. one that fires at a
  * truly regular cadence rather than drifting at the top of each hour/day.
  *
- * Cron's `*​/N` only steps evenly when `N` divides the field's range, so:
+ * Cron's `*\/N` only steps evenly when `N` divides the field's range, so:
  *
  *   - minutes round to a divisor of 60 (1,2,3,4,5,6,10,12,15,20,30)
  *   - hours   round to a divisor of 24 (1,2,3,4,6,8,12)
- *   - longer  → every-N-days (`0 0 *​/N * *`)
+ *   - longer  → every-N-days (`0 0 *\/N * *`)
  *
  * Sub-minute durations round UP to one minute (cron's floor granularity).
  * When the chosen cadence differs from the request, `rounded` is true and

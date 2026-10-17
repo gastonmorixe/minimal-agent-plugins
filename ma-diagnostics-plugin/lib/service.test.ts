@@ -8,12 +8,17 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it } from "bun:test"
 
 import { DEFAULT_CONFIG, type DiagnosticsConfig } from "./config.ts"
 import type { DiagnosticProvider } from "./provider.ts"
 import { DiagnosticsService, type ProviderFactories } from "./service.ts"
 import type { Finding } from "./types.ts"
+
+const ORIGINAL_PATH = process.env.PATH
+afterEach(() => {
+  process.env.PATH = ORIGINAL_PATH
+})
 
 function project(tools: string[]): string {
   const root = mkdtempSync(join(tmpdir(), "diag-svc-"))
@@ -27,6 +32,8 @@ function project(tools: string[]): string {
       const p = join(pathBin, "sourcekit-lsp")
       writeFileSync(p, "#!/bin/sh\nexit 0\n")
       chmodSync(p, 0o755)
+      // The service resolves PATH tools from process.env.PATH; restored in afterEach.
+      process.env.PATH = `${pathBin}:${ORIGINAL_PATH ?? ""}`
       // Create a project signal for detection
       writeFileSync(join(root, "Package.swift"), "// swift-tools-version: 5.9\n")
     } else {

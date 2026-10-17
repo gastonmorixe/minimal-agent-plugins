@@ -166,7 +166,7 @@ async function main(): Promise<never> {
   clearInterval(ppidTimer)
 
   // If no cleanup path already settled, this is a natural exit.
-  const signal = proc.signalCode ?? undefined
+  const signal = proc.signalCode ? String(proc.signalCode) : undefined
   settle(
     exitedSidecar(base, new Date().toISOString(), {
       ...(typeof exitCode === "number" ? { exitCode } : {}),

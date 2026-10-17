@@ -93,7 +93,7 @@ async function runWith(req: CanonicalRequest, client: NetworkClient): Promise<vo
 
 const enc = (r: NetworkRequest | undefined): string | undefined => r?.headers?.["content-encoding"]
 const gunzipJson = (r: NetworkRequest): any =>
-  JSON.parse(new TextDecoder().decode(Bun.gunzipSync(r.body as Uint8Array)))
+  JSON.parse(new TextDecoder().decode(Bun.gunzipSync(r.body as Uint8Array<ArrayBuffer>)))
 
 describe("anthropic request gzip: happy path", () => {
   it("gzips large bodies and the payload round-trips exactly", async () => {
