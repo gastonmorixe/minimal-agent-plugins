@@ -580,6 +580,14 @@ export interface ProviderPlugin {
   modelVersionToken?(modelId: string): string | undefined
 
   /**
+   * Optional: the FULL compact label for one of this provider's model ids
+   * (e.g. `"opus-5.5"`). When it returns a string, core uses it as is and
+   * skips the `<shortCode>-<token>` join. Return `undefined` to keep the
+   * default join. Pure; no I/O.
+   */
+  modelShortLabel?(modelId: string): string | undefined
+
+  /**
    * Optional: resolve the FINAL system-prompt blocks for this provider from
    * the agent's neutral skeleton. See {@link SystemPromptContext}. When
    * absent, the agent uses {@link neutralSystemPrompt}. Pure + synchronous:
