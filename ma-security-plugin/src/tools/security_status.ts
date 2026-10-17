@@ -1,17 +1,15 @@
-/**
- * SecurityStatus tool. Skeleton: returns the minimal status report.
- *
- * @module src/tools/security_status
- */
-
+/** SecurityStatus tool. Runtime data must be supplied by its caller. */
 import type { TUIContext, TUIResult } from "../host-types.ts"
-import { reportText } from "../status.ts"
+import { buildSecurityStatus, type SecurityStatusInputProvider } from "../status.ts"
 
-/** SecurityStatus handler. Sync. Never throws. */
-export default function securityStatus(_ctx: TUIContext): TUIResult {
+/** Sync handler. No provider state or host reads. */
+export default function securityStatus(
+  _ctx: TUIContext,
+  inputProvider: SecurityStatusInputProvider = () => ({}),
+): TUIResult {
   try {
-    const text = reportText()
-    return { kind: "tool_result", content: text, display: text }
+    const report = buildSecurityStatus(inputProvider())
+    return { kind: "tool_result", content: JSON.stringify(report.json), display: report.text }
   } catch {
     return { kind: "tool_result", content: "SecurityStatus: internal error", is_error: true }
   }

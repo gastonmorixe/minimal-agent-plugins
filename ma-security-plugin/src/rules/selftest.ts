@@ -6,9 +6,20 @@ import { LEVELS_ON, markerSamples, renderMarker } from "../redact/markers.ts"
 
 import { ALLOWLISTS } from "./allowlists.ts"
 import { fillExample } from "./gen.ts"
-import type { AnyRule, CmdDecision, CmdRule, Example, PathRule, RedactRule } from "./types.ts"
+import type {
+  AnyRule,
+  CmdDecision,
+  CmdRule,
+  DisabledReason,
+  Example,
+  PathRule,
+  RedactRule,
+} from "./types.ts"
 
-export type SelfTestResult = { id: string; ok: true } | { id: string; ok: false; reason: string }
+/** `code` is the fixed reason of the first failure. `reason` is the full text (CI only). */
+export type SelfTestResult =
+  | { id: string; ok: true }
+  | { id: string; ok: false; reason: string; code: DisabledReason }
 
 /** A redact rule with its compiled regex and allowlists. */
 export type CompiledRedactRule = {
@@ -767,8 +778,27 @@ export function benchRule(
   }
 }
 
-function checkRedact(rule: RedactRule): string[] {
-  const fails: string[] = []
+/** Failure texts plus the fixed reason classes seen. */
+type Fails = string[] & { codes?: Set<DisabledReason> }
+
+/** Fixed reason of a failure set, by priority. */
+const CODE_ORDER: readonly DisabledReason[] = [
+  "compile-error",
+  "static-shape",
+  "example-cap",
+  "bench",
+  "self-test",
+]
+
+function checkRedact(rule: RedactRule, hooks: SelfTestHooks): Fails {
+  const fails: Fails = []
+  const codes = new Set<DisabledReason>()
+  fails.codes = codes
+  const out = (more: readonly string[], code: DisabledReason): Fails => {
+    if (more.length > 0) codes.add(code)
+    fails.push(...more)
+    return fails
+  }
   if (rule.family !== "secret" && rule.family !== "pii") fails.push("family must be secret or pii")
   for (const k of rule.keywords)
     if (k !== k.toLowerCase()) fails.push(`keyword not lowercase: ${k}`)
@@ -787,23 +817,24 @@ function checkRedact(rule: RedactRule): string[] {
     // fix4 MINOR 1: compileRedactRule owns the allowlist checks. Run it here too, since
     // the pattern path below is skipped.
     const c = compileRedactRule(rule)
-    if (typeof c === "string") fails.push(c)
+    if (typeof c === "string") out([c], "compile-error")
     return fails
   }
   const shape = staticShapeCheck(rule.pattern, rule.notes)
-  fails.push(...shape)
+  out(shape, "static-shape")
   const compiled = compileRedactRule(rule)
-  if (typeof compiled === "string") return [...fails, compiled]
+  if (typeof compiled === "string") return out([compiled], "compile-error")
   const automaton = buildAutomaton(rule.keywords)
 
   // fix3 MAJOR 2a: cap every example before it is generated or scanned.
   const capped = capExamples(rule)
-  if (capped.length > 0) return [...fails, ...capped]
-  // fix3 MAJOR 2b: load-time bench. Skipped when the static check failed (a flagged
-  // shape can hang the bench, and the rule is disabled anyway).
-  if (shape.length === 0) {
-    const b = benchRule(compiled)
-    if (!b.ok) return [...fails, b.reason]
+  if (capped.length > 0) return out(capped, "example-cap")
+  // fix3 MAJOR 2b: wall-clock bench. Skipped when the static check failed (a flagged
+  // shape can hang the bench, and the rule is disabled anyway). B4-fix F: the registry
+  // sets bench false for built-ins (CI benches them in bench.test.ts).
+  if (shape.length === 0 && hooks.bench !== false) {
+    const b = (hooks.benchImpl ?? benchRule)(compiled)
+    if (!b.ok) return out([b.reason], "bench")
   }
 
   const matches = rule.examples.match.map(expand)
@@ -941,7 +972,17 @@ export type PathMatcher = (rule: PathRule, path: string) => boolean
 /** Command evaluator: returns the decision for a line, or null. Injected by the guard. */
 export type CmdEvaluator = (rule: CmdRule, line: string) => CmdDecision | null
 
-export type SelfTestHooks = { pathMatcher?: PathMatcher; cmdEvaluator?: CmdEvaluator }
+export type SelfTestHooks = {
+  pathMatcher?: PathMatcher
+  cmdEvaluator?: CmdEvaluator
+  /**
+   * B4-fix F: run the wall-clock bench. Default true (CI and direct calls). The registry
+   * sets it false for built-ins: a built-in is never disabled by a wall-clock measurement.
+   */
+  bench?: boolean
+  /** Test seam: replace benchRule (to count calls or force a failure). */
+  benchImpl?: typeof benchRule
+}
 
 function checkCommon(rule: AnyRule): string[] {
   const fails: string[] = []
@@ -982,15 +1023,23 @@ export function selfTest(rule: AnyRule, hooks: SelfTestHooks = {}): SelfTestResu
   const id = typeof rule?.id === "string" ? rule.id : "<no id>"
   try {
     const fails = checkCommon(rule)
+    let codes: ReadonlySet<DisabledReason> = new Set()
     if (rule.family === "path") fails.push(...checkPath(rule, hooks.pathMatcher))
     else if (rule.family === "cmd") fails.push(...checkCmd(rule, hooks.cmdEvaluator))
-    else fails.push(...checkRedact(rule))
-    return fails.length === 0 ? { id, ok: true } : { id, ok: false, reason: fails.join("; ") }
+    else {
+      const r = checkRedact(rule, hooks)
+      codes = r.codes ?? codes
+      fails.push(...r)
+    }
+    if (fails.length === 0) return { id, ok: true }
+    const code = CODE_ORDER.find((c) => codes.has(c)) ?? "self-test"
+    return { id, ok: false, reason: fails.join("; "), code }
   } catch (e) {
     return {
       id,
       ok: false,
       reason: `selftest internal: ${e instanceof Error ? e.message : String(e)}`,
+      code: "self-test",
     }
   }
 }

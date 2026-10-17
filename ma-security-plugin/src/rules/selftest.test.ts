@@ -253,7 +253,7 @@ describe("minor fixes", () => {
     const dup: RedactRule = { ...good, id: "secret.test.dup" }
     const r = loadRegistry({ sources: { redact: [dup, good, dup] } })
     expect(r.redact.map((c) => c.rule.id)).toEqual(["secret.test.good"])
-    expect(r.disabled).toEqual([{ id: "secret.test.dup", reason: "duplicate id (2 rules)" }])
+    expect(r.disabled).toEqual([{ id: "secret.test.dup", reason: "duplicate-id", builtin: false }])
   })
 })
 
@@ -460,9 +460,7 @@ describe("loadRegistry", () => {
       "secret.test.nested",
       "secret.test.no-compile",
     ])
-    expect(r.disabled.find((d) => d.id === "secret.test.good")?.reason).toBe(
-      "duplicate id (2 rules)",
-    )
+    expect(r.disabled.find((d) => d.id === "secret.test.good")?.reason).toBe("duplicate-id")
     const ok = loadRegistry({ sources: { redact: [nested, good] } })
     expect(ok.automaton.keywords).toEqual(["zzq-tok-"])
     expect(ok.keywordRules).toEqual([[0]])
