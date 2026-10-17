@@ -13,6 +13,7 @@ import type {
   TUIContext,
   TurnWillStartPayload,
 } from "./src/host-types.ts"
+import { buildSecurityStatus } from "./src/status.ts"
 
 const noopLog = {}
 const abort = new AbortController().signal
@@ -93,8 +94,8 @@ describe("chain contract", () => {
   })
 })
 
-describe("skeleton handlers", () => {
-  test("SecurityStatus returns the minimal report", () => {
+describe("status handlers", () => {
+  test("SecurityStatus returns the status report JSON", () => {
     const ctx: TUIContext = {
       trigger: { type: "tool", name: "SecurityStatus", input: {}, tool_use_id: "tu_fake" },
       packageDir: "/fake",
@@ -105,10 +106,10 @@ describe("skeleton handlers", () => {
     }
     const res = tools.SecurityStatus(ctx)
     expect(res.kind).toBe("tool_result")
-    expect(JSON.parse(res.content)).toEqual({ profile: "steer", phase: "skeleton" })
+    expect(JSON.parse(res.content)).toEqual(buildSecurityStatus({}).json)
   })
 
-  test("/security returns the same text", () => {
+  test("/security returns the status report text", () => {
     const ctx: CommandContext = {
       name: "security",
       argv: "",
@@ -119,7 +120,7 @@ describe("skeleton handlers", () => {
       log: noopLog,
     }
     const res = commands.security(ctx)
-    expect(res).toEqual({ kind: "notice", lines: ['{"profile":"steer","phase":"skeleton"}'] })
+    expect(res).toEqual({ kind: "notice", lines: [buildSecurityStatus({}).text] })
   })
 })
 
