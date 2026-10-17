@@ -98,18 +98,12 @@ describe("EslintProvider", () => {
   describe("handles()", () => {
     const provider = new EslintProvider("eslint", ROOT)
 
-    it.each([
-      "a.ts",
-      "a.tsx",
-      "a.mts",
-      "a.cts",
-      "a.js",
-      "a.jsx",
-      "a.mjs",
-      "a.cjs",
-    ])("accepts %s", (name) => {
-      expect(provider.handles(`/repo/src/${name}`)).toBe(true)
-    })
+    it.each(["a.ts", "a.tsx", "a.mts", "a.cts", "a.js", "a.jsx", "a.mjs", "a.cjs"])(
+      "accepts %s",
+      (name) => {
+        expect(provider.handles(`/repo/src/${name}`)).toBe(true)
+      },
+    )
 
     it.each(["a.py", "a.go", "a.css", "a.json", "a.md", "ts"])("rejects %s", (name) => {
       expect(provider.handles(`/repo/src/${name}`)).toBe(false)

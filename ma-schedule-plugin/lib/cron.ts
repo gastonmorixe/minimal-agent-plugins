@@ -6,7 +6,7 @@
  *
  *   minute hour day-of-month month day-of-week
  *
- * Per field: `*`, single value `5`, step `*​/15`, range `1-5`,
+ * Per field: `*`, single value `5`, step `*\/15`, range `1-5`,
  * range+step `1-5/2`, and comma lists `1,15,30`. Day-of-week accepts
  * `0`/`7` for Sunday. Extended syntax (`L`, `W`, `?`, name aliases like
  * `MON`/`JAN`) is rejected with a {@link CronError}.
@@ -133,7 +133,7 @@ function addNormalized(set: Set<number>, v: number, spec: FieldSpec): void {
  * Parse a 5-field cron expression. Throws {@link CronError} on any
  * malformed field. Whitespace between fields is collapsed.
  *
- * @param expr - A 5-field cron string, e.g. `"*​/5 * * * *"`.
+ * @param expr - A 5-field cron string, e.g. `"*\/5 * * * *"`.
  * @returns The parsed, evaluable expression.
  */
 export function parseCron(expr: string): CronExpr {

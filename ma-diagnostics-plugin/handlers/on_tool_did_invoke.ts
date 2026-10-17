@@ -90,7 +90,7 @@ export function getActivePersistentProvidersDetailed(): ActivePersistentProvider
   return pool?.getActivePersistentProvidersDetailed() ?? []
 }
 
-/** Tolerant JSONC-ish parse (strip // and /* *​/ comments) without a dependency. */
+/** Tolerant JSONC-ish parse (strip // and /* *\/ comments) without a dependency. */
 function parseJsoncish(raw: string): unknown {
   const noComments = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1")
   try {
