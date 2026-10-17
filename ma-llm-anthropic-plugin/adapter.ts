@@ -388,6 +388,16 @@ export const anthropicProviderPlugin: ProviderPlugin = {
     return m[2] !== undefined ? `${m[1]}.${m[2]}` : m[1]
   },
   /**
+   * Full dense label: the family name says more than the provider tag, so
+   * "claude-opus-5-5" → "opus-5.5" (not "anth-5.5"). Undefined for ids
+   * outside the Claude scheme, so core keeps its default join.
+   */
+  modelShortLabel(modelId: string): string | undefined {
+    const m = modelId.match(/^claude-(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2})(?!\d))?/)
+    if (!m) return undefined
+    return m[3] !== undefined ? `${m[1]}-${m[2]}.${m[3]}` : `${m[1]}-${m[2]}`
+  },
+  /**
    * Beta-flag taxonomy for the neutral `--list-flags` command. Returns the
    * documented catalog of protocol flags this provider can send; core renders
    * the union across providers without naming any of them.
