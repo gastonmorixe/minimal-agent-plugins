@@ -63,6 +63,42 @@ import { validateAnthropicRequest } from "./validate.ts"
 
 const MESSAGES_URL = "https://api.anthropic.com/v1/messages?beta=true"
 
+/** Bodies smaller than this are sent as-is: gzip overhead outweighs the win. */
+const GZIP_MIN_BYTES = 1024
+
+/** Set once the server rejects a gzipped body (400/415). Disables gzip for the process. */
+let gzipRejected = false
+
+/**
+ * True when a 400/415 is about the request `Content-Encoding` (the API says
+ * "Unsupported Content-Encoding ... send the request body gzip-compressed or
+ * uncompressed"), as opposed to an unrelated invalid-request error.
+ */
+function isContentEncodingRejection(status: number, body: string): boolean {
+  if (status === 415) return true
+  return /content-encoding|request_body_en/i.test(body)
+}
+
+/**
+ * Gzip the serialized request body (level 6: same ratio as 9, ~2x faster).
+ * Returns `undefined` when compression is off (`MINIMAL_AGENT_NO_REQUEST_GZIP=1`),
+ * the server previously rejected it, or the body is too small to bother.
+ * Compressed by hand, not via `fetch({compress})`: the default transport is
+ * `node:http2` (bypasses fetch), and the API only accepts gzip on requests
+ * (zstd / br / deflate all return 400 "Unsupported Content-Encoding").
+ */
+function gzipRequestBody(serialized: string): Uint8Array | undefined {
+  if (gzipRejected || process.env.MINIMAL_AGENT_NO_REQUEST_GZIP === "1") return undefined
+  const bytes = new TextEncoder().encode(serialized)
+  if (bytes.length < GZIP_MIN_BYTES) return undefined
+  return Bun.gzipSync(bytes, { level: 6 })
+}
+
+/** Test seam: clear the process-wide "server rejected gzip" latch. */
+export function _resetGzipRejectedForTest(): void {
+  gzipRejected = false
+}
+
 /**
  * Parse the upstream error type out of a non-2xx Anthropic JSON body.
  * Anthropic returns `{"type":"error","error":{"type":"...","message":"..."}}`.
@@ -205,14 +241,36 @@ export const anthropicAdapter: ProviderAdapter = {
     if (!networkClient) {
       throw new Error("Anthropic adapter: missing ctx.networkClient (host must provide the client)")
     }
-    const response = await networkClient.request({
+    const gzipped = gzipRequestBody(serialized)
+    let response = await networkClient.request({
       label: "messages.send",
       method: "POST",
       url: MESSAGES_URL,
-      headers,
-      body: serialized,
+      headers: gzipped ? { ...headers, "content-encoding": "gzip" } : headers,
+      body: gzipped ?? serialized,
       signal: req.signal,
+      // net-dbg logs the readable JSON, not the gzipped bytes.
+      capture: { requestBody: serialized },
     })
+    // Server rejected the compressed body shape: remember for this process
+    // and retry once uncompressed so a gateway quirk never breaks a turn.
+    if (gzipped && !response.ok && (response.status === 400 || response.status === 415)) {
+      const errText = await response.text().catch(() => "")
+      if (isContentEncodingRejection(response.status, errText)) {
+        gzipRejected = true
+        response = await networkClient.request({
+          label: "messages.send",
+          method: "POST",
+          url: MESSAGES_URL,
+          headers,
+          body: serialized,
+          signal: req.signal,
+        })
+      } else {
+        // A real 400 unrelated to compression: surface it as-is, keep gzip on.
+        throw taggedAnthropicHttpError(response.status, errText)
+      }
+    }
 
     if (!response.ok) {
       const text = await response.text()
