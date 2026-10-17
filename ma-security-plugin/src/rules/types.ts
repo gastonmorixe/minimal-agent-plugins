@@ -169,3 +169,17 @@ export type CmdRule = {
 }
 
 export type AnyRule = RedactRule | PathRule | CmdRule
+
+/**
+ * Fixed reason for a disabled rule (registry.disabled). Never free text, so a reason can
+ * never carry a secret value. "self-test" covers example, keyword, prefix and explain
+ * failures that fit no other reason.
+ */
+export type DisabledReason =
+  | "duplicate-id"
+  | "marker-safety"
+  | "compile-error"
+  | "static-shape"
+  | "example-cap"
+  | "bench"
+  | "self-test"

@@ -4,11 +4,40 @@
  * @module src/test-support
  */
 
-import { readdirSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs"
+import { dirname, join, sep } from "node:path"
 
 /** Absolute path of the plugin package root. */
 export const PLUGIN_ROOT = dirname(import.meta.dir)
+
+/**
+ * Root for test fixture dirs: `<plugins repo>/tmp/ma-security-fixtures`. The
+ * plugins repo ignores `tmp/`, so fixtures never land in git. Tests never
+ * use the system temp dir, HOME, or ~/.minimal-agent.
+ */
+export const FIXTURE_ROOT = join(dirname(PLUGIN_ROOT), "tmp", "ma-security-fixtures")
+
+/**
+ * Make a fresh, empty fixture dir under FIXTURE_ROOT. Throws when the
+ * resolved path is outside FIXTURE_ROOT. Remove it with removeFixtureDir in
+ * afterEach.
+ */
+export function makeFixtureDir(prefix = "fx-"): string {
+  mkdirSync(FIXTURE_ROOT, { recursive: true })
+  const root = realpathSync(FIXTURE_ROOT)
+  const dir = realpathSync(mkdtempSync(join(root, prefix)))
+  if (!dir.startsWith(root + sep)) throw new Error("fixture dir escaped the fixture root")
+  return dir
+}
+
+/** Remove a dir made by makeFixtureDir. Refuses any path outside FIXTURE_ROOT. */
+export function removeFixtureDir(dir: string): void {
+  const root = realpathSync(FIXTURE_ROOT)
+  const real = realpathSync(dir)
+  if (!real.startsWith(root + sep))
+    throw new Error("refusing to remove a path outside the fixture root")
+  rmSync(real, { recursive: true, force: true })
+}
 
 function walk(dir: string, out: string[]): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

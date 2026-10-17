@@ -1,16 +1,21 @@
-/**
- * `/security` command. Skeleton: shows the same report as SecurityStatus.
- *
- * @module src/commands/security
- */
-
+/** Read-only /security report and /security rules list. */
 import type { CommandContext, CommandResult } from "../host-types.ts"
-import { reportText } from "../status.ts"
+import { buildSecurityStatus, type SecurityStatusInputProvider } from "../status.ts"
 
-/** /security handler. Sync. Never throws. */
-export default function securityCommand(_ctx: CommandContext): CommandResult {
+/** Sync handler. Runtime wiring supplies an optional snapshot provider. */
+export default function securityCommand(
+  ctx: CommandContext,
+  inputProvider: SecurityStatusInputProvider = () => ({}),
+): CommandResult {
   try {
-    return { kind: "notice", lines: [reportText()] }
+    const report = buildSecurityStatus(inputProvider())
+    if (ctx.argv?.trim() === "rules") {
+      return {
+        kind: "notice",
+        lines: report.json.rules.map((rule) => `${rule.id}: ${rule.status}`),
+      }
+    }
+    return { kind: "notice", lines: [report.text] }
   } catch {
     return { kind: "error", message: "security: internal error" }
   }
