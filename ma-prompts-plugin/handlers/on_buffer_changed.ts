@@ -36,8 +36,11 @@ const handler = async (ctx: EventHandlerContext): Promise<void> => {
 
   const spec = specFor(config)
   const text = ctx.payload.text
-  // Fast path: nothing that could arm or refresh the menu.
-  if (!text.includes(spec.sigil)) return
+  const state = getFsmState()
+  // Fast path: nothing that could arm or refresh the menu. Only skip while the
+  // menu is closed. When it is open, the sigil may have just been deleted, and
+  // the transition below is what closes the menu, so it must always run.
+  if (state.kind === "closed" && !text.includes(spec.sigil)) return
 
   const deps = defaultDeps(ctx.env, ctx.cwd, config.projectScope, {
     maxBodyBytes: config.maxBodyBytes,
@@ -45,7 +48,6 @@ const handler = async (ctx: EventHandlerContext): Promise<void> => {
   })
   const items = await getItems(providerFor(deps))
 
-  const state = getFsmState()
   const result = transition(
     state,
     {
