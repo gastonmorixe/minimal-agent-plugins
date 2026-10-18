@@ -97,6 +97,18 @@ describe("menu arm path (real handlers)", () => {
     expect(getFsmState().kind).toBe("closed")
   })
 
+  it("deleting the `&` from an open menu closes it", async () => {
+    const opened = eventCtx({ text: "&rev", cursor: { row: 0, col: 4 } })
+    await onBufferChanged(opened.ctx)
+    expect(getFsmState().kind).toBe("open")
+
+    const { ctx, emitted } = eventCtx({ text: "rev", cursor: { row: 0, col: 3 } })
+    await onBufferChanged(ctx)
+    expect(getFsmState().kind).toBe("closed")
+    const footer = emitted.find(([c]) => c === "editor.footer.set")
+    expect((footer![1] as { lines: string[] }).lines).toEqual([])
+  })
+
   it("Enter on the open menu inserts the name and halts the key", async () => {
     const opened = eventCtx({ text: "&rev", cursor: { row: 0, col: 4 } })
     await onBufferChanged(opened.ctx)
