@@ -13,6 +13,6 @@
     "isolatedModules": true,
     "types": ["bun-types"]
   },
-  "include": ["ma-*-plugin/**/*.ts", "scripts/**/*.ts"],
+  "include": ["ma-*-plugin/**/*.ts", "ma-*-kit/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["**/node_modules", "**/.net-dbg", "**/dist", "**/build"]
 }
