@@ -1,5 +1,5 @@
 {
-  "name": "ma-llm-opencode-plugin",
+  "name": "ma-llm-opencode-go-plugin",
   "version": "0.1.0",
   "private": true,
   "description": "External provider plugin for minimal-agent: OpenCode Go (OpenAI + Anthropic compatible gateway).",

@@ -25,6 +25,7 @@ import {
 import type { RunContext } from "./lib/provider-auth.ts"
 import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
+import { opencodeConsoleOAuthLogin } from "./oauth-login.ts"
 import {
   type OpenAIResponsesEvent,
   translateOpenAIResponsesStream,
@@ -73,9 +74,13 @@ function anthropicPong(): string {
 // Host-integration its (host run() + NetworkResponse mock) live in a core test;
 // this file covers plugin-local wire/registration only.
 describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", () => {
-  it("exposes API-key auth and no OAuth login strategy", () => {
+  it("exposes API-key auth, Console OAuth, the former id, and no anonymous auth", () => {
+    expect(opencodeProviderPlugin.id).toBe("opencode-go")
+    expect(opencodeProviderPlugin.shortCode).toBe("og")
     expect(opencodeProviderPlugin.apiKeyAuth).toBe(opencodeApiKeyAuth)
-    expect(opencodeProviderPlugin.oauthLogin).toBeUndefined()
+    expect(opencodeProviderPlugin.oauthLogin).toBe(opencodeConsoleOAuthLogin)
+    expect(opencodeProviderPlugin.formerIds).toEqual(["opencode"])
+    expect(opencodeProviderPlugin.anonymousAuth).toBeUndefined()
   })
 
   it("declares the OpenCode API-key credential codec", () => {
@@ -100,21 +105,21 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     setup()
 
     const chatModel = resolveModel("deepseek-v4-flash")
-    expect(chatModel.providerId).toBe("opencode")
+    expect(chatModel.providerId).toBe("opencode-go")
     expect(chatModel.surfaceId).toBe("openai-chat-completions")
     expect(chatModel.vendorIds?.firstParty).toBe("deepseek-v4-flash")
 
     const msgModel = resolveModel("qwen3.8-max")
-    expect(msgModel.providerId).toBe("opencode")
+    expect(msgModel.providerId).toBe("opencode-go")
     expect(msgModel.surfaceId).toBe("anthropic-messages")
     expect(msgModel.vendorIds?.firstParty).toBe("qwen3.8-max")
 
     const responsesModel = resolveModel("gpt-5.6-luna")
-    expect(responsesModel.providerId).toBe("opencode")
+    expect(responsesModel.providerId).toBe("opencode-go")
     expect(responsesModel.surfaceId).toBe("openai-responses")
     expect(responsesModel.vendorIds?.firstParty).toBe("gpt-5.6-luna")
 
-    const adapter = resolveProvider("opencode")
+    const adapter = resolveProvider("opencode-go")
     expect(adapter.surfaces).toContain("openai-chat-completions")
     expect(adapter.surfaces).toContain("anthropic-messages")
     expect(adapter.surfaces).toContain("openai-responses")
@@ -166,7 +171,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     ]
     for (const id of ids) {
       const m = resolveModel(id)
-      expect(m.providerId).toBe("opencode")
+      expect(m.providerId).toBe("opencode-go")
     }
   })
 
@@ -396,7 +401,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     setup()
     opencodeProviderPlugin.registerAdHocModel?.("deepseek-v4-ultra")
     const m = resolveModel("deepseek-v4-ultra")
-    expect(m.providerId).toBe("opencode")
+    expect(m.providerId).toBe("opencode-go")
     expect(m.surfaceId).toBe("openai-chat-completions")
     expect(m.displayName).toBe("deepseek-v4-ultra")
   })
@@ -439,21 +444,21 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("validates a plain Chat request via the REUSED OpenAI validator", () => {
     setup()
-    const adapter = resolveProvider("opencode")
+    const adapter = resolveProvider("opencode-go")
     const req: CanonicalRequest = { modelId: "deepseek-v4-flash", messages: [userText("hi")] }
     expect(adapter.validate(req, resolveModel("deepseek-v4-flash")).ok).toBe(true)
   })
 
   it("validates a plain Messages request via the REUSED Anthropic validator", () => {
     setup()
-    const adapter = resolveProvider("opencode")
+    const adapter = resolveProvider("opencode-go")
     const req: CanonicalRequest = { modelId: "qwen3.8-max", messages: [userText("hi")] }
     expect(adapter.validate(req, resolveModel("qwen3.8-max")).ok).toBe(true)
   })
 
   it("validates a plain Responses request and rejects temperature on Luna", () => {
     setup()
-    const adapter = resolveProvider("opencode")
+    const adapter = resolveProvider("opencode-go")
     const model = resolveModel("gpt-5.6-luna")
     const ok: CanonicalRequest = { modelId: "gpt-5.6-luna", messages: [userText("hi")] }
     expect(adapter.validate(ok, model).ok).toBe(true)
@@ -468,7 +473,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("rejects missing API key on run", async () => {
     setup()
-    const adapter = resolveProvider("opencode")
+    const adapter = resolveProvider("opencode-go")
     const model = resolveModel("deepseek-v4-flash")
     const req: CanonicalRequest = { modelId: "deepseek-v4-flash", messages: [userText("hi")] }
     const ctx: RunContext = {
@@ -479,7 +484,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       for await (const _ of adapter.run(req, model, ctx)) {
         // should throw before yielding
       }
-    }).toThrow("missing api-key")
+    }).toThrow("missing credential")
   })
 
   it("buildOpenAIHeaders sets x-opencode-session only when sessionId is passed", () => {
@@ -497,9 +502,9 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(without["user-agent"]).toBeUndefined()
   })
 
-  it("sends x-opencode-session + product UA on Chat, Messages, and Responses", async () => {
+  it("sends opencode identity headers, inference URLs, stream, and read mapping on all surfaces", async () => {
     setup()
-    const adapter = resolveProvider("opencode")
+    const adapter = resolveProvider("opencode-go")
     const cases: Array<{ modelId: string; fixture: string }> = [
       { modelId: "deepseek-v4-flash", fixture: openaiChatPong() },
       { modelId: "qwen3.8-max", fixture: anthropicPong() },
@@ -527,7 +532,11 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
         },
       }
       const model = resolveModel(modelId)
-      const req: CanonicalRequest = { modelId, messages: [userText("hi")] }
+      const req: CanonicalRequest = {
+        modelId,
+        messages: [userText("hi")],
+        tools: [{ name: "Read", description: "read", inputSchema: { type: "object" } }],
+      }
       const ctx: RunContext = {
         auth: { kind: "api-key", key: "sk-test" },
         sessionId: "conversation-42",
@@ -538,8 +547,19 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       }
       expect(captured).toHaveLength(1)
       const headers = captured[0]!.headers!
-      expect(headers["x-opencode-session"]).toBe("conversation-42")
-      expect(headers["user-agent"]).toBe("minimal-agent-opencode/0.1")
+      expect(captured[0]!.url).toStartWith("https://opencode.ai/inference/go/")
+      expect(headers["x-opencode-session"]).toMatch(/^ses_[0-9a-f]{12}[0-9A-Za-z]{14}$/)
+      expect(headers["x-opencode-session-id"]).toBe(headers["x-opencode-session"])
+      expect(headers["x-opencode-client"]).toBe("minimal-agent")
+      expect(headers["user-agent"]).toMatch(/^opencode\/latest\/\d+\.\d+\.\d+\/minimal-agent$/)
+      const body = JSON.parse(String(captured[0]!.body)) as {
+        stream?: boolean
+        tools?: Array<{ name?: string; function?: { name?: string } }>
+      }
+      expect(body.stream).toBe(true)
+      const names = (body.tools ?? []).map((t) => t.function?.name ?? t.name)
+      expect(names).toContain("read")
+      expect(names).not.toContain("Read")
     }
   })
 
@@ -598,7 +618,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       messages: [userText("hi")],
       effort: "none",
     }
-    expect(resolveProvider("opencode").validate(req, model).ok).toBe(true)
+    expect(resolveProvider("opencode-go").validate(req, model).ok).toBe(true)
     const body = buildOpenAIChatBody(req, model)
     expect(body.reasoning_effort).toBe("none")
   })
@@ -611,7 +631,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       messages: [userText("hi")],
       effort: "none",
     }
-    expect(resolveProvider("opencode").validate(req, model).ok).toBe(true)
+    expect(resolveProvider("opencode-go").validate(req, model).ok).toBe(true)
     const body = buildAnthropicRequestBody(req, model)
     expect(body.thinking).toBeUndefined()
     expect(body.output_config?.effort).toBeUndefined()
@@ -636,7 +656,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     async () => {
       setup()
       const model = resolveModel("deepseek-v4-flash")
-      const provider = resolveProvider("opencode")
+      const provider = resolveProvider("opencode-go")
       const req: CanonicalRequest = {
         modelId: "deepseek-v4-flash",
         messages: [userText("Reply with the single word: pong")],

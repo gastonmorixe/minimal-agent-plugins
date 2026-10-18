@@ -59,7 +59,12 @@ function run(modelId: string, status: number, body: string): Promise<CanonicalEv
   return drain(opencodeAdapter.run!(creq, model, ctx))
 }
 
-type Tagged = Error & { streamErrorType?: string; retryable?: boolean }
+type Tagged = Error & {
+  streamErrorType?: string
+  code?: string
+  hint?: string
+  opts?: { retryable?: boolean; status?: number }
+}
 
 async function capture(p: Promise<CanonicalEvent[]>): Promise<Tagged | null> {
   return p.then(
@@ -103,6 +108,70 @@ describe("opencodeAdapter.run non-2xx classification", () => {
     const err = await capture(run("deepseek-v4-flash", 400, body))
     expect(err).not.toBeNull()
     expect(err?.streamErrorType).toBeUndefined()
-    expect(err?.retryable).toBe(false)
+    expect(err?.opts?.retryable).toBe(false)
+    expect(err?.code).toBe("opencode.billing")
+    expect(err?.hint).toBeTruthy()
+  })
+
+  it("treats 402 and Go usage limit codes as terminal billing", async () => {
+    setup()
+    const e402 = await capture(
+      run("deepseek-v4-flash", 402, '{"error":{"message":"Insufficient funds"}}'),
+    )
+    expect(e402?.code).toBe("opencode.billing")
+    expect(e402?.streamErrorType).toBeUndefined()
+    const goLimit = await capture(
+      run(
+        "qwen3.8-max",
+        429,
+        JSON.stringify({ error: { type: "GoUsageLimitError", message: "limit" } }),
+      ),
+    )
+    expect(goLimit?.code).toBe("opencode.billing")
+    expect(goLimit?.streamErrorType).toBeUndefined()
+  })
+
+  it("maps 426 and FreeTierError to terminal errors with hints", async () => {
+    setup()
+    const e426 = await capture(
+      run("deepseek-v4-flash", 426, '{"error":{"type":"UpgradeRequired"}}'),
+    )
+    expect(e426?.code).toBe("opencode.upgrade_required")
+    expect(e426?.hint).toContain("MINIMAL_AGENT_OPENCODE_VERSION")
+    const gate = await capture(
+      run(
+        "deepseek-v4-flash",
+        403,
+        JSON.stringify({ type: "error", error: { type: "FreeTierError", message: "x" } }),
+      ),
+    )
+    expect(gate?.code).toBe("opencode.free_tier_gate")
+    expect(gate?.hint).toBeTruthy()
+  })
+})
+
+describe("opencode-go auth errors", () => {
+  it("adds a re-auth hint to 401 api_key_expired", async () => {
+    setup()
+    const body = JSON.stringify({
+      error: { type: "authentication_error", code: "api_key_expired", message: "expired" },
+    })
+    const err = await capture(run("deepseek-v4-flash", 401, body))
+    expect(err?.code).toBe("opencode.auth")
+    expect(err?.hint).toContain("ma provider opencode-go login")
+    expect(err?.streamErrorType).toBeUndefined()
+  })
+})
+
+describe("opencode-go 401 with server_error body", () => {
+  it("never retries a 401, even with type server_error", async () => {
+    setup()
+    const body = JSON.stringify({
+      error: { type: "server_error", message: "Upstream request failed: Invalid credential" },
+    })
+    const err = await capture(run("deepseek-v4-flash", 401, body))
+    expect(err?.streamErrorType).toBeUndefined()
+    expect(err?.code).toBe("opencode.auth")
+    expect(err?.hint).toContain("ma provider opencode-go login")
   })
 })
