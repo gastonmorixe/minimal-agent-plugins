@@ -163,7 +163,14 @@ export function registerOpencodeZenModels(registrar: ModelRegistrar): string[] {
 }
 /** Register one ad-hoc Zen model with conservative fallback capabilities. */
 export function registerOpencodeZenModelInto(registrar: ModelRegistrar, modelId: string): string {
-  registrar.register({ ...makeSpec(modelId), capabilities: CAPS_OPENCODE_ZEN_CHAT_FALLBACK })
+  const spec = makeSpec(modelId)
+  // Unknown ids without a known free marker are treated as paid, so the
+  // anonymous gate refuses them before a request (see ZEN_UNKNOWN_PAID_TAG).
+  const base = spec.tags ?? []
+  const tags = base.includes("free") ? base : [...base, ZEN_UNKNOWN_PAID_TAG]
+  registrar.register({ ...spec, tags, capabilities: CAPS_OPENCODE_ZEN_CHAT_FALLBACK })
   return modelId
 }
+/** Tag on ad-hoc Zen models whose price is unknown and not marked free. */
+export const ZEN_UNKNOWN_PAID_TAG = "unknown-paid"
 export { LIVE_MODEL_IDS }
