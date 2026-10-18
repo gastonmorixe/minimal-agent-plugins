@@ -4,7 +4,7 @@ import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthr
 import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, ProviderError } from "./lib/errors.ts"
 import type { ModelEntry, ProviderAdapter, SurfaceId, ValidationResult } from "./lib/host-types.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import {
@@ -14,27 +14,107 @@ import {
   translateOpenAIChatStream,
   validateOpenAIRequest,
 } from "./lib/openai-chat.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
+import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
 import { parseSse } from "./lib/sse-parser.ts"
-import { registerOpencodeZenModelInto, registerOpencodeZenModels } from "./models.ts"
+import {
+  registerOpencodeZenModelInto,
+  registerOpencodeZenModels,
+  ZEN_UNKNOWN_PAID_TAG,
+} from "./models.ts"
+import { OPENCODE_LOGIN_HINT, opencodeConsoleOAuthLogin } from "./oauth-login.ts"
+import {
+  fromOpencodeToolEvents,
+  hasReadTool,
+  OPENCODE_VERSION_ENV,
+  opencodeHeaders,
+  opencodePromptCacheKey,
+  opencodeSessionId,
+  toOpencodeToolNames,
+} from "./opencode-identity.ts"
 import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
 import {
   type OpenAIResponsesEvent,
   translateOpenAIResponsesStream,
 } from "./responses/response-stream.ts"
 
-export const OPENCODE_ZEN_CHAT_URL = "https://opencode.ai/zen/v1/chat/completions"
-export const OPENCODE_ZEN_MESSAGES_URL = "https://opencode.ai/zen/v1/messages"
-export const OPENCODE_ZEN_RESPONSES_URL = "https://opencode.ai/zen/v1/responses"
-export const OPENCODE_ZEN_GEMINI_URL = "https://opencode.ai/zen/v1/models"
+const PROVIDER_ID = "opencode-zen"
 
-function buildMessagesHeaders(auth: RunContext["auth"]): Record<string, string> {
+export const OPENCODE_ZEN_CHAT_URL = "https://opencode.ai/inference/openai/v1/chat/completions"
+export const OPENCODE_ZEN_RESPONSES_URL = "https://opencode.ai/inference/openai/v1/responses"
+export const OPENCODE_ZEN_MESSAGES_URL = "https://opencode.ai/inference/anthropic/v1/messages"
+
+/**
+ * Anonymous key. With no stored credential the gateway accepts `public` for
+ * zero-cost models only (opencode `plugin/provider/opencode.ts:347-372`).
+ */
+export const ZEN_PUBLIC_KEY = "public"
+
+/**
+ * Quota codes that do not clear by waiting
+ * (opencode `packages/ai/src/provider-error.ts:119-127`).
+ */
+export const ZEN_QUOTA_CODES: ReadonlySet<string> = new Set([
+  "insufficient_quota",
+  "usage_not_included",
+  "billing_error",
+  "gousagelimiterror",
+  "freeusagelimiterror",
+  "creditlimitexceeded",
+])
+
+/** Stable machine codes on thrown {@link ProviderError}s. */
+export const ZEN_ERROR_CODES = {
+  loginRequired: "opencode.login_required",
+  freeTierGate: "opencode.free_tier_gate",
+  upgradeRequired: "opencode.upgrade_required",
+  billing: "opencode.billing",
+  auth: "opencode.auth",
+} as const
+
+/** Anonymous runtime auth, used by the host when no credential is stored. */
+export function opencodeZenAnonymousAuth(): ProviderAuth {
+  return { kind: "api-key", key: ZEN_PUBLIC_KEY }
+}
+
+/** True when the model has a paid input rate. */
+export function isPaidModel(model: ModelEntry): boolean {
+  return model.pricing.inputUSD > 0 || (model.tags ?? []).includes(ZEN_UNKNOWN_PAID_TAG)
+}
+
+function isAnonymous(auth: ProviderAuth): boolean {
+  return auth.kind === "api-key" && (auth.key === ZEN_PUBLIC_KEY || auth.key === "")
+}
+
+/** Normalize an empty api key to the public key. */
+function normalizeAuth(auth: ProviderAuth): ProviderAuth {
+  return auth.kind === "api-key" && auth.key === "" ? { ...auth, key: ZEN_PUBLIC_KEY } : auth
+}
+
+/** Org id from the credential: OAuth `x-org-id` header, or api-key organization. */
+function orgIdOf(auth: ProviderAuth): string | undefined {
+  if (auth.kind === "oauth") return auth.headers?.["x-org-id"]
+  if (auth.kind === "api-key") return auth.organization
+  return undefined
+}
+
+/** Zen reads the org from `x-org-id`, not the OpenAI organization header. */
+function withoutOrganization(auth: ProviderAuth): ProviderAuth {
+  if (auth.kind !== "api-key" || !auth.organization) return auth
+  const { organization: _org, ...rest } = auth
+  return rest
+}
+
+/**
+ * Messages route auth, as the official client sends it: an API key (and the
+ * `public` key) goes in `x-api-key`, an OAuth token goes as `Bearer`
+ * (opencode `packages/ai/src/providers/anthropic.ts:32-37,65`).
+ */
+function buildMessagesHeaders(auth: ProviderAuth): Record<string, string> {
   const headers: Record<string, string> = {
     accept: "application/json",
     "content-type": "application/json",
     "anthropic-version": "2023-06-01",
-    "user-agent": "minimal-agent-opencode-zen/0.1",
   }
   if (auth.kind === "api-key") headers["x-api-key"] = auth.key
   else if (auth.kind === "oauth") headers.authorization = `Bearer ${auth.token}`
@@ -44,54 +124,144 @@ function buildMessagesHeaders(auth: RunContext["auth"]): Record<string, string> 
 
 /**
  * Parse an upstream error code out of a non-2xx JSON body. Zen returns
- * `{"error":{"type":"...","message":"..."}}` (Anthropic-style) or
- * `{"error":{"code":"...","message":"..."}}` (OpenAI-style); fall back to the
- * raw body when neither shape is present.
+ * `{"error":{"type":"...","message":"..."}}` or `{"error":{"code":"..."}}`.
+ * A quota code may also hide in a `[code]` label at the start of the message
+ * (opencode `provider-error.ts:161-163`).
  */
-function parseUpstreamErrorCode(body: string): string | undefined {
+const AUTH_CODES: ReadonlySet<string> = new Set([
+  "authentication_error",
+  "permission_error",
+  "permission_denied",
+  "api_key_invalid",
+  "api_key_expired",
+  "invalid_api_key",
+])
+
+function parseUpstreamError(body: string): { type?: string; code?: string; label?: string } {
   try {
-    const parsed = JSON.parse(body) as { error?: { type?: unknown; code?: unknown } }
-    const err = parsed?.error
-    if (err && typeof err === "object") {
-      if (typeof err.type === "string") return err.type
-      if (typeof err.code === "string") return err.code
+    const parsed = JSON.parse(body) as {
+      error?: { type?: unknown; code?: unknown; message?: unknown }
     }
-    return undefined
+    const err = parsed?.error
+    if (!err || typeof err !== "object") return {}
+    const message = typeof err.message === "string" ? err.message : ""
+    return {
+      type: typeof err.type === "string" ? err.type : undefined,
+      code: typeof err.code === "string" ? err.code : undefined,
+      label: /^[^:\n]+: \[([A-Za-z0-9_.-]+)\]/.exec(message)?.[1],
+    }
   } catch {
-    return undefined
+    return {}
   }
 }
 
+/** Per-request facts that sharpen error hints. */
+export interface ZenErrorContext {
+  /** The request declared a `Read` (wire `read`) tool. */
+  hasReadTool?: boolean
+  /** The request used the anonymous `public` key. */
+  anonymous?: boolean
+}
+
+function freeTierHint(ctx: ZenErrorContext): string {
+  if (ctx.hasReadTool === false)
+    return `this request has no Read tool, which the free tier requires; use a request with the Read tool, or ${OPENCODE_LOGIN_HINT}`
+  if (ctx.anonymous)
+    return `${OPENCODE_LOGIN_HINT} (or set ${OPENCODE_VERSION_ENV} if opencode updated)`
+  return `check ${OPENCODE_VERSION_ENV} and that the request has the Read tool`
+}
+
 /**
- * Build a tagged HTTP error so the provider-neutral retry coordinator can
- * recover from a pre-stream rejection (429 / 5xx / 503). The `streamErrorType`
- * property is what the host's `run()` retry loop checks; untagged errors
- * propagate and stop the turn. Billing/quota exhaustion stays terminal
- * (untagged, retryable:false) via {@link classifyUpstreamError}.
+ * Build the error for a non-2xx response. Retryable failures (429 / 5xx /
+ * 408) carry a `streamErrorType` tag so the host retry loop recovers. Billing,
+ * the free-tier gate, and the version gate are terminal and carry a `code`
+ * and a `hint`.
  */
 export function taggedHttpError(
   status: number,
   body: string,
-): Error & {
-  streamErrorType?: string
-} {
-  const upstreamCode = parseUpstreamErrorCode(body)
+  ctx: ZenErrorContext = {},
+): ProviderError & { streamErrorType?: string } {
+  const upstream = parseUpstreamError(body)
+  const codes = [upstream.type, upstream.code, upstream.label]
+    .filter((c): c is string => typeof c === "string")
+    .map((c) => c.toLowerCase())
+  const upstreamCode = upstream.type ?? upstream.code
+  const isQuota = status === 402 || codes.some((c) => ZEN_QUOTA_CODES.has(c))
+
+  if (isQuota)
+    return new ProviderError(`OpenCode Zen ${status} (billing): ${body}`, PROVIDER_ID, {
+      status,
+      retryable: false,
+      upstreamCode: codes.find((c) => ZEN_QUOTA_CODES.has(c)) ?? upstreamCode,
+      code: ZEN_ERROR_CODES.billing,
+      hint: ctx.anonymous
+        ? `the anonymous free tier limit is reached; ${OPENCODE_LOGIN_HINT} to keep going`
+        : "add funds or check usage limits in OpenCode Console (https://opencode.ai)",
+    })
+
+  if (codes.includes("freetiererror"))
+    return new ProviderError(
+      `OpenCode Zen ${status}: the free-tier gate rejected this request. Upstream: ${body}`,
+      PROVIDER_ID,
+      {
+        status,
+        retryable: false,
+        upstreamCode,
+        code: ZEN_ERROR_CODES.freeTierGate,
+        hint: freeTierHint(ctx),
+      },
+    )
+
+  if (status === 426)
+    return new ProviderError(
+      `OpenCode Zen 426: the client version in the user agent is below the server minimum. Upstream: ${body}`,
+      PROVIDER_ID,
+      {
+        status,
+        retryable: false,
+        upstreamCode,
+        code: ZEN_ERROR_CODES.upgradeRequired,
+        hint: `set ${OPENCODE_VERSION_ENV} or update opencode`,
+      },
+    )
+
+  // Auth codes (opencode `provider-error.ts:267-273`). Keep status 401 so the
+  // host refresh path still runs for OAuth. Untagged: never retried.
+  if (status === 401 || (status === 403 && codes.some((c) => AUTH_CODES.has(c))))
+    return new ProviderError(`OpenCode Zen ${status} (auth): ${body}`, PROVIDER_ID, {
+      status,
+      retryable: false,
+      upstreamCode,
+      code: ZEN_ERROR_CODES.auth,
+      hint: `${OPENCODE_LOGIN_HINT} (or replace the stored API key)`,
+    })
+
   const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-  const err = new Error(`OpenCode Zen API ${status}: ${body}`) as Error & {
-    streamErrorType?: string
-  }
+  const err = new ProviderError(`OpenCode Zen API ${status}: ${body}`, PROVIDER_ID, {
+    status,
+    retryable: streamErrorType !== undefined,
+    upstreamCode,
+  }) as ProviderError & { streamErrorType?: string }
   if (streamErrorType) err.streamErrorType = streamErrorType
   return err
 }
 
+function loginRequiredError(model: ModelEntry): ProviderError {
+  return new ProviderError(
+    `OpenCode Zen: ${model.id} is a paid model and needs an OpenCode Console login or API key`,
+    PROVIDER_ID,
+    { retryable: false, code: ZEN_ERROR_CODES.loginRequired, hint: OPENCODE_LOGIN_HINT },
+  )
+}
+
 export const opencodeZenAdapter: ProviderAdapter = {
-  id: "opencode-zen",
+  id: PROVIDER_ID,
   displayName: "OpenCode Zen",
   surfaces: [
     "openai-chat-completions",
     "anthropic-messages",
     "openai-responses",
-    "google-generative-language",
   ] satisfies ReadonlyArray<SurfaceId>,
   validate(req: CanonicalRequest, model: ModelEntry): ValidationResult {
     if (model.surfaceId === "anthropic-messages") return validateAnthropicRequest(req, model)
@@ -102,37 +272,57 @@ export const opencodeZenAdapter: ProviderAdapter = {
     model: ModelEntry,
     ctx: RunContext,
   ): AsyncIterable<CanonicalEvent> {
-    const auth = ctx.auth
-    if (auth.kind === "api-key" && !auth.key)
-      throw new Error(
-        "OpenCode Zen adapter: missing api-key (run `minimal-agent provider opencode-zen login)`",
-      )
+    const auth = normalizeAuth(ctx.auth)
+    const anonymous = isAnonymous(auth)
+    if (anonymous && isPaidModel(model)) throw loginRequiredError(model)
     const networkClient = ctx.networkClient as NetworkClient | undefined
     if (!networkClient) throw new Error("opencode-zen: no network client on RunContext")
+
+    // One `ses_` id per minimal-agent session: affinity headers and the
+    // prompt cache key stay stable across turns.
+    const sessionId = opencodeSessionId(req.metadata?.sessionId || ctx.sessionId)
+    const cacheKey = opencodePromptCacheKey(sessionId)
+    const identity = opencodeHeaders({ sessionId, orgId: orgIdOf(auth) })
+    const { request: mapped, renamed } = toOpencodeToolNames({ ...req, stream: true })
+    const errorCtx: ZenErrorContext = { hasReadTool: hasReadTool(mapped), anonymous }
+    const openAIAuth = withoutOrganization(auth)
+
     let url: string
     let headers: Record<string, string>
-    let body: unknown
+    let body: Record<string, unknown>
     let label: string
     if (model.surfaceId === "openai-chat-completions") {
       url = OPENCODE_ZEN_CHAT_URL
-      headers = buildOpenAIHeaders({ auth, userAgent: "minimal-agent-opencode-zen/0.1" })
-      body = buildOpenAIChatBody(req, model)
+      headers = { ...buildOpenAIHeaders({ auth: openAIAuth }), ...identity }
+      body = { ...buildOpenAIChatBody(mapped, model) }
+      body.stream = true
+      body.stream_options = { include_usage: true }
+      body.prompt_cache_key = cacheKey
       label = "opencode-zen.chat.completions"
     } else if (model.surfaceId === "anthropic-messages") {
       url = OPENCODE_ZEN_MESSAGES_URL
-      headers = buildMessagesHeaders(auth)
-      body = buildAnthropicRequestBody(req, model)
+      headers = { ...buildMessagesHeaders(auth), ...identity }
+      // No metadata session id here: it would add a claude-code style
+      // `metadata.user_id` the opencode client never sends.
+      body = { ...buildAnthropicRequestBody(mapped, model) }
+      body.stream = true
       label = "opencode-zen.messages"
     } else if (model.surfaceId === "openai-responses") {
       url = OPENCODE_ZEN_RESPONSES_URL
-      headers = buildOpenAIHeaders({ auth, userAgent: "minimal-agent-opencode-zen/0.1" })
-      body = buildOpenAIResponsesBody(req, model)
+      headers = { ...buildOpenAIHeaders({ auth: openAIAuth }), ...identity }
+      body = { ...buildOpenAIResponsesBody(mapped, model) }
+      body.stream = true
+      body.prompt_cache_key = cacheKey
+      // Zen keeps store off; a dangling previous_response_id would 400.
+      if (body.store !== true && body.previous_response_id !== undefined)
+        delete body.previous_response_id
       label = "opencode-zen.responses"
     } else {
       throw new Error(
-        `OpenCode Zen adapter: Gemini model surface is documented but unsupported: ${model.id}`,
+        `OpenCode Zen adapter: unsupported surface ${model.surfaceId} for ${model.id}`,
       )
     }
+
     const response = await networkClient.request({
       label,
       method: "POST",
@@ -141,13 +331,16 @@ export const opencodeZenAdapter: ProviderAdapter = {
       body: JSON.stringify(body),
       signal: req.signal,
     })
-    if (!response.ok) throw taggedHttpError(response.status, await response.text())
+    if (!response.ok) throw taggedHttpError(response.status, await response.text(), errorCtx)
     if (!response.body) throw new Error("OpenCode Zen API: empty response body for stream")
+
+    let events: AsyncIterable<CanonicalEvent>
     if (model.surfaceId === "openai-chat-completions")
-      yield* translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))
+      events = translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))
     else if (model.surfaceId === "anthropic-messages")
-      yield* translateAnthropicStream(parseSse<AnthropicStreamEvent>(response.body))
-    else yield* translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body))
+      events = translateAnthropicStream(parseSse<AnthropicStreamEvent>(response.body))
+    else events = translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body))
+    yield* renamed ? fromOpencodeToolEvents(events) : events
   },
 }
 
@@ -165,10 +358,12 @@ export function registerOpencodeZenAdHocModel(modelId: string): void {
   if (capturedModels) registerOpencodeZenModelInto(capturedModels, modelId)
 }
 export const opencodeProviderPlugin: ProviderPlugin = {
-  id: "opencode-zen",
+  id: PROVIDER_ID,
   displayName: "OpenCode Zen",
   shortCode: "oz",
   register: bootstrapOpencodeZen,
   registerAdHocModel: registerOpencodeZenAdHocModel,
+  oauthLogin: opencodeConsoleOAuthLogin,
   apiKeyAuth: opencodeApiKeyAuth,
+  anonymousAuth: opencodeZenAnonymousAuth,
 }
