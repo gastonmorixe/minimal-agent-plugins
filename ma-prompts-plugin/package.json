@@ -1,0 +1,21 @@
+{
+  "name": "ma-prompts-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Saved prompt library: store reusable prompts under the agent home, recall them with the '&' autocomplete menu, and expand '&name' at submit.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  },
+  "dependencies": {
+    "ma-autocomplete-kit": "workspace:*"
+  }
+}
