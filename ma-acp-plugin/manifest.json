@@ -1,0 +1,19 @@
+{
+  "id": "acp",
+  "name": "ACP",
+  "version": "0.1.0",
+  "description": "Agent Client Protocol (ACP) host mode: run minimal-agent as an ACP agent over stdio, so editors (Zed, JetBrains, others) can drive it with no custom glue. Level 1: initialize, session/new, session/prompt, session/cancel, text/thought streaming, tool-call and usage updates, basic stop-reason mapping.",
+  "hostModes": [
+    {
+      "id": "acp",
+      "description": "Agent Client Protocol v1 over stdio (JSON-RPC 2.0 / NDJSON).",
+      "entry": {
+        "type": "module",
+        "path": "./host-mode.ts",
+        "export": "default"
+      },
+      "permissions": ["hostMode:stdio"]
+    }
+  ],
+  "permissions": ["hostMode:stdio"]
+}
