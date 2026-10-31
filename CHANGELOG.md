@@ -6,6 +6,14 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Fixed
+
+- 2026-10-31: **Biome pinned to `2.5.15` in the catalog.** `bun.lock` is
+  gitignored here, so the old `^2.5.15` range let every fresh install take the
+  newest Biome. Biome 2.6.4 formats Markdown code blocks and failed
+  `format:check` on 20 plugin `.md` files that 2.5.15 accepts. Core's lockfile
+  already pins 2.5.15. Bump the pin on purpose, together with a reformat.
+
 ### Added
 
 - 2026-10-14: **OpenCode Go and Zen catalogs refreshed (live `/v1/models`
