@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
-import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
+import type {
+  NetworkClient,
+  NetworkRequestInput,
+  NetworkResponse,
+} from "@minimal-agent/core/plugin-api/net/types"
+
 import { inspectAnthropicOAuthCredential, refreshAnthropicOAuthCredential } from "./oauth-login.ts"
 
 function jsonNetworkResponse(body: Record<string, unknown>, status = 200): NetworkResponse {

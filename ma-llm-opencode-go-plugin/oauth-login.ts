@@ -12,9 +12,10 @@
  *
  * @module oauth-login
  */
-import { ProviderError } from "./lib/errors.ts"
-import type { NetworkClient, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
+import { ProviderError } from "@minimal-agent/core/plugin-api/llm/errors"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient, NetworkResponse } from "@minimal-agent/core/plugin-api/net/types"
+
 import type {
   AuthCredentialInfo,
   AuthSecretBag,

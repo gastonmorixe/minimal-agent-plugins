@@ -10,7 +10,7 @@
  * @module llm/providers/anthropic/beta-flags-catalog
  */
 
-import type { BetaFlagInfo } from "./lib/provider-plugin.ts"
+import type { BetaFlagInfo } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 /**
  * Every Anthropic beta flag the client knows about, with documentation. The

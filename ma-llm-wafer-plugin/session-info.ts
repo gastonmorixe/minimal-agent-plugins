@@ -22,12 +22,13 @@
  * @module llm/providers/wafer/session-info
  */
 
-import type { NetworkClient } from "./lib/net-types.ts"
 import type {
   ProviderSessionContext,
   ProviderSessionInfo,
   QuotaWindow,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import { waferContextWindow, waferModelShortLabel } from "./models.ts"
 import { WAFER_BASE_URL } from "./wire-constants.ts"
 

@@ -16,7 +16,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-import { parseJsonc } from "./lib/jsonc.ts"
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 /** The `statusBar` slice quota-status consumes. */
 export interface StatusBarConfig {

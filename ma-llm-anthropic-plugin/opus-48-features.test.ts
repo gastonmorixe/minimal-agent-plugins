@@ -20,12 +20,13 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { systemMessage, userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { bootstrapAnthropic } from "./adapter.ts"
 import { ANTHROPIC_BETA_FLAGS, buildBetaFlags } from "./beta-flags.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { systemMessage, userText } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { buildAnthropicRequestBody } from "./request-body.ts"

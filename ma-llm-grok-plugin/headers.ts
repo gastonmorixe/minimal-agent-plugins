@@ -7,8 +7,9 @@
  * @module llm/providers/grok/headers
  */
 
-import { buildOpenAIHeaders } from "./lib/openai-chat.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
+import { buildOpenAIHeaders } from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import {
   GROK_AGENT_ID_HEADER,
   GROK_AUTO_COMPACT_THRESHOLD_PERCENT,

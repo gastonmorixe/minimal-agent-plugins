@@ -22,7 +22,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveSessionsDir } from "./agent-paths.ts"
+import { resolveSessionsDir } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import { generateId } from "./id.ts"
 
 /** How a task's next fire time is computed. */

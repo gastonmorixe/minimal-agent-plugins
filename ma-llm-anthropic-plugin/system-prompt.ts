@@ -22,12 +22,13 @@
  * @module llm/providers/anthropic/system-prompt
  */
 
-import { promptPath, renderPrompt } from "./lib/prompts.ts"
 import {
   neutralSystemPrompt,
   type SystemPromptBlock,
   type SystemPromptContext,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
+import { promptPath, renderPrompt } from "./lib/prompts.ts"
 import { BUILD_HASH, VERSION } from "./wire-constants.ts"
 
 /** Resolve a prompt file under this plugin's own `prompts/` directory. */

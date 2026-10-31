@@ -31,7 +31,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
-import { resolveAgentHome } from "./agent-paths.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import {
   type Bullet,
   type BulletInput,

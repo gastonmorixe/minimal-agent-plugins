@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { ProviderError } from "@minimal-agent/core/plugin-api/llm/errors"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import {
   bootstrapOpencodeZen,
   OPENCODE_ZEN_CHAT_URL,
@@ -16,11 +22,6 @@ import {
   opencodeApiKeyAuth,
   readOpencodeApiKey,
 } from "./auth.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { ProviderError } from "./lib/errors.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { LIVE_MODEL_IDS } from "./models.ts"
 import { opencodeConsoleOAuthLogin } from "./oauth-login.ts"

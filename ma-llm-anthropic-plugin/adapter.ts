@@ -13,12 +13,25 @@
  * @module llm/providers/anthropic/adapter
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import {
+  classifyUpstreamError,
+  type ErrorClassFields,
+  tagUpstreamError,
+} from "@minimal-agent/core/plugin-api/llm/errors"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  ProviderPlugin,
+  ProviderSetupContext,
+  ProviderStartupContext,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { ANTHROPIC_BETA_FLAGS_CATALOG } from "./beta-flags-catalog.ts"
 import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   PreflightIssue,
@@ -28,15 +41,7 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
-import type {
-  ProviderPlugin,
-  ProviderSetupContext,
-  ProviderStartupContext,
-} from "./lib/provider-plugin.ts"
 import { findModelByTags } from "./lib/registry.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { listAnthropicModels } from "./list-models.ts"
 import { anthropicMediaLimits } from "./media-limits.ts"
 import { registerAnthropicAdHocModelInto, registerAnthropicModels } from "./models.ts"

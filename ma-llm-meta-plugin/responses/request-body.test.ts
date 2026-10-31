@@ -6,8 +6,9 @@
 
 import { describe, expect, it } from "bun:test"
 
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+
 import { bootstrapMeta } from "../adapter.ts"
-import { userText } from "../lib/canonical-messages.ts"
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import { makeTestRegistry } from "../lib/test-registry.ts"
 

@@ -8,7 +8,7 @@ import type {
   ApiKeyAuthProvider,
   AuthCredentialInfo,
   AuthSecretBag,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 export const OPENROUTER_API_KEY_AUTH = {
   serviceId: "openrouter-api-key",

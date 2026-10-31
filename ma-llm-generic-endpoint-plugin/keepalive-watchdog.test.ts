@@ -20,8 +20,11 @@
 
 import { describe, expect, it } from "bun:test"
 
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { type OpenAIChatChunk, translateOpenAIChatStream } from "./lib/openai-chat.ts"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import {
+  type OpenAIChatChunk,
+  translateOpenAIChatStream,
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
 
 async function* fromChunks(chunks: OpenAIChatChunk[]): AsyncIterable<OpenAIChatChunk> {
   for (const c of chunks) yield c

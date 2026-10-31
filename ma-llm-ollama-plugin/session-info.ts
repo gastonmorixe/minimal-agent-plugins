@@ -13,7 +13,10 @@
  * @module llm/providers/ollama/session-info
  */
 
-import type { ProviderSessionContext, ProviderSessionInfo } from "./lib/provider-plugin.ts"
+import type {
+  ProviderSessionContext,
+  ProviderSessionInfo,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 /** Accumulated usage from this session's Ollama responses. */
 let sessionUsage: {

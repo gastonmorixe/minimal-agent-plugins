@@ -13,8 +13,9 @@
 
 import { describe, expect, it } from "bun:test"
 
+import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import type { QuotaWindow, SessionTokens } from "./host-types.ts"
-import { stripAnsi } from "./lib/term-width.ts"
 import { renderQuotaFooter } from "./render.ts"
 
 const TOKENS: SessionTokens = {

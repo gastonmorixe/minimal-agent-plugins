@@ -38,7 +38,7 @@ import type {
   ProviderSessionContext,
   ProviderSessionInfo,
   QuotaWindow,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 /**
  * Optional host hook fired after this provider caches a fresh rate-limit

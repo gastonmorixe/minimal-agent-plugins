@@ -18,13 +18,25 @@
  * @module llm/providers/openai/adapter
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import {
+  classifyUpstreamError,
+  type ErrorClassFields,
+  tagUpstreamError,
+} from "@minimal-agent/core/plugin-api/llm/errors"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  ProviderPlugin,
+  ProviderSetupContext,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { openAIApiKeyAuth, openAIOAuthLogin } from "./auth.ts"
 import { buildOpenAIChatBody } from "./chat/request-body.ts"
 import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
 import { buildOpenAIHeaders } from "./headers.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -32,10 +44,6 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
-import type { ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { findOpenAIModelByTags, registerOpenAIModels } from "./models.ts"
 import { callOpenAIResponsesCompact, compactOutputToMessages } from "./responses/compact.ts"
 import { buildOpenAIResponsesBody } from "./responses/request-body.ts"

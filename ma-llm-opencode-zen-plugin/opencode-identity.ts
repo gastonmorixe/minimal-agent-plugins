@@ -16,8 +16,8 @@
 import { execFileSync } from "node:child_process"
 import { createHash, getRandomValues } from "node:crypto"
 
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 
 // ---------------------------------------------------------------------------
 // Version and user agent

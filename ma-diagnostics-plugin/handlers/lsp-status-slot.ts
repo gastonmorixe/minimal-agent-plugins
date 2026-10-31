@@ -16,7 +16,8 @@
 
 import { basename } from "node:path"
 
-import { ansiStyle as c } from "../lib/ansi.ts"
+import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
+
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
 import type { ActivePersistentProvider } from "../lib/service.ts"
 

@@ -26,11 +26,19 @@
  * @module llm/providers/ollama/request-body
  */
 
-import type { CanonicalBlock, CanonicalMessage, ImageBlock } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { CanonicalToolDefinition, ToolChoice } from "./lib/canonical-tools.ts"
-import type { EffortLevel } from "./lib/capabilities.ts"
-import type { ModelView } from "./lib/provider-plugin.ts"
+import type {
+  CanonicalBlock,
+  CanonicalMessage,
+  ImageBlock,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type {
+  CanonicalToolDefinition,
+  ToolChoice,
+} from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+import type { EffortLevel } from "@minimal-agent/core/plugin-api/llm/capabilities"
+
+import type { ModelView } from "./lib/host-types.ts"
 
 // ---------------------------------------------------------------------------
 // Wire types

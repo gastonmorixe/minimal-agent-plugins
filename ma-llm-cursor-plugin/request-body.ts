@@ -12,13 +12,17 @@
  * @module llm/providers/cursor/request-body
  */
 
+import type {
+  CanonicalBlock,
+  CanonicalMessage,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { effortParamIdFromTags, fastParamIdFromTags, isCursorFastParamId } from "./capabilities.ts"
 import type { CursorCarryPlan } from "./conversation-carry.ts"
 import { buildCursorToolWirePolicy } from "./cursor-tool-policy.ts"
 import { getCursorEncodeSpec, lookupCursorRunSku } from "./encode-spec.ts"
-import type { CanonicalBlock, CanonicalMessage } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { ModelView } from "./lib/provider-plugin.ts"
+import type { ModelView } from "./lib/host-types.ts"
 import { cursorWireModelId, inferCursorGrokPreset } from "./models.ts"
 import {
   AGENT_MODE,

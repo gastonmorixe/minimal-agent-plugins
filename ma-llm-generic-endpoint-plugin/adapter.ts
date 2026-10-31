@@ -8,21 +8,32 @@
  * @module llm/providers/generic-endpoint/adapter
  */
 
-import { normalizeEndpoint, readGenericEndpointConfig } from "./config.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { defaultCapabilities, type EffortSupport } from "./lib/capabilities.ts"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import {
+  defaultCapabilities,
+  type EffortSupport,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
 import {
   classifyUpstreamError,
   type ErrorClassFields,
   parseRetryAfterMs,
   tagUpstreamError,
-} from "./lib/errors.ts"
+} from "@minimal-agent/core/plugin-api/llm/errors"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  ModelRegistrar,
+  ProviderPlugin,
+  ProviderSetupContext,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type {
+  SurfaceCodec,
+  SurfaceCodecRegistry,
+} from "@minimal-agent/core/plugin-api/llm/surface-codec"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
+import { normalizeEndpoint, readGenericEndpointConfig } from "./config.ts"
 import type { ModelEntry, ProviderAdapter, ValidationResult } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
-import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
-import type { SurfaceCodec, SurfaceCodecRegistry } from "./lib/surface-codec.ts"
 import { PRICING_GENERIC_ENDPOINT } from "./pricing.ts"
 
 const PROVIDER_ID = "generic-endpoint"

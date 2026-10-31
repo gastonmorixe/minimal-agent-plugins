@@ -16,7 +16,8 @@
  * @module schedule/handlers/cmd_loop
  */
 
-import { ansiStyle as c } from "../lib/ansi.ts"
+import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
+
 import { clockHHMMSS, GLYPH_LOOP, taskFooter, taskInfo, wrapText } from "../lib/format.ts"
 import type { CommandContext, CommandResult } from "../lib/host-types.ts"
 import { intervalToCron, parseDurationMs } from "../lib/interval.ts"

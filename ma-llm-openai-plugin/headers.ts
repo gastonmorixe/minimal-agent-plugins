@@ -6,7 +6,8 @@
  * @module llm/providers/openai/headers
  */
 
-import type { ProviderAuth } from "./lib/provider-auth.ts"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { OPENAI_USER_AGENT } from "./wire-constants.ts"
 
 export interface OpenAIHeadersOpts {

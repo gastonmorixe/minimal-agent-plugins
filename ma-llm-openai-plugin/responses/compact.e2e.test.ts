@@ -3,11 +3,12 @@
  */
 import { describe, expect, it } from "bun:test"
 
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient, NetworkResponse } from "@minimal-agent/core/plugin-api/net/types"
+
 import { openaiAdapter } from "../adapter.ts"
-import { userText } from "../lib/canonical-messages.ts"
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
-import type { NetworkClient, NetworkResponse } from "../lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "../lib/provider-auth.ts"
 import { resolveModel } from "../openai.test-helpers.ts"
 
 function jsonResponse(status: number, body: unknown): NetworkResponse {

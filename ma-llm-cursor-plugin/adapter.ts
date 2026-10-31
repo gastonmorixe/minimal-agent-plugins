@@ -12,6 +12,10 @@
  * @module llm/providers/cursor/adapter
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { cursorApiKeyAuth, resolveCursorAccessToken } from "./auth.ts"
 import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
 import { requestHasToolResultContinuation } from "./bidi-tool-results.ts"
@@ -21,17 +25,13 @@ import { cursorCarryEnabled, getCursorCarryState, planCursorCarry } from "./conv
 import { cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { ModelView, SubagentModelRecommendation } from "./lib/host-types.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import type {
-  ModelView,
   ProviderAdapterView,
   ProviderPlugin,
   ProviderSetupContext,
   ProviderValidationResult,
-  SubagentModelRecommendation,
 } from "./lib/provider-plugin.ts"
 import {
   ensureCursorLiveCatalog,

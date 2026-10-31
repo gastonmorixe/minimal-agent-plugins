@@ -6,12 +6,14 @@
  * @module llm/providers/cursor/validate
  */
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { isServerTool } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+import { CapabilityViolation } from "@minimal-agent/core/plugin-api/llm/errors"
+import { modalityViolations } from "@minimal-agent/core/plugin-api/llm/modality-check"
+
 import { cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { isServerTool } from "./lib/canonical-tools.ts"
-import { CapabilityViolation } from "./lib/errors.ts"
-import { modalityViolations } from "./lib/modality-check.ts"
-import type { ModelView, ProviderValidationResult } from "./lib/provider-plugin.ts"
+import type { ModelView } from "./lib/host-types.ts"
+import type { ProviderValidationResult } from "./lib/provider-plugin.ts"
 
 /**
  * Validate a canonical request against a Cursor model's declared capabilities.

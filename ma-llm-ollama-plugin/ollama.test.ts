@@ -12,18 +12,19 @@
 
 import { afterEach, describe, expect, it } from "bun:test"
 
-import { ollamaAdapter, ollamaProviderPlugin } from "./adapter.ts"
-import { ollamaCaps } from "./capabilities.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 import type {
   ModelRegistrar,
-  ModelView,
   ProviderAdapterRegistrar,
   ProviderAdapterView,
   ProviderModelSpec,
   ProviderSetupContext,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
+import { ollamaAdapter, ollamaProviderPlugin } from "./adapter.ts"
+import { ollamaCaps } from "./capabilities.ts"
+import type { ModelView } from "./lib/host-types.ts"
 import { listOllamaLiveModels } from "./live-models.ts"
 import { buildOllamaChatBody } from "./request-body.ts"
 import { type OllamaChatChunk, parseNdjson, translateOllamaStream } from "./response-stream.ts"

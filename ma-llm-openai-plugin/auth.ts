@@ -6,8 +6,7 @@
  * @module llm/providers/openai/auth
  */
 
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
   ApiKeyAuthProvider,
   AuthCredentialInfo,
@@ -15,7 +14,8 @@ import type {
   OAuthDeviceCodeChallenge,
   OAuthDeviceCodeContext,
   OAuthLoginProvider,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
 export const OPENAI_API_KEY_AUTH = {
   serviceId: "openai-api-key",

@@ -11,10 +11,11 @@
 
 import { randomUUID } from "node:crypto"
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { type AnthropicBetaFlag, buildBetaFlags, classifyRequest } from "./beta-flags.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import { ANTHROPIC_VERSION, STAINLESS_SDK_VERSION, USER_AGENT } from "./wire-constants.ts"
 
 export interface AnthropicHeadersOptions {

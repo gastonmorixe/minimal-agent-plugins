@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
-import { ProviderError } from "./lib/errors.ts"
+import { ProviderError } from "@minimal-agent/core/plugin-api/llm/errors"
+
 import {
   completeOpencodeDeviceCode,
   OPENCODE_CONSOLE_OAUTH,

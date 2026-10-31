@@ -7,16 +7,17 @@
  * @module llm/providers/grok/surface-codecs
  */
 
-import { CAPS_GROK_45_CHAT } from "./capabilities.ts"
-import { buildGrokHeaders } from "./headers.ts"
-import { classifyUpstreamError, tagUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, tagUpstreamError } from "@minimal-agent/core/plugin-api/llm/errors"
 import {
   buildOpenAIChatBody,
   type OpenAIChatChunk,
   translateOpenAIChatStream,
-} from "./lib/openai-chat.ts"
-import { parseSse } from "./lib/sse-parser.ts"
-import type { SurfaceCodec } from "./lib/surface-codec.ts"
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { SurfaceCodec } from "@minimal-agent/core/plugin-api/llm/surface-codec"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
+import { CAPS_GROK_45_CHAT } from "./capabilities.ts"
+import { buildGrokHeaders } from "./headers.ts"
 import { PRICING_GROK_45 } from "./pricing.ts"
 import { setGrokRateLimits } from "./session-info.ts"
 import { validateOpenAIRequest } from "./validate.ts"

@@ -14,6 +14,8 @@
 import { homedir } from "node:os"
 import { join } from "node:path"
 
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
 import {
   effortParamIdFromTags,
   fastParamIdFromTags,
@@ -22,7 +24,6 @@ import {
 import { expandCursorCatalog } from "../catalog-expand.ts"
 import { buildCursorHeaders } from "../headers.ts"
 import { loadClientIds } from "../ids.ts"
-import { parseJsonc } from "../lib/jsonc.ts"
 import { encodeAvailableModelsRequest } from "../proto/available-models-request.ts"
 import { decodeAvailableModelsResponse } from "../proto/models-decode.ts"
 import type { CursorStaticCatalogRow } from "../static-catalog-row.ts"

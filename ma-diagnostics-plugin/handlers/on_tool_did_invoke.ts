@@ -20,7 +20,8 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveAgentHome } from "../lib/agent-paths.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import { loadConfig } from "../lib/config.ts"
 import {
   type ActivePersistentProvider,

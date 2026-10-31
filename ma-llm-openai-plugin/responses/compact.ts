@@ -13,10 +13,11 @@
  * @module llm/providers/openai/responses/compact
  */
 
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
-import type { NetworkClient } from "../lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "../lib/provider-auth.ts"
 import {
   CHATGPT_CODEX_RESPONSES_COMPACT_PATH,
   RESPONSES_COMPACT_PATH,

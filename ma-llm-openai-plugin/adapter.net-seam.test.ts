@@ -21,10 +21,15 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  NetworkClient,
+  NetworkRequestInput,
+  NetworkResponse,
+} from "@minimal-agent/core/plugin-api/net/types"
+
 import { openaiAdapter } from "./adapter.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import { CHAT_COMPLETIONS_URL } from "./wire-constants.ts"
 
 // The adapter's run() argument types, pulled structurally from the local

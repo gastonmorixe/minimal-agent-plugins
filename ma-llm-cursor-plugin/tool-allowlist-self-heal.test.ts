@@ -7,6 +7,9 @@
 
 import { afterEach, describe, expect, test } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { cursorAdapter } from "./adapter.ts"
 import { cursorCaps } from "./capabilities.ts"
 import { connectFrameProto } from "./connect/stream.ts"
@@ -15,9 +18,7 @@ import {
   CURSOR_ALLOWED_TOOLS_HEADER,
   resetCursorLearnedToolsForTests,
 } from "./cursor-tool-policy.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import { encMsg, encString } from "./proto/wire.ts"
 import { withToolAllowlistSelfHeal } from "./tool-allowlist-self-heal.ts"
 import { CURSOR_STREAM_CONTENT_TYPE, CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"

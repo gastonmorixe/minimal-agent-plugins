@@ -1,22 +1,27 @@
 /** OpenCode Zen adapter with Chat, Responses, and Anthropic Messages routing. */
-import { opencodeApiKeyAuth } from "./auth.ts"
-import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthropic-request.ts"
-import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError, ProviderError } from "./lib/errors.ts"
-import type { ModelEntry, ProviderAdapter, SurfaceId, ValidationResult } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
+
+import {
+  type AnthropicStreamEvent,
+  translateAnthropicStream,
+} from "@minimal-agent/core/plugin-api/llm/anthropic-stream"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { classifyUpstreamError, ProviderError } from "@minimal-agent/core/plugin-api/llm/errors"
 import {
   buildOpenAIChatBody,
   buildOpenAIHeaders,
   type OpenAIChatChunk,
   translateOpenAIChatStream,
   validateOpenAIRequest,
-} from "./lib/openai-chat.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
+import { opencodeApiKeyAuth } from "./auth.ts"
+import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthropic-request.ts"
+import type { ModelEntry, ProviderAdapter, SurfaceId, ValidationResult } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import {
   registerOpencodeZenModelInto,
   registerOpencodeZenModels,

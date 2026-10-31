@@ -10,7 +10,8 @@
  * @module llm/providers/grok/live-models
  */
 
-import type { ProviderAuth } from "./lib/provider-auth.ts"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import type { LiveModelRow } from "./lib/provider-plugin.ts"
 import {
   CLI_MODELS_URL,

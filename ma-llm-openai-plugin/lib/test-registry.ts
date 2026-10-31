@@ -12,8 +12,12 @@
  * @module lib/test-registry
  */
 
+import type {
+  ModelRegistrar,
+  ProviderModelSpec,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
 import type { ModelEntry, ProviderAdapter } from "./host-types.ts"
-import type { ModelRegistrar, ProviderModelSpec } from "./provider-plugin.ts"
 
 /** A tiny registrar + resolver pair for a single test run. */
 export function makeTestRegistry(): {

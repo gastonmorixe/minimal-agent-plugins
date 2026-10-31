@@ -15,6 +15,9 @@
  * @module llm/providers/opencode/models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_CLAUDE_HAIKU_5_5,
   CAPS_DEEPSEEK_FLASH,
@@ -55,10 +58,8 @@ import {
   CAPS_SPACE_BUNNY,
   CAPS_STEP_5_PREVIEW_FREE,
 } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
 import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_CLAUDE_HAIKU_5_5,
   PRICING_DEEPSEEK_FLASH,

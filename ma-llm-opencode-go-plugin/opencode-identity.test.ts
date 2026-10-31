@@ -5,8 +5,9 @@ import { join } from "node:path"
 
 import { afterAll, describe, expect, it } from "bun:test"
 
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import {
   computeOpencodeProjectId,

@@ -27,13 +27,14 @@ import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { cursorAdapter } from "./adapter.ts"
 import { cursorCaps } from "./capabilities.ts"
 import { agentRunUrl } from "./connect/hosts.ts"
 import { connectStreamPost } from "./connect/stream.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import { CURSOR_STREAM_CONTENT_TYPE, CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
 const ZERO_PRICING = {

@@ -1,5 +1,6 @@
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type {
   ApiKeyAuthProvider,
   AuthCredentialInfo,

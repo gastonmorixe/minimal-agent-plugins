@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import {
   applyGrokAccountProfile,
   identityFromUserinfoAndSession,
@@ -8,7 +10,6 @@ import {
   planFieldsFromSubscriptions,
   preserveGrokAccountProfileSecrets,
 } from "./account-profile.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
 import type { AuthSecretBag } from "./lib/provider-plugin.ts"
 import {
   finalizeGrokOAuthCredential,

@@ -11,8 +11,9 @@
 
 import { describe, expect, test } from "bun:test"
 
-import type { CanonicalMessage } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { CanonicalMessage } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import {
   applyMismatchResolution,
   buildMismatchIssue,

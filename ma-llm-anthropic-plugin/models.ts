@@ -14,6 +14,14 @@
  * @module llm/providers/anthropic/models
  */
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import type {
+  ModelRegistrar,
+  ProviderModelSpec,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_FABLE_5,
   CAPS_FABLE_5_1,
@@ -28,12 +36,8 @@ import {
   CAPS_SONNET_45,
   CAPS_SONNET_46,
 } from "./capabilities.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
 import type { ModelEntry, MTokRate } from "./lib/host-types.ts"
-import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { clearLocalCatalog, recordModel } from "./lib/registry.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   ANTHROPIC_FABLE_5,
   ANTHROPIC_FABLE_5_1,

@@ -1,10 +1,9 @@
-// source: plugin-api/src/types/plugin.ts (local structural mirror; keep in sync)
 /**
- * Local structural mirrors of the host plugin-context types the schedule
- * plugin consumes. External plugins cannot import
- * `@minimal-agent/plugin-api/types/plugin` at runtime from the sibling repo
- * clone (type-only imports are erased, but we keep a local mirror so the plugin
- * type-checks standalone and never reaches into core `src/`).
+ * Narrowed, hand-written mirrors of the host plugin-context shapes the
+ * schedule plugin reads: a MINIMAL SLICE of `types/plugin`, not a copy of
+ * the module. The host's real, richer objects satisfy these structurally,
+ * so this stays even though the plugin can now depend on
+ * `@minimal-agent/core` (S42).
  *
  * Each interface is NARROWED to the fields schedule actually reads. If the host
  * shape changes in a way schedule depends on, its integration test (host-run

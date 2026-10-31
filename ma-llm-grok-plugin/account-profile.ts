@@ -12,7 +12,8 @@
  * @module llm/providers/grok/account-profile
  */
 
-import type { NetworkClient } from "./lib/net-types.ts"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import type { AuthSecretBag } from "./lib/provider-plugin.ts"
 import {
   GROK_SUBSCRIPTIONS_URL,

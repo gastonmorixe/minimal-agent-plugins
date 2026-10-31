@@ -214,12 +214,28 @@ describe("limits", () => {
   })
 })
 
-function median(xs: number[]): number {
-  const s = [...xs].sort((a, b) => a - b)
-  return s[Math.floor(s.length / 2)] as number
+/**
+ * Runs `unitOfWork` repeatedly until `budgetMs` elapses and returns how many
+ * times it ran. Time-boxed, so the test's own wall-clock duration is capped
+ * regardless of machine speed; a slow or contended CPU just completes fewer
+ * iterations rather than making the test take longer or flake. The caller
+ * asserts a floor on the iteration count (the WORK done in that fixed
+ * window), not on a single run's wall-clock time -- immune to a slow tick
+ * here or there from a GC pause, JIT warmup, or a neighboring process
+ * stealing a core, which is what made the old median-of-N-runs-under-X-ms
+ * form flaky on a shared, multi-agent CI box.
+ */
+function iterationsInBudget(unitOfWork: () => void, budgetMs: number): number {
+  const deadline = performance.now() + budgetMs
+  let n = 0
+  while (performance.now() < deadline) {
+    unitOfWork()
+    n++
+  }
+  return n
 }
 
-describe("perf (H s12, 3x CI slack)", () => {
+describe("perf (H s12, time-boxed work count: robust to CI CPU contention)", () => {
   const TYPICAL = [
     "ls -la",
     "git status && git diff --stat",
@@ -243,37 +259,45 @@ describe("perf (H s12, 3x CI slack)", () => {
     "timeout 5 nice -n 10 bun run check",
   ]
 
-  test("typical set of 20 commands under 1 ms median (3 ms with slack)", () => {
+  test("typical set of 20 commands: at least 20 full passes complete in a 200 ms window", () => {
     for (const c of TYPICAL) collectCommands(tree(parseCommand(c)))
-    const times: number[] = []
-    for (let k = 0; k < 30; k++) {
-      const t0 = performance.now()
+    const passes = iterationsInBudget(() => {
       for (const c of TYPICAL) collectCommands(tree(parseCommand(c)))
-      times.push(performance.now() - t0)
-    }
-    expect(median(times)).toBeLessThan(3)
+    }, 200)
+    // A healthy parser clears one pass in well under 1 ms (the old bound,
+    // with its 3x slack, was 3 ms/pass); 20 passes in 200 ms is 10 ms/pass,
+    // ~3x more slack again on top of that, so this only trips on a real
+    // regression, not ordinary CPU contention from other sessions.
+    expect(passes).toBeGreaterThanOrEqual(20)
   })
 
-  test("128 KiB of valid chains under 20 ms median (60 ms with slack)", () => {
+  test("128 KiB of valid chains: at least 2 full parses complete in a 1 s window", () => {
     const unit = 'git status && ls -la | grep x; echo "a $(pwd)" > out\n'
     let src = ""
     while (src.length + unit.length < 128 * 1024) src += unit
     expect(parseCommand(src, { maxWords: 1_000_000 }).ok).toBe(true)
-    const times: number[] = []
-    for (let k = 0; k < 7; k++) {
-      const t0 = performance.now()
+    const parses = iterationsInBudget(() => {
       parseCommand(src, { maxWords: 1_000_000 })
-      times.push(performance.now() - t0)
-    }
-    expect(median(times)).toBeLessThan(60)
+    }, 1000)
+    // A healthy parser clears one parse in well under 20 ms (the old bound,
+    // with its 3x slack, was 60 ms/parse); requiring 2 in a 1 s window
+    // allows up to 500 ms/parse, ~8x more slack again, so this only trips on
+    // a real regression, not ordinary CPU contention from other sessions.
+    expect(parses).toBeGreaterThanOrEqual(2)
   })
 
-  test("200 KiB too-big path under 5 ms (15 ms with slack)", () => {
+  test("200 KiB too-big path: at least 10 rejections complete in a 300 ms window", () => {
     const src = "echo a;".repeat(Math.ceil((200 * 1024) / 7))
-    parseCommand(src)
-    const t0 = performance.now()
     const r = parseCommand(src)
-    expect(performance.now() - t0).toBeLessThan(15)
     expect(!r.ok && r.reason).toBe("too-big")
+    const rejections = iterationsInBudget(() => {
+      parseCommand(src)
+    }, 300)
+    // The too-big guard should bail out before doing real parse work (the
+    // old bound, with its 3x slack, was 15 ms/rejection); 10 in 300 ms is
+    // 30 ms/rejection, another 2x on top of that, so this only trips if the
+    // guard regresses into doing the full parse first, not on ordinary CPU
+    // contention from other sessions.
+    expect(rejections).toBeGreaterThanOrEqual(10)
   })
 })

@@ -8,7 +8,8 @@
  * @module lib/pricing-calc
  */
 
-import type { CanonicalUsage } from "./canonical-events.ts"
+import type { CanonicalUsage } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+
 import type { MTokRate } from "./host-types.ts"
 
 /** Cost breakdown returned by {@link calculateUsageCost}. */

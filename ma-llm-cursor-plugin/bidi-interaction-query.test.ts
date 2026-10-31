@@ -6,10 +6,11 @@
 
 import { afterEach, describe, expect, test } from "bun:test"
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { runCursorBidi } from "./bidi-run.ts"
 import { connectFrameProto, parseConnectFrames } from "./connect/stream.ts"
 import { resetCursorBidiSessionsForTests } from "./cursor-bidi-session.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient, NetworkResponse } from "./lib/net-types.ts"
 import {
   decodeFields,

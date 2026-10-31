@@ -6,16 +6,17 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import { defaultCapabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { bootstrapOpenAI } from "./adapter.ts"
 import { buildOpenAIChatBody } from "./chat/request-body.ts"
 import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { isEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { defaultCapabilities } from "./lib/capabilities.ts"
 import { type ModelEntry } from "./lib/host-types.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import {
   clearModelRegistry,
   clearProviderRegistry,

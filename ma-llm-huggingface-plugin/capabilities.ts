@@ -29,7 +29,10 @@
  * @module llm/providers/huggingface/capabilities
  */
 
-import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
+import {
+  type Capabilities,
+  defaultCapabilities,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 /**
  * Reasoning-effort levels HuggingFace's Chat Completions surface accepts
@@ -70,7 +73,6 @@ export const CAPS_HUGGINGFACE_CHAT: Capabilities = {
     ttls: [],
     minPrefixTokens: 1024,
     reportsCacheHits: true,
-    promptCacheAccounting: "subset" as const,
   },
   tools: {
     userDefined: true,

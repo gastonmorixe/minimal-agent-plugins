@@ -1,5 +1,8 @@
 /** Per-family capabilities for the live OpenCode Zen catalog. */
-import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
+import {
+  type Capabilities,
+  defaultCapabilities,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 const CACHE = {
   explicit: false,
@@ -7,7 +10,6 @@ const CACHE = {
   ttls: [] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
-  promptCacheAccounting: "subset" as const,
 } as const
 const TOOLS = {
   userDefined: true,

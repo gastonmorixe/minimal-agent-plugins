@@ -7,6 +7,8 @@
  * @module llm/providers/cursor/response-stream
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+
 import type { ConnectEnvelope } from "./connect/stream.ts"
 import { ConnectFrameReader, parseConnectFrames } from "./connect/stream.ts"
 import {
@@ -16,7 +18,6 @@ import {
   cursorUsageToCanonical,
 } from "./cursor-usage.ts"
 import { classifyConnectCode, connectEndStreamCause } from "./error-class.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import {
   type CursorServerEvent,
   extractServerTextEvents,

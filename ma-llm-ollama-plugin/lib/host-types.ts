@@ -15,7 +15,7 @@
  * @module lib/host-types
  */
 
-import type { Capabilities } from "./capabilities.ts"
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 /**
  * Per-model USD rate table. Mirror of host `ModelRate`
@@ -76,6 +76,6 @@ export interface SubagentModelRecommendation {
  */
 export interface ProviderValidationResult {
   ok: boolean
-  errors: import("./errors.ts").CapabilityViolation[]
-  degrade?: import("./canonical-request.ts").CanonicalRequest
+  errors: import("@minimal-agent/core/plugin-api/llm/errors").CapabilityViolation[]
+  degrade?: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest
 }

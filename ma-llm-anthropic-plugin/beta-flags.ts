@@ -13,9 +13,10 @@
  * @module llm/providers/anthropic/beta-flags
  */
 
+import type { AnthropicRequestKind } from "@minimal-agent/core/plugin-api/llm/anthropic-request"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { omitsInterleavedThinking, wants1mContext } from "./beta-gates.ts"
-import type { AnthropicRequestKind } from "./lib/anthropic-request.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
 
 /** Every known beta header value, in declaration order. */
@@ -65,7 +66,10 @@ export type AnthropicBetaFlag = (typeof ANTHROPIC_BETA_FLAGS)[keyof typeof ANTHR
 // gateway). Re-exported here so this plugin's other importers (headers,
 // quota-probe, index, tests) keep the same import path. The registry-coupled
 // `buildBetaFlags` below stays local.
-export { type AnthropicRequestKind, classifyRequest } from "./lib/anthropic-request.ts"
+export {
+  type AnthropicRequestKind,
+  classifyRequest,
+} from "@minimal-agent/core/plugin-api/llm/anthropic-request"
 
 function hasAny1hTtl(req: CanonicalRequest): boolean {
   const checkBlocks = (blocks?: { cache?: { ttl?: string } }[]) =>

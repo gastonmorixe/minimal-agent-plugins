@@ -13,6 +13,10 @@
  * @module llm/providers/openrouter/models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import type { ModelRegistrar } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_OPENROUTER_CHAT,
   CAPS_OR_CLAUDE_OPUS_5,
@@ -23,10 +27,7 @@ import {
   CAPS_OR_GROK_45,
   CAPS_OR_KIMI_K3,
 } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
 import type { MTokRate } from "./lib/host-types.ts"
-import type { ModelRegistrar } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_OR_CLAUDE_OPUS_5,
   PRICING_OR_CLAUDE_SONNET_5,

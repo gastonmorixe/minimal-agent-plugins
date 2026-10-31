@@ -12,7 +12,8 @@ import { join } from "node:path"
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
 
-import { AGENT_HOME_ENV } from "./agent-paths.ts"
+import { AGENT_HOME_ENV } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import {
   _clearAll,
   appendBoth,

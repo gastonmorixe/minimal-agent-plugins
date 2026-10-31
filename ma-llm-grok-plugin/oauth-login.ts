@@ -12,6 +12,9 @@
  * @module llm/providers/grok/oauth-login
  */
 
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import {
   applyGrokAccountProfile,
   fetchGrokAccountProfile,
@@ -19,8 +22,6 @@ import {
   grokAccountProfileHasData,
   preserveGrokAccountProfileSecrets,
 } from "./account-profile.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type {
   AuthCredentialInfo,
   AuthSecretBag,

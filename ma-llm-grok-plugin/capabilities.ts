@@ -23,7 +23,10 @@
  * @module llm/providers/grok/capabilities
  */
 
-import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
+import {
+  type Capabilities,
+  defaultCapabilities,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 const CACHING_AUTO = {
   explicit: false,
@@ -31,7 +34,6 @@ const CACHING_AUTO = {
   ttls: [] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
-  promptCacheAccounting: "subset" as const,
 } as const
 
 const TOOLS_FULL = {

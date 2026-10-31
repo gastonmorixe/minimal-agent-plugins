@@ -8,10 +8,25 @@
  * @module llm/providers/clinepass/adapter
  */
 
+import { type CanonicalEvent, isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import {
+  classifyUpstreamError,
+  type ErrorClassFields,
+  tagUpstreamError,
+} from "@minimal-agent/core/plugin-api/llm/errors"
+import {
+  buildOpenAIChatBody,
+  buildOpenAIHeaders,
+  type OpenAIChatChunk,
+  translateOpenAIChatStream,
+  validateOpenAIRequest,
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { clinepassApiKeyAuth } from "./auth.ts"
-import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -19,17 +34,7 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import {
-  buildOpenAIChatBody,
-  buildOpenAIHeaders,
-  type OpenAIChatChunk,
-  translateOpenAIChatStream,
-  validateOpenAIRequest,
-} from "./lib/openai-chat.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import {
   findClinepassModelByTags,
   registerClinepassModel,

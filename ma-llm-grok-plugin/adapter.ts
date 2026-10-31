@@ -18,11 +18,24 @@
  * @module llm/providers/grok/adapter
  */
 
+import { type CanonicalEvent, isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import {
+  classifyUpstreamError,
+  type ErrorClassFields,
+  tagUpstreamError,
+} from "@minimal-agent/core/plugin-api/llm/errors"
+import {
+  buildOpenAIChatBody,
+  type OpenAIChatChunk,
+  translateOpenAIChatStream,
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { grokApiKeyAuth } from "./auth.ts"
 import { buildGrokHeaders } from "./headers.ts"
-import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -30,15 +43,7 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import {
-  buildOpenAIChatBody,
-  type OpenAIChatChunk,
-  translateOpenAIChatStream,
-} from "./lib/openai-chat.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { listGrokLiveModels } from "./live-models.ts"
 import { findGrokModelByTags, registerGrokModel, registerGrokModels } from "./models.ts"
 import { grokOAuthLogin } from "./oauth-login.ts"

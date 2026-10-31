@@ -9,10 +9,11 @@
  * @module llm/providers/cursor/cursor-tool-policy
  */
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { CanonicalToolDefinition } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+import { isServerTool } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+
 import { CURSOR_BUILTIN_TOOL_CATALOG, cursorBuiltinToolsToExclude } from "./cursor-builtin-tools.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { CanonicalToolDefinition } from "./lib/canonical-tools.ts"
-import { isServerTool } from "./lib/canonical-tools.ts"
 import type { CursorMcpToolWire } from "./proto/mcp-tools.ts"
 
 /** Stable MCP provider id for minimal-agent tools on the Cursor wire. */

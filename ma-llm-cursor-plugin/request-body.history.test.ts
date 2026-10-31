@@ -7,7 +7,8 @@
 
 import { describe, expect, test } from "bun:test"
 
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { summarizeRequestText } from "./request-body.ts"
 
 const history: CanonicalRequest = {

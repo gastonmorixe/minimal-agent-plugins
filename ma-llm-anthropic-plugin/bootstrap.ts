@@ -23,9 +23,10 @@
  * @module llm/providers/anthropic/bootstrap
  */
 
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import type { MTokRate } from "./lib/host-types.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import { findModel, recordModel } from "./lib/registry.ts"
 import { BOOTSTRAP_URL_BASE, USER_AGENT_OAUTH } from "./wire-constants.ts"
 

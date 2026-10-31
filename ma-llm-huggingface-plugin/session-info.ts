@@ -15,7 +15,7 @@ import type {
   ProviderSessionContext,
   ProviderSessionInfo,
   QuotaWindow,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 /** Trust a cached snapshot newer than this without treating it as stale. */
 const FRESHNESS_MS = 5 * 60_000

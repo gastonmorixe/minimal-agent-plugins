@@ -17,11 +17,12 @@ import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
 import { CURSOR_API_KEY_AUTH, exchangeCursorApiKey } from "./auth.ts"
 import { authUsageUrl, currentPeriodUsageUrl } from "./connect/hosts.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
-import { parseJsonc } from "./lib/jsonc.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type {
   ProviderSessionContext,

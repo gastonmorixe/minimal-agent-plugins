@@ -28,8 +28,12 @@
  * @module llm/providers/openai/responses/response-stream
  */
 
-import type { CanonicalEvent, CanonicalUsage, StopReason } from "../lib/canonical-events.ts"
-import { classifyUpstreamError, tagUpstreamError } from "../lib/errors.ts"
+import type {
+  CanonicalEvent,
+  CanonicalUsage,
+  StopReason,
+} from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { classifyUpstreamError, tagUpstreamError } from "@minimal-agent/core/plugin-api/llm/errors"
 
 // ---------------------------------------------------------------------------
 // Wire types (subset we consume)

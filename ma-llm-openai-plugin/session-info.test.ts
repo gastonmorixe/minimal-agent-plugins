@@ -9,7 +9,8 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
-import type { ProviderSessionContext } from "./lib/provider-plugin.ts"
+import type { ProviderSessionContext } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
 import {
   clearOpenAIRateLimits,
   fetchOpenAISessionInfo,
