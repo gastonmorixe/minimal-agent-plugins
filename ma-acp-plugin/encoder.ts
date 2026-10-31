@@ -25,6 +25,8 @@
  *   sum over turns), `size` = the model's `contextWindow`. No cost.
  * - `notice` → ACP notice (see `notices.ts`). `model_adopted` also pushes
  *   `config_option_update` with the complete option list, every time.
+ *   `model_adopt_failed` pushes no `config_option_update`, because the
+ *   model did not change.
  *
  * @module encoder
  */
