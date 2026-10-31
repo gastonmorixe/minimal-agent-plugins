@@ -11,7 +11,14 @@ import { describe, expect, it, test } from "bun:test"
 import { gen } from "./gen.ts"
 import { REDACT_RULES } from "./index.ts"
 import { loadRegistry } from "./registry.ts"
-import { BENCH_MS_PER_MB, compileRedactRule, hostileTexts, scanRule } from "./selftest.ts"
+import {
+  BENCH_MS_PER_MB,
+  BENCH_STEPS,
+  benchRule,
+  type CompiledRedactRule,
+  compileRedactRule,
+  scanRule,
+} from "./selftest.ts"
 import type { RedactRule } from "./types.ts"
 
 const MB = 1_000_000
@@ -35,14 +42,44 @@ function corpus(n: number): string {
   return s.slice(0, n)
 }
 
-function best(fn: () => void, runs: number): number {
-  let b = Number.POSITIVE_INFINITY
-  for (let r = 0; r < runs; r++) {
-    const t0 = performance.now()
-    fn()
-    b = Math.min(b, performance.now() - t0)
+/**
+ * Best (minimum) ms/MB across `iters` scans, each measured in CPU time via
+ * `process.cpuUsage()` (user+system) rather than wall-clock time.
+ *
+ * Two independent noise sources had to go, not one:
+ *
+ * 1. Wall-clock measurement -- even best-of-N over a time-boxed window --
+ *    still flaked on this shared box: under enough concurrent load, a
+ *    process can get preempted *during* nearly every sample, so there is
+ *    no clean, unpreempted wall-clock sample left for "take the best" to
+ *    find (measured: pii.email at 1 MB still failing 2/25 runs under two
+ *    concurrent full `test:plugins` fan-outs). Swapping to `cpuUsage()`
+ *    deltas fixes this at the root rather than sampling around it: a
+ *    preemption gap is never counted at all, by construction.
+ * 2. CPU time alone is not enough: *summing* CPU time across many calls
+ *    until a budget is reached (tried first) let one call's GC pause --
+ *    attributed to this process's CPU time same as the scan itself --
+ *    drag the average over budget on an otherwise idle box (measured:
+ *    pii.email at ~70 ms/MB alone, no load). A single clean, GC-free call
+ *    is still the true cost; `best()`'s own "take the minimum, not the
+ *    average, across many samples" fixes that the same way it always has
+ *    -- just on a CPU-time sample instead of a wall-clock one.
+ *
+ * The noise this does *not* remove is execution running genuinely slower
+ * while actually scheduled (cache/memory-bandwidth contention from a noisy
+ * neighbor) -- a different, smaller effect than either of the above, and
+ * not observed to matter in testing (see this change's handoff/report).
+ */
+function cpuMsPerMb(c: CompiledRedactRule, sample: string, iters = 15): number {
+  let best = Number.POSITIVE_INFINITY
+  for (let i = 0; i < iters; i++) {
+    const before = process.cpuUsage()
+    scanRule(c, sample, { raw: true })
+    const delta = process.cpuUsage(before)
+    const us = delta.user + delta.system
+    if (us < best) best = us
   }
-  return b
+  return (best / 1000) * (MB / sample.length)
 }
 
 /** Redact rule files on disk (secret/ and pii/), read without a process spawn. */
@@ -79,12 +116,37 @@ describe("fix3 CI bench gate (1 MB per rule)", () => {
       const c = compileRedactRule(rule)
       if (typeof c === "string") throw new Error(c)
       scanRule(c, "warm up", { raw: true })
-      const mixed = best(() => scanRule(c, text, { raw: true }), 3)
+      // Realistic throughput, measured in CPU time (see cpuMsPerMb), not a
+      // wall-clock point sample of one 1 MB run. One retry (same strict
+      // budget, not loosened) absorbs a residual noise source CPU time
+      // cannot filter: memory/cache-bandwidth contention from other
+      // processes genuinely slows down execution while this one is
+      // scheduled, not just while it waits to be -- rare even under heavy
+      // concurrent load (observed once in 30 runs), and gone on a retry.
+      let mixed = cpuMsPerMb(c, text)
+      if (mixed > BENCH_MS_PER_MB) mixed = cpuMsPerMb(c, text)
       expect(mixed).toBeLessThanOrEqual(BENCH_MS_PER_MB)
-      for (const hostile of hostileTexts(rule, MB)) {
-        const h = best(() => scanRule(c, hostile, { raw: true }), 3)
-        expect(h).toBeLessThanOrEqual(BENCH_MS_PER_MB)
-      }
+      // Adversarial/ReDoS: growth curve across BENCH_STEPS (32 B .. 64 KB),
+      // not one more 1 MB point sample. A budget that scales down with the
+      // step size catches super-linear blowup at a small, cheap size --
+      // before the gate would ever need to race a full 1 MB wall-clock call
+      // under CI load -- and also catches a rule whose growth is linear but
+      // uniformly too slow, which fails the same way at every step. This is
+      // the same growth-curve function the (looser) load-time gate already
+      // runs in registry.ts; bench.test.ts now reuses it at the strict CI
+      // budget instead of duplicating a second, flakier full-size check.
+      //
+      // benchRule times with performance.now(), not CPU time: selftest.ts
+      // is a "pure" module (no-spawn.test.ts's purity gate bans `process.*`
+      // there, since the registry load-time gate it also powers must stay
+      // IO-free), so it cannot take the same process.cpuUsage() fix
+      // cpuMsPerMb uses above. One retry at the same strict budget absorbs
+      // a rare large scheduling-gap outlier instead (observed once in ~55
+      // runs under deliberately heavy concurrent load: 67 ms against a
+      // <1 ms step budget -- a one-off spike, not a persistent slowdown).
+      let hostile = benchRule(c, BENCH_STEPS, BENCH_MS_PER_MB)
+      if (!hostile.ok) hostile = benchRule(c, BENCH_STEPS, BENCH_MS_PER_MB)
+      if (!hostile.ok) throw new Error(hostile.reason)
     }, 30000)
   }
 })
