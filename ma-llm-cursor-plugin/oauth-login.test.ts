@@ -1,4 +1,4 @@
-import { describe, expect, it, spyOn } from "bun:test"
+import { describe, expect, it } from "bun:test"
 
 import { completeCursorLogin, createCursorLoginChallenge } from "./oauth-login.ts"
 
@@ -26,14 +26,21 @@ describe("Cursor OAuth poll deadline", () => {
       const realFetch = globalThis.fetch
       const caller = new AbortController()
       const deadlines: number[] = []
-      const timers: ReturnType<typeof setTimeout>[] = []
-      const timeout = spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+      // No real timers: both the per-attempt deadline and the inter-attempt
+      // backoff are injected (completeCursorLogin's CompleteCursorLoginDeps),
+      // mirroring ma-web-search-plugin/lib/retry.ts's injectable-clock style.
+      // A real `setTimeout(..., 1)` racing a real `setTimeout(..., 100)`
+      // watchdog is exactly the two-real-timer shape that made
+      // abort-quit-keystroke.test.ts's double-Esc gesture-window test flaky
+      // under CI load (see core's fix f1fe5de) — fire the deadline abort on
+      // a microtask instead, so the test has nothing to race against.
+      const timeoutSignal = (ms: number): AbortSignal => {
         deadlines.push(ms)
         const controller = new AbortController()
-        timers.push(setTimeout(() => controller.abort(), 1))
+        queueMicrotask(() => controller.abort())
         return controller.signal
-      })
-      const watchdog = setTimeout(() => caller.abort(), 100)
+      }
+      const watchdog = setTimeout(() => caller.abort(), 1_000)
       let calls = 0
       const loginChallenge = challenge()
       globalThis.fetch = (async (url, init) => {
@@ -45,10 +52,11 @@ describe("Cursor OAuth poll deadline", () => {
         return response
       }) as typeof fetch
       try {
-        const error = await completeCursorLogin(loginChallenge, {
-          networkClient,
-          signal: caller.signal,
-        }).catch((caught: unknown) => caught)
+        const error = await completeCursorLogin(
+          loginChallenge,
+          { networkClient, signal: caller.signal },
+          { timeoutSignal, sleep: async () => {} },
+        ).catch((caught: unknown) => caught)
         expect(error).toBeInstanceOf(Error)
         expect((error as Error).message).toBe("Cursor login polling failed after 3 errors")
         expect((error as Error).cause).toBeUndefined()
@@ -58,8 +66,6 @@ describe("Cursor OAuth poll deadline", () => {
         expect(caller.signal.aborted).toBe(false)
       } finally {
         clearTimeout(watchdog)
-        for (const timer of timers) clearTimeout(timer)
-        timeout.mockRestore()
         globalThis.fetch = realFetch
       }
     })
