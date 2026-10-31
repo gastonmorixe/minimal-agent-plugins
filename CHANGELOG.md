@@ -16,6 +16,19 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-10-31: **`ma-acp-plugin` session/update encoder.** New modules
+  `encoder.ts`, `stop-reason.ts`, `notices.ts`, `config-options.ts`, wired
+  into `host-mode.ts`. ACP stop-reason refinement on top of core's
+  `deriveStopCause` (pause_turn, context_window_exceeded, completed-turn
+  error; never `max_turn_requests`). Core notices map `warn` to `warning`
+  and go out as `notice` only when the client advertised `session.notices`,
+  else as an `agent_message_chunk`. `usage_update` sends `used` (last turn's
+  input + cache tokens, a proxy) and `size` (the model's context window).
+  `configOptions` for model (same provider) and effort (left out when the
+  model has none), `session/set_config_option`, and a
+  `config_option_update` push on every `model_adopted` notice. Tool updates
+  carry an ACP `kind`, `status`, and file `locations`.
+
 - 2026-10-14: **OpenCode Go and Zen catalogs refreshed (live `/v1/models`
   2026-10-11).** Go adds `claude-haiku-5-5` (Messages), `gpt-6-luna` and
   `grok-4.7` (Responses), and `longcat-2.5-preview-free`, `mimo-v2.6-flash`,
