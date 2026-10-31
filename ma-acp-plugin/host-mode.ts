@@ -11,6 +11,10 @@
  * ONE session per process (Level 1 / `acp-decisions.md` item 10):
  * `session/new` succeeds exactly once; a second call is a JSON-RPC error.
  *
+ * Approval gate (`permission.ts`): OFF by default. `--approval` after
+ * `--host-mode acp` turns it on. Then every tool call sends
+ * `session/request_permission`, and any failure denies only that call.
+ *
  * Deferred: `session/load` / `session/list` / plan / image input.
  *
  * @module host-mode
@@ -25,6 +29,12 @@ import type {
 import { buildConfigOptions, setConfigOption } from "./config-options.ts"
 import { createSessionEncoder, type SessionEncoder } from "./encoder.ts"
 import { clientSupportsNotices } from "./notices.ts"
+import {
+  createPermissionGate,
+  type PermissionGate,
+  parseHostModeArgs,
+  setActiveGate,
+} from "./permission.ts"
 import { createRpcChannel, RPC_ERROR, RpcError } from "./transport.ts"
 
 interface ContentBlock {
@@ -77,6 +87,11 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
   // Stored at `initialize`: send `notice` updates only when the client
   // advertised `clientCapabilities.session.notices`.
   let clientNotices = false
+  const args = parseHostModeArgs(ctx.argv)
+  if (args.unknown.length > 0)
+    ctx.log.warn("acp", `ignored unknown args: ${args.unknown.join(" ")}`)
+  // Set at `session/new` only when approval is on.
+  let gate: PermissionGate | undefined
 
   const requireSession = (sessionId: unknown): HostSession => {
     if (!session || session.sessionId !== sessionId) {
@@ -128,6 +143,14 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
             runtime: ctx.runtime,
             cwd: ctx.cwd,
           })
+          if (args.approval) {
+            gate = createPermissionGate({
+              request: (method, params, signal) => channel.request(method, params, signal),
+              sessionId: () => session?.sessionId,
+              log: (msg) => ctx.log.debug("acp", msg),
+            })
+            setActiveGate(gate)
+          }
           return { sessionId: opened.sessionId, configOptions: buildConfigOptions(ctx.runtime) }
         },
         "session/set_config_option": (rawParams) => {
@@ -184,7 +207,11 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
       notifications: {
         "session/cancel": (rawParams) => {
           const sessionId = (rawParams as { sessionId?: unknown } | null | undefined)?.sessionId
-          if (session && sessionId === session.sessionId) activeRun?.abort()
+          if (session && sessionId === session.sessionId) {
+            // ACP: a cancel also answers a waiting permission request. Deny it.
+            gate?.cancelPending()
+            activeRun?.abort()
+          }
         },
       },
     },
@@ -202,7 +229,10 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
   await channel.closed
   ctx.abort.removeEventListener("abort", onAbort)
   activeRun?.abort()
+  // A waiting permission request already rejected at EOF / stop(), so the
+  // prompt can finish and `idle()` can resolve.
   await channel.idle()
+  setActiveGate(undefined)
   if (session) {
     try {
       await session.close()

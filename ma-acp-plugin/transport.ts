@@ -94,7 +94,8 @@ export interface RpcChannel {
    * `session/request_permission`, later `fs/*`/`terminal/*`). Rejects on a
    * JSON-RPC error reply, or when `signal` aborts first (the pending entry
    * is removed either way — a late reply for an aborted request is
-   * ignored, not an error).
+   * ignored, not an error). After EOF or `stop()`, it rejects at once and
+   * sends nothing.
    */
   request<T = unknown>(method: string, params?: unknown, signal?: AbortSignal): Promise<T>
   /** Resolves once the read side hits EOF (stdin closed) or `stop()` is called. */
@@ -144,6 +145,8 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
   >()
   let nextOutId = 1
   let stopped = false
+  // Set at EOF or stop(): a later `request()` rejects at once with this reason.
+  let finishedReason: string | undefined
   // Dispatches that have not settled yet (see `idle()`).
   const inFlight = new Set<Promise<void>>()
 
@@ -282,6 +285,7 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
       void Promise.resolve(reader.return?.()).catch(() => {})
       destroyStream(stdin)
     }
+    finishedReason ??= "channel closed"
     for (const waiter of pending.values()) waiter.reject(new Error("channel closed"))
     pending.clear()
     settleClosed()
@@ -292,6 +296,8 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
       send({ jsonrpc: "2.0", method, ...(params === undefined ? {} : { params }) })
     },
     request<T>(method: string, params?: unknown, signal?: AbortSignal): Promise<T> {
+      // No reader is left to deliver a reply: never send, never wait.
+      if (finishedReason !== undefined) return Promise.reject(new Error(finishedReason))
       const id = nextOutId++
       return new Promise<T>((resolve, reject) => {
         const onAbort = (): void => {
@@ -321,6 +327,7 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
     },
     stop(): void {
       stopped = true
+      finishedReason ??= "channel stopped"
       settleStopped()
       for (const waiter of pending.values()) waiter.reject(new Error("channel stopped"))
       pending.clear()

@@ -115,3 +115,31 @@ describe("transport idle()", () => {
     expect(out.map((l) => JSON.parse(l))).toEqual([{ jsonrpc: "2.0", id: 1, result: "done" }])
   })
 })
+
+describe("transport request after close", () => {
+  it("rejects a request sent after EOF, and sends nothing", async () => {
+    const { channel, parsed } = run([], echo)
+    await channel.closed
+    await expect(channel.request("session/request_permission", {})).rejects.toThrow(
+      /channel closed/,
+    )
+    expect(await parsed()).toEqual([])
+  })
+
+  it("rejects a request sent after stop(), and sends nothing", async () => {
+    const out: string[] = []
+    const channel = createRpcChannel({
+      stdin: (async function* () {
+        await new Promise(() => {})
+        yield ""
+      })(),
+      write: (line) => {
+        out.push(line)
+      },
+      handlers: echo,
+    })
+    channel.stop()
+    await expect(channel.request("x", {})).rejects.toThrow(/channel stopped/)
+    expect(out).toEqual([])
+  })
+})
