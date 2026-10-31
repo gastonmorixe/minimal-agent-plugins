@@ -1,0 +1,21 @@
+{
+  "name": "ma-acp-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Client Protocol (ACP) host mode for minimal-agent: a hand-rolled, zero-runtime-dependency JSON-RPC-over-stdio agent so editors (Zed, JetBrains, others) can run minimal-agent with no custom glue. Level 1: initialize, session/new, session/prompt, session/cancel.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  },
+  "peerDependencies": {
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#9e94631"
+  }
+}
