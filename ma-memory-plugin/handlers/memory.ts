@@ -40,7 +40,8 @@
  * @module memory/handlers/memory
  */
 
-import { ansiStyle as c } from "../lib/ansi.ts"
+import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
+
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { getSaveBus, MEMORY_SAVED, type MemorySavedPayload } from "../lib/save-echo.ts"
 import { MemoryStore, type StoreKind } from "../lib/store.ts"

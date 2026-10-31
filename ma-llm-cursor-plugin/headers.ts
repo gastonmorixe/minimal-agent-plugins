@@ -14,10 +14,11 @@
  * @module llm/providers/cursor/headers
  */
 
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { buildCursorChecksum } from "./checksum.ts"
 import { resolveCursorClientVersion } from "./client-version.ts"
 import type { ClientIds } from "./ids.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import {
   CURSOR_CLIENT_TYPE,
   CURSOR_CONNECT_PROTOCOL_VERSION,

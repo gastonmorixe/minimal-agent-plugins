@@ -23,10 +23,17 @@
  * @module llm/providers/openai/responses/request-body
  */
 
-import type { CanonicalBlock, CanonicalMessage } from "../lib/canonical-messages.ts"
+import type {
+  CanonicalBlock,
+  CanonicalMessage,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type {
+  CanonicalToolDefinition,
+  ToolChoice,
+} from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+import type { ServerToolId } from "@minimal-agent/core/plugin-api/llm/capabilities"
+
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
-import type { CanonicalToolDefinition, ToolChoice } from "../lib/canonical-tools.ts"
-import type { ServerToolId } from "../lib/capabilities.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
 
 // ---------------------------------------------------------------------------

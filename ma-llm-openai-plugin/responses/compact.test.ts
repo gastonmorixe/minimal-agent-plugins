@@ -3,10 +3,11 @@
  */
 import { describe, expect, it } from "bun:test"
 
-import { userText } from "../lib/canonical-messages.ts"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
-import type { ProviderAuth } from "../lib/provider-auth.ts"
 import { resolveModel } from "../openai.test-helpers.ts"
 
 import {

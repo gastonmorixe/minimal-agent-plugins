@@ -27,7 +27,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-import type { CanonicalMessage } from "./lib/canonical-messages.ts"
+import type { CanonicalMessage } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+
 import type { CursorBlobStore } from "./proto/kv.ts"
 
 /** Server conversation state for one host session. */

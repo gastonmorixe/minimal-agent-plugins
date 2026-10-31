@@ -3,6 +3,22 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import {
+  type AnthropicStreamEvent,
+  translateAnthropicStream,
+} from "@minimal-agent/core/plugin-api/llm/anthropic-stream"
+import { type CanonicalEvent, isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import {
+  buildOpenAIChatBody,
+  buildOpenAIHeaders,
+  type OpenAIChatChunk,
+  translateOpenAIChatStream,
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient, NetworkRequestInput } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { bootstrapOpencode, opencodeProviderPlugin } from "./adapter.ts"
 import {
   buildOpencodeApiKeyCredential,
@@ -11,19 +27,7 @@ import {
   readOpencodeApiKey,
 } from "./auth.ts"
 import { buildAnthropicRequestBody } from "./lib/anthropic-request.ts"
-import { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
-import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { NetworkClient, NetworkRequestInput } from "./lib/net-types.ts"
-import {
-  buildOpenAIChatBody,
-  buildOpenAIHeaders,
-  type OpenAIChatChunk,
-  translateOpenAIChatStream,
-} from "./lib/openai-chat.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { opencodeConsoleOAuthLogin } from "./oauth-login.ts"
 import {
@@ -487,19 +491,24 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     }).toThrow("missing credential")
   })
 
-  it("buildOpenAIHeaders sets x-opencode-session only when sessionId is passed", () => {
-    const withSession = buildOpenAIHeaders({
+  it("buildOpenAIHeaders sets auth + user-agent; x-opencode-session comes from opencodeHeaders, not here", () => {
+    // S42 note: the vendored copy of this module took a `sessionId` option on
+    // buildOpenAIHeaders and stamped `x-opencode-session` itself. The real
+    // adapter path never called it that way -- it always sets that header
+    // through `opencodeHeaders()` (see opencode-identity.ts, covered by
+    // opencode-identity.test.ts and the "sends opencode identity headers..."
+    // case below) -- so de-vendoring to the host's `OpenAIHeadersOpts`
+    // (no `sessionId`) drops no real behavior. This case keeps coverage of
+    // the auth + user-agent building buildOpenAIHeaders still does.
+    const withAuth = buildOpenAIHeaders({
       auth: { kind: "api-key", key: "sk-test" },
       userAgent: "minimal-agent-opencode/0.1",
-      sessionId: "sess-abc",
     })
-    expect(withSession["x-opencode-session"]).toBe("sess-abc")
-    expect(withSession["user-agent"]).toBe("minimal-agent-opencode/0.1")
-    expect(withSession.authorization).toBe("Bearer sk-test")
+    expect(withAuth["user-agent"]).toBe("minimal-agent-opencode/0.1")
+    expect(withAuth.authorization).toBe("Bearer sk-test")
 
-    const without = buildOpenAIHeaders({ auth: { kind: "api-key", key: "sk-test" } })
-    expect(without["x-opencode-session"]).toBeUndefined()
-    expect(without["user-agent"]).toBeUndefined()
+    const withoutUserAgent = buildOpenAIHeaders({ auth: { kind: "api-key", key: "sk-test" } })
+    expect(withoutUserAgent["user-agent"]).toBeUndefined()
   })
 
   it("sends opencode identity headers, inference URLs, stream, and read mapping on all surfaces", async () => {
@@ -620,7 +629,14 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     }
     expect(resolveProvider("opencode-go").validate(req, model).ok).toBe(true)
     const body = buildOpenAIChatBody(req, model)
-    expect(body.reasoning_effort).toBe("none")
+    // Host `OpenAIChatRequestBody.reasoning_effort` is typed as
+    // `"low" | "medium" | "high" | "max"` -- the host adapter never sends
+    // "none" on the wire. OpenCode Go's Hy3 toggle model does (verified at
+    // runtime: the function assigns `req.effort` through unchanged), so the
+    // real value here is "none" even though the host's declared type says
+    // otherwise. Widen the static type at the read site rather than fork
+    // `openai-chat.ts` for one field.
+    expect(body.reasoning_effort as string | undefined).toBe("none")
   })
 
   it("maps Messages effort none to thinking off (omit thinking + no output_config.effort)", () => {

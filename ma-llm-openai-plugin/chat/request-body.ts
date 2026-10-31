@@ -21,9 +21,13 @@ import type {
   CanonicalBlock,
   CanonicalMessage,
   ToolResultBlock,
-} from "../lib/canonical-messages.ts"
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type {
+  CanonicalToolDefinition,
+  ToolChoice,
+} from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
-import type { CanonicalToolDefinition, ToolChoice } from "../lib/canonical-tools.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
 import { resolveOpenAIServiceTier } from "../responses/request-body.ts"
 
@@ -289,7 +293,7 @@ function canonicalMessageToChat(msg: CanonicalMessage): OpenAIChatMessage {
 }
 
 function imageToChatPart(block: {
-  source: import("../lib/canonical-messages.ts").ImageSource
+  source: import("@minimal-agent/core/plugin-api/llm/canonical-messages").ImageSource
   type: "image"
 }): OpenAIChatContentPart | null {
   const src = block.source

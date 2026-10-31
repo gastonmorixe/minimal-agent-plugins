@@ -60,6 +60,12 @@
  * @module llm/providers/openai/models
  */
 
+import type {
+  ModelRegistrar,
+  ProviderModelSpec,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_CHAT_LATEST_CHAT,
   CAPS_CHAT_LATEST_RESPONSES,
@@ -115,8 +121,6 @@ import {
   CAPS_O3_RESPONSES,
   CAPS_O4_MINI_RESPONSES,
 } from "./capabilities.ts"
-import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_CHAT_LATEST,
   PRICING_GPT_4O,

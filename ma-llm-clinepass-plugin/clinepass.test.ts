@@ -6,6 +6,9 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import {
   bootstrapClinepass,
   clinepassAdapter,
@@ -18,8 +21,6 @@ import {
   clinepassApiKeyAuth,
   readClinepassApiKey,
 } from "./auth.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { listClinepassBuiltinModelIds, registerClinepassModels } from "./models.ts"
 import {

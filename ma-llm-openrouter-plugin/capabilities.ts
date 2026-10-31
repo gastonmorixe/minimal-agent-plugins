@@ -15,7 +15,10 @@
  * @module llm/providers/openrouter/capabilities
  */
 
-import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
+import {
+  type Capabilities,
+  defaultCapabilities,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 // ---------------------------------------------------------------------------
 // Shared sub-shapes
@@ -27,7 +30,6 @@ const CACHING_AUTO = {
   ttls: [] as const,
   minPrefixTokens: 1024,
   reportsCacheHits: true,
-  promptCacheAccounting: "subset" as const,
 } as const
 
 const TOOLS_FULL = {

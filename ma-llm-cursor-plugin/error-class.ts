@@ -15,7 +15,7 @@ import {
   type ErrorClassFields,
   type RecoveryAction,
   tagUpstreamError,
-} from "./lib/errors.ts"
+} from "@minimal-agent/core/plugin-api/llm/errors"
 
 /** Connect codes that clear on their own: retry with backoff. */
 const TRANSIENT_CONNECT_CODES: ReadonlySet<string> = new Set([

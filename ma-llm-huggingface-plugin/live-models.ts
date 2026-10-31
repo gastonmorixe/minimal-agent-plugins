@@ -22,13 +22,14 @@
  * @module llm/providers/huggingface/live-models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { LiveModelRow } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
 import {
   deriveHuggingFaceCapabilities,
   type HuggingFaceModelCapabilityInfo,
 } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
-import type { LiveModelRow } from "./lib/provider-plugin.ts"
 import { MODELS_URL } from "./wire-constants.ts"
 
 /** One entry of the `/v1/models` response `data[]` array. */

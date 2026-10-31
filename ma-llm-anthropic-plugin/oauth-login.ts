@@ -8,8 +8,7 @@
  * @module llm/providers/anthropic/oauth-login
  */
 
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
   AuthCredentialInfo,
   AuthSecretBag,
@@ -17,7 +16,8 @@ import type {
   OAuthLoginBuildResult,
   OAuthLoginConfig,
   OAuthLoginProvider,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
 /**
  * Manual-flow redirect URL. Matches the prod config in Claude Code:

@@ -15,7 +15,11 @@
 
 import { beforeEach, describe, expect, it } from "bun:test"
 
-import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
+import type {
+  ModelRegistrar,
+  ProviderModelSpec,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
 import { registerAnthropicAdHocModelInto } from "./models.ts"
 
 /** A registrar that records every registered spec by id, no global mutation. */

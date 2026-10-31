@@ -7,6 +7,9 @@
  * @module llm/providers/cursor/bidi-run
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { cursorBidiLog } from "./bidi-debug.ts"
 import {
   extractTrailingFollowUpUserText,
@@ -27,10 +30,8 @@ import {
   setCursorBidiSession,
 } from "./cursor-bidi-session.ts"
 import { buildCursorToolWirePolicy, cursorToolsEnabledOnWire } from "./cursor-tool-policy.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type { ModelView } from "./lib/host-types.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
-import type { ModelView } from "./lib/provider-plugin.ts"
 import { resolveCursorMcpExec } from "./mcp-exec-guard.ts"
 import {
   encodeAgentClientMessageConversationAction,

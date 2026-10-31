@@ -22,12 +22,17 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  NetworkClient,
+  NetworkRequest,
+  NetworkResponse,
+} from "@minimal-agent/core/plugin-api/net/types"
+
 import { anthropicAdapter, bootstrapAnthropic } from "./adapter.ts"
-import { userText } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
-import type { NetworkClient, NetworkRequest, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { clearAnthropicRateLimits, getAnthropicRateLimits } from "./session-info.ts"
 

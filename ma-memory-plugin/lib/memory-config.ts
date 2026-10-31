@@ -46,8 +46,8 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveAgentHome } from "./agent-paths.ts"
-import { parseJsonc } from "./jsonc.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 /**
  * Structural slice of the host's `models:read` catalog lookup (source of

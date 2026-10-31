@@ -12,8 +12,9 @@
  * @module llm/providers/cursor/tool-allowlist-self-heal
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+
 import { learnCursorRequiredTool, requiredToolFromCursorError } from "./cursor-tool-policy.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
 
 /** Events that carry no content and may be held back before a retry. */
 const FRAMING_EVENTS: ReadonlySet<CanonicalEvent["type"]> = new Set(["message_start"])

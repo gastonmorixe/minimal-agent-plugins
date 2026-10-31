@@ -11,4 +11,4 @@
  * @module llm/providers/anthropic/validate
  */
 
-export { validateAnthropicRequest } from "./lib/anthropic-request.ts"
+export { validateAnthropicRequest } from "@minimal-agent/core/plugin-api/llm/anthropic-request"

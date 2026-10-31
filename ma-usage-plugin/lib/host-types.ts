@@ -1,8 +1,13 @@
-// source: plugin-api/src/types/plugin.ts + plugin-api/src/types/host-capabilities.ts (local structural mirror; keep in sync)
 /**
- * Local structural mirrors of the host plugin-context types consumed by the
- * usage plugin. External plugins cannot import `@minimal-agent/plugin-api` from
- * the cloned sibling repo at runtime, so the tiny type-only slice lives here.
+ * Narrowed, hand-written mirrors of the host plugin-context shapes this
+ * plugin reads: a MINIMAL SLICE (fields this plugin actually touches), not a
+ * copy of any single `@minimal-agent/core/plugin-api` module -- it combines
+ * pieces of `types/plugin` and `types/host-capabilities` and omits most of
+ * each. The host's real, richer objects satisfy these structurally, so this
+ * stays even though the plugin can now depend on `@minimal-agent/core`
+ * (S42): keeping the slice narrow documents exactly what usage reads and
+ * fails typecheck loudly if the host contract drops a field this plugin
+ * needs, instead of drifting silently.
  *
  * @module usage/lib/host-types
  */

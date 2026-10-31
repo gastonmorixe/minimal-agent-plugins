@@ -13,7 +13,8 @@
  * @module schedule/handlers/cmd_schedule
  */
 
-import { ANSI_CODES } from "../lib/ansi.ts"
+import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
+
 import { isValidCron } from "../lib/cron.ts"
 import {
   clockHHMMSS,

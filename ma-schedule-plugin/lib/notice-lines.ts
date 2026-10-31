@@ -7,9 +7,10 @@
  * @module schedule/lib/notice-lines
  */
 
-import { ANSI_CODES } from "./ansi.ts"
+import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+
 import { cadenceLabel, clipPrompt, kindGlyph, relativeTime } from "./format.ts"
-import { PALETTE } from "./palette.ts"
 import { nextFireMs } from "./scheduler.ts"
 import type { CronEntry } from "./store.ts"
 

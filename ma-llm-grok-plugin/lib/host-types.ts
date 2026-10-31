@@ -15,7 +15,7 @@
  * @module lib/host-types
  */
 
-import type { Capabilities } from "./capabilities.ts"
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 /**
  * Per-model USD rate table. Mirror of host `ModelRate`
@@ -83,7 +83,7 @@ export interface SubagentModelRecommendation {
  */
 export interface ProviderValidationResult {
   ok: boolean
-  errors: import("./errors.ts").CapabilityViolation[]
+  errors: import("@minimal-agent/core/plugin-api/llm/errors").CapabilityViolation[]
   degrade?: import("./canonical-request.ts").CanonicalRequest
 }
 
@@ -116,10 +116,10 @@ export interface ModelEntry {
   displayName: string
   knowledgeCutoff?: string
   tags?: ReadonlyArray<string>
-  capabilities: import("./capabilities.ts").Capabilities
+  capabilities: import("@minimal-agent/core/plugin-api/llm/capabilities").Capabilities
   pricing: MTokRate
   vendorIds?: Readonly<Record<string, string>>
-  estimateTokens?: import("./token-estimate.ts").TokenEstimator
+  estimateTokens?: import("@minimal-agent/core/plugin-api/llm/token-estimate").TokenEstimator
   pricingForRequest?: (req: import("./canonical-request.ts").CanonicalRequest) => MTokRate
 }
 
@@ -138,7 +138,7 @@ export interface ProviderAdapter {
   run(
     req: import("./canonical-request.ts").CanonicalRequest,
     model: ModelEntry,
-    ctx: import("./provider-auth.ts").RunContext,
-  ): AsyncIterable<import("./canonical-events.ts").CanonicalEvent>
+    ctx: import("@minimal-agent/core/plugin-api/llm/provider-auth").RunContext,
+  ): AsyncIterable<import("@minimal-agent/core/plugin-api/llm/canonical-events").CanonicalEvent>
   recommendSubagentModels?(): SubagentModelRecommendation[]
 }

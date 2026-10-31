@@ -7,6 +7,9 @@
  * @module llm/providers/cursor/response-stream-bidi
  */
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { tagUpstreamError } from "@minimal-agent/core/plugin-api/llm/errors"
+
 import { cursorBidiLog } from "./bidi-debug.ts"
 import type { ConnectEnvelope } from "./connect/stream.ts"
 import {
@@ -16,8 +19,6 @@ import {
   cursorUsageToCanonical,
 } from "./cursor-usage.ts"
 import { classifyConnectCode, connectEndStreamCause } from "./error-class.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { tagUpstreamError } from "./lib/errors.ts"
 import { extractServerTextEvents, parseConnectEndStreamError } from "./proto/agent-run.ts"
 import {
   type DecodedExecMcpArgs,

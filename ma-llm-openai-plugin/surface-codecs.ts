@@ -7,13 +7,14 @@
  * @module llm/providers/openai/surface-codecs
  */
 
+import { classifyUpstreamError, tagUpstreamError } from "@minimal-agent/core/plugin-api/llm/errors"
+import type { SurfaceCodec } from "@minimal-agent/core/plugin-api/llm/surface-codec"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { CAPS_GPT_4O_CHAT } from "./capabilities.ts"
 import { buildOpenAIChatBody } from "./chat/request-body.ts"
 import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
 import { buildOpenAIHeaders } from "./headers.ts"
-import { classifyUpstreamError, tagUpstreamError } from "./lib/errors.ts"
-import { parseSse } from "./lib/sse-parser.ts"
-import type { SurfaceCodec } from "./lib/surface-codec.ts"
 import { PRICING_GPT_4O } from "./pricing.ts"
 import { setOpenAIRateLimits } from "./session-info.ts"
 import { validateOpenAIRequest } from "./validate.ts"

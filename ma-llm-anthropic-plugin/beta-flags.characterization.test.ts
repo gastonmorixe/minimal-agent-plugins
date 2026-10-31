@@ -14,8 +14,9 @@
 
 import { beforeAll, describe, expect, it } from "bun:test"
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { ANTHROPIC_BETA_FLAGS, buildBetaFlags, classifyRequest } from "./beta-flags.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import { resolveModel } from "./lib/registry.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { registerAnthropicModels } from "./models.ts"

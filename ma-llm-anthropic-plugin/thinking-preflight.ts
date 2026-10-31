@@ -34,8 +34,12 @@
  * @module llm/providers/anthropic/thinking-preflight
  */
 
-import type { CanonicalBlock, CanonicalMessage } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type {
+  CanonicalBlock,
+  CanonicalMessage,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import type { PreflightIssue, PreflightOption } from "./lib/host-types.ts"
 import { extractModelFromSignature } from "./signature-model.ts"
 

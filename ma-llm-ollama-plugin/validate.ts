@@ -8,10 +8,12 @@
  * @module llm/providers/ollama/validate
  */
 
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { CapabilityViolation } from "./lib/errors.ts"
-import { modalityViolations } from "./lib/modality-check.ts"
-import type { ModelView, ProviderValidationResult } from "./lib/provider-plugin.ts"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { CapabilityViolation } from "@minimal-agent/core/plugin-api/llm/errors"
+import { modalityViolations } from "@minimal-agent/core/plugin-api/llm/modality-check"
+import type { ProviderValidationResult } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
+import type { ModelView } from "./lib/host-types.ts"
 
 /**
  * Validate a canonical request against an Ollama Cloud model's declared

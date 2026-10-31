@@ -10,16 +10,21 @@ import { join } from "node:path"
 
 import { expect } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  NetworkClient,
+  NetworkRequestInput,
+  NetworkResponse,
+} from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { bootstrapOpenAI, openaiAdapter } from "./adapter.ts"
 import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { isEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import { type ModelEntry } from "./lib/host-types.ts"
-import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import {
   type OpenAIResponsesEvent,

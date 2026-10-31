@@ -10,6 +10,10 @@
 
 import { afterEach, describe, expect, test } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { cursorAdapter } from "./adapter.ts"
 import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
 import { cursorCaps } from "./capabilities.ts"
@@ -20,10 +24,7 @@ import {
   resetCursorBidiSessionsForTests,
 } from "./cursor-bidi-session.ts"
 import { CURSOR_ALLOWED_TOOLS_HEADER, CURSOR_EXCLUDE_TOOLS_HEADER } from "./cursor-tool-policy.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import {
   concat,
   decodeFields,

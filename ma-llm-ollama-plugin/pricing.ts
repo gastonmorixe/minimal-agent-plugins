@@ -15,7 +15,7 @@
  * @module llm/providers/ollama/pricing
  */
 
-import type { ModelRate } from "./lib/provider-plugin.ts"
+import type { ModelRate } from "./lib/host-types.ts"
 
 /**
  * Zero-rate pricing for an Ollama Cloud model. Token counts still surface in

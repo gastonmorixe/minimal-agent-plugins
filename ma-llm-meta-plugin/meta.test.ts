@@ -6,6 +6,9 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import {
   bootstrapMeta,
   metaAdapter,
@@ -22,8 +25,6 @@ import {
   readMetaApiKey,
   readMuseOAuthAuth,
 } from "./auth.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { listMetaBuiltinModelIds, META_DEFAULT_MODEL_ID, registerMetaModels } from "./models.ts"
 import {

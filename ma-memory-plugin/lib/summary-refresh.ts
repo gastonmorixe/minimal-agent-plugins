@@ -24,7 +24,8 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveAgentHome } from "./agent-paths.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import type { MemorySummaryParams } from "./memory-config.ts"
 import { type Bullet, parseFile } from "./parse.ts"
 import { type CompleteFn, summarize as realSummarize, SummarizeError } from "./summarize.ts"

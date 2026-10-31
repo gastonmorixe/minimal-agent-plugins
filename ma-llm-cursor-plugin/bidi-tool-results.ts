@@ -4,8 +4,11 @@
  * @module llm/providers/cursor/bidi-tool-results
  */
 
-import type { CanonicalMessage, ToolResultBlock } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
+import type {
+  CanonicalMessage,
+  ToolResultBlock,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 
 /** Collect trailing tool_result blocks from the latest user message(s). */
 export function extractTrailingToolResults(messages: CanonicalMessage[]): ToolResultBlock[] {

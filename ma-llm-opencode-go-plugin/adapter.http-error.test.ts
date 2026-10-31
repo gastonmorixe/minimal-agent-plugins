@@ -9,12 +9,17 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  NetworkClient,
+  NetworkRequest,
+  NetworkResponse,
+} from "@minimal-agent/core/plugin-api/net/types"
+
 import { bootstrapOpencode, opencodeAdapter } from "./adapter.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
-import type { NetworkClient, NetworkRequest, NetworkResponse } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 
 let reg = makeTestRegistry()

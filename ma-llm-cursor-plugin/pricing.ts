@@ -9,7 +9,7 @@
  * @module llm/providers/cursor/pricing
  */
 
-import type { ModelRate } from "./lib/provider-plugin.ts"
+import type { ModelRate } from "./lib/host-types.ts"
 
 /** Zero-rate pricing for a Cursor model. */
 export const PRICING_CURSOR_GENERIC: ModelRate = {

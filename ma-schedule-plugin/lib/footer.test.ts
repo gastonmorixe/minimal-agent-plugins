@@ -7,10 +7,11 @@
 
 import { describe, expect, it } from "bun:test"
 
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import { formatStatusRow } from "./footer.ts"
-import { PALETTE } from "./palette.ts"
 import type { CronEntry } from "./store.ts"
-import { displayWidth } from "./term-width.ts"
 
 const NOW = 1_700_000_000_000
 const WIDE = 100

@@ -62,9 +62,10 @@
  * Pure: no I/O, no env reads, no `Date.now()` except via the injectable `now()`.
  */
 
+import { displayWidth, stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import { c } from "./colors.ts"
 import type { QuotaWindow, SessionTokens } from "./host-types.ts"
-import { displayWidth, stripAnsi } from "./lib/term-width.ts"
 
 /**
  * The user-configurable status-bar segments, in render order.

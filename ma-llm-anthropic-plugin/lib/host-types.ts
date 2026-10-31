@@ -15,7 +15,7 @@
  * @module lib/host-types
  */
 
-import type { Capabilities } from "./capabilities.ts"
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 /**
  * Per-model USD rate table. Mirror of host `ModelRate`
@@ -76,8 +76,8 @@ export interface SubagentModelRecommendation {
  */
 export interface ProviderValidationResult {
   ok: boolean
-  errors: import("./errors.ts").CapabilityViolation[]
-  degrade?: import("./canonical-request.ts").CanonicalRequest
+  errors: import("@minimal-agent/core/plugin-api/llm/errors").CapabilityViolation[]
+  degrade?: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest
 }
 
 // ---------------------------------------------------------------------------
@@ -109,11 +109,13 @@ export interface ModelEntry {
   displayName: string
   knowledgeCutoff?: string
   tags?: ReadonlyArray<string>
-  capabilities: import("./capabilities.ts").Capabilities
+  capabilities: import("@minimal-agent/core/plugin-api/llm/capabilities").Capabilities
   pricing: MTokRate
   vendorIds?: Readonly<Record<string, string>>
-  estimateTokens?: import("./token-estimate.ts").TokenEstimator
-  pricingForRequest?: (req: import("./canonical-request.ts").CanonicalRequest) => MTokRate
+  estimateTokens?: import("@minimal-agent/core/plugin-api/llm/token-estimate").TokenEstimator
+  pricingForRequest?: (
+    req: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest,
+  ) => MTokRate
 }
 
 /** Host `ValidationResult` — identical to the vendored ProviderValidationResult. */
@@ -145,7 +147,7 @@ export interface PreflightIssue {
 export type PreflightResolution =
   | {
       kind: "modify-request"
-      request: import("./canonical-request.ts").CanonicalRequest
+      request: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest
       adoptModelId?: string
     }
   | { kind: "cancel" }
@@ -178,24 +180,26 @@ export interface ProviderAdapter {
   displayName: string
   surfaces: ReadonlyArray<SurfaceId>
   validate(
-    req: import("./canonical-request.ts").CanonicalRequest,
+    req: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest,
     model: ModelEntry,
   ): ValidationResult
   run(
-    req: import("./canonical-request.ts").CanonicalRequest,
+    req: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest,
     model: ModelEntry,
-    ctx: import("./provider-auth.ts").RunContext,
-  ): AsyncIterable<import("./canonical-events.ts").CanonicalEvent>
+    ctx: import("@minimal-agent/core/plugin-api/llm/provider-auth").RunContext,
+  ): AsyncIterable<import("@minimal-agent/core/plugin-api/llm/canonical-events").CanonicalEvent>
   recommendSubagentModels?(): SubagentModelRecommendation[]
   preflight?(
-    req: import("./canonical-request.ts").CanonicalRequest,
+    req: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest,
     model: ModelEntry,
   ): PreflightIssue[]
   applyResolution?(
-    req: import("./canonical-request.ts").CanonicalRequest,
+    req: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest,
     issueCode: string,
     optionId: string,
   ): PreflightResolution
   mediaLimits?(model: ModelEntry): MediaLimits
-  listModels?(ctx: import("./provider-auth.ts").RunContext): Promise<ModelEntry[]>
+  listModels?(
+    ctx: import("@minimal-agent/core/plugin-api/llm/provider-auth").RunContext,
+  ): Promise<ModelEntry[]>
 }

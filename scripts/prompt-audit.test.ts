@@ -14,6 +14,10 @@ interface PromptFile {
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir)) {
+    // S42: a plugin can now have `node_modules/@minimal-agent/core` on disk
+    // (the host dependency) -- its handler-shaped files are core's own, not
+    // this plugin's, and must not feed the prompt-inlining audit below.
+    if (entry === "node_modules") continue
     const abs = join(dir, entry)
     const stat = statSync(abs)
     if (stat.isDirectory()) {

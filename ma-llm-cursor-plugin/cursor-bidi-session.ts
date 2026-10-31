@@ -4,9 +4,10 @@
  * @module llm/providers/cursor/cursor-bidi-session
  */
 
+import type { CanonicalMessage } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+
 import type { CursorBidiWire } from "./connect/bidi-wire.ts"
 import type { ConnectEnvelope } from "./connect/stream.ts"
-import type { CanonicalMessage } from "./lib/canonical-messages.ts"
 import type { DecodedExecMcpArgs } from "./proto/exec-server-decode.ts"
 import type { CursorBlobStore } from "./proto/kv.ts"
 import type { CursorMcpToolWire } from "./proto/mcp-tools.ts"

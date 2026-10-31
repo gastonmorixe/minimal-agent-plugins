@@ -54,7 +54,7 @@ import {
 } from "node:fs"
 import { join } from "node:path"
 
-import { resolveAgentHome } from "./agent-paths.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
 
 /** Environment variable that disables ALL reads and writes when set to `"1"`. */
 export const HISTORY_DISABLE_ENV = "MINIMAL_AGENT_NO_HISTORY"

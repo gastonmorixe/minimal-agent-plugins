@@ -15,5 +15,8 @@
     "biome:fix": "biome check --write .",
     "check": "bun run ../scripts/check.ts",
     "generate:static-catalog": "bun run scripts/generate-static-catalog.ts"
+  },
+  "peerDependencies": {
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#bb2d31889071507589fdfc380e2a73b8ac4d33d6"
   }
 }

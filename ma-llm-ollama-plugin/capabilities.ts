@@ -14,7 +14,10 @@
  * @module llm/providers/ollama/capabilities
  */
 
-import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
+import {
+  type Capabilities,
+  defaultCapabilities,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 /**
  * Shared base for an Ollama Cloud chat model: streaming text, tool calling,
@@ -44,7 +47,6 @@ function baseOllamaCaps(): Capabilities {
       ttls: [],
       minPrefixTokens: 0,
       reportsCacheHits: false,
-      promptCacheAccounting: "disjoint" as const,
     },
     tools: {
       userDefined: true,

@@ -24,12 +24,13 @@
  * @module schedule/lib/footer
  */
 
-import { ANSI_CODES } from "./ansi.ts"
+import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import { GLYPH_TIME, relativeTime } from "./format.ts"
-import { PALETTE } from "./palette.ts"
 import { nextFireMs } from "./scheduler.ts"
 import type { CronEntry } from "./store.ts"
-import { displayWidth } from "./term-width.ts"
 
 const { BOLD, DIM, RESET } = ANSI_CODES
 // Full SGR reset (clears color AND dim). NOT `\x1b[39m` (color-only), which

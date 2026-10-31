@@ -20,4 +20,4 @@ export {
   type AnthropicSystemBlock,
   type AnthropicToolDef,
   buildAnthropicRequestBody,
-} from "./lib/anthropic-request.ts"
+} from "@minimal-agent/core/plugin-api/llm/anthropic-request"

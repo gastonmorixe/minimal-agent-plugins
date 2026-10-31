@@ -24,11 +24,12 @@
  * @module llm/providers/cursor/models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import { cursorCaps, isCursorEffortParamId, isCursorFastParamId } from "./capabilities.ts"
 import { makeCursorEncodeSpec, registerCursorRunSku, setCursorEncodeSpec } from "./encode-spec.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import { PRICING_CURSOR_GENERIC } from "./pricing.ts"
 import { CURSOR_STATIC_CATALOG } from "./static-catalog.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"

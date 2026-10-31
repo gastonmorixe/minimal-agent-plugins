@@ -15,7 +15,7 @@ import type {
   ApiKeyAuthProvider,
   AuthCredentialInfo,
   AuthSecretBag,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 export const WAFER_API_KEY_AUTH = {
   serviceId: "wafer-api-key",

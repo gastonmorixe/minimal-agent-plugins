@@ -10,7 +10,8 @@
  * @module llm/providers/cursor/cursor-usage
  */
 
-import type { CanonicalUsage } from "./lib/canonical-events.ts"
+import type { CanonicalUsage } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+
 import type { CursorServerEvent } from "./proto/agent-run.ts"
 
 /** Mutable usage/summary snapshot for one translator session. */

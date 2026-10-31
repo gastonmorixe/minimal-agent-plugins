@@ -1,4 +1,7 @@
-// source: plugin-api/src/llm/anthropic-request.ts (vendored anthropic-wire contract for Wave G; Path A cleanup)
+// This module diverges from `@minimal-agent/core/plugin-api/llm/anthropic-request`:
+// `mapThinking` takes an extra `effort` param and treats `effort:"none"` as a
+// thinking-off sentinel for OpenCode toggle models (Qwen / MiniMax M3). Not a
+// copy any more; the host contract has no such parameter. See the S42 report.
 /**
  * Canonical → Anthropic Messages request contract: body building
  * ({@link buildAnthropicRequestBody}), request classification
@@ -25,12 +28,22 @@
  * @module llm/anthropic-request
  */
 
-import type { CanonicalBlock, CanonicalMessage } from "./canonical-messages.ts"
-import type { CanonicalRequest, ThinkingConfig } from "./canonical-request.ts"
-import type { CanonicalToolDefinition } from "./canonical-tools.ts"
-import { CapabilityViolation } from "./errors.ts"
+import type {
+  CanonicalBlock,
+  CanonicalMessage,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type {
+  CanonicalRequest,
+  ThinkingConfig,
+} from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { CanonicalToolDefinition } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+import { CapabilityViolation } from "@minimal-agent/core/plugin-api/llm/errors"
+import {
+  modalityViolations,
+  stripUnsupportedModalities,
+} from "@minimal-agent/core/plugin-api/llm/modality-check"
+
 import type { ModelView } from "./host-types.ts"
-import { modalityViolations, stripUnsupportedModalities } from "./modality-check.ts"
 import type { ProviderValidationResult } from "./provider-plugin.ts"
 
 // ---------------------------------------------------------------------------
@@ -346,7 +359,7 @@ function toAnthropicContentBlock(block: CanonicalBlock): AnthropicContentBlock |
 }
 
 function toAnthropicImageSource(
-  src: import("./canonical-messages.ts").ImageSource,
+  src: import("@minimal-agent/core/plugin-api/llm/canonical-messages").ImageSource,
 ): AnthropicImageSource | null {
   switch (src.kind) {
     case "url":
@@ -363,7 +376,7 @@ function toAnthropicImageSource(
 }
 
 function toAnthropicCacheControl(
-  hint: import("./canonical-messages.ts").CanonicalCacheHint,
+  hint: import("@minimal-agent/core/plugin-api/llm/canonical-messages").CanonicalCacheHint,
 ): AnthropicCacheControl {
   const out: AnthropicCacheControl = { type: "ephemeral" }
   if (hint.ttl) out.ttl = hint.ttl
@@ -380,7 +393,7 @@ function toAnthropicToolDef(tool: CanonicalToolDefinition): AnthropicToolDef {
 }
 
 function toAnthropicToolChoice(
-  choice: import("./canonical-tools.ts").ToolChoice,
+  choice: import("@minimal-agent/core/plugin-api/llm/canonical-tools").ToolChoice,
 ): AnthropicRequestBody["tool_choice"] {
   switch (choice.type) {
     case "auto":

@@ -9,11 +9,15 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import { type CanonicalEvent, isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import {
+  type OpenAIChatChunk,
+  translateOpenAIChatStream,
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { bootstrapGrok, grokAdapter } from "./adapter.ts"
-import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import { type OpenAIChatChunk, translateOpenAIChatStream } from "./lib/openai-chat.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { registerGrokModels } from "./models.ts"
 import {

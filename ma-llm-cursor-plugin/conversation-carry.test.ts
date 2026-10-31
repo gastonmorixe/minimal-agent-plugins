@@ -13,6 +13,9 @@ import { join } from "node:path"
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test"
 
+import type { CanonicalMessage } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { cursorCaps } from "./capabilities.ts"
 import {
   type CursorCarryState,
@@ -25,9 +28,7 @@ import {
   resetCursorCarryStatesForTests,
   setCursorCarryState,
 } from "./conversation-carry.ts"
-import type { CanonicalMessage } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { ModelView } from "./lib/provider-plugin.ts"
+import type { ModelView } from "./lib/host-types.ts"
 import { extractCheckpointBytes } from "./proto/agent-run.ts"
 import { concat, decodeFields, encMsg, fieldBytes, fieldString } from "./proto/wire.ts"
 import { buildCursorAgentRunBody } from "./request-body.ts"

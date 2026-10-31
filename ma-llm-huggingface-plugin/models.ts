@@ -18,14 +18,15 @@
  * @module llm/providers/huggingface/models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import type { ModelRegistrar } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_HUGGINGFACE_CHAT,
   deriveHuggingFaceCapabilities,
   type HuggingFaceModelCapabilityInfo,
 } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
-import type { ModelRegistrar } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_HF_DEEPSEEK_V4_FLASH,
   PRICING_HF_DEEPSEEK_V4_PRO,

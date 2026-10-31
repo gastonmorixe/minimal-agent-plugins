@@ -28,7 +28,11 @@
  * @module llm/providers/ollama/response-stream
  */
 
-import type { CanonicalEvent, CanonicalUsage, StopReason } from "./lib/canonical-events.ts"
+import type {
+  CanonicalEvent,
+  CanonicalUsage,
+  StopReason,
+} from "@minimal-agent/core/plugin-api/llm/canonical-events"
 
 // ---------------------------------------------------------------------------
 // Wire types

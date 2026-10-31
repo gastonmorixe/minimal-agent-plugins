@@ -15,8 +15,8 @@
  * @module llm/providers/ollama/live-models
  */
 
-import type { ProviderAuth } from "./lib/provider-auth.ts"
-import type { LiveModelRow } from "./lib/provider-plugin.ts"
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { LiveModelRow } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 const OLLAMA_TAGS_URL = "https://ollama.com/api/tags"
 

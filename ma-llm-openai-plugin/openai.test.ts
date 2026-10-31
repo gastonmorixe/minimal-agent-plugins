@@ -7,6 +7,8 @@
 
 import { describe, expect, it } from "bun:test"
 
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+
 import { bootstrapOpenAI, openaiProviderPlugin } from "./adapter.ts"
 import {
   buildOpenAIApiKeyCredential,
@@ -15,7 +17,6 @@ import {
   openAIOAuthLogin,
   readOpenAIApiKey,
 } from "./auth.ts"
-import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { findOpenAIModelByTags, registerOpenAIModels } from "./models.ts"

@@ -9,7 +9,7 @@
  * @module quota-status/colors
  */
 
-import { ansiStyle } from "./lib/ansi.ts"
+import { ansiStyle } from "@minimal-agent/core/plugin-api/utils/ansi"
 
 /**
  * The subset of the host's `c` palette the quota footer renders with. Drawn

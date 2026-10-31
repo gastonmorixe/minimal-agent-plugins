@@ -13,8 +13,12 @@
  * @module lib/test-registry
  */
 
+import type {
+  ProviderModelSpec,
+  ProviderSetupContext,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+
 import type { ModelEntry, ProviderAdapter } from "./host-types.ts"
-import type { ProviderModelSpec, ProviderSetupContext } from "./provider-plugin.ts"
 import { clearLocalCatalog } from "./registry.ts"
 
 /** A local setup context + resolver pair for a single test run. */

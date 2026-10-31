@@ -20,21 +20,25 @@
  * @module llm/providers/ollama/adapter
  */
 
-import { ollamaApiKeyAuth } from "./auth.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import { isEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import {
+  classifyUpstreamError,
+  type ErrorClassFields,
+  tagUpstreamError,
+} from "@minimal-agent/core/plugin-api/llm/errors"
+import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
-  ModelView,
   ProviderAdapterView,
   ProviderPlugin,
   ProviderSetupContext,
   ProviderValidationResult,
-  SubagentModelRecommendation,
-} from "./lib/provider-plugin.ts"
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
+import { ollamaApiKeyAuth } from "./auth.ts"
+import type { ModelView, SubagentModelRecommendation } from "./lib/host-types.ts"
 import { listOllamaLiveModels } from "./live-models.ts"
 import { registerOllamaAdHocModelInto, registerOllamaModels } from "./models.ts"
 import { buildOllamaChatBody } from "./request-body.ts"

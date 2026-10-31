@@ -18,6 +18,9 @@
  * @module llm/providers/wafer/models
  */
 
+import type { ModelRegistrar } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_GLM_5_1,
   CAPS_GLM_5_2,
@@ -27,8 +30,6 @@ import {
   CAPS_KIMI_K3_FAST,
   CAPS_MINIMAX_M3,
 } from "./capabilities.ts"
-import type { ModelRegistrar } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_GLM_5_1,
   PRICING_GLM_5_2,

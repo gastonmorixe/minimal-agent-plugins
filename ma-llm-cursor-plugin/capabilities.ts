@@ -1,4 +1,8 @@
-import { type Capabilities, defaultCapabilities } from "./lib/capabilities.ts"
+import {
+  type Capabilities,
+  defaultCapabilities,
+} from "@minimal-agent/core/plugin-api/llm/capabilities"
+
 import type { CursorModelVariant, DecodedCursorModel } from "./proto/models-decode.ts"
 
 export interface CursorCapsOptions {

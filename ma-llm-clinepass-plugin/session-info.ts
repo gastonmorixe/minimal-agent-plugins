@@ -21,7 +21,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-import type { NetworkClient } from "./lib/net-types.ts"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import type {
   ProviderSessionContext,
   ProviderSessionInfo,

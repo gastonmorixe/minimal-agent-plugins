@@ -27,10 +27,14 @@
  * @module llm/providers/ollama/models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import type {
+  ModelRegistrar,
+  ProviderModelSpec,
+} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import { ollamaCaps } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
-import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import { PRICING_OLLAMA_GENERIC } from "./pricing.ts"
 
 const M = 1_000_000

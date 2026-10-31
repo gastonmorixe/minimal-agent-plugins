@@ -8,19 +8,27 @@
 
 import { describe, expect, it } from "bun:test"
 
+import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { defaultCapabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type {
+  SurfaceCodec,
+  SurfaceCodecRegistry,
+} from "@minimal-agent/core/plugin-api/llm/surface-codec"
+import type {
+  NetworkClient,
+  NetworkRequestInput,
+  NetworkResponse,
+} from "@minimal-agent/core/plugin-api/net/types"
+
 import {
   bootstrapGenericEndpoint,
   genericEndpointAdapter,
   registerGenericEndpointAdHocModel,
 } from "./adapter.ts"
 import { normalizeEndpoint, readGenericEndpointConfig } from "./config.ts"
-import type { CanonicalEvent } from "./lib/canonical-events.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { defaultCapabilities } from "./lib/capabilities.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
-import type { NetworkClient, NetworkRequestInput, NetworkResponse } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
-import type { SurfaceCodec, SurfaceCodecRegistry } from "./lib/surface-codec.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 
 const RATE = {

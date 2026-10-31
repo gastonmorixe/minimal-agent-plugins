@@ -9,8 +9,9 @@
  * @module llm-anthropic/list-models
  */
 
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+
 import { buildAnthropicHeaders } from "./headers.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type { AuthResult, ModelEntry } from "./lib/host-types.ts"
 import { findModel } from "./lib/registry.ts"
 

@@ -13,6 +13,17 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import { type CanonicalEvent, isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import {
+  type OpenAIChatChunk,
+  translateOpenAIChatStream,
+} from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
+
 import { bootstrapWafer, waferAdapter, waferProviderPlugin } from "./adapter.ts"
 import {
   buildWaferApiKeyCredential,
@@ -20,13 +31,6 @@ import {
   WAFER_API_KEY_AUTH,
   waferApiKeyAuth,
 } from "./auth.ts"
-import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
-import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import { type OpenAIChatChunk, translateOpenAIChatStream } from "./lib/openai-chat.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
-import { parseSse } from "./lib/sse-parser.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { registerWaferModels } from "./models.ts"
 import {

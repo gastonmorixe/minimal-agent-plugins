@@ -9,6 +9,9 @@
  * @module llm/providers/clinepass/models
  */
 
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_DEEPSEEK_V4_FLASH,
   CAPS_DEEPSEEK_V4_PRO,
@@ -22,10 +25,8 @@ import {
   CAPS_QWEN3_7_MAX,
   CAPS_QWEN3_7_PLUS,
 } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
 import type { MTokRate } from "./lib/host-types.ts"
 import type { ModelRegistrar } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import {
   PRICING_CLINEPASS_GENERIC,
   PRICING_DEEPSEEK_V4_FLASH,

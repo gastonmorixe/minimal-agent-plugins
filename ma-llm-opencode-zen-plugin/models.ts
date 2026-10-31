@@ -1,4 +1,8 @@
 /** OpenCode Zen's complete live model registry. */
+
+import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
 import {
   CAPS_CHAT,
   CAPS_CLAUDE,
@@ -10,10 +14,8 @@ import {
   CAPS_MUSE,
   CAPS_OPENCODE_ZEN_CHAT_FALLBACK,
 } from "./capabilities.ts"
-import type { Capabilities } from "./lib/capabilities.ts"
 import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
-import { makeCharRatioEstimator } from "./lib/token-estimate.ts"
 import { PRICING_OPENCODE_ZEN_GENERIC, PRICING_OX_ALPHA_FREE, ZEN_PRICING } from "./pricing.ts"
 
 const estimateTokens = makeCharRatioEstimator(3.8)

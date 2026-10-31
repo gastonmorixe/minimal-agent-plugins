@@ -9,6 +9,11 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import { type CanonicalEvent, isEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
+import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
 import { bootstrapGrok, grokAdapter, grokProviderPlugin } from "./adapter.ts"
 import {
   buildGrokApiKeyCredential,
@@ -23,11 +28,7 @@ import {
   CAPS_GROK_46_RESPONSES,
 } from "./capabilities.ts"
 import { buildGrokHeaders } from "./headers.ts"
-import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
-import { userText } from "./lib/canonical-messages.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import type { NetworkClient } from "./lib/net-types.ts"
-import type { RunContext } from "./lib/provider-auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import {
   buildGrokOAuthCredential,
@@ -218,7 +219,6 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(flagship.capabilities.effort.levels).toEqual(["low", "medium", "high"])
     expect(flagship.capabilities.effort.default).toBe("high")
     expect(flagship.capabilities.acceptsStopSequences).toBe(false)
-    expect(flagship.capabilities.caching.promptCacheAccounting).toBe("subset")
     // live micros 20000/60000/3000 → USD/1M
     expect(flagship.pricing.inputUSD).toBe(2)
     expect(flagship.pricing.outputUSD).toBe(6)

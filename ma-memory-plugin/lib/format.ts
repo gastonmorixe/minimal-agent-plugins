@@ -15,8 +15,9 @@
  * @module memory/lib/format
  */
 
-import { ANSI_CODES } from "./ansi.ts"
-import { PALETTE } from "./palette.ts"
+import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+
 import type { Bullet } from "./parse.ts"
 
 const { BOLD, DIM, RESET } = ANSI_CODES

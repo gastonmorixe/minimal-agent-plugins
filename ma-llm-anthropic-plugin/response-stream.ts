@@ -11,4 +11,7 @@
  * @module llm/providers/anthropic/response-stream
  */
 
-export { type AnthropicStreamEvent, translateAnthropicStream } from "./lib/anthropic-stream.ts"
+export {
+  type AnthropicStreamEvent,
+  translateAnthropicStream,
+} from "@minimal-agent/core/plugin-api/llm/anthropic-stream"

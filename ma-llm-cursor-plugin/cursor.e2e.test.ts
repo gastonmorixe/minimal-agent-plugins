@@ -13,14 +13,15 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { describe, expect, test } from "bun:test"
 
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
 import { cursorAdapter } from "./adapter.ts"
 import { CURSOR_API_KEY_AUTH, readCursorApiKey } from "./auth.ts"
 import { cursorCaps } from "./capabilities.ts"
 import { getCursorCarryState } from "./conversation-carry.ts"
 import { resetCursorBidiSessionsForTests } from "./cursor-bidi-session.ts"
-import { parseJsonc } from "./lib/jsonc.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type { AuthSecretBag } from "./lib/provider-plugin.ts"
 import { CURSOR_OAUTH, readCursorOAuthAuth } from "./oauth-login.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"

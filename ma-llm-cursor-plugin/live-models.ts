@@ -1,3 +1,5 @@
+import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+
 import { resolveCursorAccessToken } from "./auth.ts"
 import {
   cursorHostModelId,
@@ -8,7 +10,6 @@ import {
 import { availableModelsUrl } from "./connect/hosts.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
-import type { ProviderAuth } from "./lib/provider-auth.ts"
 import type { LiveModelRow, ModelRegistrar } from "./lib/provider-plugin.ts"
 import { registerCursorModelInto } from "./models.ts"
 import { encodeAvailableModelsRequest } from "./proto/available-models-request.ts"

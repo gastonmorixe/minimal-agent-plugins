@@ -8,10 +8,14 @@
  * @module llm/providers/openai/validate
  */
 
+import { CapabilityViolation } from "@minimal-agent/core/plugin-api/llm/errors"
+import {
+  modalityViolations,
+  stripUnsupportedModalities,
+} from "@minimal-agent/core/plugin-api/llm/modality-check"
+
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { CapabilityViolation } from "./lib/errors.ts"
 import type { ModelEntry, ValidationResult } from "./lib/host-types.ts"
-import { modalityViolations, stripUnsupportedModalities } from "./lib/modality-check.ts"
 
 /**
  * Provider preflight validation: checks a canonical request against the
