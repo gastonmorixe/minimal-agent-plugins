@@ -58,6 +58,10 @@ export interface FakeRuntime extends HostRuntime {
   effort: string | undefined
   readonly turns: ScriptedTurn[]
   readonly prompts: string[]
+  /** How many times `session.close()` ran. */
+  closeCalls: number
+  /** True when the signal of the last `run` call fired. */
+  lastRunAborted: boolean
 }
 
 function snapshot(m: FakeModel): ModelInfoSnapshot {
@@ -91,11 +95,21 @@ export function createFakeRuntime(
     effort: start.effort,
     turns: [],
     prompts: [],
+    closeCalls: 0,
+    lastRunAborted: false,
     openSession(): Promise<HostSession> {
       const session: HostSession = {
         sessionId: "sess_fake",
         run(input, options) {
           rt.prompts.push(input)
+          rt.lastRunAborted = false
+          options.signal.addEventListener(
+            "abort",
+            () => {
+              rt.lastRunAborted = true
+            },
+            { once: true },
+          )
           const turn = rt.turns.shift() ?? { events: [], outcome: "completed" }
           let settle: (v: { outcome: ScriptedTurn["outcome"] }) => void = () => {}
           const result = new Promise<{ outcome: ScriptedTurn["outcome"] }>((r) => {
@@ -119,7 +133,9 @@ export function createFakeRuntime(
           return Object.assign(gen(), { result }) as unknown as ReturnType<HostSession["run"]>
         },
         answer: () => false,
-        close: async () => {},
+        close: async () => {
+          rt.closeCalls += 1
+        },
       }
       return Promise.resolve(session)
     },

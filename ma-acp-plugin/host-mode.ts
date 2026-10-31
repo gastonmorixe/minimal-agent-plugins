@@ -53,7 +53,24 @@ function flattenPrompt(blocks: unknown): string {
   return parts.join("")
 }
 
-const handler: HostModeHandler = (ctx: HostModeContext): Promise<number> => {
+/** The params object of a request. Anything else is -32602 (never a TypeError, -32603). */
+function paramsObject(raw: unknown, method: string): Record<string, unknown> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new RpcError(RPC_ERROR.invalidParams, `${method}: params must be an object`)
+  }
+  return raw as Record<string, unknown>
+}
+
+/** A string field of `params`, or `undefined` when absent. Other types are -32602. */
+function optionalString(params: Record<string, unknown>, key: string, method: string) {
+  const v = params[key]
+  if (v !== undefined && typeof v !== "string") {
+    throw new RpcError(RPC_ERROR.invalidParams, `${method}: ${key} must be a string`)
+  }
+  return v
+}
+
+const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> => {
   let session: HostSession | undefined
   let encoder: SessionEncoder | undefined
   let activeRun: AbortController | undefined
@@ -95,8 +112,8 @@ const handler: HostModeHandler = (ctx: HostModeContext): Promise<number> => {
               "a session is already open for this process (Level 1 is one session per process)",
             )
           }
-          const params = rawParams as { cwd?: string }
-          if (params.cwd !== undefined && params.cwd !== ctx.cwd) {
+          const cwd = optionalString(paramsObject(rawParams, "session/new"), "cwd", "session/new")
+          if (cwd !== undefined && cwd !== ctx.cwd) {
             throw new RpcError(
               RPC_ERROR.invalidParams,
               `this process is fixed to cwd ${ctx.cwd}; a session with another cwd needs its own process`,
@@ -114,12 +131,14 @@ const handler: HostModeHandler = (ctx: HostModeContext): Promise<number> => {
           return { sessionId: opened.sessionId, configOptions: buildConfigOptions(ctx.runtime) }
         },
         "session/set_config_option": (rawParams) => {
-          const params = rawParams as { sessionId?: string; configId?: unknown; value?: unknown }
+          const method = "session/set_config_option"
+          const params = paramsObject(rawParams, method)
           requireSession(params.sessionId)
-          return { configOptions: setConfigOption(ctx.runtime, params.configId, params.value) }
+          const configId = optionalString(params, "configId", method)
+          return { configOptions: setConfigOption(ctx.runtime, configId, params.value) }
         },
         "session/prompt": async (rawParams) => {
-          const params = rawParams as { sessionId?: string; prompt?: unknown }
+          const params = paramsObject(rawParams, "session/prompt")
           const s = requireSession(params.sessionId)
           const input = flattenPrompt(params.prompt)
 
@@ -142,7 +161,10 @@ const handler: HostModeHandler = (ctx: HostModeContext): Promise<number> => {
               for await (const entry of run) {
                 if (entry.ch === "event") enc.encode(entry.data)
               }
-              outcome = (await run.result).outcome
+              const settled = (await run.result).outcome
+              // ACP: after session/cancel the reply is `cancelled`, also
+              // when the run settles "completed" after the abort.
+              outcome = controller.signal.aborted ? "aborted" : settled
             } catch (e) {
               // ACP: a cancel MUST answer `cancelled`, even when the cancel
               // made the run throw. Any other throw is a failed turn.
@@ -161,14 +183,34 @@ const handler: HostModeHandler = (ctx: HostModeContext): Promise<number> => {
       },
       notifications: {
         "session/cancel": (rawParams) => {
-          const params = rawParams as { sessionId?: string }
-          if (session && params.sessionId === session.sessionId) activeRun?.abort()
+          const sessionId = (rawParams as { sessionId?: unknown } | null | undefined)?.sessionId
+          if (session && sessionId === session.sessionId) activeRun?.abort()
         },
       },
     },
   })
 
-  return channel.closed.then(() => 0)
+  // Shutdown (core's SIGTERM / SIGINT listeners abort `ctx.abort`): stop
+  // reading, then finish the same way as at stdin EOF.
+  const onAbort = (): void => channel.stop()
+  if (ctx.abort.aborted) onAbort()
+  else ctx.abort.addEventListener("abort", onAbort, { once: true })
+
+  // EOF or shutdown: abort the active run, wait until every in-flight
+  // request has replied (the prompt replies `cancelled`), then close the
+  // session so core fires sessionEnd.
+  await channel.closed
+  ctx.abort.removeEventListener("abort", onAbort)
+  activeRun?.abort()
+  await channel.idle()
+  if (session) {
+    try {
+      await session.close()
+    } catch (e) {
+      ctx.log.warn("acp", `session.close failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return 0
 }
 
 export default handler
