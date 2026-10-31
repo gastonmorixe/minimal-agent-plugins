@@ -18,7 +18,7 @@ import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   PreflightIssue,
@@ -114,26 +114,46 @@ function parseAnthropicErrorCode(body: string): string | undefined {
   }
 }
 
-type TaggedHttpError = Error & { streamErrorType?: string; retryable?: boolean }
+type TaggedHttpError = Error & ErrorClassFields & { streamErrorType?: string; retryable?: boolean }
+
+/** Minimal header view (a `Headers` or a test fake). */
+type HeaderView = { get(name: string): string | null }
 
 /**
- * Build a tagged HTTP error so the provider-neutral retry coordinator can
- * recover from a pre-stream rejection (429 rate limit, 5xx overload) instead
- * of stopping the agent. Maps status + body error type through
- * `classifyUpstreamError`; attaches `streamErrorType` for retryable tags and
- * `retryable: false` for terminal verdicts (billing, auth) so the retry
- * classifier honors them even when a category remap would land in a
- * retryable bucket. Untagged errors propagate.
+ * Plan quota reset time (epoch ms) from a rejected unified rate limit. A 429
+ * with `anthropic-ratelimit-unified-status: rejected` and a numeric
+ * `anthropic-ratelimit-unified-reset` (epoch seconds) means the 5h or 7d
+ * window is used up until that time.
  */
-function taggedAnthropicHttpError(status: number, body: string): TaggedHttpError {
-  const upstreamCode = parseAnthropicErrorCode(body)
-  const { streamErrorType, retryable } = classifyUpstreamError({
+function unifiedQuotaResetAt(status: number, headers: HeaderView | null | undefined) {
+  if (status !== 429 || !headers) return undefined
+  if (headers.get("anthropic-ratelimit-unified-status") !== "rejected") return undefined
+  const resetSec = Number(headers.get("anthropic-ratelimit-unified-reset"))
+  return Number.isFinite(resetSec) && resetSec > 0 ? resetSec * 1000 : undefined
+}
+
+/**
+ * Build a classified HTTP error for a pre-stream rejection. Maps status, body
+ * error type, `Retry-After`, a plan quota reset, and a "prompt is too long"
+ * 400 (context overflow) through `classifyUpstreamError`, then stamps the
+ * retry tag and the error class on the error. `retryable: false` stays set
+ * for terminal verdicts (billing, auth) so older classifiers honor them too.
+ */
+function taggedAnthropicHttpError(
+  status: number,
+  body: string,
+  headers?: HeaderView | null,
+): TaggedHttpError {
+  const resetAt = unifiedQuotaResetAt(status, headers)
+  const c = classifyUpstreamError({
     httpStatus: status,
-    upstreamCode,
+    upstreamCode: parseAnthropicErrorCode(body),
+    retryAfter: headers?.get("retry-after") ?? null,
+    ...(resetAt !== undefined ? { resetAt } : {}),
+    contextOverflow: status === 400 && /prompt is too long/i.test(body),
   })
-  const err = new Error(`Anthropic API ${status}: ${body}`) as TaggedHttpError
-  if (streamErrorType) err.streamErrorType = streamErrorType
-  if (retryable === false) err.retryable = false
+  const err: TaggedHttpError = tagUpstreamError(new Error(`Anthropic API ${status}: ${body}`), c)
+  if (c.retryable === false) err.retryable = false
   return err
 }
 
@@ -268,13 +288,13 @@ export const anthropicAdapter: ProviderAdapter = {
         })
       } else {
         // A real 400 unrelated to compression: surface it as-is, keep gzip on.
-        throw taggedAnthropicHttpError(response.status, errText)
+        throw taggedAnthropicHttpError(response.status, errText, response.headers)
       }
     }
 
     if (!response.ok) {
       const text = await response.text()
-      throw taggedAnthropicHttpError(response.status, text)
+      throw taggedAnthropicHttpError(response.status, text, response.headers)
     }
     // Cache + broadcast THIS response's rate-limit snapshot so the status-bar
     // footer keeps the live 5h/7d windows fresh on every real turn. Before the

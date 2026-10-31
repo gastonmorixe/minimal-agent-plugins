@@ -12,6 +12,12 @@ import { normalizeEndpoint, readGenericEndpointConfig } from "./config.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import { defaultCapabilities, type EffortSupport } from "./lib/capabilities.ts"
+import {
+  classifyUpstreamError,
+  type ErrorClassFields,
+  parseRetryAfterMs,
+  tagUpstreamError,
+} from "./lib/errors.ts"
 import type { ModelEntry, ProviderAdapter, ValidationResult } from "./lib/host-types.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { RunContext } from "./lib/provider-auth.ts"
@@ -77,10 +83,20 @@ export const genericEndpointAdapter: ProviderAdapter = {
     const response = await networkClient.request(request)
     if (!response.ok) {
       const text = await response.text()
-      throw (
+      // The codec maps its wire errors to a class; without a codec mapping
+      // the status alone classifies. Retry-After is read here because the
+      // codec only sees the status and the body.
+      const err: Error & ErrorClassFields =
         codec.classifyError?.(response.status, text) ??
-        new Error(`Generic endpoint ${response.status}: ${text}`)
-      )
+        tagUpstreamError(
+          new Error(`Generic endpoint ${response.status}: ${text}`),
+          classifyUpstreamError({ httpStatus: response.status }),
+        )
+      const retryAfterMs = parseRetryAfterMs(response.headers?.get("retry-after"))
+      if (retryAfterMs !== undefined && err.retryAfterMs === undefined) {
+        err.retryAfterMs = retryAfterMs
+      }
+      throw err
     }
     codec.onResponseHeaders?.(response.headers)
     if (!response.body) throw new Error("generic-endpoint: empty response body")

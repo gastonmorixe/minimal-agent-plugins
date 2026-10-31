@@ -128,6 +128,7 @@ function parseUpstreamError(body: string): { type?: string; code?: string; label
 export function taggedOpencodeHttpError(
   status: number,
   body: string,
+  headers?: { get(name: string): string | null } | null,
 ): ProviderError & { streamErrorType?: string } {
   const upstream = parseUpstreamError(body)
   const codes = [upstream.type, upstream.code, upstream.label]
@@ -171,23 +172,33 @@ export function taggedOpencodeHttpError(
     )
 
   // Auth codes (opencode `provider-error.ts:267-273`). Keep status 401 so the
-  // host refresh path still runs for OAuth. Untagged: never retried.
+  // host refresh path still runs for OAuth. Untagged: never retried on backoff.
   if (status === 401 || (status === 403 && codes.some((c) => AUTH_CODES.has(c))))
     return new ProviderError(`OpenCode Go ${status} (auth): ${body}`, PROVIDER_ID, {
       status,
       retryable: false,
       upstreamCode,
+      // The loop refreshes the credential once, then pauses for the host.
+      errorClass: "recoverable",
+      recovery: "refresh_credential",
       code: GO_ERROR_CODES.auth,
       hint: `${OPENCODE_LOGIN_HINT} (or replace the stored API key)`,
     })
 
-  const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
+  const c = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode,
+    retryAfter: headers?.get("retry-after") ?? null,
+  })
   const err = new ProviderError(`OpenCode Go API ${status}: ${body}`, PROVIDER_ID, {
     status,
-    retryable: streamErrorType !== undefined,
+    retryable: c.streamErrorType !== undefined,
     upstreamCode,
+    errorClass: c.errorClass,
+    ...(c.recovery ? { recovery: c.recovery } : {}),
+    ...(c.retryAfterMs !== undefined ? { retryAfterMs: c.retryAfterMs } : {}),
   }) as ProviderError & { streamErrorType?: string }
-  if (streamErrorType) err.streamErrorType = streamErrorType
+  if (c.streamErrorType) err.streamErrorType = c.streamErrorType
   return err
 }
 
@@ -295,7 +306,9 @@ export const opencodeAdapter: ProviderAdapter = {
       body: JSON.stringify(body),
       signal: req.signal,
     })
-    if (!response.ok) throw taggedOpencodeHttpError(response.status, await response.text())
+    if (!response.ok) {
+      throw taggedOpencodeHttpError(response.status, await response.text(), response.headers)
+    }
     if (!response.body) throw new Error("OpenCode Go API: empty response body for stream")
 
     let events: AsyncIterable<CanonicalEvent>

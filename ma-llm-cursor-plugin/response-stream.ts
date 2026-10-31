@@ -15,6 +15,7 @@ import {
   cursorUsageReceipts,
   cursorUsageToCanonical,
 } from "./cursor-usage.ts"
+import { classifyConnectCode, connectEndStreamCause } from "./error-class.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import {
   type CursorServerEvent,
@@ -238,10 +239,10 @@ function* handleFrame(
   if (frame.endStream) {
     const parsed = parseConnectEndStreamError(frame.payload)
     if (parsed) {
-      const cause = new Error(parsed.message)
+      const cause = connectEndStreamCause(parsed.code, parsed.message)
       yield {
         type: "stream_error",
-        retryable: false,
+        retryable: classifyConnectCode(parsed.code).retryable,
         category: categoryFromConnectCode(parsed.code),
         upstreamType: (parsed.code ?? "connect_end_stream").slice(0, 200),
         cause,

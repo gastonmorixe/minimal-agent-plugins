@@ -11,7 +11,7 @@ import { CAPS_GPT_4O_CHAT } from "./capabilities.ts"
 import { buildOpenAIChatBody } from "./chat/request-body.ts"
 import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
 import { buildOpenAIHeaders } from "./headers.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, tagUpstreamError } from "./lib/errors.ts"
 import { parseSse } from "./lib/sse-parser.ts"
 import type { SurfaceCodec } from "./lib/surface-codec.ts"
 import { PRICING_GPT_4O } from "./pricing.ts"
@@ -51,12 +51,10 @@ export const openAIChatCompletionsCodec: SurfaceCodec = {
   },
   classifyError(status, body) {
     const upstreamCode = parseOpenAIErrorCode(body)
-    const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-    const err = new Error(`OpenAI-compatible Chat API ${status}: ${body}`) as Error & {
-      streamErrorType?: string
-    }
-    if (streamErrorType) err.streamErrorType = streamErrorType
-    return err
+    return tagUpstreamError(
+      new Error(`OpenAI-compatible Chat API ${status}: ${body}`),
+      classifyUpstreamError({ httpStatus: status, upstreamCode }),
+    )
   },
   onResponseHeaders: setOpenAIRateLimits,
 }

@@ -28,13 +28,17 @@ const req: CanonicalRequest = {
   messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
 }
 
-function failingClient(status: number, body: string): NetworkClient {
+function failingClient(
+  status: number,
+  body: string,
+  headers: Record<string, string> = {},
+): NetworkClient {
   return {
     request: async (_req: NetworkRequest): Promise<NetworkResponse> =>
       ({
         ok: false,
         status,
-        headers: new Headers(),
+        headers: new Headers(headers),
         body: null,
         text: async () => body,
         json: async <T>() => JSON.parse(body) as T,
@@ -48,12 +52,17 @@ async function drain(events: AsyncIterable<CanonicalEvent>): Promise<CanonicalEv
   return out
 }
 
-function run(modelId: string, status: number, body: string): Promise<CanonicalEvent[]> {
+function run(
+  modelId: string,
+  status: number,
+  body: string,
+  headers: Record<string, string> = {},
+): Promise<CanonicalEvent[]> {
   const model = reg.resolveModel(modelId) as unknown as ModelEntry
   const ctx: RunContext = {
     auth: { kind: "api-key", key: "og-test-key" },
     sessionId: "s1",
-    networkClient: failingClient(status, body),
+    networkClient: failingClient(status, body, headers),
   }
   const creq = { ...req, modelId }
   return drain(opencodeAdapter.run!(creq, model, ctx))
@@ -61,6 +70,9 @@ function run(modelId: string, status: number, body: string): Promise<CanonicalEv
 
 type Tagged = Error & {
   streamErrorType?: string
+  errorClass?: string
+  recovery?: string
+  retryAfterMs?: number
   code?: string
   hint?: string
   opts?: { retryable?: boolean; status?: number }
@@ -173,5 +185,45 @@ describe("opencode-go 401 with server_error body", () => {
     expect(err?.streamErrorType).toBeUndefined()
     expect(err?.code).toBe("opencode.auth")
     expect(err?.hint).toContain("ma provider opencode-go login")
+  })
+})
+
+// Spec S49: each known wire error maps to an error class.
+describe("opencode-go wire errors to error classes", () => {
+  const wire = (code: string) => JSON.stringify({ error: { code, message: "m" } })
+
+  it("maps rate limits and overloads to transient, with Retry-After", async () => {
+    setup()
+    const limited = await capture(
+      run("deepseek-v4-flash", 429, wire("rate_limit_error"), { "retry-after": "5" }),
+    )
+    expect(limited).toMatchObject({ errorClass: "transient", retryAfterMs: 5_000 })
+    const busy = await capture(run("deepseek-v4-flash", 503, wire("server_error")))
+    expect(busy?.errorClass).toBe("transient")
+  })
+
+  it("maps 401 to recoverable (refresh the credential)", async () => {
+    setup()
+    const err = await capture(run("deepseek-v4-flash", 401, wire("api_key_expired")))
+    expect(err).toMatchObject({ errorClass: "recoverable", recovery: "refresh_credential" })
+  })
+
+  it("maps a context overflow to recoverable (compact)", async () => {
+    setup()
+    const err = await capture(run("deepseek-v4-flash", 400, wire("context_length_exceeded")))
+    expect(err).toMatchObject({ errorClass: "recoverable", recovery: "compact" })
+  })
+
+  it("maps billing, the client gates, and bad requests to permanent", async () => {
+    setup()
+    for (const [status, code] of [
+      [402, "insufficient_quota"],
+      [426, "upgrade_required"],
+      [400, "invalid_request_error"],
+      [404, "not_found_error"],
+    ] as const) {
+      const err = await capture(run("deepseek-v4-flash", status, wire(code)))
+      expect(err?.errorClass).toBe("permanent")
+    }
   })
 })

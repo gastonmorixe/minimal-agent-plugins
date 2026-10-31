@@ -318,3 +318,91 @@ describe("generic endpoint adapter", () => {
     }
   })
 })
+
+// Spec S49: each known wire error maps to an error class.
+describe("generic endpoint wire errors to error classes", () => {
+  async function thrownBy(
+    codec: SurfaceCodec,
+    status: number,
+    headers: Record<string, string> = {},
+  ): Promise<{ errorClass?: string; recovery?: string; retryAfterMs?: number }> {
+    const restore = setEnv({
+      MINIMAL_AGENT_ENDPOINT: "http://localhost:1234",
+      MINIMAL_AGENT_FORMAT: codec.surfaceId,
+    })
+    try {
+      const registry = makeTestRegistry()
+      bootstrapGenericEndpoint({
+        models: registry.models,
+        providers: registry.providers,
+        surfaceCodecs: makeCodecRegistry([codec]),
+      })
+      const networkClient: NetworkClient = {
+        async request() {
+          return { ...mockResponse("{}", status), headers: new Headers(headers) }
+        },
+      }
+      const model: ModelEntry = {
+        id: "local-model",
+        providerId: "generic-endpoint",
+        surfaceId: codec.surfaceId,
+        displayName: "local-model",
+        capabilities: defaultCapabilities(),
+        pricing: RATE,
+      }
+      const req: CanonicalRequest = { modelId: "local-model", messages: [] }
+      const ctx: RunContext = {
+        auth: { kind: "custom", headers: {} },
+        sessionId: "",
+        networkClient,
+      }
+      try {
+        for await (const _ of genericEndpointAdapter.run(req, model, ctx)) void _
+      } catch (e) {
+        return e as { errorClass?: string; recovery?: string; retryAfterMs?: number }
+      }
+      throw new Error("expected a throw")
+    } finally {
+      restore()
+    }
+  }
+
+  const bareCodec: SurfaceCodec = {
+    surfaceId: "bare-surface",
+    displayName: "Bare",
+    defaultPath: "/v1/chat/completions",
+    defaultCapabilities: defaultCapabilities(),
+    defaultPricing: RATE,
+    validate: () => ({ ok: true, errors: [] }),
+    buildRequest: ({ endpoint }) => ({ label: "bare", method: "POST", url: endpoint }),
+    async *translateStream() {},
+  }
+
+  it("classifies by status when the codec has no error mapper", async () => {
+    expect(await thrownBy(bareCodec, 429, { "retry-after": "6" })).toMatchObject({
+      errorClass: "transient",
+      retryAfterMs: 6_000,
+    })
+    expect((await thrownBy(bareCodec, 502)).errorClass).toBe("transient")
+    expect(await thrownBy(bareCodec, 401)).toMatchObject({
+      errorClass: "recoverable",
+      recovery: "refresh_credential",
+    })
+    expect(await thrownBy(bareCodec, 413)).toMatchObject({ recovery: "compact" })
+    expect((await thrownBy(bareCodec, 400)).errorClass).toBe("permanent")
+    expect((await thrownBy(bareCodec, 404)).errorClass).toBe("permanent")
+  })
+
+  it("keeps the codec's class and adds Retry-After", async () => {
+    const codec: SurfaceCodec = {
+      ...bareCodec,
+      surfaceId: "mapped-surface",
+      classifyError: (status) =>
+        Object.assign(new Error(`mapped ${status}`), { errorClass: "transient" }),
+    }
+    expect(await thrownBy(codec, 503, { "retry-after": "4" })).toMatchObject({
+      errorClass: "transient",
+      retryAfterMs: 4_000,
+    })
+  })
+})

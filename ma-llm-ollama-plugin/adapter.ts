@@ -24,7 +24,7 @@ import { ollamaApiKeyAuth } from "./auth.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import { isEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import type { ProviderAuth, RunContext } from "./lib/provider-auth.ts"
 import type {
@@ -81,18 +81,21 @@ function parseOllamaErrorCode(body: string): string | undefined {
 }
 
 /**
- * Build a tagged HTTP error so the provider-neutral retry coordinator can
- * recover from a pre-stream rejection (429 / 5xx / 503). The `streamErrorType`
- * property is what the host's `run()` retry loop checks.
+ * Build a classified HTTP error for a pre-stream rejection (429 / 5xx / 503,
+ * auth, bad request). Status, error code, and `Retry-After` become the retry
+ * tag and the error class the host loop decides from.
  */
-function taggedHttpError(status: number, body: string): Error & { streamErrorType?: string } {
-  const upstreamCode = parseOllamaErrorCode(body)
-  const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-  const err = new Error(`Ollama Cloud API ${status}: ${body}`) as Error & {
-    streamErrorType?: string
-  }
-  if (streamErrorType) err.streamErrorType = streamErrorType
-  return err
+export function taggedHttpError(
+  status: number,
+  body: string,
+  headers?: { get(name: string): string | null } | null,
+): Error & ErrorClassFields & { streamErrorType?: string } {
+  const c = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode: parseOllamaErrorCode(body),
+    retryAfter: headers?.get("retry-after") ?? null,
+  })
+  return tagUpstreamError(new Error(`Ollama Cloud API ${status}: ${body}`), c)
 }
 
 /** Ollama Cloud adapter. Speaks Ollama's native chat surface. */
@@ -140,7 +143,7 @@ export const ollamaAdapter: ProviderAdapterView = {
 
     if (!response.ok) {
       const text = await response.text()
-      throw taggedHttpError(response.status, text)
+      throw taggedHttpError(response.status, text, response.headers)
     }
     if (!response.body) {
       throw new Error("Ollama Cloud API: empty response body for stream")

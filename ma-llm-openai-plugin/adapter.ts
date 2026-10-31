@@ -24,7 +24,7 @@ import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response
 import { buildOpenAIHeaders } from "./headers.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -110,7 +110,7 @@ export const openaiAdapter: ProviderAdapter = {
       })
       if (!response.ok) {
         const text = await response.text()
-        throw taggedHttpError("OpenAI Chat API", response.status, text)
+        throw taggedHttpError("OpenAI Chat API", response.status, text, response.headers)
       }
       // Capture rate-limit headers for the status-bar footer. Best-effort +
       // non-throwing; no behavior change to the stream below.
@@ -160,7 +160,7 @@ export const openaiAdapter: ProviderAdapter = {
       })
       if (!response.ok) {
         const text = await response.text()
-        throw taggedHttpError("OpenAI Responses API", response.status, text)
+        throw taggedHttpError("OpenAI Responses API", response.status, text, response.headers)
       }
       // Capture rate-limit headers for the status-bar footer. Best-effort +
       // non-throwing; no behavior change to the stream below.
@@ -256,23 +256,25 @@ function parseOpenAIErrorCode(body: string): string | undefined {
 }
 
 /**
- * Build a tagged HTTP error so the provider-neutral retry coordinator can
- * recover from a pre-stream rejection (429 rate limit, 5xx overload, …)
- * instead of stopping the agent. Mirrors the Anthropic `client.ts` path:
- * map the status (+ body error code) to a `streamErrorType` the retry loop
- * understands; leave it untagged for non-transient failures so they
- * propagate.
+ * Build the error for a non-2xx response. Status, the body error code, and
+ * `Retry-After` go through `classifyUpstreamError`; the retry tag and the
+ * error class (transient, recoverable, permanent) are stamped on the error,
+ * so the host loop decides from the class.
  */
-function taggedHttpError(
+export function taggedHttpError(
   label: string,
   status: number,
   body: string,
-): Error & { streamErrorType?: string } {
+  headers?: { get(name: string): string | null } | null,
+): Error & ErrorClassFields & { streamErrorType?: string } {
   const upstreamCode = parseOpenAIErrorCode(body)
-  const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-  const err = new Error(`${label} ${status}: ${body}`) as Error & { streamErrorType?: string }
-  if (streamErrorType) err.streamErrorType = streamErrorType
-  return err
+  // Status, error code, and Retry-After become the error class the loop reads.
+  const c = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode,
+    retryAfter: headers?.get("retry-after") ?? null,
+  })
+  return tagUpstreamError(new Error(`${label} ${status}: ${body}`), c)
 }
 
 /**
