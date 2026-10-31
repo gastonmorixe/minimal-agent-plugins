@@ -22,7 +22,7 @@ import { grokApiKeyAuth } from "./auth.ts"
 import { buildGrokHeaders } from "./headers.ts"
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -142,7 +142,12 @@ export const grokAdapter: ProviderAdapter = {
         signal: req.signal,
       })
       if (!response.ok) {
-        throw taggedHttpError("Grok Chat API", response.status, await response.text())
+        throw taggedHttpError(
+          "Grok Chat API",
+          response.status,
+          await response.text(),
+          response.headers,
+        )
       }
       setGrokRateLimits(response.headers)
       maybeRefreshOAuthBilling(auth, networkClient)
@@ -179,7 +184,12 @@ export const grokAdapter: ProviderAdapter = {
         signal: req.signal,
       })
       if (!response.ok) {
-        throw taggedHttpError("Grok Responses API", response.status, await response.text())
+        throw taggedHttpError(
+          "Grok Responses API",
+          response.status,
+          await response.text(),
+          response.headers,
+        )
       }
       setGrokRateLimits(response.headers)
       maybeRefreshOAuthBilling(auth, networkClient)
@@ -237,16 +247,26 @@ function parseGrokErrorCode(body: string): string | undefined {
   }
 }
 
-function taggedHttpError(
+/**
+ * Build the error for a non-2xx response. Status, the body error code, and
+ * `Retry-After` go through `classifyUpstreamError`; the retry tag and the
+ * error class (transient, recoverable, permanent) are stamped on the error,
+ * so the host loop decides from the class.
+ */
+export function taggedHttpError(
   label: string,
   status: number,
   body: string,
-): Error & { streamErrorType?: string } {
+  headers?: { get(name: string): string | null } | null,
+): Error & ErrorClassFields & { streamErrorType?: string } {
   const upstreamCode = parseGrokErrorCode(body)
-  const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-  const err = new Error(`${label} ${status}: ${body}`) as Error & { streamErrorType?: string }
-  if (streamErrorType) err.streamErrorType = streamErrorType
-  return err
+  // Status, error code, and Retry-After become the error class the loop reads.
+  const c = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode,
+    retryAfter: headers?.get("retry-after") ?? null,
+  })
+  return tagUpstreamError(new Error(`${label} ${status}: ${body}`), c)
 }
 
 let capturedModels: ModelRegistrar | undefined

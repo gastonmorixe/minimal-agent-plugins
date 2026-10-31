@@ -9,6 +9,7 @@
 
 import { gunzipSync, gzipSync } from "node:zlib"
 
+import { cursorHttpError } from "../error-class.ts"
 import type { NetworkClient, NetworkResponse } from "../lib/net-types.ts"
 
 /** Build one Connect envelope frame. */
@@ -187,7 +188,7 @@ async function* connectStreamViaNetworkClient(
     // Cancel so the NetworkClient tap can settle observers even when we never
     // pull response chunks (non-2xx often has an empty/error body).
     await cancelResponseBody(response, `cursor AgentService/Run returned HTTP ${response.status}`)
-    throw new Error(`cursor AgentService/Run failed (${response.status})`)
+    throw cursorHttpError(response.status, response.headers)
   }
   yield* readResponseBody(response.body)
 }

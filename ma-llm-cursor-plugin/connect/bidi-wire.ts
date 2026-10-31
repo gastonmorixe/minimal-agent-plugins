@@ -5,6 +5,7 @@
  */
 
 import { cursorBidiLog } from "../bidi-debug.ts"
+import { cursorHttpError } from "../error-class.ts"
 import type { NetworkClient, NetworkResponse } from "../lib/net-types.ts"
 import { encodeAgentClientMessageHeartbeat } from "../proto/client-message.ts"
 
@@ -72,7 +73,7 @@ export async function openCursorBidiWire(opts: OpenCursorBidiWireOpts): Promise<
     } catch {
       /* ignore */
     }
-    throw new Error(`cursor AgentService/Run failed (${response.status})`)
+    throw cursorHttpError(response.status, response.headers)
   }
   if (!response.writeRequestBody) {
     throw new Error(

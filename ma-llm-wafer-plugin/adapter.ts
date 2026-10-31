@@ -20,7 +20,7 @@
 import { waferApiKeyAuth } from "./auth.ts"
 import { type CanonicalEvent, isEvent } from "./lib/canonical-events.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, type ErrorClassFields, tagUpstreamError } from "./lib/errors.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -98,7 +98,7 @@ export const waferAdapter: ProviderAdapter = {
 
     if (!response.ok) {
       const text = await response.text()
-      throw taggedHttpError("Wafer API", response.status, text)
+      throw taggedHttpError("Wafer API", response.status, text, response.headers)
     }
     // Capture rate-limit headers for the status-bar footer. Best-effort +
     // non-throwing; no behavior change to the stream below.
@@ -155,23 +155,25 @@ function parseWaferErrorCode(body: string): string | undefined {
 }
 
 /**
- * Build a tagged HTTP error so the provider-neutral retry coordinator can
- * recover from a pre-stream rejection (429 rate limit, 5xx overload, 503
- * capacity shedding, …) instead of stopping the agent.
- *
- * The `streamErrorType` property is what `src/llm/run.ts` checks to decide
- * whether to retry. Without it, every non-2xx from Wafer is fatal.
+ * Build the error for a non-2xx response. Status, the body error code, and
+ * `Retry-After` go through `classifyUpstreamError`; the retry tag and the
+ * error class (transient, recoverable, permanent) are stamped on the error,
+ * so the host loop decides from the class.
  */
-function taggedHttpError(
+export function taggedHttpError(
   label: string,
   status: number,
   body: string,
-): Error & { streamErrorType?: string } {
+  headers?: { get(name: string): string | null } | null,
+): Error & ErrorClassFields & { streamErrorType?: string } {
   const upstreamCode = parseWaferErrorCode(body)
-  const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-  const err = new Error(`${label} ${status}: ${body}`) as Error & { streamErrorType?: string }
-  if (streamErrorType) err.streamErrorType = streamErrorType
-  return err
+  // Status, error code, and Retry-After become the error class the loop reads.
+  const c = classifyUpstreamError({
+    httpStatus: status,
+    upstreamCode,
+    retryAfter: headers?.get("retry-after") ?? null,
+  })
+  return tagUpstreamError(new Error(`${label} ${status}: ${body}`), c)
 }
 
 // The registrar captured at register(ctx), so the ad-hoc hook (called WITHOUT

@@ -9,7 +9,7 @@
 
 import { CAPS_GROK_45_CHAT } from "./capabilities.ts"
 import { buildGrokHeaders } from "./headers.ts"
-import { classifyUpstreamError } from "./lib/errors.ts"
+import { classifyUpstreamError, tagUpstreamError } from "./lib/errors.ts"
 import {
   buildOpenAIChatBody,
   type OpenAIChatChunk,
@@ -56,12 +56,10 @@ export const grokChatCompletionsCodec: SurfaceCodec = {
   },
   classifyError(status, body) {
     const upstreamCode = parseErrorCode(body)
-    const { streamErrorType } = classifyUpstreamError({ httpStatus: status, upstreamCode })
-    const err = new Error(`Grok-compatible Chat API ${status}: ${body}`) as Error & {
-      streamErrorType?: string
-    }
-    if (streamErrorType) err.streamErrorType = streamErrorType
-    return err
+    return tagUpstreamError(
+      new Error(`Grok-compatible Chat API ${status}: ${body}`),
+      classifyUpstreamError({ httpStatus: status, upstreamCode }),
+    )
   },
   onResponseHeaders: setGrokRateLimits,
 }

@@ -15,7 +15,9 @@ import {
   cursorUsageReceipts,
   cursorUsageToCanonical,
 } from "./cursor-usage.ts"
+import { classifyConnectCode, connectEndStreamCause } from "./error-class.ts"
 import type { CanonicalEvent } from "./lib/canonical-events.ts"
+import { tagUpstreamError } from "./lib/errors.ts"
 import { extractServerTextEvents, parseConnectEndStreamError } from "./proto/agent-run.ts"
 import {
   type DecodedExecMcpArgs,
@@ -111,10 +113,10 @@ export class CursorBidiEnvelopeTranslator {
       const events: CanonicalEvent[] = []
       const parsed = parseConnectEndStreamError(frame.payload)
       if (parsed) {
-        const cause = new Error(parsed.message)
+        const cause = connectEndStreamCause(parsed.code, parsed.message)
         events.push({
           type: "stream_error",
-          retryable: false,
+          retryable: classifyConnectCode(parsed.code).retryable,
           category: "api",
           upstreamType: (parsed.code ?? "connect_end_stream").slice(0, 200),
           cause,
@@ -182,10 +184,14 @@ export class CursorBidiEnvelopeTranslator {
       retryable: false,
       category: "api",
       upstreamType: "cursor_empty_stream",
-      cause: new Error(
-        "Cursor closed the stream with no content (HTTP 200, zero frames of output). " +
-          "This usually means the account hit its usage limit or the request was rejected. " +
-          "Check cursor.com usage, or try another Cursor credential.",
+      // Usually the usage limit: retrying the same request does not help.
+      cause: tagUpstreamError(
+        new Error(
+          "Cursor closed the stream with no content (HTTP 200, zero frames of output). " +
+            "This usually means the account hit its usage limit or the request was rejected. " +
+            "Check cursor.com usage, or try another Cursor credential.",
+        ),
+        { errorClass: "permanent" },
       ),
     }
   }

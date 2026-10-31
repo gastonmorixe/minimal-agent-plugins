@@ -29,7 +29,7 @@
  */
 
 import type { CanonicalEvent, CanonicalUsage, StopReason } from "../lib/canonical-events.ts"
-import { classifyUpstreamError } from "../lib/errors.ts"
+import { classifyUpstreamError, tagUpstreamError } from "../lib/errors.ts"
 
 // ---------------------------------------------------------------------------
 // Wire types (subset we consume)
@@ -401,16 +401,18 @@ export async function* translateOpenAIResponsesStream(
         const f = ev as ResponseFailed
         stopReason = "error"
         const code = f.response.error?.code
-        const { streamErrorType, category, retryable } = classifyUpstreamError({
-          upstreamCode: code,
-        })
+        const c = classifyUpstreamError({ upstreamCode: code })
         yield {
           type: "stream_error",
-          retryable,
-          category,
-          upstreamType: streamErrorType,
-          cause: new Error(
-            `OpenAI Responses failed: ${code ?? "unknown"}: ${f.response.error?.message ?? ""}`,
+          retryable: c.retryable,
+          category: c.category,
+          upstreamType: c.streamErrorType,
+          // The class rides on the cause, which the host throws.
+          cause: tagUpstreamError(
+            new Error(
+              `OpenAI Responses failed: ${code ?? "unknown"}: ${f.response.error?.message ?? ""}`,
+            ),
+            c,
           ),
         }
         break
@@ -431,16 +433,16 @@ export async function* translateOpenAIResponsesStream(
       case "error": {
         const e = ev as ErrorEvent
         const code = e.error?.code
-        const { streamErrorType, category, retryable } = classifyUpstreamError({
-          upstreamCode: code,
-        })
+        const c = classifyUpstreamError({ upstreamCode: code })
         yield {
           type: "stream_error",
-          retryable,
-          category,
-          upstreamType: streamErrorType,
-          cause: new Error(
-            `OpenAI Responses error: ${code ?? "unknown"}: ${e.error?.message ?? ""}`,
+          retryable: c.retryable,
+          category: c.category,
+          upstreamType: c.streamErrorType,
+          // The class rides on the cause, which the host throws.
+          cause: tagUpstreamError(
+            new Error(`OpenAI Responses error: ${code ?? "unknown"}: ${e.error?.message ?? ""}`),
+            c,
           ),
         }
         break
