@@ -12,9 +12,12 @@
  * - `tool_call` → `tool_call` with `kind` from {@link toolKindOf} (`run` →
  *   `execute`), `status` from {@link toolStatusOf} (`pending`), a title,
  *   `rawInput`, and `locations` for file tools.
- * - `status` phase `running_tool` → `tool_call_update` `in_progress` for the
+ * - `status` phase `running_tool` → `tool_call_update` `in_progress` for one
  *   open tool call (core emits it right after `tool_call`, before the tool
- *   runs; the encoder tracks "running" itself, as the mapper doc says).
+ *   runs; the encoder tracks "running" itself, as the mapper doc says). The
+ *   encoder tracks every open tool call. It marks the oldest open call with
+ *   the same tool name that is not yet running, else the oldest one that is
+ *   not yet running. Each call gets `in_progress` once.
  * - `tool_output` → `tool_call_update` with the (capped) text as content.
  * - `tool_result` → `tool_call_update` `completed` or `failed`.
  * - `turn_completed` → `usage_update`: `used` = that turn's input + cache
@@ -174,7 +177,17 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
   let lastStopReason: ProviderStopReason | undefined
   let lastNotice: TurnNotice | null = null
   let lastError: { message: string; code?: string } | null = null
-  let openToolCallId: string | undefined
+  // Open tool calls in start order: id → tool name and "running" state.
+  const openToolCalls = new Map<string, { readonly toolName: string; running: boolean }>()
+  const nextToRun = (toolName: string | undefined): string | undefined => {
+    let fallback: string | undefined
+    for (const [id, call] of openToolCalls) {
+      if (call.running) continue
+      if (call.toolName === toolName) return id
+      fallback ??= id
+    }
+    return fallback
+  }
 
   const sendNotice = (notice: AcpNotice): void => {
     noticeSeq += 1
@@ -198,7 +211,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
       }
       case "tool_call": {
         const wire = toWireToolStarted(event)
-        openToolCallId = wire.toolCallId
+        openToolCalls.set(wire.toolCallId, { toolName: wire.toolName, running: false })
         const locations = toolLocations(wire.toolName, wire.input, cwd)
         send({
           sessionUpdate: "tool_call",
@@ -211,15 +224,19 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
         })
         return
       }
-      case "status":
-        if (event.phase === "running_tool" && openToolCallId !== undefined) {
-          send({
-            sessionUpdate: "tool_call_update",
-            toolCallId: openToolCallId,
-            status: toAcpToolStatus("running"),
-          })
-        }
+      case "status": {
+        if (event.phase !== "running_tool") return
+        const id = nextToRun(event.toolName)
+        const call = id === undefined ? undefined : openToolCalls.get(id)
+        if (id === undefined || !call) return
+        call.running = true
+        send({
+          sessionUpdate: "tool_call_update",
+          toolCallId: id,
+          status: toAcpToolStatus("running"),
+        })
         return
+      }
       case "tool_output": {
         const wire = toWireToolProgress(event)
         send({
@@ -239,7 +256,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
       }
       case "tool_result": {
         const wire = toWireToolFinished(event)
-        if (openToolCallId === wire.toolCallId) openToolCallId = undefined
+        openToolCalls.delete(wire.toolCallId)
         send({
           sessionUpdate: "tool_call_update",
           toolCallId: wire.toolCallId,
@@ -283,7 +300,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
       lastStopReason = undefined
       lastNotice = null
       lastError = null
-      openToolCallId = undefined
+      openToolCalls.clear()
     }
     if (decision.notice) sendNotice(decision.notice)
     if (decision.kind === "error") {

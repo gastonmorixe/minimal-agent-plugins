@@ -173,6 +173,36 @@ describe("tool updates (design section 6)", () => {
     expect(sent).toEqual([])
   })
 
+  it("marks each open tool call in_progress once when tool calls overlap", () => {
+    const { sent, feed } = setup()
+    const call = (callId: string, toolName: string): AgentEvent => ({
+      type: "tool_call",
+      callId,
+      toolName,
+      input: {},
+      inputSummary: "",
+    })
+    feed(
+      call("c1", "Bash"),
+      call("c2", "Grep"),
+      call("c3", "Bash"),
+      { type: "status", phase: "running_tool", toolName: "Grep" },
+      { type: "status", phase: "running_tool", toolName: "Bash" },
+      { type: "status", phase: "running_tool", toolName: "Bash" },
+      { type: "status", phase: "running_tool", toolName: "Bash" },
+      { type: "tool_result", id: "c2", name: "Grep", isError: false },
+    )
+    const running = sent
+      .filter((u) => u.status === "in_progress")
+      .map((u) => u.toolCallId as string)
+    expect(running).toEqual(["c2", "c1", "c3"])
+    expect(sent.at(-1)).toEqual({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c2",
+      status: "completed",
+    })
+  })
+
   it("derives locations for file tools only", () => {
     expect(toolLocations("Write", { file_path: "/abs/x" }, "/w")).toEqual([{ path: "/abs/x" }])
     expect(toolLocations("Edit", { file_path: "y" }, "/w")).toEqual([{ path: "/w/y" }])

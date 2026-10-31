@@ -24,12 +24,18 @@
  * @module transport
  */
 
-/** A JSON-RPC 2.0 id: a number or a string, never `null` for a real request. */
+/** A JSON-RPC 2.0 id this side sends: a number or a string. */
 export type JsonRpcId = number | string
+
+/**
+ * A JSON-RPC 2.0 id a peer may send on a request: a number, a string, or
+ * `null`. The reply echoes the same value (JSON-RPC 2.0 section 5).
+ */
+export type IncomingRpcId = JsonRpcId | null
 
 export interface JsonRpcRequest {
   readonly jsonrpc: "2.0"
-  readonly id: JsonRpcId
+  readonly id: IncomingRpcId
   readonly method: string
   readonly params?: unknown
 }
@@ -42,7 +48,7 @@ export interface JsonRpcNotification {
 
 export interface JsonRpcSuccess {
   readonly jsonrpc: "2.0"
-  readonly id: JsonRpcId
+  readonly id: IncomingRpcId
   readonly result: unknown
 }
 
@@ -93,7 +99,16 @@ export interface RpcChannel {
   request<T = unknown>(method: string, params?: unknown, signal?: AbortSignal): Promise<T>
   /** Resolves once the read side hits EOF (stdin closed) or `stop()` is called. */
   readonly closed: Promise<void>
-  /** Stop reading. Pending outgoing `request()` calls reject with "channel stopped". */
+  /**
+   * Resolves when no incoming request or notification is in progress.
+   * Request handlers that are still running can still reply after
+   * `closed`. Await this after `closed` to get those replies out.
+   */
+  idle(): Promise<void>
+  /**
+   * Stop reading, also while a read waits for data. Pending outgoing
+   * `request()` calls reject with "channel stopped".
+   */
   stop(): void
 }
 
@@ -129,10 +144,12 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
   >()
   let nextOutId = 1
   let stopped = false
+  // Dispatches that have not settled yet (see `idle()`).
+  const inFlight = new Set<Promise<void>>()
 
   const send = (msg: unknown): void => write(`${JSON.stringify(msg)}\n`)
-  const sendOk = (id: JsonRpcId, result: unknown): void => send({ jsonrpc: "2.0", id, result })
-  const sendFail = (id: JsonRpcId | null, code: number, message: string, data?: unknown): void =>
+  const sendOk = (id: IncomingRpcId, result: unknown): void => send({ jsonrpc: "2.0", id, result })
+  const sendFail = (id: IncomingRpcId, code: number, message: string, data?: unknown): void =>
     send({
       jsonrpc: "2.0",
       id,
@@ -166,11 +183,15 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
         }
       }
       if (isRecord(msg) && msg.id !== undefined) {
-        sendFail(normalizeId(msg.id), RPC_ERROR.invalidRequest, "invalid request")
+        sendFail(isIncomingId(msg.id) ? msg.id : null, RPC_ERROR.invalidRequest, "invalid request")
       }
       return
     }
     const isRequest = msg.id !== undefined
+    if (isRequest && !isIncomingId(msg.id)) {
+      sendFail(null, RPC_ERROR.invalidRequest, "invalid request")
+      return
+    }
     if (!isRequest) {
       const notification = handlers.notifications[msg.method]
       if (notification) {
@@ -182,7 +203,7 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
       }
       return
     }
-    const id = normalizeId(msg.id)
+    const id = msg.id as IncomingRpcId
     const handler = handlers.requests[msg.method]
     if (!handler) {
       sendFail(id, RPC_ERROR.methodNotFound, `method not found: ${msg.method}`)
@@ -200,6 +221,16 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
   const closed = new Promise<void>((resolve) => {
     settleClosed = resolve
   })
+  // `stop()` settles this to end a read that waits for data.
+  let settleStopped: () => void = () => {}
+  const stoppedSignal = new Promise<"stopped">((resolve) => {
+    settleStopped = () => resolve("stopped")
+  })
+
+  const track = (work: Promise<void>): void => {
+    inFlight.add(work)
+    void work.finally(() => inFlight.delete(work))
+  }
 
   void (async (): Promise<void> => {
     // NDJSON framer. The size guard is bounded PER CHUNK (a client may
@@ -207,34 +238,49 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
     // dropped WHOLE at the next newline, never parsed — see
     // `research/acp-spike/framer-test.ts` in the umbrella repo for the
     // exact cases this mirrors (A/A2/B/C/D).
+    // The guard counts UTF-8 bytes (`bufBytes`), not UTF-16 code units.
     let buf = ""
+    let bufBytes = 0
     let discarding = false
     const dec = new TextDecoder()
-    for await (const chunk of stdin) {
-      if (stopped) break
-      const text = dec.decode(toBytes(chunk), { stream: true })
-      let rest = text
-      while (rest.length > 0) {
-        const nl = rest.indexOf("\n")
-        const piece = nl >= 0 ? rest.slice(0, nl) : rest
-        if (!discarding) {
-          if (buf.length + piece.length > maxLineBytes) {
-            sendFail(null, RPC_ERROR.invalidRequest, "message too large")
-            buf = ""
-            discarding = true
-          } else {
-            buf += piece
+    const reader = stdin[Symbol.asyncIterator]()
+    try {
+      for (;;) {
+        const next = await Promise.race([reader.next(), stoppedSignal])
+        if (next === "stopped" || next.done || stopped) break
+        const text = dec.decode(toBytes(next.value), { stream: true })
+        let rest = text
+        while (rest.length > 0) {
+          const nl = rest.indexOf("\n")
+          const piece = nl >= 0 ? rest.slice(0, nl) : rest
+          if (!discarding) {
+            const pieceBytes = Buffer.byteLength(piece, "utf8")
+            if (bufBytes + pieceBytes > maxLineBytes) {
+              sendFail(null, RPC_ERROR.invalidRequest, "message too large")
+              buf = ""
+              bufBytes = 0
+              discarding = true
+            } else {
+              buf += piece
+              bufBytes += pieceBytes
+            }
           }
+          if (nl < 0) break
+          if (!discarding) {
+            const line = buf.trim()
+            if (line) track(dispatchLine(line))
+          }
+          buf = ""
+          bufBytes = 0
+          discarding = false
+          rest = rest.slice(nl + 1)
         }
-        if (nl < 0) break
-        if (!discarding) {
-          const line = buf.trim()
-          if (line) void dispatchLine(line)
-        }
-        buf = ""
-        discarding = false
-        rest = rest.slice(nl + 1)
       }
+    } finally {
+      // Release the stream (a Node read stream is destroyed), so an open
+      // stdin does not keep the process alive after `stop()`.
+      void Promise.resolve(reader.return?.()).catch(() => {})
+      destroyStream(stdin)
     }
     for (const waiter of pending.values()) waiter.reject(new Error("channel closed"))
     pending.clear()
@@ -270,8 +316,12 @@ export function createRpcChannel(options: CreateRpcChannelOptions): RpcChannel {
       })
     },
     closed,
+    async idle(): Promise<void> {
+      while (inFlight.size > 0) await Promise.allSettled([...inFlight])
+    },
     stop(): void {
       stopped = true
+      settleStopped()
       for (const waiter of pending.values()) waiter.reject(new Error("channel stopped"))
       pending.clear()
       settleClosed()
@@ -283,8 +333,15 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x)
 }
 
-function normalizeId(id: unknown): JsonRpcId {
-  return typeof id === "number" || typeof id === "string" ? id : String(id)
+function isIncomingId(id: unknown): id is IncomingRpcId {
+  return typeof id === "number" || typeof id === "string" || id === null
+}
+
+/** Destroy a Node-style stream if it has `destroy()`. Other iterables are left alone. */
+function destroyStream(stream: unknown): void {
+  if (typeof stream !== "object" || stream === null || !("destroy" in stream)) return
+  const destroy = (stream as { destroy?: unknown }).destroy
+  if (typeof destroy === "function") destroy.call(stream)
 }
 
 function describeError(e: unknown): string {
