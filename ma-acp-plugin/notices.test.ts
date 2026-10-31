@@ -30,6 +30,7 @@ const SAMPLES: readonly TurnNotice[] = [
     effortReset: false,
     effortFrom: null,
   },
+  { kind: "model_adopt_failed", severity: "warn", model: "a", requested: "z", reason: "r" },
 ]
 
 describe("notice severity", () => {
@@ -76,6 +77,35 @@ describe("notice update", () => {
     expect(u.sessionUpdate).toBe("agent_message_chunk")
     expect(u.messageId).toBe("n1")
     expect((u.content as { text: string }).text).toContain(notice.description ?? "")
+  })
+})
+
+describe("model_adopt_failed", () => {
+  const failed = toAcpNotice({
+    kind: "model_adopt_failed",
+    severity: "warn",
+    model: "alpha",
+    requested: "zeta",
+    reason: "unknown model",
+  })
+
+  it("maps to a warning notice with a clear title", () => {
+    const u = noticeUpdate(failed, { clientNotices: true, fallbackMessageId: "n1" })
+    expect(u).toEqual({
+      sessionUpdate: "notice",
+      severity: "warning",
+      title: "Model not changed",
+      description: failed.description,
+    })
+    expect(failed.description).toContain("zeta")
+    expect(failed.description).toContain("alpha")
+  })
+
+  it("falls back to an agent_message_chunk without the capability", () => {
+    const u = noticeUpdate(failed, { clientNotices: false, fallbackMessageId: "n2" })
+    expect(u.sessionUpdate).toBe("agent_message_chunk")
+    expect(u.messageId).toBe("n2")
+    expect((u.content as { text: string }).text).toContain(failed.description ?? "")
   })
 })
 

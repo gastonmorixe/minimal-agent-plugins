@@ -16,6 +16,6 @@
     "check": "bun run ../scripts/check.ts"
   },
   "peerDependencies": {
-    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#c3b8d62b4b8d17153ddcc2ba785120d18f4fff6d"
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#c5f2a3818ce08771c50ec21224ec30c2c9df6098"
   }
 }

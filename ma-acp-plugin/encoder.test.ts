@@ -302,6 +302,29 @@ describe("model_adopted (spec Q16 item 3)", () => {
   })
 })
 
+describe("model_adopt_failed", () => {
+  it("sends a warning notice and no config_option_update", () => {
+    const { sent, feed } = setup({ model: "alpha", clientNotices: true })
+    feed({
+      type: "notice",
+      notice: {
+        kind: "model_adopt_failed",
+        severity: "warn",
+        model: "alpha",
+        requested: "zeta",
+        reason: "unknown model",
+      },
+    })
+    expect(sent.some((u) => u.sessionUpdate === "config_option_update")).toBe(false)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({
+      sessionUpdate: "notice",
+      severity: "warning",
+      title: "Model not changed",
+    })
+  })
+})
+
 describe("finishTurn", () => {
   it("answers end_turn from the last turn_completed and resets for the next turn", () => {
     const { enc, feed } = setup()

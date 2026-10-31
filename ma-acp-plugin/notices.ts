@@ -70,6 +70,8 @@ export function noticeTitle(notice: TurnNotice): string {
       return "Question skipped"
     case "model_adopted":
       return "Model changed"
+    case "model_adopt_failed":
+      return "Model not changed"
     default: {
       const _exhaustive: never = notice
       throw new Error(`unknown notice kind: ${JSON.stringify(_exhaustive)}`)
