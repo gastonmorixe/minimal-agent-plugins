@@ -2,9 +2,16 @@ name: CI
 
 # Full gate on pull requests and pushes to main.
 # bun.lock is gitignored in this repo (local regenerations), so installs are
-# not --frozen-lockfile; the catalog in package.json still pins the toolchain.
+# not --frozen-lockfile; the catalog in package.json still pins the toolchain,
+# and the @minimal-agent/core git dependency pins an exact commit SHA, so
+# every fresh install still resolves the same core regardless of the lockfile.
 #
 # Commitlint enforces Conventional Commits (same rules as local Husky hook).
+#
+# S42: installing @minimal-agent/core (git+ssh, private) needs a read-only
+# deploy key, the CORE_DEPLOY_KEY secret (open item A1). Until the user adds
+# it, both jobs below fail at "Allow reading private core" -- expected; see
+# minimal-agent-cli's ci.yml, which this step is copied from.
 on:
   push:
     branches:
@@ -38,6 +45,26 @@ jobs:
         with:
           bun-version: "1.4.2"
 
+      - name: Allow reading private core
+        env:
+          CORE_DEPLOY_KEY: ${{ secrets.CORE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CORE_DEPLOY_KEY}" ]; then
+            echo "::error::Set the CORE_DEPLOY_KEY secret: the private half of a read-only deploy key on minimal-agent-core. bun install needs it to clone the @minimal-agent/core git dependency."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${CORE_DEPLOY_KEY}" > ~/.ssh/core_deploy_key
+          chmod 600 ~/.ssh/core_deploy_key
+          # GitHub's published ed25519 host key, pinned instead of trusted on first use.
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > ~/.ssh/known_hosts_github
+          echo "GIT_SSH_COMMAND=ssh -i ${HOME}/.ssh/core_deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts_github -o StrictHostKeyChecking=yes" >> "${GITHUB_ENV}"
+          # Bun clones the git+ssh core URL as https://git@github.com/... first.
+          # Send that form straight to SSH, where the deploy key applies.
+          git config --global url."ssh://git@github.com/".insteadOf "https://git@github.com/"
+
       - name: Install dependencies
         env:
           HUSKY: "0"
@@ -66,6 +93,26 @@ jobs:
 
       - name: Install ripgrep
         run: brew install ripgrep
+
+      - name: Allow reading private core
+        env:
+          CORE_DEPLOY_KEY: ${{ secrets.CORE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CORE_DEPLOY_KEY}" ]; then
+            echo "::error::Set the CORE_DEPLOY_KEY secret: the private half of a read-only deploy key on minimal-agent-core. bun install needs it to clone the @minimal-agent/core git dependency."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${CORE_DEPLOY_KEY}" > ~/.ssh/core_deploy_key
+          chmod 600 ~/.ssh/core_deploy_key
+          # GitHub's published ed25519 host key, pinned instead of trusted on first use.
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > ~/.ssh/known_hosts_github
+          echo "GIT_SSH_COMMAND=ssh -i ${HOME}/.ssh/core_deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts_github -o StrictHostKeyChecking=yes" >> "${GITHUB_ENV}"
+          # Bun clones the git+ssh core URL as https://git@github.com/... first.
+          # Send that form straight to SSH, where the deploy key applies.
+          git config --global url."ssh://git@github.com/".insteadOf "https://git@github.com/"
 
       - name: Install dependencies
         env:
