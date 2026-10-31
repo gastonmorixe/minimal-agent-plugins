@@ -295,16 +295,35 @@ function pollRequestTimeoutMs(challenge: OAuthDeviceCodeChallenge): number {
   return n != null && n > 0 ? n : POLL_REQUEST_TIMEOUT_MS
 }
 
-function pollSignal(ctx: OAuthDeviceCodeContext, timeoutMs: number): AbortSignal {
-  const timeoutSignal = AbortSignal.timeout(timeoutMs)
-  return ctx.signal ? AbortSignal.any([ctx.signal, timeoutSignal]) : timeoutSignal
+function pollSignal(
+  ctx: OAuthDeviceCodeContext,
+  timeoutMs: number,
+  timeoutSignal: (ms: number) => AbortSignal,
+): AbortSignal {
+  const deadlineSignal = timeoutSignal(timeoutMs)
+  return ctx.signal ? AbortSignal.any([ctx.signal, deadlineSignal]) : deadlineSignal
+}
+
+/**
+ * Test-only injection points (style mirrors `ma-web-search-plugin/lib/retry.ts`'s
+ * `RetryDeps`: injectable clock/timer, no change to the real defaults).
+ * Both default to the real, wall-clock-based implementation.
+ */
+export interface CompleteCursorLoginDeps {
+  /** Builds the per-attempt request deadline signal. Default: `AbortSignal.timeout`. */
+  timeoutSignal?: (ms: number) => AbortSignal
+  /** Backoff sleep between poll attempts. Default: the real `delay()`. */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>
 }
 
 /** Poll auth until tokens return or the challenge expires / aborts. */
 export async function completeCursorLogin(
   challenge: OAuthDeviceCodeChallenge,
   ctx: OAuthDeviceCodeContext,
+  deps: CompleteCursorLoginDeps = {},
 ): Promise<OAuthLoginBuildResult> {
+  const timeoutSignal = deps.timeoutSignal ?? ((ms: number) => AbortSignal.timeout(ms))
+  const sleep = deps.sleep ?? delay
   const uuid = str(challenge.providerData?.uuid)
   const verifier = str(challenge.providerData?.verifier)
   if (!uuid || !verifier) throw new Error("Cursor login challenge missing uuid or verifier")
@@ -335,11 +354,11 @@ export async function completeCursorLogin(
       const response = await fetch(pollUrl.toString(), {
         method: "GET",
         headers: { accept: "application/json" },
-        signal: pollSignal(ctx, requestTimeoutMs),
+        signal: pollSignal(ctx, requestTimeoutMs, timeoutSignal),
       })
       if (response.status === 404) {
         consecutiveErrors = 0
-        await delay(sleepMs(attempt), ctx.signal)
+        await sleep(sleepMs(attempt), ctx.signal)
         continue
       }
       if (!response.ok) {
@@ -350,7 +369,7 @@ export async function completeCursorLogin(
           )
           throw statusError
         }
-        await delay(sleepMs(attempt), ctx.signal)
+        await sleep(sleepMs(attempt), ctx.signal)
         continue
       }
       const raw = (await response.json()) as Record<string, unknown>
@@ -369,7 +388,7 @@ export async function completeCursorLogin(
         // oxlint-disable-next-line eslint/preserve-caught-error -- security: cause may contain verifier URL
         throw new Error("Cursor login polling failed after 3 errors")
       }
-      await delay(sleepMs(attempt), ctx.signal)
+      await sleep(sleepMs(attempt), ctx.signal)
     }
   }
   throw new Error("Cursor browser login expired. Run login again.")
