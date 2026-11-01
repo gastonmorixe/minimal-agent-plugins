@@ -6,7 +6,12 @@
  * @module lib/render.test
  */
 
-import { describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
 
 import type { Envelope } from "./envelope.ts"
 import type { Liveness } from "./liveness.ts"
@@ -27,6 +32,11 @@ import {
   toArrivalNotices,
 } from "./render.ts"
 import type { RosterCounts, RosterRow } from "./roster.ts"
+import { slots } from "./style-slots.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 /** Strip ANSI SGR so assertions read against plain text. */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI for assertions.

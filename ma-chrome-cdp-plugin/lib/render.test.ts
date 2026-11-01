@@ -1,53 +1,37 @@
-import { describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
 
 import {
   clip,
   clipEnd,
-  configureSgr,
   describeRequest,
   isErrorBody,
   renderContent,
   renderDisplay,
-  resolveSgr,
   shortId,
   summarize,
 } from "./render.ts"
+import { slots } from "./style.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 // Strip ANSI so assertions read against plain text.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching SGR escapes
 const noAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "")
 
-describe("style facade", () => {
-  test("uses standalone ANSI fallbacks", () => {
-    expect(resolveSgr("not json").red).toBe("\x1b[31m")
-    expect(resolveSgr("not json").gray).toBe("\x1b[90m")
-  })
-
-  test("resolves foreground tokens from host-injected palette context", () => {
-    const sgr = resolveSgr(
-      JSON.stringify({
-        red: "\x1b[38;5;196m",
-        green: "\x1b[38;5;118m",
-        yellow: "\x1b[38;5;214m",
-        cyan: "\x1b[38;5;45m",
-        gray: "\x1b[38;5;246m",
-        _fgReset: "\x1b[39m",
-      }),
-    )
-    expect(sgr.red).toBe("\x1b[38;5;196m")
-    expect(sgr.green).toBe("\x1b[38;5;118m")
-    expect(sgr.yellow).toBe("\x1b[38;5;214m")
-    expect(sgr.cyan).toBe("\x1b[38;5;45m")
-    expect(sgr.gray).toBe("\x1b[38;5;246m")
-    expect(sgr.fgReset).toBe("\x1b[39m")
-  })
-
-  test("configured facade uses host context for rendered strings", () => {
-    configureSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
-    expect(renderDisplay("eval", { target: "T", expr: "x" }, { error: "kaboom" })).toContain(
-      "\x1b[38;5;196m",
-    )
-    configureSgr(undefined)
+describe("style slots (S41)", () => {
+  test("ui/setup.ts installs the terminal kit; reset makes styles plain", () => {
+    slots.reset()
+    expect(slots.installed()).toBe(false)
+    expect(slots.palette.red).toBe("")
+    setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext)
+    expect(slots.palette.red).toBe("\x1b[31m")
   })
 })
 

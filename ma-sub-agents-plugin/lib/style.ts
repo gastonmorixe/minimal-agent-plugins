@@ -7,12 +7,11 @@
  * @module sub-agents/lib/style
  */
 
-import { ANSI_CODES, color } from "@minimal-agent/core/plugin-api/utils/ansi"
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
-
+import { slots } from "./style-slots.ts"
 import type { SubagentStatus } from "./types.ts"
 
-export { color }
+/** Wrap text in style codes and a full reset when `ansi` is true (S41 style slots). */
+export const color = slots.color
 
 /** Glyphs. Status glyphs are intentionally shared with the `tasks` plugin. */
 export const GLYPHS = {
@@ -34,33 +33,53 @@ export const GLYPHS = {
 export const SPINNER = ["◐", "◓", "◑", "◒"] as const
 
 export const ANSI = {
-  RESET: ANSI_CODES.RESET,
-  BOLD: ANSI_CODES.BOLD,
-  DIM: ANSI_CODES.DIM,
-  ITALIC: ANSI_CODES.ITALIC,
-  LIME: PALETTE.lime, // done
-  SKY: PALETTE.sky, // running
-  RED: PALETTE.red, // failed
-  GOLD: PALETTE.gold, // spawn / cost-over-budget
-  DGRAY: ANSI_CODES.DARK_GRAY, // frame chrome
-  LGRAY: ANSI_CODES.LIGHT_GRAY, // secondary chrome
+  get RESET() {
+    return slots.codes.RESET
+  },
+  get BOLD() {
+    return slots.codes.BOLD
+  },
+  get DIM() {
+    return slots.codes.DIM
+  },
+  get ITALIC() {
+    return slots.codes.ITALIC
+  },
+  get LIME() {
+    return slots.palette.lime
+  }, // done
+  get SKY() {
+    return slots.palette.sky
+  }, // running
+  get RED() {
+    return slots.palette.red
+  }, // failed
+  get GOLD() {
+    return slots.palette.gold
+  }, // spawn / cost-over-budget
+  get DGRAY() {
+    return slots.codes.DARK_GRAY
+  }, // frame chrome
+  get LGRAY() {
+    return slots.codes.LIGHT_GRAY
+  }, // secondary chrome
 } as const
 
 /** The status glyph for a worker, colored by state. */
 export function statusGlyph(s: SubagentStatus, ansi: boolean): string {
   switch (s.kind) {
     case "queued":
-      return color(ansi, ANSI.DIM, GLYPHS.queued)
+      return slots.color(ansi, ANSI.DIM, GLYPHS.queued)
     case "running":
-      return color(ansi, ANSI.SKY, GLYPHS.running)
+      return slots.color(ansi, ANSI.SKY, GLYPHS.running)
     case "done":
-      return color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)
+      return slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)
     case "incomplete":
-      return color(ansi, `${ANSI.GOLD}${ANSI.BOLD}`, GLYPHS.incomplete)
+      return slots.color(ansi, `${ANSI.GOLD}${ANSI.BOLD}`, GLYPHS.incomplete)
     case "failed":
-      return color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.failed)
+      return slots.color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.failed)
     case "stopped":
-      return color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.failed)
+      return slots.color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.failed)
     default: {
       throw new Error(`unhandled status kind: ${String(s satisfies never)}`)
     }
@@ -71,17 +90,17 @@ export function statusGlyph(s: SubagentStatus, ansi: boolean): string {
 export function statusLabel(s: SubagentStatus, ansi: boolean): string {
   switch (s.kind) {
     case "queued":
-      return color(ansi, ANSI.DIM, "queued")
+      return slots.color(ansi, ANSI.DIM, "queued")
     case "running":
-      return color(ansi, ANSI.SKY, "running")
+      return slots.color(ansi, ANSI.SKY, "running")
     case "done":
-      return color(ansi, ANSI.LIME, "done")
+      return slots.color(ansi, ANSI.LIME, "done")
     case "incomplete":
-      return color(ansi, ANSI.GOLD, "incomplete")
+      return slots.color(ansi, ANSI.GOLD, "incomplete")
     case "failed":
-      return color(ansi, ANSI.RED, "failed")
+      return slots.color(ansi, ANSI.RED, "failed")
     case "stopped":
-      return color(ansi, ANSI.RED, "stopped")
+      return slots.color(ansi, ANSI.RED, "stopped")
     default: {
       throw new Error(`unhandled status kind: ${String(s satisfies never)}`)
     }

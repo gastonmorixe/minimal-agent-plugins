@@ -71,6 +71,18 @@ export function sanitizePeerLine(input: string): string {
 // ---------------------------------------------------------------------------
 
 /**
+ * The ESC byte. This file strips escape sequences from peer text. It never
+ * emits them. The strip regexes are built from this one named byte.
+ */
+const ESC = String.fromCharCode(0x1b)
+/** OSC: ESC ] … then BEL or ST (ESC backslash). */
+const OSC_RE = new RegExp(`${ESC}\\][^\\x07${ESC}]*(?:\\x07|${ESC}\\\\)?`, "g")
+/** CSI: ESC [ params, intermediates, final byte. */
+const CSI_RE = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]?`, "g")
+/** Any other ESC-led pair. */
+const ESC_PAIR_RE = new RegExp(`${ESC}.`, "g")
+
+/**
  * Make peer text safe to print to a HUMAN terminal.
  *
  * This is a different threat model from {@link sanitizePeerText}. Terminal
@@ -81,8 +93,8 @@ export function sanitizePeerLine(input: string): string {
  * could carry ANSI/OSC/CSI codes to move the cursor, recolor the whole screen,
  * set the window title, or hide a payload. So we strip:
  *
- *   - ESC-introduced sequences (CSI `\x1b[…`, OSC `\x1b]…`, and any other
- *     `\x1b`-led control), and a bare CSI/OSC via the C1 byte,
+ *   - ESC-introduced sequences (CSI `ESC [ …`, OSC `ESC ] …`, and any other
+ *     ESC-led control), and a bare CSI/OSC via the C1 byte,
  *   - other C0 control chars except the ones a multi-line body legitimately
  *     uses (`\n`, `\t`).
  *
@@ -93,14 +105,11 @@ export function sanitizeTerminalText(input: string): string {
   const clipped = input.length > MAX_FIELD ? `${input.slice(0, MAX_FIELD)}…[clipped]` : input
   return (
     clipped
-      // ESC-led sequences: CSI (`\x1b[`…final), OSC (`\x1b]`…BEL or ST), and any
+      // ESC-led sequences: CSI (`ESC [`…final), OSC (`ESC ]`…BEL or ST), and any
       // other single ESC-led control. Order matters: match the longer forms first.
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control chars is the point.
-      .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?/g, "") // OSC … BEL/ST
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control chars is the point.
-      .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]?/g, "") // CSI
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control chars is the point.
-      .replace(/\x1b./g, "") // any other ESC-led pair
+      .replace(OSC_RE, "") // OSC … BEL/ST
+      .replace(CSI_RE, "") // CSI
+      .replace(ESC_PAIR_RE, "") // any other ESC-led pair
       // Bare C1 CSI/OSC introducers (0x9b / 0x9d) a peer might use to bypass ESC.
       // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control chars is the point.
       .replace(/[\x9b\x9d][^\x07]*\x07?/g, "")

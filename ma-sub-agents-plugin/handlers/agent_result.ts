@@ -11,6 +11,8 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import { diskSalvageText, resultText } from "../lib/content.ts"
 import { sessionsDirFromCtx, storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
@@ -22,7 +24,7 @@ import { parseIdArg } from "../lib/validate.ts"
 function tailLog(path: string, n: number): string | null {
   if (!existsSync(path)) return null
   try {
-    const text = readFileSync(path, "utf-8").replace(/\x1b\[[0-9;]*m/g, "")
+    const text = stripAnsi(readFileSync(path, "utf-8"))
     const lines = text
       .split("\n")
       .map((l) => l.trimEnd())

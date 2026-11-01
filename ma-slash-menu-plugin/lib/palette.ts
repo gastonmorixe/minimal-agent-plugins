@@ -1,105 +1,140 @@
 /**
  * Slash-menu style facade.
  *
- * The host injects its palette through the plugin context. Handlers call
- * `configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)` so this external plugin stays
- * visually aligned without importing from `minimal-agent/src/*`. The fallback
- * palette keeps standalone preview and tests useful when run outside the host.
+ * Styles come from the style slots (S41). They are plain until the CLI runs
+ * `ui/setup.ts`, which installs the CLI terminal kit.
  */
 
-const FALLBACK_SGR = {
-  reset: "\x1b[0m",
-  bold: "\x1b[1m",
-  dim: "\x1b[2m",
-  italic: "\x1b[3m",
-  underline: "\x1b[4m",
-  strike: "\x1b[9m",
-  fgReset: "\x1b[39m",
-  bgReset: "\x1b[49m",
-  // Fallback modern palette used when the host palette context is unavailable.
-  pink: "\x1b[38;5;199m",
-  lime: "\x1b[38;5;118m",
-  sky: "\x1b[38;5;45m",
-  violet: "\x1b[38;2;180;140;255m",
-  gold: "\x1b[38;5;214m",
-  orange: "\x1b[38;5;208m",
-  purple: "\x1b[38;5;98m",
-  // Standard.
-  red: "\x1b[31m",
-  brightRed: "\x1b[91m",
-  white: "\x1b[37m",
-  faintWhite: "\x1b[2;37m",
-  boldWhite: "\x1b[1;37m",
-  // For headers / dim labels.
-  dimLime: "\x1b[2;38;5;118m",
-  dimSky: "\x1b[2;38;5;45m",
-  dimGold: "\x1b[2;38;5;214m",
-  dimRed: "\x1b[2;31m",
-  boldSky: "\x1b[1;38;5;45m",
-  boldLime: "\x1b[1;38;5;118m",
-  boldRed: "\x1b[1;91m",
-  boldGold: "\x1b[1;38;5;214m",
-  boldViolet: "\x1b[1m\x1b[38;2;180;140;255m",
-} as const
+import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 
-type Sgr = { readonly [K in keyof typeof FALLBACK_SGR]: string }
+import { slots } from "./style-slots.ts"
 
-/** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw?: string): Sgr {
-  const palette = parsePaletteEnv(raw)
-  const token = (name: string, fallback: string): string => palette?.[name] ?? fallback
-  const dimToken = (name: string, fallback: string): string =>
-    palette?.[name] ? `${FALLBACK_SGR.dim}${palette[name]}` : fallback
-  const boldToken = (name: string, fallback: string): string =>
-    palette?.[name] ? `${FALLBACK_SGR.bold}${palette[name]}` : fallback
-  const reset = palette?._reset ?? FALLBACK_SGR.reset
+const SGR_KEYS = [
+  "reset",
+  "bold",
+  "dim",
+  "italic",
+  "underline",
+  "strike",
+  "fgReset",
+  "bgReset",
+  "pink",
+  "lime",
+  "sky",
+  "violet",
+  "gold",
+  "orange",
+  "purple",
+  "red",
+  "brightRed",
+  "white",
+  "faintWhite",
+  "boldWhite",
+  "dimLime",
+  "dimSky",
+  "dimGold",
+  "dimRed",
+  "boldSky",
+  "boldLime",
+  "boldRed",
+  "boldGold",
+  "boldViolet",
+] as const
 
-  return {
-    ...FALLBACK_SGR,
-    reset,
-    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
-    pink: token("pink", FALLBACK_SGR.pink),
-    lime: token("lime", FALLBACK_SGR.lime),
-    sky: token("sky", FALLBACK_SGR.sky),
-    violet: token("violet", FALLBACK_SGR.violet),
-    gold: token("gold", FALLBACK_SGR.gold),
-    orange: token("orange", FALLBACK_SGR.orange),
-    purple: token("purple", FALLBACK_SGR.purple),
-    red: token("red", FALLBACK_SGR.red),
-    brightRed: token("brightRed", FALLBACK_SGR.brightRed),
-    white: token("white", FALLBACK_SGR.white),
-    dimLime: dimToken("lime", FALLBACK_SGR.dimLime),
-    dimSky: dimToken("sky", FALLBACK_SGR.dimSky),
-    dimGold: dimToken("gold", FALLBACK_SGR.dimGold),
-    dimRed: dimToken("red", FALLBACK_SGR.dimRed),
-    boldSky: boldToken("sky", FALLBACK_SGR.boldSky),
-    boldLime: boldToken("lime", FALLBACK_SGR.boldLime),
-    boldRed: boldToken("brightRed", FALLBACK_SGR.boldRed),
-    boldGold: boldToken("gold", FALLBACK_SGR.boldGold),
-    boldViolet: boldToken("violet", FALLBACK_SGR.boldViolet),
-  }
-}
+type Sgr = { readonly [K in (typeof SGR_KEYS)[number]]: string }
 
-function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
-    const out: Record<string, string> = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string") out[key] = value
-    }
-    return out
-  } catch {
-    return null
-  }
-}
-
-export let SGR = resolveSgr()
-
-/** Configure display styling from the host-provided context palette. */
-export function configureSgr(raw?: string): void {
-  SGR = resolveSgr(raw)
+/**
+ * The style tokens (S41). Each one reads the style slots at call time, so
+ * it is plain until the CLI runs `ui/setup.ts`.
+ */
+export const SGR: Sgr = {
+  get reset() {
+    return slots.codes.RESET
+  },
+  get bold() {
+    return slots.codes.BOLD
+  },
+  get dim() {
+    return slots.codes.DIM
+  },
+  get italic() {
+    return slots.codes.ITALIC
+  },
+  get underline() {
+    return slots.codes.UNDERLINE
+  },
+  get strike() {
+    return slots.codes.STRIKE
+  },
+  get fgReset() {
+    return slots.codes.FG_RESET
+  },
+  get bgReset() {
+    return slots.codes.BG_RESET
+  },
+  get pink() {
+    return slots.palette.pink
+  },
+  get lime() {
+    return slots.palette.lime
+  },
+  get sky() {
+    return slots.palette.sky
+  },
+  get violet() {
+    return slots.palette.violet
+  },
+  get gold() {
+    return slots.palette.gold
+  },
+  get orange() {
+    return slots.palette.orange
+  },
+  get purple() {
+    return slots.palette.purple
+  },
+  get red() {
+    return slots.palette.red
+  },
+  get brightRed() {
+    return slots.palette.brightRed
+  },
+  get white() {
+    return slots.palette.white
+  },
+  get faintWhite() {
+    return slots.codes.FAINT_WHITE
+  },
+  get boldWhite() {
+    return slots.codes.BOLD_WHITE
+  },
+  get dimLime() {
+    return slots.codes.DIM_LIME
+  },
+  get dimSky() {
+    return slots.codes.DIM_SKY
+  },
+  get dimGold() {
+    return slots.codes.DIM_GOLD
+  },
+  get dimRed() {
+    return slots.codes.DIM_RED
+  },
+  get boldSky() {
+    return slots.codes.BOLD_SKY
+  },
+  get boldLime() {
+    return slots.codes.BOLD_LIME
+  },
+  get boldRed() {
+    return slots.codes.BOLD_BRIGHT_RED
+  },
+  get boldGold() {
+    return slots.codes.BOLD_GOLD
+  },
+  get boldViolet() {
+    return `${slots.codes.BOLD}${slots.palette.violet}`
+  },
 }
 
 /** Wrap text in an SGR open + reset, with a guard for empty strings. */
@@ -125,7 +160,7 @@ export function slashTokenSgr(): string {
 
 /** Strip SGR escapes — needed for visual-width math in tests. */
 export function stripSgr(s: string): string {
-  return s.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
+  return stripAnsi(s)
 }
 
 /** Visible cell width for the slash-menu's deliberately 1-cell glyph set. */
@@ -163,7 +198,7 @@ export function truncateVisible(s: string, maxCells: number): string {
   let cells = 0
   let i = 0
   while (i < s.length) {
-    if (s[i] === "\u001b") {
+    if (s.charCodeAt(i) === 0x1b) {
       const end = s.indexOf("m", i)
       if (end < 0) break
       out += s.slice(i, end + 1)

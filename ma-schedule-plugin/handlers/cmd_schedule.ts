@@ -13,8 +13,6 @@
  * @module schedule/handlers/cmd_schedule
  */
 
-import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
-
 import { isValidCron } from "../lib/cron.ts"
 import {
   clockHHMMSS,
@@ -28,8 +26,7 @@ import type { CommandContext, CommandResult } from "../lib/host-types.ts"
 import { parseScheduleArgs } from "../lib/loop-parse.ts"
 import { coloredEntryLine } from "../lib/notice-lines.ts"
 import { cronStoreForSession } from "../lib/store.ts"
-
-const { DIM, RESET } = ANSI_CODES
+import { slots } from "../lib/style.ts"
 
 /**
  * Command handler for `/schedule`: parses the subcommand (raw cron line,
@@ -51,9 +48,9 @@ export default async function cmdSchedule(ctx: CommandContext): Promise<CommandR
       return {
         kind: "notice",
         lines: [
-          `${DIM}usage:${RESET} /schedule "<cron>" <prompt>   schedule a recurring prompt`,
-          `${DIM}       /schedule list${RESET}                list scheduled tasks`,
-          `${DIM}       /schedule cancel <id>${RESET}         cancel a task`,
+          `${slots.codes.DIM}usage:${slots.codes.RESET} /schedule "<cron>" <prompt>   schedule a recurring prompt`,
+          `${slots.codes.DIM}       /schedule list${slots.codes.RESET}                list scheduled tasks`,
+          `${slots.codes.DIM}       /schedule cancel <id>${slots.codes.RESET}         cancel a task`,
         ],
       }
 
@@ -83,7 +80,10 @@ export default async function cmdSchedule(ctx: CommandContext): Promise<CommandR
     case "cancel": {
       const ok = store.delete(action.id ?? "")
       return ok
-        ? { kind: "notice", lines: [`${DIM}✓ canceled ${action.id}${RESET}`] }
+        ? {
+            kind: "notice",
+            lines: [`${slots.codes.DIM}✓ canceled ${action.id}${slots.codes.RESET}`],
+          }
         : { kind: "error", message: `no scheduled task with id "${action.id}"` }
     }
 

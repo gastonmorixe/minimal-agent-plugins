@@ -19,18 +19,7 @@
  */
 
 import type { Route } from "./routes.ts"
-
-const FALLBACK_SGR = {
-  bold: "\x1b[1m",
-  dim: "\x1b[2m",
-  weightReset: "\x1b[22m",
-  red: "\x1b[31m",
-  green: "\x1b[32m",
-  yellow: "\x1b[33m",
-  cyan: "\x1b[36m",
-  gray: "\x1b[90m",
-  fgReset: "\x1b[39m",
-} as const
+import { slots } from "./style.ts"
 
 export interface SgrTokens {
   readonly bold: string
@@ -44,69 +33,51 @@ export interface SgrTokens {
   readonly fgReset: string
 }
 
-/** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw?: string): SgrTokens {
-  const palette = parsePaletteEnv(raw)
+/**
+ * The style tokens of this module (S41). They come from the style slots,
+ * read at call time, so they are plain until the CLI runs `ui/setup.ts`.
+ */
+function sgr(): SgrTokens {
   return {
-    ...FALLBACK_SGR,
-    red: palette?.red ?? FALLBACK_SGR.red,
-    green: palette?.green ?? FALLBACK_SGR.green,
-    yellow: palette?.yellow ?? FALLBACK_SGR.yellow,
-    cyan: palette?.cyan ?? FALLBACK_SGR.cyan,
-    gray: palette?.gray ?? FALLBACK_SGR.gray,
-    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+    bold: slots.codes.BOLD,
+    dim: slots.codes.DIM,
+    weightReset: slots.codes.BOLD_CLOSE,
+    red: slots.palette.red,
+    green: slots.palette.green,
+    yellow: slots.palette.yellow,
+    cyan: slots.palette.cyan,
+    gray: slots.codes.BRIGHT_BLACK,
+    fgReset: slots.codes.FG_RESET,
   }
-}
-
-function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
-    const out: Record<string, string> = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string") out[key] = value
-    }
-    return out
-  } catch {
-    return null
-  }
-}
-
-let SGR = resolveSgr()
-
-/** Configure display styling from the host-provided context palette. */
-export function configureSgr(raw?: string): void {
-  SGR = resolveSgr(raw)
 }
 
 /** Wrap a string in the ANSI dim attribute. */
 export function dim(s: string): string {
-  return `${SGR.dim}${s}${SGR.weightReset}`
+  return `${sgr().dim}${s}${sgr().weightReset}`
 }
 /** Wrap a string in the ANSI bold attribute. */
 export function bold(s: string): string {
-  return `${SGR.bold}${s}${SGR.weightReset}`
+  return `${sgr().bold}${s}${sgr().weightReset}`
 }
 /** Color a string red (ANSI foreground). */
 export function red(s: string): string {
-  return `${SGR.red}${s}${SGR.fgReset}`
+  return `${sgr().red}${s}${sgr().fgReset}`
 }
 /** Color a string green (ANSI foreground). */
 export function green(s: string): string {
-  return `${SGR.green}${s}${SGR.fgReset}`
+  return `${sgr().green}${s}${sgr().fgReset}`
 }
 /** Color a string yellow (ANSI foreground). */
 export function yellow(s: string): string {
-  return `${SGR.yellow}${s}${SGR.fgReset}`
+  return `${sgr().yellow}${s}${sgr().fgReset}`
 }
 /** Color a string cyan (ANSI foreground). */
 export function cyan(s: string): string {
-  return `${SGR.cyan}${s}${SGR.fgReset}`
+  return `${sgr().cyan}${s}${sgr().fgReset}`
 }
 /** Color a string gray (ANSI bright-black foreground). */
 export function gray(s: string): string {
-  return `${SGR.gray}${s}${SGR.fgReset}`
+  return `${sgr().gray}${s}${sgr().fgReset}`
 }
 
 /** A gray middot bullet for separating chunks on one line. */

@@ -38,7 +38,7 @@ export default async function showDiffHandler(ctx: TUIContext): Promise<TUIResul
   const rendered = renderUnifiedDiff(input.patch, title)
   // `content` goes back to the model (keep it as the raw patch — the model
   // already knows what it asked to render, no need to feed it ANSI back).
-  // `display` is the ANSI-colored render shown in the transcript with no
+  // `display` is the styled render shown in the transcript with no
   // truncation — see formatToolPreview in src/agent.ts.
   return { kind: "tool_result", content: input.patch, display: rendered }
 }

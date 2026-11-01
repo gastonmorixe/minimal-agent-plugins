@@ -19,16 +19,13 @@
  * @module web-search/format
  */
 
-import { ANSI_CODES, ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
-
+import { slots } from "./lib/style.ts"
 import type { SearchHit, SearchResponse } from "./providers/types.ts"
+
+const c = slots.styles
 
 const TITLE_MAX = 120
 const SNIPPET_MAX = 240
-
-const { BOLD, DIM, ITALIC, RESET, UNDERLINE } = ANSI_CODES
-const FG_CYAN = PALETTE.cyan
 
 function clip(s: string, max: number): string {
   if (s.length <= max) return s
@@ -59,12 +56,13 @@ function deriveSource(hit: SearchHit): string {
  */
 export function formatText(response: SearchResponse, opts: { ansi?: boolean } = {}): string {
   const ansi = opts.ansi ?? false
-  const b = (s: string) => (ansi ? `${BOLD}${s}${RESET}` : s)
-  const dim = (s: string) => (ansi ? `${DIM}${s}${RESET}` : s)
+  const b = (s: string) => (ansi ? `${slots.codes.BOLD}${s}${slots.codes.RESET}` : s)
+  const dim = (s: string) => (ansi ? `${slots.codes.DIM}${s}${slots.codes.RESET}` : s)
   const grey = (s: string) => (ansi ? c.gray(s) : s)
-  const cyan = (s: string) => (ansi ? `${FG_CYAN}${s}${RESET}` : s)
-  const url = (s: string) => (ansi ? `${DIM}${UNDERLINE}${s}${RESET}` : s)
-  const it = (s: string) => (ansi ? `${ITALIC}${s}${RESET}` : s)
+  const cyan = (s: string) => (ansi ? `${slots.palette.cyan}${s}${slots.codes.RESET}` : s)
+  const url = (s: string) =>
+    ansi ? `${slots.codes.DIM}${slots.codes.UNDERLINE}${s}${slots.codes.RESET}` : s
+  const it = (s: string) => (ansi ? `${slots.codes.ITALIC}${s}${slots.codes.RESET}` : s)
 
   const header = `${b("WebSearch")}${grey(`[${response.provider}/${response.type}]`)} ${it(`"${response.query}"`)} — ${response.hits.length} result${response.hits.length === 1 ? "" : "s"}`
   if (response.hits.length === 0) {

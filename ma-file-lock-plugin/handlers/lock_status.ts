@@ -35,7 +35,6 @@ import { existsSync, unlinkSync } from "node:fs"
 import { hostname } from "node:os"
 import { isAbsolute, resolve } from "node:path"
 
-import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
 import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 import {
@@ -47,6 +46,9 @@ import {
   readLockFile,
 } from "../lib/file-lock.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import { slots } from "../lib/style.ts"
+
+const c = slots.styles
 
 // ---------------------------------------------------------------------------
 // Input shape

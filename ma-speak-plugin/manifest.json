@@ -37,9 +37,7 @@
           "path": "./handlers/speak.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "♪",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "speak_status",
@@ -67,9 +65,7 @@
           "path": "./handlers/speak_status.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◎",
-        "color": "violet"
+        "interactive": false
       },
       {
         "id": "speak_stop",
@@ -97,10 +93,15 @@
           "path": "./handlers/speak_stop.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "■",
-        "color": "red"
+        "interactive": false
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

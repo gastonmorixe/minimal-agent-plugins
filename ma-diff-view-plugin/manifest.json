@@ -35,9 +35,7 @@
           "path": "./handlers/show_diff.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "±",
-        "color": "lime"
+        "interactive": false
       },
       {
         "id": "inline_diff",
@@ -53,5 +51,12 @@
         "interactive": false
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

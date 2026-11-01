@@ -285,7 +285,7 @@ export function renderSendHeader(input: SendDisplayInput): string {
 
   const arrow = dim("→")
   const err = input.isError ? ` ${red("failed")}` : ""
-  // `red()` is palette-aware (MINIMAL_AGENT_PALETTE), not a hardcoded SGR.
+  // `red()` reads the style slots (S41), not a hardcoded SGR.
   if (input.kind === "interrupt") {
     return `${red("interrupt")} ${dim("·")} ${arrow} ${dest}${err}`
   }

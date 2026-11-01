@@ -24,8 +24,11 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
 
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
 import type { TUIContext } from "../lib/host-types.ts"
 import {
   globalMemoryPath,
@@ -34,6 +37,8 @@ import {
   SHORT_TERM_CAP,
   shortTermMemoryPath,
 } from "../lib/store.ts"
+import { slots } from "../lib/style.ts"
+import setup from "../ui/setup.ts"
 
 import memoryToolHandler, {
   DEFAULT_LIST_LIMIT,
@@ -41,6 +46,10 @@ import memoryToolHandler, {
   MAX_LIST_LIMIT,
   paginateNewestFirst,
 } from "./memory_tool.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 const PLUGIN_DIR = resolve(__dirname, "..")
 

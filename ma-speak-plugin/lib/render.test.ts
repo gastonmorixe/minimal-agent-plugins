@@ -1,17 +1,25 @@
-import { describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
 
 import type { SpeechJob } from "./registry.ts"
 import {
-  configureSgr,
   formatDuration,
   jobElapsedMs,
   renderFooter,
   renderJobLine,
   renderJobList,
-  resolveSgr,
   stateGlyph,
   stateWord,
 } from "./render.ts"
+import { slots } from "./style.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 /** Strip ANSI so assertions read on the plain text. */
 function plain(s: string): string {
@@ -31,33 +39,13 @@ function job(over: Partial<SpeechJob> = {}): SpeechJob {
   }
 }
 
-describe("style facade", () => {
-  test("uses standalone ANSI fallbacks", () => {
-    expect(plain(stateGlyph("failed"))).toBe("✘ failed")
-    expect(resolveSgr("not json").red).toBe("\x1b[31m")
-  })
-
-  test("resolves foreground tokens from host-injected palette context", () => {
-    const sgr = resolveSgr(
-      JSON.stringify({
-        red: "\x1b[38;5;196m",
-        green: "\x1b[38;5;118m",
-        yellow: "\x1b[38;5;214m",
-        cyan: "\x1b[38;5;45m",
-        _fgReset: "\x1b[39m",
-      }),
-    )
-    expect(sgr.red).toBe("\x1b[38;5;196m")
-    expect(sgr.green).toBe("\x1b[38;5;118m")
-    expect(sgr.yellow).toBe("\x1b[38;5;214m")
-    expect(sgr.cyan).toBe("\x1b[38;5;45m")
-    expect(sgr.fgReset).toBe("\x1b[39m")
-  })
-
-  test("configured facade uses host context for rendered glyphs", () => {
-    configureSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
-    expect(stateGlyph("failed")).toBe("\x1b[38;5;196m✘ failed\x1b[39m")
-    configureSgr(undefined)
+describe("style slots (S41)", () => {
+  test("ui/setup.ts installs the terminal kit; reset makes styles plain", () => {
+    slots.reset()
+    expect(slots.installed()).toBe(false)
+    expect(slots.palette.red).toBe("")
+    setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext)
+    expect(slots.palette.red).toBe("\x1b[31m")
   })
 })
 

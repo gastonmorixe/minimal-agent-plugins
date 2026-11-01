@@ -1,54 +1,111 @@
 /**
  * Config overlay style facade.
  *
- * This module keeps the renderer's local names stable while sourcing ANSI,
- * palette, and display-width behavior from the shared plugin API. The plugin
- * remains host-free: it depends on the contract package, not `src/ui/*`.
+ * This module keeps the renderer's local names stable. Styles come from the
+ * style slots (S41): plain until the CLI runs `ui/setup.ts`. Display width
+ * comes from the shared plugin API. The plugin stays host-free.
  *
  * @module config/lib/palette
  */
 
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+import {
+  displayWidth,
+  stripAnsi,
+  truncateDisplayWidth,
+} from "@minimal-agent/core/plugin-api/utils/term-width"
 
-import { ANSI_CODES, color } from "./ansi.ts"
-import { displayWidth, stripAnsi, truncateDisplayWidth } from "./term-width.ts"
+import { slots } from "./style.ts"
 
 export const SGR = {
-  reset: ANSI_CODES.RESET,
-  bold: ANSI_CODES.BOLD,
-  dim: ANSI_CODES.DIM,
-  italic: ANSI_CODES.ITALIC,
-  underline: ANSI_CODES.UNDERLINE,
-  pink: PALETTE.pink,
-  lime: PALETTE.lime,
-  sky: PALETTE.sky,
-  violet: PALETTE.violet,
-  gold: PALETTE.gold,
-  orange: PALETTE.orange,
-  purple: PALETTE.purple,
+  get reset() {
+    return slots.codes.RESET
+  },
+  get bold() {
+    return slots.codes.BOLD
+  },
+  get dim() {
+    return slots.codes.DIM
+  },
+  get italic() {
+    return slots.codes.ITALIC
+  },
+  get underline() {
+    return slots.codes.UNDERLINE
+  },
+  get pink() {
+    return slots.palette.pink
+  },
+  get lime() {
+    return slots.palette.lime
+  },
+  get sky() {
+    return slots.palette.sky
+  },
+  get violet() {
+    return slots.palette.violet
+  },
+  get gold() {
+    return slots.palette.gold
+  },
+  get orange() {
+    return slots.palette.orange
+  },
+  get purple() {
+    return slots.palette.purple
+  },
   // Standard.
-  red: PALETTE.red,
-  brightRed: PALETTE.brightRed,
-  white: PALETTE.white,
-  faintWhite: ANSI_CODES.FAINT_WHITE,
-  boldWhite: ANSI_CODES.BOLD_WHITE,
+  get red() {
+    return slots.palette.red
+  },
+  get brightRed() {
+    return slots.palette.brightRed
+  },
+  get white() {
+    return slots.palette.white
+  },
+  get faintWhite() {
+    return slots.codes.FAINT_WHITE
+  },
+  get boldWhite() {
+    return slots.codes.BOLD_WHITE
+  },
   // Dim / bold variants for headers + emphasis.
-  dimLime: ANSI_CODES.DIM_LIME,
-  dimSky: ANSI_CODES.DIM_SKY,
-  dimGold: ANSI_CODES.DIM_GOLD,
-  dimRed: ANSI_CODES.DIM_RED,
-  dimViolet: ANSI_CODES.DIM_VIOLET,
-  boldSky: ANSI_CODES.BOLD_SKY,
-  boldLime: ANSI_CODES.BOLD_LIME,
-  boldRed: ANSI_CODES.BOLD_BRIGHT_RED,
-  boldGold: ANSI_CODES.BOLD_GOLD,
-  boldPink: ANSI_CODES.BOLD_PINK,
+  get dimLime() {
+    return slots.codes.DIM_LIME
+  },
+  get dimSky() {
+    return slots.codes.DIM_SKY
+  },
+  get dimGold() {
+    return slots.codes.DIM_GOLD
+  },
+  get dimRed() {
+    return slots.codes.DIM_RED
+  },
+  get dimViolet() {
+    return slots.codes.DIM_VIOLET
+  },
+  get boldSky() {
+    return slots.codes.BOLD_SKY
+  },
+  get boldLime() {
+    return slots.codes.BOLD_LIME
+  },
+  get boldRed() {
+    return slots.codes.BOLD_BRIGHT_RED
+  },
+  get boldGold() {
+    return slots.codes.BOLD_GOLD
+  },
+  get boldPink() {
+    return slots.codes.BOLD_PINK
+  },
 } as const
 
 /** Wrap text in an SGR open + reset, with a guard for empty strings. */
 export function wrap(text: string, sgr: string): string {
   if (text === "") return ""
-  return color(true, sgr, text)
+  return slots.color(true, sgr, text)
 }
 
 /** Wrap with dim. */

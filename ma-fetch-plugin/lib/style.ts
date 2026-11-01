@@ -1,0 +1,13 @@
+/**
+ * Display style slots of the fetch plugin (spec S41).
+ *
+ * The handler reads its display styles here. Every slot is plain text
+ * until the CLI runs `ui/setup.ts`, which installs the terminal kit.
+ *
+ * @module lib/style
+ */
+
+import { createStyleSlots } from "@minimal-agent/core/plugin-api/utils/style-slots"
+
+/** The style slots of this plugin. */
+export const slots = createStyleSlots()

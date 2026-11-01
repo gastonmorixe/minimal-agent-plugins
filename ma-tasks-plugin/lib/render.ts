@@ -44,11 +44,9 @@
  * @module tasks/lib/render
  */
 
-import { ANSI_CODES, color } from "@minimal-agent/core/plugin-api/utils/ansi"
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
-
 import { localIsoDateTime, type Task, type TaskStatus } from "./parse.ts"
 import type { Stats, View } from "./store.ts"
+import { slots } from "./style.ts"
 
 // ---------------------------------------------------------------------------
 // Glyphs (pure unicode, no nerd-font, no emoji)
@@ -80,12 +78,24 @@ export const GLYPHS = {
 // ---------------------------------------------------------------------------
 
 const ANSI = {
-  RESET: ANSI_CODES.RESET,
-  BOLD: ANSI_CODES.BOLD,
-  DIM: ANSI_CODES.DIM,
-  ITALIC: ANSI_CODES.ITALIC,
-  STRIKE: ANSI_CODES.STRIKE,
-  LIME: PALETTE.lime,
+  get RESET() {
+    return slots.codes.RESET
+  },
+  get BOLD() {
+    return slots.codes.BOLD
+  },
+  get DIM() {
+    return slots.codes.DIM
+  },
+  get ITALIC() {
+    return slots.codes.ITALIC
+  },
+  get STRIKE() {
+    return slots.codes.STRIKE
+  },
+  get LIME() {
+    return slots.palette.lime
+  },
   /**
    * The agent's accent blue (palette token `sky`, 256-color 45). Used
    * for the "doing" status — "in focus / actively being worked on"
@@ -96,10 +106,18 @@ const ANSI = {
    * but the value was stale. Renamed to `SKY` so future readers don't
    * trip over the same divergence.
    */
-  SKY: PALETTE.sky,
-  RED: PALETTE.red,
-  DGRAY: ANSI_CODES.DARK_GRAY,
-  LGRAY: ANSI_CODES.LIGHT_GRAY,
+  get SKY() {
+    return slots.palette.sky
+  },
+  get RED() {
+    return slots.palette.red
+  },
+  get DGRAY() {
+    return slots.codes.DARK_GRAY
+  },
+  get LGRAY() {
+    return slots.codes.LIGHT_GRAY
+  },
 } as const
 
 // ---------------------------------------------------------------------------
@@ -276,17 +294,17 @@ function statusGlyph(status: TaskStatus, ansi: boolean, ghost?: "removed"): stri
   // of what its status was at the moment of deletion. The visual cue is
   // "this is gone", not "this is canceled".
   if (ghost === "removed") {
-    return color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.canceled)
+    return slots.color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.canceled)
   }
   switch (status) {
     case "done":
-      return color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)
+      return slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)
     case "doing":
-      return color(ansi, ANSI.SKY, GLYPHS.doing)
+      return slots.color(ansi, ANSI.SKY, GLYPHS.doing)
     case "todo":
-      return color(ansi, ANSI.DIM, GLYPHS.pending)
+      return slots.color(ansi, ANSI.DIM, GLYPHS.pending)
     case "canceled":
-      return color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.canceled)
+      return slots.color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.canceled)
     default: {
       // TaskStatus is a closed union; this default exists only to satisfy
       // `consistent-return` and acts as an exhaustiveness check at the
@@ -332,7 +350,7 @@ function styleTitle(
   //    targeted THIS row, add BOLD so the tombstone reads as "this is
   //    the one I just removed".
   if (ghost === "removed") {
-    return color(
+    return slots.color(
       ansi,
       targeted ? `${ANSI.RED}${ANSI.BOLD}${ANSI.STRIKE}` : `${ANSI.RED}${ANSI.STRIKE}`,
       title,
@@ -349,9 +367,9 @@ function styleTitle(
   //    look like it had no action color.
   if (diff !== undefined) {
     const oldT = truncate(singleLineText(diff.oldTitle), maxLen)
-    const oldCol = color(ansi, `${ANSI.RED}${ANSI.STRIKE}`, oldT)
-    const arrow = color(ansi, ANSI.DIM, "  →  ")
-    const newCol = color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, title)
+    const oldCol = slots.color(ansi, `${ANSI.RED}${ANSI.STRIKE}`, oldT)
+    const arrow = slots.color(ansi, ANSI.DIM, "  →  ")
+    const newCol = slots.color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, title)
     return `${oldCol}${arrow}${newCol}`
   }
   // 3. Plain status styling.
@@ -366,7 +384,7 @@ function styleTitle(
     // and number column carry the emphasis, the reason stays quiet
     // so the targeted-row signal doesn't drown out its own metadata.
     const reason = reasonText
-      ? `  ${color(ansi, `${ANSI.RED}${ANSI.DIM}${ANSI.STRIKE}`, `(${reasonText})`)}`
+      ? `  ${slots.color(ansi, `${ANSI.RED}${ANSI.DIM}${ANSI.STRIKE}`, `(${reasonText})`)}`
       : ""
     return `${body}${reason}`
   }
@@ -386,7 +404,7 @@ function styleTitle(
 function styleTitleByStatus(t: Task, title: string, ansi: boolean, targeted = false): string {
   switch (t.status) {
     case "done":
-      return color(
+      return slots.color(
         ansi,
         targeted ? `${ANSI.LIME}${ANSI.BOLD}${ANSI.STRIKE}` : `${ANSI.DIM}${ANSI.STRIKE}`,
         title,
@@ -399,16 +417,16 @@ function styleTitleByStatus(t: Task, title: string, ansi: boolean, targeted = fa
       // Targeted doing rows are visually identical to non-targeted
       // doing rows here (already maxed-out: SKY+BOLD); the distinction
       // comes from the brighter `idCol` in the row renderer instead.
-      return color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, title)
+      return slots.color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, title)
     case "todo":
       // Plain → BOLD when targeted. Pops the just-added task out of
       // the rest of the todo list.
-      return targeted ? color(ansi, ANSI.BOLD, title) : title
+      return targeted ? slots.color(ansi, ANSI.BOLD, title) : title
     case "canceled":
       // Match the row's red `✘` icon — title is also red+strike so the
       // whole row reads as one "canceled" gesture instead of "red icon
       // + dim white title" (which made the title look done, not gone).
-      return color(
+      return slots.color(
         ansi,
         targeted ? `${ANSI.RED}${ANSI.BOLD}${ANSI.STRIKE}` : `${ANSI.RED}${ANSI.STRIKE}`,
         title,
@@ -449,8 +467,8 @@ function truncate(s: string, max?: number): string {
  */
 function renderHeaderDateSuffix(ansi: boolean, nowEpochMs: number): string {
   const text = localIsoDateTime(() => new Date(nowEpochMs))
-  const dot = color(ansi, ANSI.DIM, GLYPHS.bullet)
-  return ` ${dot} ${color(ansi, ANSI.DIM, text)}`
+  const dot = slots.color(ansi, ANSI.DIM, GLYPHS.bullet)
+  return ` ${dot} ${slots.color(ansi, ANSI.DIM, text)}`
 }
 
 function renderHeaderText(
@@ -459,7 +477,7 @@ function renderHeaderText(
   ansi: boolean,
   nowEpochMs: number,
 ): string {
-  const dot = color(ansi, ANSI.DIM, GLYPHS.bullet)
+  const dot = slots.color(ansi, ANSI.DIM, GLYPHS.bullet)
 
   // Common N/M trailer. The leading ` ${dot} ` separates the action verb
   // from the stats (e.g. `+ added 7 tasks · 0/7`); when stats are empty
@@ -467,7 +485,7 @@ function renderHeaderText(
   const trail =
     stats.total === 0
       ? ""
-      : ` ${dot} ${color(ansi, ANSI.BOLD, String(stats.done))}${color(ansi, ANSI.DIM, `/${stats.total}`)}`
+      : ` ${dot} ${slots.color(ansi, ANSI.BOLD, String(stats.done))}${slots.color(ansi, ANSI.DIM, `/${stats.total}`)}`
 
   // The plugin owns the "header content" slot only — agent chrome
   // (`╭ [icon] [label]  …`) is drawn around this string. Don't lead with
@@ -476,31 +494,31 @@ function renderHeaderText(
   let middle = ""
   switch (action.kind) {
     case "added":
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, "added")} ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${slots.color(ansi, ANSI.LIME, "added")} ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "added_many":
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, `added ${action.count} tasks`)}`
+      middle = `${slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${slots.color(ansi, ANSI.LIME, `added ${action.count} tasks`)}`
       break
     case "replaced_plan":
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${color(ansi, ANSI.LIME, `replaced plan with ${action.count} tasks`)} ${color(ansi, ANSI.DIM, `(${action.replaced} replaced)`)}`
+      middle = `${slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.plus)} ${slots.color(ansi, ANSI.LIME, `replaced plan with ${action.count} tasks`)} ${slots.color(ansi, ANSI.DIM, `(${action.replaced} replaced)`)}`
       break
     case "started":
       // Word + icon both SKY so the header reads as one blue "started"
       // gesture, matching the `marked_canceled` precedent (RED icon +
       // RED word + dgray id) and the row's SKY+BOLD title for the
       // same task.
-      middle = `${color(ansi, ANSI.SKY, GLYPHS.doing)} ${color(ansi, ANSI.SKY, "started")} ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, ANSI.SKY, GLYPHS.doing)} ${slots.color(ansi, ANSI.SKY, "started")} ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_done":
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} marked done ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} marked done ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_doing":
       // Symmetric to `started` — both transition a task into the doing
       // state, both deserve SKY identity on the verb.
-      middle = `${color(ansi, ANSI.SKY, GLYPHS.doing)} ${color(ansi, ANSI.SKY, "marked doing")} ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, ANSI.SKY, GLYPHS.doing)} ${slots.color(ansi, ANSI.SKY, "marked doing")} ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_todo":
-      middle = `${color(ansi, ANSI.DIM, GLYPHS.pending)} reset to todo ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, ANSI.DIM, GLYPHS.pending)} reset to todo ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "marked_canceled":
       // Word "canceled" is RED (no dim) so the action's identity color
@@ -508,37 +526,37 @@ function renderHeaderText(
       // and `marked done` carries the lime `✔`. Icon stays RED+DIM
       // (softer than a row's RED+BOLD `✘`) so the header's verb glyph
       // doesn't compete with the row icons below.
-      middle = `${color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} ${color(ansi, ANSI.RED, "canceled")} ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} ${slots.color(ansi, ANSI.RED, "canceled")} ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "updated":
-      middle = `updated ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `updated ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "removed":
-      middle = `${color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} removed ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, `${ANSI.RED}${ANSI.DIM}`, GLYPHS.canceled)} removed ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "reordered":
       middle = `reordered`
       break
     case "cleared":
-      middle = `cleared ${color(ansi, ANSI.LGRAY, String(action.count))} tasks`
+      middle = `cleared ${slots.color(ansi, ANSI.LGRAY, String(action.count))} tasks`
       break
     case "all_done":
       // Uppercase "ALL DONE" — the celebration is supposed to read as
       // a small shout. Stays in LIME (no bold on the word — the icon
       // carries the bold so the row doesn't feel SHOUTY-SHOUTY).
-      middle = `${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} ${color(ansi, ANSI.LIME, "ALL DONE")}`
+      middle = `${slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, GLYPHS.done)} ${slots.color(ansi, ANSI.LIME, "ALL DONE")}`
       break
     case "already_done":
       // Quiet idempotent ack — dim, no lime shout, no second ALL DONE.
       // Models often re-`done` a parent after last-child auto-promote;
       // celebrating again double-frames the transcript and burns tokens.
-      middle = `${color(ansi, ANSI.DIM, GLYPHS.done)} ${color(ansi, ANSI.DIM, "already done")} ${color(ansi, ANSI.DGRAY, action.id)}`
+      middle = `${slots.color(ansi, ANSI.DIM, GLYPHS.done)} ${slots.color(ansi, ANSI.DIM, "already done")} ${slots.color(ansi, ANSI.DGRAY, action.id)}`
       break
     case "list":
       if (stats.total === 0) {
-        middle = color(ansi, `${ANSI.DIM}${ANSI.ITALIC}`, "no tasks")
+        middle = slots.color(ansi, `${ANSI.DIM}${ANSI.ITALIC}`, "no tasks")
       } else {
-        middle = color(ansi, ANSI.LGRAY, `${stats.total} task${stats.total === 1 ? "" : "s"}`)
+        middle = slots.color(ansi, ANSI.LGRAY, `${stats.total} task${stats.total === 1 ? "" : "s"}`)
       }
       break
   }
@@ -565,7 +583,7 @@ function renderHeaderText(
   }
   if (action.kind === "all_done") {
     // Bold lime N/M for the satisfying "5/5" reveal.
-    suffix = ` ${dot} ${color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, String(stats.done))}${color(ansi, ANSI.DIM, `/${stats.total}`)}`
+    suffix = ` ${dot} ${slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, String(stats.done))}${slots.color(ansi, ANSI.DIM, `/${stats.total}`)}`
   }
 
   // Trailing date-and-time chrome — emitted UNCONDITIONALLY at the end
@@ -582,16 +600,16 @@ function renderHeader(
   ansi: boolean,
   nowEpochMs: number,
 ): string {
-  const frame = color(ansi, ANSI.DGRAY, GLYPHS.frameTL)
+  const frame = slots.color(ansi, ANSI.DGRAY, GLYPHS.frameTL)
   // CLI-only brand prefix. The agent path uses `renderToolDisplay` (which
   // skips this wrapper) and gets its identity from the manifest's icon
   // and label in the host tool-frame chrome instead. Keeping the brand
   // local to this CLI wrapper avoids leaking a duplicate "Tasks" word
   // into the agent's transcript where it would sit next to "Task" from
   // the manifest.
-  const brand = `${color(ansi, ANSI.DIM, GLYPHS.pending)} ${color(ansi, ANSI.BOLD, "Tasks")}`
+  const brand = `${slots.color(ansi, ANSI.DIM, GLYPHS.pending)} ${slots.color(ansi, ANSI.BOLD, "Tasks")}`
   const content = renderHeaderText(action, stats, ansi, nowEpochMs)
-  const sep = content.length === 0 ? "" : ` ${color(ansi, ANSI.DIM, GLYPHS.bullet)} `
+  const sep = content.length === 0 ? "" : ` ${slots.color(ansi, ANSI.DIM, GLYPHS.bullet)} `
   return `${frame} ${brand}${sep}${content}`
 }
 
@@ -617,13 +635,13 @@ function styleIdCol(v: View, ansi: boolean, targeted: boolean): string {
   const t = v.task
   const idStruck = v.ghost === "removed" || t.status === "canceled"
   if (idStruck) {
-    return color(
+    return slots.color(
       ansi,
       targeted ? `${ANSI.DGRAY}${ANSI.BOLD}${ANSI.STRIKE}` : `${ANSI.DGRAY}${ANSI.STRIKE}`,
       t.id,
     )
   }
-  return color(ansi, targeted ? `${ANSI.LGRAY}${ANSI.BOLD}` : ANSI.DGRAY, t.id)
+  return slots.color(ansi, targeted ? `${ANSI.LGRAY}${ANSI.BOLD}` : ANSI.DGRAY, t.id)
 }
 
 /**
@@ -652,29 +670,29 @@ function renderDurationSuffix(
   if (text === "") return ""
   let styled: string
   if (ghost === "removed") {
-    styled = color(ansi, `${ANSI.DGRAY}${ANSI.STRIKE}`, text)
+    styled = slots.color(ansi, `${ANSI.DGRAY}${ANSI.STRIKE}`, text)
   } else {
     switch (status) {
       case "doing":
         // Sky+bold matches the `◐` icon and the row's title color — the
         // whole "doing" row reads as one blue gesture, and the duration
         // is the token that ticks every render.
-        styled = color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, text)
+        styled = slots.color(ansi, `${ANSI.SKY}${ANSI.BOLD}`, text)
         break
       case "done":
         // LGRAY (256-color 246) is one notch brighter than DIM — chosen
         // so the duration of completed tasks is readable but quiet,
         // letting the eye land on the title text first.
-        styled = color(ansi, ANSI.LGRAY, text)
+        styled = slots.color(ansi, ANSI.LGRAY, text)
         break
       case "canceled":
-        styled = color(ansi, `${ANSI.RED}${ANSI.DIM}${ANSI.STRIKE}`, text)
+        styled = slots.color(ansi, `${ANSI.RED}${ANSI.DIM}${ANSI.STRIKE}`, text)
         break
       case "todo":
         // Defensive — a todo task shouldn't have non-zero active_ms in
         // practice (no transition has happened yet), but if it does
         // we paint it DIM so the row still reads as "not started".
-        styled = color(ansi, ANSI.DIM, text)
+        styled = slots.color(ansi, ANSI.DIM, text)
         break
       default: {
         throw new Error(`unhandled status: ${String(status satisfies never)}`)
@@ -709,7 +727,7 @@ function renderTopLevelRow(
   targeted = false,
   durMs = 0,
 ): string {
-  const frame = color(ansi, ANSI.DGRAY, GLYPHS.frameML)
+  const frame = slots.color(ansi, ANSI.DGRAY, GLYPHS.frameML)
   return `${frame} ${renderTopLevelRowBody(v, ansi, maxTitleLen, targeted, durMs)}`
 }
 
@@ -722,7 +740,7 @@ function renderSubtaskRowBody(
 ): string {
   const t = v.task
   const isLast = v.siblingCount !== null && v.childIndex === v.siblingCount - 1
-  const treeGlyph = color(ansi, ANSI.DGRAY, isLast ? GLYPHS.treeLast : GLYPHS.treeMid)
+  const treeGlyph = slots.color(ansi, ANSI.DGRAY, isLast ? GLYPHS.treeLast : GLYPHS.treeMid)
   const stCol = statusGlyph(t.status, ansi, v.ghost)
   const idCol = styleIdCol(v, ansi, targeted)
   const titleCol = styleTitle(t, ansi, maxTitleLen, v.ghost, v.diff, targeted)
@@ -741,12 +759,12 @@ function renderSubtaskRow(
   targeted = false,
   durMs = 0,
 ): string {
-  const frame = color(ansi, ANSI.DGRAY, GLYPHS.frameML)
+  const frame = slots.color(ansi, ANSI.DGRAY, GLYPHS.frameML)
   return `${frame} ${renderSubtaskRowBody(v, ansi, maxTitleLen, targeted, durMs)}`
 }
 
 function renderGap(ansi: boolean): string {
-  return color(ansi, ANSI.DGRAY, GLYPHS.frameML)
+  return slots.color(ansi, ANSI.DGRAY, GLYPHS.frameML)
 }
 
 // ---------------------------------------------------------------------------
@@ -779,7 +797,7 @@ function allDoneTag(ansi: boolean): string {
   // Uppercase "ALL DONE" so the celebration reads as a small shout —
   // distinct from any per-row "done" word (which stays lowercase as
   // a status label).
-  return color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, `${GLYPHS.sparkle} ALL DONE`)
+  return slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, `${GLYPHS.sparkle} ALL DONE`)
 }
 
 // ---------------------------------------------------------------------------
@@ -837,7 +855,7 @@ function targetHashFromAction(action: RenderAction): string | null {
 // ---------------------------------------------------------------------------
 
 function renderCloserText(stats: Stats, ansi: boolean, elapsedMs: number): string {
-  const dot = color(ansi, ANSI.DIM, GLYPHS.bullet)
+  const dot = slots.color(ansi, ANSI.DIM, GLYPHS.bullet)
   const parts: string[] = []
   const allDone = isAllDone(stats)
 
@@ -845,20 +863,20 @@ function renderCloserText(stats: Stats, ansi: boolean, elapsedMs: number): strin
   // final summary row reads "you're done" before the per-status counts.
   if (allDone) parts.push(allDoneTag(ansi))
 
-  parts.push(color(ansi, ANSI.LIME, `${stats.done} done`))
+  parts.push(slots.color(ansi, ANSI.LIME, `${stats.done} done`))
   // Hide the `0 doing` / `0 todo` zero-counts only in the all-done
   // state — those zeros ARE the celebration, but in any other state
   // a `0 doing` is informational (e.g. "you have 5 todo and 0 doing"
   // tells the user nothing's started yet). Keep canceled visible
   // whenever non-zero regardless of state.
   if (!allDone || stats.doing > 0) {
-    parts.push(color(ansi, ANSI.SKY, `${stats.doing} doing`))
+    parts.push(slots.color(ansi, ANSI.SKY, `${stats.doing} doing`))
   }
   if (!allDone || stats.todo > 0) {
-    parts.push(color(ansi, ANSI.DIM, `${stats.todo} todo`))
+    parts.push(slots.color(ansi, ANSI.DIM, `${stats.todo} todo`))
   }
   if (stats.canceled > 0) {
-    parts.push(color(ansi, `${ANSI.DIM}${ANSI.RED}`, `${stats.canceled} canceled`))
+    parts.push(slots.color(ansi, `${ANSI.DIM}${ANSI.RED}`, `${stats.canceled} canceled`))
   }
 
   // Trailing elapsed / total. The user wanted "total time it took" to
@@ -876,8 +894,8 @@ function renderCloserText(stats: Stats, ansi: boolean, elapsedMs: number): strin
   const elapsedText = formatDuration(elapsedMs)
   if (elapsedText !== "") {
     const styled = allDone
-      ? color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, elapsedText)
-      : color(ansi, ANSI.LGRAY, elapsedText)
+      ? slots.color(ansi, `${ANSI.LIME}${ANSI.BOLD}`, elapsedText)
+      : slots.color(ansi, ANSI.LGRAY, elapsedText)
     parts.push(styled)
   }
 
@@ -885,7 +903,7 @@ function renderCloserText(stats: Stats, ansi: boolean, elapsedMs: number): strin
 }
 
 function renderCloser(stats: Stats, ansi: boolean, elapsedMs: number): string {
-  const frame = color(ansi, ANSI.DGRAY, GLYPHS.frameBL)
+  const frame = slots.color(ansi, ANSI.DGRAY, GLYPHS.frameBL)
   return `${frame}  ${renderCloserText(stats, ansi, elapsedMs)}`
 }
 
@@ -972,7 +990,7 @@ export function renderBlock(views: readonly View[], stats: Stats, opts: RenderOp
       )
     }
     lines.push(renderGap(opts.ansi))
-    lines.push(color(opts.ansi, ANSI.DGRAY, GLYPHS.frameBL))
+    lines.push(slots.color(opts.ansi, ANSI.DGRAY, GLYPHS.frameBL))
     return `${lines.join("\n")}\n`
   }
   lines.push(renderGap(opts.ansi))

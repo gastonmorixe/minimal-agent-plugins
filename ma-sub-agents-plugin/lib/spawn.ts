@@ -20,6 +20,8 @@
 import { existsSync, mkdirSync, openSync, readFileSync, statSync } from "node:fs"
 import { dirname } from "node:path"
 
+import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import { parseFinalText, parseProgress } from "./progress.ts"
 import type { SpawnPlan } from "./spawn-plan.ts"
 import type { WorkerProbe } from "./supervisor.ts"
@@ -205,7 +207,7 @@ export function warnMissingDeclared(result: ResultDigest, deps: ProbeDeps): Resu
  * so the caller only escalates to `failed` when there is a real cause to report.
  */
 export function extractCrashSignature(logText: string): string | undefined {
-  const clean = logText.replace(/\x1b\[[0-9;]*m/g, "")
+  const clean = stripAnsi(logText)
   const lines = clean
     .split("\n")
     .map((l) => l.trim())

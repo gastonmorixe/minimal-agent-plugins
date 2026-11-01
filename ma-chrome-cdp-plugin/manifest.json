@@ -102,10 +102,15 @@
           "path": "./handlers/chrome_cdp.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◉",
-        "color": "amber"
+        "interactive": false
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

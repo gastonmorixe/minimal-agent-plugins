@@ -31,12 +31,10 @@ import { realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import { slots } from "../lib/style.ts"
 
 const MAX_BYTES = 256 * 1024 // 256 KiB
 const BINARY_PROBE = 4096 // check first 4 KiB for null bytes
-
-const DIM = "\x1b[2m"
-const RESET = "\x1b[0m"
 
 /** Safely resolve a path to its canonical form, falling back to the original on error. */
 function tryRealpath(p: string): string {
@@ -88,7 +86,7 @@ export default async function emitOutputHandler(ctx: TUIContext): Promise<TUIRes
   if ((toolUseId && filePath) || (!toolUseId && !filePath)) {
     return {
       kind: "rendered",
-      ansi: `${DIM}<!-- emit::output: provide exactly one of \`tool\` or \`path\` -->${RESET}`,
+      ansi: `${slots.codes.DIM}<!-- emit::output: provide exactly one of \`tool\` or \`path\` -->${slots.codes.RESET}`,
     }
   }
 
@@ -100,13 +98,13 @@ export default async function emitOutputHandler(ctx: TUIContext): Promise<TUIRes
     if (!ctx.agent?.sessionId) {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: no session id available (tool= requires agent.sessionId) -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: no session id available (tool= requires agent.sessionId) -->${slots.codes.RESET}`,
       }
     }
     if (!ctx.host?.blobs) {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: blobs:read capability not granted -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: blobs:read capability not granted -->${slots.codes.RESET}`,
       }
     }
 
@@ -116,12 +114,12 @@ export default async function emitOutputHandler(ctx: TUIContext): Promise<TUIRes
     if (!result) {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: blob not found for tool_use_id "${toolUseId}" (may have been evicted or tool output was below the 4 KiB persist threshold) -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: blob not found for tool_use_id "${toolUseId}" (may have been evicted or tool output was below the 4 KiB persist threshold) -->${slots.codes.RESET}`,
       }
     }
     raw = result.text
     if (result.clipped) {
-      clippedNote = `${DIM}[clipped ${result.bytes - result.text.length} bytes]${RESET}`
+      clippedNote = `${slots.codes.DIM}[clipped ${result.bytes - result.text.length} bytes]${slots.codes.RESET}`
     }
   }
 
@@ -133,32 +131,32 @@ export default async function emitOutputHandler(ctx: TUIContext): Promise<TUIRes
     } catch {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: path not found or not readable: ${filePath} -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: path not found or not readable: ${filePath} -->${slots.codes.RESET}`,
       }
     }
     if (!isPathSafe(resolved, ctx.cwd)) {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: path not in /tmp/ or project dir: ${filePath} -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: path not in /tmp/ or project dir: ${filePath} -->${slots.codes.RESET}`,
       }
     }
     if (await isBinaryFile(resolved)) {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: binary file: ${filePath} -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: binary file: ${filePath} -->${slots.codes.RESET}`,
       }
     }
     try {
       const fd = Bun.file(resolved)
       raw = await fd.text()
       if (raw.length > MAX_BYTES) {
-        clippedNote = `${DIM}[clipped ${raw.length - MAX_BYTES} bytes]${RESET}`
+        clippedNote = `${slots.codes.DIM}[clipped ${raw.length - MAX_BYTES} bytes]${slots.codes.RESET}`
         raw = raw.slice(0, MAX_BYTES)
       }
     } catch {
       return {
         kind: "rendered",
-        ansi: `${DIM}<!-- emit::output: read error: ${filePath} -->${RESET}`,
+        ansi: `${slots.codes.DIM}<!-- emit::output: read error: ${filePath} -->${slots.codes.RESET}`,
       }
     }
   }
@@ -166,11 +164,11 @@ export default async function emitOutputHandler(ctx: TUIContext): Promise<TUIRes
   if (raw.length === 0) {
     return {
       kind: "rendered",
-      ansi: `${DIM}<!-- emit::output: empty content -->${RESET}`,
+      ansi: `${slots.codes.DIM}<!-- emit::output: empty content -->${slots.codes.RESET}`,
     }
   }
 
-  const heading = title ? `${DIM}── ${title} ──${RESET}\n` : ""
+  const heading = title ? `${slots.codes.DIM}── ${title} ──${slots.codes.RESET}\n` : ""
   const clip = clippedNote ? `\n${clippedNote}` : ""
   return { kind: "rendered", ansi: `\n${heading}${raw}${clip}\n` }
 }

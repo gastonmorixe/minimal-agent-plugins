@@ -11,13 +11,18 @@
  * REPL's editor.
  */
 
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
 import type { CommandInfo } from "../lib/host-types.ts"
 import { SGR } from "../lib/palette.ts"
 import { renderOverlay } from "../lib/render.ts"
 import { applySortMode, scoreItems } from "../lib/scoring.ts"
+import { slots } from "../lib/style-slots.ts"
 import type { Item, OverlayState, Trigger } from "../lib/types.ts"
 import { commandItems } from "../providers/actions.ts"
 import { defaultSkillsDeps, listSkills } from "../providers/skills.ts"
+
+// The preview runs outside the CLI: paint with the test terminal kit (S41).
+slots.install(TEST_TERMINAL_KIT)
 
 /**
  * Sample registered commands for the static preview. In the live plugin

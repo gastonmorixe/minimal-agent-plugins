@@ -61,9 +61,7 @@
           "path": "./handlers/peers.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◎",
-        "color": "cyan"
+        "interactive": false
       },
       {
         "id": "send",
@@ -103,9 +101,7 @@
           "path": "./handlers/send.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "->",
-        "color": "magenta"
+        "interactive": false
       },
       {
         "id": "inbox",
@@ -141,9 +137,7 @@
           "path": "./handlers/inbox.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "↓",
-        "color": "cyan"
+        "interactive": false
       }
     ],
     "hooks": [
@@ -201,6 +195,11 @@
     ]
   },
   "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    },
     "liveAreaSlots": [
       {
         "id": "intercom_beat",

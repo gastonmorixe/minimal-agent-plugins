@@ -15,16 +15,8 @@
  * @module memory/lib/format
  */
 
-import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
-
 import type { Bullet } from "./parse.ts"
-
-const { BOLD, DIM, RESET } = ANSI_CODES
-const FG_CYAN = PALETTE.cyan
-const FG_GREEN = PALETTE.green
-const FG_RED = PALETTE.red
-const FG_YELLOW = PALETTE.yellow
+import { slots } from "./style.ts"
 
 /**
  * Default body clip for single-bullet display (read / add / edit /
@@ -131,7 +123,7 @@ export function formatList(bullets: readonly Bullet[], opts: FormatListOptions):
   })
 
   const lines: string[] = []
-  lines.push(opts.ansi ? `${BOLD}${headerText}${RESET}` : headerText)
+  lines.push(opts.ansi ? `${slots.codes.BOLD}${headerText}${slots.codes.RESET}` : headerText)
 
   // ID width for column alignment: pad to longest id (with `#` prefix),
   // capped so legacy ids don't blow out the table on small terminals.
@@ -147,7 +139,9 @@ export function formatList(bullets: readonly Bullet[], opts: FormatListOptions):
     const ts = formatTs(b.ts).padEnd(tsWidth)
     const body = clip(b.body, max)
     if (opts.ansi) {
-      lines.push(`  ${FG_CYAN}${id}${RESET}  ${DIM}${ts}${RESET}  ${body}`)
+      lines.push(
+        `  ${slots.palette.cyan}${id}${slots.codes.RESET}  ${slots.codes.DIM}${ts}${slots.codes.RESET}  ${body}`,
+      )
     } else {
       lines.push(`  ${id}  ${ts}  ${body}`)
     }
@@ -162,7 +156,7 @@ export function formatList(bullets: readonly Bullet[], opts: FormatListOptions):
     query: opts.query,
   })
   if (hint) {
-    lines.push(opts.ansi ? `  ${DIM}${hint}${RESET}` : `  ${hint}`)
+    lines.push(opts.ansi ? `  ${slots.codes.DIM}${hint}${slots.codes.RESET}` : `  ${hint}`)
   }
 
   return `${lines.join("\n")}\n`
@@ -250,7 +244,7 @@ export function formatRead(b: Bullet, scope: string, ansi: boolean): string {
   const ts = formatTs(b.ts)
   const sid = b.sid ? `[session:${b.sid}] ` : ""
   if (ansi) {
-    return `${BOLD}${scope}${RESET} ${FG_CYAN}${id}${RESET}  ${DIM}${ts}${RESET}\n${DIM}${sid}${RESET}${b.body}\n`
+    return `${slots.codes.BOLD}${scope}${slots.codes.RESET} ${slots.palette.cyan}${id}${slots.codes.RESET}  ${slots.codes.DIM}${ts}${slots.codes.RESET}\n${slots.codes.DIM}${sid}${slots.codes.RESET}${b.body}\n`
   }
   return `${scope} ${id}  ${ts}\n${sid}${b.body}\n`
 }
@@ -265,7 +259,7 @@ export function formatAdded(b: Bullet, scope: string, evicted: number, ansi: boo
   const evictedHint = evicted > 0 ? ` (evicted ${evicted} oldest)` : ""
   const body = clip(b.body, BODY_MAX)
   if (ansi) {
-    return `${FG_GREEN}saved${RESET} ${BOLD}${tag}${RESET}${evicted > 0 ? `${FG_YELLOW}${evictedHint}${RESET}` : ""}: ${body}\n`
+    return `${slots.palette.green}saved${slots.codes.RESET} ${slots.codes.BOLD}${tag}${slots.codes.RESET}${evicted > 0 ? `${slots.palette.yellow}${evictedHint}${slots.codes.RESET}` : ""}: ${body}\n`
   }
   return `saved ${tag}${evictedHint}: ${body}\n`
 }
@@ -275,7 +269,7 @@ export function formatEdited(b: Bullet, scope: string, ansi: boolean): string {
   const tag = `[${scope}#${b.id}]`
   const body = clip(b.body, BODY_MAX)
   if (ansi) {
-    return `${FG_GREEN}edited${RESET} ${BOLD}${tag}${RESET}: ${body}\n`
+    return `${slots.palette.green}edited${slots.codes.RESET} ${slots.codes.BOLD}${tag}${slots.codes.RESET}: ${body}\n`
   }
   return `edited ${tag}: ${body}\n`
 }
@@ -285,7 +279,7 @@ export function formatRemoved(b: Bullet, scope: string, ansi: boolean): string {
   const tag = `[${scope}#${b.id}]`
   const body = clip(b.body, BODY_MAX)
   if (ansi) {
-    return `${FG_RED}removed${RESET} ${BOLD}${tag}${RESET}: ${DIM}${body}${RESET}\n`
+    return `${slots.palette.red}removed${slots.codes.RESET} ${slots.codes.BOLD}${tag}${slots.codes.RESET}: ${slots.codes.DIM}${body}${slots.codes.RESET}\n`
   }
   return `removed ${tag}: ${body}\n`
 }
@@ -293,7 +287,7 @@ export function formatRemoved(b: Bullet, scope: string, ansi: boolean): string {
 /** Format the `clear` confirmation with the removed-entry count. */
 export function formatCleared(count: number, scope: string, ansi: boolean): string {
   if (ansi) {
-    return `${FG_RED}cleared${RESET} ${BOLD}${count}${RESET} ${scope} entries\n`
+    return `${slots.palette.red}cleared${slots.codes.RESET} ${slots.codes.BOLD}${count}${slots.codes.RESET} ${scope} entries\n`
   }
   return `cleared ${count} ${scope} entries\n`
 }

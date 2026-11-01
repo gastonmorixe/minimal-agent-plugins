@@ -1,45 +1,23 @@
 import { describe, expect, it } from "bun:test"
 
-import {
-  configureSgr,
-  resolveSgr,
-  SGR,
-  stripSgr,
-  truncateVisible,
-  visualWidth,
-  wrap,
-} from "./palette.ts"
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
+
+import { SGR, stripSgr, truncateVisible, visualWidth, wrap } from "./palette.ts"
+import { slots } from "./style-slots.ts"
 
 describe("slash-menu palette facade", () => {
-  it("uses host-injected palette tokens when present", () => {
-    const sgr = resolveSgr(
-      JSON.stringify({
-        _reset: "\x1b[0m",
-        _fgReset: "\x1b[39m",
-        pink: "\x1b[35m",
-        lime: "\x1b[32m",
-        sky: "\x1b[36m",
-        gold: "\x1b[33m",
-        red: "\x1b[31m",
-        brightRed: "\x1b[91m",
-      }),
-    )
-
-    expect(sgr.pink).toBe("\x1b[35m")
-    expect(sgr.boldSky).toBe("\x1b[1m\x1b[36m")
-    expect(sgr.dimLime).toBe("\x1b[2m\x1b[32m")
-  })
-
-  it("falls back cleanly when palette env is missing or malformed", () => {
-    expect(resolveSgr(undefined).pink).toBe("\x1b[38;5;199m")
-    expect(resolveSgr("{nope").pink).toBe("\x1b[38;5;199m")
-  })
-
-  it("configured facade updates exported style tokens", () => {
-    configureSgr(JSON.stringify({ sky: "\x1b[36m" }))
-    expect(SGR.sky).toBe("\x1b[36m")
-    expect(wrap("item", SGR.sky)).toBe("\x1b[36mitem\x1b[0m")
-    configureSgr(undefined)
+  it("is plain until ui/setup.ts installs the terminal kit (S41)", () => {
+    slots.reset()
+    expect(SGR.pink).toBe("")
+    expect(wrap("item", SGR.sky)).toBe("item")
+    setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext)
+    expect(SGR.pink).toBe("\x1b[38;5;199m")
+    expect(SGR.boldSky).toBe("\x1b[1;38;5;45m")
+    expect(wrap("item", SGR.sky)).toBe("\x1b[38;5;45mitem\x1b[0m")
+    slots.reset()
   })
 
   it("centralizes ANSI strip, width, wrap, and clamp helpers", () => {
