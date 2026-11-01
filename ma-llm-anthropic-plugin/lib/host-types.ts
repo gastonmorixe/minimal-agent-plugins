@@ -122,8 +122,8 @@ export interface ModelEntry {
 export type ValidationResult = ProviderValidationResult
 
 // ---------------------------------------------------------------------------
-// Preflight (mirror of core src/llm/provider.ts) — Anthropic surfaces the
-// thinking-model-mismatch issue, so the adapter implements preflight/applyResolution.
+// Preflight (mirror of core src/llm/provider.ts). The Anthropic adapter
+// implements no preflight today. The types stay to mirror the port shape.
 // ---------------------------------------------------------------------------
 
 /** One mutually-exclusive resolution choice for a {@link PreflightIssue}. */

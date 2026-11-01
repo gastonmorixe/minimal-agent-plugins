@@ -34,8 +34,6 @@ import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
 import type {
   ModelEntry,
-  PreflightIssue,
-  PreflightResolution,
   ProviderAdapter,
   SubagentModelRecommendation,
   SurfaceId,
@@ -54,12 +52,6 @@ import {
   setAnthropicRateLimits,
 } from "./session-info.ts"
 import { resolveAnthropicSystemPrompt } from "./system-prompt.ts"
-import {
-  applyMismatchResolution,
-  buildMismatchIssue,
-  findThinkingMismatches,
-  ISSUE_THINKING_MODEL_MISMATCH,
-} from "./thinking-preflight.ts"
 import { validateAnthropicRequest } from "./validate.ts"
 
 // ---------------------------------------------------------------------------
@@ -189,48 +181,10 @@ export const anthropicAdapter: ProviderAdapter = {
     return anthropicMediaLimits({ contextWindow: model.capabilities.contextWindow })
   },
 
-  /**
-   * Preflight: detect thinking-block signatures that were produced by a
-   * different model than the request's `modelId`. Returns one issue
-   * when any such mismatch is found (so the agent only opens one modal
-   * per send even if the conversation has many stale blocks). Returns
-   * `[]` when the request is clean.
-   *
-   * Why this is the only issue today: model-signed thinking is the
-   * single class of validation error we can fix BEFORE the round-trip.
-   * Everything else (overload, rate limit, auth) needs server feedback.
-   */
-  preflight(req: CanonicalRequest, _model: ModelEntry): PreflightIssue[] {
-    const mismatches = findThinkingMismatches(req.messages, req.modelId)
-    if (mismatches.length === 0) return []
-    return [buildMismatchIssue(mismatches, req.modelId)]
-  },
-
-  /**
-   * Apply the user's resolution to a {@link ISSUE_THINKING_MODEL_MISMATCH}
-   * issue. Delegates to the pure `applyMismatchResolution` helper and
-   * translates its outcome into the canonical {@link PreflightResolution}
-   * shape.
-   */
-  applyResolution(req: CanonicalRequest, issueCode: string, optionId: string): PreflightResolution {
-    if (issueCode !== ISSUE_THINKING_MODEL_MISMATCH) {
-      throw new Error(
-        `anthropicAdapter.applyResolution: unknown issue code "${issueCode}" (expected "${ISSUE_THINKING_MODEL_MISMATCH}")`,
-      )
-    }
-    const outcome = applyMismatchResolution(req, optionId)
-    if (outcome.kind === "cancel") return { kind: "cancel" }
-    if (outcome.kind === "unknown-option") {
-      throw new Error(
-        `anthropicAdapter.applyResolution: unknown option id "${outcome.optionId}" for ${issueCode}`,
-      )
-    }
-    return {
-      kind: "modify-request",
-      request: { ...req, messages: outcome.messages },
-      ...(outcome.adoptModelId !== undefined ? { adoptModelId: outcome.adoptModelId } : {}),
-    }
-  },
+  // No preflight() and no applyResolution(). The API docs say to send
+  // thinking blocks back unchanged, also after a model switch. The API
+  // drops each block that the new model cannot read. So there is nothing
+  // to ask a person before the send.
 
   async *run(
     req: CanonicalRequest,

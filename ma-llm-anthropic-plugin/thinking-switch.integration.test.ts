@@ -47,6 +47,8 @@ import { clearProviderPlugins, findProviderPlugin } from "@minimal-agent/core/ho
 import type { TurnNotice } from "@minimal-agent/core/sdk/turn-notice"
 import { buildTestCore } from "@minimal-agent/core/testing/test-core"
 
+import { anthropicAdapter } from "./adapter.ts"
+
 const MODEL_A = "claude-opus-4-8"
 const MODEL_B = "claude-opus-4-7"
 const THOUGHT = "Plan: answer in one word."
@@ -197,10 +199,7 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
     clearModelRegistry()
     clearProviderRegistry()
     clearProviderPlugins()
-    // Discover ONLY this plugin. Other providers (for example opencode-zen)
-    // also register "claude-*" ids. Core's preflight looks a model up by id
-    // with no provider scope, so with every plugin loaded it can reach the
-    // wrong adapter.
+    // Discover ONLY this plugin, so the test proves this adapter alone.
     mkdirSync(join(workDir, "plugins"))
     symlinkSync(import.meta.dir, join(workDir, "plugins", "ma-llm-anthropic-plugin"))
     await bootProviderDiscovery({ embeddedDir: workDir })
@@ -254,11 +253,41 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
     expect(second.thinking).toEqual({ type: "adaptive" })
     expect(typeof second.output_config?.effort).toBe("string")
 
-    // With no askUser port, the adapter's mismatch preflight is denied once
-    // with a notice, and the request goes out unchanged (the provider rule).
-    const denied = notices.filter((n) => n.kind === "ask_denied")
-    expect(denied).toHaveLength(1)
-    expect(denied[0]).toMatchObject({ code: "anthropic.thinking-model-mismatch" })
+    // The switch is safe, so the adapter raises no preflight issue. No ask is
+    // denied, and the request goes out unchanged (the provider rule).
+    expect(notices.filter((n) => n.kind === "ask_denied")).toEqual([])
+  })
+
+  it("never asks the user about the switch, also when an askUser port is set", async () => {
+    const signature = fakeSignature(MODEL_A)
+    const { client, bodies } = recordingClient([
+      sse(thinkingTurn(MODEL_A, signature)),
+      sse(textTurn(MODEL_B)),
+    ])
+    const core = await buildTestCore({
+      auth: AUTH,
+      model: MODEL_A,
+      providerId: "anthropic",
+      networkClient: client,
+    })
+    let asks = 0
+    const askUser = async (): Promise<string | null> => {
+      asks++
+      return "strip"
+    }
+
+    await drain(core.run("Question one?", { askUser }))
+    core.setModel(MODEL_B)
+    await drain(core.run("Question two?", { askUser }))
+
+    expect(asks).toBe(0)
+    const assistant = (bodies[1] as WireBody).messages.find((m) => m.role === "assistant")
+    expect(assistant?.content[0]).toEqual({ type: "thinking", thinking: THOUGHT, signature })
+  })
+
+  it("has no preflight hook that can ask a person", () => {
+    expect(anthropicAdapter.preflight).toBeUndefined()
+    expect(anthropicAdapter.applyResolution).toBeUndefined()
   })
 
   it("drops an effort that model B does not support before the turn-2 request", async () => {
