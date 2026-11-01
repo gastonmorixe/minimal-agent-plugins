@@ -499,14 +499,19 @@ export async function* translateOpenAIResponsesStream(
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Map Responses usage to CanonicalUsage. `input_tokens` includes
+ * `input_tokens_details.cached_tokens`. Canonical `inputTokens` excludes
+ * cached tokens, so subtract them. Without this, `used` and cost count the
+ * cached tokens twice.
+ */
 function mapUsage(usage: OpenAIResponsesUsage): CanonicalUsage {
+  const cached = usage.input_tokens_details?.cached_tokens
   const out: CanonicalUsage = {
-    inputTokens: usage.input_tokens ?? 0,
+    inputTokens: Math.max(0, (usage.input_tokens ?? 0) - (cached ?? 0)),
     outputTokens: usage.output_tokens ?? 0,
   }
-  if (usage.input_tokens_details?.cached_tokens !== undefined) {
-    out.cacheReadTokens = usage.input_tokens_details.cached_tokens
-  }
+  if (cached !== undefined) out.cacheReadTokens = cached
   if (usage.output_tokens_details?.reasoning_tokens !== undefined) {
     out.reasoningTokens = usage.output_tokens_details.reasoning_tokens
   }
