@@ -5,13 +5,21 @@
  * the progressive-disclosure tiers are deterministic.
  */
 
-import { describe, expect, it } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
 
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
 import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
 
 import { formatStatusRow } from "./footer.ts"
 import type { CronEntry } from "./store.ts"
+import { slots } from "./style.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 const NOW = 1_700_000_000_000
 const WIDE = 100
@@ -44,11 +52,11 @@ describe("formatStatusRow (footer)", () => {
 
   it("gold when the next fire is far, lime when imminent", () => {
     expect(formatStatusRow([mk({ nextAtMs: NOW + 30 * 60_000 })], NOW, WIDE)!).toContain(
-      PALETTE.gold,
+      TEST_TERMINAL_KIT.palette.gold,
     )
     const soon = formatStatusRow([mk({ nextAtMs: NOW + 10_000 })], NOW, WIDE)!
-    expect(soon).toContain(PALETTE.lime)
-    expect(soon).not.toContain(PALETTE.gold)
+    expect(soon).toContain(TEST_TERMINAL_KIT.palette.lime)
+    expect(soon).not.toContain(TEST_TERMINAL_KIT.palette.gold)
   })
 
   it("shows the soonest task's id + countdown when wide", () => {

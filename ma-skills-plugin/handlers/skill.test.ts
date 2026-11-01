@@ -18,7 +18,12 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import { slots } from "../lib/style.ts"
 import type { DiscoveryResult, Skill, TUIContext, TUIResult } from "../lib/types.ts"
+import setup from "../ui/setup.ts"
 
 import handler, {
   buildInfoContent,
@@ -26,9 +31,7 @@ import handler, {
   buildListJson,
   buildReadContent,
   buildReadDisplay,
-  configureSgr,
   findBodyStart,
-  resolveSgr,
   validateInput,
 } from "./skill.ts"
 
@@ -36,31 +39,24 @@ import handler, {
 // validateInput
 // ---------------------------------------------------------------------------
 
-describe("style facade", () => {
-  test("uses standalone ANSI fallbacks", () => {
-    expect(resolveSgr("not json").red).toBe("\x1b[31m")
-    expect(resolveSgr("not json").bold).toBe("\x1b[1m")
-  })
-
-  test("resolves foreground tokens from host-injected palette context", () => {
-    const sgr = resolveSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
-    expect(sgr.red).toBe("\x1b[38;5;196m")
-    expect(sgr.fgReset).toBe("\x1b[39m")
-    expect(sgr.dim).toBe("\x1b[2m")
-  })
-
-  test("handler uses host context for error display", async () => {
-    const ctx = ctxFor({ action: "nope" })
-    ctx.env.MINIMAL_AGENT_PALETTE = JSON.stringify({
-      red: "\x1b[38;5;196m",
-      _fgReset: "\x1b[39m",
-    })
-    const result = await handler(ctx)
-    configureSgr(undefined)
-
+describe("style slots (S41)", () => {
+  test("display is plain without the CLI ui.setup", async () => {
+    const result = await handler(ctxFor({ action: "nope" }))
     expect(result.kind).toBe("tool_result")
     if (result.kind !== "tool_result") return
-    expect(result.displayHeader).toBe("\x1b[38;5;196merror\x1b[39m")
+    expect(result.displayHeader).toBe("error")
+  })
+
+  test("ui/setup.ts installs the terminal kit for the error display", async () => {
+    setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext)
+    try {
+      const result = await handler(ctxFor({ action: "nope" }))
+      if (result.kind !== "tool_result") throw new Error("unreachable")
+      expect(result.displayHeader).toBe("\x1b[31merror\x1b[39m")
+      expect(result.content).not.toContain("\x1b")
+    } finally {
+      slots.reset()
+    }
   })
 })
 

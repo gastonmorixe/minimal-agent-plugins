@@ -7,12 +7,21 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test"
 
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { TaskStore } from "../lib/store.ts"
+import { slots } from "../lib/style.ts"
+import setup from "../ui/setup.ts"
 
 import taskToolHandler from "./task_tool.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 // ---------------------------------------------------------------------------
 // Test scaffolding

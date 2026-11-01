@@ -10,13 +10,10 @@
  * @module lib/log-read
  */
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching ANSI escapes is the point
-const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g
+import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 
-/** Strip ANSI escape sequences. Pure. */
-export function stripAnsi(s: string): string {
-  return s.replace(ANSI_RE, "")
-}
+/** Strip ANSI escape sequences. Pure. Core owns the one strip regex. */
+export { stripAnsi }
 
 /** Options for selecting a slice of a log. */
 export interface SelectOptions {

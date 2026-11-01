@@ -9,7 +9,7 @@
  * @module usage-render
  */
 
-import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
 import {
   USAGE_PERIODS,
   type UsageBreakdownRow,
@@ -18,7 +18,9 @@ import {
   type UsageTotals,
 } from "@minimal-agent/core/plugin-api/utils/usage-report"
 
-import { displayWidth } from "./term-width.ts"
+import { slots } from "./style.ts"
+
+const c = slots.styles
 
 /** 1/8th-block ramp (shared visual language with quota-status). */
 const SLICES = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"] as const

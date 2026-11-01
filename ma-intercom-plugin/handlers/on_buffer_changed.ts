@@ -14,7 +14,6 @@
 
 import type { EventHandlerContext } from "../lib/host-types.ts"
 import { type Effect, transition } from "../lib/mention/overlay.ts"
-import { configureSgr } from "../lib/mention/palette.ts"
 import { getFsmState, getPeers, setFsmState, setPeersFromRoster } from "../lib/mention/state.ts"
 import { mentionStyleSpans } from "../lib/mention/styles.ts"
 import { loadRoster, serviceDepsFromAgent } from "../lib/service.ts"
@@ -31,8 +30,6 @@ function isPayload(v: unknown): v is BufferChangedPayload {
 }
 
 const handler = async (ctx: EventHandlerContext): Promise<void> => {
-  configureSgr(ctx.env?.MINIMAL_AGENT_PALETTE)
-
   if (!isPayload(ctx.payload)) return
 
   // Refresh peer cache from the live roster (exclude self). Best-effort:

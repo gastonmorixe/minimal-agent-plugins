@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
+import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 import { emptyUsageReports } from "@minimal-agent/core/plugin-api/utils/usage-report"
 
 import {
@@ -10,7 +11,6 @@ import {
   stepIndex,
   wrapIndex,
 } from "./overlay.ts"
-import { stripAnsi } from "./term-width.ts"
 
 describe("index math", () => {
   it("wraps around the period range", () => {

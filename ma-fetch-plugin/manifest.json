@@ -94,11 +94,15 @@
           "path": "./handlers/fetch.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "⤓",
-        "color": "sky",
-        "headerKey": "url"
+        "interactive": false
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

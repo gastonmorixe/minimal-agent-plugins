@@ -1,6 +1,12 @@
-import { describe, expect, it } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
 
 import { fmtElapsed, fmtTokens } from "./style.ts"
+import { slots } from "./style-slots.ts"
 import {
   type Progress,
   type ResultDigest,
@@ -10,6 +16,10 @@ import {
   subagentId,
 } from "./types.ts"
 import { renderWidget } from "./widget.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 const LEAD = "3f2a1111-2222-4333-8444-555566667777"
 const NOW = Date.parse("2026-05-30T12:00:00.000Z")

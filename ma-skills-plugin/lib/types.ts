@@ -52,7 +52,7 @@ export interface TUIContext {
   packageDir: string
   /** The agent's current working directory. */
   cwd: string
-  /** Environment dict. Loader injects `TUI_PLUGIN_PROTOCOL=1` and friends. */
+  /** Plugin-scoped environment dict. */
   env: Record<string, string>
   /** Cancelled when the user aborts the turn or a timeout fires. */
   abort: AbortSignal
@@ -97,7 +97,7 @@ export interface PromptFragmentContext {
   packageDir: string
   /** The agent's current working directory at load time. */
   cwd: string
-  /** Plugin-scoped environment. The loader injects `TUI_PLUGIN_PROTOCOL=1`. */
+  /** Plugin-scoped environment. */
   env: Record<string, string>
   /** Agent session id (UUID v4), when available. */
   sessionId?: string

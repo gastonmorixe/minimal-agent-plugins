@@ -40,11 +40,12 @@
  * @module memory/handlers/memory
  */
 
-import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
-
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { getSaveBus, MEMORY_SAVED, type MemorySavedPayload } from "../lib/save-echo.ts"
 import { MemoryStore, type StoreKind } from "../lib/store.ts"
+import { slots } from "../lib/style.ts"
+
+const c = slots.styles
 
 // Re-export `localIsoSeconds` for callers that imported it from this
 // module's old location (the function was moved to `lib/parse.ts` in

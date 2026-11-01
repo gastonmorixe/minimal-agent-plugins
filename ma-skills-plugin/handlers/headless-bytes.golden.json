@@ -1,0 +1,19 @@
+{
+  "list": {
+    "content": "{\n  \"skills\": [\n    {\n      \"name\": \"alpha\",\n      \"description\": \"The alpha skill.\",\n      \"scope\": \"project\",\n      \"dir\": \"<TMP>/cwd/.agents/skills/alpha\",\n      \"license\": \"MIT\",\n      \"hasAllowedTools\": true\n    }\n  ],\n  \"broken\": [\n    {\n      \"dirName\": \"broken\",\n      \"dir\": \"<TMP>/cwd/.agents/skills/broken\",\n      \"scope\": \"project\",\n      \"errors\": [\n        \"SKILL.md must start with a frontmatter delimiter `---` on line 1\"\n      ]\n    }\n  ],\n  \"shadowed\": []\n}"
+  },
+  "info": {
+    "content": "name: alpha\ndescription: The alpha skill.\nlicense: MIT\nallowed-tools: Bash Read\n\n# scope: project\n# path:  <TMP>/cwd/.agents/skills/alpha"
+  },
+  "read": {
+    "content": "# Alpha\n\nStep one.\nStep two.\n\n---\nSkill loaded: alpha (project)\nSkill dir:    <TMP>/cwd/.agents/skills/alpha\nBundled:      scripts\n\nUse `Read` on any of the bundled paths above when the SKILL.md body references them. Use `Bash` to execute scripts.\n\nSelf-enforce `allowed-tools`: Bash Read\n"
+  },
+  "missing": {
+    "content": "Skill read: no skill named \"nope\". available: alpha (broken on disk: broken)",
+    "is_error": true
+  },
+  "invalid": {
+    "content": "Skill: unknown action \"bogus\" (expected one of: list, info, read)",
+    "is_error": true
+  }
+}

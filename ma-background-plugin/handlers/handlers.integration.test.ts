@@ -105,13 +105,14 @@ describe("BackgroundRun", () => {
 describe("BackgroundStatus", () => {
   test("reconciles a finished job to exited", async () => {
     await bgRun(ctx({ command: "echo done" }))
-    // Let the job finish, then a status call runs the reconcile pass.
-    await Bun.sleep(400)
+    // Only a status call runs the reconcile pass. A fixed sleep and then one
+    // status call failed under load: the job was still running at that one
+    // pass, and nothing reconciled it later. Drive a pass on each poll.
+    expect(await waitTerminal("j1", 15_000)).toBe(true)
     const res = await bgStatus(ctx({ id: "j1" }))
     expect(res.kind).toBe("tool_result")
     if (res.kind === "tool_result") expect(res.content).toContain("j1")
-    const reconciled = await waitFor(() => store().get("j1")?.status.kind === "exited", 3000)
-    expect(reconciled).toBe(true)
+    expect(store().get("j1")?.status.kind).toBe("exited")
   })
 
   test("reports all jobs when no id", async () => {

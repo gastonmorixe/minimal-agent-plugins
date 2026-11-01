@@ -33,5 +33,12 @@
         }
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

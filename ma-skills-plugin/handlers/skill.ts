@@ -5,11 +5,11 @@
  *
  *   list        → enumerate discovered skills + broken + shadowed.
  *                 `content`  = JSON, model-friendly.
- *                 `display`  = ANSI table for the transcript.
+ *                 `display`  = styled table for the transcript.
  *
  *   info <name> → show frontmatter for one skill (no body load).
  *                 `content`  = canonical YAML frontmatter dump.
- *                 `display`  = ANSI key/value block.
+ *                 `display`  = styled key/value block.
  *
  *   read <name> → load full SKILL.md body into context, plus a footer
  *                 listing bundled siblings (`scripts/`, `references/`,
@@ -28,6 +28,7 @@ import { homedir } from "node:os"
 import { formatAllowedTools, parseAllowedTools } from "../lib/allowed-tools.ts"
 import { loadSkillsConfig } from "../lib/config.ts"
 import { discoverSkills, findSkill, listSiblings } from "../lib/discovery.ts"
+import { slots } from "../lib/style.ts"
 import type {
   BrokenSkill,
   DiscoveryResult,
@@ -44,65 +45,9 @@ import { shortenPath } from "./prompt-fragment.ts"
 // Constants / styling
 // ---------------------------------------------------------------------------
 
-const FALLBACK_SGR = {
-  dim: "\x1b[2m",
-  bold: "\x1b[1m",
-  weightReset: "\x1b[22m",
-  red: "\x1b[31m",
-  fgReset: "\x1b[39m",
-} as const
-
-export interface SgrTokens {
-  readonly dim: string
-  readonly bold: string
-  readonly weightReset: string
-  readonly red: string
-  readonly fgReset: string
-}
-
-/** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw?: string): SgrTokens {
-  const palette = parsePaletteEnv(raw)
-  return {
-    ...FALLBACK_SGR,
-    red: palette?.red ?? FALLBACK_SGR.red,
-    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
-  }
-}
-
-function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
-    const out: Record<string, string> = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string") out[key] = value
-    }
-    return out
-  } catch {
-    return null
-  }
-}
-
-let SGR = resolveSgr()
-let DIM = SGR.dim
-let RESET = SGR.weightReset
-let BOLD = SGR.bold
-let RESET_BOLD = SGR.weightReset
-let RED = SGR.red
-let RESET_FG = SGR.fgReset
-
-/** Configure display styling from the host-provided context palette. */
-export function configureSgr(raw?: string): void {
-  SGR = resolveSgr(raw)
-  DIM = SGR.dim
-  RESET = SGR.weightReset
-  BOLD = SGR.bold
-  RESET_BOLD = SGR.weightReset
-  RED = SGR.red
-  RESET_FG = SGR.fgReset
-}
+// Display styles come from the style slots (S41). They are plain text
+// until the CLI runs `ui/setup.ts`. Read them at call time.
+const st = slots
 
 const SCOPE_LABEL: Record<SkillScope, string> = {
   project: "project",
@@ -161,8 +106,6 @@ export function validateInput(raw: Record<string, unknown>): ValidateResult {
 // ---------------------------------------------------------------------------
 
 const handler: TUIHandler = async (ctx: TUIContext): Promise<TUIResult> => {
-  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
-
   if (ctx.trigger.type !== "tool") {
     return errResult("Skill: wrong trigger type")
   }
@@ -237,31 +180,33 @@ export function buildListJson(result: DiscoveryResult): {
   }
 }
 
-/** Build the ANSI display table for the transcript. */
+/** Build the styled display table for the transcript. */
 export function buildListDisplay(result: DiscoveryResult, cwd: string, home: string): string {
   if (result.skills.length === 0 && result.broken.length === 0) {
-    return `${DIM}(no skills discovered)${RESET}`
+    return `${st.codes.DIM}(no skills discovered)${st.codes.DIM_CLOSE}`
   }
   const lines: string[] = []
   if (result.skills.length > 0) {
-    lines.push(`${BOLD}skills${RESET_BOLD} (${result.skills.length})`)
+    lines.push(`${st.codes.BOLD}skills${st.codes.BOLD_CLOSE} (${result.skills.length})`)
     for (const s of result.skills) {
       const desc = clip(s.front.description, 80)
       lines.push(
-        `  ${BOLD}${s.front.name}${RESET_BOLD}  ${DIM}${SCOPE_LABEL[s.scope]}  ${shortenPath(s.dir, cwd, home)}${RESET}`,
+        `  ${st.codes.BOLD}${s.front.name}${st.codes.BOLD_CLOSE}  ${st.codes.DIM}${SCOPE_LABEL[s.scope]}  ${shortenPath(s.dir, cwd, home)}${st.codes.DIM_CLOSE}`,
       )
       lines.push(`    ${desc}`)
     }
   }
   if (result.broken.length > 0) {
     lines.push("")
-    lines.push(`${BOLD}${RED}broken${RESET_FG}${RESET_BOLD} (${result.broken.length})`)
+    lines.push(
+      `${st.codes.BOLD}${st.palette.red}broken${st.codes.FG_RESET}${st.codes.BOLD_CLOSE} (${result.broken.length})`,
+    )
     for (const b of result.broken) {
       lines.push(
-        `  ${RED}${b.dirName}${RESET_FG}  ${DIM}${SCOPE_LABEL[b.scope]}  ${shortenPath(b.dir, cwd, home)}${RESET}`,
+        `  ${st.palette.red}${b.dirName}${st.codes.FG_RESET}  ${st.codes.DIM}${SCOPE_LABEL[b.scope]}  ${shortenPath(b.dir, cwd, home)}${st.codes.DIM_CLOSE}`,
       )
       lines.push(
-        `    ${DIM}${b.errors[0] ?? "unknown"}${b.errors.length > 1 ? `  (+${b.errors.length - 1} more)` : ""}${RESET}`,
+        `    ${st.codes.DIM}${b.errors[0] ?? "unknown"}${b.errors.length > 1 ? `  (+${b.errors.length - 1} more)` : ""}${st.codes.DIM_CLOSE}`,
       )
     }
   }
@@ -275,7 +220,7 @@ function doList(result: DiscoveryResult, cwd: string, home: string): TUIResult {
     kind: "tool_result",
     content,
     display: buildListDisplay(result, cwd, home),
-    displayHeader: `list  ${DIM}${result.skills.length} ok · ${result.broken.length} broken · ${result.shadowed.length} shadowed${RESET}`,
+    displayHeader: `list  ${st.codes.DIM}${result.skills.length} ok · ${result.broken.length} broken · ${result.shadowed.length} shadowed${st.codes.DIM_CLOSE}`,
   }
 }
 
@@ -321,21 +266,24 @@ function parseToken1(tok: string): import("../lib/allowed-tools.ts").AllowedTool
 
 function buildInfoDisplay(s: Skill, cwd: string, home: string): string {
   const lines: string[] = []
-  lines.push(`${BOLD}${s.front.name}${RESET_BOLD}  ${DIM}${SCOPE_LABEL[s.scope]}${RESET}`)
-  lines.push(`${DIM}${shortenPath(s.dir, cwd, home)}${RESET}`)
+  lines.push(
+    `${st.codes.BOLD}${s.front.name}${st.codes.BOLD_CLOSE}  ${st.codes.DIM}${SCOPE_LABEL[s.scope]}${st.codes.DIM_CLOSE}`,
+  )
+  lines.push(`${st.codes.DIM}${shortenPath(s.dir, cwd, home)}${st.codes.DIM_CLOSE}`)
   lines.push("")
-  lines.push(`${DIM}description${RESET}  ${s.front.description}`)
-  if (s.front.license) lines.push(`${DIM}license    ${RESET}  ${s.front.license}`)
+  lines.push(`${st.codes.DIM}description${st.codes.DIM_CLOSE}  ${s.front.description}`)
+  if (s.front.license)
+    lines.push(`${st.codes.DIM}license    ${st.codes.DIM_CLOSE}  ${s.front.license}`)
   if (s.front.compatibility) {
-    lines.push(`${DIM}compat     ${RESET}  ${s.front.compatibility}`)
+    lines.push(`${st.codes.DIM}compat     ${st.codes.DIM_CLOSE}  ${s.front.compatibility}`)
   }
   if (s.front.allowedTools && s.front.allowedTools.length > 0) {
-    lines.push(`${DIM}allowed    ${RESET}  ${s.front.allowedTools.join(" ")}`)
+    lines.push(`${st.codes.DIM}allowed    ${st.codes.DIM_CLOSE}  ${s.front.allowedTools.join(" ")}`)
   }
   if (s.front.metadata && Object.keys(s.front.metadata).length > 0) {
-    lines.push(`${DIM}metadata   ${RESET}`)
+    lines.push(`${st.codes.DIM}metadata   ${st.codes.DIM_CLOSE}`)
     for (const [k, v] of Object.entries(s.front.metadata)) {
-      lines.push(`  ${DIM}${k}${RESET}  ${v}`)
+      lines.push(`  ${st.codes.DIM}${k}${st.codes.DIM_CLOSE}  ${v}`)
     }
   }
   return lines.join("\n")
@@ -350,7 +298,7 @@ function doInfo(result: DiscoveryResult, name: string, cwd: string, home: string
     kind: "tool_result",
     content: buildInfoContent(skill),
     display: buildInfoDisplay(skill, cwd, home),
-    displayHeader: `info  ${DIM}${skill.front.name}${RESET}`,
+    displayHeader: `info  ${st.codes.DIM}${skill.front.name}${st.codes.DIM_CLOSE}`,
   }
 }
 
@@ -390,7 +338,9 @@ export function buildReadDisplay(body: string): string {
   while (slice.length > 0 && slice[slice.length - 1].trim() === "") slice.pop()
   const clipped = slice.map((l) => clip(l, PREVIEW_LINE_WIDTH))
   if (lines.length > PREVIEW_LINES) {
-    clipped.push(`${DIM}… (${lines.length - PREVIEW_LINES} more lines)${RESET}`)
+    clipped.push(
+      `${st.codes.DIM}… (${lines.length - PREVIEW_LINES} more lines)${st.codes.DIM_CLOSE}`,
+    )
   }
   return clipped.join("\n")
 }
@@ -426,11 +376,11 @@ function doRead(result: DiscoveryResult, name: string, cwd: string, home: string
     kind: "tool_result",
     content,
     display,
-    displayHeader: `read  ${DIM}${skill.front.name}  ${shortenPath(skill.dir, cwd, home)}${RESET}`,
+    displayHeader: `read  ${st.codes.DIM}${skill.front.name}  ${shortenPath(skill.dir, cwd, home)}${st.codes.DIM_CLOSE}`,
     displayFooter:
       siblings.length > 0
-        ? `${DIM}bundled: ${siblings.length} items · ${SCOPE_LABEL[skill.scope]}${RESET}`
-        : `${DIM}${SCOPE_LABEL[skill.scope]}${RESET}`,
+        ? `${st.codes.DIM}bundled: ${siblings.length} items · ${SCOPE_LABEL[skill.scope]}${st.codes.DIM_CLOSE}`
+        : `${st.codes.DIM}${SCOPE_LABEL[skill.scope]}${st.codes.DIM_CLOSE}`,
     _truncCtx: {
       totalBytes: Buffer.byteLength(content, "utf-8"),
       totalLines: content.split("\n").length,
@@ -471,8 +421,8 @@ function errResult(msg: string): TUIResult {
     kind: "tool_result",
     content: msg,
     is_error: true,
-    displayHeader: `${RED}error${RESET_FG}`,
-    display: `${DIM}${msg}${RESET}`,
+    displayHeader: `${st.palette.red}error${st.codes.FG_RESET}`,
+    display: `${st.codes.DIM}${msg}${st.codes.DIM_CLOSE}`,
   }
 }
 
@@ -497,9 +447,9 @@ function notFound(
     kind: "tool_result",
     content: msg,
     is_error: true,
-    displayHeader: `${RED}${action}: not found${RESET_FG}`,
-    display: `${DIM}requested: ${name}${RESET}\n${DIM}available: ${candidates.length === 0 ? "(none)" : candidates.join(", ")}${RESET}`,
-    displayFooter: `${DIM}cwd: ${shortenPath(cwd, cwd, home)}${RESET}`,
+    displayHeader: `${st.palette.red}${action}: not found${st.codes.FG_RESET}`,
+    display: `${st.codes.DIM}requested: ${name}${st.codes.DIM_CLOSE}\n${st.codes.DIM}available: ${candidates.length === 0 ? "(none)" : candidates.join(", ")}${st.codes.DIM_CLOSE}`,
+    displayFooter: `${st.codes.DIM}cwd: ${shortenPath(cwd, cwd, home)}${st.codes.DIM_CLOSE}`,
   }
 }
 

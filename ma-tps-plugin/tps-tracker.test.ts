@@ -1,7 +1,17 @@
-import { describe, expect, it } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../scripts/ui/test-terminal-kit.ts"
 
 import { renderTpsTail } from "./render.ts"
+import { slots } from "./style.ts"
 import { TpsTracker } from "./tps-tracker.ts"
+import setup from "./ui/setup.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 describe("TpsTracker (delta-driven sliding window)", () => {
   it("reports inactive before any deltas", () => {

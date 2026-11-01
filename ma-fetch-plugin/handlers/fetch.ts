@@ -6,8 +6,9 @@
  *   2. Load plugin config from `~/.minimal-agent/config.jsonc`.
  *   3. Merge `defaults` with per-call input → BackendCallInput.
  *   4. Invoke the backend via `lib/backend.ts:callBackend`.
- *   5. Shape `TUIResult.tool_result` with ANSI `display` for the
- *      transcript and raw page content for `content` (the model).
+ *   5. Shape `TUIResult.tool_result` with a styled `display` for the
+ *      transcript and raw page content for `content` (the model). The
+ *      styles come from `../lib/style.ts` (plain without the CLI).
  *
  * The handler is backend-agnostic: everything obscura-specific lives in
  * `backends/obscura.ts`. Tomorrow we swap to a different backend by
@@ -48,6 +49,7 @@ import {
 import { stripDataUris } from "../lib/data-uri.ts"
 import { classifyBackendFailure, FetchError, writeTraceLog } from "../lib/errors.ts"
 import { callPersistentBackend, type PersistentCallResult } from "../lib/persistent-worker.ts"
+import { slots } from "../lib/style.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 const VALID_FORMATS = new Set<FetchFormat>([
@@ -265,61 +267,15 @@ export function resolveCleanup(parsed: ParsedInput, config: FetchConfig): Cleanu
 }
 
 // ---------------------------------------------------------------------------
-// ANSI display rendering
+// Display styles (S41): plain text until the CLI runs `ui/setup.ts`
 // ---------------------------------------------------------------------------
 
-const FALLBACK_SGR = {
-  dim: "\x1b[2m",
-  weightReset: "\x1b[22m",
-  red: "\x1b[31m",
-  fgReset: "\x1b[39m",
-} as const
-
-export interface SgrTokens {
-  readonly dim: string
-  readonly weightReset: string
-  readonly red: string
-  readonly fgReset: string
-}
-
-/** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw?: string): SgrTokens {
-  const palette = parsePaletteEnv(raw)
-  return {
-    ...FALLBACK_SGR,
-    red: palette?.red ?? FALLBACK_SGR.red,
-    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
-  }
-}
-
-function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
-    const out: Record<string, string> = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string") out[key] = value
-    }
-    return out
-  } catch {
-    return null
-  }
-}
-
-let SGR = resolveSgr()
-
-/** Configure display styling from the host-provided context palette. */
-export function configureSgr(raw?: string): void {
-  SGR = resolveSgr(raw)
-}
-
 function dim(s: string): string {
-  return `${SGR.dim}${s}${SGR.weightReset}`
+  return `${slots.codes.DIM}${s}${slots.codes.DIM_CLOSE}`
 }
 
 function red(s: string): string {
-  return `${SGR.red}${s}${SGR.fgReset}`
+  return `${slots.palette.red}${s}${slots.codes.FG_RESET}`
 }
 
 /** Compact byte formatter: 1.2 KB, 13.2 KB, 1.5 MB. */
@@ -401,8 +357,6 @@ export function buildDisplayFooter(opts: {
 
 /** Default export: the tool handler the loader will invoke. */
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
-  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
-
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "Fetch: wrong trigger type", is_error: true }
   }
@@ -469,8 +423,6 @@ export async function runWithDeps(
   cleanup: CleanupLevel = "basic",
   binaryOptIn: boolean = false,
 ): Promise<TUIResult> {
-  configureSgr(ctx.env.MINIMAL_AGENT_PALETTE)
-
   let result
   let workerPid: number | undefined
 

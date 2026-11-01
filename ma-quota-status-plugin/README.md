@@ -22,7 +22,7 @@ manifest:
 ```json
 {
   "id": "quota",
-  "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+  "handler": { "type": "module", "path": "./ui/handler.ts", "export": "default" },
   "position": "footer",
   "refreshMs": 300000,
   "timeoutMs": 8000,
@@ -54,7 +54,7 @@ Three feeds keep the row up-to-date:
    this one is silent). Falls back to a real `checkQuota()` request if
    the cache hasn't been freshened in the last `refreshMs/2` window.
 
-The handler renders via `renderQuotaFooter` (`./render.ts`), a pure
+The handler renders via `renderQuotaFooter` (`./ui/render.ts`), a pure
 renderer fed provider-neutral `QuotaWindow[]` data — it never sees raw
 provider rate-limit headers.
 

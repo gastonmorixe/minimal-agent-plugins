@@ -1,36 +1,24 @@
-import { describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import {
-  configureSgr,
-  dim,
-  isErrorBody,
-  red,
-  renderContent,
-  resolveSgr,
-  summarize,
-} from "./render.ts"
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
 
-describe("style facade", () => {
-  test("uses standalone ANSI fallbacks", () => {
-    expect(dim("muted")).toBe("\x1b[2mmuted\x1b[22m")
-    expect(red("bad")).toBe("\x1b[31mbad\x1b[39m")
-  })
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
+import setup from "../ui/setup.ts"
 
-  test("resolves foreground tokens from host-injected palette context", () => {
-    const sgr = resolveSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
-    expect(sgr.red).toBe("\x1b[38;5;196m")
-    expect(sgr.fgReset).toBe("\x1b[39m")
-    expect(sgr.dim).toBe("\x1b[2m")
-  })
+import { isErrorBody, renderContent, summarize } from "./render.ts"
+import { slots } from "./style.ts"
 
-  test("configured facade uses host context for rendered strings", () => {
-    configureSgr(JSON.stringify({ red: "\x1b[38;5;196m", _fgReset: "\x1b[39m" }))
-    expect(red("bad")).toBe("\x1b[38;5;196mbad\x1b[39m")
-    configureSgr(undefined)
-  })
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
-  test("ignores malformed palette context", () => {
-    expect(resolveSgr("not json").red).toBe("\x1b[31m")
+describe("style slots (S41)", () => {
+  test("ui/setup.ts installs the terminal kit; reset makes styles plain", () => {
+    slots.reset()
+    expect(slots.installed()).toBe(false)
+    expect(slots.palette.red).toBe("")
+    setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext)
+    expect(slots.palette.red).toBe("\x1b[31m")
   })
 })
 

@@ -33,9 +33,7 @@
           "path": "./handlers/status.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "☁",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "login",
@@ -56,9 +54,7 @@
           "path": "./handlers/login.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "☁",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "push",
@@ -79,9 +75,7 @@
           "path": "./handlers/push.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "☁",
-        "color": "sky"
+        "interactive": false
       }
     ]
   },

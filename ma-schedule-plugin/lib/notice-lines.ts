@@ -7,15 +7,12 @@
  * @module schedule/lib/notice-lines
  */
 
-import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
-
 import { cadenceLabel, clipPrompt, kindGlyph, relativeTime } from "./format.ts"
 import { nextFireMs } from "./scheduler.ts"
 import type { CronEntry } from "./store.ts"
+import { slots } from "./style.ts"
 
-const { BOLD, DIM, RESET } = ANSI_CODES
-const dim = (s: string) => `${DIM}${s}${RESET}`
+const dim = (s: string) => `${slots.codes.DIM}${s}${slots.codes.RESET}`
 
 /**
  * One colored task row for a `/schedule list` body: bold gold kind glyph, dim
@@ -24,7 +21,7 @@ const dim = (s: string) => `${DIM}${s}${RESET}`
 export function coloredEntryLine(e: CronEntry, now: number): string {
   const next = nextFireMs(e, now)
   const when = next === null ? "—" : relativeTime(next, now)
-  const glyph = `${BOLD}${PALETTE.gold}${kindGlyph(e)}${RESET}`
+  const glyph = `${slots.codes.BOLD}${slots.palette.gold}${kindGlyph(e)}${slots.codes.RESET}`
   return (
     `${glyph} ${dim(e.id)}  ${cadenceLabel(e)}  ${dim(`(${when})`)}  ` + dim(clipPrompt(e.prompt))
   )

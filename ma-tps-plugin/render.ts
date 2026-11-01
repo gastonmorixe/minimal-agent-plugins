@@ -1,17 +1,14 @@
 /**
  * Pure renderer for the TPS footer tail.
  *
- * Visual: `42/tps` — faint/dim ANSI, matching the quota-status footer's
+ * Visual: `42/tps` — faint/dim (style slots, S41), matching the quota-status footer's
  * quiet trailing segments. The number is the dt-weighted EMA rounded by
  * the tracker; this module only styles. No I/O, no env reads.
  *
  * @module tps/render
  */
 
-/** SGR dim/faint. */
-const DIM = "\x1b[2m"
-/** SGR reset (bold/dim off). */
-const RESET = "\x1b[22m"
+import { slots } from "./style.ts"
 
 /**
  * Render the tail segment. Returns empty string when inactive or the rate
@@ -19,5 +16,5 @@ const RESET = "\x1b[22m"
  */
 export function renderTpsTail(tps: number, active: boolean): string {
   if (!active || tps <= 0) return ""
-  return `${DIM}${tps}/tps${RESET}`
+  return `${slots.codes.DIM}${tps}/tps${slots.codes.DIM_CLOSE}`
 }

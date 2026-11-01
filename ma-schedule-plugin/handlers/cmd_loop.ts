@@ -16,14 +16,15 @@
  * @module schedule/handlers/cmd_loop
  */
 
-import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
-
 import { clockHHMMSS, GLYPH_LOOP, taskFooter, taskInfo, wrapText } from "../lib/format.ts"
 import type { CommandContext, CommandResult } from "../lib/host-types.ts"
 import { intervalToCron, parseDurationMs } from "../lib/interval.ts"
 import { resolveLoopPrompt } from "../lib/loop-md.ts"
 import { parseLoopArgs } from "../lib/loop-parse.ts"
 import { type CronCreateInput, cronStoreForSession } from "../lib/store.ts"
+import { slots } from "../lib/style.ts"
+
+const c = slots.styles
 
 /** First fire for a self-paced loop (so it starts promptly, not in 5m). */
 const DYNAMIC_FIRST_MS = 60_000

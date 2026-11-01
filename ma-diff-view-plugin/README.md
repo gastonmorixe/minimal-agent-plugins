@@ -27,9 +27,10 @@ Both paths share the same renderer.
 
 ## Colors
 
-Reads `MINIMAL_AGENT_PALETTE` from the environment so additions and
-deletions track the rest of the agent's chrome. No hard-coded ANSI
-codes.
+The CLI terminal kit colors the diff (S41). `ui/setup.ts` installs the
+kit into the plugin's style slots, so additions and deletions track the
+rest of the agent's chrome. Without the CLI, the diff is plain text. No
+hard-coded ANSI codes.
 
 ## Cross-chunk safety
 

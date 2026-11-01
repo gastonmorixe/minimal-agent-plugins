@@ -1,7 +1,17 @@
-import { describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../scripts/ui/test-terminal-kit.ts"
 
 import { formatJson, formatText } from "./format.ts"
+import { slots } from "./lib/style.ts"
 import type { SearchResponse } from "./providers/types.ts"
+import setup from "./ui/setup.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 const resp: SearchResponse = {
   query: "rust async",

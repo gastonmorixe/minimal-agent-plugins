@@ -87,9 +87,7 @@
           "path": "./handlers/spawn_agent.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "gold"
+        "interactive": false
       },
       {
         "id": "report_result",
@@ -127,9 +125,7 @@
           "path": "./handlers/report_result.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "lime"
+        "interactive": false
       },
       {
         "id": "list_agents",
@@ -150,9 +146,7 @@
           "path": "./handlers/list_agents.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "agent_status",
@@ -178,9 +172,7 @@
           "path": "./handlers/agent_status.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "agent_result",
@@ -207,9 +199,7 @@
           "path": "./handlers/agent_result.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "lime"
+        "interactive": false
       },
       {
         "id": "agent_output",
@@ -236,9 +226,7 @@
           "path": "./handlers/agent_output.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "mailbox",
@@ -281,9 +269,7 @@
           "path": "./handlers/mailbox.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "✉",
-        "color": "violet"
+        "interactive": false
       },
       {
         "id": "stop_agent",
@@ -314,9 +300,7 @@
           "path": "./handlers/stop_agent.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◈",
-        "color": "red"
+        "interactive": false
       }
     ],
     "hooks": [
@@ -345,6 +329,11 @@
     ]
   },
   "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    },
     "liveAreaSlots": [
       {
         "id": "fleet_supervisor",

@@ -10,10 +10,20 @@
  * about `anthropic-ratelimit-*` headers.
  */
 
-import { describe, expect, it } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
+
+import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+
+import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
 
 import type { QuotaWindow, SessionTokens } from "./host-types.ts"
 import { renderQuotaFooter } from "./render.ts"
+import setup from "./setup.ts"
+import { slots } from "./style.ts"
+
+// The display tests below check styled bytes: install the test kit (S41).
+beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
+afterAll(() => slots.reset())
 
 const stripAnsi = (s: string | null): string => (s ?? "").replace(/\x1b\[[0-9;]*m/g, "")
 

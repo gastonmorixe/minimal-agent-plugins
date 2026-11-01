@@ -37,9 +37,7 @@
           "path": "./handlers/skill.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "✦",
-        "color": "violet"
+        "interactive": false
       }
     ],
     "promptFragments": [
@@ -54,5 +52,12 @@
         "order": 200
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

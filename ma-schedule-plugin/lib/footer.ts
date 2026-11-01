@@ -2,7 +2,7 @@
  * Colored, width-aware live-area footer row for scheduled tasks.
  *
  * TUI-only (never seen by the model), so unlike ./format.ts it emits real ANSI
- * via the shared {@link PALETTE} — matching the quota footer so the colors line
+ * via the shared {@link slots.palette} — matching the quota footer so the colors line
  * up. The glyph is the focal point and carries state through color:
  *   - `⧗` gold  → tasks pending, next fire is more than a minute out
  *   - `⧗` lime  → the soonest task is imminent (due now / within a minute)
@@ -24,16 +24,14 @@
  * @module schedule/lib/footer
  */
 
-import { ANSI_CODES } from "@minimal-agent/core/plugin-api/utils/ansi"
-import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
 import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
 
 import { GLYPH_TIME, relativeTime } from "./format.ts"
 import { nextFireMs } from "./scheduler.ts"
 import type { CronEntry } from "./store.ts"
+import { slots } from "./style.ts"
 
-const { BOLD, DIM, RESET } = ANSI_CODES
-// Full SGR reset (clears color AND dim). NOT `\x1b[39m` (color-only), which
+// RESET is the full SGR reset (clears color AND dim). The color-only reset
 // would let the dim attribute bleed into whatever the footer renders next.
 
 /** Soonest task within this window → the glyph turns lime (imminent). */
@@ -59,14 +57,14 @@ export function formatStatusRow(
   const soonest = sorted[0]!
   const soonestMs = nextFireMs(soonest, now)
   const imminent = soonestMs !== null && soonestMs - now <= IMMINENT_MS
-  const color = imminent ? PALETTE.lime : PALETTE.gold
-  const g = `${BOLD}${color}${GLYPH_TIME}${RESET}`
+  const color = imminent ? slots.palette.lime : slots.palette.gold
+  const g = `${slots.codes.BOLD}${color}${GLYPH_TIME}${slots.codes.RESET}`
   const count = `${entries.length} task${entries.length === 1 ? "" : "s"}`
   const fits = (s: string) => displayWidth(s) <= cols
 
   // No computable next fire (e.g. all one-shots already past): quiet count.
   if (soonestMs === null) {
-    const full = `${g} ${DIM}${count}${RESET}`
+    const full = `${g} ${slots.codes.DIM}${count}${slots.codes.RESET}`
     return fits(full) ? full : g
   }
 
@@ -74,12 +72,12 @@ export function formatStatusRow(
   const when = rel === "due now" ? "due now" : `next ${rel}`
 
   // Richest lead: glyph + soonest id (in the glyph color) + countdown (dim).
-  const lead = `${g} ${color}${soonest.id}${RESET} ${DIM}${when}${RESET}`
+  const lead = `${g} ${color}${soonest.id}${slots.codes.RESET} ${slots.codes.DIM}${when}${slots.codes.RESET}`
   if (!fits(lead)) {
     // Too narrow for the id: drop it. glyph + when + count → glyph + count → glyph.
-    const a = `${g} ${DIM}${when} · ${count}${RESET}`
+    const a = `${g} ${slots.codes.DIM}${when} · ${count}${slots.codes.RESET}`
     if (fits(a)) return a
-    const b = `${g} ${DIM}${count}${RESET}`
+    const b = `${g} ${slots.codes.DIM}${count}${slots.codes.RESET}`
     if (fits(b)) return b
     return g
   }
@@ -90,13 +88,13 @@ export function formatStatusRow(
   const others = sorted.slice(1)
   let i = 0
   for (; i < others.length; i++) {
-    const sep = i === 0 ? `  ${DIM}·${RESET}  ` : " "
-    const candidate = `${out}${sep}${DIM}${others[i]!.id}${RESET}`
+    const sep = i === 0 ? `  ${slots.codes.DIM}·${slots.codes.RESET}  ` : " "
+    const candidate = `${out}${sep}${slots.codes.DIM}${others[i]!.id}${slots.codes.RESET}`
     if (!fits(candidate)) break
     out = candidate
   }
   if (i < others.length) {
-    const withK = `${out}  ${DIM}·  +${others.length - i}${RESET}`
+    const withK = `${out}  ${slots.codes.DIM}·  +${others.length - i}${slots.codes.RESET}`
     if (fits(withK)) out = withK
   }
   return out

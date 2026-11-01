@@ -42,9 +42,7 @@
           "path": "./handlers/cron_create.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "⧗",
-        "color": "gold"
+        "interactive": false
       },
       {
         "id": "cron_list",
@@ -65,9 +63,7 @@
           "path": "./handlers/cron_list.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "⧗",
-        "color": "gold"
+        "interactive": false
       },
       {
         "id": "cron_delete",
@@ -94,9 +90,7 @@
           "path": "./handlers/cron_delete.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "⧗",
-        "color": "gold"
+        "interactive": false
       },
       {
         "id": "cron_reschedule",
@@ -131,9 +125,7 @@
           "path": "./handlers/cron_reschedule.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "⧗",
-        "color": "gold"
+        "interactive": false
       }
     ],
     "commands": [
@@ -160,6 +152,11 @@
     ]
   },
   "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    },
     "liveAreaSlots": [
       {
         "id": "cron_heartbeat",

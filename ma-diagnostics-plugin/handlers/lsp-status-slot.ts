@@ -16,12 +16,13 @@
 
 import { basename } from "node:path"
 
-import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
-
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
 import type { ActivePersistentProvider } from "../lib/service.ts"
+import { slots } from "../lib/style.ts"
 
 import { getActivePersistentProvidersDetailed } from "./on_tool_did_invoke.ts"
+
+const c = slots.styles
 
 /**
  * Icons for known persistent providers. Falls back to "⚙" for unknown ids.

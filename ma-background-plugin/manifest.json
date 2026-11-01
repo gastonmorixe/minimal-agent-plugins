@@ -45,9 +45,7 @@
           "path": "./handlers/bg_run.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "▶",
-        "color": "cyan"
+        "interactive": false
       },
       {
         "id": "bg_status",
@@ -75,9 +73,7 @@
           "path": "./handlers/bg_status.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "◎",
-        "color": "violet"
+        "interactive": false
       },
       {
         "id": "bg_logs",
@@ -130,9 +126,7 @@
           "path": "./handlers/bg_logs.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "▤",
-        "color": "sky"
+        "interactive": false
       },
       {
         "id": "bg_stop",
@@ -169,13 +163,16 @@
           "path": "./handlers/bg_stop.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "■",
-        "color": "red"
+        "interactive": false
       }
     ]
   },
   "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    },
     "liveAreaSlots": [
       {
         "id": "bg_supervisor",

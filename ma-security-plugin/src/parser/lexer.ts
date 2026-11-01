@@ -139,7 +139,8 @@ export function decodeAnsiC(body: string): string {
         break
       case "e":
       case "E":
-        out.push("\x1b")
+        // Bash `\e` decodes to the ESC byte (the parser only reads it).
+        out.push(String.fromCharCode(0x1b))
         break
       case "f":
         out.push("\f")

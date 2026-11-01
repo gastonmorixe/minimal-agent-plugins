@@ -26,11 +26,9 @@ export {
 } from "./tokens.ts"
 export {
   SGR,
-  configureSgr,
   dim,
   padLeft,
   padRight,
-  resolveSgr,
   sigilTokenSgr,
   stripSgr,
   truncate,
@@ -38,6 +36,7 @@ export {
   visualWidth,
   wrap,
 } from "./palette.ts"
+export { slots as styleSlots } from "./style-slots.ts"
 export {
   type Category,
   type InsertMode,

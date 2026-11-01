@@ -79,9 +79,7 @@
           "path": "./handlers/memory_tool.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "󰍩",
-        "color": "purple"
+        "interactive": false
       }
     ],
     "promptFragments": [
@@ -116,5 +114,12 @@
         }
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

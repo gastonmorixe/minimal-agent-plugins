@@ -43,10 +43,15 @@
           "path": "./handlers/lock_status.ts",
           "export": "default"
         },
-        "interactive": false,
-        "icon": "⊠",
-        "color": "yellow"
+        "interactive": false
       }
     ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
   }
 }

@@ -525,7 +525,7 @@ function clipToWidth(s: string, maxWidth: number): string {
   let out = ""
   let used = 0
   let i = 0
-  const ESC = "\x1b"
+  const ESC = String.fromCharCode(0x1b)
   while (i < s.length) {
     const ch = s.charCodeAt(i)
     if (ch === 0x1b && s[i + 1] === "[") {

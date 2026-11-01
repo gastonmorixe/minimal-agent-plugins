@@ -6,13 +6,7 @@
  */
 
 import type { Route } from "./routes.ts"
-
-const FALLBACK_SGR = {
-  dim: "\x1b[2m",
-  weightReset: "\x1b[22m",
-  red: "\x1b[31m",
-  fgReset: "\x1b[39m",
-} as const
+import { slots } from "./style.ts"
 
 export interface SgrTokens {
   readonly dim: string
@@ -21,45 +15,26 @@ export interface SgrTokens {
   readonly fgReset: string
 }
 
-/** Resolve style tokens from the host-injected palette environment. */
-export function resolveSgr(raw?: string): SgrTokens {
-  const palette = parsePaletteEnv(raw)
+/**
+ * The style tokens of this module (S41). They come from the style slots,
+ * read at call time, so they are plain until the CLI runs `ui/setup.ts`.
+ */
+function sgr(): SgrTokens {
   return {
-    ...FALLBACK_SGR,
-    red: palette?.red ?? FALLBACK_SGR.red,
-    fgReset: palette?._fgReset ?? FALLBACK_SGR.fgReset,
+    dim: slots.codes.DIM,
+    weightReset: slots.codes.BOLD_CLOSE,
+    red: slots.palette.red,
+    fgReset: slots.codes.FG_RESET,
   }
-}
-
-function parsePaletteEnv(raw: string | undefined): Record<string, string> | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
-    const out: Record<string, string> = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string") out[key] = value
-    }
-    return out
-  } catch {
-    return null
-  }
-}
-
-let SGR = resolveSgr()
-
-/** Configure display styling from the host-provided context palette. */
-export function configureSgr(raw?: string): void {
-  SGR = resolveSgr(raw)
 }
 
 /** Wrap a string in the ANSI dim attribute. */
 export function dim(s: string): string {
-  return `${SGR.dim}${s}${SGR.weightReset}`
+  return `${sgr().dim}${s}${sgr().weightReset}`
 }
 /** Color a string red (ANSI foreground). */
 export function red(s: string): string {
-  return `${SGR.red}${s}${SGR.fgReset}`
+  return `${sgr().red}${s}${sgr().fgReset}`
 }
 
 /** One-line summary of a route result for the transcript footer. */
