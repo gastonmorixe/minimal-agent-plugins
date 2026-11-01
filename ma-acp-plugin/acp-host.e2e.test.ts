@@ -665,7 +665,7 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     }
   }, 60_000)
 
-  it("(k) switch to a second model: config_option_update, the new model id, the new window size", async () => {
+  it("(k) switch to a second model: full list in the reply, no config_option_update, the new model id and window size", async () => {
     const name = "two-models"
     const a = spawnAgent(name, [], "allow_once", {
       toolCalls: 0,
@@ -708,11 +708,15 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
         method: "session/set_config_option",
         params: { sessionId, configId: "model", value: "mock-big" },
       })
+      // ACP: the reply holds the complete list with the new model selected.
+      // A client change gets no config_option_update (that update is only
+      // for changes the agent makes itself).
       const switched = ((await a.reply(5)).result as { configOptions: Json[] }).configOptions
-      expect(switched.find((o) => o.id === "model")?.currentValue).toBe("mock-big")
-      const pushes = configPushes()
-      expect(pushes).toHaveLength(1)
-      expect(pushes[0]?.configOptions).toEqual(switched)
+      expect(switched.map((o) => o.id)).toEqual(created.configOptions.map((o) => o.id))
+      const newModel = switched.find((o) => o.id === "model")
+      expect(newModel?.currentValue).toBe("mock-big")
+      expect(newModel?.options).toEqual(modelOption?.options)
+      expect(configPushes()).toEqual([])
 
       const before = a.model.bodies.length
       a.send({
@@ -725,6 +729,7 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       expect(a.model.bodies[before]?.model).toBe("mock-big")
       expect(sizes()).toEqual([32_000, 64_000])
       expect(await finish(a)).toBe(0)
+      expect(configPushes()).toEqual([])
     } finally {
       a.proc.kill("SIGKILL")
     }
