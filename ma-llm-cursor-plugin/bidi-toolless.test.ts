@@ -14,6 +14,7 @@ import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonica
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 
+import { useOfflineFetch } from "./__fixtures__/offline-fetch.ts"
 import { cursorAdapter } from "./adapter.ts"
 import { runCursorBidi, shouldUseCursorBidi } from "./bidi-run.ts"
 import { cursorCaps } from "./capabilities.ts"
@@ -166,6 +167,7 @@ const textOf = (evs: CanonicalEvent[]) =>
     .join("")
 
 describe("cursor tool-less requests use the bidi wire", () => {
+  useOfflineFetch()
   afterEach(() => {
     delete process.env.MA_CURSOR_BIDI_HEARTBEAT_MS
     delete process.env.MA_CURSOR_BIDI
@@ -370,6 +372,7 @@ describe("cursor tool-less requests use the bidi wire", () => {
 // overwritten, so a missing cleanup leaks one open wire per abandoned Run.
 // Probe by Margaret (d7828f6e).
 describe("cursor tool-less sessions are cleaned up when the caller leaves", () => {
+  useOfflineFetch()
   afterEach(() => {
     delete process.env.MA_CURSOR_BIDI_HEARTBEAT_MS
     resetCursorBidiSessionsForTests()

@@ -5,6 +5,7 @@
 
 import { describe, expect, test } from "bun:test"
 
+import { useOfflineFetch } from "./__fixtures__/offline-fetch.ts"
 import { cursorAdapter, cursorProviderPlugin } from "./adapter.ts"
 import { buildCursorApiKeyCredential, cursorApiKeyAuth, readCursorApiKey } from "./auth.ts"
 import { cursorCaps } from "./capabilities.ts"
@@ -67,6 +68,7 @@ describe("cursor wire model id aliases", () => {
 })
 
 describe("cursor provider plugin shape", () => {
+  const refusedFetches = useOfflineFetch()
   test("plugin id and hooks", () => {
     expect(cursorProviderPlugin.id).toBe("cursor")
     expect(cursorProviderPlugin.shortCode).toBe("cur")
@@ -108,15 +110,12 @@ describe("cursor provider plugin shape", () => {
     }
   })
 
-  test("listLiveModels is wired (may reject without network/auth)", async () => {
+  test("listLiveModels is wired (soft-fails when the api-key exchange fails)", async () => {
     expect(typeof cursorProviderPlugin.listLiveModels).toBe("function")
-    // Offline unit test: either returns rows or rejects — must not hang.
-    try {
-      const rows = await cursorProviderPlugin.listLiveModels!({ kind: "api-key", key: "x" })
-      expect(Array.isArray(rows)).toBe(true)
-    } catch (e) {
-      expect(String(e)).toMatch(/listLiveModels|not implemented|exchange|network|fetch|Cursor/i)
-    }
+    // Offline unit test: the stubbed fetch fails, so the key exchange fails.
+    const rows = await cursorProviderPlugin.listLiveModels!({ kind: "api-key", key: "x" })
+    expect(Array.isArray(rows)).toBe(true)
+    expect(refusedFetches.some((u) => u.includes("/auth/exchange_user_api_key"))).toBe(true)
   })
 
   test("run is async and requires resolved auth (api-key exchange fails offline)", async () => {
@@ -143,6 +142,7 @@ describe("cursor provider plugin shape", () => {
     )
     const iter = gen[Symbol.asyncIterator]()
     await expect(iter.next()).rejects.toThrow()
+    expect(refusedFetches.some((u) => u.includes("/auth/exchange_user_api_key"))).toBe(true)
   })
 })
 
