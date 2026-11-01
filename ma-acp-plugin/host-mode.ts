@@ -14,6 +14,11 @@
  * Approval gate (`permission.ts`): OFF by default. `--approval` after
  * `--host-mode acp` turns it on. Then every tool call sends
  * `session/request_permission`, and any failure denies only that call.
+ * If core did not load the gate hook (a broken import, or no grant), no
+ * tool call can be asked about. Then `session/new` writes a warning to
+ * stderr, and every `session/prompt` fails with a JSON-RPC error before
+ * the model runs, so no tool runs without approval. The process and the
+ * session stay open.
  *
  * Deferred: `session/load` / `session/list` / plan / image input.
  *
@@ -31,11 +36,19 @@ import { createSessionEncoder, type SessionEncoder } from "./encoder.ts"
 import { clientSupportsNotices } from "./notices.ts"
 import {
   createPermissionGate,
+  hookRegistered,
   type PermissionGate,
   parseHostModeArgs,
   setActiveGate,
 } from "./permission.ts"
 import { createRpcChannel, RPC_ERROR, RpcError } from "./transport.ts"
+
+/** The error text when `--approval` is on but core did not load the gate hook. */
+export const GATE_NOT_LOADED =
+  "the ACP approval gate failed to load (core skipped the tool.willInvoke hook: see the plugin load log on stderr). --approval is on, so no turn runs: no tool call can be approved"
+
+/** How long the gate waits for the `tool_call` update before it sends the request anyway. */
+const TOOL_CALL_SENT_WAIT_MS = 1000
 
 interface ContentBlock {
   readonly type: string
@@ -92,6 +105,8 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
     ctx.log.warn("acp", `ignored unknown args: ${args.unknown.join(" ")}`)
   // Set at `session/new` only when approval is on.
   let gate: PermissionGate | undefined
+  // True when approval is on but core did not load the gate hook.
+  let gateNotLoaded = false
 
   const requireSession = (sessionId: unknown): HostSession => {
     if (!session || session.sessionId !== sessionId) {
@@ -143,10 +158,20 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
             runtime: ctx.runtime,
             cwd: ctx.cwd,
           })
-          if (args.approval) {
+          if (args.approval && !hookRegistered()) {
+            gateNotLoaded = true
+            ctx.stderr.write(`acp: warning: ${GATE_NOT_LOADED}\n`)
+          } else if (args.approval) {
+            const enc = encoder
             gate = createPermissionGate({
               request: (method, params, signal) => channel.request(method, params, signal),
               sessionId: () => session?.sessionId,
+              // Send the `tool_call` update before the request. A call inside
+              // a worker (`agentId`) has no update in this stream: do not wait.
+              beforeRequest: (payload) =>
+                payload.agentId === undefined
+                  ? enc.toolCallSent(payload.toolUseId, TOOL_CALL_SENT_WAIT_MS)
+                  : Promise.resolve(),
               log: (msg) => ctx.log.debug("acp", msg),
             })
             setActiveGate(gate)
@@ -167,6 +192,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
 
           const enc = encoder
           if (!enc) throw new RpcError(RPC_ERROR.internal, "session encoder missing")
+          if (gateNotLoaded) throw new RpcError(RPC_ERROR.internal, GATE_NOT_LOADED)
           // Spec v3 Q2b: reject a second prompt while a turn runs, and leave
           // the running turn (and its encoder state) alone.
           if (activeRun) {
@@ -177,6 +203,8 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
           }
           const controller = new AbortController()
           activeRun = controller
+          // A new turn: clear the deny-all state of an earlier session/cancel.
+          gate?.startTurn()
           try {
             let outcome: Parameters<SessionEncoder["finishTurn"]>[0]
             try {

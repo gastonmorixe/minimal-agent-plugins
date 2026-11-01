@@ -216,6 +216,43 @@ describe("tool updates (design section 6)", () => {
   })
 })
 
+describe("toolCallSent", () => {
+  const call = (callId: string): AgentEvent => ({
+    type: "tool_call",
+    callId,
+    toolName: "Bash",
+    input: { command: "ls" },
+    inputSummary: "ls",
+  })
+
+  it("resolves at once when the tool_call update is sent already", async () => {
+    const { enc, feed } = setup()
+    feed(call("c1"))
+    const r = await Promise.race([enc.toolCallSent("c1", 5000).then(() => "sent"), Bun.sleep(50)])
+    expect(r).toBe("sent")
+  })
+
+  it("resolves when the tool_call update is sent later", async () => {
+    const { enc, feed, sent } = setup()
+    const order: string[] = []
+    const wait = enc.toolCallSent("c2", 5000).then(() => {
+      order.push(`resolved after ${sent.length} update(s)`)
+    })
+    await Bun.sleep(5)
+    expect(order).toEqual([])
+    feed(call("c2"))
+    await wait
+    expect(order).toEqual(["resolved after 1 update(s)"])
+  })
+
+  it("resolves after the timeout when no tool_call update comes", async () => {
+    const { enc } = setup()
+    const t0 = Date.now()
+    await enc.toolCallSent("never", 20)
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(15)
+  })
+})
+
 describe("usage_update (design section 7)", () => {
   it("used = input + cacheRead + cacheCreation of the LAST turn; size = contextWindow", () => {
     const { sent, feed } = setup({ model: "alpha" })

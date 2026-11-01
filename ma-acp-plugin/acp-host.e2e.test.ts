@@ -9,9 +9,12 @@
  * Core's test transport (`MINIMAL_AGENT_TRANSPORT=test`) only returns
  * text, so it cannot script a tool call. The mock server can.
  *
- * Cases: approval off (no permission request on the wire), on + allow,
- * on + reject (tool denied, turn still ends with `end_turn`), and on +
- * stdin closed while the request waits (tool denied, clean exit). Every
+ * Cases: approval off (no permission request on the wire), on + allow
+ * (the `tool_call` update goes out before the request), on + reject (tool
+ * denied, turn still ends with `end_turn`), on + stdin closed while the
+ * request waits (tool denied, clean exit), on + session/cancel with two
+ * tool calls (one request only, prompt replies `cancelled` at once), and
+ * on + a gate hook that did not load (no tool runs, a clear error). Every
  * stdout line must be a JSON-RPC 2.0 message.
  *
  * Skips with a printed reason when the sibling `../minimal-agent-cli`
@@ -21,7 +24,17 @@
  * @module acp-host.e2e.test
  */
 
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
@@ -54,8 +67,11 @@ function agentCommand(): string[] {
 
 type Json = Record<string, unknown>
 
-/** OpenAI chat-completions SSE: round 1 asks for one Bash call, later rounds say DONE. */
-function startMockModel() {
+/**
+ * OpenAI chat-completions SSE: round 1 asks for `toolCalls` Bash calls
+ * (`call_1`, `call_2`, ...), later rounds say DONE.
+ */
+function startMockModel(toolCalls = 1) {
   let requests = 0
   const sse = (chunks: unknown[]): string =>
     `${chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("")}data: [DONE]\n\n`
@@ -65,12 +81,12 @@ function startMockModel() {
     model: "mock-model",
     choices: [{ index: 0, delta, finish_reason: finish }],
   })
-  const toolCall = {
-    index: 0,
-    id: "call_1",
+  const calls = Array.from({ length: toolCalls }, (_, i) => ({
+    index: i,
+    id: `call_${i + 1}`,
     type: "function",
-    function: { name: "Bash", arguments: JSON.stringify({ command: "echo ran > marker.txt" }) },
-  }
+    function: { name: "Bash", arguments: JSON.stringify({ command: "echo ran >> marker.txt" }) },
+  }))
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
@@ -79,7 +95,7 @@ function startMockModel() {
       requests++
       const events =
         requests === 1
-          ? [chunk({ role: "assistant", tool_calls: [toolCall] }), chunk({}, "tool_calls")]
+          ? [chunk({ role: "assistant", tool_calls: calls }), chunk({}, "tool_calls")]
           : [chunk({ role: "assistant", content: "DONE" }), chunk({}, "stop")]
       return new Response(sse(events), { headers: { "content-type": "text/event-stream" } })
     },
@@ -107,14 +123,26 @@ afterAll(() => {
 })
 
 /** What the fake client does when the agent sends `session/request_permission`. */
-type OnPermission = "allow_once" | "reject_once" | "close_stdin"
+type OnPermission = "allow_once" | "reject_once" | "close_stdin" | "cancel"
 
-function spawnAgent(name: string, hostArgs: readonly string[], onPermission: OnPermission) {
+interface SpawnOptions {
+  /** Tool calls in the first model answer (default 1). */
+  readonly toolCalls?: number
+  /** The plugin roots to load (default: this plugins checkout). */
+  readonly pluginRoot?: string
+}
+
+function spawnAgent(
+  name: string,
+  hostArgs: readonly string[],
+  onPermission: OnPermission,
+  options: SpawnOptions = {},
+) {
   const home = join(scratch, name, "home")
   const work = join(scratch, name, "work")
   mkdirSync(home, { recursive: true })
   mkdirSync(work, { recursive: true })
-  const model = startMockModel()
+  const model = startMockModel(options.toolCalls)
   models.push(model)
   const proc = Bun.spawn(
     [
@@ -146,13 +174,16 @@ function spawnAgent(name: string, hostArgs: readonly string[], onPermission: OnP
         MINIMAL_AGENT_HOME: join(home, ".minimal-agent"),
         // Load THIS plugins checkout, never a clone from GitHub.
         MINIMAL_AGENT_NO_PLUGIN_SYNC: "1",
-        MINIMAL_AGENT_PLUGIN_SIBLINGS: PLUGINS_ROOT,
+        MINIMAL_AGENT_PLUGIN_SIBLINGS: options.pluginRoot ?? PLUGINS_ROOT,
         NO_PROXY: "127.0.0.1,localhost",
         no_proxy: "127.0.0.1,localhost",
       },
     },
   )
   const lines: string[] = []
+  let stderr = ""
+  // Time (Date.now) of the session/cancel the fake client sent, if any.
+  let cancelledAt: number | undefined
   const send = (msg: unknown): void => {
     void proc.stdin.write(`${JSON.stringify(msg)}\n`)
     void proc.stdin.flush()
@@ -169,7 +200,17 @@ function spawnAgent(name: string, hostArgs: readonly string[], onPermission: OnP
         lines.push(line)
         const msg = JSON.parse(line) as Json
         if (msg.method !== "session/request_permission") continue
-        if (onPermission === "close_stdin") {
+        if (onPermission === "cancel") {
+          // Cancel the turn and never answer the request (a silent client).
+          if (cancelledAt === undefined) {
+            cancelledAt = Date.now()
+            send({
+              jsonrpc: "2.0",
+              method: "session/cancel",
+              params: { sessionId: (msg.params as Json).sessionId },
+            })
+          }
+        } else if (onPermission === "close_stdin") {
           void proc.stdin.end()
         } else {
           send({
@@ -182,6 +223,10 @@ function spawnAgent(name: string, hostArgs: readonly string[], onPermission: OnP
     }
     if (buf.length > 0) lines.push(buf)
   })()
+  const stderrDone = (async () => {
+    const dec = new TextDecoder()
+    for await (const bytes of proc.stderr) stderr += dec.decode(bytes)
+  })()
   const reply = async (id: number): Promise<Json> => {
     const t0 = Date.now()
     for (;;) {
@@ -189,11 +234,24 @@ function spawnAgent(name: string, hostArgs: readonly string[], onPermission: OnP
         const o = JSON.parse(l) as Json
         if (o.id === id && o.method === undefined) return o
       }
-      if (Date.now() - t0 > 30_000) throw new Error(`no reply ${id}; stdout:\n${lines.join("\n")}`)
+      if (Date.now() - t0 > 30_000) {
+        throw new Error(`no reply ${id}; stdout:\n${lines.join("\n")}\nstderr:\n${stderr}`)
+      }
       await Bun.sleep(20)
     }
   }
-  return { proc, send, reply, lines, stdoutDone, marker: join(work, "marker.txt"), work }
+  return {
+    proc,
+    send,
+    reply,
+    lines,
+    stdoutDone,
+    stderrDone,
+    stderr: () => stderr,
+    cancelledAt: () => cancelledAt,
+    marker: join(work, "marker.txt"),
+    work,
+  }
 }
 
 type Agent = ReturnType<typeof spawnAgent>
@@ -238,6 +296,39 @@ const updates = (a: Agent): Json[] =>
 const permissionRequests = (a: Agent): Json[] =>
   a.lines.map((l) => JSON.parse(l) as Json).filter((m) => m.method === "session/request_permission")
 
+/**
+ * A plugin root like this checkout, but with a broken copy of this plugin.
+ * Every other plugin dir and `node_modules` is a symlink to the real one.
+ */
+function brokenPluginRoot(name: string, breakIt: (pluginDir: string) => void): string {
+  const root = join(scratch, name, "plugins")
+  mkdirSync(root, { recursive: true })
+  for (const entry of readdirSync(PLUGINS_ROOT)) {
+    const from = join(PLUGINS_ROOT, entry)
+    if (entry === "ma-acp-plugin") {
+      cpSync(from, join(root, entry), { recursive: true })
+      breakIt(join(root, entry))
+    } else if (entry === "node_modules" || entry.startsWith("ma-")) {
+      symlinkSync(from, join(root, entry))
+    }
+  }
+  return root
+}
+
+/** Remove the `hooks:tool.willInvoke` grant: core skips the gate hook. */
+function dropHookGrant(dir: string): void {
+  const path = join(dir, "manifest.json")
+  const manifest = JSON.parse(readFileSync(path, "utf8")) as { permissions: string[] }
+  manifest.permissions = manifest.permissions.filter((p) => p !== "hooks:tool.willInvoke")
+  writeFileSync(path, JSON.stringify(manifest, null, 2))
+}
+
+/** Add an import that does not resolve: the hook module fails to load. */
+function breakHookImport(dir: string): void {
+  const path = join(dir, "permission-hook.ts")
+  writeFileSync(path, `import "./no-such-module.ts"\n${readFileSync(path, "utf8")}`)
+}
+
 describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () => {
   it("(a) approval off: the tool runs and no permission request goes on the wire", async () => {
     const a = spawnAgent("off", [], "reject_once")
@@ -260,6 +351,17 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       expect(await finish(a)).toBe(0)
       const reqs = permissionRequests(a)
       expect(reqs).toHaveLength(1)
+      // The client must see the tool call before it is asked about it.
+      const wire = a.lines.map((l) => JSON.parse(l) as Json)
+      const announced = wire.findIndex(
+        (m) =>
+          m.method === "session/update" &&
+          (m.params as { update: Json }).update.sessionUpdate === "tool_call" &&
+          (m.params as { update: Json }).update.toolCallId === "call_1",
+      )
+      const asked = wire.findIndex((m) => m.method === "session/request_permission")
+      expect(announced).toBeGreaterThanOrEqual(0)
+      expect(announced).toBeLessThan(asked)
       const params = reqs[0]?.params as { toolCall: Json } | undefined
       expect(params?.toolCall).toMatchObject({
         toolCallId: "call_1",
@@ -309,4 +411,60 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       a.proc.kill("SIGKILL")
     }
   }, 60_000)
+
+  it("(e) approval on + session/cancel with 2 tool calls: one request only, cancelled at once", async () => {
+    const a = spawnAgent("cancel", ["--approval"], "cancel", { toolCalls: 2 })
+    try {
+      const id = await startTurn(a)
+      const reply = await a.reply(id)
+      expect(reply.result).toEqual({ stopReason: "cancelled" })
+      const cancelledAt = a.cancelledAt()
+      expect(cancelledAt).toBeDefined()
+      // The reply comes at once. The gate does not wait for the silent client.
+      expect(Date.now() - (cancelledAt ?? 0)).toBeLessThan(1500)
+      // Let a late second request show up, if the gate sends one.
+      await Bun.sleep(300)
+      expect(permissionRequests(a)).toHaveLength(1)
+      expect(existsSync(a.marker)).toBe(false)
+      expect(await finish(a)).toBe(0)
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
+  for (const [label, breakIt] of [
+    ["the hook grant is missing", dropHookGrant],
+    ["the hook module fails to import", breakHookImport],
+  ] as const) {
+    it(`(f) approval on + ${label}: no tool runs, a clear error, the process keeps running`, async () => {
+      const name = `broken-${breakIt.name}`
+      const a = spawnAgent(name, ["--approval"], "allow_once", {
+        pluginRoot: brokenPluginRoot(name, breakIt),
+      })
+      try {
+        const id = await startTurn(a)
+        const reply = await a.reply(id)
+        expect(reply.error).toBeDefined()
+        expect(JSON.stringify(reply)).toContain("approval gate failed to load")
+        expect(existsSync(a.marker)).toBe(false)
+        // The session stays open: a second prompt gets the same error.
+        a.send({
+          jsonrpc: "2.0",
+          id: 4,
+          method: "session/prompt",
+          params: {
+            sessionId: ((await a.reply(2)).result as { sessionId: string }).sessionId,
+            prompt: [{ type: "text", text: "again" }],
+          },
+        })
+        expect(JSON.stringify(await a.reply(4))).toContain("approval gate failed to load")
+        expect(await finish(a)).toBe(0)
+        await a.stderrDone
+        expect(a.stderr()).toContain("approval gate failed to load")
+        expect(existsSync(a.marker)).toBe(false)
+      } finally {
+        a.proc.kill("SIGKILL")
+      }
+    }, 60_000)
+  }
 })

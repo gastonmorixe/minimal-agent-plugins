@@ -49,7 +49,18 @@ The request offers four options. The option id is the ACP option kind.
 | `reject_always` | Deny this call. Deny this tool kind from then on in this session, without a request. |
 
 Remembered choices live in memory for the session only. Nothing is written to
-disk. All tools with kind `other` share one remembered choice.
+disk. Kind `other` is the kind of every tool with no named kind (plugin and MCP
+tools). For kind `other`, the gate remembers the choice per tool name, so
+`allow_always` on one such tool does not allow the others.
+
+The gate sends the `tool_call` update for a call before it asks about it.
+
+### session/cancel
+
+`session/cancel` denies the request that waits. Until the next
+`session/prompt`, the gate also denies every later tool call at once, with no
+request. So a client that does not answer cannot hold up the `cancelled`
+reply.
 
 ### Failures deny only that tool call
 
@@ -70,9 +81,19 @@ The gate is a `tool.willInvoke` chain hook (`permission-hook.ts`) that core
 runs with `failClosed: true`. So a bug that makes the hook throw also denies
 the call. Other `tool.willInvoke` hooks keep core's fail-open behavior.
 
+### The gate hook did not load
+
+Core skips a hook that fails to import or has no `hooks:tool.willInvoke`
+grant. It logs the skip and goes on. Then no tool call can be asked about. With
+`--approval`, the host mode finds this at `session/new` and writes a warning to
+stderr. Each `session/prompt` then fails with a JSON-RPC error (`-32603`) that
+says `the ACP approval gate failed to load`, before the model runs. So no tool
+runs without approval. The process and the session stay open.
+
 ## Tests
 
-- `permission.test.ts`: the gate in process (answers, failures, deadline).
+- `permission.test.ts`: the gate in process (answers, failures, deadline,
+  cancel, per-name memory for kind `other`).
 - `acp-host.e2e.test.ts`: spawns the real agent in ACP host mode against a
   local mock model. It needs the sibling `../minimal-agent-cli` checkout with
   its installed core, and skips with a printed reason without it.
