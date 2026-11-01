@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import {
   activeGate,
   createPermissionGate,
+  hookRegistered,
   type PermissionRequest,
   parseHostModeArgs,
   setActiveGate,
@@ -44,12 +45,14 @@ const selected = (optionId: unknown) => () =>
 function gateWith(
   answers: ReadonlyArray<(signal: AbortSignal) => Promise<unknown>>,
   deadlineMs?: number,
+  beforeRequest?: (payload: { toolUseId: string }) => Promise<void>,
 ) {
   const fake = fakeRequest(answers)
   const gate = createPermissionGate({
     request: fake.request,
     sessionId: () => "s1",
     ...(deadlineMs === undefined ? {} : { deadlineMs }),
+    ...(beforeRequest === undefined ? {} : { beforeRequest }),
   })
   return { gate, sent: fake.sent }
 }
@@ -122,6 +125,30 @@ describe("permission gate answers", () => {
     // A new gate (a new session) remembers nothing.
     const fresh = gateWith([selected("reject_once")])
     expectDeny(await fresh.gate.check(bash), /rejected/)
+  })
+
+  it("kind other: allow_always applies to that tool name only", async () => {
+    const mcpA = { tool: "mcp__a__x", toolUseId: "tu_4", input: {}, cwd: "/w" }
+    const mcpB = { tool: "mcp__b__y", toolUseId: "tu_5", input: {}, cwd: "/w" }
+    const { gate, sent } = gateWith([selected("allow_always"), selected("reject_once")])
+    expect(await gate.check(mcpA)).toBeUndefined()
+    const options = (sent[0]?.params.options ?? []) as Array<{ optionId: string; name: string }>
+    expect(options.find((o) => o.optionId === "allow_always")?.name).toContain("mcp__a__x")
+    expect(await gate.check({ ...mcpA, toolUseId: "tu_6" })).toBeUndefined()
+    expect(sent).toHaveLength(1)
+    // Another tool of kind other still asks.
+    expectDeny(await gate.check(mcpB), /rejected mcp__b__y/)
+    expect(sent).toHaveLength(2)
+  })
+
+  it("kind other: reject_always applies to that tool name only", async () => {
+    const mcpA = { tool: "mcp__a__x", toolUseId: "tu_4", input: {}, cwd: "/w" }
+    const mcpB = { tool: "mcp__b__y", toolUseId: "tu_5", input: {}, cwd: "/w" }
+    const { gate, sent } = gateWith([selected("reject_always"), selected("allow_once")])
+    expectDeny(await gate.check(mcpA), /rejected mcp__a__x/)
+    expectDeny(await gate.check(mcpA), /rejected the tool mcp__a__x/)
+    expect(await gate.check(mcpB)).toBeUndefined()
+    expect(sent).toHaveLength(2)
   })
 
   it("reject_once denies with a clear reason", async () => {
@@ -211,9 +238,76 @@ describe("permission gate failures", () => {
     gate.cancelPending()
     expectDeny(await pending, /session cancelled/)
   })
+
+  it("after cancelPending, denies later calls without a request until startTurn", async () => {
+    const { gate, sent } = gateWith([selected("allow_always"), selected("allow_once")])
+    expect(await gate.check(bash)).toBeUndefined()
+    gate.cancelPending()
+    // Also a remembered allow does not run after a cancel.
+    expectDeny(await gate.check(bash), /cancelled the turn/)
+    expectDeny(await gate.check(read), /cancelled the turn/)
+    expect(sent).toHaveLength(1)
+    gate.startTurn()
+    expect(await gate.check(bash)).toBeUndefined()
+    expect(await gate.check(read)).toBeUndefined()
+    expect(sent).toHaveLength(2)
+  })
+
+  it("a cancel while beforeRequest runs denies without a request", async () => {
+    let release = (): void => {}
+    const { gate, sent } = gateWith(
+      [selected("allow_once")],
+      undefined,
+      () =>
+        new Promise<void>((r) => {
+          release = r
+        }),
+    )
+    const pending = gate.check(bash)
+    await Bun.sleep(1)
+    gate.cancelPending()
+    release()
+    expectDeny(await pending, /cancelled the turn/)
+    expect(sent).toHaveLength(0)
+  })
+})
+
+describe("permission gate beforeRequest", () => {
+  it("runs before the request, with the payload", async () => {
+    const order: string[] = []
+    const fake = fakeRequest([
+      () => {
+        order.push("request")
+        return Promise.resolve({ outcome: { outcome: "selected", optionId: "allow_once" } })
+      },
+    ])
+    const gate = createPermissionGate({
+      request: fake.request,
+      sessionId: () => "s1",
+      beforeRequest: async (payload) => {
+        await Bun.sleep(5)
+        order.push(`before ${payload.toolUseId}`)
+      },
+    })
+    expect(await gate.check(bash)).toBeUndefined()
+    expect(order).toEqual(["before tu_1", "request"])
+  })
+
+  it("a failing beforeRequest still asks", async () => {
+    const { gate, sent } = gateWith([selected("allow_once")], undefined, () =>
+      Promise.reject(new Error("boom")),
+    )
+    expect(await gate.check(bash)).toBeUndefined()
+    expect(sent).toHaveLength(1)
+  })
 })
 
 describe("permission hook module", () => {
+  it("marks the hook as registered when it loads", () => {
+    // This file imports permission-hook.ts at the top.
+    expect(hookRegistered()).toBe(true)
+  })
+
   it("passes through when no gate is active (approval off)", async () => {
     expect(activeGate()).toBeUndefined()
     expect(await toolWillInvoke(bash)).toBeUndefined()

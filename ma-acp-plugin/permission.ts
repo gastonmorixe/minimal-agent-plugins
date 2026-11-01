@@ -15,6 +15,13 @@
  * - `reject_always`: deny this call, and deny this tool kind from then on
  *   in this session without asking.
  *
+ * Kind `other` is the kind of every tool with no named kind (plugin and MCP
+ * tools). For kind `other`, the gate keeps the choice per tool NAME, so
+ * "always allow" on one such tool does not allow all of them.
+ *
+ * After `session/cancel`, the gate denies every tool call without a request
+ * until the next `session/prompt` ({@link PermissionGate.startTurn}).
+ *
  * Every failure denies ONLY that tool call: a thrown or rejected request
  * (closed stdin, `channel.stop()`, a JSON-RPC error), `session/cancel`,
  * outcome `cancelled`, an unknown option id, a malformed answer, and the
@@ -25,7 +32,10 @@
  *
  * The hook module (`permission-hook.ts`) and the host-mode module load as
  * separate entries, but both import this file, so they share
- * {@link setActiveGate} / {@link activeGate}.
+ * {@link setActiveGate} / {@link activeGate}. The hook module also calls
+ * {@link setHookRegistered} when it loads. Core skips a hook that fails to
+ * load or has no grant, so the host mode reads {@link hookRegistered} to
+ * know that the gate can work at all.
  *
  * @module permission
  */
@@ -61,8 +71,13 @@ export type PermissionRequest = (
 export interface PermissionGate {
   /** Ask the client about one tool call. Never throws. */
   check(payload: ToolWillInvokePayload): Promise<GateResult>
-  /** Deny every request that waits now (`session/cancel`). */
+  /**
+   * `session/cancel`: deny every request that waits now, and deny every
+   * later tool call without a request until {@link startTurn}.
+   */
   cancelPending(): void
+  /** `session/prompt`: a new turn starts. Ask the client again. */
+  startTurn(): void
 }
 
 export interface CreatePermissionGateOptions {
@@ -70,6 +85,12 @@ export interface CreatePermissionGateOptions {
   /** The open ACP session id, or `undefined` before `session/new`. */
   readonly sessionId: () => string | undefined
   readonly deadlineMs?: number
+  /**
+   * Runs before each request. The host uses it to send the `tool_call`
+   * update first, so the client knows the call it is asked about. A throw
+   * or rejection is ignored.
+   */
+  readonly beforeRequest?: (payload: ToolWillInvokePayload) => Promise<void>
   /** Diagnostics only (stderr). */
   readonly log?: (message: string) => void
 }
@@ -100,16 +121,29 @@ function describeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
-function optionName(kind: PermissionOptionKind, toolKind: AcpToolKind): string {
+/** What `allow_always` / `reject_always` applies to: a named tool kind, or one tool of kind `other`. */
+interface MemoScope {
+  /** The key in the remembered map. */
+  readonly key: string
+  /** For option names and reasons, for example "execute tools" or "the tool mcp__x__y". */
+  readonly label: string
+}
+
+function memoScope(toolKind: AcpToolKind, toolName: string): MemoScope {
+  if (toolKind === "other") return { key: `tool:${toolName}`, label: `the tool ${toolName}` }
+  return { key: `kind:${toolKind}`, label: `${toolKind} tools` }
+}
+
+function optionName(kind: PermissionOptionKind, scope: MemoScope): string {
   switch (kind) {
     case "allow_once":
       return "Allow once"
     case "allow_always":
-      return `Always allow ${toolKind} tools in this session`
+      return `Always allow ${scope.label} in this session`
     case "reject_once":
       return "Reject"
     case "reject_always":
-      return `Always reject ${toolKind} tools in this session`
+      return `Always reject ${scope.label} in this session`
   }
 }
 
@@ -134,18 +168,38 @@ function readOutcome(
 
 /** Build one approval gate. Make one per ACP session: remembered choices live in it. */
 export function createPermissionGate(options: CreatePermissionGateOptions): PermissionGate {
-  const { request, sessionId, deadlineMs = DEFAULT_APPROVAL_DEADLINE_MS, log = () => {} } = options
-  const remembered = new Map<AcpToolKind, "allow" | "reject">()
+  const {
+    request,
+    sessionId,
+    deadlineMs = DEFAULT_APPROVAL_DEADLINE_MS,
+    beforeRequest,
+    log = () => {},
+  } = options
+  const remembered = new Map<string, "allow" | "reject">()
   const waiting = new Set<AbortController>()
+  // Set by `session/cancel`, cleared by the next `session/prompt`.
+  let cancelled = false
 
   async function ask(payload: ToolWillInvokePayload): Promise<GateResult> {
     const toolKind = toAcpToolKind(toolKindOf(payload.tool))
-    const memo = remembered.get(toolKind)
+    const scope = memoScope(toolKind, payload.tool)
+    if (cancelled) return deny("the client cancelled the turn")
+    const memo = remembered.get(scope.key)
     if (memo === "allow") return undefined
-    if (memo === "reject") return deny(`the client rejected ${toolKind} tools for this session`)
+    if (memo === "reject") return deny(`the client rejected ${scope.label} for this session`)
 
     const sid = sessionId()
     if (sid === undefined) return deny("no ACP session is open")
+
+    if (beforeRequest) {
+      try {
+        await beforeRequest(payload)
+      } catch (e) {
+        log(`beforeRequest for ${payload.tool} failed: ${describeError(e)}`)
+      }
+      // A cancel can come while the host sends the tool call.
+      if (cancelled) return deny("the client cancelled the turn")
+    }
 
     const controller = new AbortController()
     waiting.add(controller)
@@ -168,7 +222,7 @@ export function createPermissionGate(options: CreatePermissionGateOptions): Perm
           },
           options: OPTION_KINDS.map((kind) => ({
             optionId: kind,
-            name: optionName(kind, toolKind),
+            name: optionName(kind, scope),
             kind,
           })),
         },
@@ -188,15 +242,13 @@ export function createPermissionGate(options: CreatePermissionGateOptions): Perm
     if ("cancelled" in answer) return deny("the client cancelled the request")
     switch (answer.kind) {
       case "allow_always":
-        remembered.set(toolKind, "allow")
+        remembered.set(scope.key, "allow")
         return undefined
       case "allow_once":
         return undefined
       case "reject_always":
-        remembered.set(toolKind, "reject")
-        return deny(
-          `the client rejected ${payload.tool} (and all ${toolKind} tools for this session)`,
-        )
+        remembered.set(scope.key, "reject")
+        return deny(`the client rejected ${payload.tool} (and ${scope.label} for this session)`)
       case "reject_once":
         return deny(`the client rejected ${payload.tool}`)
     }
@@ -211,9 +263,28 @@ export function createPermissionGate(options: CreatePermissionGateOptions): Perm
       }
     },
     cancelPending() {
+      cancelled = true
       for (const c of waiting) c.abort(new Error("session cancelled"))
     },
+    startTurn() {
+      cancelled = false
+    },
   }
+}
+
+let registered = false
+
+/**
+ * Mark that the gate hook module loaded. `permission-hook.ts` calls it
+ * with `true` when it loads. Tests can reset it.
+ */
+export function setHookRegistered(value: boolean): void {
+  registered = value
+}
+
+/** True when `permission-hook.ts` loaded, so core can call the gate. */
+export function hookRegistered(): boolean {
+  return registered
 }
 
 let current: PermissionGate | undefined

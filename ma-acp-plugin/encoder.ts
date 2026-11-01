@@ -162,6 +162,11 @@ export interface SessionEncoder {
   finishTurn(outcome: StopInputs["outcome"]): TurnReply
   /** Push the complete config option list (`config_option_update`). */
   pushConfigOptions(): void
+  /**
+   * Resolves when the `tool_call` update for `toolCallId` is sent (at once
+   * if it is sent already), or after `timeoutMs`. Never rejects.
+   */
+  toolCallSent(toolCallId: string, timeoutMs: number): Promise<void>
 }
 
 /** Notice kinds that change the stop reason (see `deriveStopCause`). */
@@ -181,6 +186,23 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
   let lastError: { message: string; code?: string } | null = null
   // Open tool calls in start order: id → tool name and "running" state.
   const openToolCalls = new Map<string, { readonly toolName: string; running: boolean }>()
+  // Callers of `toolCallSent` that wait for a `tool_call` update, by id.
+  const toolCallWaiters = new Map<string, Array<() => void>>()
+  const toolCallSent = (toolCallId: string, timeoutMs: number): Promise<void> => {
+    if (openToolCalls.has(toolCallId)) return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      const done = (): void => {
+        clearTimeout(timer)
+        const list = toolCallWaiters.get(toolCallId)
+        const rest = list?.filter((w) => w !== done) ?? []
+        if (rest.length > 0) toolCallWaiters.set(toolCallId, rest)
+        else toolCallWaiters.delete(toolCallId)
+        resolve()
+      }
+      const timer = setTimeout(done, timeoutMs)
+      toolCallWaiters.set(toolCallId, [...(toolCallWaiters.get(toolCallId) ?? []), done])
+    })
+  }
   const nextToRun = (toolName: string | undefined): string | undefined => {
     let fallback: string | undefined
     for (const [id, call] of openToolCalls) {
@@ -224,6 +246,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
           rawInput: wire.input,
           ...(locations.length > 0 ? { locations } : {}),
         })
+        for (const done of toolCallWaiters.get(wire.toolCallId) ?? []) done()
         return
       }
       case "status": {
@@ -317,5 +340,5 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
     }
   }
 
-  return { encode, finishTurn, pushConfigOptions }
+  return { encode, finishTurn, pushConfigOptions, toolCallSent }
 }

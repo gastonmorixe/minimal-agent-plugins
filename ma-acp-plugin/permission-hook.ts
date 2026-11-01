@@ -5,12 +5,20 @@
  * With no active gate (approval off, or not in ACP host mode) it passes
  * through, and the tool runs.
  *
+ * When it loads, it calls `setHookRegistered(true)`. The host mode reads
+ * that flag at `session/new` to know that the gate can work.
+ *
  * @module permission-hook
  */
 
 import type { ToolWillInvokePayload } from "@minimal-agent/core/sdk/lifecycle"
 
-import { activeGate, type GateResult } from "./permission.ts"
+import { activeGate, type GateResult, setHookRegistered } from "./permission.ts"
+
+// Tell the host mode that core loaded this hook. If this module fails to
+// load, or the manifest has no grant for the channel, core skips the hook
+// and this line never runs.
+setHookRegistered(true)
 
 function isPayload(x: unknown): x is ToolWillInvokePayload {
   if (typeof x !== "object" || x === null) return false
