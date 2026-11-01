@@ -40,6 +40,7 @@
     "biome:fix": "biome check --write .",
     "imports": "biome check --write --formatter-enabled=false --linter-enabled=false .",
     "check": "bun run scripts/check.ts",
+    "pin:core": "bun run scripts/pin-core.ts",
     "workspaces:list": "bun pm ls --all",
     "prepare": "husky",
     "commitlint": "commitlint",

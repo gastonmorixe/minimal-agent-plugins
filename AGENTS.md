@@ -15,6 +15,24 @@ harness code lives in the sibling core remote, not here.
 - This is a Bun workspace: every `ma-*-plugin` package is a workspace member.
   Toolchain versions live under `workspaces.catalog`.
 
+## Core pin (`bun run pin:core`)
+
+The root `package.json` and many plugin `package.json` files name
+`@minimal-agent/core` as a git dependency:
+`git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#<sha>`.
+
+- Every pin must use the same full 40-char SHA. Short SHAs and branch names
+  are not allowed.
+- To re-pin, run `bun run pin:core <40-char sha>`. With no SHA, it uses core
+  `main` from `git ls-remote`.
+- The script sets the SHA in every `dependencies`, `devDependencies`,
+  `peerDependencies` and `optionalDependencies` field (root and every
+  package). It shows `old -> new` per file, then runs `bun install`.
+- Do not edit only the root pin. `scripts/core-pin.test.ts` (part of
+  `bun run check`) fails when any `package.json` or local `bun.lock` entry
+  uses a different SHA than the root pin.
+- `bun.lock` is in `.gitignore`. Commit the `package.json` files only.
+
 ## Git commits (Conventional Commits)
 
 Commit subjects follow [Conventional Commits](https://www.conventionalcommits.org/)
