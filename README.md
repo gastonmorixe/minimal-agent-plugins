@@ -63,6 +63,7 @@ bun install
 bun run check
 bun test                 # whole-tree suite (root)
 bun run test:plugins     # per-package tests in parallel (bun --filter 'ma-*')
+bun run pin:core         # re-pin @minimal-agent/core to core main (or pass a SHA)
 ```
 
 This repo is a Bun workspace: every `ma-*-plugin` package is a workspace member.
@@ -70,6 +71,10 @@ Toolchain versions live in `workspaces.catalog` at the root and are referenced
 as `"catalog:"` from root `devDependencies`. Bump once, `bun install`, done.
 
 Tests live next to the code they exercise (`foo.ts` ↔ `foo.test.ts`).
+
+The root and many plugins name `@minimal-agent/core` as a git dependency with
+a commit SHA. All of them must use the same full 40-char SHA. Do not edit one
+pin by hand. Run `bun run pin:core [<sha>]` (see [`AGENTS.md`](AGENTS.md)).
 
 ## Related repositories
 
