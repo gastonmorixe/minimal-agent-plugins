@@ -8,6 +8,14 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-01: **`ma-llm-anthropic-plugin` keeps thinking blocks after a model
+  switch, with no ask.** The adapter had a preflight check that asked the user
+  and offered "strip" as the default. The API docs say to send thinking blocks
+  back unchanged, also after a model switch. Remove the check
+  (`thinking-preflight.ts`, its exports and its tests). The adapter now has no
+  `preflight()` and no `applyResolution()`. Re-pin core to `29d279c`. Core now
+  scopes the preflight model lookup to the session provider.
+
 - 2026-10-31: **Biome pinned to `2.5.15` in the catalog.** `bun.lock` is
   gitignored here, so the old `^2.5.15` range let every fresh install take the
   newest Biome. Biome 2.6.4 formats Markdown code blocks and failed
