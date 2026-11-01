@@ -19,6 +19,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
 import type { SpawnedProcess, SpawnFn } from "../lib/backend.ts"
 import { defaultConfig } from "../lib/config.ts"
+import { slots } from "../lib/style.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 import handler, { runWithDeps } from "./fetch.ts"
@@ -28,6 +29,9 @@ const ESC = String.fromCharCode(0x1b)
 
 const SAVED_BIN_DIR = process.env.MINIMAL_AGENT_BIN_DIR
 beforeAll(() => {
+  // Start from plain slots. Another test file in the same run can install the
+  // terminal kit, and the escape-byte check below needs the plain state.
+  slots.reset()
   process.env.MINIMAL_AGENT_BIN_DIR = "/managed/bin"
 })
 afterAll(() => {
@@ -119,8 +123,13 @@ describe("Fetch headless bytes (S41)", () => {
       const f = fields(r)
       got[name] = { content: f.content, is_error: f.is_error }
     }
-    if (process.env.UPDATE_GOLDEN === "1" || !existsSync(GOLDEN_PATH)) {
+    // The golden file is committed. Write it only on an explicit request, so a
+    // missing or deleted golden file fails the test and does not pass silently.
+    if (process.env.UPDATE_GOLDEN === "1") {
       writeFileSync(GOLDEN_PATH, `${JSON.stringify(got, null, 2)}\n`)
+    }
+    if (!existsSync(GOLDEN_PATH)) {
+      throw new Error(`golden file missing: ${GOLDEN_PATH}. Set UPDATE_GOLDEN=1 to write it.`)
     }
     expect(got).toEqual(JSON.parse(readFileSync(GOLDEN_PATH, "utf-8")))
   })

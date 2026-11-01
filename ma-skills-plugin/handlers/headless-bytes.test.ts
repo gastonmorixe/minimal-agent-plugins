@@ -17,6 +17,7 @@ import { join } from "node:path"
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
+import { slots } from "../lib/style.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 import handler from "./skill.ts"
@@ -29,6 +30,9 @@ const savedHome = process.env.HOME
 const savedConfig = process.env.MINIMAL_AGENT_CONFIG
 
 beforeAll(() => {
+  // Start from plain slots. Another test file in the same run can install the
+  // terminal kit, and the escape-byte check below needs the plain state.
+  slots.reset()
   TMP = mkdtempSync(join(tmpdir(), "ma-skills-bytes-"))
   process.env.HOME = join(TMP, "home")
   process.env.MINIMAL_AGENT_CONFIG = join(TMP, "no-config.json")
@@ -105,8 +109,13 @@ describe("Skill headless bytes (S41)", () => {
       const f = fields(await handler(ctxFor(input)))
       got[name] = { content: f.content, is_error: f.is_error }
     }
-    if (process.env.UPDATE_GOLDEN === "1" || !existsSync(GOLDEN_PATH)) {
+    // The golden file is committed. Write it only on an explicit request, so a
+    // missing or deleted golden file fails the test and does not pass silently.
+    if (process.env.UPDATE_GOLDEN === "1") {
       writeFileSync(GOLDEN_PATH, `${JSON.stringify(got, null, 2)}\n`)
+    }
+    if (!existsSync(GOLDEN_PATH)) {
+      throw new Error(`golden file missing: ${GOLDEN_PATH}. Set UPDATE_GOLDEN=1 to write it.`)
     }
     expect(got).toEqual(JSON.parse(readFileSync(GOLDEN_PATH, "utf-8")))
   })
