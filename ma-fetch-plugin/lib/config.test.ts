@@ -7,16 +7,19 @@ import { defaultConfig, parseFetchConfig } from "./config.ts"
 
 type ManifestProperty = { default?: unknown }
 type FetchManifest = {
-  tuis: Array<{
-    trigger: { tool: { input_schema: { properties: Record<string, ManifestProperty> } } }
-  }>
+  headless: {
+    tools: Array<{
+      trigger: { tool: { input_schema: { properties: Record<string, ManifestProperty> } } }
+    }>
+  }
 }
 
 describe("manifest defaults", () => {
   test("wait_until stays aligned with the runtime built-in default", () => {
     const path = join(import.meta.dir, "..", "manifest.json")
     const manifest = JSON.parse(readFileSync(path, "utf8")) as FetchManifest
-    const schemaDefault = manifest.tuis[0]?.trigger.tool.input_schema.properties.wait_until?.default
+    const schemaDefault =
+      manifest.headless.tools[0]?.trigger.tool.input_schema.properties.wait_until?.default
 
     expect(schemaDefault).toBe(defaultConfig().defaults.waitUntil)
   })
@@ -24,7 +27,7 @@ describe("manifest defaults", () => {
   test("eval_mode has no schema default because runtime inference depends on selector", () => {
     const path = join(import.meta.dir, "..", "manifest.json")
     const manifest = JSON.parse(readFileSync(path, "utf8")) as FetchManifest
-    const evalMode = manifest.tuis[0]?.trigger.tool.input_schema.properties.eval_mode
+    const evalMode = manifest.headless.tools[0]?.trigger.tool.input_schema.properties.eval_mode
 
     expect(evalMode?.default).toBeUndefined()
   })

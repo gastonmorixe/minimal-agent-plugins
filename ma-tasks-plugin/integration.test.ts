@@ -31,10 +31,14 @@ import { TasksAttachment } from "./lib/attachment.ts"
 import type { TUIContext, TUIResult } from "./lib/host-types.ts"
 import { TaskStore } from "./lib/store.ts"
 
-const MANIFEST = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")) as {
-  tuis: { trigger: { tool?: { name?: string } }; icon?: string; color?: string }[]
-  turnAttachments?: { id: string }[]
+const RAW = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")) as {
+  headless: {
+    tools: { trigger: { tool?: { name?: string } }; icon?: string; color?: string }[]
+    turnAttachments?: { id: string }[]
+  }
 }
+/** Flat view of the split manifest (S31). */
+const MANIFEST = { tuis: RAW.headless.tools, turnAttachments: RAW.headless.turnAttachments }
 
 let tmpHome: string
 

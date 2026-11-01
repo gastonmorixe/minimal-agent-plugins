@@ -137,7 +137,7 @@ describe("thinking history after setModel (real OpenAI Responses adapter, AgentC
     // Discover ONLY this plugin, so no other provider owns these model ids.
     mkdirSync(join(workDir, "plugins"))
     symlinkSync(import.meta.dir, join(workDir, "plugins", "ma-llm-openai-plugin"))
-    await bootProviderDiscovery({ embeddedDir: workDir })
+    await bootProviderDiscovery({ roots: [join(workDir, "plugins")] })
     const write = buildOpenAIApiKeyCredential(KEY)
     defaultAuthStore().set(write.serviceId, write.displayName, write.secrets as SecretBag)
   })

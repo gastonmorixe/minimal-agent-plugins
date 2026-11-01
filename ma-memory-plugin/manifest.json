@@ -3,116 +3,118 @@
   "name": "Memory",
   "version": "0.4.0",
   "description": "Persistent cross-session memory plus a per-session short-term scratchpad. Saves via the inline <ma::emit::memory> tag (zero-friction, mid-response), reads/edits/removes via the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). Persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`), while short-term rides as a per-turn user-message attachment.",
-  "tuis": [
-    {
-      "id": "memory_save",
-      "trigger": {
-        "type": "inline_tag",
-        "tag": "memory"
+  "headless": {
+    "tools": [
+      {
+        "id": "memory_save",
+        "trigger": {
+          "type": "inline_tag",
+          "tag": "memory"
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/memory.ts",
+          "export": "default"
+        },
+        "interactive": false
       },
-      "handler": {
-        "type": "module",
-        "path": "./handlers/memory.ts",
-        "export": "default"
-      },
-      "interactive": false
-    },
-    {
-      "id": "memory_tool",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "MemoryTool",
-          "description": "List, read, add, edit, or remove saved memories. Memories are not shown in your system prompt by default, so query them whenever a saved lesson might apply (a familiar bug symptom, the user's preferences, a prior solution in this codebase). Three scopes: `global` (about working with this user), `project` (about this codebase), `short-term` (this session only). For in-flight saves mid-response, prefer the inline <ma::emit::memory> tag (lower friction, the save-echo returns the id next turn). `list` is paginated: newest 20 entries, bodies clipped to ~160 chars, with a paste-ready `next:` hint. Use `read` for one bullet's full body by id. `id` is required for read/edit/remove, `body` for add/edit, `query`/`limit`/`offset` are list-only. `clear` is short-term only.",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "action": {
-                "type": "string",
-                "enum": ["list", "read", "add", "edit", "remove", "clear"],
-                "description": "What to do."
+      {
+        "id": "memory_tool",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "MemoryTool",
+            "description": "List, read, add, edit, or remove saved memories. Memories are not shown in your system prompt by default, so query them whenever a saved lesson might apply (a familiar bug symptom, the user's preferences, a prior solution in this codebase). Three scopes: `global` (about working with this user), `project` (about this codebase), `short-term` (this session only). For in-flight saves mid-response, prefer the inline <ma::emit::memory> tag (lower friction, the save-echo returns the id next turn). `list` is paginated: newest 20 entries, bodies clipped to ~160 chars, with a paste-ready `next:` hint. Use `read` for one bullet's full body by id. `id` is required for read/edit/remove, `body` for add/edit, `query`/`limit`/`offset` are list-only. `clear` is short-term only.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": ["list", "read", "add", "edit", "remove", "clear"],
+                  "description": "What to do."
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": ["global", "project", "short-term"],
+                  "description": "Which memory file to act on."
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Bullet id from a prior <memory-saved> echo, list result, or save-echo. Required for read/edit/remove. Persistent ids look like `lwq8tg-a8f3`, short-term ids are integers like `3`."
+                },
+                "body": {
+                  "type": "string",
+                  "description": "New body for add or edit. Single-line preferred, multi-line is collapsed to one line."
+                },
+                "query": {
+                  "type": "string",
+                  "description": "Optional case-insensitive substring filter for action=list. Pairs with limit/offset for filtered pagination."
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "For action=list, page size. Default 20, max 100 (over-large values are clamped). Pair with `offset` to page through the full set."
+                },
+                "offset": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page, offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page."
+                },
+                "format": {
+                  "type": "string",
+                  "enum": ["text", "json"],
+                  "default": "text",
+                  "description": "Result format. `text` (default) returns a compact human-readable list. `json` returns a structured shape suitable when you need to extract specific values."
+                }
               },
-              "scope": {
-                "type": "string",
-                "enum": ["global", "project", "short-term"],
-                "description": "Which memory file to act on."
-              },
-              "id": {
-                "type": "string",
-                "description": "Bullet id from a prior <memory-saved> echo, list result, or save-echo. Required for read/edit/remove. Persistent ids look like `lwq8tg-a8f3`, short-term ids are integers like `3`."
-              },
-              "body": {
-                "type": "string",
-                "description": "New body for add or edit. Single-line preferred, multi-line is collapsed to one line."
-              },
-              "query": {
-                "type": "string",
-                "description": "Optional case-insensitive substring filter for action=list. Pairs with limit/offset for filtered pagination."
-              },
-              "limit": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "For action=list, page size. Default 20, max 100 (over-large values are clamped). Pair with `offset` to page through the full set."
-              },
-              "offset": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page, offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page."
-              },
-              "format": {
-                "type": "string",
-                "enum": ["text", "json"],
-                "default": "text",
-                "description": "Result format. `text` (default) returns a compact human-readable list. `json` returns a structured shape suitable when you need to extract specific values."
-              }
+              "required": ["action", "scope"],
+              "additionalProperties": false
             },
-            "required": ["action", "scope"],
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "tool name already includes plugin identity (Memory)"
+            "explicitName": true,
+            "reason": "tool name already includes plugin identity (Memory)"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/memory_tool.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "󰍩",
+        "color": "purple"
+      }
+    ],
+    "promptFragments": [
+      {
+        "id": "memory_load",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/load.ts",
+          "export": "default"
+        },
+        "timeoutMs": 1000,
+        "order": 200
+      }
+    ],
+    "turnAttachments": [
+      {
+        "id": "short_term_snapshot",
+        "order": 10,
+        "handler": {
+          "type": "module",
+          "path": "./handlers/turn_attachment_short_term.ts",
+          "export": "default"
         }
       },
-      "handler": {
-        "type": "module",
-        "path": "./handlers/memory_tool.ts",
-        "export": "default"
-      },
-      "interactive": false,
-      "icon": "󰍩",
-      "color": "purple"
-    }
-  ],
-  "promptFragments": [
-    {
-      "id": "memory_load",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/load.ts",
-        "export": "default"
-      },
-      "timeoutMs": 1000,
-      "order": 200
-    }
-  ],
-  "turnAttachments": [
-    {
-      "id": "short_term_snapshot",
-      "order": 10,
-      "handler": {
-        "type": "module",
-        "path": "./handlers/turn_attachment_short_term.ts",
-        "export": "default"
+      {
+        "id": "save_echo",
+        "order": 15,
+        "handler": {
+          "type": "module",
+          "path": "./handlers/turn_attachment_save_echo.ts",
+          "export": "default"
+        }
       }
-    },
-    {
-      "id": "save_echo",
-      "order": 15,
-      "handler": {
-        "type": "module",
-        "path": "./handlers/turn_attachment_save_echo.ts",
-        "export": "default"
-      }
-    }
-  ]
+    ]
+  }
 }

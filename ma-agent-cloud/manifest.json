@@ -6,74 +6,98 @@
   "enabled": false,
   "prompt": "./PROMPT.md",
   "capabilities": ["transport:registry"],
-  "tuis": [
-    {
-      "id": "status",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "CloudStatus",
-          "description": "Report the minimal-agent cloud connector status: whether cloud features are enabled, the current feature flags, and whether the remote transport is registered into the host transport registry. Calling it also ensures the (stub) remote transport is registered (idempotent). Read-mostly. Example: CloudStatus({}).",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": ["text", "json"],
-                "description": "Output format. Default \"text\"."
-              }
-            },
-            "additionalProperties": false
+  "headless": {
+    "tools": [
+      {
+        "id": "status",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "CloudStatus",
+            "description": "Report the minimal-agent cloud connector status: whether cloud features are enabled, the current feature flags, and whether the remote transport is registered into the host transport registry. Calling it also ensures the (stub) remote transport is registered (idempotent). Read-mostly. Example: CloudStatus({}).",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "enum": ["text", "json"],
+                  "description": "Output format. Default \"text\"."
+                }
+              },
+              "additionalProperties": false
+            }
           }
-        }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/status.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "☁",
+        "color": "sky"
       },
-      "handler": { "type": "module", "path": "./handlers/status.ts", "export": "default" },
-      "interactive": false,
-      "icon": "☁",
-      "color": "sky"
-    },
-    {
-      "id": "login",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "CloudLogin",
-          "description": "Log this CLI into the minimal-agent cloud backend using the device-authorization grant (RFC 8628). Prints a short user code + a verification URL to approve in your browser, then completes the login and saves the access token locally so cloud features (teleport, remote peers, teams) turn on. Configure the backend with MINIMAL_AGENT_CLOUD_URL (default http://localhost:4000/api/auth). Example: CloudLogin({}).",
-          "input_schema": {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": false
+      {
+        "id": "login",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "CloudLogin",
+            "description": "Log this CLI into the minimal-agent cloud backend using the device-authorization grant (RFC 8628). Prints a short user code + a verification URL to approve in your browser, then completes the login and saves the access token locally so cloud features (teleport, remote peers, teams) turn on. Configure the backend with MINIMAL_AGENT_CLOUD_URL (default http://localhost:4000/api/auth). Example: CloudLogin({}).",
+            "input_schema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
           }
-        }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/login.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "☁",
+        "color": "sky"
       },
-      "handler": { "type": "module", "path": "./handlers/login.ts", "export": "default" },
-      "interactive": false,
-      "icon": "☁",
-      "color": "sky"
-    },
-    {
-      "id": "push",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "CloudPush",
-          "description": "Manually upload this session's new records to the cloud teleport store so it can be viewed live from web or mobile. Idempotent and resumable: only records the cloud hasn't seen are sent. Requires being logged in (CloudLogin) with cloud features enabled; otherwise it's a no-op. Uploads also happen automatically in the background between turns. Example: CloudPush({}).",
-          "input_schema": { "type": "object", "properties": {}, "additionalProperties": false }
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/push.ts", "export": "default" },
-      "interactive": false,
-      "icon": "☁",
-      "color": "sky"
-    }
-  ],
-  "liveAreaSlots": [
-    {
-      "id": "uploader",
-      "handler": { "type": "module", "path": "./handlers/uploader-slot.ts", "export": "default" },
-      "position": "footer",
-      "refreshMs": 8000,
-      "timeoutMs": 7000
-    }
-  ]
+      {
+        "id": "push",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "CloudPush",
+            "description": "Manually upload this session's new records to the cloud teleport store so it can be viewed live from web or mobile. Idempotent and resumable: only records the cloud hasn't seen are sent. Requires being logged in (CloudLogin) with cloud features enabled; otherwise it's a no-op. Uploads also happen automatically in the background between turns. Example: CloudPush({}).",
+            "input_schema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/push.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "☁",
+        "color": "sky"
+      }
+    ]
+  },
+  "ui": {
+    "liveAreaSlots": [
+      {
+        "id": "uploader",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/uploader-slot.ts",
+          "export": "default"
+        },
+        "position": "footer",
+        "refreshMs": 8000,
+        "timeoutMs": 7000
+      }
+    ]
+  }
 }

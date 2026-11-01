@@ -3,32 +3,36 @@
   "name": "Diagnostics",
   "version": "0.1.0",
   "description": "Automatic LSP / linter / formatter feedback after Edit/Write. Subscribes to the `tool.didInvoke` chain. Detects the diagnostic tools the project already has (tsgo, biome, oxlint, probed from node_modules/.bin + config files, never installed). Runs them on the newly written file and attaches structured findings plus a compact `<ma::agent::diagnostics>` note for the model. Type diagnostics use a persistent tsgo LSP (warm 2-3ms/edit) guarded by a circuit breaker, while format/lint spawn per call. Defaults to types+format on, lint off. Configure via `plugins.diagnostics` in ~/.minimal-agent/config.jsonc, or disable with `plugins.diagnostics.enabled=false` or MINIMAL_AGENT_DIAGNOSTICS_DISABLED=1.",
-  "hooks": [
-    {
-      "id": "on_tool_did_invoke",
-      "channel": "tool.didInvoke",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_tool_did_invoke.ts",
-        "export": "default"
-      },
-      "priority": 50,
-      "timeoutMs": 15000
-    }
-  ],
-  "liveAreaSlots": [
-    {
-      "id": "lsp-status",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/lsp-status-slot.ts",
-        "export": "default"
-      },
-      "position": "header",
-      "refreshMs": 3000,
-      "timeoutMs": 1000,
-      "placeholder": ""
-    }
-  ],
-  "permissions": ["hooks:tool.didInvoke"]
+  "permissions": ["hooks:tool.didInvoke"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "on_tool_did_invoke",
+        "channel": "tool.didInvoke",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_tool_did_invoke.ts",
+          "export": "default"
+        },
+        "priority": 50,
+        "timeoutMs": 15000
+      }
+    ]
+  },
+  "ui": {
+    "liveAreaSlots": [
+      {
+        "id": "lsp-status",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/lsp-status-slot.ts",
+          "export": "default"
+        },
+        "position": "header",
+        "refreshMs": 3000,
+        "timeoutMs": 1000,
+        "placeholder": ""
+      }
+    ]
+  }
 }

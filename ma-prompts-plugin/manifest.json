@@ -3,184 +3,6 @@
   "name": "Prompts",
   "version": "0.1.0",
   "description": "Saved prompt library. Store reusable prompts under the agent home, recall them with the '&' autocomplete menu, and expand '&name' to the prompt body at submit.",
-  "tuis": [
-    {
-      "id": "prompt_new",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "PromptNew",
-          "description": "Save a reusable prompt to the user's prompt library. Call this when the user asks to save, store, or remember a prompt or instruction for later reuse. The prompt becomes available via the '&' autocomplete menu and by typing '&name' in a message.",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "Short identifier for the prompt. Letters, digits, hyphen, and `_` only. This is what the user types after '&'."
-              },
-              "body": {
-                "type": "string",
-                "description": "The full prompt text, stored verbatim. Include everything the user wants reused."
-              },
-              "description": {
-                "type": "string",
-                "description": "One-line description shown in the '&' menu."
-              },
-              "overwrite": {
-                "type": "boolean",
-                "description": "Replace an existing prompt with the same name. Default false: a collision is an error."
-              }
-            },
-            "required": ["name", "body"],
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "PromptsPromptNew is a stutter"
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/prompt_new.ts", "export": "default" },
-      "interactive": false,
-      "icon": "❯",
-      "color": "lime"
-    },
-    {
-      "id": "prompt_list",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "PromptList",
-          "description": "List every saved prompt with its name, description, scope, and file path. Use before saving or deleting to see what exists.",
-          "input_schema": {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "PromptsPromptList is a stutter"
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/prompt_list.ts", "export": "default" },
-      "interactive": false,
-      "icon": "❯",
-      "color": "lime"
-    },
-    {
-      "id": "prompt_show",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "PromptShow",
-          "description": "Show the full body of one saved prompt.",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string", "description": "Prompt name to show." }
-            },
-            "required": ["name"],
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "PromptsPromptShow is a stutter"
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/prompt_show.ts", "export": "default" },
-      "interactive": false,
-      "icon": "❯",
-      "color": "lime"
-    },
-    {
-      "id": "prompt_edit",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "PromptEdit",
-          "description": "Update a saved prompt's description and/or body, and optionally rename it. Only the fields supplied are changed.",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string", "description": "Prompt to update." },
-              "description": { "type": "string", "description": "New one-line description." },
-              "body": { "type": "string", "description": "New full prompt text." },
-              "rename": { "type": "string", "description": "New name for the prompt." }
-            },
-            "required": ["name"],
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "PromptsPromptEdit is a stutter"
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/prompt_edit.ts", "export": "default" },
-      "interactive": false,
-      "icon": "❯",
-      "color": "lime"
-    },
-    {
-      "id": "prompt_delete",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "PromptDelete",
-          "description": "Delete a saved prompt. Errors if the name does not exist.",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string", "description": "Prompt name to delete." }
-            },
-            "required": ["name"],
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "PromptsPromptDelete is a stutter"
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/prompt_delete.ts", "export": "default" },
-      "interactive": false,
-      "icon": "❯",
-      "color": "lime"
-    }
-  ],
-  "promptFragments": [
-    {
-      "id": "prompts-catalog",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/prompt-fragment.ts",
-        "export": "default"
-      },
-      "timeoutMs": 2000,
-      "order": 210
-    }
-  ],
-  "hooks": [
-    {
-      "id": "on_key",
-      "channel": "editor.key",
-      "handler": { "type": "module", "path": "./handlers/on_key.ts", "export": "default" },
-      "priority": 60
-    },
-    {
-      "id": "on_turn_will_start",
-      "channel": "turn.willStart",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_turn_will_start.ts",
-        "export": "default"
-      },
-      "priority": 55
-    }
-  ],
-  "events": [
-    {
-      "id": "on_buffer_changed",
-      "on": "editor.buffer.changed",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_buffer_changed.ts",
-        "export": "default"
-      }
-    }
-  ],
   "permissions": [
     "hooks:editor.key",
     "hooks:editor.buffer.changed",
@@ -188,5 +10,227 @@
     "hooks:editor.buffer.styles",
     "hooks:editor.buffer.set",
     "hooks:turn.willStart"
-  ]
+  ],
+  "headless": {
+    "tools": [
+      {
+        "id": "prompt_new",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "PromptNew",
+            "description": "Save a reusable prompt to the user's prompt library. Call this when the user asks to save, store, or remember a prompt or instruction for later reuse. The prompt becomes available via the '&' autocomplete menu and by typing '&name' in a message.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Short identifier for the prompt. Letters, digits, hyphen, and `_` only. This is what the user types after '&'."
+                },
+                "body": {
+                  "type": "string",
+                  "description": "The full prompt text, stored verbatim. Include everything the user wants reused."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "One-line description shown in the '&' menu."
+                },
+                "overwrite": {
+                  "type": "boolean",
+                  "description": "Replace an existing prompt with the same name. Default false: a collision is an error."
+                }
+              },
+              "required": ["name", "body"],
+              "additionalProperties": false
+            },
+            "explicitName": true,
+            "reason": "PromptsPromptNew is a stutter"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/prompt_new.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "❯",
+        "color": "lime"
+      },
+      {
+        "id": "prompt_list",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "PromptList",
+            "description": "List every saved prompt with its name, description, scope, and file path. Use before saving or deleting to see what exists.",
+            "input_schema": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            },
+            "explicitName": true,
+            "reason": "PromptsPromptList is a stutter"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/prompt_list.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "❯",
+        "color": "lime"
+      },
+      {
+        "id": "prompt_show",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "PromptShow",
+            "description": "Show the full body of one saved prompt.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Prompt name to show."
+                }
+              },
+              "required": ["name"],
+              "additionalProperties": false
+            },
+            "explicitName": true,
+            "reason": "PromptsPromptShow is a stutter"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/prompt_show.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "❯",
+        "color": "lime"
+      },
+      {
+        "id": "prompt_edit",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "PromptEdit",
+            "description": "Update a saved prompt's description and/or body, and optionally rename it. Only the fields supplied are changed.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Prompt to update."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "New one-line description."
+                },
+                "body": {
+                  "type": "string",
+                  "description": "New full prompt text."
+                },
+                "rename": {
+                  "type": "string",
+                  "description": "New name for the prompt."
+                }
+              },
+              "required": ["name"],
+              "additionalProperties": false
+            },
+            "explicitName": true,
+            "reason": "PromptsPromptEdit is a stutter"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/prompt_edit.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "❯",
+        "color": "lime"
+      },
+      {
+        "id": "prompt_delete",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "PromptDelete",
+            "description": "Delete a saved prompt. Errors if the name does not exist.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Prompt name to delete."
+                }
+              },
+              "required": ["name"],
+              "additionalProperties": false
+            },
+            "explicitName": true,
+            "reason": "PromptsPromptDelete is a stutter"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/prompt_delete.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "❯",
+        "color": "lime"
+      }
+    ],
+    "promptFragments": [
+      {
+        "id": "prompts-catalog",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/prompt-fragment.ts",
+          "export": "default"
+        },
+        "timeoutMs": 2000,
+        "order": 210
+      }
+    ],
+    "hooks": [
+      {
+        "id": "on_key",
+        "channel": "editor.key",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_key.ts",
+          "export": "default"
+        },
+        "priority": 60
+      },
+      {
+        "id": "on_turn_will_start",
+        "channel": "turn.willStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_turn_will_start.ts",
+          "export": "default"
+        },
+        "priority": 55
+      }
+    ],
+    "events": [
+      {
+        "id": "on_buffer_changed",
+        "on": "editor.buffer.changed",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_buffer_changed.ts",
+          "export": "default"
+        }
+      }
+    ]
+  }
 }

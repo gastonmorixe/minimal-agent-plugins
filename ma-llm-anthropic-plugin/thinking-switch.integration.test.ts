@@ -202,7 +202,7 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
     // Discover ONLY this plugin, so the test proves this adapter alone.
     mkdirSync(join(workDir, "plugins"))
     symlinkSync(import.meta.dir, join(workDir, "plugins", "ma-llm-anthropic-plugin"))
-    await bootProviderDiscovery({ embeddedDir: workDir })
+    await bootProviderDiscovery({ roots: [join(workDir, "plugins")] })
     seedCredential()
   })
 

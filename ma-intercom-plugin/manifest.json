@@ -5,164 +5,6 @@
   "description": "Inter-session communication and presence. Lets any session see what other sessions are doing (live roster with derived liveness, plus deep inspection of a peer's tasks, background jobs, and sub-agent fleet) and message them (note, ping, interrupt, or broadcast). Messages are durable, pull-delivered as a per-turn <ma::agent::intercom-inbox> block, and crash/resume safe. Ping/interrupt wake an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. Disable presence with MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
   "prompt": "./PROMPT.md",
   "capabilities": ["sessions:read"],
-  "tuis": [
-    {
-      "id": "peers",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "Peers",
-          "description": "See other minimal-agent sessions running on this machine and what they are doing. action:\"list\" (default) returns the live roster: every messageable peer with its short id, derived liveness (online, idle, busy, stale, hung, dead, or offline), model, cwd, and current activity. action:\"inspect\" deep-dives one peer: task list, background jobs, sub-agent fleet, recent activity, and a transcript excerpt. Liveness comes from heartbeat freshness plus a pid probe, so a session that crashed without exiting cleanly still reads stale/hung/dead instead of falsely online. Pass liveOnly:true to drop gone sessions. Read-only. Example: IntercomPeers({action:\"inspect\", peer:\"a1b2c3d4\", include:[\"tasks\",\"activity\"]}).",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "action": {
-                "type": "string",
-                "enum": ["list", "inspect"],
-                "description": "\"list\" (default) for the roster, or \"inspect\" for a deep dive on one peer."
-              },
-              "peer": {
-                "type": "string",
-                "description": "inspect: which peer to look at. A short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect."
-              },
-              "include": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "enum": ["tasks", "jobs", "fleet", "activity", "transcript"]
-                },
-                "description": "inspect: which sections to gather. Default [tasks, activity, jobs]. Add \"fleet\" for sub-agents, \"transcript\" for a recent transcript excerpt."
-              },
-              "liveOnly": {
-                "type": "boolean",
-                "description": "list: drop dead/offline sessions, showing only reachable peers. Default false."
-              },
-              "format": {
-                "type": "string",
-                "enum": ["text", "json"],
-                "description": "Output format. Default \"text\"."
-              }
-            },
-            "additionalProperties": false
-          }
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/peers.ts", "export": "default" },
-      "interactive": false,
-      "icon": "◎",
-      "color": "cyan"
-    },
-    {
-      "id": "send",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "Send",
-          "description": "Send a message to another minimal-agent session. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions sharing your project directory. `kind` defaults to \"message\", which queues if the recipient is busy or wakes them between turns if idle. \"interrupt\" signals urgency with a distinct TUI glyph (preemptive mid-turn delivery is not yet implemented). Messages are durable across crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run IntercomPeers first to see who is online. Example: IntercomSend({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "to": {
-                "type": "string",
-                "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory."
-              },
-              "body": {
-                "type": "string",
-                "description": "The message text. Keep it self-contained: the recipient has none of your context, so say who you are and what you need. Long coordination payloads are fine (safety ceiling ~256 KiB)."
-              },
-              "kind": {
-                "type": "string",
-                "enum": ["message", "interrupt"],
-                "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency (non-preemptive until the host hook is built)."
-              },
-              "replyTo": {
-                "type": "string",
-                "description": "Optional prior message id this replies to (threading, display-only)."
-              }
-            },
-            "required": ["to", "body"],
-            "additionalProperties": false
-          }
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/send.ts", "export": "default" },
-      "interactive": false,
-      "icon": "->",
-      "color": "magenta"
-    },
-    {
-      "id": "inbox",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "Inbox",
-          "description": "Re-read intercom messages you have already received. New messages are delivered to you automatically each turn as a <ma::agent::intercom-inbox> block, so you rarely need this tool. Reach for it to review history or to double-check after the fact. scope:\"unread\" (the default) shows messages since your last Inbox read. scope:\"recent\" shows the latest messages regardless. Reading here never hides the automatic per-turn delivery. Example: IntercomInbox({scope:\"recent\", limit:10}).",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "scope": {
-                "type": "string",
-                "enum": ["unread", "recent"],
-                "description": "\"unread\" (default) since your last Inbox read, or \"recent\" for the latest messages."
-              },
-              "limit": {
-                "type": "number",
-                "description": "Max messages to return. Default 20."
-              },
-              "format": {
-                "type": "string",
-                "enum": ["text", "json"],
-                "description": "Output format. Default \"text\"."
-              }
-            },
-            "additionalProperties": false
-          }
-        }
-      },
-      "handler": { "type": "module", "path": "./handlers/inbox.ts", "export": "default" },
-      "interactive": false,
-      "icon": "↓",
-      "color": "cyan"
-    }
-  ],
-  "hooks": [
-    {
-      "id": "on_key",
-      "channel": "editor.key",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_key.ts",
-        "export": "default"
-      },
-      "priority": 65
-    },
-    {
-      "id": "on_turn_will_start",
-      "channel": "turn.willStart",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_turn_will_start.ts",
-        "export": "default"
-      },
-      "priority": 50
-    }
-  ],
-  "events": [
-    {
-      "id": "on_submit",
-      "on": "prompt.submitted",
-      "handler": { "type": "module", "path": "./handlers/on_submit.ts", "export": "default" }
-    },
-    {
-      "id": "on_buffer_changed",
-      "on": "editor.buffer.changed",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_buffer_changed.ts",
-        "export": "default"
-      }
-    }
-  ],
   "permissions": [
     "hooks:editor.key",
     "hooks:editor.buffer.changed",
@@ -171,21 +13,207 @@
     "hooks:editor.buffer.set",
     "hooks:turn.willStart"
   ],
-  "liveAreaSlots": [
-    {
-      "id": "intercom_beat",
-      "handler": { "type": "module", "path": "./handlers/beat.ts", "export": "default" },
-      "position": "footer",
-      "refreshMs": 5000,
-      "timeoutMs": 4000,
-      "placeholder": "⇆ intercom ·"
-    }
-  ],
-  "turnAttachments": [
-    {
-      "id": "intercom_inbox",
-      "order": 30,
-      "handler": { "type": "module", "path": "./handlers/inbox_attachment.ts", "export": "default" }
-    }
-  ]
+  "headless": {
+    "tools": [
+      {
+        "id": "peers",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "Peers",
+            "description": "See other minimal-agent sessions running on this machine and what they are doing. action:\"list\" (default) returns the live roster: every messageable peer with its short id, derived liveness (online, idle, busy, stale, hung, dead, or offline), model, cwd, and current activity. action:\"inspect\" deep-dives one peer: task list, background jobs, sub-agent fleet, recent activity, and a transcript excerpt. Liveness comes from heartbeat freshness plus a pid probe, so a session that crashed without exiting cleanly still reads stale/hung/dead instead of falsely online. Pass liveOnly:true to drop gone sessions. Read-only. Example: IntercomPeers({action:\"inspect\", peer:\"a1b2c3d4\", include:[\"tasks\",\"activity\"]}).",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": ["list", "inspect"],
+                  "description": "\"list\" (default) for the roster, or \"inspect\" for a deep dive on one peer."
+                },
+                "peer": {
+                  "type": "string",
+                  "description": "inspect: which peer to look at. A short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect."
+                },
+                "include": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["tasks", "jobs", "fleet", "activity", "transcript"]
+                  },
+                  "description": "inspect: which sections to gather. Default [tasks, activity, jobs]. Add \"fleet\" for sub-agents, \"transcript\" for a recent transcript excerpt."
+                },
+                "liveOnly": {
+                  "type": "boolean",
+                  "description": "list: drop dead/offline sessions, showing only reachable peers. Default false."
+                },
+                "format": {
+                  "type": "string",
+                  "enum": ["text", "json"],
+                  "description": "Output format. Default \"text\"."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/peers.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "◎",
+        "color": "cyan"
+      },
+      {
+        "id": "send",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "Send",
+            "description": "Send a message to another minimal-agent session. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions sharing your project directory. `kind` defaults to \"message\", which queues if the recipient is busy or wakes them between turns if idle. \"interrupt\" signals urgency with a distinct TUI glyph (preemptive mid-turn delivery is not yet implemented). Messages are durable across crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run IntercomPeers first to see who is online. Example: IntercomSend({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "to": {
+                  "type": "string",
+                  "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory."
+                },
+                "body": {
+                  "type": "string",
+                  "description": "The message text. Keep it self-contained: the recipient has none of your context, so say who you are and what you need. Long coordination payloads are fine (safety ceiling ~256 KiB)."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": ["message", "interrupt"],
+                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency (non-preemptive until the host hook is built)."
+                },
+                "replyTo": {
+                  "type": "string",
+                  "description": "Optional prior message id this replies to (threading, display-only)."
+                }
+              },
+              "required": ["to", "body"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/send.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "->",
+        "color": "magenta"
+      },
+      {
+        "id": "inbox",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "Inbox",
+            "description": "Re-read intercom messages you have already received. New messages are delivered to you automatically each turn as a <ma::agent::intercom-inbox> block, so you rarely need this tool. Reach for it to review history or to double-check after the fact. scope:\"unread\" (the default) shows messages since your last Inbox read. scope:\"recent\" shows the latest messages regardless. Reading here never hides the automatic per-turn delivery. Example: IntercomInbox({scope:\"recent\", limit:10}).",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "string",
+                  "enum": ["unread", "recent"],
+                  "description": "\"unread\" (default) since your last Inbox read, or \"recent\" for the latest messages."
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Max messages to return. Default 20."
+                },
+                "format": {
+                  "type": "string",
+                  "enum": ["text", "json"],
+                  "description": "Output format. Default \"text\"."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/inbox.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "↓",
+        "color": "cyan"
+      }
+    ],
+    "hooks": [
+      {
+        "id": "on_key",
+        "channel": "editor.key",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_key.ts",
+          "export": "default"
+        },
+        "priority": 65
+      },
+      {
+        "id": "on_turn_will_start",
+        "channel": "turn.willStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_turn_will_start.ts",
+          "export": "default"
+        },
+        "priority": 50
+      }
+    ],
+    "events": [
+      {
+        "id": "on_submit",
+        "on": "prompt.submitted",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_submit.ts",
+          "export": "default"
+        }
+      },
+      {
+        "id": "on_buffer_changed",
+        "on": "editor.buffer.changed",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_buffer_changed.ts",
+          "export": "default"
+        }
+      }
+    ],
+    "turnAttachments": [
+      {
+        "id": "intercom_inbox",
+        "order": 30,
+        "handler": {
+          "type": "module",
+          "path": "./handlers/inbox_attachment.ts",
+          "export": "default"
+        }
+      }
+    ]
+  },
+  "ui": {
+    "liveAreaSlots": [
+      {
+        "id": "intercom_beat",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/beat.ts",
+          "export": "default"
+        },
+        "position": "footer",
+        "refreshMs": 5000,
+        "timeoutMs": 4000,
+        "placeholder": "⇆ intercom ·"
+      }
+    ]
+  }
 }
