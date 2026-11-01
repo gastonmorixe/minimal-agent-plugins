@@ -108,9 +108,10 @@ runs without approval. The process and the session stay open.
 
 ## Config options (model, effort)
 
-`session/set_config_option` returns the complete option list. When the set
-changes state, the agent also sends a `config_option_update` with the same
-list. A set to the current value changes nothing and sends no update. A new
+`session/set_config_option` returns the complete option list, with the new
+value selected. The agent sends no `config_option_update` for this change. ACP
+keeps that update for changes the agent makes itself (for example an automatic
+model adoption). A set to the current value changes nothing. A new
 model applies from the next model request. The next `usage_update` shows the
 context window of the new model as `size`.
 

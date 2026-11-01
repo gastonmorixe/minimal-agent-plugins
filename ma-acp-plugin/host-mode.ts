@@ -22,9 +22,10 @@
  * (default 10 min). A bad value is a startup error: the handler writes it
  * to stderr and returns exit code 2 before it reads stdin.
  *
- * `session/set_config_option` that changes state also pushes
- * `config_option_update` with the complete list. A set to the current
- * value changes nothing and pushes nothing.
+ * `session/set_config_option` answers with the complete option list and
+ * sends no `config_option_update`. ACP keeps that update for changes the
+ * agent makes itself (`model_adopted`). A set to the current value changes
+ * nothing.
  *
  * Deferred: `session/load` / `session/list` / plan / image input.
  *
@@ -217,11 +218,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
           const params = paramsObject(rawParams, method)
           requireSession(params.sessionId)
           const configId = optionalString(params, "configId", method)
-          const before = JSON.stringify(buildConfigOptions(ctx.runtime))
-          const configOptions = setConfigOption(ctx.runtime, configId, params.value)
-          // Push the new list only when the state changed.
-          if (JSON.stringify(configOptions) !== before) encoder?.pushConfigOptions()
-          return { configOptions }
+          return { configOptions: setConfigOption(ctx.runtime, configId, params.value) }
         },
         "session/prompt": async (rawParams) => {
           const params = paramsObject(rawParams, "session/prompt")
