@@ -17,7 +17,11 @@
  * on + a gate hook that did not load (no tool runs, JSON-RPC -32603 per
  * prompt), on + reject the first of two calls (the second runs, the turn
  * goes on), and approval off + session/cancel while a tool runs (then a
- * new prompt, usage, and an effort switch). Every stdout line must be a
+ * new prompt, usage, and an effort switch). Also: on + a short
+ * `--approval-timeout-ms` and a client that never answers (that call is
+ * denied, the turn goes on), a bad `--approval-timeout-ms` (startup
+ * error), and a switch between two registered models (fixture
+ * `__fixtures__/two-models-provider`). Every stdout line must be a
  * JSON-RPC 2.0 message, with no ESC (0x1b) byte anywhere.
  *
  * Skips with a printed reason when the sibling `../minimal-agent-cli`
@@ -72,7 +76,7 @@ type Json = Record<string, unknown>
 
 /** What the mock model sends. */
 interface MockScript {
-  /** Bash calls in the first answer (default 1). */
+  /** Bash calls in the first answer (default 1). With 0, the first answer is DONE. */
   readonly toolCalls?: number
   /** The Bash command of each call (default: append to `marker.txt`). */
   readonly command?: string
@@ -120,9 +124,10 @@ function startMockModel(script: MockScript = {}) {
         completion_tokens: 1,
         total_tokens: promptTokensOf(requests) + 1,
       }
-      const events = ask
-        ? [chunk({ role: "assistant", tool_calls: calls }), chunk({}, "tool_calls")]
-        : [chunk({ role: "assistant", content: "DONE" }), chunk({}, "stop")]
+      const events =
+        ask && toolCalls > 0
+          ? [chunk({ role: "assistant", tool_calls: calls }), chunk({}, "tool_calls")]
+          : [chunk({ role: "assistant", content: "DONE" }), chunk({}, "stop")]
       events.push({ ...chunk({}, null), choices: [], usage } as unknown as ReturnType<typeof chunk>)
       return new Response(sse(events), { headers: { "content-type": "text/event-stream" } })
     },
@@ -164,9 +169,17 @@ afterAll(() => {
 }, 60_000)
 
 /** What the fake client does when the agent sends `session/request_permission`. */
-type OnPermission = "allow_once" | "reject_once" | "reject_first" | "close_stdin" | "cancel"
+type OnPermission =
+  | "allow_once"
+  | "reject_once"
+  | "reject_first"
+  | "close_stdin"
+  | "cancel"
+  | "never_answer"
 
 interface SpawnOptions extends MockScript {
+  /** The `--model` id (default `mock-model`, an ad-hoc generic-endpoint model). */
+  readonly model?: string
   /** Extra env for the agent process. */
   readonly env?: Record<string, string>
   /** The plugin roots to load (default: this plugins checkout). */
@@ -198,7 +211,7 @@ function spawnAgent(
       "--auth-type",
       "none",
       "--model",
-      "mock-model",
+      options.model ?? "mock-model",
       "--host-mode",
       "acp",
       ...hostArgs,
@@ -260,6 +273,8 @@ function spawnAgent(
               params: { sessionId: (msg.params as Json).sessionId },
             })
           }
+        } else if (onPermission === "never_answer") {
+          // A silent client: no answer, no cancel. Only the gate deadline ends the wait.
         } else if (onPermission === "close_stdin") {
           void proc.stdin.end()
         } else {
@@ -377,6 +392,26 @@ function brokenPluginRoot(name: string, breakIt: (pluginDir: string) => void): s
       symlinkSync(from, join(root, entry))
     }
   }
+  return root
+}
+
+/**
+ * A plugin root with every real plugin (symlinks) plus the
+ * two-models provider fixture, so the session lists `mock-small` and
+ * `mock-big`.
+ */
+function twoModelsPluginRoot(name: string): string {
+  const root = join(scratch, name, "plugins")
+  mkdirSync(root, { recursive: true })
+  for (const entry of readdirSync(PLUGINS_ROOT)) {
+    if (entry === "node_modules" || entry.startsWith("ma-")) {
+      symlinkSync(join(PLUGINS_ROOT, entry), join(root, entry))
+    }
+  }
+  symlinkSync(
+    join(import.meta.dir, "__fixtures__", "two-models-provider"),
+    join(root, "ma-llm-two-models-fixture"),
+  )
   return root
 }
 
@@ -586,6 +621,110 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
         expect(u.size as number).toBeGreaterThan(0)
         expect([promptTokensOf(1), promptTokensOf(2)]).toContain(u.used as number)
       }
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
+  it("(i) approval on + --approval-timeout-ms 200 + a client that never answers: that call is denied, the turn goes on", async () => {
+    const a = spawnAgent("timeout", ["--approval", "--approval-timeout-ms", "200"], "never_answer")
+    try {
+      const id = await startTurn(a)
+      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect(await finish(a)).toBe(0)
+      expect(permissionRequests(a)).toHaveLength(1)
+      expect(existsSync(a.marker)).toBe(false)
+      const failed = updates(a).find(
+        (u) => u.sessionUpdate === "tool_call_update" && u.status === "failed",
+      )
+      expect(failed?.toolCallId).toBe("call_1")
+      expect(JSON.stringify(updates(a))).toContain("no answer within 200 ms")
+      // The model got the tool error and answered again: the turn went on.
+      expect(JSON.stringify(updates(a))).toContain("DONE")
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
+  it("(j) a bad --approval-timeout-ms value: a clear startup error, no stdout, a nonzero exit", async () => {
+    const a = spawnAgent(
+      "bad-timeout",
+      ["--approval", "--approval-timeout-ms", "abc"],
+      "allow_once",
+    )
+    try {
+      const code = await finish(a)
+      expect(code).not.toBe(0)
+      expect(code).not.toBe(-1)
+      await a.stderrDone
+      expect(a.stderr()).toContain("--approval-timeout-ms must be a positive integer")
+      expect(a.lines).toEqual([])
+      expect(a.model.bodies).toHaveLength(0)
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
+  it("(k) switch to a second model: config_option_update, the new model id, the new window size", async () => {
+    const name = "two-models"
+    const a = spawnAgent(name, [], "allow_once", {
+      toolCalls: 0,
+      model: "mock-small",
+      pluginRoot: twoModelsPluginRoot(name),
+    })
+    try {
+      const id = await startTurn(a)
+      const created = (await a.reply(2)).result as { sessionId: string; configOptions: Json[] }
+      const { sessionId } = created
+      const modelOption = created.configOptions.find((o) => o.id === "model")
+      expect(modelOption?.currentValue).toBe("mock-small")
+      const values = ((modelOption?.options ?? []) as Json[]).map((o) => o.value)
+      expect(values).toContain("mock-small")
+      expect(values).toContain("mock-big")
+      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect(a.model.bodies[0]?.model).toBe("mock-small")
+      const sizes = (): unknown[] =>
+        updates(a)
+          .filter((u) => u.sessionUpdate === "usage_update")
+          .map((u) => u.size)
+      expect(sizes()).toEqual([32_000])
+      const configPushes = (): Json[] =>
+        updates(a).filter((u) => u.sessionUpdate === "config_option_update")
+
+      // A switch to the same id is a no-op: same list, no push.
+      a.send({
+        jsonrpc: "2.0",
+        id: 4,
+        method: "session/set_config_option",
+        params: { sessionId, configId: "model", value: "mock-small" },
+      })
+      const same = ((await a.reply(4)).result as { configOptions: Json[] }).configOptions
+      expect(same).toEqual(created.configOptions)
+      expect(configPushes()).toEqual([])
+
+      a.send({
+        jsonrpc: "2.0",
+        id: 5,
+        method: "session/set_config_option",
+        params: { sessionId, configId: "model", value: "mock-big" },
+      })
+      const switched = ((await a.reply(5)).result as { configOptions: Json[] }).configOptions
+      expect(switched.find((o) => o.id === "model")?.currentValue).toBe("mock-big")
+      const pushes = configPushes()
+      expect(pushes).toHaveLength(1)
+      expect(pushes[0]?.configOptions).toEqual(switched)
+
+      const before = a.model.bodies.length
+      a.send({
+        jsonrpc: "2.0",
+        id: 6,
+        method: "session/prompt",
+        params: { sessionId, prompt: [{ type: "text", text: "again" }] },
+      })
+      expect((await a.reply(6)).result).toEqual({ stopReason: "end_turn" })
+      expect(a.model.bodies[before]?.model).toBe("mock-big")
+      expect(sizes()).toEqual([32_000, 64_000])
+      expect(await finish(a)).toBe(0)
     } finally {
       a.proc.kill("SIGKILL")
     }

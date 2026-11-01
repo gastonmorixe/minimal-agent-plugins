@@ -1,0 +1,8 @@
+{
+  "id": "acp-two-models-fixture",
+  "name": "Test fixture: two generic-endpoint models",
+  "version": "0.1.0",
+  "description": "Registers two generic-endpoint models with different context windows. ACP e2e tests only.",
+  "entry": "./index.ts",
+  "export": "twoModelsProviderPlugin"
+}

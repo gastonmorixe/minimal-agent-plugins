@@ -45,7 +45,7 @@ import type { ToolWillInvokePayload } from "@minimal-agent/core/sdk/lifecycle"
 
 import { type AcpToolKind, toAcpToolKind } from "./encoder.ts"
 
-/** How long the gate waits for an answer before it denies (10 min). */
+/** How long the gate waits for an answer before it denies (10 min). `--approval-timeout-ms` changes it. */
 export const DEFAULT_APPROVAL_DEADLINE_MS = 10 * 60 * 1000
 
 /** ACP `PermissionOptionKind`. The gate uses the kind as the option id too. */
@@ -95,22 +95,63 @@ export interface CreatePermissionGateOptions {
   readonly log?: (message: string) => void
 }
 
+/** The largest `setTimeout` delay. A larger one fires at once. */
+const MAX_TIMER_MS = 2 ** 31 - 1
+
+/** The flag that sets the gate deadline. */
+export const APPROVAL_TIMEOUT_FLAG = "--approval-timeout-ms"
+
+/** A bad host-mode arg. The host mode reports it and exits before it reads stdin. */
+export class HostModeArgsError extends Error {
+  override readonly name = "HostModeArgsError"
+}
+
 /** What `--host-mode acp <args>` sets. */
 export interface HostModeArgs {
   readonly approval: boolean
+  /** The gate deadline in ms (`--approval-timeout-ms`). Default {@link DEFAULT_APPROVAL_DEADLINE_MS}. */
+  readonly approvalTimeoutMs: number
+  /** True when `--approval-timeout-ms` is present. */
+  readonly approvalTimeoutSet: boolean
   /** Args this plugin does not know. They are ignored. */
   readonly unknown: readonly string[]
 }
 
-/** Parse `ctx.argv` (the args after `--host-mode acp`). Approval is off unless `--approval` is present. */
+function parseTimeoutMs(raw: string | undefined): number {
+  const n = raw !== undefined && /^[0-9]+$/.test(raw) ? Number(raw) : Number.NaN
+  if (!Number.isSafeInteger(n) || n <= 0 || n > MAX_TIMER_MS) {
+    throw new HostModeArgsError(
+      `${APPROVAL_TIMEOUT_FLAG} must be a positive integer of ms (1 to ${MAX_TIMER_MS}), got ${raw === undefined ? "no value" : JSON.stringify(raw)}`,
+    )
+  }
+  return n
+}
+
+/**
+ * Parse `ctx.argv` (the args after `--host-mode acp`). Approval is off
+ * unless `--approval` is present. `--approval-timeout-ms <n>` (or
+ * `--approval-timeout-ms=<n>`) sets the gate deadline.
+ *
+ * @throws HostModeArgsError when the `--approval-timeout-ms` value is not a positive integer.
+ */
 export function parseHostModeArgs(argv: readonly string[]): HostModeArgs {
   let approval = false
+  let approvalTimeoutMs = DEFAULT_APPROVAL_DEADLINE_MS
+  let approvalTimeoutSet = false
   const unknown: string[] = []
-  for (const arg of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i] as string
     if (arg === "--approval") approval = true
-    else unknown.push(arg)
+    else if (arg === APPROVAL_TIMEOUT_FLAG) {
+      i += 1
+      approvalTimeoutMs = parseTimeoutMs(argv[i])
+      approvalTimeoutSet = true
+    } else if (arg.startsWith(`${APPROVAL_TIMEOUT_FLAG}=`)) {
+      approvalTimeoutMs = parseTimeoutMs(arg.slice(APPROVAL_TIMEOUT_FLAG.length + 1))
+      approvalTimeoutSet = true
+    } else unknown.push(arg)
   }
-  return { approval, unknown }
+  return { approval, approvalTimeoutMs, approvalTimeoutSet, unknown }
 }
 
 function deny(reason: string): GateResult {

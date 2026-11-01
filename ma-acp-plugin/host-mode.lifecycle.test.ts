@@ -7,12 +7,49 @@
  * @module host-mode.lifecycle.test
  */
 
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { describe, expect, it } from "bun:test"
 
 import { createFakeRuntime } from "./__fixtures__/fake-runtime.ts"
 import { openInMemorySession, startInMemoryHost } from "./__fixtures__/in-memory-host.ts"
 
 const text = (t: string) => [{ type: "text", text: t }]
+
+describe("session/new cwd check", () => {
+  // macOS: the temp dir /var/folders/... is a symlink to /private/var/...
+  // The process cwd is the real path. A client can send the symlink path.
+  it("accepts a cwd that is a symlink to the process cwd, and refuses another dir", async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "acp-cwd-")))
+    try {
+      const real = join(root, "real")
+      const other = join(root, "other")
+      mkdirSync(real)
+      mkdirSync(other)
+      symlinkSync(real, join(root, "link"))
+      const h = startInMemoryHost(createFakeRuntime(), real)
+      h.send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: 1 } })
+      await h.reply(1)
+      h.send({ jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: other } })
+      expect((await h.reply(2)).error?.code).toBe(-32602)
+      h.send({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "session/new",
+        params: { cwd: join(root, "link"), mcpServers: [] },
+      })
+      const created = await h.reply(3)
+      expect(created.error).toBeUndefined()
+      expect(typeof created.result?.sessionId).toBe("string")
+      h.end()
+      expect(await h.exit).toBe(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
 
 describe("host-mode life cycle", () => {
   it("on ctx.abort: aborts the run, answers the prompt, closes the session, and returns", async () => {

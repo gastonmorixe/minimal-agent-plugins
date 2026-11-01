@@ -14,6 +14,7 @@
  * - Every reply and every `config_option_update` carries the COMPLETE list,
  *   rebuilt from live state. A model change can reset effort to the model
  *   default (core does this); the rebuilt list shows the result.
+ * - A set to the current value is a no-op: no setter call, the same list.
  * - Unknown `configId`, a value not in the option's list, a boolean value,
  *   or a throw from the core setter: JSON-RPC -32602, state unchanged (the
  *   core setters change nothing when they throw).
@@ -128,6 +129,7 @@ export function setConfigOption(
       `invalid value for config option "${option.id}": ${JSON.stringify(value)}`,
     )
   }
+  if (value === option.currentValue) return current
   try {
     if (option.id === CONFIG_ID.model) runtime.setModel(value)
     else runtime.setEffort(value)

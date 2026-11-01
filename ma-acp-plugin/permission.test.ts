@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import {
   activeGate,
   createPermissionGate,
+  DEFAULT_APPROVAL_DEADLINE_MS,
   hookRegistered,
   type PermissionRequest,
   parseHostModeArgs,
@@ -75,6 +76,30 @@ describe("parseHostModeArgs", () => {
     const r = parseHostModeArgs(["--nope", "--approval"])
     expect(r.approval).toBe(true)
     expect(r.unknown).toEqual(["--nope"])
+  })
+  it("keeps the 10 minute deadline by default", () => {
+    expect(parseHostModeArgs(["--approval"]).approvalTimeoutMs).toBe(DEFAULT_APPROVAL_DEADLINE_MS)
+    expect(DEFAULT_APPROVAL_DEADLINE_MS).toBe(10 * 60 * 1000)
+  })
+  it("reads --approval-timeout-ms <n> and --approval-timeout-ms=<n>", () => {
+    expect(
+      parseHostModeArgs(["--approval", "--approval-timeout-ms", "200"]).approvalTimeoutMs,
+    ).toBe(200)
+    expect(parseHostModeArgs(["--approval-timeout-ms=1500", "--approval"]).approvalTimeoutMs).toBe(
+      1500,
+    )
+  })
+  for (const bad of [["0"], ["-5"], ["1.5"], ["abc"], ["2e3"], [""], []]) {
+    it(`rejects --approval-timeout-ms ${JSON.stringify(bad)}`, () => {
+      expect(() => parseHostModeArgs(["--approval", "--approval-timeout-ms", ...bad])).toThrow(
+        "--approval-timeout-ms must be a positive integer",
+      )
+    })
+  }
+  it("rejects a value above the timer limit", () => {
+    expect(() => parseHostModeArgs(["--approval-timeout-ms", "9999999999"])).toThrow(
+      "--approval-timeout-ms must be a positive integer",
+    )
   })
 })
 
