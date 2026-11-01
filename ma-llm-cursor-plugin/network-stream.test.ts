@@ -30,6 +30,7 @@ import { describe, expect, test } from "bun:test"
 import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 
+import { useOfflineFetch } from "./__fixtures__/offline-fetch.ts"
 import { cursorAdapter } from "./adapter.ts"
 import { cursorCaps } from "./capabilities.ts"
 import { agentRunUrl } from "./connect/hosts.ts"
@@ -133,6 +134,7 @@ function headerOf(headers: Record<string, string> | undefined, name: string): st
 }
 
 describe("cursorAdapter.run — NetworkClient h2 connect+proto seam", () => {
+  useOfflineFetch()
   test("uses ctx.networkClient: protocol h2, POST, connect+proto, framed body, capture, signal", async () => {
     // Env override would force legacy http2/curl and bypass the NetworkClient seam.
     const prevTransport = process.env.MA_CURSOR_STREAM_TRANSPORT
