@@ -3,8 +3,14 @@
  *
  * Calling `registerAnthropicModels()` populates the canonical model
  * registry with every model in the live Anthropic catalog as of
- * 2026-09-14 (verified via live `GET /v1/models?beta=true` with the
- * plan-OAuth credential plus Cursor `AvailableModels` via `cursor-oauth-4`).
+ * 2026-11-01 (verified via live `GET /v1/models?beta=true` with the
+ * plan-OAuth credential `anthropic-plan-oauth-11`; the plain
+ * `GET /v1/models` returns the same 14 rows). Live count is 14 models:
+ * the 12 static entries below plus `claude-sonnet-5-5` (2026-09-28) and
+ * `claude-haiku-5-5` (2026-10-07). No live model was retired:
+ * `claude-sonnet-4-5-20250929` reports `lifecycle: deprecated` with
+ * `retires_at: 2026-11-30T17:00:00Z`, so it stays registered until the
+ * retirement date passes.
  * Pricing comes from the typed
  * tables in `pricing.ts`;
  * capabilities come from `capabilities.ts`. `[1m]` aliases let the
@@ -26,6 +32,7 @@ import {
   CAPS_FABLE_5,
   CAPS_FABLE_5_1,
   CAPS_HAIKU_45,
+  CAPS_HAIKU_55,
   CAPS_OPUS_5,
   CAPS_OPUS_45,
   CAPS_OPUS_46,
@@ -35,6 +42,7 @@ import {
   CAPS_SONNET_5,
   CAPS_SONNET_45,
   CAPS_SONNET_46,
+  CAPS_SONNET_55,
 } from "./capabilities.ts"
 import type { ModelEntry, MTokRate } from "./lib/host-types.ts"
 import { clearLocalCatalog, recordModel } from "./lib/registry.ts"
@@ -42,12 +50,14 @@ import {
   ANTHROPIC_FABLE_5,
   ANTHROPIC_FABLE_5_1,
   ANTHROPIC_HAIKU_45,
+  ANTHROPIC_HAIKU_55,
   ANTHROPIC_OPUS_4X_FAST_LEGACY,
   ANTHROPIC_OPUS_4X_STANDARD,
   ANTHROPIC_OPUS_48_FAST,
   ANTHROPIC_OPUS_55_FAST,
   ANTHROPIC_OPUS_55_STANDARD,
   ANTHROPIC_SONNET_5_INTRO,
+  ANTHROPIC_SONNET_55,
   ANTHROPIC_SONNET_STANDARD,
 } from "./pricing.ts"
 
@@ -149,6 +159,48 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     registrar.register(spec)
     recordModel(spec as unknown as ModelEntry)
   }
+  register({
+    id: "claude-haiku-5-5",
+    aliases: ["claude-haiku-5-5[1m]"],
+    providerId: "anthropic",
+    surfaceId: "anthropic-messages",
+    displayName: "Claude Haiku 5.5",
+    tags: ["haiku", "1m-context", "fast", "production"],
+    capabilities: CAPS_HAIKU_55,
+    estimateTokens: estimateAnthropicTokens,
+    pricing: ANTHROPIC_HAIKU_55,
+    vendorIds: {
+      firstParty: "claude-haiku-5-5",
+      bedrock: "us.anthropic.claude-haiku-5-5",
+      vertex: "claude-haiku-5-5",
+      foundry: "claude-haiku-5-5",
+      anthropicAws: "claude-haiku-5-5",
+      mantle: "anthropic.claude-haiku-5-5",
+      gateway: "claude-haiku-5-5",
+    },
+  })
+
+  register({
+    id: "claude-sonnet-5-5",
+    aliases: ["claude-sonnet-5-5[1m]"],
+    providerId: "anthropic",
+    surfaceId: "anthropic-messages",
+    displayName: "Claude Sonnet 5.5",
+    tags: ["sonnet", "1m-context", "flagship", "production"],
+    capabilities: CAPS_SONNET_55,
+    estimateTokens: estimateAnthropicTokens,
+    pricing: ANTHROPIC_SONNET_55,
+    vendorIds: {
+      firstParty: "claude-sonnet-5-5",
+      bedrock: "us.anthropic.claude-sonnet-5-5",
+      vertex: "claude-sonnet-5-5",
+      foundry: "claude-sonnet-5-5",
+      anthropicAws: "claude-sonnet-5-5",
+      mantle: "anthropic.claude-sonnet-5-5",
+      gateway: "claude-sonnet-5-5",
+    },
+  })
+
   register({
     id: "claude-opus-5-5",
     aliases: ["claude-opus-5-5[1m]"],
@@ -420,6 +472,8 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
   })
 
   return [
+    "claude-haiku-5-5",
+    "claude-sonnet-5-5",
     "claude-opus-5-5",
     "claude-opus-5",
     "claude-fable-5-1",

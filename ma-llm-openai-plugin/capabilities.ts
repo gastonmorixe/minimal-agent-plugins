@@ -278,6 +278,40 @@ export const CAPS_GPT_6_1_SOL_CHAT: Capabilities = {
 }
 
 /**
+ * GPT-6.1 Terra (released ~2026-10-26, per OpenAI launch post 2026-11-01).
+ * Balanced-efficiency tier: near-Sol quality at lower cost ($1 / $5 vs
+ * $2 / $10). Model card (2026-11-01): 1.05M context, 128K output, effort
+ * `none|low|medium|high|xhigh|max` (default medium), tool calling needs
+ * Responses. Long-context pricing over 272K not modeled. Chat Completions
+ * works without tools (same pattern as Sol/Luna).
+ */
+export const CAPS_GPT_6_1_TERRA_RESPONSES: Capabilities = {
+  ...CAPS_GPT_6_1_SOL_RESPONSES,
+  effort: { levels: ["none", "low", "medium", "high", "xhigh", "max"], default: "medium" },
+  speedFast: false,
+}
+
+/**
+ * GPT-6.1 Terra on Chat Completions. Live API-key probe 2026-11-01: the wire
+ * id answers on Chat but tools are not honored there. Flag tools off, keep
+ * Sol's trimmed Chat effort ladder.
+ */
+export const CAPS_GPT_6_1_TERRA_CHAT: Capabilities = {
+  ...CAPS_GPT_6_1_TERRA_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh"], default: "medium" },
+  tools: {
+    ...TOOLS_FULL,
+    userDefined: false,
+    parallel: false,
+    toolChoice: false,
+    strictSchema: false,
+  },
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
  * GPT-6 Sol (2026-09-22, superseded by 6.1 Sol). Effort
  * `none|low|medium|high|xhigh|max` (default medium). Chat Completions
  * supports function calling only with effort `none`.

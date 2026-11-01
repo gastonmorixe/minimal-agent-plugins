@@ -161,6 +161,34 @@ export const ANTHROPIC_SONNET_5_INTRO: MTokRate = {
 }
 
 /**
+ * Claude Sonnet 5.5 (`claude-sonnet-5-5`) standard rate : $3 / 1M input,
+ * $15 / 1M output (mirrors the Sonnet 5 post-intro `$3/$15` schedule; the
+ * 2026-09-28 launch post-dates the 2026-09-01 Sonnet 5 cutover, so no
+ * intro tier applies). Kept as a separate table because the two rates move
+ * independently.
+ */
+export const ANTHROPIC_SONNET_55: MTokRate = {
+  inputUSD: 3,
+  outputUSD: 15,
+  cacheWriteUSD: 3.75,
+  cacheReadUSD: 0.3,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
+ * Claude Haiku 5.5 (`claude-haiku-5-5`) standard rate : $1 / 1M input,
+ * $5 / 1M output (mirrors the Haiku 4.5 `l78` schedule). Kept as a separate
+ * table because the two rates move independently.
+ */
+export const ANTHROPIC_HAIKU_55: MTokRate = {
+  inputUSD: 1,
+  outputUSD: 5,
+  cacheWriteUSD: 1.25,
+  cacheReadUSD: 0.1,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
  * Anthropic's `l78` rate : haiku 4.5.
  */
 export const ANTHROPIC_HAIKU_45: MTokRate = {

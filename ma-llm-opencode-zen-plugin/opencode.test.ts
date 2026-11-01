@@ -54,7 +54,7 @@ describe("llm-opencode-zen", () => {
 
   it("registers every live Zen model with the documented surface", () => {
     const reg = setup()
-    expect(LIVE_MODEL_IDS).toHaveLength(82)
+    expect(LIVE_MODEL_IDS).toHaveLength(78)
     for (const id of LIVE_MODEL_IDS) {
       const model = reg.resolveModel(id)
       expect(model.providerId).toBe("opencode-zen")
@@ -75,7 +75,7 @@ describe("llm-opencode-zen", () => {
       "openai-responses",
     ])
     const reg = setup()
-    const model = reg.resolveModel("space-bunny-free")
+    const model = reg.resolveModel("beam-free")
     const request: CanonicalRequest = { modelId: model.id, messages: [userText("hello")] }
     expect(reg.resolveProvider("opencode-zen").validate(request, model).ok).toBe(true)
     expect(OPENCODE_ZEN_CHAT_URL).toBe("https://opencode.ai/inference/openai/v1/chat/completions")
@@ -134,7 +134,7 @@ describe("llm-opencode-zen", () => {
     }
 
     for (const [modelId, url] of [
-      ["space-bunny-free", OPENCODE_ZEN_CHAT_URL],
+      ["beam-free", OPENCODE_ZEN_CHAT_URL],
       ["claude-sonnet-5", OPENCODE_ZEN_MESSAGES_URL],
       ["gpt-5.5", OPENCODE_ZEN_RESPONSES_URL],
     ] as const) {
@@ -188,28 +188,28 @@ describe("llm-opencode-zen", () => {
     })
 
     it("keeps the ses_ id stable across requests of one session", async () => {
-      const a = await capture("space-bunny-free", { sessionId: "stable-1" })
+      const a = await capture("beam-free", { sessionId: "stable-1" })
       const b = await capture("gpt-5.5", { sessionId: "stable-1" })
-      const c = await capture("space-bunny-free", { sessionId: "stable-2" })
+      const c = await capture("beam-free", { sessionId: "stable-2" })
       expect(a.headers["x-opencode-session"]).toBe(b.headers["x-opencode-session"] as string)
       expect(c.headers["x-opencode-session"]).not.toBe(a.headers["x-opencode-session"] as string)
     })
 
     it("forces stream:true even when the request asks for no stream", async () => {
-      const { body } = await capture("space-bunny-free", { req: { stream: false } })
+      const { body } = await capture("beam-free", { req: { stream: false } })
       expect(body.stream).toBe(true)
       expect(body.stream_options).toEqual({ include_usage: true })
     })
 
     it("sends prompt_cache_key = ses_ id without prefix on chat and responses", async () => {
       const ses = opencodeSessionId("sess-123")
-      for (const id of ["space-bunny-free", "gpt-5.5"])
+      for (const id of ["beam-free", "gpt-5.5"])
         expect((await capture(id)).body.prompt_cache_key).toBe(ses.slice(4))
       expect((await capture("claude-sonnet-5")).body.prompt_cache_key).toBeUndefined()
     })
 
     it("auth headers: Bearer on chat/responses, x-api-key or Bearer on messages", async () => {
-      expect((await capture("space-bunny-free")).headers.authorization).toBe("Bearer zen-key")
+      expect((await capture("beam-free")).headers.authorization).toBe("Bearer zen-key")
       expect((await capture("gpt-5.5")).headers.authorization).toBe("Bearer zen-key")
       const msgKey = await capture("claude-sonnet-5")
       expect(msgKey.headers["x-api-key"]).toBe("zen-key")
@@ -219,13 +219,13 @@ describe("llm-opencode-zen", () => {
       expect(msgOAuth.headers.authorization).toBe("Bearer tok")
       expect(msgOAuth.headers["x-api-key"]).toBeUndefined()
       expect(msgOAuth.headers["x-org-id"]).toBe("org_9")
-      const chatOAuth = await capture("space-bunny-free", { auth: oauth })
+      const chatOAuth = await capture("beam-free", { auth: oauth })
       expect(chatOAuth.headers.authorization).toBe("Bearer tok")
       expect(chatOAuth.headers["x-org-id"]).toBe("org_9")
     })
 
     it("sends x-org-id for an api-key organization, not openai-organization", async () => {
-      const { headers } = await capture("space-bunny-free", {
+      const { headers } = await capture("beam-free", {
         auth: { kind: "api-key", key: "zen-key", organization: "org_42" },
       })
       expect(headers["x-org-id"]).toBe("org_42")
@@ -234,11 +234,11 @@ describe("llm-opencode-zen", () => {
 
     it("uses the public key for free models (anonymous and empty key)", async () => {
       const anon = opencodeProviderPlugin.anonymousAuth?.()
-      expect((await capture("space-bunny-free", { auth: anon })).headers.authorization).toBe(
+      expect((await capture("beam-free", { auth: anon })).headers.authorization).toBe(
         "Bearer public",
       )
       expect(
-        (await capture("space-bunny-free", { auth: { kind: "api-key", key: "" } })).headers
+        (await capture("beam-free", { auth: { kind: "api-key", key: "" } })).headers
           .authorization,
       ).toBe("Bearer public")
     })
@@ -266,7 +266,7 @@ describe("llm-opencode-zen", () => {
         tools: [readTool],
         toolChoice: { type: "tool", name: "Read" },
       }
-      const chat = await capture("space-bunny-free", { req })
+      const chat = await capture("beam-free", { req })
       const chatTools = chat.body.tools as Array<{ function: { name: string } }>
       expect(chatTools.map((t) => t.function.name)).toEqual(["read"])
       expect(JSON.stringify(chat.body.tool_choice)).toContain('"read"')
@@ -278,13 +278,13 @@ describe("llm-opencode-zen", () => {
     })
 
     it("still sends a free request with no Read tool (never injects tools)", async () => {
-      const { body } = await capture("space-bunny-free")
+      const { body } = await capture("beam-free")
       expect(body.tools).toBeUndefined()
     })
 
     it("maps a streamed read tool call back to Read", async () => {
       const reg = setup()
-      const model = reg.resolveModel("space-bunny-free")
+      const model = reg.resolveModel("beam-free")
       const chunks = [
         JSON.stringify({
           id: "c1",
@@ -333,7 +333,7 @@ describe("llm-opencode-zen", () => {
 
     it("FreeTierError hint names the missing Read tool for that request", async () => {
       const reg = setup()
-      const model = reg.resolveModel("space-bunny-free")
+      const model = reg.resolveModel("beam-free")
       const body = JSON.stringify({
         type: "error",
         error: {

@@ -251,6 +251,63 @@ export const CAPS_OPUS_46: Capabilities = {
   serverTools: [...SERVER_TOOLS_FULL],
 }
 
+// Haiku 5.5 (first 1M Haiku; adaptive thinking; full effort ladder)
+// ---------------------------------------------------------------------------
+export const CAPS_HAIKU_55: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_000_000,
+  maxOutputTokens: 128_000,
+  maxOutputTokensBatch: 300_000,
+  thinking: { ...ADAPTIVE_THINKING_VISIBLE },
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "medium" },
+  acceptsTemperature: false,
+  acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: true,
+  speedFast: false,
+  caching: { ...CACHING_FULL },
+  tools: { ...TOOLS_FULL },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  serverSideHistory: false,
+  serverTools: [...SERVER_TOOLS_FULL],
+}
+
+/**
+ * Claude Sonnet 5.5 (`claude-sonnet-5-5`), live 2026-09-28 per
+ * `GET /v1/models`. Request surface mirrors Sonnet 5 (1M context, 128k
+ * output, adaptive-only thinking, full effort ladder low/medium/high/xhigh/
+ * max with medium default, image + pdf input, structured outputs, full tools
+ * + caching, batch). The only wire-visible delta is
+ * `thinking.between_tools` supported; the capability table carries no
+ * between-tools slot, so the record is identical to Sonnet 5.
+ */
+export const CAPS_SONNET_55: Capabilities = {
+  ...defaultCapabilities(),
+  contextWindow: 1_000_000,
+  maxOutputTokens: 128_000,
+  maxOutputTokensBatch: 300_000,
+  thinking: { adaptive: true, extended: false, visible: true, interleaved: true },
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "medium" },
+  acceptsTemperature: false,
+  acceptsTopP: false,
+  acceptsTopK: false,
+  acceptsSeed: false,
+  acceptsStopSequences: true,
+  speedFast: false,
+  caching: { ...CACHING_FULL },
+  tools: { ...TOOLS_FULL },
+  midConversationSystem: true,
+  structuredOutputs: true,
+  assistantPrefill: false,
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  serverSideHistory: false,
+  serverTools: [...SERVER_TOOLS_FULL],
+}
+
 // ---------------------------------------------------------------------------
 // Sonnet 5 (most-agentic Sonnet; adaptive thinking, effort incl. xhigh)
 // ---------------------------------------------------------------------------

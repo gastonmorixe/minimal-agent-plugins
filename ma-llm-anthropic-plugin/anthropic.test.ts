@@ -138,11 +138,13 @@ describe("bootstrapAnthropic", () => {
     const byRole = new Map(recs.map((r) => [r.role, r.modelId]))
     // scout → a Haiku, balanced → a Sonnet, deep → an Opus (production tier).
     // balanced resolves to the FIRST sonnet+production entry in insertion
-    // order, which is the newest Sonnet (claude-sonnet-5, registered ahead of
-    // sonnet-4-6). deep resolves to the first opus+production entry, the
-    // newest Opus (claude-opus-5-5, registered ahead of opus-5/fable/opus-4-8).
-    expect(byRole.get("scout")).toBe("claude-haiku-4-5-20251001")
-    expect(byRole.get("balanced")).toBe("claude-sonnet-5")
+    // order, which is the newest Sonnet (claude-sonnet-5-5, registered ahead
+    // of sonnet-5/sonnet-4-6). deep resolves to the first opus+production
+    // entry, the newest Opus (claude-opus-5-5, registered ahead of opus-5/
+    // fable/opus-4-8). scout resolves to the first haiku+production entry,
+    // the newest Haiku (claude-haiku-5-5, registered ahead of haiku-4-5).
+    expect(byRole.get("scout")).toBe("claude-haiku-5-5")
+    expect(byRole.get("balanced")).toBe("claude-sonnet-5-5")
     expect(byRole.get("deep")).toBe("claude-opus-5-5")
     // every recommended model is actually an Anthropic model in the registry
     for (const r of recs) expect(resolveModel(r.modelId).providerId).toBe("anthropic")

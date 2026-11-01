@@ -108,10 +108,10 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
   it("registers models on all three surfaces", () => {
     setup()
 
-    const chatModel = resolveModel("deepseek-v4-flash")
+    const chatModel = resolveModel("deepseek-v4-pro")
     expect(chatModel.providerId).toBe("opencode-go")
     expect(chatModel.surfaceId).toBe("openai-chat-completions")
-    expect(chatModel.vendorIds?.firstParty).toBe("deepseek-v4-flash")
+    expect(chatModel.vendorIds?.firstParty).toBe("deepseek-v4-pro")
 
     const msgModel = resolveModel("qwen3.8-max")
     expect(msgModel.providerId).toBe("opencode-go")
@@ -132,46 +132,36 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-10-11 (authoritative ID list).
+    // Live /v1/models snapshot 2026-11-01 (authoritative ID list).
     const ids = [
+      "beam-free",
       "claude-haiku-5-5",
-      "deepseek-flash",
-      "deepseek-v4-flash",
-      "deepseek-v4-flash-vision-exp",
       "deepseek-v4-pro",
       "deepseek-v4.1-flash",
-      "glm-5.1",
+      "gemini-4-argon",
       "glm-5.2",
       "glm-5.3",
       "glm-5.3-flash",
       "gpt-5.6-luna",
       "gpt-6-luna",
-      "grok-4.6",
       "grok-4.7",
       "hy3",
       "hy4-preview",
-      "kimi-k2.6",
+      "iceman-contributor-free",
       "kimi-k2.7-code",
       "kimi-k3",
+      "kimi-k3.1-pro",
       "longcat-2.0",
-      "longcat-2.5-preview-free",
-      "mimo-v2.5",
-      "mimo-v2.5-pro",
       "mimo-v2.6-flash",
       "mimo-v2.6-pro",
-      "minimax-m2.5",
-      "minimax-m2.7",
       "minimax-m3",
+      "minimax-m3.1-flash",
       "muse-spark-1.2-contributor",
       "muse-spark-1.3-contributor",
-      "omen-alpha",
-      "qwen3.6-plus",
-      "qwen3.7-max",
       "qwen3.7-plus",
       "qwen3.8-flash",
       "qwen3.8-max",
-      "space-bunny",
-      "step-5-preview-free",
+      "step-5-preview",
     ]
     for (const id of ids) {
       const m = resolveModel(id)
@@ -179,26 +169,24 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     }
   })
 
-  it("applies models.dev caps and docs/go pricing (2026-10-11)", () => {
+  it("applies models.dev caps and pricing (2026-11-01)", () => {
     setup()
     // Caps refreshed from models.dev where they previously drifted.
-    expect(resolveModel("glm-5.1").capabilities.contextWindow).toBe(202_752)
-    expect(resolveModel("glm-5.1").capabilities.maxOutputTokens).toBe(32_768)
+    expect(resolveModel("glm-5.3-flash").capabilities.contextWindow).toBe(1_000_000)
+    expect(resolveModel("glm-5.3-flash").capabilities.maxOutputTokens).toBe(131_072)
     expect(resolveModel("kimi-k2.7-code").capabilities.maxOutputTokens).toBe(262_144)
-    expect(resolveModel("minimax-m2.5").capabilities.maxOutputTokens).toBe(65_536)
-    expect(resolveModel("grok-4.6").capabilities.maxOutputTokens).toBe(500_000)
-    // Docs-only cache_write (models.dev omits it).
-    expect(resolveModel("minimax-m2.7").pricing?.cacheWriteUSD).toBe(0.375)
+    expect(resolveModel("minimax-m3").capabilities.maxOutputTokens).toBe(131_072)
+    expect(resolveModel("grok-4.7").capabilities.maxOutputTokens).toBe(500_000)
     // DeepSeek Off-Peak tiers refreshed 2026-09-10 (docs/go + models.dev agree).
-    expect(resolveModel("deepseek-v4-flash").pricing?.inputUSD).toBe(0.15)
-    expect(resolveModel("deepseek-v4-flash").pricing?.outputUSD).toBe(0.6)
-    expect(resolveModel("deepseek-v4-flash").pricing?.cacheReadUSD).toBe(0.003)
+    expect(resolveModel("deepseek-v4.1-flash").pricing?.inputUSD).toBe(0.15)
+    expect(resolveModel("deepseek-v4.1-flash").pricing?.outputUSD).toBe(0.6)
+    expect(resolveModel("deepseek-v4.1-flash").pricing?.cacheReadUSD).toBe(0.003)
     expect(resolveModel("deepseek-v4-pro").pricing?.inputUSD).toBe(0.66)
     expect(resolveModel("deepseek-v4-pro").pricing?.outputUSD).toBe(1.98)
     expect(resolveModel("deepseek-v4-pro").pricing?.cacheReadUSD).toBe(0.022)
-    expect(resolveModel("deepseek-v4-flash-vision-exp").pricing?.inputUSD).toBe(0.15)
-    expect(resolveModel("deepseek-v4-flash-vision-exp").pricing?.outputUSD).toBe(0.6)
-    expect(resolveModel("deepseek-v4-flash-vision-exp").pricing?.cacheReadUSD).toBe(0.003)
+    expect(resolveModel("deepseek-v4-pro").pricing?.inputUSD).toBe(0.66)
+    expect(resolveModel("deepseek-v4-pro").pricing?.outputUSD).toBe(1.98)
+    expect(resolveModel("deepseek-v4-pro").pricing?.cacheReadUSD).toBe(0.022)
 
     // New 2026-09-10 models.
     const v41 = resolveModel("deepseek-v4.1-flash")
@@ -215,15 +203,6 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(v41.pricing?.inputUSD).toBe(0.15)
     expect(v41.pricing?.outputUSD).toBe(0.6)
     expect(v41.pricing?.cacheReadUSD).toBe(0.003)
-
-    // deepseek-flash clones deepseek-v4-flash (live-only slug, no secondary source).
-    const dsf = resolveModel("deepseek-flash")
-    expect(dsf.surfaceId).toBe("openai-chat-completions")
-    expect(dsf.capabilities.contextWindow).toBe(
-      resolveModel("deepseek-v4-flash").capabilities.contextWindow,
-    )
-    expect([...dsf.capabilities.effort.levels]).toEqual(["low", "high", "max"])
-    expect(dsf.pricing?.inputUSD).toBe(0.15)
 
     // New 2026-08-20 models.
     const luna = resolveModel("gpt-5.6-luna")
@@ -304,18 +283,19 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(qwen38.pricing?.cacheReadUSD).toBe(0.25)
     expect(qwen38.pricing?.cacheWriteUSD).toBe(2.5)
 
-    // deepseek-v4-flash effort ladder synced to models.dev.
-    expect([...resolveModel("deepseek-v4-flash").capabilities.effort.levels]).toEqual([
+    // deepseek effort ladders synced to models.dev.
+    expect([...resolveModel("deepseek-v4.1-flash").capabilities.effort.levels]).toEqual([
       "low",
       "high",
       "max",
     ])
+    expect([...resolveModel("deepseek-v4-pro").capabilities.effort.levels]).toEqual(["high", "max"])
 
     // Hy3: models.dev effort none|low|high (none = thinking off).
     expect([...resolveModel("hy3").capabilities.effort.levels]).toEqual(["none", "low", "high"])
 
     // models.dev reasoning toggle → effort includes none (Messages thinking-off).
-    for (const id of ["minimax-m3", "qwen3.8-max", "qwen3.7-max", "qwen3.7-plus", "qwen3.6-plus"]) {
+    for (const id of ["minimax-m3", "qwen3.8-max", "qwen3.7-plus"]) {
       expect([...resolveModel(id).capabilities.effort.levels]).toEqual([
         "none",
         "low",
@@ -330,21 +310,46 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "medium",
       "xhigh",
     ])
-    // MiniMax M2.x: reasoning with empty options — no toggle / no none.
-    expect([...resolveModel("minimax-m2.7").capabilities.effort.levels]).toEqual([
+    // MiniMax M3.1 Flash (chat surface): full effort ladder.
+    expect([...resolveModel("minimax-m3.1-flash").capabilities.effort.levels]).toEqual([
       "low",
       "medium",
       "high",
-    ])
-    expect([...resolveModel("minimax-m2.5").capabilities.effort.levels]).toEqual([
-      "low",
-      "medium",
-      "high",
+      "xhigh",
+      "max",
     ])
 
-    // 2026-10-11 live catalog additions: surface + pricing smoke.
-    expect(resolveModel("grok-4.6").surfaceId).toBe("openai-responses")
-    expect(resolveModel("grok-4.6").pricing?.cacheReadUSD).toBe(0.5)
+    // 2026-11-01 live catalog additions: surface + pricing smoke.
+    expect(resolveModel("beam-free").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("beam-free").pricing?.inputUSD).toBe(0)
+    expect([...resolveModel("beam-free").capabilities.effort.levels]).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
+    expect(resolveModel("gemini-4-argon").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("gemini-4-argon").capabilities.maxOutputTokens).toBe(65_536)
+    expect(resolveModel("gemini-4-argon").pricing?.inputUSD).toBe(2)
+    expect(resolveModel("gemini-4-argon").pricing?.outputUSD).toBe(10)
+    expect(resolveModel("gemini-4-argon").capabilities.acceptsTemperature).toBe(false)
+    expect(resolveModel("iceman-contributor-free").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("iceman-contributor-free").pricing?.inputUSD).toBe(0)
+    expect(resolveModel("kimi-k3.1-pro").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("kimi-k3.1-pro").pricing?.inputUSD).toBe(2)
+    expect(resolveModel("kimi-k3.1-pro").pricing?.cacheWriteUSD).toBe(2)
+    expect([...resolveModel("kimi-k3.1-pro").capabilities.effort.levels]).toEqual([
+      "low",
+      "high",
+      "max",
+    ])
+    expect(resolveModel("minimax-m3.1-flash").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("minimax-m3.1-flash").capabilities.maxOutputTokens).toBe(512_000)
+    expect(resolveModel("minimax-m3.1-flash").pricing?.inputUSD).toBe(0.15)
+    expect(resolveModel("step-5-preview").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("step-5-preview").pricing?.inputUSD).toBe(1)
+    expect(resolveModel("step-5-preview").capabilities.maxOutputTokens).toBe(65_536)
     expect(resolveModel("grok-4.7").surfaceId).toBe("openai-responses")
     expect(resolveModel("grok-4.7").capabilities.maxOutputTokens).toBe(500_000)
     expect(resolveModel("grok-4.7").pricing?.cacheReadUSD).toBe(0.5)
@@ -387,18 +392,15 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(resolveModel("mimo-v2.6-flash").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("mimo-v2.6-flash").capabilities.contextWindow).toBe(1_048_576)
     expect(resolveModel("mimo-v2.6-pro").pricing?.inputUSD).toBe(0.435)
-    expect(resolveModel("longcat-2.5-preview-free").pricing?.inputUSD).toBe(0)
-    expect(resolveModel("space-bunny").capabilities.maxOutputTokens).toBe(524_288)
-    expect(resolveModel("step-5-preview-free").capabilities.maxOutputTokens).toBe(65_536)
+    expect(resolveModel("longcat-2.0").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("muse-spark-1.3-contributor").surfaceId).toBe("openai-responses")
     expect(resolveModel("muse-spark-1.3-contributor").pricing?.inputUSD).toBe(0.1)
     expect(resolveModel("glm-5.3-flash").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("glm-5.3-flash").pricing?.inputUSD).toBe(0.15)
     expect(resolveModel("qwen3.8-flash").surfaceId).toBe("anthropic-messages")
-    expect(resolveModel("deepseek-v4-flash-vision-exp").surfaceId).toBe("openai-chat-completions")
     expect(resolveModel("hy4-preview").surfaceId).toBe("openai-chat-completions")
-    expect(resolveModel("longcat-2.0").surfaceId).toBe("openai-chat-completions")
-    expect(resolveModel("omen-alpha").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("glm-5.2").surfaceId).toBe("openai-chat-completions")
+    expect(resolveModel("mimo-v2.6-pro").surfaceId).toBe("openai-chat-completions")
   })
 
   it("registers ad-hoc slugs on demand", () => {
@@ -449,8 +451,8 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
   it("validates a plain Chat request via the REUSED OpenAI validator", () => {
     setup()
     const adapter = resolveProvider("opencode-go")
-    const req: CanonicalRequest = { modelId: "deepseek-v4-flash", messages: [userText("hi")] }
-    expect(adapter.validate(req, resolveModel("deepseek-v4-flash")).ok).toBe(true)
+    const req: CanonicalRequest = { modelId: "deepseek-v4-pro", messages: [userText("hi")] }
+    expect(adapter.validate(req, resolveModel("deepseek-v4-pro")).ok).toBe(true)
   })
 
   it("validates a plain Messages request via the REUSED Anthropic validator", () => {
@@ -478,8 +480,8 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
   it("rejects missing API key on run", async () => {
     setup()
     const adapter = resolveProvider("opencode-go")
-    const model = resolveModel("deepseek-v4-flash")
-    const req: CanonicalRequest = { modelId: "deepseek-v4-flash", messages: [userText("hi")] }
+    const model = resolveModel("deepseek-v4-pro")
+    const req: CanonicalRequest = { modelId: "deepseek-v4-pro", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "" },
       sessionId: "test",
@@ -515,7 +517,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     setup()
     const adapter = resolveProvider("opencode-go")
     const cases: Array<{ modelId: string; fixture: string }> = [
-      { modelId: "deepseek-v4-flash", fixture: openaiChatPong() },
+      { modelId: "deepseek-v4-pro", fixture: openaiChatPong() },
       { modelId: "qwen3.8-max", fixture: anthropicPong() },
       { modelId: "gpt-5.6-luna", fixture: openaiResponsesPong() },
     ]
@@ -574,9 +576,9 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("emits tool_result blocks as role:tool messages (not silently dropped)", () => {
     setup()
-    const model = resolveModel("deepseek-v4-flash")
+    const model = resolveModel("deepseek-v4-pro")
     const req: CanonicalRequest = {
-      modelId: "deepseek-v4-flash",
+      modelId: "deepseek-v4-pro",
       messages: [
         { role: "user", content: [{ type: "text", text: "which model are you?" }] },
         {
@@ -599,7 +601,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
               content: [
                 {
                   type: "text",
-                  text: '{"id":"deepseek-v4-flash","displayName":"DeepSeek V4 Flash"}',
+                  text: '{"id":"deepseek-v4-pro","displayName":"DeepSeek V4 Flash"}',
                 },
               ],
             },
@@ -612,7 +614,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     const toolMessages = body.messages.filter((m) => m.role === "tool")
     expect(toolMessages).toHaveLength(1)
     expect(toolMessages[0]!.tool_call_id).toBe("call_abc123")
-    expect(toolMessages[0]!.content).toContain("deepseek-v4-flash")
+    expect(toolMessages[0]!.content).toContain("deepseek-v4-pro")
     // Verify the message ordering: user → assistant (with tool_calls) → tool → user
     const roles = body.messages.map((m) => m.role)
     const toolIdx = roles.indexOf("tool")
@@ -667,34 +669,31 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
   })
 
   const KEY = process.env.MINIMAL_AGENT_OPENCODE_LIVE_KEY
-  it.skipIf(!KEY)(
-    "live: deepseek-v4-flash via OpenCode Go (auth + wire reach the API)",
-    async () => {
-      setup()
-      const model = resolveModel("deepseek-v4-flash")
-      const provider = resolveProvider("opencode-go")
-      const req: CanonicalRequest = {
-        modelId: "deepseek-v4-flash",
-        messages: [userText("Reply with the single word: pong")],
-        generation: { maxOutputTokens: 512 },
+  it.skipIf(!KEY)("live: deepseek-v4-pro via OpenCode Go (auth + wire reach the API)", async () => {
+    setup()
+    const model = resolveModel("deepseek-v4-pro")
+    const provider = resolveProvider("opencode-go")
+    const req: CanonicalRequest = {
+      modelId: "deepseek-v4-pro",
+      messages: [userText("Reply with the single word: pong")],
+      generation: { maxOutputTokens: 512 },
+    }
+    const ctx: RunContext = {
+      auth: { kind: "api-key", key: KEY as string },
+      sessionId: "opencode-live-test",
+    }
+    let text = ""
+    try {
+      for await (const ev of provider.run(req, model, ctx)) {
+        if (isEvent(ev, "text_delta")) text += ev.text
       }
-      const ctx: RunContext = {
-        auth: { kind: "api-key", key: KEY as string },
-        sessionId: "opencode-live-test",
-      }
-      let text = ""
-      try {
-        for await (const ev of provider.run(req, model, ctx)) {
-          if (isEvent(ev, "text_delta")) text += ev.text
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        expect(msg).toMatch(
-          /\b401\b|\b402\b|\b403\b|insufficient credits|user not found|unauthorized/i,
-        )
-        return
-      }
-      expect(text.length).toBeGreaterThan(0)
-    },
-  )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      expect(msg).toMatch(
+        /\b401\b|\b402\b|\b403\b|insufficient credits|user not found|unauthorized/i,
+      )
+      return
+    }
+    expect(text.length).toBeGreaterThan(0)
+  })
 })

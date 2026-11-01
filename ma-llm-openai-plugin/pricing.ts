@@ -1,8 +1,8 @@
 /**
  * OpenAI per-model pricing tables (USD per 1M tokens).
  *
- * Source: developers.openai.com/api/docs/pricing (refreshed 2026-09-08;
- * short-context Standard tier). `cacheReadUSD` matches OpenAI's
+ * Source: developers.openai.com/api/docs/pricing (refreshed 2026-11-01;
+ * GPT-6.1 Terra card added; short-context Standard tier). `cacheReadUSD` matches OpenAI's
  * `cached_input` tier. GPT-6 / GPT-5.6 explicit cache writes are 1.25×
  * uncached input; earlier families without a documented write fee mirror
  * input.
@@ -172,6 +172,20 @@ export const PRICING_GPT_6_1_SOL: MTokRate = {
   cacheReadUSD: 0.1,
   webSearchPerCallUSD: 0,
   reasoningUSD: 10,
+}
+
+/**
+ * gpt-6.1-terra pricing (2026-11-01 model card). Short-context Standard:
+ * $1 / $5, cached input $0.05, cache write $1.25. Long context (over 272K) is
+ * 2x input/cache and 1.5x output, not modeled here. Fast mode is 2x Standard.
+ */
+export const PRICING_GPT_6_1_TERRA: MTokRate = {
+  inputUSD: 1,
+  outputUSD: 5,
+  cacheWriteUSD: 1.25,
+  cacheReadUSD: 0.05,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 5,
 }
 
 /** gpt-6-sol pricing (2026-09-29 model card): $2 / $10, cached input $0.20. */
