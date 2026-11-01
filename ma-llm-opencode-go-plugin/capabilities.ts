@@ -3,9 +3,9 @@
  *
  * Three wire surfaces:
  * - **Chat**: OpenAI Chat Completions (`/v1/chat/completions`).
- *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, LongCat, Omen, Space Bunny, Step.
+ *   Used by DeepSeek, GLM, Kimi, MiMo, Hy, LongCat, Beam, Gemini, Iceman, Step.
  * - **Messages**: Anthropic Messages (`/v1/messages`).
- *   Used by MiniMax, Qwen, Claude Haiku.
+ *   Used by MiniMax M3, Qwen, Claude Haiku.
  * - **Responses**: OpenAI Responses (`/v1/responses`).
  *   Used by GPT Luna, Grok, Muse Spark Contributor.
  *
@@ -207,41 +207,11 @@ export const CAPS_DEEPSEEK_V4_PRO: Capabilities = {
 }
 
 /**
- * DeepSeek V4 Flash — 1M ctx, 384K output, text-only.
- * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints table.
- * Efforts: low | high | max (models.dev reasoning_options).
- */
-export const CAPS_DEEPSEEK_V4_FLASH: Capabilities = {
-  ...chatBase(1_000_000, 384_000, M_TEXT),
-  ...thinkExtended(["low", "high", "max"], "high"),
-}
-
-/**
  * DeepSeek V4.1 Flash — 1M ctx, 384K output, text+image.
  * Caps: models.dev opencode-go (2026-09-10). Surface: docs endpoints table.
  * Efforts: low | high | max (models.dev reasoning_options).
  */
 export const CAPS_DEEPSEEK_V4_1_FLASH: Capabilities = {
-  ...chatBase(1_000_000, 384_000, M_TI),
-  ...thinkExtended(["low", "high", "max"], "high"),
-}
-
-/**
- * DeepSeek Flash — on live `/v1/models` but absent from models.dev and docs/go.
- * Caps cloned from DeepSeek V4 Flash (same family) until secondary sources
- * publish distinct limits. Do not invent alternate numbers.
- */
-export const CAPS_DEEPSEEK_FLASH: Capabilities = {
-  ...chatBase(1_000_000, 384_000, M_TEXT),
-  ...thinkExtended(["low", "high", "max"], "high"),
-}
-
-/**
- * DeepSeek V4 Flash Vision Exp — 1M ctx, 384K output, text+image.
- * Caps: models.dev opencode-go (2026-08-21). Surface: docs endpoints table.
- * Efforts: low | high | max (models.dev reasoning_options).
- */
-export const CAPS_DEEPSEEK_V4_FLASH_VISION_EXP: Capabilities = {
   ...chatBase(1_000_000, 384_000, M_TI),
   ...thinkExtended(["low", "high", "max"], "high"),
 }
@@ -276,30 +246,12 @@ export const CAPS_GLM_5_2: Capabilities = {
 }
 
 /**
- * GLM-5.1 — 202_752 ctx, 32_768 output, text-only.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- */
-export const CAPS_GLM_5_1: Capabilities = {
-  ...chatBase(202_752, 32_768, M_TEXT),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/**
  * Kimi K2.7 Code — 262K ctx, 262K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
  * Thinking always on (mandatory preserve_thinking).
  */
 export const CAPS_KIMI_K2_7_CODE: Capabilities = {
   ...chatBase(262_144, 262_144, M_TIV),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/**
- * Kimi K2.6 — 262K ctx, 65_536 output, text+image+video.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- */
-export const CAPS_KIMI_K2_6: Capabilities = {
-  ...chatBase(262_144, 65_536, M_TIV),
   ...thinkExtended(["medium"], "medium"),
 }
 
@@ -344,65 +296,6 @@ export const CAPS_LONGCAT_2_0: Capabilities = {
 }
 
 /**
- * LongCat-2.5 Preview Free — 1M ctx, 131K output, text+image.
- * Caps: models.dev opencode-go (2026-09-25). Surface: Chat (same family as
- * LongCat-2.0 on docs endpoints table). Reasoning toggle only (models.dev).
- */
-export const CAPS_LONGCAT_2_5_PREVIEW_FREE: Capabilities = {
-  ...chatBase(1_000_000, 131_072, M_TI),
-  ...thinkExtended(["none", "medium"], "medium"),
-}
-
-/**
- * Omen Alpha — 500K ctx, 128K output, text+image.
- * Caps: models.dev opencode-go (2026-09-04). Surface: docs endpoints table.
- * Efforts: low | high (models.dev reasoning_options).
- */
-export const CAPS_OMEN_ALPHA: Capabilities = {
-  ...chatBase(500_000, 128_000, M_TI),
-  ...thinkExtended(["low", "high"], "high"),
-}
-
-/**
- * Space Bunny — 1_048_576 ctx, 524_288 output, text+image+video.
- * Caps: models.dev opencode-go (2026-09-23). Surface: Chat (Assumed,
- * open-weight-style family on the Chat surface).
- * Efforts: low | medium | high | xhigh | max (models.dev).
- */
-export const CAPS_SPACE_BUNNY: Capabilities = {
-  ...chatBase(1_048_576, 524_288, M_TIV),
-  ...thinkExtended(["low", "medium", "high", "xhigh", "max"], "medium"),
-}
-
-/**
- * Step 5 Preview Free — 1M ctx, 65_536 output, text+image+video.
- * Caps: models.dev opencode-go (2026-09-20). Surface: Chat.
- * Efforts: low | medium | high (models.dev).
- */
-export const CAPS_STEP_5_PREVIEW_FREE: Capabilities = {
-  ...chatBase(1_000_000, 65_536, M_TIV),
-  ...thinkExtended(["low", "medium", "high"], "medium"),
-}
-
-/**
- * MiMo V2.5 — 1M ctx, 128K output, text+image+audio+video.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- */
-export const CAPS_MIMO_V2_5: Capabilities = {
-  ...chatBase(1_000_000, 128_000, M_TIVA),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/**
- * MiMo V2.5 Pro — 1_048_576 ctx, 128K output, text-only.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints table.
- */
-export const CAPS_MIMO_V2_5_PRO: Capabilities = {
-  ...chatBase(1_048_576, 128_000, M_TEXT),
-  ...thinkExtended(["medium"], "medium"),
-}
-
-/**
  * MiMo V2.6 Flash — 1_048_576 ctx, 131K output, text+image+audio+video.
  * Caps: models.dev opencode-go (2026-09-22). Surface: Chat.
  * models.dev lists reasoning with empty options; single medium level.
@@ -437,26 +330,6 @@ export const CAPS_MINIMAX_M3: Capabilities = {
 }
 
 /**
- * MiniMax M2.7 — 204_800 ctx, 131K output, text-only.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
- * models.dev lists reasoning with empty options (no toggle) — no `none`.
- */
-export const CAPS_MINIMAX_M2_7: Capabilities = {
-  ...msgBase(204_800, 131_072, M_TEXT),
-  ...thinkAdaptive(),
-}
-
-/**
- * MiniMax M2.5 — deprecated on models.dev; still on live `/v1/models` + docs pricing.
- * Caps: models.dev opencode-go (2026-07-30) — 204_800 ctx / 65_536 out.
- * models.dev lists reasoning with empty options (no toggle) — no `none`.
- */
-export const CAPS_MINIMAX_M2_5: Capabilities = {
-  ...msgBase(204_800, 65_536, M_TEXT),
-  ...thinkAdaptive(),
-}
-
-/**
  * Qwen3.8 Max — 1M ctx, 131K output, text+image+video.
  * Caps: models.dev opencode-go (2026-08-05). Surface: docs endpoints (/v1/messages).
  * Pricing: docs/go + models.dev agree ($2/$6/$0.25/$2.50).
@@ -478,31 +351,11 @@ export const CAPS_QWEN3_8_FLASH: Capabilities = {
 }
 
 /**
- * Qwen3.7 Max — 1M ctx, 65K output, text-only.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
- * Reasoning toggle (models.dev): `--effort none` turns thinking off.
- */
-export const CAPS_QWEN3_7_MAX: Capabilities = {
-  ...msgBase(1_000_000, 65_536, M_TEXT),
-  ...thinkAdaptive(THINK_TOGGLE),
-}
-
-/**
  * Qwen3.7 Plus — 1M ctx, 65K output, text+image+video.
  * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
  * Reasoning toggle (models.dev): `--effort none` turns thinking off.
  */
 export const CAPS_QWEN3_7_PLUS: Capabilities = {
-  ...msgBase(1_000_000, 65_536, M_TIV),
-  ...thinkAdaptive(THINK_TOGGLE),
-}
-
-/**
- * Qwen3.6 Plus — 1M ctx, 65K output, text+image+video.
- * Caps: models.dev opencode-go (2026-07-30). Surface: docs endpoints (/v1/messages).
- * Reasoning toggle (models.dev): `--effort none` turns thinking off.
- */
-export const CAPS_QWEN3_6_PLUS: Capabilities = {
   ...msgBase(1_000_000, 65_536, M_TIV),
   ...thinkAdaptive(THINK_TOGGLE),
 }
@@ -557,34 +410,6 @@ export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR: Capabilities = {
  */
 export const CAPS_MUSE_SPARK_1_3_CONTRIBUTOR: Capabilities = {
   ...CAPS_MUSE_SPARK_1_2_CONTRIBUTOR,
-}
-
-/**
- * Grok 4.6 — 500K ctx, 500K output, text+image on Responses.
- * Caps: models.dev opencode-go (2026-08-12). Surface: docs endpoints
- * (`/v1/responses`, `@ai-sdk/openai`). Efforts: low | medium | high | xhigh.
- * Accepts temperature (models.dev); no server-side tools / stateful history.
- */
-export const CAPS_GROK_4_6: Capabilities = {
-  ...defaultCapabilities(),
-  contextWindow: 500_000,
-  maxOutputTokens: 500_000,
-  maxOutputTokensBatch: null,
-  ...thinkResponses(["low", "medium", "high", "xhigh"], "high"),
-  acceptsTemperature: true,
-  acceptsTopP: true,
-  acceptsTopK: false,
-  acceptsSeed: false,
-  acceptsStopSequences: false,
-  speedFast: false,
-  caching: { ...CACHING_AUTO },
-  tools: { ...TOOLS_STRICT },
-  midConversationSystem: true,
-  structuredOutputs: true,
-  assistantPrefill: false,
-  modalities: { ...M_TI },
-  serverSideHistory: false,
-  serverTools: [],
 }
 
 /**
@@ -671,6 +496,70 @@ export const CAPS_GROK_4_7: Capabilities = {
   modalities: { ...M_TIP },
   serverSideHistory: false,
   serverTools: [],
+}
+
+/**
+ * Beam Free — 1_048_576 ctx, 131_072 output, text-only.
+ * Caps: models.dev opencode-go (2026-10-16). Surface: Chat (provider api
+ * `.../openai/v1`). Efforts: low | medium | high | xhigh | max (models.dev).
+ */
+export const CAPS_BEAM_FREE: Capabilities = {
+  ...chatBase(1_048_576, 131_072, M_TEXT),
+  ...thinkExtended(["low", "medium", "high", "xhigh", "max"], "medium"),
+}
+
+/**
+ * Gemini 4 Argon — 1_048_576 ctx, 65_536 output, omnimodal input.
+ * Caps: models.dev opencode-go (2026-10-13). Surface: Chat (same routing as
+ * the Zen sibling, whose gemini family also rides the Chat translator).
+ * Efforts: low | medium | high (models.dev reasoning_options).
+ */
+export const CAPS_GEMINI_4_ARGON: Capabilities = {
+  ...chatBase(1_048_576, 65_536, M_ALL),
+  ...thinkExtended(["low", "medium", "high"], "medium"),
+  acceptsTemperature: false,
+}
+
+/**
+ * Iceman Contributor Free — 262_144 ctx, 131_072 output, text-only.
+ * Caps: models.dev opencode-go (2026-10-24). Surface: Chat (provider api
+ * `.../openai/v1`). models.dev lists reasoning with empty options; single
+ * medium level.
+ */
+export const CAPS_ICEMAN_CONTRIBUTOR_FREE: Capabilities = {
+  ...chatBase(262_144, 131_072, M_TEXT),
+  ...thinkExtended(["medium"], "medium"),
+}
+
+/**
+ * Kimi K3.1 Pro — 1_048_576 ctx, 131_072 output, text+image+video.
+ * Caps: models.dev opencode-go (2026-10-23). Surface: Chat (provider api
+ * `.../openai/v1`). Efforts: low | high | max (models.dev reasoning_options).
+ */
+export const CAPS_KIMI_K3_1_PRO: Capabilities = {
+  ...chatBase(1_048_576, 131_072, M_TIV),
+  ...thinkExtended(["low", "high", "max"], "high"),
+  acceptsTemperature: false,
+}
+
+/**
+ * MiniMax M3.1 Flash — 1M ctx, 512K output, text+image+video.
+ * Caps: models.dev opencode-go (2026-10-19). Surface: Chat (provider api
+ * `.../openai/v1`). Efforts: low | medium | high | xhigh | max (models.dev).
+ */
+export const CAPS_MINIMAX_M3_1_FLASH: Capabilities = {
+  ...chatBase(1_000_000, 512_000, M_TIV),
+  ...thinkExtended(["low", "medium", "high", "xhigh", "max"], "medium"),
+}
+
+/**
+ * Step 5 Preview — 1M ctx, 65_536 output, text+image+video.
+ * Caps: models.dev opencode-go (2026-09-20). Surface: Chat (provider api
+ * `.../openai/v1`). Efforts: low | medium | high (models.dev).
+ */
+export const CAPS_STEP_5_PREVIEW: Capabilities = {
+  ...chatBase(1_000_000, 65_536, M_TIV),
+  ...thinkExtended(["low", "medium", "high"], "medium"),
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-/** OpenCode Zen pricing in USD per 1M tokens, from the Zen docs. */
+/** OpenCode Zen pricing in USD per 1M tokens, from the Zen docs. Live check 2026-11-01. */
 import type { MTokRate } from "./lib/host-types.ts"
 
 const rate = (
@@ -62,12 +62,16 @@ export const ZEN_PRICING: Record<string, MTokRate> = {
   "grok-build-0.1": rate(1, 2, 0.2),
   "muse-spark-1.2": rate(1.25, 4.25, 0.15),
   "muse-spark-1.3": rate(1.25, 4.25, 0.15),
+  "muse-wonder-1.0": rate(4, 20, 0.2),
+  "gemini-4-argon": rate(2, 10, 0.1),
   "mistral-large-4": rate(0.68, 2.09, 0.07),
   "deepseek-v4.1-flash": rate(0.3, 1.2, 0.006),
+  "deepseek-v4.1-flash-free": rate(0, 0),
   "deepseek-v4-pro": rate(0.66, 1.98, 0.022),
   "deepseek-v4-flash": rate(0.22, 0.66, 0.007),
   "glm-5.3": rate(1.4, 4.4, 0.26),
   "glm-5.3-flash": rate(0.15, 0.5, 0.03),
+  "glm-5.3-flash-free": rate(0, 0),
   "glm-5.2": rate(1.4, 4.4, 0.26),
   "glm-5.1": rate(1.4, 4.4, 0.26),
   "glm-5": rate(1, 3.2, 0.2),
@@ -90,18 +94,11 @@ for (const id of [
   "gemini-3.7-flash",
   "gemini-3.5-flash-lite",
   "gemini-3.5-flash",
-  "gemini-3.1-pro",
-  "gemini-3-flash",
-  "jev-1.13",
   "big-pickle",
-  "ling-3.1-flash-free",
-  "longcat-2.5-preview-free",
+  "beam-free",
+  "flint-40b-free",
   "mimo-v2.6-flash-free",
-  "space-bunny-free",
-  "step-5-preview-free",
-  "jev-1.13-free",
-  "muse-spark-1.3-contributor-free",
-  "muse-spark-1.2-contributor-free",
   "nemotron-3.5-lightning-free",
+  "nemotron-3.5-super-vl-free",
 ])
   ZEN_PRICING[id] = rate(0, 0)

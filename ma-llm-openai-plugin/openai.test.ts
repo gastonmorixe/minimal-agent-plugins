@@ -93,13 +93,15 @@ describe("registerOpenAIModels", () => {
     expect(chat.capabilities.thinking.visible).toBe(false)
   })
 
-  it("registers gpt-6.1 Sol, gpt-6 Sol and gpt-6 Luna with model-card data", () => {
+  it("registers gpt-6.1 Sol, gpt-6.1 Terra, gpt-6 Sol and gpt-6 Luna with model-card data", () => {
     const reg = makeTestRegistry()
     const ids = registerOpenAIModels(reg.models)
     expect(ids).toEqual(
       expect.arrayContaining([
         "gpt-6.1-sol",
         "gpt-6.1-sol-chat",
+        "gpt-6.1-terra",
+        "gpt-6.1-terra-chat",
         "gpt-6-sol",
         "gpt-6-sol-chat",
         "gpt-6-luna",
@@ -136,6 +138,28 @@ describe("registerOpenAIModels", () => {
     expect(luna.pricing.inputUSD).toBe(0.1)
     expect(luna.pricing.outputUSD).toBe(0.5)
     expect(luna.knowledgeCutoff).toBe("2026-05-18")
+
+    const terra61 = reg.resolveModel("gpt-6.1-terra")
+    expect(terra61.surfaceId).toBe("openai-responses")
+    expect(terra61.capabilities.effort.levels).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ])
+    expect(terra61.capabilities.effort.default).toBe("medium")
+    expect(terra61.capabilities.contextWindow).toBe(1_050_000)
+    expect(terra61.pricing.inputUSD).toBe(1)
+    expect(terra61.pricing.outputUSD).toBe(5)
+    expect(terra61.pricing.cacheReadUSD).toBe(0.05)
+    expect(terra61.vendorIds?.firstParty).toBe("gpt-6.1-terra")
+    const terra61chat = reg.resolveModel("gpt-6.1-terra-chat")
+    expect(terra61chat.surfaceId).toBe("openai-chat-completions")
+    expect(terra61chat.vendorIds?.firstParty).toBe("gpt-6.1-terra")
+    expect(terra61chat.capabilities.tools.userDefined).toBe(false)
+    expect(terra61chat.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
   })
 
   it("registers gpt-5.6 Sol on the Responses surface with current capability + pricing data", () => {

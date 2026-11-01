@@ -1,10 +1,10 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the public OpenAI API catalog (refreshed 2026-09-08 via Codex live
- * `openai-chatgpt-oauth-4` + developers.openai.com, GPT-6.1 Sol / GPT-6 Sol /
- * GPT-6 Luna added 2026-09-29 from the model cards) for GPT-6 Astra, the
- * GPT-5.6 family, plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
+ * Mirrors the public OpenAI API catalog (refreshed 2026-11-01 via live
+ * `GET /v1/models` + developers.openai.com model card; GPT-6.1 Terra added
+ * from the 2026-11-01 card, GPT-6.1 Sol / GPT-6 Sol / GPT-6 Luna added
+ * 2026-09-29) for GPT-6 Astra, the GPT-5.6 family, plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
  * tables in `capabilities.ts` and `pricing.ts`.
  *
  * Dual-surface models (reachable on BOTH Chat Completions and the Responses
@@ -101,6 +101,8 @@ import {
   CAPS_GPT_5_RESPONSES,
   CAPS_GPT_6_1_SOL_CHAT,
   CAPS_GPT_6_1_SOL_RESPONSES,
+  CAPS_GPT_6_1_TERRA_CHAT,
+  CAPS_GPT_6_1_TERRA_RESPONSES,
   CAPS_GPT_6_ASTRA_CHAT,
   CAPS_GPT_6_ASTRA_RESPONSES,
   CAPS_GPT_6_LUNA_CHAT,
@@ -143,6 +145,7 @@ import {
   PRICING_GPT_5_NANO,
   PRICING_GPT_5_PRO,
   PRICING_GPT_6_1_SOL,
+  PRICING_GPT_6_1_TERRA,
   PRICING_GPT_6_ASTRA,
   PRICING_GPT_6_LUNA,
   PRICING_GPT_6_SOL,
@@ -223,8 +226,9 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     vendorIds: { firstParty: "gpt-6-astra" },
   })
 
-  // GPT-6.1 Sol (2026-09-29), GPT-6 Sol and GPT-6 Luna (2026-09-22).
-  // Sourced from developers.openai.com model cards on 2026-09-29.
+  // GPT-6.1 Sol (2026-09-29), GPT-6.1 Terra (2026-11-01), GPT-6 Sol and
+  // GPT-6 Luna (2026-09-22). Sol sourced 2026-09-29, Terra 2026-11-01 from
+  // developers.openai.com model cards.
   register({
     id: "gpt-6.1-sol",
     providerId: "openai",
@@ -248,6 +252,30 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_1_SOL,
     vendorIds: { firstParty: "gpt-6.1-sol" },
+  })
+  register({
+    id: "gpt-6.1-terra",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-6.1 Terra",
+    knowledgeCutoff: "2026-06-01",
+    tags: ["gpt-6", "balanced", "reasoning", "production"],
+    capabilities: CAPS_GPT_6_1_TERRA_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_1_TERRA,
+    vendorIds: { firstParty: "gpt-6.1-terra" },
+  })
+  register({
+    id: "gpt-6.1-terra-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-6.1 Terra (Chat Completions)",
+    knowledgeCutoff: "2026-06-01",
+    tags: ["gpt-6", "balanced", "chat"],
+    capabilities: CAPS_GPT_6_1_TERRA_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_1_TERRA,
+    vendorIds: { firstParty: "gpt-6.1-terra" },
   })
   register({
     id: "gpt-6-sol",

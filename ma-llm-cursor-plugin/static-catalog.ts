@@ -1,7 +1,7 @@
 /**
  * Generated from authenticated Cursor AvailableModels (parameterized).
  *
- * Source probe: 2026-09-29 via AvailableModels with
+ * Source probe: 2026-11-01 via AvailableModels with
  * use_model_parameters=true, include_hidden_models=true,
  * include_long_context_models=true, variants_will_be_shown_in_exploded_list=true.
  * Parents use API names (`grok-4.6`); exploded variant host ids keep legacy

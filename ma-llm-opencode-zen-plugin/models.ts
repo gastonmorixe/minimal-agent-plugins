@@ -1,4 +1,4 @@
-/** OpenCode Zen's complete live model registry. */
+/** OpenCode Zen's complete live model registry. Live check 2026-11-01: 78 ids. */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
@@ -71,8 +71,7 @@ const LIVE_MODEL_IDS = [
   "gemini-3.7-flash",
   "gemini-3.5-flash-lite",
   "gemini-3.5-flash",
-  "gemini-3.1-pro",
-  "gemini-3-flash",
+  "gemini-4-argon",
   "gpt-6.1-sol",
   "gpt-6-sol",
   "gpt-6-luna",
@@ -103,11 +102,13 @@ const LIVE_MODEL_IDS = [
   "grok-4.5",
   "muse-spark-1.3",
   "muse-spark-1.2",
+  "muse-wonder-1.0",
   "mistral-large-4",
   "deepseek-v4.1-flash",
+  "deepseek-v4.1-flash-free",
   "deepseek-v4-pro",
-  "deepseek-v4-flash",
   "glm-5.3-flash",
+  "glm-5.3-flash-free",
   "glm-5.3",
   "glm-5.2",
   "glm-5.1",
@@ -123,17 +124,12 @@ const LIVE_MODEL_IDS = [
   "qwen3.5-plus",
   "qwen3.8-max",
   "qwen3.8-flash",
-  "jev-1.13",
-  "step-5-preview-free",
-  "space-bunny-free",
-  "longcat-2.5-preview-free",
+  "beam-free",
+  "flint-40b-free",
   "mimo-v2.6-flash-free",
-  "ling-3.1-flash-free",
   "big-pickle",
-  "jev-1.13-free",
-  "muse-spark-1.3-contributor-free",
-  "muse-spark-1.2-contributor-free",
   "nemotron-3.5-lightning-free",
+  "nemotron-3.5-super-vl-free",
 ] as const
 
 function makeSpec(id: string): ZenModelSpec {

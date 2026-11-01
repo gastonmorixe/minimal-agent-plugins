@@ -29,7 +29,7 @@ function setup() {
 }
 
 const req: CanonicalRequest = {
-  modelId: "deepseek-v4-flash",
+  modelId: "deepseek-v4-pro",
   messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
 }
 
@@ -94,7 +94,7 @@ describe("opencodeAdapter.run non-2xx classification", () => {
   it("tags 429 rate_limit_error on the chat surface", async () => {
     setup()
     const body = JSON.stringify({ error: { code: "rate_limit_error", message: "slow down" } })
-    const err = await capture(run("deepseek-v4-flash", 429, body))
+    const err = await capture(run("deepseek-v4-pro", 429, body))
     expect(err).not.toBeNull()
     expect(err?.message).toContain("OpenCode Go API 429")
     expect(err?.streamErrorType).toBe("rate_limit_error")
@@ -122,7 +122,7 @@ describe("opencodeAdapter.run non-2xx classification", () => {
   it("leaves billing exhaustion terminal (retryable false, untagged)", async () => {
     setup()
     const body = JSON.stringify({ error: { code: "insufficient_quota", message: "broke" } })
-    const err = await capture(run("deepseek-v4-flash", 400, body))
+    const err = await capture(run("deepseek-v4-pro", 400, body))
     expect(err).not.toBeNull()
     expect(err?.streamErrorType).toBeUndefined()
     expect(err?.opts?.retryable).toBe(false)
@@ -133,7 +133,7 @@ describe("opencodeAdapter.run non-2xx classification", () => {
   it("treats 402 and Go usage limit codes as terminal billing", async () => {
     setup()
     const e402 = await capture(
-      run("deepseek-v4-flash", 402, '{"error":{"message":"Insufficient funds"}}'),
+      run("deepseek-v4-pro", 402, '{"error":{"message":"Insufficient funds"}}'),
     )
     expect(e402?.code).toBe("opencode.billing")
     expect(e402?.streamErrorType).toBeUndefined()
@@ -150,14 +150,12 @@ describe("opencodeAdapter.run non-2xx classification", () => {
 
   it("maps 426 and FreeTierError to terminal errors with hints", async () => {
     setup()
-    const e426 = await capture(
-      run("deepseek-v4-flash", 426, '{"error":{"type":"UpgradeRequired"}}'),
-    )
+    const e426 = await capture(run("deepseek-v4-pro", 426, '{"error":{"type":"UpgradeRequired"}}'))
     expect(e426?.code).toBe("opencode.upgrade_required")
     expect(e426?.hint).toContain("MINIMAL_AGENT_OPENCODE_VERSION")
     const gate = await capture(
       run(
-        "deepseek-v4-flash",
+        "deepseek-v4-pro",
         403,
         JSON.stringify({ type: "error", error: { type: "FreeTierError", message: "x" } }),
       ),
@@ -173,7 +171,7 @@ describe("opencode-go auth errors", () => {
     const body = JSON.stringify({
       error: { type: "authentication_error", code: "api_key_expired", message: "expired" },
     })
-    const err = await capture(run("deepseek-v4-flash", 401, body))
+    const err = await capture(run("deepseek-v4-pro", 401, body))
     expect(err?.code).toBe("opencode.auth")
     expect(err?.hint).toContain("ma provider opencode-go login")
     expect(err?.streamErrorType).toBeUndefined()
@@ -186,7 +184,7 @@ describe("opencode-go 401 with server_error body", () => {
     const body = JSON.stringify({
       error: { type: "server_error", message: "Upstream request failed: Invalid credential" },
     })
-    const err = await capture(run("deepseek-v4-flash", 401, body))
+    const err = await capture(run("deepseek-v4-pro", 401, body))
     expect(err?.streamErrorType).toBeUndefined()
     expect(err?.code).toBe("opencode.auth")
     expect(err?.hint).toContain("ma provider opencode-go login")
@@ -200,22 +198,22 @@ describe("opencode-go wire errors to error classes", () => {
   it("maps rate limits and overloads to transient, with Retry-After", async () => {
     setup()
     const limited = await capture(
-      run("deepseek-v4-flash", 429, wire("rate_limit_error"), { "retry-after": "5" }),
+      run("deepseek-v4-pro", 429, wire("rate_limit_error"), { "retry-after": "5" }),
     )
     expect(limited).toMatchObject({ errorClass: "transient", retryAfterMs: 5_000 })
-    const busy = await capture(run("deepseek-v4-flash", 503, wire("server_error")))
+    const busy = await capture(run("deepseek-v4-pro", 503, wire("server_error")))
     expect(busy?.errorClass).toBe("transient")
   })
 
   it("maps 401 to recoverable (refresh the credential)", async () => {
     setup()
-    const err = await capture(run("deepseek-v4-flash", 401, wire("api_key_expired")))
+    const err = await capture(run("deepseek-v4-pro", 401, wire("api_key_expired")))
     expect(err).toMatchObject({ errorClass: "recoverable", recovery: "refresh_credential" })
   })
 
   it("maps a context overflow to recoverable (compact)", async () => {
     setup()
-    const err = await capture(run("deepseek-v4-flash", 400, wire("context_length_exceeded")))
+    const err = await capture(run("deepseek-v4-pro", 400, wire("context_length_exceeded")))
     expect(err).toMatchObject({ errorClass: "recoverable", recovery: "compact" })
   })
 
@@ -227,7 +225,7 @@ describe("opencode-go wire errors to error classes", () => {
       [400, "invalid_request_error"],
       [404, "not_found_error"],
     ] as const) {
-      const err = await capture(run("deepseek-v4-flash", status, wire(code)))
+      const err = await capture(run("deepseek-v4-pro", status, wire(code)))
       expect(err?.errorClass).toBe("permanent")
     }
   })
