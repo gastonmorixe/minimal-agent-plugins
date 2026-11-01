@@ -631,8 +631,11 @@ const CASES: Case[] = [
     (x) => {
       fail(x, "too-big")
       if (!x.r.ok) expect(x.r.rawScan.truncated).toBe(true)
-      // H bound is 5 ms. Loose gate (review minor): 50 ms.
-      expect(x.r.stats.micros).toBeLessThan(50_000)
+      // The size guard bails out before the parse: no words, no depth.
+      // A wall-clock bound here (50 ms) failed under CPU load with no real
+      // slowdown. robust.test.ts times this path with a work count instead.
+      expect(x.r.stats.words).toBe(0)
+      expect(x.r.stats.maxDepth).toBe(0)
     },
   ],
   ["89 max-words", `echo${" a".repeat(20000)}`, (x) => fail(x, "too-many-words")],
