@@ -4,19 +4,21 @@
   "version": "0.2.0",
   "description": "Captures <ma::emit::interleave-thinking> spans in assistant text and drops them from the user-visible output stream. Ships disabled (manifest.enabled = false). Opt in with `plugins[\"interleave-thinking\"].enabled = true` in ~/.minimal-agent/config.jsonc.",
   "enabled": false,
-  "tuis": [
-    {
-      "id": "interleave_thinking",
-      "trigger": {
-        "type": "inline_tag",
-        "tag": "interleave-thinking"
-      },
-      "handler": {
-        "type": "module",
-        "path": "./handlers/interleave.ts",
-        "export": "default"
-      },
-      "interactive": false
-    }
-  ]
+  "headless": {
+    "tools": [
+      {
+        "id": "interleave_thinking",
+        "trigger": {
+          "type": "inline_tag",
+          "tag": "interleave-thinking"
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/interleave.ts",
+          "export": "default"
+        },
+        "interactive": false
+      }
+    ]
+  }
 }

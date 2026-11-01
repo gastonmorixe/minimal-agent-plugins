@@ -3,100 +3,102 @@
   "name": "Fetch",
   "version": "0.1.0",
   "description": "Fetch web pages with a real JS-rendering headless browser. Tool: Fetch.",
-  "setup": {
-    "type": "module",
-    "path": "./setup.ts"
-  },
-  "hooks": [
-    {
-      "id": "on_agent_will_stop",
-      "channel": "agent.willStop",
-      "handler": {
-        "type": "module",
-        "path": "./handlers/on_agent_will_stop.ts",
-        "export": "default"
-      },
-      "priority": 20,
-      "timeoutMs": 2000
-    }
-  ],
   "permissions": ["hooks:agent.willStop"],
-  "tuis": [
-    {
-      "id": "fetch",
-      "trigger": {
-        "type": "tool",
-        "tool": {
-          "name": "Fetch",
-          "description": "Fetch a webpage and return its rendered content. Runs the page through a real headless browser (JS executes, dynamic content loads) and returns the result in the requested format. Prefer this over Bash+curl when the page needs JavaScript to render or when you need clean markdown for reading. Returns page text in `content`. Binary responses (PDF, images, etc.) are withheld by default and summarized as `<ma::agent::binary-result .../>` unless you pass `binary: true`.",
-          "mayReturnBinary": true,
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string",
-                "description": "The page URL. Must start with http:// or https://. Max 4096 chars."
+  "headless": {
+    "setup": {
+      "type": "module",
+      "path": "./setup.ts"
+    },
+    "hooks": [
+      {
+        "id": "on_agent_will_stop",
+        "channel": "agent.willStop",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_agent_will_stop.ts",
+          "export": "default"
+        },
+        "priority": 20,
+        "timeoutMs": 2000
+      }
+    ],
+    "tools": [
+      {
+        "id": "fetch",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "Fetch",
+            "description": "Fetch a webpage and return its rendered content. Runs the page through a real headless browser (JS executes, dynamic content loads) and returns the result in the requested format. Prefer this over Bash+curl when the page needs JavaScript to render or when you need clean markdown for reading. Returns page text in `content`. Binary responses (PDF, images, etc.) are withheld by default and summarized as `<ma::agent::binary-result .../>` unless you pass `binary: true`.",
+            "mayReturnBinary": true,
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "description": "The page URL. Must start with http:// or https://. Max 4096 chars."
+                },
+                "format": {
+                  "type": "string",
+                  "enum": ["markdown", "text", "html", "links", "accessibility", "original"],
+                  "default": "markdown",
+                  "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text. 'html' is rendered HTML. 'links' lists links. 'accessibility' returns a CDP-compatible accessibility tree with document-scoped node IDs and explicitly synthetic bounds for agent inspection. 'original' streams the raw response body. Binary bodies are withheld unless binary=true."
+                },
+                "selector": {
+                  "type": "string",
+                  "description": "Optional CSS selector. The browser waits for this element before returning. Useful for SPAs where the interesting content arrives after initial load."
+                },
+                "eval": {
+                  "type": "string",
+                  "description": "Optional JavaScript expression to evaluate in the page context. By default its value is returned instead of the page body. Use eval_mode='page' to evaluate first and then return the resulting page dump."
+                },
+                "eval_mode": {
+                  "type": "string",
+                  "enum": ["value", "page"],
+                  "description": "Optional return mode for eval. When omitted, eval alone returns its value while selector plus eval implies 'page'. 'value' returns the expression result. 'page' evaluates, settles page work, then returns the requested format."
+                },
+                "wait_until": {
+                  "type": "string",
+                  "enum": ["load", "domcontentloaded", "networkidle0"],
+                  "default": "domcontentloaded",
+                  "description": "When to consider navigation complete. If omitted, the plugin uses its configured default, which is 'domcontentloaded' unless overridden. 'load' waits for the window load event. 'domcontentloaded' captures the parsed document sooner. 'networkidle0' waits for 500ms without network activity and is best for SPAs that load content asynchronously."
+                },
+                "timeout_sec": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 120,
+                  "default": 30,
+                  "description": "Navigation timeout in seconds. Bump this for slow or dynamic pages."
+                },
+                "cleanup": {
+                  "type": "string",
+                  "enum": ["off", "basic", "aggressive"],
+                  "default": "basic",
+                  "description": "Whitespace cleanup for `markdown`/`text` only (no-op for html/links/original). 'basic' (default): rstrip per line, collapse 2+ blank runs, trim ends. Safe paragraph separation preserved. 'aggressive': basic + fold unicode whitespace (NBSP, ideographic space, etc.) to ASCII + strip zero-width chars (ZWSP, BOM, ZWJ) + drop all remaining blank lines. Use 'aggressive' when the page is noisy (Bloomberg / Wikipedia / GitHub nav lists wrap every block in blank lines, ~30%+ of the file). 'off' = passthrough, only use when verbatim bytes matter. The pre-cleanup raw bytes are always preserved at the blob path in the `<ma::agent::raw-output .../>` footer."
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
+                  "description": "Optional session name to keep cookies + localStorage alive across calls. Use the same name for related fetches and the second call comes back logged in. Names are alnum + `-`/`_`, max 64 chars. The plugin sandboxes them under `~/.minimal-agent/sessions/fetch/<name>/` so the model cannot escape to arbitrary disk paths. Use when a workflow needs to stay logged in (Twitter scrape across pages, LinkedIn search across companies, etc.). First call logs in via `eval` form-submit, subsequent calls reuse the saved session. Omit for stateless one-shot fetches: the default is no persistence. Pass an empty string to override a config-default session for one call."
+                }
               },
-              "format": {
-                "type": "string",
-                "enum": ["markdown", "text", "html", "links", "accessibility", "original"],
-                "default": "markdown",
-                "description": "Output format. 'markdown' is the default and best for reading articles/docs. 'text' is plain text. 'html' is rendered HTML. 'links' lists links. 'accessibility' returns a CDP-compatible accessibility tree with document-scoped node IDs and explicitly synthetic bounds for agent inspection. 'original' streams the raw response body. Binary bodies are withheld unless binary=true."
-              },
-              "selector": {
-                "type": "string",
-                "description": "Optional CSS selector. The browser waits for this element before returning. Useful for SPAs where the interesting content arrives after initial load."
-              },
-              "eval": {
-                "type": "string",
-                "description": "Optional JavaScript expression to evaluate in the page context. By default its value is returned instead of the page body. Use eval_mode='page' to evaluate first and then return the resulting page dump."
-              },
-              "eval_mode": {
-                "type": "string",
-                "enum": ["value", "page"],
-                "description": "Optional return mode for eval. When omitted, eval alone returns its value while selector plus eval implies 'page'. 'value' returns the expression result. 'page' evaluates, settles page work, then returns the requested format."
-              },
-              "wait_until": {
-                "type": "string",
-                "enum": ["load", "domcontentloaded", "networkidle0"],
-                "default": "domcontentloaded",
-                "description": "When to consider navigation complete. If omitted, the plugin uses its configured default, which is 'domcontentloaded' unless overridden. 'load' waits for the window load event. 'domcontentloaded' captures the parsed document sooner. 'networkidle0' waits for 500ms without network activity and is best for SPAs that load content asynchronously."
-              },
-              "timeout_sec": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 120,
-                "default": 30,
-                "description": "Navigation timeout in seconds. Bump this for slow or dynamic pages."
-              },
-              "cleanup": {
-                "type": "string",
-                "enum": ["off", "basic", "aggressive"],
-                "default": "basic",
-                "description": "Whitespace cleanup for `markdown`/`text` only (no-op for html/links/original). 'basic' (default): rstrip per line, collapse 2+ blank runs, trim ends. Safe paragraph separation preserved. 'aggressive': basic + fold unicode whitespace (NBSP, ideographic space, etc.) to ASCII + strip zero-width chars (ZWSP, BOM, ZWJ) + drop all remaining blank lines. Use 'aggressive' when the page is noisy (Bloomberg / Wikipedia / GitHub nav lists wrap every block in blank lines, ~30%+ of the file). 'off' = passthrough, only use when verbatim bytes matter. The pre-cleanup raw bytes are always preserved at the blob path in the `<ma::agent::raw-output .../>` footer."
-              },
-              "session": {
-                "type": "string",
-                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
-                "description": "Optional session name to keep cookies + localStorage alive across calls. Use the same name for related fetches and the second call comes back logged in. Names are alnum + `-`/`_`, max 64 chars. The plugin sandboxes them under `~/.minimal-agent/sessions/fetch/<name>/` so the model cannot escape to arbitrary disk paths. Use when a workflow needs to stay logged in (Twitter scrape across pages, LinkedIn search across companies, etc.). First call logs in via `eval` form-submit, subsequent calls reuse the saved session. Omit for stateless one-shot fetches: the default is no persistence. Pass an empty string to override a config-default session for one call."
-              }
+              "required": ["url"],
+              "additionalProperties": false
             },
-            "required": ["url"],
-            "additionalProperties": false
-          },
-          "explicitName": true,
-          "reason": "perfect collision: plugin IS the tool name"
-        }
-      },
-      "handler": {
-        "type": "module",
-        "path": "./handlers/fetch.ts",
-        "export": "default"
-      },
-      "interactive": false,
-      "icon": "⤓",
-      "color": "sky",
-      "headerKey": "url"
-    }
-  ]
+            "explicitName": true,
+            "reason": "perfect collision: plugin IS the tool name"
+          }
+        },
+        "handler": {
+          "type": "module",
+          "path": "./handlers/fetch.ts",
+          "export": "default"
+        },
+        "interactive": false,
+        "icon": "⤓",
+        "color": "sky",
+        "headerKey": "url"
+      }
+    ]
+  }
 }

@@ -4,39 +4,43 @@
   "version": "0.1.0",
   "description": "Real-time tokens-per-second readout, inline on the quota footer line. Subscribes to the host's llm.outputDelta stream telemetry, keeps a sliding window, and renders the sustained decode rate. Requires a companion footer plugin (quota-status) to be visible.",
   "capabilities": [],
-  "liveAreaSlots": [
-    {
-      "id": "tps",
-      "handler": {
-        "type": "module",
-        "path": "./handler.ts",
-        "export": "default"
+  "headless": {
+    "events": [
+      {
+        "id": "on_output_delta",
+        "on": "llm.outputDelta",
+        "handler": {
+          "type": "module",
+          "path": "./on_output_delta.ts",
+          "export": "default"
+        }
       },
-      "position": "footer",
-      "refreshMs": 1000,
-      "timeoutMs": 800,
-      "placeholder": "",
-      "refreshOn": ["llm.outputDelta", "llm.outputEnd"]
-    }
-  ],
-  "events": [
-    {
-      "id": "on_output_delta",
-      "on": "llm.outputDelta",
-      "handler": {
-        "type": "module",
-        "path": "./on_output_delta.ts",
-        "export": "default"
+      {
+        "id": "on_output_end",
+        "on": "llm.outputEnd",
+        "handler": {
+          "type": "module",
+          "path": "./on_output_end.ts",
+          "export": "default"
+        }
       }
-    },
-    {
-      "id": "on_output_end",
-      "on": "llm.outputEnd",
-      "handler": {
-        "type": "module",
-        "path": "./on_output_end.ts",
-        "export": "default"
+    ]
+  },
+  "ui": {
+    "liveAreaSlots": [
+      {
+        "id": "tps",
+        "handler": {
+          "type": "module",
+          "path": "./handler.ts",
+          "export": "default"
+        },
+        "position": "footer",
+        "refreshMs": 1000,
+        "timeoutMs": 800,
+        "placeholder": "",
+        "refreshOn": ["llm.outputDelta", "llm.outputEnd"]
       }
-    }
-  ]
+    ]
+  }
 }

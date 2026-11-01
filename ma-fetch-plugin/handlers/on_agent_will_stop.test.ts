@@ -8,7 +8,7 @@ import { shutdownPersistentWorker } from "../lib/persistent-worker.ts"
 import handler from "./on_agent_will_stop.ts"
 
 interface Manifest {
-  hooks?: { id: string; channel?: string; handler?: { path?: string } }[]
+  headless?: { hooks?: { id: string; channel?: string; handler?: { path?: string } }[] }
   permissions?: string[]
 }
 
@@ -18,7 +18,7 @@ const MANIFEST = JSON.parse(
 
 describe("ma-fetch agent.willStop", () => {
   test("manifest wires shutdown on agent.willStop", () => {
-    const hook = MANIFEST.hooks?.find((h) => h.channel === "agent.willStop")
+    const hook = MANIFEST.headless?.hooks?.find((h) => h.channel === "agent.willStop")
     expect(hook?.id).toBe("on_agent_will_stop")
     expect(hook?.handler?.path).toBe("./handlers/on_agent_will_stop.ts")
     expect(MANIFEST.permissions).toContain("hooks:agent.willStop")

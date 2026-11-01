@@ -125,13 +125,22 @@ describe("status handlers", () => {
 })
 
 describe("manifest", () => {
-  const manifest = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf8")) as {
+  const raw = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf8")) as {
     id: string
     enabled: boolean
-    hooks: { channel: string; handler: { path: string } }[]
-    tuis: { trigger: { tool: { name: string } }; handler: { path: string } }[]
-    commands: { name: string; handler: { path: string } }[]
+    headless: {
+      hooks: { channel: string; handler: { path: string } }[]
+      tools: { trigger: { tool: { name: string } }; handler: { path: string } }[]
+      commands: { name: string; handler: { path: string } }[]
+    }
     permissions: string[]
+  }
+  /** Flat view of the split manifest (S31). */
+  const manifest = {
+    ...raw,
+    hooks: raw.headless.hooks,
+    tuis: raw.headless.tools,
+    commands: raw.headless.commands,
   }
 
   test("id security, disabled", () => {

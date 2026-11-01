@@ -23,19 +23,26 @@ import type { ToolAvailabilityContext } from "./lib/host-types.ts"
 import { ENV_RESULT_PATH } from "./lib/spawn.ts"
 
 interface Manifest {
-  tuis: {
-    id: string
-    trigger: { tool?: { name?: string } }
-    handler: { path: string }
-  }[]
-  liveAreaSlots?: { id: string; refreshMs?: number }[]
-  hooks?: { id: string; channel?: string }[]
+  headless: {
+    tools: {
+      id: string
+      trigger: { tool?: { name?: string } }
+      handler: { path: string }
+    }[]
+    hooks?: { id: string; channel?: string }[]
+  }
+  ui?: { liveAreaSlots?: { id: string; refreshMs?: number }[] }
   permissions?: string[]
 }
 
-const MANIFEST = JSON.parse(
-  readFileSync(join(import.meta.dir, "manifest.json"), "utf-8"),
-) as Manifest
+const RAW = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")) as Manifest
+/** Flat view of the split manifest (S31): headless tools and hooks, ui slots. */
+const MANIFEST = {
+  tuis: RAW.headless.tools,
+  hooks: RAW.headless.hooks,
+  liveAreaSlots: RAW.ui?.liveAreaSlots,
+  permissions: RAW.permissions,
+}
 
 function toolNames(): string[] {
   return MANIFEST.tuis.map((t) => t.trigger.tool?.name).filter((n): n is string => Boolean(n))
