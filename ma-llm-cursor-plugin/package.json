@@ -17,6 +17,6 @@
     "generate:static-catalog": "bun run scripts/generate-static-catalog.ts"
   },
   "peerDependencies": {
-    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#b94f184c0f3d54c31f8af3f629ff813e9db86c1e"
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#438b211f02bb714fba7515a0b6c1a13f02915362"
   }
 }
