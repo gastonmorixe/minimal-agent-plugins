@@ -8,4 +8,4 @@
  * @module diff-view/handlers/render
  */
 
-export { renderUnifiedDiff } from "../lib/unified-diff.ts"
+export { renderUnifiedDiff } from "@minimal-agent/core/plugin-api/utils/unified-diff"

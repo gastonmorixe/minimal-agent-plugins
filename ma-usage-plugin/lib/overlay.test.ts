@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
+import { emptyUsageReports } from "@minimal-agent/core/plugin-api/utils/usage-report"
+
 import {
   DEFAULT_PERIOD_INDEX,
   jumpIndex,
@@ -9,7 +11,6 @@ import {
   wrapIndex,
 } from "./overlay.ts"
 import { stripAnsi } from "./term-width.ts"
-import { emptyUsageReports } from "./usage-report.ts"
 
 describe("index math", () => {
   it("wraps around the period range", () => {

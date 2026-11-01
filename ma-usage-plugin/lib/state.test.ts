@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test"
 
+import { emptyUsageReports } from "@minimal-agent/core/plugin-api/utils/usage-report"
+
 import { DEFAULT_PERIOD_INDEX } from "./overlay.ts"
 import { _resetForTests, closeOverlay, getOverlayState, openOverlay } from "./state.ts"
-import { emptyUsageReports } from "./usage-report.ts"
 
 afterEach(() => _resetForTests())
 

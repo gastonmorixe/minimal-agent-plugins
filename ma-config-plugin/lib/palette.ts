@@ -8,8 +8,9 @@
  * @module config/lib/palette
  */
 
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+
 import { ANSI_CODES, color } from "./ansi.ts"
-import { PALETTE } from "./palette-tokens.ts"
 import { displayWidth, stripAnsi, truncateDisplayWidth } from "./term-width.ts"
 
 export const SGR = {

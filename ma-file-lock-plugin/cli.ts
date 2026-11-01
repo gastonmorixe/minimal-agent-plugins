@@ -28,6 +28,8 @@
 import { hostname } from "node:os"
 import { isAbsolute } from "node:path"
 
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
 import {
   type RunDeps,
   runClear,
@@ -37,7 +39,6 @@ import {
 } from "./handlers/lock_status.ts"
 import { configPath as userConfigPath } from "./lib/config-path.ts"
 import { DEFAULT_STALE_AFTER_MS } from "./lib/file-lock.ts"
-import { parseJsonc } from "./lib/jsonc.ts"
 
 function readStaleAfterMs(): number {
   try {

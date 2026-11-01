@@ -19,11 +19,12 @@
  * @module usage/handlers/cmd_usage
  */
 
+import { parseUsagePeriod, USAGE_PERIODS } from "@minimal-agent/core/plugin-api/utils/usage-report"
+
 import type { CommandContext, CommandResult } from "../lib/host-types.ts"
 import { DEFAULT_PERIOD_INDEX, renderOverlayFrame } from "../lib/overlay.ts"
 import { openOverlay, USAGE_OVERLAY_OWNER } from "../lib/state.ts"
 import { renderUsageReport } from "../lib/usage-render.ts"
-import { parseUsagePeriod, USAGE_PERIODS } from "../lib/usage-report.ts"
 
 const MAX_ROWS = 6
 

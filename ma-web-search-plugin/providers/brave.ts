@@ -21,7 +21,7 @@
  * @module web-search/providers/brave
  */
 
-import { type RetryOptions, retry } from "../lib/retry.ts"
+import { type RetryOptions, retry } from "@minimal-agent/core/plugin-api/utils/retry"
 
 import type {
   ProviderConfig,

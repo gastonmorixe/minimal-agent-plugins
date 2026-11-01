@@ -10,9 +10,10 @@
  * @module usage/lib/overlay
  */
 
+import { USAGE_PERIODS } from "@minimal-agent/core/plugin-api/utils/usage-report"
+
 import type { UsagePeriod, UsageReport } from "./host-types.ts"
 import { renderUsageOverlay } from "./usage-render.ts"
-import { USAGE_PERIODS } from "./usage-report.ts"
 
 /** Default selected index: "All time" (last in the catalog). */
 export const DEFAULT_PERIOD_INDEX = USAGE_PERIODS.length - 1

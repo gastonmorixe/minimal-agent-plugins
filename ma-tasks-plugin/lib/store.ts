@@ -44,7 +44,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
-import { resolveSessionsDir } from "./agent-paths.ts"
+import { resolveSessionsDir } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import {
   createTasksMeta,
   isSubtaskId,
