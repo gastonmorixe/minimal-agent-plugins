@@ -44,8 +44,9 @@
  * @module tasks/lib/render
  */
 
-import { ANSI_CODES, color } from "./ansi.ts"
-import { PALETTE } from "./palette.ts"
+import { ANSI_CODES, color } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+
 import { localIsoDateTime, type Task, type TaskStatus } from "./parse.ts"
 import type { Stats, View } from "./store.ts"
 

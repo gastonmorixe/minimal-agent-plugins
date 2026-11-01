@@ -7,8 +7,9 @@
  * @module sub-agents/lib/style
  */
 
-import { ANSI_CODES, color } from "./ansi.ts"
-import { PALETTE } from "./palette.ts"
+import { ANSI_CODES, color } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+
 import type { SubagentStatus } from "./types.ts"
 
 export { color }

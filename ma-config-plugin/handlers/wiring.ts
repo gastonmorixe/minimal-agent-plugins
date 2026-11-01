@@ -10,7 +10,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { resolveAgentHome } from "../lib/agent-paths.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import type { DiscoverDeps } from "../lib/discovery.ts"
 import type { FsDeps } from "../lib/model.ts"
 

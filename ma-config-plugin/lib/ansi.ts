@@ -10,7 +10,7 @@
  * @module ansi
  */
 
-import { FG_RESET, PALETTE } from "./palette-tokens.ts"
+import { FG_RESET, PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
 
 export type AnsiWrapper = (s: string) => string
 

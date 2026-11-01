@@ -12,9 +12,14 @@
  * @module usage/lib/host-types
  */
 
-export type { UsageBreakdownRow, UsagePeriod, UsageReport, UsageTotals } from "./usage-report.ts"
+export type {
+  UsageBreakdownRow,
+  UsagePeriod,
+  UsageReport,
+  UsageTotals,
+} from "@minimal-agent/core/plugin-api/utils/usage-report"
 
-import type { UsagePeriod, UsageReport } from "./usage-report.ts"
+import type { UsagePeriod, UsageReport } from "@minimal-agent/core/plugin-api/utils/usage-report"
 
 /** Fire-and-forget emit onto the shared plugin event bus. */
 export type EmitFn = (channel: string, payload?: unknown) => void

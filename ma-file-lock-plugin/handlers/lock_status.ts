@@ -35,7 +35,9 @@ import { existsSync, unlinkSync } from "node:fs"
 import { hostname } from "node:os"
 import { isAbsolute, resolve } from "node:path"
 
-import { ansiStyle as c } from "../lib/ansi.ts"
+import { ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
 import {
   DEFAULT_STALE_AFTER_MS,
   defaultPidAlive,
@@ -487,8 +489,7 @@ function resolveStaleAfterMs(_ctx: TUIContext): number {
     const fs = require("node:fs") as typeof import("node:fs")
     if (!fs.existsSync(path)) return DEFAULT_STALE_AFTER_MS
     const raw = fs.readFileSync(path, "utf-8")
-    const jsonc = require("../lib/jsonc.ts") as typeof import("../lib/jsonc.ts")
-    const parsed = jsonc.parseJsonc(raw) as Record<string, unknown> | null
+    const parsed = parseJsonc(raw) as Record<string, unknown> | null
     if (!parsed || typeof parsed !== "object") return DEFAULT_STALE_AFTER_MS
     const plugins = (parsed as Record<string, unknown>).plugins as
       | Record<string, unknown>

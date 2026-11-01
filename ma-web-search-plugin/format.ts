@@ -19,8 +19,9 @@
  * @module web-search/format
  */
 
-import { ANSI_CODES, ansiStyle as c } from "./lib/ansi.ts"
-import { PALETTE } from "./lib/palette.ts"
+import { ANSI_CODES, ansiStyle as c } from "@minimal-agent/core/plugin-api/utils/ansi"
+import { PALETTE } from "@minimal-agent/core/plugin-api/utils/palette"
+
 import type { SearchHit, SearchResponse } from "./providers/types.ts"
 
 const TITLE_MAX = 120

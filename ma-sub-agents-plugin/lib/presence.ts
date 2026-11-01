@@ -17,7 +17,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveAgentHome } from "./agent-paths.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+
 import { type SubagentRecord, type SubagentStatus } from "./types.ts"
 
 /** Liveness flavor of a presence row. `active` = the agent is running. */

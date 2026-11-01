@@ -39,8 +39,9 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { resolveAgentHome } from "./lib/agent-paths.ts"
-import { parseJsonc } from "./lib/jsonc.ts"
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
 import type { ProviderConfig, SearchType } from "./providers/types.ts"
 
 export interface WebSearchDefaults {
