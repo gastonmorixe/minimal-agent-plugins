@@ -18,12 +18,21 @@
  * tool call can be asked about. Then `session/new` writes a warning to
  * stderr, and every `session/prompt` fails with a JSON-RPC error before
  * the model runs, so no tool runs without approval. The process and the
- * session stay open.
+ * session stay open. `--approval-timeout-ms <n>` sets the gate deadline
+ * (default 10 min). A bad value is a startup error: the handler writes it
+ * to stderr and returns exit code 2 before it reads stdin.
+ *
+ * `session/set_config_option` that changes state also pushes
+ * `config_option_update` with the complete list. A set to the current
+ * value changes nothing and pushes nothing.
  *
  * Deferred: `session/load` / `session/list` / plan / image input.
  *
  * @module host-mode
  */
+
+import { realpathSync } from "node:fs"
+import { resolve } from "node:path"
 
 import type {
   HostModeContext,
@@ -36,6 +45,8 @@ import { createSessionEncoder, type SessionEncoder } from "./encoder.ts"
 import { clientSupportsNotices } from "./notices.ts"
 import {
   createPermissionGate,
+  type HostModeArgs,
+  HostModeArgsError,
   hookRegistered,
   type PermissionGate,
   parseHostModeArgs,
@@ -93,6 +104,19 @@ function optionalString(params: Record<string, unknown>, key: string, method: st
   return v
 }
 
+/**
+ * The real path of `dir`, so a symlink and its target compare equal (on
+ * macOS, /var/folders/... is a symlink to /private/var/...). A path that
+ * does not exist keeps its resolved form.
+ */
+function samePathKey(dir: string): string {
+  try {
+    return realpathSync(dir)
+  } catch {
+    return resolve(dir)
+  }
+}
+
 const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> => {
   let session: HostSession | undefined
   let encoder: SessionEncoder | undefined
@@ -100,9 +124,18 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
   // Stored at `initialize`: send `notice` updates only when the client
   // advertised `clientCapabilities.session.notices`.
   let clientNotices = false
-  const args = parseHostModeArgs(ctx.argv)
+  let args: HostModeArgs
+  try {
+    args = parseHostModeArgs(ctx.argv)
+  } catch (e) {
+    if (!(e instanceof HostModeArgsError)) throw e
+    ctx.stderr.write(`acp: error: ${e.message}\n`)
+    return 2
+  }
   if (args.unknown.length > 0)
     ctx.log.warn("acp", `ignored unknown args: ${args.unknown.join(" ")}`)
+  if (args.approvalTimeoutSet && !args.approval)
+    ctx.log.warn("acp", "--approval-timeout-ms has no effect without --approval")
   // Set at `session/new` only when approval is on.
   let gate: PermissionGate | undefined
   // True when approval is on but core did not load the gate hook.
@@ -143,7 +176,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
             )
           }
           const cwd = optionalString(paramsObject(rawParams, "session/new"), "cwd", "session/new")
-          if (cwd !== undefined && cwd !== ctx.cwd) {
+          if (cwd !== undefined && cwd !== ctx.cwd && samePathKey(cwd) !== samePathKey(ctx.cwd)) {
             throw new RpcError(
               RPC_ERROR.invalidParams,
               `this process is fixed to cwd ${ctx.cwd}; a session with another cwd needs its own process`,
@@ -166,6 +199,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
             gate = createPermissionGate({
               request: (method, params, signal) => channel.request(method, params, signal),
               sessionId: () => session?.sessionId,
+              deadlineMs: args.approvalTimeoutMs,
               // Send the `tool_call` update before the request. A call inside
               // a worker (`agentId`) has no update in this stream: do not wait.
               beforeRequest: (payload) =>
@@ -183,7 +217,11 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
           const params = paramsObject(rawParams, method)
           requireSession(params.sessionId)
           const configId = optionalString(params, "configId", method)
-          return { configOptions: setConfigOption(ctx.runtime, configId, params.value) }
+          const before = JSON.stringify(buildConfigOptions(ctx.runtime))
+          const configOptions = setConfigOption(ctx.runtime, configId, params.value)
+          // Push the new list only when the state changed.
+          if (JSON.stringify(configOptions) !== before) encoder?.pushConfigOptions()
+          return { configOptions }
         },
         "session/prompt": async (rawParams) => {
           const params = paramsObject(rawParams, "session/prompt")

@@ -31,6 +31,21 @@ The operator sets it in the editor's agent command. It is a host-mode argument
 (the args after `--host-mode acp` go to the plugin). The client cannot turn it
 on or off over the wire in this version.
 
+### Deadline
+
+The gate waits 10 minutes for an answer by default. Set another deadline in
+milliseconds with `--approval-timeout-ms` after `--host-mode acp`:
+
+```sh
+minimal-agent --host-mode acp --approval --approval-timeout-ms 30000
+```
+
+`--approval-timeout-ms=30000` also works. The value must be a positive integer
+(1 to 2147483647). Any other value is a startup error: the agent writes
+`acp: error: --approval-timeout-ms must be a positive integer ...` to stderr,
+writes nothing to stdout, and exits with code 2. Without `--approval`, the
+flag has no effect (the agent logs a warning).
+
 ### Which tools
 
 When the gate is on, it asks before **every** tool call. The ACP spec v3
@@ -71,7 +86,8 @@ Each of these denies the one tool call and nothing else:
 - `session/cancel` while the request waits,
 - outcome `cancelled`,
 - an unknown option id, or a malformed answer,
-- no answer within the gate's own deadline (10 minutes).
+- no answer within the gate's own deadline (10 minutes, or the
+  `--approval-timeout-ms` value).
 
 A denial is a tool error for the model, with a reason that starts with
 `Tool call denied by the ACP approval gate`. The turn continues. A denial never
@@ -90,13 +106,29 @@ stderr. Each `session/prompt` then fails with a JSON-RPC error (`-32603`) that
 says `the ACP approval gate failed to load`, before the model runs. So no tool
 runs without approval. The process and the session stay open.
 
+## Config options (model, effort)
+
+`session/set_config_option` returns the complete option list. When the set
+changes state, the agent also sends a `config_option_update` with the same
+list. A set to the current value changes nothing and sends no update. A new
+model applies from the next model request. The next `usage_update` shows the
+context window of the new model as `size`.
+
+## session/new cwd
+
+One process serves one cwd. `session/new` accepts a `cwd` that is the process
+cwd or a symlink to it (on macOS, `/var/folders/...` is a symlink to
+`/private/var/...`). Another dir is a JSON-RPC `-32602` error.
+
 ## Tests
 
 - `permission.test.ts`: the gate in process (answers, failures, deadline,
   cancel, per-name memory for kind `other`).
 - `acp-host.e2e.test.ts`: spawns the real agent in ACP host mode against a
   local mock model. It needs the sibling `../minimal-agent-cli` checkout with
-  its installed core, and skips with a printed reason without it.
+  its installed core, and skips with a printed reason without it. The model
+  switch case loads the provider fixture `__fixtures__/two-models-provider`
+  (two models with different context windows).
 
 The `failClosed` hook flag needs core 5b7342c or later. An older core rejects
 the manifest key.

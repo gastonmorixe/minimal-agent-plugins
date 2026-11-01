@@ -71,6 +71,19 @@ describe("setConfigOption", () => {
     expect(rt.effort).toBeUndefined()
   })
 
+  it("does nothing for the current value: no setter call, the same list", () => {
+    const rt = createFakeRuntime({ model: "alpha", effort: "low" })
+    const before = buildConfigOptions(rt)
+    let calls = 0
+    const setModel = rt.setModel.bind(rt)
+    rt.setModel = (id) => {
+      calls += 1
+      setModel(id)
+    }
+    expect(setConfigOption(rt, "model", "alpha")).toEqual(before)
+    expect(calls).toBe(0)
+  })
+
   it("sets effort", () => {
     const rt = createFakeRuntime({ model: "alpha" })
     const opts = setConfigOption(rt, "effort", "low")

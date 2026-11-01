@@ -22,8 +22,11 @@ export interface Msg {
   readonly error?: { readonly code: number; readonly message: string }
 }
 
-/** Start the handler. `end()` closes stdin (EOF). `abort` is the context signal. */
-export function startInMemoryHost(rt: FakeRuntime) {
+/**
+ * Start the handler. `end()` closes stdin (EOF). `abort` is the context
+ * signal. `cwd` is the process cwd (default `/work`).
+ */
+export function startInMemoryHost(rt: FakeRuntime, cwd = "/work") {
   const queue: string[] = []
   let wake: (() => void) | undefined
   let ended = false
@@ -47,7 +50,7 @@ export function startInMemoryHost(rt: FakeRuntime) {
     stdout: { write: (s: string) => out.push(s) },
     stderr: { write: noop },
     abort: abort.signal,
-    cwd: "/work",
+    cwd,
     env: {},
     log: { debug: noop, info: noop, warn: noop, error: noop },
     runtime: rt,
