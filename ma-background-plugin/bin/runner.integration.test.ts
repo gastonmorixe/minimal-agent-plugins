@@ -141,9 +141,13 @@ describe("runner: harness-death via stdin EOF (the hard requirement)", () => {
     const marker = join(dir, "alive")
     const command = `bash -c 'while true; do touch ${marker}; sleep 0.2; done' & echo $! > ${join(dir, "gcpid")}; wait`
     const { proc, statusPath } = spawnRunner({ command })
-    await waitFor(() => readSidecar(statusPath)?.phase === "running")
-    await waitFor(() => existsSync(join(dir, "gcpid")))
-    const gcPid = Number(readFileSync(join(dir, "gcpid"), "utf-8").trim())
+    expect(await waitFor(() => readSidecar(statusPath)?.phase === "running")).toBe(true)
+    // Wait for the pid text, not only the file: the shell makes the file first.
+    const gcFile = join(dir, "gcpid")
+    expect(
+      await waitFor(() => existsSync(gcFile) && readFileSync(gcFile, "utf-8").trim() !== ""),
+    ).toBe(true)
+    const gcPid = Number(readFileSync(gcFile, "utf-8").trim())
     expect(gcPid).toBeGreaterThan(0)
 
     // Simulate harness death: close the runner's stdin write-end. We do that by

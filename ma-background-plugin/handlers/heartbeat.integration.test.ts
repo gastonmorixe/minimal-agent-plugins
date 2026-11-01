@@ -18,6 +18,10 @@ import heartbeat from "./heartbeat.ts"
 
 const PKG = join(import.meta.dir, "..")
 const SID = "hb-session"
+/** How long a test polls for a job to finish. Under load the runner can take seconds. */
+const POLL_DEADLINE_MS = 15_000
+/** The test timeout must be longer than the poll deadline, or the deadline never applies. */
+const TEST_TIMEOUT_MS = 20_000
 
 let root: string
 beforeEach(() => {
@@ -72,23 +76,29 @@ describe("heartbeat", () => {
     expect(out).toBeNull()
   })
 
-  test("emits a completion digest when a job finishes", async () => {
-    await bgRun(runCtx("echo finished-now"))
-    await Bun.sleep(400) // let the job exit + sidecar settle
-
-    const emits: Array<{ channel: string; payload: unknown }> = []
-    // Tick until the digest is injected (or a bounded number of tries).
-    let injected = false
-    for (let i = 0; i < 40 && !injected; i++) {
-      await heartbeat(slotCtx(emits, i))
-      injected = emits.some((e) => e.channel === "prompt.inject")
-      if (!injected) await Bun.sleep(25)
-    }
-    expect(injected).toBe(true)
-    const digest = emits.find((e) => e.channel === "prompt.inject")
-    expect(JSON.stringify(digest?.payload)).toContain("j1")
-    expect(store().get("j1")?.status.kind).toBe("exited")
-  })
+  test(
+    "emits a completion digest when a job finishes",
+    async () => {
+      await bgRun(runCtx("echo finished-now"))
+      // Only a heartbeat pass reconciles the job and injects the digest. A fixed
+      // sleep plus a fixed count of short polls (about 1.4 s in all) failed under
+      // load: the runner had not finished yet. Poll to a deadline instead, and
+      // run one heartbeat pass on each poll.
+      const emits: Array<{ channel: string; payload: unknown }> = []
+      let injected = false
+      const start = Date.now()
+      for (let i = 0; !injected && Date.now() - start < POLL_DEADLINE_MS; i++) {
+        await heartbeat(slotCtx(emits, i))
+        injected = emits.some((e) => e.channel === "prompt.inject")
+        if (!injected) await Bun.sleep(50)
+      }
+      expect(injected).toBe(true)
+      const digest = emits.find((e) => e.channel === "prompt.inject")
+      expect(JSON.stringify(digest?.payload)).toContain("j1")
+      expect(store().get("j1")?.status.kind).toBe("exited")
+    },
+    TEST_TIMEOUT_MS,
+  )
 
   test("renders a widget while a job runs, null when idle", async () => {
     // idle first

@@ -22,6 +22,10 @@ import bgStop from "./bg_stop.ts"
 
 const PKG = join(import.meta.dir, "..")
 const SID = "test-session"
+/** How long a test polls for a job to finish. Under load the runner can take seconds. */
+const POLL_DEADLINE_MS = 15_000
+/** The test timeout must be longer than the poll deadline, or the deadline never applies. */
+const TEST_TIMEOUT_MS = 20_000
 
 let sessionsRoot: string
 beforeEach(() => {
@@ -63,7 +67,7 @@ async function waitFor(pred: () => boolean, timeoutMs = 5000): Promise<boolean> 
 }
 
 /** Poll until a job reaches a terminal state, driving reconcile each tick. */
-async function waitTerminal(id: string, timeoutMs = 4000): Promise<boolean> {
+async function waitTerminal(id: string, timeoutMs = POLL_DEADLINE_MS): Promise<boolean> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     await bgStatus(ctx({ id })) // a status call runs the reconcile pass
@@ -103,17 +107,21 @@ describe("BackgroundRun", () => {
 })
 
 describe("BackgroundStatus", () => {
-  test("reconciles a finished job to exited", async () => {
-    await bgRun(ctx({ command: "echo done" }))
-    // Only a status call runs the reconcile pass. A fixed sleep and then one
-    // status call failed under load: the job was still running at that one
-    // pass, and nothing reconciled it later. Drive a pass on each poll.
-    expect(await waitTerminal("j1", 15_000)).toBe(true)
-    const res = await bgStatus(ctx({ id: "j1" }))
-    expect(res.kind).toBe("tool_result")
-    if (res.kind === "tool_result") expect(res.content).toContain("j1")
-    expect(store().get("j1")?.status.kind).toBe("exited")
-  })
+  test(
+    "reconciles a finished job to exited",
+    async () => {
+      await bgRun(ctx({ command: "echo done" }))
+      // Only a status call runs the reconcile pass. A fixed sleep and then one
+      // status call failed under load: the job was still running at that one
+      // pass, and nothing reconciled it later. Drive a pass on each poll.
+      expect(await waitTerminal("j1")).toBe(true)
+      const res = await bgStatus(ctx({ id: "j1" }))
+      expect(res.kind).toBe("tool_result")
+      if (res.kind === "tool_result") expect(res.content).toContain("j1")
+      expect(store().get("j1")?.status.kind).toBe("exited")
+    },
+    TEST_TIMEOUT_MS,
+  )
 
   test("reports all jobs when no id", async () => {
     await bgRun(ctx({ command: "echo a" }))
@@ -133,46 +141,59 @@ describe("BackgroundStatus", () => {
 })
 
 describe("BackgroundLogs", () => {
-  test("returns captured output after completion", async () => {
-    await bgRun(ctx({ command: "echo log-line-here" }))
-    await waitTerminal("j1")
-    const res = await bgLogs(ctx({ id: "j1" }))
-    if (res.kind === "tool_result") {
-      expect(res.content).toContain("log-line-here")
-      expect(res.content).toContain("byte cursor")
-    }
-  })
+  test(
+    "returns captured output after completion",
+    async () => {
+      await bgRun(ctx({ command: "echo log-line-here" }))
+      expect(await waitTerminal("j1")).toBe(true)
+      const res = await bgLogs(ctx({ id: "j1" }))
+      if (res.kind === "tool_result") {
+        expect(res.content).toContain("log-line-here")
+        expect(res.content).toContain("byte cursor")
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
 
-  test("body renders on display lines, summary on the footer", async () => {
-    await bgRun(ctx({ command: "echo body-visible-in-display" }))
-    await waitTerminal("j1")
-    const res = await bgLogs(ctx({ id: "j1" }))
-    if (res.kind === "tool_result") {
-      // Regression: display used to be only the dim summary, dropping the body
-      // in the terminal even though content carried it. The body belongs on the
-      // │ display lines; the summary belongs on the ╰ footer.
-      const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "")
-      expect(res.display).toBeDefined()
-      const display = stripAnsi(res.display ?? "")
-      expect(display).toContain("body-visible-in-display")
-      expect(display).not.toContain("shown")
+  test(
+    "body renders on display lines, summary on the footer",
+    async () => {
+      await bgRun(ctx({ command: "echo body-visible-in-display" }))
+      expect(await waitTerminal("j1")).toBe(true)
+      const res = await bgLogs(ctx({ id: "j1" }))
+      if (res.kind === "tool_result") {
+        // Regression: display used to be only the dim summary, dropping the body
+        // in the terminal even though content carried it. The body belongs on the
+        // │ display lines; the summary belongs on the ╰ footer.
+        const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "")
+        expect(res.display).toBeDefined()
+        const display = stripAnsi(res.display ?? "")
+        expect(display).toContain("body-visible-in-display")
+        expect(display).not.toContain("shown")
 
-      expect(res.displayFooter).toBeDefined()
-      const footer = stripAnsi(res.displayFooter ?? "")
-      expect(footer).toContain("shown")
-      expect(footer).toContain("cursor")
-    }
-  })
+        expect(res.displayFooter).toBeDefined()
+        const footer = stripAnsi(res.displayFooter ?? "")
+        expect(footer).toContain("shown")
+        expect(footer).toContain("cursor")
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
 
-  test("grep filters log lines", async () => {
-    await bgRun(ctx({ command: "printf 'a\\nb\\nerror x\\nc\\n'" }))
-    await Bun.sleep(400)
-    const res = await bgLogs(ctx({ id: "j1", grep: "error" }))
-    if (res.kind === "tool_result") {
-      expect(res.content).toContain("error x")
-      expect(res.content).not.toContain("\nb\n")
-    }
-  })
+  test(
+    "grep filters log lines",
+    async () => {
+      await bgRun(ctx({ command: "printf 'a\\nb\\nerror x\\nc\\n'" }))
+      // A fixed sleep failed under load: the runner had not written the log yet.
+      expect(await waitTerminal("j1")).toBe(true)
+      const res = await bgLogs(ctx({ id: "j1", grep: "error" }))
+      if (res.kind === "tool_result") {
+        expect(res.content).toContain("error x")
+        expect(res.content).not.toContain("\nb\n")
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
 
   test("unknown id errors", async () => {
     const res = await bgLogs(ctx({ id: "nope" }))
@@ -183,7 +204,7 @@ describe("BackgroundLogs", () => {
 describe("BackgroundStop", () => {
   test("stops a running job", async () => {
     await bgRun(ctx({ command: "sleep 30" }))
-    await waitFor(() => store().get("j1")?.status.kind === "running", 2000)
+    expect(await waitFor(() => store().get("j1")?.status.kind === "running", 2000)).toBe(true)
     const res = await bgStop(ctx({ id: "j1" }))
     if (res.kind === "tool_result") {
       expect(res.is_error).toBeFalsy()
@@ -192,14 +213,18 @@ describe("BackgroundStop", () => {
     expect(store().get("j1")?.status.kind).toBe("stopped")
   }, 10000)
 
-  test("stop on an already-finished job is a no-op", async () => {
-    await bgRun(ctx({ command: "echo quick" }))
-    await waitTerminal("j1")
-    const res = await bgStop(ctx({ id: "j1" }))
-    if (res.kind === "tool_result") {
-      expect(res.content).toContain("already")
-    }
-  })
+  test(
+    "stop on an already-finished job is a no-op",
+    async () => {
+      await bgRun(ctx({ command: "echo quick" }))
+      expect(await waitTerminal("j1")).toBe(true)
+      const res = await bgStop(ctx({ id: "j1" }))
+      if (res.kind === "tool_result") {
+        expect(res.content).toContain("already")
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
 
   test("stop all with no jobs reports nothing to stop", async () => {
     const res = await bgStop(ctx({}))
