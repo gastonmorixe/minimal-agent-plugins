@@ -5,7 +5,7 @@
  * error. The retry must happen only before any output reached the host.
  */
 
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
@@ -105,7 +105,19 @@ async function run(client: NetworkClient, sessionId: string): Promise<CanonicalE
 const REQUIRED = "Required tool CREATE_PLAN not found in allTools"
 
 describe("cursor tool allowlist self-heal", () => {
+  // Each Run first probes the server config and the live model catalog with the
+  // global fetch, not with the fake client. Without this stub the test does real
+  // HTTPS round trips, and a slow network or proxy makes it time out. The
+  // adapter ignores probe failures, so a fetch that fails at once is enough.
+  const realFetch = globalThis.fetch
+  beforeEach(() => {
+    globalThis.fetch = (async () => {
+      throw new Error("offline test: no real network")
+    }) as unknown as typeof fetch
+  })
+
   afterEach(() => {
+    globalThis.fetch = realFetch
     delete process.env.MA_CURSOR_BIDI_HEARTBEAT_MS
     resetCursorLearnedToolsForTests()
     resetCursorBidiSessionsForTests()
