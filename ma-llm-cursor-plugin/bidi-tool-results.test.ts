@@ -90,7 +90,7 @@ describe("BUG-293802 trailing follow-up user text on bidi continuation", () => {
     expect(extractTrailingFollowUpUserText([toolResultUser])).toBeNull()
   })
 
-  test("returns queued text appended after tool_results (Agent.drainQueuedUserText)", () => {
+  test("returns queued text appended after tool_results (core inputQueue port)", () => {
     expect(
       extractTrailingFollowUpUserText([
         {

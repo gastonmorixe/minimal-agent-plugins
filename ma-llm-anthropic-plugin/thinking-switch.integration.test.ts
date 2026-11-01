@@ -222,20 +222,23 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
       sse(thinkingTurn(MODEL_A, signature)),
       sse(textTurn(MODEL_B)),
     ])
+    // Turn notices are `notice` events (core S37). Collect them from the sink.
+    const notices: TurnNotice[] = []
     const core = await buildTestCore({
       auth: AUTH,
       model: MODEL_A,
       providerId: "anthropic",
       networkClient: client,
+      eventSink: {
+        emit: (e) => {
+          if (e.type === "notice") notices.push(e.notice)
+        },
+      },
     })
-    const notices: TurnNotice[] = []
-    const onNotice = (n: TurnNotice): void => {
-      notices.push(n)
-    }
 
-    await drain(core.run("Question one?", { onNotice }))
+    await drain(core.run("Question one?"))
     core.setModel(MODEL_B)
-    await drain(core.run("Question two?", { onNotice }))
+    await drain(core.run("Question two?"))
 
     expect(bodies).toHaveLength(2)
     const [first, second] = bodies as [WireBody, WireBody]

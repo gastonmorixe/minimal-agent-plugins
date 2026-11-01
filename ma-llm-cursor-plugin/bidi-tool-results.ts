@@ -39,10 +39,11 @@ export function requestHasToolResultContinuation(req: CanonicalRequest): boolean
 /**
  * User text the host injected alongside trailing tool_results (queued follow-up).
  *
- * Agent.run appends drainQueuedUserText as a `text` block AFTER tool_result
- * blocks in the same user message. Cursor's live AgentService/Run stream never
- * sees that text unless we write a conversation_action frame. Returns null
- * when the trailing user message is tool_results only.
+ * The agent loop appends queued user text (the core `inputQueue` port) as a
+ * `text` block AFTER tool_result blocks in the same user message. Cursor's
+ * live AgentService/Run stream never sees that text unless we write a
+ * conversation_action frame. Returns null when the trailing user message is
+ * tool_results only.
  */
 export function extractTrailingFollowUpUserText(messages: CanonicalMessage[]): string | null {
   const parts: string[] = []
