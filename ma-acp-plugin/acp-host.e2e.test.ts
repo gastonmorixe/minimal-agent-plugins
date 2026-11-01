@@ -14,8 +14,11 @@
  * denied, turn still ends with `end_turn`), on + stdin closed while the
  * request waits (tool denied, clean exit), on + session/cancel with two
  * tool calls (one request only, prompt replies `cancelled` at once), and
- * on + a gate hook that did not load (no tool runs, a clear error). Every
- * stdout line must be a JSON-RPC 2.0 message.
+ * on + a gate hook that did not load (no tool runs, JSON-RPC -32603 per
+ * prompt), on + reject the first of two calls (the second runs, the turn
+ * goes on), and approval off + session/cancel while a tool runs (then a
+ * new prompt, usage, and an effort switch). Every stdout line must be a
+ * JSON-RPC 2.0 message, with no ESC (0x1b) byte anywhere.
  *
  * Skips with a printed reason when the sibling `../minimal-agent-cli`
  * checkout (with its installed core) is missing. That CLI must pin a core
@@ -35,7 +38,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
 import { afterAll, beforeAll, describe, expect, it } from "bun:test"
@@ -67,12 +70,27 @@ function agentCommand(): string[] {
 
 type Json = Record<string, unknown>
 
+/** What the mock model sends. */
+interface MockScript {
+  /** Bash calls in the first answer (default 1). */
+  readonly toolCalls?: number
+  /** The Bash command of each call (default: append to `marker.txt`). */
+  readonly command?: string
+}
+
+/** Token counts the mock reports for request `n` (1-based): `prompt_tokens` = 1000 * n. */
+const promptTokensOf = (n: number): number => 1000 * n
+
 /**
- * OpenAI chat-completions SSE: round 1 asks for `toolCalls` Bash calls
- * (`call_1`, `call_2`, ...), later rounds say DONE.
+ * OpenAI chat-completions SSE: the first answer of each prompt asks for
+ * `toolCalls` Bash calls (`call_1`, `call_2`, ...), the next answer says
+ * DONE. Each answer reports usage ({@link promptTokensOf}). The request
+ * bodies are kept in `bodies`.
  */
-function startMockModel(toolCalls = 1) {
+function startMockModel(script: MockScript = {}) {
+  const { toolCalls = 1, command = "echo ran >> marker.txt" } = script
   let requests = 0
+  const bodies: Json[] = []
   const sse = (chunks: unknown[]): string =>
     `${chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("")}data: [DONE]\n\n`
   const chunk = (delta: unknown, finish: string | null = null) => ({
@@ -85,23 +103,33 @@ function startMockModel(toolCalls = 1) {
     index: i,
     id: `call_${i + 1}`,
     type: "function",
-    function: { name: "Bash", arguments: JSON.stringify({ command: "echo ran >> marker.txt" }) },
+    function: { name: "Bash", arguments: JSON.stringify({ command }) },
   }))
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
     async fetch(req) {
-      await req.text()
+      const body = JSON.parse(await req.text()) as Json
+      bodies.push(body)
       requests++
-      const events =
-        requests === 1
-          ? [chunk({ role: "assistant", tool_calls: calls }), chunk({}, "tool_calls")]
-          : [chunk({ role: "assistant", content: "DONE" }), chunk({}, "stop")]
+      const messages = Array.isArray(body.messages) ? (body.messages as Json[]) : []
+      // A new prompt starts when the last message is the user's text.
+      const ask = messages[messages.length - 1]?.role === "user"
+      const usage = {
+        prompt_tokens: promptTokensOf(requests),
+        completion_tokens: 1,
+        total_tokens: promptTokensOf(requests) + 1,
+      }
+      const events = ask
+        ? [chunk({ role: "assistant", tool_calls: calls }), chunk({}, "tool_calls")]
+        : [chunk({ role: "assistant", content: "DONE" }), chunk({}, "stop")]
+      events.push({ ...chunk({}, null), choices: [], usage } as unknown as ReturnType<typeof chunk>)
       return new Response(sse(events), { headers: { "content-type": "text/event-stream" } })
     },
   })
   return {
     url: `http://127.0.0.1:${server.port}`,
+    bodies,
     stop: (): void => {
       void server.stop(true)
     },
@@ -117,17 +145,30 @@ beforeAll(() => {
   scratch = mkdtempSync(join(tmpdir(), "acp-e2e-"))
 })
 
+/**
+ * Bun keeps its runtime transpiler cache in `$HOME/.bun/install/cache/@t@`.
+ * Each agent gets its own HOME, so without this every agent writes a new
+ * cache (about 500 files) into the scratch dir. Removing them took more
+ * than the 5 s hook limit when the disk was busy. The agent uses the
+ * cache of the test process instead.
+ */
+const BUN_TRANSPILER_CACHE =
+  process.env.BUN_RUNTIME_TRANSPILER_CACHE_PATH ??
+  join(homedir(), ".bun", "install", "cache", "@t@")
+
+// The scratch dir now holds only small homes and work dirs. The limit is
+// for a slow disk under load, not for normal runs.
 afterAll(() => {
   for (const m of models) m.stop()
   if (scratch) rmSync(scratch, { recursive: true, force: true })
-})
+}, 60_000)
 
 /** What the fake client does when the agent sends `session/request_permission`. */
-type OnPermission = "allow_once" | "reject_once" | "close_stdin" | "cancel"
+type OnPermission = "allow_once" | "reject_once" | "reject_first" | "close_stdin" | "cancel"
 
-interface SpawnOptions {
-  /** Tool calls in the first model answer (default 1). */
-  readonly toolCalls?: number
+interface SpawnOptions extends MockScript {
+  /** Extra env for the agent process. */
+  readonly env?: Record<string, string>
   /** The plugin roots to load (default: this plugins checkout). */
   readonly pluginRoot?: string
 }
@@ -142,7 +183,7 @@ function spawnAgent(
   const work = join(scratch, name, "work")
   mkdirSync(home, { recursive: true })
   mkdirSync(work, { recursive: true })
-  const model = startMockModel(options.toolCalls)
+  const model = startMockModel(options)
   models.push(model)
   const proc = Bun.spawn(
     [
@@ -177,11 +218,18 @@ function spawnAgent(
         MINIMAL_AGENT_PLUGIN_SIBLINGS: options.pluginRoot ?? PLUGINS_ROOT,
         NO_PROXY: "127.0.0.1,localhost",
         no_proxy: "127.0.0.1,localhost",
+        BUN_RUNTIME_TRANSPILER_CACHE_PATH: BUN_TRANSPILER_CACHE,
+        // Ask for color: a style leak into stdout must still not happen.
+        FORCE_COLOR: "1",
+        ...options.env,
       },
     },
   )
   const lines: string[] = []
+  // Every raw stdout chunk, for the byte-level ESC check.
+  const raw: Uint8Array[] = []
   let stderr = ""
+  let asked = 0
   // Time (Date.now) of the session/cancel the fake client sent, if any.
   let cancelledAt: number | undefined
   const send = (msg: unknown): void => {
@@ -192,7 +240,8 @@ function spawnAgent(
     const dec = new TextDecoder()
     let buf = ""
     for await (const bytes of proc.stdout) {
-      buf += dec.decode(bytes)
+      raw.push(bytes)
+      buf += dec.decode(bytes, { stream: true })
       let i: number
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i)
@@ -200,6 +249,7 @@ function spawnAgent(
         lines.push(line)
         const msg = JSON.parse(line) as Json
         if (msg.method !== "session/request_permission") continue
+        asked++
         if (onPermission === "cancel") {
           // Cancel the turn and never answer the request (a silent client).
           if (cancelledAt === undefined) {
@@ -213,10 +263,16 @@ function spawnAgent(
         } else if (onPermission === "close_stdin") {
           void proc.stdin.end()
         } else {
+          const optionId =
+            onPermission === "reject_first"
+              ? asked === 1
+                ? "reject_once"
+                : "allow_once"
+              : onPermission
           send({
             jsonrpc: "2.0",
             id: msg.id,
-            result: { outcome: { outcome: "selected", optionId: onPermission } },
+            result: { outcome: { outcome: "selected", optionId } },
           })
         }
       }
@@ -242,9 +298,11 @@ function spawnAgent(
   }
   return {
     proc,
+    model,
     send,
     reply,
     lines,
+    raw,
     stdoutDone,
     stderrDone,
     stderr: () => stderr,
@@ -271,7 +329,11 @@ async function startTurn(a: Agent): Promise<number> {
   return 3
 }
 
-/** End stdin, wait for exit (max 20 s), and check stdout purity. */
+/**
+ * End stdin, wait for exit (max 20 s), and check stdout purity: every line
+ * is a JSON-RPC 2.0 message, no raw ESC (0x1b) byte, and no ESC in any
+ * decoded string (style slots are plain text in host mode).
+ */
 async function finish(a: Agent): Promise<number> {
   try {
     void a.proc.stdin.end()
@@ -283,7 +345,10 @@ async function finish(a: Agent): Promise<number> {
   for (const line of a.lines) {
     const msg = JSON.parse(line) as Json
     expect(msg.jsonrpc).toBe("2.0")
+    expect(JSON.stringify(msg)).not.toContain("\\u001b")
   }
+  const escBytes = a.raw.reduce((n, b) => n + b.filter((x) => x === 0x1b).length, 0)
+  expect(escBytes).toBe(0)
   return code
 }
 
@@ -432,6 +497,100 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     }
   }, 60_000)
 
+  it("(g) approval on + reject the first of 2 calls: only that call is denied, the turn goes on", async () => {
+    const a = spawnAgent("reject-first", ["--approval"], "reject_first", {
+      toolCalls: 2,
+      command: "echo ran >> marker.txt",
+    })
+    try {
+      const id = await startTurn(a)
+      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect(await finish(a)).toBe(0)
+      expect(permissionRequests(a)).toHaveLength(2)
+      const finished = updates(a).filter(
+        (u) => u.sessionUpdate === "tool_call_update" && u.status !== "in_progress" && u.status,
+      )
+      expect(finished.map((u) => [u.toolCallId, u.status])).toEqual([
+        ["call_1", "failed"],
+        ["call_2", "completed"],
+      ])
+      // Only the second call ran.
+      expect(readFileSync(a.marker, "utf8")).toBe("ran\n")
+      expect(JSON.stringify(updates(a))).toContain("DONE")
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
+  it("(h) session/cancel while a tool runs, then a new prompt, usage, and an effort switch", async () => {
+    const a = spawnAgent("cancel-tool", [], "allow_once", {
+      command: "sleep 30",
+      env: { MINIMAL_AGENT_EFFORT_LEVELS: "low,high" },
+    })
+    try {
+      const id = await startTurn(a)
+      const sessionId = ((await a.reply(2)).result as { sessionId: string }).sessionId
+      const t0 = Date.now()
+      while (
+        !updates(a).some(
+          (u) => u.sessionUpdate === "tool_call_update" && u.status === "in_progress",
+        )
+      ) {
+        if (Date.now() - t0 > 30_000) throw new Error(`tool never ran: ${a.stderr()}`)
+        await Bun.sleep(20)
+      }
+      const cancelAt = Date.now()
+      a.send({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId } })
+      expect((await a.reply(id)).result).toEqual({ stopReason: "cancelled" })
+      // The cancel stops the 30 s sleep at once.
+      expect(Date.now() - cancelAt).toBeLessThan(5000)
+
+      a.send({
+        jsonrpc: "2.0",
+        id: 4,
+        method: "session/set_config_option",
+        params: { sessionId, configId: "effort", value: "low" },
+      })
+      const options = ((await a.reply(4)).result as { configOptions: Json[] }).configOptions
+      expect(options.find((o) => o.id === "effort")?.currentValue).toBe("low")
+      a.send({
+        jsonrpc: "2.0",
+        id: 5,
+        method: "session/set_config_option",
+        params: { sessionId, configId: "model", value: "no-such-model" },
+      })
+      expect(((await a.reply(5)).error as Json | undefined)?.code).toBe(-32602)
+
+      // The session still works after the cancel. The new effort reaches the model.
+      const before = a.model.bodies.length
+      a.send({
+        jsonrpc: "2.0",
+        id: 6,
+        method: "session/prompt",
+        params: { sessionId, prompt: [{ type: "text", text: "again" }] },
+      })
+      // Cancel after the model request arrives (the answer asks for the same sleep).
+      while (a.model.bodies.length === before) await Bun.sleep(20)
+      a.send({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId } })
+      expect((await a.reply(6)).result).toEqual({ stopReason: "cancelled" })
+      expect(a.model.bodies[before]?.reasoning_effort).toBe("low")
+      expect(await finish(a)).toBe(0)
+
+      // usage_update: `used` is the input tokens of ONE request (never a sum
+      // over requests), `size` is the context window. Turn 1 reports request 1.
+      // Turn 2 reports request 2 only if its answer ended before the cancel.
+      const usage = updates(a).filter((u) => u.sessionUpdate === "usage_update")
+      expect(usage[0]?.used).toBe(promptTokensOf(1))
+      for (const u of usage) {
+        expect(typeof u.size).toBe("number")
+        expect(u.size as number).toBeGreaterThan(0)
+        expect([promptTokensOf(1), promptTokensOf(2)]).toContain(u.used as number)
+      }
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
   for (const [label, breakIt] of [
     ["the hook grant is missing", dropHookGrant],
     ["the hook module fails to import", breakHookImport],
@@ -444,7 +603,7 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       try {
         const id = await startTurn(a)
         const reply = await a.reply(id)
-        expect(reply.error).toBeDefined()
+        expect((reply.error as Json | undefined)?.code).toBe(-32603)
         expect(JSON.stringify(reply)).toContain("approval gate failed to load")
         expect(existsSync(a.marker)).toBe(false)
         // The session stays open: a second prompt gets the same error.
@@ -457,7 +616,11 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
             prompt: [{ type: "text", text: "again" }],
           },
         })
-        expect(JSON.stringify(await a.reply(4))).toContain("approval gate failed to load")
+        const second = await a.reply(4)
+        expect((second.error as Json | undefined)?.code).toBe(-32603)
+        expect(JSON.stringify(second)).toContain("approval gate failed to load")
+        // No model request was made.
+        expect(a.model.bodies).toHaveLength(0)
         expect(await finish(a)).toBe(0)
         await a.stderrDone
         expect(a.stderr()).toContain("approval gate failed to load")
