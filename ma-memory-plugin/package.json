@@ -8,6 +8,6 @@
     "test": "bun test --pass-with-no-tests"
   },
   "peerDependencies": {
-    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#e52ddb1798a4d1122b0ef3500641acc12324b5a6"
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#95fc2b35d181bbc9c020547a43082054a12e5a46"
   }
 }

@@ -86,12 +86,12 @@ describe("no vendored core plugin-api copies (S42)", () => {
   test("negative control: a core file with an edited comment is caught", () => {
     const dir = mkdtempSync(join(tmpdir(), "s42-guard-"))
     try {
-      const source = readFileSync(join(coreSrc, "utils", "ansi.ts"), "utf8")
-      const planted = join(dir, "ansi.ts")
+      const source = readFileSync(join(coreSrc, "utils", "style-slots.ts"), "utf8")
+      const planted = join(dir, "style-slots.ts")
       writeFileSync(planted, `// local note\n${source.replace("/**", "/** edited")}`)
       const copies = findCopies([planted], coreHashes(coreSrc))
       expect(copies).toHaveLength(1)
-      expect(copies[0]).toEndWith("== plugin-api/src/utils/ansi.ts")
+      expect(copies[0]).toEndWith("== plugin-api/src/utils/style-slots.ts")
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
