@@ -15,6 +15,8 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import { LspClient } from "../lib/lsp-client.ts"
+
 import { TsLspProvider } from "./ts-lsp-provider.ts"
 
 // Repo root is two levels up from this providers/ dir (ma-diagnostics-plugin is
@@ -29,6 +31,21 @@ function resolveLspBin(): { bin: string; id: string } | null {
   const tsgo = join(REPO, "node_modules", ".bin", "tsgo")
   if (existsSync(tsgo)) return { bin: tsgo, id: "tsgo" }
   return null
+}
+
+/**
+ * Boot the provider's LSP child and wait for its first pull with no deadline.
+ * The first pull loads the whole program. Under CPU load that can take longer
+ * than the provider's 1.8 s pull deadline, and then check() returns [] by
+ * design. This test checks findings and stale state, not cold-load time.
+ */
+async function warmUp(provider: TsLspProvider, path: string, text: string): Promise<void> {
+  const ensure: unknown = Reflect.get(provider, "ensureClient")
+  if (typeof ensure !== "function") throw new Error("TsLspProvider.ensureClient not found")
+  const client: unknown = await Reflect.apply(ensure, provider, [])
+  if (!(client instanceof LspClient)) throw new Error("TsLspProvider did not boot an LSP client")
+  client.sync(path, text)
+  await client.pullDiagnostics(path)
 }
 
 const lsp = resolveLspBin()
@@ -46,6 +63,7 @@ describe("TsLspProvider (real TypeScript LSP)", () => {
       try {
         const clean = readFileSync(target, "utf8")
         const broken = `${clean}\nconst __probe: number = "not a number"\n`
+        await warmUp(provider, target, clean)
 
         // clean buffer → no NEW errors from our probe line
         const cleanFindings = await provider.check(target, clean)
@@ -62,12 +80,14 @@ describe("TsLspProvider (real TypeScript LSP)", () => {
         const refixed = await provider.check(target, clean)
         expect(refixed.some((f) => f.code === "TS2322")).toBe(false)
 
-        // warm loop is fast: a few more cycles resolve quickly
-        const t0 = performance.now()
+        // Warm path: the next check reuses the same LSP child (no new spawn).
+        // Compare the client handle, not wall-clock time. A time ceiling
+        // failed under CPU load (316 ms at load 12.8) with no real defect.
+        const warmClient: unknown = Reflect.get(provider, "client")
+        expect(warmClient).not.toBeNull()
         await provider.check(target, clean)
-        const warmMs = performance.now() - t0
-        // generous ceiling (CI noise); the point is "not a fresh 300ms spawn"
-        expect(warmMs).toBeLessThan(150)
+        expect(Reflect.get(provider, "client")).toBe(warmClient)
+        expect(provider.isActive()).toBe(true)
       } finally {
         provider.dispose()
       }

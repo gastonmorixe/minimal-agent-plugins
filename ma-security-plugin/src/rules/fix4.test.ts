@@ -4,12 +4,14 @@ import { describe, expect, it } from "bun:test"
 import { loadRegistry } from "./registry.ts"
 import {
   BENCH_MS_PER_MB,
-  benchRule,
+  BENCH_STEPS,
   benchSkipRetries,
+  type CompiledRedactRule,
   compileRedactRule,
   hostileText,
   hostileTexts,
   LOAD_BENCH_MS_PER_MB,
+  scanRule,
   selfTest,
   staticShapeCheck,
 } from "./selftest.ts"
@@ -113,6 +115,34 @@ describe("fix4 BLOCKER 1b one hostile text per variable char set", () => {
   })
 })
 
+/** One bench step: the worst CPU ms on its hostile texts and the load budget. */
+type CpuStep = { n: number; ms: number; budget: number }
+
+/**
+ * The load-time bench (benchRule) in CPU time. Same steps, hostile texts and
+ * budget formula (0.5 ms floor). benchRule uses wall-clock time, so it also
+ * counts the time the process waits for a CPU. Under machine load that wait
+ * failed this margin check with no real slowdown. process.cpuUsage counts
+ * only the work. The best of 15 runs drops a GC pause.
+ */
+function cpuBenchSteps(c: CompiledRedactRule, iters = 15): CpuStep[] {
+  scanRule(c, "warm up a", { raw: true })
+  return BENCH_STEPS.map((n) => {
+    let ms = 0
+    for (const text of hostileTexts(c.rule, n)) {
+      let best = Number.POSITIVE_INFINITY
+      for (let i = 0; i < iters; i++) {
+        const before = process.cpuUsage()
+        scanRule(c, text, { raw: true })
+        const d = process.cpuUsage(before)
+        best = Math.min(best, (d.user + d.system) / 1000)
+      }
+      ms = Math.max(ms, best)
+    }
+    return { n, ms, budget: Math.max(0.5, (n * LOAD_BENCH_MS_PER_MB) / 1e6) }
+  })
+}
+
 describe("fix4 MAJOR 1 bench margins", () => {
   it("load gate is 5x looser than the CI gate", () => {
     expect(BENCH_MS_PER_MB).toBe(50)
@@ -140,10 +170,10 @@ describe("fix4 MAJOR 1 bench margins", () => {
       examples: { match: ["mail a.b@example.invalid now"], not_match: ["no mail"] },
       notes: "always gate: no stable keyword. reviewed:overlap",
     }
-    const b = benchRule(compile(email))
-    expect(b.ok).toBe(true)
-    // At least 2x margin under the load budget.
-    expect(b.msPerMb * 2).toBeLessThan(LOAD_BENCH_MS_PER_MB)
+    // At least 2x margin under the load budget, on every bench step.
+    for (const step of cpuBenchSteps(compile(email))) {
+      expect(step.ms * 2).toBeLessThan(step.budget)
+    }
   })
 })
 
