@@ -1,0 +1,34 @@
+// minimal-agent credential store — DO NOT edit by hand while the agent is running.
+//
+// This file is managed by minimal-agent (src/auth-store.ts). It is a namespaced
+// key/value vault: each entry is keyed by a provider "id" (slug) plus a display
+// "name", and carries an opaque "secrets" object owned by that provider's auth
+// plugin. The store never interprets the contents of "secrets".
+//
+// Permissions are 0600 (owner-only). Tokens are stored in plaintext here by
+// design; protect the file, not the bytes. Comments and trailing commas are
+// tolerated on read but this banner is rewritten on every save.
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "anthropic-plan-oauth",
+      "name": "Anthropic Plan (OAuth)",
+      "secrets": {
+        "tokenType": "oauth",
+        "accessToken": "legacy-access-token",
+        "refreshToken": "legacy-refresh-token",
+        "expiresAt": 1774880291250,
+        "scopes": ["user:profile", "user:inference"],
+        "subscriptionType": "max",
+        "rateLimitTier": "default_tier",
+        "accountUuid": "acct-0000-legacy",
+        "organizationUuid": "org-0000-legacy",
+        "displayName": "Legacy User",
+        "emailAddress": "legacy@example.invalid"
+      },
+      "createdAt": "2026-11-01T12:51:39.748Z",
+      "updatedAt": "2026-11-01T12:51:39.748Z"
+    }
+  ]
+}
