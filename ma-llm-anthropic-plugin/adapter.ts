@@ -29,6 +29,7 @@ import type {
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
+import { fetchAnthropicAccountPlan } from "./account-plan.ts"
 import { ANTHROPIC_BETA_FLAGS_CATALOG } from "./beta-flags-catalog.ts"
 import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
@@ -337,8 +338,17 @@ export function registerAnthropicAdHocModel(modelId: string): void {
   registerAnthropicAdHocModelInto(capturedModels, modelId)
 }
 
+/**
+ * `ProviderPlugin` plus the `fetchAccountPlan` hook. The pinned core predates
+ * that hook; the field matches the newer contract, so a host on newer core
+ * reads it through `ProviderPlugin` with no cast.
+ */
+type AnthropicProviderPlugin = ProviderPlugin & {
+  fetchAccountPlan: typeof fetchAnthropicAccountPlan
+}
+
 /** This provider packaged for the {@link ProviderPlugin} registry. */
-export const anthropicProviderPlugin: ProviderPlugin = {
+export const anthropicProviderPlugin: AnthropicProviderPlugin = {
   id: "anthropic",
   displayName: "Anthropic",
   shortCode: "anth",
@@ -440,6 +450,12 @@ export const anthropicProviderPlugin: ProviderPlugin = {
       // requirement. Local pricing tables remain authoritative.
     })
   },
+  /**
+   * Plan, seat, role, and usage windows for one OAuth credential, read from
+   * the account endpoints. Spends no model quota. `null` for API keys. See
+   * `./account-plan.ts`.
+   */
+  fetchAccountPlan: fetchAnthropicAccountPlan,
 }
 
 export type { ProviderAuth }
