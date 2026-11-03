@@ -183,7 +183,8 @@ manifest.json            # declares the Computer tool
 PROMPT.md                # agent-facing tool guide
 handlers/computer.ts     # tool handler (thin unix-socket client)
 bin/cud.ts               # control CLI + auto-spawn
-lib/{client,routes,render,paths,types}.ts
+lib/{client,routes,render,paths,style,types}.ts
+ui/setup.ts              # CLI only: installs the terminal kit into the style slots
 native/
   project.yml            # XcodeGen spec
   Sources/*.swift        # the daemon

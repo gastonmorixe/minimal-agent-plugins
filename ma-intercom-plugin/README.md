@@ -150,7 +150,7 @@ lib/mention/
   styles.ts     buffer style spans for matching tokens
   rewrite.ts    text → peer XML for unique resolves
   PROMPTS.ts    model-facing XML template (prompt-only module)
-  palette.ts    host palette / violet token SGR
+  palette.ts    style facade over the style slots (violet tokens)
   state.ts      process singleton FSM + roster cache
 handlers/
   on_key.ts              editor.key
@@ -183,13 +183,15 @@ running this plugin's unit tests outside a host.
 
 ```
 lib/        pure core (functional) + thin IO shells
-  config, paths, identity, presence, liveness, envelope, inbox, cursors,
-  sidecars, roster, render, style, beat, selfstate, service, host-types
-  mention/  @-mention FSM, fuzzy, render, rewrite, PROMPTS, styles, state
+  config, paths, identity, machine-id, presence, liveness, envelope, inbox,
+  cursors, sidecars, roster, render, style, style-slots, sanitize, beat,
+  selfstate, service, teams, transport, gc, host-types
+  mention/  @-mention FSM, fuzzy, render, rewrite, PROMPTS, styles, palette, state
+ui/         setup.ts: CLI only, installs the terminal kit into the style slots
 handlers/   entry points (imperative shells)
   peers, send, inbox, beat (slot), inbox_attachment (turn attachment),
   on_submit (event), on_key / on_buffer_changed / on_turn_will_start (mentions)
-manifest.json  tool/slot/attachment/event/hook wiring + capabilities
+manifest.json  headless: tool/attachment/event/hook wiring. ui: setup + beat slot
 PROMPT.md      model-facing guidance
 ```
 

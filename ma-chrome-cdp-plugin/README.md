@@ -39,9 +39,10 @@ just calls the tool.
 ## Layout
 
 ```
-manifest.json            tool registration (ChromeCDP) + input schema
+manifest.json            tool registration (ChromeCDP) + input schema + ui.setup
 PROMPT.md                model-facing usage guidance
 handlers/chrome_cdp.ts   tool handler (thin shell over lib/)
+ui/setup.ts              CLI only: installs the terminal kit into the style slots
 bin/cdp-server.ts        the persistent daemon
 bin/cdpd.ts              daemon control CLI: start|stop|restart|status|logs
 lib/
@@ -55,8 +56,9 @@ lib/
   events.ts              bounded ring buffer for async CDP event pushes
   client.ts              unix-socket client + ensure-daemon lifecycle
   render.ts              daemon response -> tool_result content/display
+  style.ts               style slots (plain until ui/setup.ts runs)
   types.ts               local minimal-agent contract stubs
-*.test.ts                bun tests (117 across the modules)
+*.test.ts                bun tests next to each module
 ```
 
 ## Daemon lifecycle (manual)

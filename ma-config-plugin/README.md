@@ -38,7 +38,7 @@ the overlay says so. Plugin enable/disable always applies next launch.
 
 ## How it's wired (decoupling)
 
-The command is **host-owned**: it's registered through `manifest.commands[]`
+The command is **host-owned**: it's registered through `headless.commands[]`
 and dispatched by the agent's command registry
 (`loader.dispatchCommand`), so it works whether or not the `ma-slash-menu`
 overlay is installed. The slash menu only adds discoverability by listing the
@@ -64,8 +64,9 @@ plugin command TUIs over the bus.
 ## Layout
 
 ```
-plugins/config/
-├── manifest.json            # command + editor.key hook + buffer.changed event
+ma-config-plugin/
+├── manifest.json            # headless: /config command + editor.key hook. ui: setup
+├── ui/setup.ts              # CLI only: installs the terminal kit into the style slots
 ├── handlers/                # imperative shell (binds host ctx → pure core)
 │   ├── cmd_config.ts        #   /config — opens the modal overlay (or headless)
 │   ├── on_key.ts            #   editor.key → FSM nav/edit (incl. printables + Backspace)
@@ -81,7 +82,9 @@ plugins/config/
     ├── render.ts            #   RenderModel → ANSI footer lines
     ├── runtime.ts           #   effect applier (the testable shell core)
     ├── state.ts             #   per-process singleton (FSM state + model)
-    └── palette.ts           #   style facade backed by plugin-api palette/ANSI helpers
+    ├── style.ts             #   style slots (plain until ui/setup.ts runs)
+    ├── host-types.ts        #   local host contract stubs
+    └── palette.ts           #   style facade over the style slots + plugin-api term-width
 ```
 
 The `lib/` core has **zero** host imports — it talks only in plain data, so
@@ -99,5 +102,5 @@ host doesn't read is simply ignored, so the two can drift safely.
 ## Tests
 
 ```sh
-bun test plugins/config        # ~80 tests: lib units + integration
+cd ma-config-plugin && bun test   # lib units + integration
 ```

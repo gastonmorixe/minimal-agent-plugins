@@ -35,19 +35,27 @@ Glyphs are pure unicode (no nerd-font, no emoji):
 ## Files
 
 ```
-plugins/tasks/
-├── manifest.json
+ma-tasks-plugin/
+├── manifest.json               # headless block + ui.setup
 ├── PROMPT.md                   # model-facing usage rules
 ├── README.md                   # this file
-├── cli.ts                      # `bun run plugins/tasks/cli.ts <cmd>`
-├── integration.test.ts
+├── cli.ts                      # `bun run ma-tasks-plugin/cli.ts <cmd>`
+├── ui/setup.ts                 # CLI only: installs the terminal kit into the style slots
 ├── lib/
 │   ├── parse.ts                # id gen, JSONL serialize/parse, types
 │   ├── store.ts                # TaskStore class (CRUD + ordering + rollup)
-│   ├── render.ts               # ANSI / plain renderer
+│   ├── render.ts               # human board renderer
+│   ├── model-render.ts         # model-facing plain text
+│   ├── status-result.ts        # short status-mutation acks
+│   ├── result-verbosity.ts     # MINIMAL_AGENT_TASKS_FULL_RESULTS switch
+│   ├── style.ts                # style slots (plain until ui/setup.ts runs)
 │   └── attachment.ts           # <ma::agent::tasks> per-turn producer
 └── handlers/
-    └── task_tool.ts            # the Task tool dispatch
+    ├── task_tool.ts            # the Task tool dispatch
+    ├── turn_attachment.ts      # per-turn <ma::agent::tasks> attachment
+    ├── planning_fragment.ts    # PLAN/PHASES prompt fragment
+    ├── replay_render.ts        # re-render past Task calls on --resume
+    └── task_link.ts            # subagent.taskUpdate -> tick or cancel a todo
 ```
 
 State on disk: `~/.minimal-agent/sessions/<sid>.tasks.jsonl`, one task
@@ -92,10 +100,10 @@ Legacy hash references from resumed sessions are migrated to aliases and remain 
 ## CLI
 
 ```sh
-bun run plugins/tasks/cli.ts list
-bun run plugins/tasks/cli.ts add "Make plan visible"
-bun run plugins/tasks/cli.ts done 1
-bun run plugins/tasks/cli.ts status 2 canceled "user redirected"
+bun run ma-tasks-plugin/cli.ts list
+bun run ma-tasks-plugin/cli.ts add "Make plan visible"
+bun run ma-tasks-plugin/cli.ts done 1
+bun run ma-tasks-plugin/cli.ts status 2 canceled "user redirected"
 ```
 
 Reads the same session id (`MINIMAL_AGENT_SESSION_ID` env or
