@@ -16,8 +16,8 @@ quota  5h 12% ↻ 4h17m · 7d 3% ↻ 6d ·  overall 4%   ← footer slot
 
 ## How it works
 
-The plugin declares one entry under the `liveAreaSlots` array of its
-manifest:
+The plugin declares one entry under the `ui.liveAreaSlots` array of its
+manifest. Only the CLI loads the `ui` block:
 
 ```json
 {
@@ -26,10 +26,13 @@ manifest:
   "position": "footer",
   "refreshMs": 300000,
   "timeoutMs": 8000,
-  "placeholder": "\u001b[2mquota  ·\u001b[22m",
-  "refreshOn": ["quota.headersReceived"]
+  "placeholder": "<dim empty 5h / 7d / context bars>",
+  "refreshOn": ["quota.headersReceived", "terminal.resize"]
 }
 ```
+
+The real `placeholder` is a dim row of empty bars. See `manifest.json`.
+`terminal.resize` also re-fires the slot, so the line fits a new width.
 
 Three feeds keep the row up-to-date:
 
@@ -60,8 +63,8 @@ provider rate-limit headers.
 
 ## Auto-skip of the startup row
 
-When this plugin is loaded, `src/index.ts` sees a slot with
-`id === "quota"` in `loader.getLiveAreaSlots()` and **skips the
+When this plugin is loaded, the CLI (`src/main.ts`) sees a ui slot with
+`id === "quota"` and **skips the
 synchronous `quota` startup row entirely**. The blocking
 `checkQuota()` request that used to gate the REPL boot is gone. The
 slot fetches the same data asynchronously, after the editor is
@@ -86,10 +89,12 @@ short-circuits before `getLiveAreaSlots` sees the slot, so
 ## Provider-neutral data + configurable layout
 
 The footer is provider-agnostic. The handler asks the CURRENT model's
-provider for session metadata via the core seam
-`resolveProviderSessionInfo(modelId)` (`src/llm/provider-session.ts`),
+provider for session metadata through the host capability
+`session-info:read` (`ctx.host.sessionInfo.providerInfo(modelId)`). Core
+backs it with `resolveProviderSessionInfo` (`src/llm/provider-session.ts`),
 which returns a neutral `{ contextWindow, modelLabel, quota: { windows } }`.
-The Anthropic provider implements it (`plugins/llm-anthropic/session-info.ts`):
+Without the capability, the handler renders nothing.
+The Anthropic provider implements it (`ma-llm-anthropic-plugin/session-info.ts`):
 cache-first, then a bounded probe over the shared transport. A provider with
 no quota concept returns context-only and the footer adapts (no quota
 segment). No part of this plugin imports a provider by name.
@@ -118,5 +123,31 @@ empty/all-invalid list falls back to the default order, so a typo never
 blanks the footer. A listed segment with no data for the active provider
 (e.g. `quota` on a provider that reports none) renders nothing.
 
-(Planned: a `statusBar.script` escape hatch for a fully custom renderer.
-Not implemented yet — the segment list is the supported surface today.)
+### Custom script (`statusBar.script`)
+
+For full control, set `statusBar.script` to a command. Each refresh, the
+footer runs it with the session metadata as JSON on stdin (`contextWindow`,
+`modelLabel`, `quota`, `sessionTokens`, `cols`, `sid`, `name`, `effort`,
+`modelId`). The first non-empty stdout line becomes the footer. The script
+gets 4 seconds at most. A non-zero exit, a timeout, or empty output falls
+back to the built-in renderer, so a broken script never blanks the footer.
+The config is read once at startup.
+
+```jsonc
+{
+  "statusBar": {
+    "script": "/usr/local/bin/my-status --compact",
+  },
+}
+```
+
+The command runs with no shell. Quotes group arguments, but `~` and `$VAR`
+are not expanded. Use an absolute path.
+
+### Environment knobs
+
+- `MINIMAL_AGENT_QUOTA_OVERAGE=1`: show the overage status (hidden by default).
+- `MINIMAL_AGENT_QUOTA_OVERFLOW=wrap`: let the line wrap instead of a hard
+  clip to one line.
+
+Both are read once at startup.

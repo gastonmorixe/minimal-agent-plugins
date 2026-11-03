@@ -10,7 +10,7 @@ chosen format (markdown / text / html / links / accessibility / raw).
 
 ```
 ma-fetch-plugin/
-├── manifest.json           Plugin manifest (tool name, schema, icon)
+├── manifest.json           Plugin manifest (tool name, schema, ui.setup)
 ├── PROMPT.md               When/how the model should use this tool
 ├── handlers/
 │   ├── fetch.ts            Backend-agnostic handler: validate → dispatch → ToolResult
@@ -21,7 +21,10 @@ ma-fetch-plugin/
 │   ├── config.ts           Reads plugins["ma-fetch"] from ~/.minimal-agent/config.jsonc
 │   ├── config.test.ts
 │   ├── backend.ts          Backend dispatcher: builds env, spawns script, captures I/O
-│   └── backend.test.ts
+│   ├── backend.test.ts
+│   └── style.ts            Style slots (plain until ui/setup.ts runs)
+├── ui/
+│   └── setup.ts            CLI only: installs the terminal kit into the style slots
 └── backends/
     ├── obscura.ts          Default backend (wraps obscura CLI)
     └── obscura.test.ts

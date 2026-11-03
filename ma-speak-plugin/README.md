@@ -18,7 +18,7 @@ Three tools:
 
 ```
 ma-speak-plugin/
-├── manifest.json              Plugin manifest (3 tools, schemas, icons)
+├── manifest.json              Plugin manifest (3 tools, schemas, ui.setup)
 ├── PROMPT.md                  When/how the model should use these tools
 ├── handlers/
 │   ├── speak.ts               Validate → spawn detached → register → return handle
@@ -31,7 +31,10 @@ ma-speak-plugin/
 │   ├── registry.ts            In-process speech-job registry (module singleton)
 │   ├── backend.ts             Backend dispatcher: detached spawn, group-kill, parent-exit hook
 │   ├── errors.ts              Backend-agnostic failure taxonomy
-│   └── render.ts              ANSI transcript rendering
+│   ├── style.ts               Style slots (plain until ui/setup.ts runs)
+│   └── render.ts              Transcript rendering over the style slots
+├── ui/
+│   └── setup.ts               CLI only: installs the terminal kit into the style slots
 └── backends/
     └── macos-say.ts           Default backend (wraps `say`, reads text on stdin)
 ```

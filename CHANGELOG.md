@@ -8,6 +8,24 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-01 `c19b4ad`: **Responses usage counts cached tokens once.** Core
+  now treats canonical `inputTokens` as uncached input only. The Responses
+  `input_tokens` field includes `input_tokens_details.cached_tokens`. So the
+  five Responses adapters (openai, grok, meta, opencode-go, opencode-zen)
+  counted cached tokens twice, in `used` and in cost. They now subtract them.
+  Each adapter has a golden usage test.
+
+- 2026-11-01 `79013c1`: **`ma-acp-plugin` sends no `config_option_update`
+  for a client config change.** `session/set_config_option` answers with the
+  complete option list, with the new value selected. The ACP spec keeps
+  `config_option_update` for changes the agent makes itself (for example
+  `model_adopted`). This removes the push that `2673aab` added.
+
+- 2026-11-01 `2673aab`: **`ma-acp-plugin` accepts a symlinked cwd on
+  `session/new`.** The check compared paths as plain strings. On macOS,
+  `/var/folders/...` is a symlink to `/private/var/...`, so `session/new` gave
+  `-32602`. The check now compares real paths.
+
 - 2026-11-01: **`ma-llm-anthropic-plugin` keeps thinking blocks after a model
   switch, with no ask.** The adapter had a preflight check that asked the user
   and offered "strip" as the default. The API docs say to send thinking blocks
@@ -23,6 +41,46 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   already pins 2.5.15. Bump the pin on purpose, together with a reformat.
 
 ### Added
+
+- 2026-11-02 `b592d92`: **`ma-llm-anthropic-plugin` reads plan, seat, and
+  usage for a stored credential.** New `account-plan.ts` gives the provider a
+  `fetchAccountPlan` hook. It reads `GET /api/oauth/profile`,
+  `/api/oauth/claude_cli/roles`, and `/api/oauth/usage`. It makes no
+  inference call, so it spends no model quota. An API key resolves `null`.
+  The roles and usage calls are optional. A failed profile call rejects.
+  `rate_limit_tier` tells seats apart: `default_raven` is a Team member with
+  no seat, `default_claude_max_<n>x` is a seat or a personal Max plan. An
+  unknown tier shows raw and leaves `hasPlan` unset. The contract types are
+  mirrored locally until the core pin has the hook.
+
+- 2026-11-01 `098dec4`: **Live model catalogs refreshed for five
+  providers.** Each new id has pricing and capabilities.
+  - Anthropic: `claude-sonnet-5-5` and `claude-haiku-5-5`, each with a
+    `[1m]` alias. Haiku 5.5 joins the 1M context families in
+    `list-models.ts`.
+  - OpenAI: `gpt-6.1-terra` (Responses) and `gpt-6.1-terra-chat`.
+  - Cursor: static catalog goes from 375 to 443 rows (68 new ids), from the
+    2026-11-01 AvailableModels probe.
+  - OpenCode Zen: adds `gemini-4-argon`, `muse-wonder-1.0`,
+    `deepseek-v4.1-flash-free`, `glm-5.3-flash-free`, `beam-free`,
+    `flint-40b-free`, and `nemotron-3.5-super-vl-free`. `LIVE_MODEL_IDS` goes
+    from 82 to 78.
+  - OpenCode Go: adds `beam-free`, `gemini-4-argon`,
+    `iceman-contributor-free`, `kimi-k3.1-pro`, `minimax-m3.1-flash`, and
+    `step-5-preview` (Chat).
+
+- 2026-11-01 `2673aab`: **`ma-acp-plugin` `--approval-timeout-ms`.** A
+  host-mode argument (`--approval-timeout-ms <n>` or `=<n>`) sets the
+  approval gate deadline. The default stays 10 minutes. A value that is not
+  a positive integer is a startup error: a stderr message, no stdout, exit
+  code 2. See [`ma-acp-plugin/README.md`](ma-acp-plugin/README.md).
+
+- 2026-11-01 `8b353f8`: **`bun run pin:core` and a core pin guard.**
+  `scripts/pin-core.ts` sets one core SHA in every `package.json` dependency
+  field, shows `old -> new` per file, and runs `bun install`. With no SHA it
+  uses core `main`. `scripts/core-pin.test.ts` (part of `bun run check`)
+  fails when a `package.json` or `bun.lock` core ref differs from the root
+  pin or is not a full 40-char SHA. See [`AGENTS.md`](AGENTS.md).
 
 - 2026-10-31: **`ma-acp-plugin` session/update encoder.** New modules
   `encoder.ts`, `stop-reason.ts`, `notices.ts`, `config-options.ts`, wired
@@ -46,6 +104,24 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Removed
 
+- 2026-11-01 `098dec4`: **More OpenCode ids gone from the live catalogs.**
+  Zen drops `gemini-3.1-pro`, `gemini-3-flash`, `deepseek-v4-flash`,
+  `jev-1.13`, `jev-1.13-free`, `step-5-preview-free`, `space-bunny-free`,
+  `longcat-2.5-preview-free`, `ling-3.1-flash-free`,
+  `muse-spark-1.3-contributor-free`, and `muse-spark-1.2-contributor-free`.
+  Go drops `deepseek-flash`, `deepseek-v4-flash`,
+  `deepseek-v4-flash-vision-exp`, `glm-5.1`, `kimi-k2.6`,
+  `longcat-2.5-preview-free`, `omen-alpha`, `mimo-v2.5`, `mimo-v2.5-pro`,
+  `space-bunny`, `step-5-preview-free`, `grok-4.6`, `minimax-m2.7`,
+  `minimax-m2.5`, `qwen3.7-max`, and `qwen3.6-plus`. Their `CAPS_*` and
+  `PRICING_*` exports are gone too. A saved config or `--model` that names
+  one of these no longer resolves under that provider.
+
+- 2026-11-01 `4734d3a`: **Vendored terminal helpers and tool chrome keys.**
+  `ma-config-plugin` and `ma-usage-plugin` drop their `lib/term-width.ts`
+  copies, and `ma-config-plugin` drops `lib/ansi.ts`. Tool manifests drop
+  `icon`, `color`, and `headerKey`. The CLI presentation map holds them now.
+
 - 2026-10-14: **OpenCode ids gone from the live catalogs.** Go drops `glm-5`,
   `kimi-k2.5`, `grok-4.5`, `hy3-preview`, `mimo-v2-pro`, `mimo-v2-omni`, and
   `qwen3.5-plus`. Zen drops `claude-sonnet-4`, `x-preview-f-free`,
@@ -54,6 +130,25 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   `--model` that names one of these no longer resolves under that provider.
 
 ### Changed
+
+- 2026-11-01 `4734d3a`: **Terminal styles move to `ui/setup.ts` modules
+  (S41).** Headless plugin code reads display styles from plain style slots
+  (`lib/style.ts` or `lib/style-slots.ts`). Each slot is plain text until the
+  CLI runs the plugin's `ui/setup.ts` (manifest `ui.setup`), which installs
+  the CLI terminal kit. Strip sites use the core `stripAnsi`.
+  `ma-quota-status-plugin` code moves to `ui/`. New headless-bytes golden
+  tests pin the model bytes of `ma-skills-plugin` and `ma-fetch-plugin`.
+
+- 2026-11-01 `7dec392`: **Every manifest splits into `headless` and `ui`
+  blocks (S31).** Core loads only the `headless` block. The CLI loads the
+  `ui` block. Tools (was `tuis`) and every other contribution move into
+  `headless`. `liveAreaSlots` move into `ui.liveAreaSlots`.
+
+- 2026-11-01 `2728cb3`: **Core pinned to `b8c8c21` in every package.** The
+  pin moved through `61b4fa2`, `8791f27`, `0528dae`, `69b9352`, `e44a201`, and
+  `a24be3a` in this range. Core no longer holds the Anthropic plan OAuth
+  client (decision 39). `ma-llm-anthropic-plugin` now owns it and claims the
+  same store key, so a stored login still works.
 
 - 2026-10-14: **Model-facing plugin prose follows the writing-style rules.**
   PROMPT.md files, manifest descriptions, tool result and error strings in

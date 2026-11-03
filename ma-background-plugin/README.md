@@ -32,7 +32,7 @@ digest between turns when it finishes.
 
 ```
 ma-background-plugin/
-├── manifest.json              4 tools + a 1s heartbeat slot
+├── manifest.json              4 tools (headless) + a 1s heartbeat slot (ui.liveAreaSlots)
 ├── PROMPT.md                  Behavioral nudge: background by default
 ├── bin/
 │   └── runner.ts              The supervised per-job runner (the load-bearing process)
@@ -42,6 +42,8 @@ ma-background-plugin/
 │   ├── bg_logs.ts             Bounded, parametrized read of the raw log
 │   ├── bg_stop.ts             Cancel one job or all
 │   └── heartbeat.ts           Live-area slot: reconcile + completion digest + widget
+├── ui/
+│   └── setup.ts               CLI only: installs the terminal kit into the style slots
 └── lib/
     ├── host-types.ts          Local TUIContext / LiveAreaHandlerContext stubs
     ├── types.ts               Branded ids, Result, JobStatus discriminated union, JobRecord
@@ -58,7 +60,9 @@ ma-background-plugin/
     ├── registry.ts            In-process live-runner registry + parent-exit fan-out
     ├── service.ts             Service Layer: startJob + runReconcile
     ├── handler-deps.ts        Build real deps from a handler context
-    └── render.ts              ANSI transcript chrome (rich job blocks) + the breathing multi-line live panel
+    ├── validate.ts            Tool input validation
+    ├── style.ts               Style slots (plain until ui/setup.ts runs)
+    └── render.ts              Transcript chrome (rich job blocks) + the breathing multi-line live panel
 ```
 
 ## What you see

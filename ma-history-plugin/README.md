@@ -30,10 +30,11 @@ Stable wire format, append-only, never rewrite an existing line.
 Inspect / manage outside the agent:
 
 ```sh
-bun run plugins/history/cli.ts list           # newest-first
-bun run plugins/history/cli.ts search <query> # case-insensitive substring
-bun run plugins/history/cli.ts path           # show the resolved file
-bun run plugins/history/cli.ts clear          # wipe (with confirm)
+bun run ma-history-plugin/cli.ts list           # newest-first
+bun run ma-history-plugin/cli.ts search <query> # case-insensitive substring
+bun run ma-history-plugin/cli.ts path           # show the resolved file
+bun run ma-history-plugin/cli.ts clear          # wipe (with confirm)
+bun run ma-history-plugin/cli.ts export         # print every entry as JSON lines
 ```
 
 ## Disabling

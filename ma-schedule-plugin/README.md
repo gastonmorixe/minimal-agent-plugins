@@ -2,12 +2,16 @@
 
 Run prompts on a schedule. A minimal-agent port of Claude Code's
 [scheduled tasks](https://code.claude.com/docs/en/scheduled-tasks.md): `/loop`,
-`/schedule`, and the `CronCreate` / `CronList` / `CronDelete` tools.
+`/schedule`, and the `CronCreate` / `CronList` / `CronDelete` /
+`CronReschedule` tools.
 
 ## What it does
 
 - **Tools** the model uses from natural language ("remind me at 3pm", "every 5
-  minutes check the deploy"): `CronCreate`, `CronList`, `CronDelete`.
+  minutes check the deploy"): `CronCreate`, `CronList`, `CronDelete`, and
+  `CronReschedule`. `CronReschedule` moves the next fire of a task: give
+  `every` (a new steady cadence) or `nextAtMs` (a one-shot delay). The task
+  then runs on the dynamic pace.
 - **Commands** the user types: `/loop [interval] [prompt]` and
   `/schedule "<cron>" <prompt>` / `/schedule list` / `/schedule cancel <id>`.
 - **A 1-second heartbeat** (a live-area slot) that checks the store each tick and,
@@ -47,8 +51,8 @@ the context the host provides (`ctx.agent`, `ctx.env`, `ctx.emit`) and three hos
 ports added for it:
 
 - `prompt.inject` — a bus channel the REPL listens on to enqueue a prompt.
-- `commands[]` — the manifest command registry + dispatch (so `/loop` works).
-- `ctx.emit` on the live-area slot — lets the heartbeat fan out onto the bus.
+- `headless.commands[]`: the manifest command registry + dispatch (so `/loop` works).
+- `ctx.emit` on the live-area slot (`ui.liveAreaSlots`): lets the heartbeat fan out onto the bus.
 
 The cron engine, interval parser, store, and scheduler are a pure functional core
 (`lib/`), heavily unit-tested; the handlers are a thin imperative shell.

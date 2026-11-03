@@ -18,42 +18,73 @@ can pick deliberately.
 ❯ /swift
 ```
 
-## Status: design + standalone library (loader-installable as no-op)
+## Status: wired over the shared bus
 
-The renderer, fuzzy matcher, providers, and token counter are all
-implemented, well-tested (82+ tests, all passing), and runnable via
-`bun run preview` to see every visual state.
+The plugin runs in the host REPL today. It uses only generic editor
+channels, so it needs no slash-menu-specific core hook:
 
-**Wiring into the host REPL's editor requires four core hooks that
-don't exist in minimal-agent yet.** See
-[Core hooks required](#core-hooks-required) below. Until those land,
-the manifest declares only a no-op `promptFragments` entry (a module
-handler returning the empty string) so the loader accepts the
-manifest and the plugin appears in the startup tree, contributing
-zero behavior and zero tokens. The future manifest shape (with
-`editorOverlays`, `commandProviders`, and `userMessageHook`)
-is documented in [Future manifest shape](#future-manifest-shape)
-below. Don't add those fields to `manifest.json` until the matching
-core hooks land, or the loader will reject them as unknown.
+- `editor.buffer.changed` (event, `handlers/on_buffer_changed.ts`) opens
+  the menu when `/` or `# ma-slash-menu-plugin
+
+Inline command palette for minimal-agent. Triggered by `/` (mixed
+actions+skills, **soft** dispatch) or `$` (skills-only, **forced**
+activation). Fuzzy autocomplete, arrow-key navigation, Tab to complete,
+Esc to cancel. Each row shows the skill's approximate token cost so you
+can pick deliberately.
+
+```
+  ▸ /swiftui-pro                 review SwiftUI for best practices       ~2.1k  skl
+    /swiftui-liquid-glass        iOS 26+ Liquid Glass API                ~3.4k  skl
+    /swiftui-ui-patterns         SwiftUI views & components              ~1.8k  skl
+    /swift-concurrency-expert    Swift 6.2+ concurrency review           ~5.8k  skl
+    /apple-development-official  Xcode-grounded Apple dev guidance      ~12.0k  skl
+  ──────────────────────────────────────────────────────  ↓ 32 more
+  ↑↓ nav · ⇥ /swiftui-pro · ⏎ load skill · esc close
+
+❯ /swift
+```
+
+ is typed and updates the query.
+- `editor.key` (hook, priority 70, `handlers/on_key.ts`) handles
+  navigation, Tab, Enter, and Esc while the menu is open.
+- `editor.footer.set` paints the menu. `editor.buffer.set` completes the
+  selected item into the buffer.
+- `command.run` dispatches a picked command row (`act`) with one Enter.
+
+Run `bun run preview` to see every visual state. The
+[Future manifest shape](#future-manifest-shape) and
+[Core hooks required](#core-hooks-required) sections below are the
+original design notes. They are not implemented, and the plugin does not
+need them to work.
 
 ## Layout
 
 ```
 ma-slash-menu-plugin/
-├── manifest.json                  # plugin manifest (forward-looking shape)
-├── PROMPT.md                      # empty (no model-facing surface)
-├── README.md                      # this file
+├── manifest.json                  # headless: editor.key hook + buffer.changed event, ui.setup
+├── README.md                      # this file (no PROMPT.md: no model-facing surface)
 ├── package.json
+├── handlers/
+│   ├── on_key.ts                  # editor.key: nav keys, apply effects
+│   └── on_buffer_changed.ts       # editor.buffer.changed: open + query
 ├── lib/
-│   ├── types.ts                   # Item, Provider, OverlayState, Dispatch
+│   ├── types.ts                   # Item, Provider, Trigger, OverlayState, Dispatch
+│   ├── overlay.ts                 # pure FSM (closed | armed | open) + effects
+│   ├── state.ts                   # per-process FSM state + items cache
 │   ├── fuzzy.ts                   # subsequence matcher + sortByScore
 │   ├── scoring.ts                 # scoreItems + applySortMode
 │   ├── tokens.ts                  # 4-char heuristic + mtime cache
-│   ├── palette.ts                 # local SGR shortcuts (synced with minimal-agent)
-│   └── render.ts                  # pure overlay renderer → ANSI string[]
+│   ├── styles.ts                  # buffer style spans for typed tokens
+│   ├── paths.ts                   # agent home (MINIMAL_AGENT_HOME), pure path math
+│   ├── host-types.ts              # local host contract stubs
+│   ├── style-slots.ts             # style slots (plain until ui/setup.ts runs)
+│   ├── palette.ts                 # style facade over the style slots
+│   └── render.ts                  # pure overlay renderer → string[]
 ├── providers/
-│   ├── actions.ts                 # static built-in commands
+│   ├── actions.ts                 # registered commands (ctx.listCommands) → items
 │   └── skills.ts                  # SKILL.md discovery + token computation
+├── ui/
+│   └── setup.ts                   # CLI only: installs the terminal kit into the style slots
 └── bin/
     └── preview.ts                 # render every canonical state with real skills
 ```
@@ -62,7 +93,7 @@ ma-slash-menu-plugin/
 
 ```sh
 cd /path/to/minimal-agent-plugins/ma-slash-menu-plugin
-bun test                  # 74 tests, < 30ms
+bun test                  # unit tests for lib/, providers/, handlers/
 bun run bin/preview.ts    # see every canonical visual state
 ```
 
@@ -81,7 +112,7 @@ Items carry a category:
   `ctx.listCommands()`. These are NOT hardcoded — the menu lists exactly the
   commands that actually dispatch (e.g. `/config`, `/loop`, `/schedule`), so
   selecting one always does something. Any plugin that registers a
-  `manifest.commands[]` entry shows up here automatically.
+  `headless.commands[]` entry shows up here automatically.
 - `skl`: skill packs discovered via SKILL.md.
 
 `providers/actions.ts` is now just a pure `commandItems(CommandInfo[]) → Item[]`
@@ -175,9 +206,8 @@ three additional fields (kept here in the README, **not** in
 }
 ```
 
-When you move these into `manifest.json`, you can drop the
-placeholder `promptFragments` entry and delete
-`lib/prompt-fragment.ts`.
+The manifest has no `promptFragments` entry and there is no
+`lib/prompt-fragment.ts` any more.
 
 ## Core hooks required
 
@@ -278,37 +308,18 @@ text. Same shape Anthropic uses for prefill activation.
 
 ## Configuration
 
-Lives at `~/.minimal-agent/config.jsonc` under `plugins["ma-slash-menu"]`:
+The plugin reads no settings of its own today. To turn it off, set
+`plugins["ma-slash-menu"].enabled = false` in
+`~/.minimal-agent/config.jsonc`. Sort modes (`lib/scoring.ts`) and a row
+cap (`maxRows`, `lib/render.ts`) exist in the library, but no config key
+sets them yet.
 
-```jsonc
-{
-  "plugins": {
-    "ma-slash-menu": {
-      "enabled": true,
-      "sort": "match-score", // "match-score" | "cost-asc" | "cost-desc"
-      "sortByCostNearQuota": true, // auto-flip to cost-asc near context limit
-      "maxRows": 5,
-      "showBadge": true, // override degradation to keep / hide badges
-    },
-  },
-}
-```
+## Adding a new action
 
-## Adding a new built-in action
-
-Append an entry to `BUILTIN_ACTIONS` in `providers/actions.ts`:
-
-```ts
-{
-  slug: "mynewthing",
-  description: "do the new thing",
-  category: "act",
-  payload: { actionId: "mynewthing" },
-}
-```
-
-Then handle `actionId: "mynewthing"` in the host harness's action
-router (lives wherever `Dispatch.kind === "action"` is dispatched).
+The menu has no built-in action list. Register a slash command in any
+plugin (`headless.commands[]` in its `manifest.json`). The host lists it
+through `ctx.listCommands()`, and the menu shows it as an `act` row on the
+next keystroke.
 
 ## Adding a new skill
 
