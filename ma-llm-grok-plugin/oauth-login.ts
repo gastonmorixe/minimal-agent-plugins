@@ -271,6 +271,7 @@ export function inspectGrokOAuthCredential(secrets: AuthSecretBag): AuthCredenti
   }
 }
 
+/** Request a Grok OIDC device-code challenge for the native-app client id. */
 async function requestGrokDeviceCode(
   ctx: OAuthDeviceCodeContext,
 ): Promise<OAuthDeviceCodeChallenge> {
@@ -321,6 +322,7 @@ async function requestGrokDeviceCode(
   }
 }
 
+/** Poll the Grok token endpoint until approved, then finalize the credential write. */
 async function completeGrokDeviceCode(
   challenge: OAuthDeviceCodeChallenge,
   ctx: OAuthDeviceCodeContext,

@@ -15,13 +15,13 @@
       "ma-*-kit"
     ],
     "catalog": {
-      "@biomejs/biome": "2.5.15",
-      "bun-types": "^1.4.3",
-      "eslint-plugin-jsdoc": "^63.3.3",
+      "@biomejs/biome": "2.6.6",
+      "bun-types": "^1.4.4",
+      "eslint-plugin-jsdoc": "^65.4.5",
       "eslint-plugin-tsdoc": "^0.5.4",
-      "oxlint": "^1.88.0",
-      "oxlint-tsgolint": "^7.0.2004",
-      "typescript": "^7.0.2"
+      "oxlint": "1.92.0",
+      "oxlint-tsgolint": "7.0.2006",
+      "typescript": "7.0.2"
     }
   },
   "type": "module",
@@ -50,7 +50,7 @@
     "@biomejs/biome": "catalog:",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
-    "@minimal-agent/config": "git+ssh://git@github.com/gastonmorixe/minimal-agent-config.git#cab6957c0593fa19d6f9e4006434e11762c96c9a",
+    "@minimal-agent/config": "git+ssh://git@github.com/gastonmorixe/minimal-agent-config.git#55ba040f72c559c1ca94e6701b4466843728dbc7",
     "bun-types": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-tsdoc": "catalog:",
@@ -63,6 +63,6 @@
     "brace-expansion": "^5.0.6"
   },
   "engines": {
-    "bun": ">=1.4.2"
+    "bun": ">=1.4.4"
   }
 }

@@ -325,6 +325,7 @@ export async function mintMuseApiKey(
   throw new Error(lastError)
 }
 
+/** Request a Muse Code device-code challenge from the Meta device authorization endpoint. */
 async function requestMuseDeviceCode(
   ctx: OAuthDeviceCodeContext,
 ): Promise<OAuthDeviceCodeChallenge> {
@@ -366,6 +367,7 @@ async function requestMuseDeviceCode(
   }
 }
 
+/** Poll the token endpoint until approved, mint the Model API key, and build the credential. */
 async function completeMuseDeviceCodeLogin(
   challenge: OAuthDeviceCodeChallenge,
   ctx: OAuthDeviceCodeContext,

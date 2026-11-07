@@ -283,6 +283,7 @@ function renderScrollAffordance(label: string): string {
 // Divider + footer hint line
 // ---------------------------------------------------------------------------
 
+/** Render the dashed divider row, with a trailing note when items remain below the window. */
 function renderDivider(state: OverlayState, w: VisibleWindow): string {
   const remaining = state.items.length - w.end
   const note = remaining > 0 ? `↓ ${remaining} more` : ""
@@ -298,6 +299,7 @@ function renderDivider(state: OverlayState, w: VisibleWindow): string {
   return line
 }
 
+/** Render the key-hint row under the divider, clipped to the terminal width. */
 function renderHint(state: OverlayState): string {
   const selected = state.items[state.selectedIndex]
   const trigger = state.trigger
@@ -334,6 +336,7 @@ function renderHint(state: OverlayState): string {
   return line
 }
 
+/** Pick the enter-key verb for the selected item, based on trigger and category. */
 function enterVerbFor(state: OverlayState): string {
   const item = state.items[state.selectedIndex]
   if (!item) return "—"

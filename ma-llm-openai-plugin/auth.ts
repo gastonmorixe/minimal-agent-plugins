@@ -176,6 +176,7 @@ export function buildOpenAIOAuthCredential(response: Record<string, unknown>) {
   }
 }
 
+/** Request an OpenAI device-code challenge (user code, verification URL, poll interval). */
 async function requestOpenAIDeviceCode(
   ctx: OAuthDeviceCodeContext,
 ): Promise<OAuthDeviceCodeChallenge> {
@@ -297,6 +298,7 @@ async function exchangeOpenAIDeviceAuthorizationCode(
   return response.json<Record<string, unknown>>()
 }
 
+/** Poll until the user approves, exchange the code, and build the OpenAI credential write. */
 async function completeOpenAIDeviceCodeLogin(
   challenge: OAuthDeviceCodeChallenge,
   ctx: OAuthDeviceCodeContext,

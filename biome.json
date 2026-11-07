@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
   "extends": ["@minimal-agent/config/biome"],
   "files": {
     "ignoreUnknown": true,
@@ -13,7 +13,9 @@
       "tsdoc.json",
       "!**/node_modules/**",
       "!**/.net-dbg/**",
-      "!**/bun.lock"
+      "!**/bun.lock",
+      "!**/native/build/**",
+      "!**/PROMPT.md"
     ]
   }
 }
