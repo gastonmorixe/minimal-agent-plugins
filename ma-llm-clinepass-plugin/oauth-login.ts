@@ -241,6 +241,7 @@ export function inspectClinepassOAuthCredential(secrets: AuthSecretBag): AuthCre
   }
 }
 
+/** Request a WorkOS device-code challenge and normalize the user code for the harness. */
 async function requestClinepassDeviceCode(
   ctx: OAuthDeviceCodeContext,
 ): Promise<OAuthDeviceCodeChallenge> {
@@ -323,6 +324,7 @@ async function registerWorkOSWithCline(
   return buildClinepassOAuthFromClineResponse(json.data)
 }
 
+/** Poll WorkOS until approved, then register the tokens with Cline and build the credential. */
 async function completeClinepassDeviceCode(
   challenge: OAuthDeviceCodeChallenge,
   ctx: OAuthDeviceCodeContext,

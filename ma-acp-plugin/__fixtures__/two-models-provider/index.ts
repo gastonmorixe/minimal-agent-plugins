@@ -23,6 +23,7 @@ export const TWO_MODELS = [
 
 const SURFACE_ID = "openai-chat-completions"
 
+/** Register the two fake models for the ACP test fixture. */
 function register(ctx?: ProviderSetupContext): void {
   if (!ctx?.models) return
   // Use the capabilities of the codec when it is already registered, so

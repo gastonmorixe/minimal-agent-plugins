@@ -63,6 +63,7 @@ interface VisibleWindow {
   count: number
 }
 
+/** Compute the slice of items that fits in the visible window. */
 function visibleWindow(state: MentionOverlayState): VisibleWindow {
   const total = state.items.length
   if (total === 0) return { start: 0, end: 0, count: 0 }
@@ -82,6 +83,7 @@ function visibleWindow(state: MentionOverlayState): VisibleWindow {
 // Row
 // ---------------------------------------------------------------------------
 
+/** Map a peer liveness state to its status glyph and color. */
 function statusGlyph(l: Liveness): { glyph: string; color: string } {
   switch (l.status) {
     case "online":
@@ -116,6 +118,7 @@ function renderSlug(slug: string, matches: number[], isSelected: boolean): strin
   return out
 }
 
+/** Render one peer row: selection arrow, status dot, name and score, clipped to cols. */
 function renderItemRow(item: ScoredPeer, isSelected: boolean, cols: number): string {
   const arrow = isSelected ? wrap(ARROW, SGR.boldSky) : " "
   const { glyph, color } = statusGlyph(item.liveness)

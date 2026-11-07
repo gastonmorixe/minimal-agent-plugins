@@ -221,6 +221,12 @@ function renderScrollAffordance(label: string): string {
   return INDENT + dim(label)
 }
 
+/**
+ * Render the dashed divider row that closes the visible window.
+ *
+ * Appends a `↓ N more` note on the right when items stay below the window.
+ * The row is clipped to `state.cols` so it never wraps.
+ */
 function renderDivider(state: OverlayState, w: VisibleWindow): string {
   const remaining = state.items.length - w.end
   const note = remaining > 0 ? `↓ ${remaining} more` : ""
@@ -233,6 +239,14 @@ function renderDivider(state: OverlayState, w: VisibleWindow): string {
   return line
 }
 
+/**
+ * Render the key-hint row under the divider.
+ *
+ * Joins the nav, complete, enter, optional body and close chips with a dim
+ * separator. Adds `state.footerNote` and the token cost of the selected item
+ * when each is present. The row is clipped to `state.cols` so the important
+ * hints survive.
+ */
 function renderHint(state: OverlayState): string {
   const selected = state.items[state.selectedIndex]
   const trigger = state.trigger
@@ -263,6 +277,12 @@ function renderHint(state: OverlayState): string {
   return line
 }
 
+/**
+ * Pick the verb shown in the enter hint for the selected item.
+ *
+ * Returns the placeholder dash when nothing is selected, `(broken)` for a
+ * disabled item, and `state.enterVerb` (default `insert`) otherwise.
+ */
 function enterVerbFor(state: OverlayState): string {
   const item = state.items[state.selectedIndex]
   if (!item) return "—"
