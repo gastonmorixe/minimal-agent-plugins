@@ -32,7 +32,6 @@
   "rules": {
     "typescript/require-array-sort-compare": "off",
     "typescript/consistent-return": "off",
-    "typescript/unbound-method": "off",
     "jsdoc-js/require-jsdoc": [
       "error",
       {
