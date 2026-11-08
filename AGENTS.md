@@ -14,6 +14,18 @@ harness code lives in the sibling core remote, not here.
   `bun --filter 'ma-*' test` in parallel.
 - This is a Bun workspace: every `ma-*-plugin` package is a workspace member.
   Toolchain versions live under `workspaces.catalog`.
+- The config files extend `@minimal-agent/config`:
+  - `biome.json` keeps `$schema` and `files.includes`, including the excludes
+    for `native/build/**` (Xcode output) and `PROMPT.md` (agent prompt text
+    with a literal diff example that the Markdown formatter would reflow).
+  - `.oxlintrc.json` extends
+    `./node_modules/@minimal-agent/config/oxlintrc.json` and keeps
+    `categories`, `settings`, `jsPlugins`, `ignorePatterns`, `overrides`, the
+    jsdoc rules, `max-lines` and the plugin-only rule offs.
+  - `tsconfig.json` keeps `verbatimModuleSyntax`, `resolveJsonModule`,
+    `isolatedModules`, `include` and `exclude`.
+  A rule that should also apply to core and cli belongs in
+  `minimal-agent-config`, not here. Bump its pin in `package.json` after.
 
 ## Core pin (`bun run pin:core`)
 
