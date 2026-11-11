@@ -3,6 +3,7 @@
   "name": "Tasks",
   "version": "0.1.0",
   "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO. Single Task tool with action switch (add, add_many, replace_plan, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model and human boards use canonical ordinal ids. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as <ma::agent::tasks>.",
+  "permissions": ["hooks:turn.willStart", "hooks:turn.didEnd", "hooks:turn.aborted"],
   "headless": {
     "promptFragments": [
       {
@@ -168,6 +169,25 @@
           "path": "./handlers/task_link.ts",
           "export": "default"
         }
+      }
+    ],
+    "hooks": [
+      {
+        "id": "idle_turn_start",
+        "channel": "turn.willStart",
+        "handler": { "type": "module", "path": "./handlers/on_turn_start.ts", "export": "default" },
+        "priority": 10,
+        "observeOnly": true
+      },
+      {
+        "id": "idle_turn_end",
+        "channel": "turn.didEnd",
+        "handler": { "type": "module", "path": "./handlers/on_turn_end.ts", "export": "default" }
+      },
+      {
+        "id": "idle_turn_aborted",
+        "channel": "turn.aborted",
+        "handler": { "type": "module", "path": "./handlers/on_turn_end.ts", "export": "default" }
       }
     ],
     "replayRenderers": [

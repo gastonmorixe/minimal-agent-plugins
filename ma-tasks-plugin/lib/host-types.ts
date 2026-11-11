@@ -120,3 +120,19 @@ export interface EventHandlerContext<TPayload = unknown> {
 export type EventHandler<TPayload = unknown> = (
   ctx: EventHandlerContext<TPayload>,
 ) => void | Promise<void>
+
+/**
+ * Runtime context passed to a hook-subscription handler. This plugin reads
+ * `agent.sessionId`, `env.HOME`, and `log`.
+ */
+export interface HookHandlerContext {
+  channel: string
+  packageDir: string
+  cwd: string
+  env: Record<string, string>
+  abort: AbortSignal
+  priority: number
+  emit: (channel: string, payload?: unknown) => void
+  log: PluginLogger
+  agent?: AgentContext
+}

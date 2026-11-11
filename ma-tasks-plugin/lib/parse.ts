@@ -141,6 +141,14 @@ export interface TasksMeta {
   next_root: number
   next_child: Record<string, number>
   aliases: Record<string, string>
+  /**
+   * Long idle windows `[startMs, endMs]` (epoch ms) between a turn end and
+   * the next turn start. Duration math skips them, so a pause overnight
+   * does not count as work time. Optional on disk (older files lack it).
+   */
+  idle_gaps: [number, number][]
+  /** Epoch ms when the last turn ended and no new turn started yet, else `null`. */
+  idle_since: number | null
 }
 
 export const DEFAULT_TASKS_META: Readonly<TasksMeta> = Object.freeze({
@@ -150,11 +158,15 @@ export const DEFAULT_TASKS_META: Readonly<TasksMeta> = Object.freeze({
   next_root: 1,
   next_child: {},
   aliases: {},
+  idle_gaps: [],
+  idle_since: null,
 })
 
 /** Create isolated v3 allocator metadata with defensive record copies. */
 export function createTasksMeta(
-  over: Partial<Pick<TasksMeta, "next_root" | "next_child" | "aliases">> = {},
+  over: Partial<
+    Pick<TasksMeta, "next_root" | "next_child" | "aliases" | "idle_gaps" | "idle_since">
+  > = {},
 ): TasksMeta {
   return {
     kind: "tasks_meta",
@@ -163,6 +175,8 @@ export function createTasksMeta(
     next_root: over.next_root ?? 1,
     next_child: { ...(over.next_child ?? {}) },
     aliases: { ...(over.aliases ?? {}) },
+    idle_gaps: (over.idle_gaps ?? []).map(([s, e]) => [s, e] as [number, number]),
+    idle_since: over.idle_since ?? null,
   }
 }
 
@@ -445,7 +459,28 @@ export function parseTasksMeta(line: string): TasksMeta | null {
       next_child[parent] = next as number
     }
   }
-  return createTasksMeta({ next_root: o.next_root as number, next_child, aliases })
+  const idle_gaps: [number, number][] = []
+  if (Array.isArray(o.idle_gaps)) {
+    for (const g of o.idle_gaps as unknown[]) {
+      if (
+        Array.isArray(g) &&
+        g.length === 2 &&
+        Number.isFinite(g[0]) &&
+        Number.isFinite(g[1]) &&
+        (g[1] as number) > (g[0] as number)
+      ) {
+        idle_gaps.push([g[0] as number, g[1] as number])
+      }
+    }
+  }
+  const idle_since = Number.isFinite(o.idle_since) ? (o.idle_since as number) : null
+  return createTasksMeta({
+    next_root: o.next_root as number,
+    next_child,
+    aliases,
+    idle_gaps,
+    idle_since,
+  })
 }
 
 /** Parse a complete sidecar, treating only its first record as metadata. */

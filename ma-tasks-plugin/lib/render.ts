@@ -44,6 +44,7 @@
  * @module tasks/lib/render
  */
 
+import { type IdleGap, subtractGaps } from "./idle.ts"
 import { localIsoDateTime, type Task, type TaskStatus } from "./parse.ts"
 import type { Stats, View } from "./store.ts"
 import { slots } from "./style.ts"
@@ -167,6 +168,11 @@ export interface RenderOptions {
    * `active_ms + (now − last_resumed_at)` math on doing rows.
    */
   now?: () => number
+  /**
+   * Long idle windows (epoch ms) to skip in every duration. Get them from
+   * `TaskStore.idleGaps()`. Omit for none (replay, tests).
+   */
+  idleGaps?: readonly IdleGap[]
 }
 
 // ---------------------------------------------------------------------------
@@ -215,12 +221,12 @@ function pad2(n: number): string {
  * adds `now − Date.parse(last_resumed_at)` so the column shows the
  * current elapsed time at the moment of render.
  */
-export function taskActiveMs(t: Task, nowEpochMs: number): number {
+export function taskActiveMs(t: Task, nowEpochMs: number, gaps: readonly IdleGap[] = []): number {
   if (t.status !== "doing") return t.active_ms
   if (t.last_resumed_at === null) return t.active_ms
   const resumedMs = Date.parse(t.last_resumed_at)
   if (!Number.isFinite(resumedMs) || nowEpochMs < resumedMs) return t.active_ms
-  return t.active_ms + (nowEpochMs - resumedMs)
+  return t.active_ms + subtractGaps(resumedMs, nowEpochMs, gaps)
 }
 
 /**
@@ -234,14 +240,19 @@ export function taskActiveMs(t: Task, nowEpochMs: number): number {
  *
  * A top-level task without children keeps its normal per-task duration.
  */
-function topLevelTotalMs(v: View, allTasks: readonly Task[], nowEpochMs: number): number {
-  const ownMs = taskActiveMs(v.task, nowEpochMs)
+function topLevelTotalMs(
+  v: View,
+  allTasks: readonly Task[],
+  nowEpochMs: number,
+  gaps: readonly IdleGap[],
+): number {
+  const ownMs = taskActiveMs(v.task, nowEpochMs, gaps)
   let childMs = 0
   let hasChildren = false
   for (const child of allTasks) {
     if (child.parent !== v.task.id) continue
     hasChildren = true
-    childMs += taskActiveMs(child, nowEpochMs)
+    childMs += taskActiveMs(child, nowEpochMs, gaps)
   }
   return hasChildren ? Math.max(ownMs, childMs) : ownMs
 }
@@ -256,7 +267,11 @@ function topLevelTotalMs(v: View, allTasks: readonly Task[], nowEpochMs: number)
  * parallel work). The closer should read like "this task list took 12
  * minutes from start to finish", which is wall-clock by definition.
  */
-export function listTotalElapsedMs(tasks: readonly Task[], nowEpochMs: number): number {
+export function listTotalElapsedMs(
+  tasks: readonly Task[],
+  nowEpochMs: number,
+  gaps: readonly IdleGap[] = [],
+): number {
   let earliestStart: number | null = null
   let latestEnd: number | null = null
   let anyDoing = false
@@ -282,7 +297,8 @@ export function listTotalElapsedMs(tasks: readonly Task[], nowEpochMs: number): 
   // back to now for an honest mid-flight reading.
   const upper = anyDoing ? nowEpochMs : (latestEnd ?? nowEpochMs)
   if (upper < earliestStart) return 0
-  return upper - earliestStart
+  // Skip long idle windows: a pause overnight is not work time.
+  return subtractGaps(earliestStart, upper, gaps)
 }
 
 // ---------------------------------------------------------------------------
@@ -923,6 +939,7 @@ export function renderToolDisplay(
   opts: RenderOptions,
 ): ToolDisplayParts {
   const nowEpochMs = (opts.now ?? Date.now)()
+  const gaps = opts.idleGaps ?? []
   // Snapshot the underlying Task[] once for per-row duration computation
   // (top-level rows sum their subtasks' active_ms) and for the closer's
   // wall-clock elapsed.
@@ -942,8 +959,8 @@ export function renderToolDisplay(
       const targeted = targetHash !== null && v.task.id === targetHash
       const durMs =
         v.task.parent === null
-          ? topLevelTotalMs(v, allTasks, nowEpochMs)
-          : taskActiveMs(v.task, nowEpochMs)
+          ? topLevelTotalMs(v, allTasks, nowEpochMs, gaps)
+          : taskActiveMs(v.task, nowEpochMs, gaps)
       bodyLines.push(
         v.task.parent === null
           ? renderTopLevelRowBody(v, opts.ansi, opts.maxTitleLen, targeted, durMs)
@@ -952,7 +969,7 @@ export function renderToolDisplay(
     }
   }
   bodyLines.push("")
-  const elapsedMs = listTotalElapsedMs(allTasks, nowEpochMs)
+  const elapsedMs = listTotalElapsedMs(allTasks, nowEpochMs, gaps)
   return {
     header: renderHeaderText(opts.action, stats, opts.ansi, nowEpochMs),
     body: bodyLines.join("\n"),
@@ -977,6 +994,7 @@ export function renderToolDisplay(
  */
 export function renderBlock(views: readonly View[], stats: Stats, opts: RenderOptions): string {
   const nowEpochMs = (opts.now ?? Date.now)()
+  const gaps = opts.idleGaps ?? []
   const allTasks = views.map((v) => v.task)
   const lines: string[] = []
   lines.push(renderHeader(opts.action, stats, opts.ansi, nowEpochMs))
@@ -999,8 +1017,8 @@ export function renderBlock(views: readonly View[], stats: Stats, opts: RenderOp
     const targeted = targetHash !== null && v.task.id === targetHash
     const durMs =
       v.task.parent === null
-        ? topLevelTotalMs(v, allTasks, nowEpochMs)
-        : taskActiveMs(v.task, nowEpochMs)
+        ? topLevelTotalMs(v, allTasks, nowEpochMs, gaps)
+        : taskActiveMs(v.task, nowEpochMs, gaps)
     if (v.task.parent === null) {
       lines.push(renderTopLevelRow(v, opts.ansi, opts.maxTitleLen, targeted, durMs))
     } else {
@@ -1008,7 +1026,7 @@ export function renderBlock(views: readonly View[], stats: Stats, opts: RenderOp
     }
   }
   lines.push(renderGap(opts.ansi))
-  const elapsedMs = listTotalElapsedMs(allTasks, nowEpochMs)
+  const elapsedMs = listTotalElapsedMs(allTasks, nowEpochMs, gaps)
   lines.push(renderCloser(stats, opts.ansi, elapsedMs))
   return `${lines.join("\n")}\n`
 }
