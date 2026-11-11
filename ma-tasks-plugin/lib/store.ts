@@ -46,6 +46,7 @@ import { dirname, join } from "node:path"
 
 import { resolveSessionsDir } from "@minimal-agent/core/plugin-api/utils/agent-paths"
 
+import { effectiveGaps, type IdleGap, markIdleEnd, markIdleStart, subtractGaps } from "./idle.ts"
 import {
   createTasksMeta,
   isSubtaskId,
@@ -93,6 +94,7 @@ export function applyStatusTransition(
   nowIso: string,
   nowEpochMs: number,
   reason?: string | null,
+  gaps: readonly IdleGap[] = [],
 ): Task {
   let started_at = prev.started_at
   let last_resumed_at = prev.last_resumed_at
@@ -112,7 +114,8 @@ export function applyStatusTransition(
     if (last_resumed_at !== null) {
       const resumedMs = Date.parse(last_resumed_at)
       if (Number.isFinite(resumedMs) && nowEpochMs >= resumedMs) {
-        active_ms += nowEpochMs - resumedMs
+        // Skip long idle windows: a pause overnight is not work time.
+        active_ms += subtractGaps(resumedMs, nowEpochMs, gaps)
       }
     }
     last_resumed_at = null
@@ -283,6 +286,8 @@ export class TaskStore {
       next_root: meta.next_root,
       next_child: meta.next_child,
       aliases: meta.aliases,
+      idle_gaps: meta.idle_gaps,
+      idle_since: meta.idle_since,
     })
   }
 
@@ -554,16 +559,17 @@ export class TaskStore {
     if (target === null) return null
     const idx = tasks.indexOf(target)
     const { nowIso, nowMs } = this.nowPair()
+    const gaps = effectiveGaps(state.meta, nowMs)
 
-    const next = applyStatusTransition(target, status, nowIso, nowMs, reason)
+    const next = applyStatusTransition(target, status, nowIso, nowMs, reason, gaps)
     tasks[idx] = next
 
     if (status === "done") {
-      this.applyDoneCascade(tasks, next, nowIso, nowMs)
+      this.applyDoneCascade(tasks, next, nowIso, nowMs, gaps)
     } else if (status === "canceled" && next.parent !== null) {
-      this.applyChildTerminalRollup(tasks, next.parent, nowIso, nowMs)
+      this.applyChildTerminalRollup(tasks, next.parent, nowIso, nowMs, gaps)
     } else if (status === "doing" && next.parent !== null) {
-      this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
+      this.applyParentDoing(tasks, next.parent, nowIso, nowMs, gaps)
     }
 
     this.writeState(state.meta, tasks)
@@ -577,19 +583,25 @@ export class TaskStore {
    * transition. Mutates `tasks`; caller owns the write. See
    * {@link setStatus} for the cascade rules.
    */
-  private applyDoneCascade(tasks: Task[], target: Task, nowIso: string, nowMs: number): void {
+  private applyDoneCascade(
+    tasks: Task[],
+    target: Task,
+    nowIso: string,
+    nowMs: number,
+    gaps: readonly IdleGap[],
+  ): void {
     if (target.parent === null) {
       // Parent done → cascade open children. Canceled stays canceled.
       for (let i = 0; i < tasks.length; i++) {
         const t = tasks[i]
         if (t.parent !== target.id) continue
         if (t.status === "done" || t.status === "canceled") continue
-        tasks[i] = applyStatusTransition(t, "done", nowIso, nowMs)
+        tasks[i] = applyStatusTransition(t, "done", nowIso, nowMs, undefined, gaps)
       }
       return
     }
 
-    this.applyChildTerminalRollup(tasks, target.parent, nowIso, nowMs)
+    this.applyChildTerminalRollup(tasks, target.parent, nowIso, nowMs, gaps)
   }
 
   /**
@@ -602,6 +614,7 @@ export class TaskStore {
     parentId: string,
     nowIso: string,
     nowMs: number,
+    gaps: readonly IdleGap[],
   ): void {
     const parentIdx = tasks.findIndex((t) => t.id === parentId)
     if (parentIdx < 0) return
@@ -612,19 +625,25 @@ export class TaskStore {
       (t) => t.parent === parent.id && (t.status === "todo" || t.status === "doing"),
     )
     if (!hasOpenChild) {
-      tasks[parentIdx] = applyStatusTransition(parent, "done", nowIso, nowMs)
+      tasks[parentIdx] = applyStatusTransition(parent, "done", nowIso, nowMs, undefined, gaps)
     } else {
-      this.applyParentDoing(tasks, parent.id, nowIso, nowMs)
+      this.applyParentDoing(tasks, parent.id, nowIso, nowMs, gaps)
     }
   }
 
   /** Auto-start a parent unless it is already doing or explicitly canceled. */
-  private applyParentDoing(tasks: Task[], parentId: string, nowIso: string, nowMs: number): void {
+  private applyParentDoing(
+    tasks: Task[],
+    parentId: string,
+    nowIso: string,
+    nowMs: number,
+    gaps: readonly IdleGap[],
+  ): void {
     const parentIdx = tasks.findIndex((t) => t.id === parentId)
     if (parentIdx < 0) return
     const parent = tasks[parentIdx]
     if (parent.status === "doing" || parent.status === "canceled") return
-    tasks[parentIdx] = applyStatusTransition(parent, "doing", nowIso, nowMs)
+    tasks[parentIdx] = applyStatusTransition(parent, "doing", nowIso, nowMs, undefined, gaps)
   }
 
   /**
@@ -643,15 +662,52 @@ export class TaskStore {
     const target = this.resolveFrom(ref, tasks, state.meta)
     if (target === null) return null
     const { nowIso, nowMs } = this.nowPair()
+    const gaps = effectiveGaps(state.meta, nowMs)
 
     const idx = tasks.indexOf(target)
-    const next = applyStatusTransition(target, "doing", nowIso, nowMs)
+    const next = applyStatusTransition(target, "doing", nowIso, nowMs, undefined, gaps)
     tasks[idx] = next
     if (next.parent !== null) {
-      this.applyParentDoing(tasks, next.parent, nowIso, nowMs)
+      this.applyParentDoing(tasks, next.parent, nowIso, nowMs, gaps)
     }
     this.writeState(state.meta, tasks)
     return next
+  }
+
+  /** True when the session already has a tasks file. */
+  hasFile(): boolean {
+    return existsSync(this.path)
+  }
+
+  /**
+   * Idle windows that apply at `nowMs` (stored gaps plus the open one).
+   * Pass the result to {@link taskActiveMs} and {@link listTotalElapsedMs}.
+   * Reads the file. Never creates it.
+   */
+  idleGaps(nowMs: number = this.nowPair().nowMs): IdleGap[] {
+    if (!this.hasFile()) return []
+    return effectiveGaps(this.readState().meta, nowMs)
+  }
+
+  /**
+   * A turn ended: the agent is idle from now. No-op when the session has no
+   * tasks file (never creates one).
+   */
+  markTurnEnd(): void {
+    if (!this.hasFile()) return
+    const state = this.readState()
+    this.writeState(markIdleStart(state.meta, this.nowPair().nowMs), state.tasks)
+  }
+
+  /**
+   * A turn is starting: close the idle window. A long pause is stored as a
+   * gap, a short one is dropped. No-op when the session has no tasks file.
+   */
+  markTurnStart(): void {
+    if (!this.hasFile()) return
+    const state = this.readState()
+    if (state.meta.idle_since === null) return
+    this.writeState(markIdleEnd(state.meta, this.nowPair().nowMs), state.tasks)
   }
 
   /** Shorthand for `setStatus(ref, "done")`. */

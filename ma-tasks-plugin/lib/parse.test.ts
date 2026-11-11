@@ -393,6 +393,8 @@ describe("v3 metadata parsing", () => {
       next_root: 4,
       next_child: { "1": 2 },
       aliases: { abcdef: "1" },
+      idle_gaps: [],
+      idle_since: null,
     })
   })
 })

@@ -538,7 +538,11 @@ function renderResult(
   // post-mutation — the overlay is purely visual residue.
   const views = viewsOverride ?? store.views()
   const stats = store.stats()
-  const displayParts = renderToolDisplay(views, stats, { ansi: true, action })
+  const displayParts = renderToolDisplay(views, stats, {
+    ansi: true,
+    action,
+    idleGaps: store.idleGaps(),
+  })
   const tasks = store.list()
   if (format === "json") {
     return {
@@ -664,6 +668,7 @@ function okCompact(
   const displayParts = renderToolDisplay(store.views(), stats, {
     ansi: true,
     action,
+    idleGaps: store.idleGaps(),
   })
   const metaBase = modelMeta(
     action,

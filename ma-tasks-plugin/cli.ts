@@ -179,7 +179,11 @@ function getSid(flags: Flags): string | null {
 }
 
 function render(store: TaskStore, action: RenderAction, useAnsi: boolean): string {
-  return renderBlock(store.views(), store.stats(), { ansi: useAnsi, action })
+  return renderBlock(store.views(), store.stats(), {
+    ansi: useAnsi,
+    action,
+    idleGaps: store.idleGaps(),
+  })
 }
 
 function resolveIdRef(raw: string): string {
