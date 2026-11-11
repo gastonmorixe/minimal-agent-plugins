@@ -54,10 +54,11 @@ quota metering only (not pay-per-token).
 ## Install
 
 Package lives under `minimal-agent-plugins/ma-llm-clinepass-plugin` and is
-workspace-globbed as `ma-*-plugin`. Symlink into the agent plugin root:
+workspace-globbed as `ma-*-plugin`. The monorepo checkout loads it
+automatically. For one project, symlink it into the project plugin root:
 
 ```bash
-ln -sf "$(pwd)/ma-llm-clinepass-plugin" ~/.agents/plugins/ma-llm-clinepass-plugin
+ln -sf "$(pwd)/ma-llm-clinepass-plugin" <project>/.agents/minimal-agent/plugins/ma-llm-clinepass-plugin
 ```
 
 Provider id: `clinepass`. Short code: `cp`.

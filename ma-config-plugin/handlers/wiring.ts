@@ -7,7 +7,6 @@
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 
 import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
@@ -56,12 +55,13 @@ export function realFsDeps(path: string): FsDeps {
 }
 
 /**
- * The plugin discovery roots, mirroring `PluginLoader.load`'s scan order
- * (project, then home, then embedded). `packageDir` is this plugin's own dir
- * (`<repo>/plugins/config`), so the embedded root is its parent.
+ * The plugin discovery roots, mirroring the loader's scan order (project,
+ * then this plugin's own root). `packageDir` is this plugin's own dir, so its
+ * parent is the first-party root that the host loaded: the dev checkout in
+ * dev mode, the user clone in install mode.
  *
  * Order matters: first-seen id wins in `discoverPlugins`, matching the
- * loader's project-over-home-over-embedded precedence.
+ * loader's project-first precedence. There is no home tier.
  */
 export function discoveryRoots(
   packageDir: string,
@@ -74,12 +74,10 @@ export function discoveryRoots(
   // redirect the embedded root, which is this plugin's own parent dir — in a
   // repo checkout that parent is the plugins repo root, full of `ma-*-plugin`s).
   if (env.MINIMAL_AGENT_CONFIG_SKIP_PLUGIN_DISCOVERY === "1") return []
-  const home = env.HOME || homedir()
-  const embeddedRoot = dirname(packageDir) // <repo>/plugins
+  const ownRoot = dirname(packageDir) // the checkout or the user clone
   return [
-    join(cwd, ".agents", "plugins"), // project
-    join(home, ".agents", "plugins"), // home
-    embeddedRoot, // embedded (ships with the agent)
+    join(cwd, ".agents", "minimal-agent", "plugins"), // project
+    ownRoot,
   ]
 }
 

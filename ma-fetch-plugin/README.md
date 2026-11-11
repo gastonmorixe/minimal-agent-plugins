@@ -84,11 +84,12 @@ Backend output:
    git clone git@github.com:gastonmorixe/minimal-agent-plugins.git ~/minimal-agent-plugins
    ```
 
-2. Symlink the plugin into your minimal-agent home plugin root:
+2. Symlink the plugin into your project plugin root (the monorepo checkout
+   loads it automatically, so skip this step there):
 
    ```bash
-   mkdir -p ~/.agents/plugins
-   ln -s ~/minimal-agent-plugins/ma-fetch-plugin ~/.agents/plugins/ma-fetch-plugin
+   mkdir -p <project>/.agents/minimal-agent/plugins
+   ln -s ~/minimal-agent-plugins/ma-fetch-plugin <project>/.agents/minimal-agent/plugins/ma-fetch-plugin
    ```
 
 3. Get obscura (the default backend). **Normally you do nothing here:** on

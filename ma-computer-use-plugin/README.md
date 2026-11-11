@@ -72,10 +72,10 @@ bun run bin/cud.ts restart
 bun run bin/cud.ts status     # should print perms ax:true screen:true
 ```
 
-Install into the agent by symlinking into the home plugin root:
+The monorepo checkout loads it automatically. For one project, symlink it into the project plugin root:
 
 ```bash
-ln -s "$PWD" ~/.agents/plugins/ma-computer-use-plugin
+ln -s "$PWD" <project>/.agents/minimal-agent/plugins/ma-computer-use-plugin
 ```
 
 ## Control CLI (`bin/cud.ts`)

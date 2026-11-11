@@ -30,10 +30,10 @@ Injects `PROMPT.md` into the system prompt at session start. The model reads it 
 
 ## Install
 
-Symlink into the home plugin root:
+The monorepo checkout loads it automatically. For one project, symlink it into the project plugin root:
 
 ```bash
-ln -sfn "$PWD/ma-agent-writing-style-plugin" ~/.agents/plugins/ma-agent-writing-style-plugin
+ln -sfn "$PWD/ma-agent-writing-style-plugin" <project>/.agents/minimal-agent/plugins/ma-agent-writing-style-plugin
 ```
 
 minimal-agent picks it up on next launch. To disable, either remove the symlink or set `plugins["ma-agent-writing-style"].enabled = false` in `~/.minimal-agent/config.jsonc`.

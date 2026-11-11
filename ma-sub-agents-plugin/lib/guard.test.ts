@@ -18,13 +18,17 @@ describe("evaluateSpawnGuard", () => {
   })
 
   it("enforces the concurrency cap", () => {
-    const d = evaluateSpawnGuard(gi({ activeCount: DEFAULT_POLICY.maxConcurrent }))
+    const d = evaluateSpawnGuard(gi({ activeCount: 8 }), { ...DEFAULT_POLICY, maxConcurrent: 8 })
     expect(d.allowed).toBe(false)
     if (!d.allowed) expect(d.reason).toMatch(/concurrency/i)
   })
 
+  it("has no count caps by default", () => {
+    expect(evaluateSpawnGuard(gi({ activeCount: 10_000, totalCount: 100_000 })).allowed).toBe(true)
+  })
+
   it("enforces the total-spawn cap", () => {
-    const d = evaluateSpawnGuard(gi({ totalCount: DEFAULT_POLICY.maxTotal }))
+    const d = evaluateSpawnGuard(gi({ totalCount: 64 }), { ...DEFAULT_POLICY, maxTotal: 64 })
     expect(d.allowed).toBe(false)
     if (!d.allowed) expect(d.reason).toMatch(/total spawn/i)
   })

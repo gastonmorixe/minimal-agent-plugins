@@ -27,8 +27,8 @@ Interactive editor for `~/.minimal-agent/config.jsonc`, shipped as the
   own output so a bug can never write a broken config.
 - The **Plugins** section is discovered at open time: one on/off toggle per
   installed plugin (`plugins.<id>.enabled`), scanning the same roots the host
-  loader scans. Third-party plugins under `~/.agents/plugins` show up
-  automatically.
+  loader scans. Project plugins under `<cwd>/.agents/minimal-agent/plugins`
+  show up automatically.
 - Headless sub-commands for scripting / quick checks:
   - `/config get <field-id>` prints a field's current value.
   - `/config path` prints the resolved config file path.

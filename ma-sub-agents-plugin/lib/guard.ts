@@ -30,11 +30,11 @@ export interface GuardPolicy {
   readonly allowedTypes?: readonly string[]
 }
 
-/** The default policy: lead-only spawning, a modest fleet, generous lifetime. */
+/** The default policy: lead-only spawning, no concurrency or lifetime count caps. */
 export const DEFAULT_POLICY: GuardPolicy = {
   maxDepth: 1,
-  maxConcurrent: 8,
-  maxTotal: 64,
+  maxConcurrent: Number.POSITIVE_INFINITY,
+  maxTotal: Number.POSITIVE_INFINITY,
 }
 
 /** The proposed spawn the guard evaluates. */

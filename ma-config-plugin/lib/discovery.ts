@@ -4,8 +4,8 @@
  * The static {@link SCHEMA} covers the fixed `UserConfig` knobs. The other
  * half of `config.jsonc` is `plugins.<id>.enabled` — one toggle per
  * installed plugin. Those can't be hardcoded (plugins come and go, and
- * third-party plugins under `~/.agents/plugins` or `<cwd>/.agents/plugins`
- * are unknown ahead of time), so we DISCOVER them by scanning the same
+ * project plugins under `<cwd>/.agents/minimal-agent/plugins` are unknown
+ * ahead of time), so we DISCOVER them by scanning the same
  * roots the host loader scans and reading each `manifest.json`.
  *
  * Pure-ish: all filesystem access goes through injected {@link DiscoverDeps},
