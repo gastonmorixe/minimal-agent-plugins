@@ -2,14 +2,9 @@
 title: Fetch persistent sessions and the X case study
 created_at: "2026-07-28T18:18:58.999698000-0400"
 updated_at: "2026-07-29T00:24:11.467886000-0400"
-session_id: 0d186838-8d92-4f91-b46e-54e012cddd98
 host_info:
-  hostname: macbookpro.home.arpa
-  user: gaston
   os: "macOS 27.0 (26A5388g)"
-  kernel: "27.0.0"
   arch: arm64
-  serial: FHQ93DD9T6
 tags: [fetch, persistent-sessions, authentication, x, twitter, anti-bot, research-log]
 audit:
   document_status: living
