@@ -1,26 +1,22 @@
 /**
- * Drift guard for the tasks PROMPT.md.
+ * Drift guard for the Task tool guidance.
  *
- * The model-facing prompt is the only thing keeping the agent from
- * reaching for `canceled` to mean "phase complete". The renderer
- * paints canceled rows in red with strikethrough, which is the
- * opposite of what "the phase is done" should look like.
+ * The tasks plugin has no PROMPT.md now. The rules moved to the Task tool
+ * description and to the property descriptions in manifest.json. The model
+ * sees them with the tool schema.
  *
- * A real session in May 2026 hit exactly this: every "PHASE N"
- * top-level task got marked `canceled` with reason "phase header,
- * all subtasks done" once its phase finished. The user saw 7 red
- * strikethrough rows interleaved with the lime ✔ children and asked
- * why completed tasks were red. They weren't completed in the data,
- * they were canceled. Agent's fault, not the renderer's.
+ * The guidance keeps the agent from using `canceled` to mean "phase
+ * complete". The renderer paints canceled rows in red with strikethrough.
+ * That is the opposite of what a finished phase must look like.
  *
- * The PROMPT.md addition below the `## Status state machine` section
- * (heading: `canceled is "abandoned", not "done"`) names the
- * anti-pattern explicitly. This test pins that guidance is present so
- * a future PROMPT.md rewrite either keeps it, or fails this guard and
- * forces the maintainer to think about it.
+ * A real session in May 2026 hit this. Every "PHASE N" top-level task got
+ * marked `canceled` with reason "phase header, all subtasks done" once its
+ * phase finished. The user saw 7 red strikethrough rows and asked why
+ * completed tasks were red. The agent was at fault, not the renderer.
  *
- * If you delete the section, fix this test AND make sure the
- * replacement carries the same warning. Don't just nuke both.
+ * This test pins that the guidance is present in the manifest. If you
+ * rewrite the manifest text, keep the same warnings or fix this test on
+ * purpose. Do not delete both.
  */
 
 import { readFileSync } from "node:fs"
@@ -28,68 +24,87 @@ import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
-const PROMPT_PATH = join(import.meta.dir, "..", "PROMPT.md")
-const PROMPT = readFileSync(PROMPT_PATH, "utf8")
+interface Prop {
+  description?: string
+}
+interface TaskToolDef {
+  description: string
+  input_schema: { properties: Record<string, Prop> }
+}
 
-describe("tasks PROMPT.md canceled-vs-done guidance", () => {
-  test("has a dedicated section distinguishing canceled from done", () => {
-    // Heading marker. The section anchors all the other assertions, so
-    // grep for the exact heading text first.
-    expect(PROMPT).toMatch(/##\s+`canceled`\s+is\s+"abandoned",\s+not\s+"done"/)
+const MANIFEST = JSON.parse(readFileSync(join(import.meta.dir, "..", "manifest.json"), "utf8")) as {
+  headless: { tools: { trigger: { tool?: TaskToolDef & { name?: string } } }[] }
+}
+const TOOL = MANIFEST.headless.tools
+  .map((t) => t.trigger.tool)
+  .find((t): t is TaskToolDef & { name?: string } => t?.name === "Task")
+if (!TOOL) throw new Error("manifest.json declares no Task tool")
+
+const TOOL_DESC = TOOL.description
+const PROPS = TOOL.input_schema.properties
+const ACTION_DESC = PROPS.action?.description ?? ""
+const TASKS_DESC = PROPS.tasks?.description ?? ""
+const STATUS_DESC = PROPS.status?.description ?? ""
+
+describe("Task tool description canceled-vs-done guidance", () => {
+  test("has a dedicated rule distinguishing canceled from done", () => {
+    // The tool description carries the rule. The status property repeats it.
+    expect(TOOL_DESC).toMatch(/`canceled`\s+means\s+abandoned\s+and\s+`done`\s+means\s+finished/)
+    expect(STATUS_DESC).toMatch(/`canceled`\s+means\s+abandoned\s+and\s+`done`\s+means\s+finished/)
   })
 
   test("defines canceled = abandoned and done = finished", () => {
-    expect(PROMPT).toMatch(/`canceled`\s+means\s+the\s+work\s+was\s+given\s+up\s+on/i)
-    expect(PROMPT).toMatch(/`done`\s+means\s+the\s+work[\s\S]{0,40}finished/i)
+    expect(TOOL_DESC).toMatch(/`canceled`\s+means\s+abandoned/i)
+    expect(TOOL_DESC).toMatch(/`done`\s+means\s+finished/i)
+    expect(STATUS_DESC).toMatch(/`canceled`\s+means\s+abandoned/i)
+    expect(STATUS_DESC).toMatch(/`done`\s+means\s+finished/i)
   })
 
   test("explicitly addresses the phase-header anti-pattern", () => {
     // The wrong inference was: "phase header has no direct work, so
-    // cancel it when subtasks are done." The doc must contradict it
-    // by name.
-    const block = PROMPT.split(/^##\s/m).find((s) => /canceled[^\n]*abandoned/i.test(s))
-    expect(block, "expected the canceled-vs-done section to exist").toBeDefined()
-    expect(block!).toMatch(/phase/i)
-    expect(block!).toMatch(/header/i)
-    expect(block!).toMatch(/`done`/)
+    // cancel it when subtasks are done." The tool description must
+    // contradict it by name.
+    expect(TOOL_DESC).toMatch(/phase\s+header\s+is\s+`done`,\s+not\s+`canceled`/i)
   })
 
   test("notes that parents with all-done children are done, not canceled", () => {
-    const block = PROMPT.split(/^##\s/m).find((s) => /canceled[^\n]*abandoned/i.test(s))
-    expect(block!).toMatch(/parent/i)
-    expect(block!).toMatch(/all-done children|last open child/i)
-    // Auto-promote is store-owned now — the prompt must not claim the model
-    // still has to mark the parent by hand.
-    expect(block!).toMatch(/auto-promot/i)
-    expect(block!).not.toMatch(/does not auto-promote/i)
+    // Auto-promote is store-owned. The action text must say the store
+    // promotes the parent when the last open child closes.
+    expect(ACTION_DESC).toMatch(/auto-promote\s+the\s+parent/i)
+    expect(ACTION_DESC).toMatch(/last\s+open\s+child/i)
+    expect(ACTION_DESC).not.toMatch(/does not auto-promote/i)
+    // A finished phase header is `done`, never `canceled`.
+    expect(TOOL_DESC).toMatch(/finished\s+phase\s+header\s+is\s+`done`/i)
   })
 
-  test("documents parent auto-start and partial-completion rollup", () => {
-    expect(PROMPT).toMatch(/auto-starts its parent/i)
-    expect(PROMPT).toMatch(/siblings remain open[^\n]*parent `doing`/i)
+  test("documents parent auto-start", () => {
+    expect(ACTION_DESC).toMatch(/auto-start\s+the\s+parent/i)
+    // Partial-completion rollup: the parent stays doing while siblings are open.
+    expect(ACTION_DESC).toMatch(/parent stays `doing` while siblings stay open/i)
   })
 
   test("warns against redundant parent done after last-child auto-promote", () => {
-    // Lisa dual-ALL-DONE: models often done(last child) + done(parent) in
-    // one turn. Prompt must forbid the second call by name. Soft already_done
-    // is gone — re-done is a hard error (Option D2).
-    expect(PROMPT).toMatch(
-      /Never also `done` the parent|do not also done the parent|Don't `done` a parent after/i,
-    )
-    expect(PROMPT).toMatch(/hard error|already done/i)
+    // Models often call done(last child) and done(parent) in one turn.
+    // The tasks property must forbid the second call by name. The re-done
+    // hard error is pinned in handlers/task_tool.api-simplify.test.ts.
+    expect(TASKS_DESC).toMatch(/do not also call `done` on the parent/i)
+    expect(ACTION_DESC).toMatch(/auto-promote/i)
   })
 
   test("recommends parent/subtask structure for multi-phase plans", () => {
     // Tree form via tasks+children (preferred over drip-feed parent: adds).
-    expect(PROMPT).toMatch(/tasks:\s*\[/)
-    expect(PROMPT).toMatch(/children:\s*\[/)
+    expect(TOOL_DESC).toMatch(/`add_many`\s+with\s+`tasks`/)
+    expect(TASKS_DESC).toMatch(/Preferred tree form/i)
+    expect(TASKS_DESC).toMatch(/`\{title, children\?\}`/)
   })
 
-  test('"## Don\'t" section repeats the canceled-vs-done warning', () => {
-    // Belt-and-suspenders: a model that skims the "Don't" list should
-    // also see the warning, not just the standalone section.
-    const dontBlock = PROMPT.split(/^##\s/m).find((s) => /^Don't/m.test(s))
-    expect(dontBlock, "expected a Don't section").toBeDefined()
-    expect(dontBlock!).toMatch(/`canceled`\s+when\s+you\s+mean\s+`done`/)
+  test("the do-not rules repeat the canceled-vs-done warning", () => {
+    // Belt-and-suspenders: a model that skims the do-not rules in the tool
+    // description must also see the warning, and so must the status property.
+    expect(TOOL_DESC).toMatch(/Do not use it for trivial work/)
+    expect(TOOL_DESC).toMatch(/Do not echo the board as prose/)
+    const afterRules = TOOL_DESC.slice(TOOL_DESC.indexOf("Do not echo"))
+    expect(afterRules).toMatch(/`canceled`\s+means\s+abandoned/i)
+    expect(STATUS_DESC).toMatch(/pick the verb that matches the intent/i)
   })
 })

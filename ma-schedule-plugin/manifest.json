@@ -11,13 +11,13 @@
           "type": "tool",
           "tool": {
             "name": "CronCreate",
-            "description": "Schedule a prompt to run on a cron schedule or interval. The prompt is injected as a user turn BETWEEN turns each time the task is due (never mid-response). Use for polling a deploy, babysitting a PR, or one-time reminders ('remind me at 3pm to push'). Provide EITHER `cron` (a 5-field expression, local time) OR `every` (a human interval like '5m', '2h', '1d'). Set `recurs:false` for a one-shot that deletes itself after firing. Times are local. Max 50 tasks/session. Recurring tasks auto-expire after 7 days. Cancel with ScheduleCronDelete.",
+            "description": "Schedule a prompt to run on a cron schedule or on an interval. Use it for a reminder, or to poll a deploy or a pull request until it settles. Do not use it to list or to cancel a task, use CronList or CronDelete for that. Do not schedule a push, a delete or a deploy unless the user already authorized it. Returns the new task, with its id, its schedule and its next fire time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "prompt": {
                   "type": "string",
-                  "description": "The prompt to run each time the task fires. Required."
+                  "description": "The prompt to run each time the task fires. Required. The text is injected as a user turn between turns, never mid-response."
                 },
                 "cron": {
                   "type": "string",
@@ -29,7 +29,7 @@
                 },
                 "recurs": {
                   "type": "boolean",
-                  "description": "Whether the task repeats. Default true. Set false for a one-shot reminder that deletes itself after it fires once."
+                  "description": "Whether the task repeats. Default true. Set false for a one-shot reminder that deletes itself after it fires once. A session holds up to 50 tasks, and a recurring task expires after 7 days."
                 }
               },
               "required": ["prompt"],
@@ -50,7 +50,7 @@
           "type": "tool",
           "tool": {
             "name": "CronList",
-            "description": "List all scheduled tasks for this session with their ids, schedules, next fire time, and prompts. Use to answer 'what scheduled tasks do I have?' before canceling one.",
+            "description": "List the scheduled tasks of this session. Use it to answer which tasks exist, or before you cancel or reschedule one. Do not use it to change a task, use CronReschedule or CronDelete for that. Returns each task id, schedule, next fire time and prompt.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -71,7 +71,7 @@
           "type": "tool",
           "tool": {
             "name": "CronDelete",
-            "description": "Cancel a scheduled task by its 8-character id (from ScheduleCronList or the ScheduleCronCreate confirmation).",
+            "description": "Cancel a scheduled task by its 8 character id. Use it when a task is done, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. Returns the removed id and the count of tasks that remain.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -98,7 +98,7 @@
           "type": "tool",
           "tool": {
             "name": "CronReschedule",
-            "description": "Adjust the next fire time for a scheduled task (e.g. a /loop). Provide EITHER `every` (a human interval like \"30s\", \"10m\", \"2h\") to set a new steady cadence, OR `nextAtMs` (an absolute epoch-ms timestamp) for a one-shot delay. The task is switched to dynamic pacing so the next heartbeat fires at the new time.",
+            "description": "Change the next fire time of a scheduled task. Use it to set a new cadence, or to delay a one-shot. Do not use it to create a task, use CronCreate for that. Returns the task id, the new cadence and the new next fire time.",
             "input_schema": {
               "type": "object",
               "properties": {

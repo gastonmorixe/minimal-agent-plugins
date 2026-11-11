@@ -11,14 +11,14 @@
           "type": "tool",
           "tool": {
             "name": "LockStatus",
-            "description": "Inspect or clear cooperative file locks under cwd. Use when an Edit/Write returns a 'file is locked' error and you need to understand the situation. Actions: `list` shows all locks under cwd, with holder details. `inspect` shows one lock by file_path. `clear-stale` removes locks whose holder PID is dead or older than the stale threshold (safe). `clear` removes a specific lock by file_path (unsafe). Use `clear` only when you have strong reason to believe the auto-stale-breaker missed something.",
+            "description": "Inspect or clear cooperative file locks under the working directory. Use it when an Edit or Write call fails because a file is locked. Use it when you must know which peer agent holds a file. Do not use it to change file content. Prefer Edit or Write instead for any content change. Returns the lock list with holder session, pid, host and age for an action of list. Returns one holder record for inspect and a removed count for clear-stale.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect", "clear-stale", "clear"],
-                  "description": "What to do."
+                  "description": "Operation to run. list walks the directory and shows every lock with holder details. inspect shows one lock's metadata. clear-stale removes locks whose holder pid is dead or older than 5 minutes. clear removes one named lock and is unsafe on a live peer."
                 },
                 "path": {
                   "type": "string",

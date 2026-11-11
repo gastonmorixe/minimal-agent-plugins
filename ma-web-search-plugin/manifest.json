@@ -11,7 +11,7 @@
           "type": "tool",
           "tool": {
             "name": "WebSearch",
-            "description": "Search the web for current information. Required arg is `query` (the search string). Returns ranked hits with title, URL, snippet, age, and source. Use type='news' for time-sensitive queries (recent events, breaking news). Default 'web' for general lookups, documentation, and reference material. Use format='json' only when you need to extract specific fields programmatically. The default 'text' is more compact and easier to read inline.",
+            "description": "Search the open web for current information. Use it when the user asks about facts that may have changed since training. Use it for a recent release, a recent event, or a URL. Use it to verify a claim before you state it. Do not use it when the answer is already in the conversation or in files you read. Prefer Grep or Read instead when a local search is faster. Returns ranked hits with title, URL, snippet, age and source. The host retries transient failures 3 times, so do not re-fire at once.",
             "input_schema": {
               "type": "object",
               "properties": {

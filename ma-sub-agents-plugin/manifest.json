@@ -13,7 +13,7 @@
           "type": "tool",
           "tool": {
             "name": "SpawnAgent",
-            "description": "Delegate a self-contained unit of work to a background sub-agent and get an immediate handle (it runs concurrently, you are not blocked). Use it to keep verbose work (searching, running tests, fetching docs, a focused refactor) out of your own context: the worker does it in its own window and returns only a distilled summary. Give a detailed task: the objective, the exact file/scope boundaries, and the output you want back. Match worker count to complexity (1 for a simple lookup, 2-4 for a comparison, more only for genuinely independent breadth-first work). Every worker costs tokens. Pick a named `agent` specialist when one fits, else describe an inline `system`. The worker reports a one-line digest between turns when it finishes. Pull its full deliverable with SubAgentsAgentResult.",
+            "description": "Delegate one self-contained unit of work to a background sub-agent. Use it when the unit floods your context, or when it is genuinely independent of the other work. Do not use it for a quick edit you can do yourself, or for work that needs constant back-and-forth. Returns the worker id, its label and its isolation tier. A one line digest arrives between turns.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -23,7 +23,7 @@
                 },
                 "agent": {
                   "type": "string",
-                  "description": "A named specialist to use: explorer (fast read-only search), planner (read-only research+plan), worker (general implementer), reviewer (read-only diff review), integrator (gate + commit). Omit to describe an inline worker via `system`."
+                  "description": "Named specialist: explorer (files), planner (a plan), worker (edits), reviewer (issues), integrator (gate, commit), log-miner (log findings). Omit to use `system`."
                 },
                 "system": {
                   "type": "string",
@@ -95,7 +95,7 @@
           "type": "tool",
           "tool": {
             "name": "ReportResult",
-            "description": "Sub-agent completion: a worker calls this as its final action to hand its result back to the lead. The tool records the result for you, so you never write a status file by hand or worry about its format or path. Put your real findings in `summary` (a dense, self-contained paragraph or two, not a pointer). List any files you created or changed in `artifacts`. Set `incomplete: true` if you could not finish. Only sub-agents use this. If the lead calls it there is nothing to report.",
+            "description": "Record a sub-agent result for the lead as the final action of a worker session. Use it when the unit is complete and you must hand the finding back. Do not use it as the lead: the lead reads the record with SubAgentsAgentResult. Returns the stored result, the artifact list and the incomplete flag.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -133,7 +133,7 @@
           "type": "tool",
           "tool": {
             "name": "ListAgents",
-            "description": "List this session's sub-agents at a glance: id, type, status, elapsed, tokens, and what each is doing. Cheap and bounded, pulls no worker transcript. Use it to see the fleet before pulling a result or stopping a worker.",
+            "description": "List this session's sub-agents at a glance. Use it to see the fleet before you pull a result or stop a worker. Do not use it for one worker in depth: use SubAgentsAgentStatus. It pulls no worker transcript. Returns the id, type, status, elapsed time, tokens and current activity of each sub-agent.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -154,7 +154,7 @@
           "type": "tool",
           "tool": {
             "name": "AgentStatus",
-            "description": "Detail for one sub-agent (status, progress, model, isolation, linked session), or the whole fleet when no id is given. No transcript.",
+            "description": "Show the status of one sub-agent, or of the whole fleet when you give no id. Use it to check progress, model, isolation tier and linked session. Do not use it to read a result: use SubAgentsAgentResult. Do not use it to read activity: use SubAgentsAgentOutput. Returns a status text with no transcript.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -180,7 +180,7 @@
           "type": "tool",
           "tool": {
             "name": "AgentResult",
-            "description": "Pull a finished sub-agent's distilled deliverable into your context (its result summary plus any artifact references, not its full transcript). This is the only sub-agent tool that carries real worker content back, and it is bounded. Call it after a worker reaches `done`.",
+            "description": "Pull the distilled deliverable of a finished sub-agent into your context. Use it after a worker reaches `done`. This is the only sub-agent tool that carries real worker content back. Do not use it to watch a running worker: use SubAgentsAgentOutput. Returns the result summary and artifact references, not the full transcript. The text is bounded.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -207,7 +207,7 @@
           "type": "tool",
           "tool": {
             "name": "AgentOutput",
-            "description": "Tail a sub-agent's recent activity (its latest tool calls and notes with timestamps), for 'what is A2 doing right now' beyond the one-line fleet widget. Bounded, never the whole transcript. Use sparingly, the widget and the between-turns digest usually suffice.",
+            "description": "Tail the recent activity of one sub-agent: its latest tool calls and notes with timestamps. Use it to see what a worker does right now. Use it sparingly, because the fleet widget and the digest usually suffice. Do not use it to read a final result: use SubAgentsAgentResult. Returns a bounded activity text, never the whole transcript.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -234,7 +234,7 @@
           "type": "tool",
           "tool": {
             "name": "Mailbox",
-            "description": "Coordinate with sibling sub-agents (and the lead) over a shared, durable message board. `post` a short message to a specific worker id (`to`) or broadcast to all (`to:\"*\"`), or `read` messages addressed to you or broadcast. Opt-in and bounded: use only when your task tells you to coordinate (e.g. claim a file before editing it, flag a blocker, hand off a finding). Do not chatter, excessive cross-talk is a known failure mode.",
+            "description": "Post and read short notes on a shared board between sibling sub-agents and the lead. Use it only when your task tells you to coordinate, to claim a file, flag a blocker or hand off a finding. Do not use it for general talk. Returns the posted note, or the notes addressed to you after a `since` cursor.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -277,7 +277,7 @@
           "type": "tool",
           "tool": {
             "name": "StopAgent",
-            "description": "Cancel a running sub-agent by id (signals its process, marks it stopped). Use when a worker is no longer needed, was superseded, or is going off track.",
+            "description": "Cancel a running sub-agent by id. This signals its process and marks it stopped. Use it when a worker is no longer needed, was superseded or goes off track. Do not use it to read a result: use SubAgentsAgentResult. Returns a line that names the stopped sub-agent and the reason, if you gave one. An unknown id returns an error.",
             "input_schema": {
               "type": "object",
               "properties": {

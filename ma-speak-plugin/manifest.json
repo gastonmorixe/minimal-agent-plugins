@@ -11,13 +11,13 @@
           "type": "tool",
           "tool": {
             "name": "Speak",
-            "description": "Speak text aloud to the user through the computer's speakers, in a clear professional voice. Use it to read out an answer, announce that a long task finished, deliver a short alert, or narrate anything the user asked to hear instead of read. Speech plays in the background and the tool returns immediately with a short job handle (e.g. `s1`), and the user hears it while you keep working. Poll `SpeakStatus` to see whether a job is still talking, and `SpeakStop` to cut it off (for example if the user says \"stop\" or you spoke the wrong thing). Speaking does not interrupt the conversation. Keep spoken text natural: prefer plain sentences over markdown, code blocks, or long URLs, which sound bad read aloud.",
+            "description": "Read text aloud to the user through the computer speakers. Use it when the user asks to hear an answer, or when a short spoken alert helps. Do not use it for code, a raw URL, a table or dense markdown. Do not narrate a written answer that the user reads. Returns a job handle at once, and the speech plays while you keep working.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "text": {
                   "type": "string",
-                  "description": "The text to read aloud. Plain prose works best. Markdown syntax, code, and raw URLs are read literally and sound bad, so paraphrase them into speech-friendly wording first. Max 8000 characters."
+                  "description": "The text to read aloud. Plain prose works best. Markdown syntax, code, and raw URLs are read literally and sound bad, so paraphrase them into speech-friendly wording first. Max 8000 characters. The voice reads the text literally, so use plain sentences and strip markdown."
                 },
                 "wait": {
                   "type": "boolean",
@@ -45,7 +45,7 @@
           "type": "tool",
           "tool": {
             "name": "SpeakStatus",
-            "description": "Report whether speech is currently playing. Pass a job handle (e.g. `s1`) from a prior Speak call to check that one job, or omit `id` to list every speech job this session and its state (speaking, done, failed, or stopped). Cheap and read-only. Use it before deciding whether to wait, speak again, or stop an in-flight job.",
+            "description": "Report whether speech is playing. Use it before you decide to wait, to speak again, or to stop a job. Do not use it to silence a job, use SpeakStop for that. Returns the state of one job, or the state of every job in this session.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -73,7 +73,7 @@
           "type": "tool",
           "tool": {
             "name": "SpeakStop",
-            "description": "Stop speech that is currently playing. Pass a job handle (e.g. `s1`) from a prior Speak call to silence only that job, or omit `id` to stop every active speech job at once (the \"be quiet now\" button). Stopping a job that already finished is a no-op and is reported as such. Use this the moment the user says to stop, or when you realize you spoke the wrong thing.",
+            "description": "Stop speech that is playing. Use it the moment the user says stop, or when you spoke the wrong thing. Do not use it to check whether a job is still talking, use SpeakStatus for that. Returns that the job stopped, and a no-op note when the job had already finished.",
             "input_schema": {
               "type": "object",
               "properties": {

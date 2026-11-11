@@ -3,7 +3,6 @@
   "name": "Intercom",
   "version": "0.1.0",
   "description": "Inter-session communication and presence. Lets any session see what other sessions are doing (live roster with derived liveness, plus deep inspection of a peer's tasks, background jobs, and sub-agent fleet) and message them (note, ping, interrupt, or broadcast). Messages are durable, pull-delivered as a per-turn <ma::agent::intercom-inbox> block, and crash/resume safe. Ping/interrupt wake an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. Disable presence with MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
-  "prompt": "./PROMPT.md",
   "capabilities": ["sessions:read"],
   "permissions": [
     "hooks:editor.key",
@@ -21,14 +20,14 @@
           "type": "tool",
           "tool": {
             "name": "Peers",
-            "description": "See other minimal-agent sessions running on this machine and what they are doing. action:\"list\" (default) returns the live roster: every messageable peer with its short id, derived liveness (online, idle, busy, stale, hung, dead, or offline), model, cwd, and current activity. action:\"inspect\" deep-dives one peer: task list, background jobs, sub-agent fleet, recent activity, and a transcript excerpt. Liveness comes from heartbeat freshness plus a pid probe, so a session that crashed without exiting cleanly still reads stale/hung/dead instead of falsely online. Pass liveOnly:true to drop gone sessions. Read-only. Example: IntercomPeers({action:\"inspect\", peer:\"a1b2c3d4\", include:[\"tasks\",\"activity\"]}).",
+            "description": "List the other minimal-agent sessions on this machine, or inspect one peer in depth. Use it before you message a peer, or when you must know what a peer is doing. Do not use it to reach a sub-agent worker: use Mailbox. Returns the roster with short id, liveness, model, directory and activity, or one peer bundle for `inspect`.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect"],
-                  "description": "\"list\" (default) for the roster, or \"inspect\" for a deep dive on one peer."
+                  "description": "\"list\" (default) for the roster, or \"inspect\" for one peer. Liveness: online beating, busy in a turn, stale not beating, hung process alive, dead process gone, offline exited cleanly."
                 },
                 "peer": {
                   "type": "string",
@@ -69,13 +68,13 @@
           "type": "tool",
           "tool": {
             "name": "Send",
-            "description": "Send a message to another minimal-agent session. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. `to` is a peer short id or full session id, or \"all\" to reach every reachable session, or \"project\" for sessions sharing your project directory. `kind` defaults to \"message\", which queues if the recipient is busy or wakes them between turns if idle. \"interrupt\" signals urgency with a distinct TUI glyph (preemptive mid-turn delivery is not yet implemented). Messages are durable across crashes and resumes, and the recipient sees your identity (short id, model, cwd). You cannot send to yourself. Run IntercomPeers first to see who is online. Example: IntercomSend({to:\"a1b2c3d4\", body:\"finished the auth refactor, your turn on the API\"}).",
+            "description": "Send a message to one peer session, to every reachable session, or to sessions in your project directory. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. Do not use it for a sub-agent worker, and do not use it for running commentary. Returns the delivered count, the peer names, the envelope id and the skipped peers.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "to": {
                   "type": "string",
-                  "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory."
+                  "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory. Any prefix of a session id resolves. You cannot message yourself."
                 },
                 "body": {
                   "type": "string",
@@ -84,7 +83,7 @@
                 "kind": {
                   "type": "string",
                   "enum": ["message", "interrupt"],
-                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency (non-preemptive until the host hook is built)."
+                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook is not built."
                 },
                 "replyTo": {
                   "type": "string",
@@ -109,7 +108,7 @@
           "type": "tool",
           "tool": {
             "name": "Inbox",
-            "description": "Re-read intercom messages you have already received. New messages are delivered to you automatically each turn as a <ma::agent::intercom-inbox> block, so you rarely need this tool. Reach for it to review history or to double-check after the fact. scope:\"unread\" (the default) shows messages since your last Inbox read. scope:\"recent\" shows the latest messages regardless. Reading here never hides the automatic per-turn delivery. Example: IntercomInbox({scope:\"recent\", limit:10}).",
+            "description": "Re-read intercom messages that already arrived. Use it when you must review history, or to confirm that you already saw a message. Do not use it to wait for new mail: delivery is automatic on every turn. Returns message rows with sender id, model, timestamp and body, or an empty notice.",
             "input_schema": {
               "type": "object",
               "properties": {

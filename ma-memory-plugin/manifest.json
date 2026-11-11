@@ -24,19 +24,19 @@
           "type": "tool",
           "tool": {
             "name": "MemoryTool",
-            "description": "List, read, add, edit, or remove saved memories. Memories are not shown in your system prompt by default, so query them whenever a saved lesson might apply (a familiar bug symptom, the user's preferences, a prior solution in this codebase). Three scopes: `global` (about working with this user), `project` (about this codebase), `short-term` (this session only). For in-flight saves mid-response, prefer the inline <ma::emit::memory> tag (lower friction, the save-echo returns the id next turn). `list` is paginated: newest 20 entries, bodies clipped to ~160 chars, with a paste-ready `next:` hint. Use `read` for one bullet's full body by id. `id` is required for read/edit/remove, `body` for add/edit, `query`/`limit`/`offset` are list-only. `clear` is short-term only.",
+            "description": "Query and change durable per-user memories plus a per-session scratchpad. Use it when the user asks what you remember. Also use it before you debug a familiar symptom, or before you save a bullet on a new topic. Do not use `add` for an in-flight save, and never store a secret: the inline memory tag is better there. Returns rows with id, timestamp and body. The list header states the total count, and `clear` returns a removed count.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "read", "add", "edit", "remove", "clear"],
-                  "description": "What to do."
+                  "description": "list: page of entries. read: one body. add: save a bullet. edit: replace a body. remove: delete an id. clear: empty short-term."
                 },
                 "scope": {
                   "type": "string",
                   "enum": ["global", "project", "short-term"],
-                  "description": "Which memory file to act on."
+                  "description": "global is cross-project. project is this codebase. short-term ends with the session."
                 },
                 "id": {
                   "type": "string",
