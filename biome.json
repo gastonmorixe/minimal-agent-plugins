@@ -15,7 +15,8 @@
       "!**/.net-dbg/**",
       "!**/bun.lock",
       "!**/native/build/**",
-      "!**/PROMPT.md"
+      "!**/PROMPT.md",
+      "!ma-fetch-plugin/docs/persistent-sessions-and-x.md"
     ]
   }
 }
