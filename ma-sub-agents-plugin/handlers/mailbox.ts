@@ -56,7 +56,8 @@ export default async function mailbox(ctx: TUIContext): Promise<TUIResult> {
     return {
       kind: "tool_result",
       content: `Posted to ${to === "*" ? "all sub-agents" : to} as ${me}.`,
-      displayHeader: `${headerIcon} ${color(true, ANSI.BOLD, me)} ${color(true, ANSI.DIM, GLYPHS.bullet)} ${color(true, ANSI.LGRAY, `post → ${to}`)}`,
+      displayHeader: `${headerIcon} ${color(true, ANSI.BOLD, me)} ${color(true, ANSI.DIM, GLYPHS.bullet)} ${color(true, ANSI.LGRAY, `post → ${to}`)} ${color(true, ANSI.DIM, `[${kind}]`)}`,
+      display: body,
     }
   }
 

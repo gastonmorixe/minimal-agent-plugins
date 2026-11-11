@@ -76,10 +76,30 @@ function resolveLeadProvider(ctx: TUIContext): string {
  * Comparison is against the live snapshot model id (not `defaultModel`), so an
  * env model override to a *different* SKU does not inherit the lead provider.
  * For any other model id (per-spawn override, role recommendation, env
- * override that differs from the live model), fall back to the unscoped host
- * registry `models.find` (best-effort; may still be ambiguous, but that path
- * is an explicit different model pick).
+ * override that differs from the live model), first ask the host whether the
+ * LEAD's provider serves that id (`models.findForProvider`). If yes, keep the
+ * worker on the lead provider, so it also inherits the lead's credential. A
+ * bare model id does not identify a provider: `claude-haiku-4-5` is registered
+ * by anthropic, opencode-zen and cursor, and the unscoped last-write-wins
+ * `models.find` picked opencode-zen with an expired key (A1 bug, 401). Only
+ * when the lead provider does not serve the id do we fall back to `find`.
  */
+/**
+ * True when `providerId` registered `modelId` (as id or alias). Uses the
+ * host's scoped `findForProvider` when present. Older pinned cores lack it,
+ * so fall back to scanning `models.list()`.
+ */
+function leadProviderServes(ctx: TUIContext, modelId: string, providerId: string): boolean {
+  const models = ctx.host?.models
+  if (!models) return false
+  if (models.findForProvider) return Boolean(models.findForProvider(modelId, providerId))
+  const entries = models.list?.() ?? []
+  return entries.some(
+    (e) =>
+      e.providerId === providerId && (e.id === modelId || (e.aliases?.includes(modelId) ?? false)),
+  )
+}
+
 function makeResolveProvider(
   ctx: TUIContext,
 ): ((modelId: string) => string | undefined) | undefined {
@@ -95,6 +115,8 @@ function makeResolveProvider(
     if (id.length === 0) return undefined
     // Inherit the lead provider only for the lead's own live model id.
     if (leadProvider && liveModelId && id === liveModelId) return leadProvider
+    // Prefer the lead provider when it serves this model id.
+    if (leadProvider && leadProviderServes(ctx, id, leadProvider)) return leadProvider
     return ctx.host?.models?.find(id)?.providerId?.trim() || undefined
   }
 }

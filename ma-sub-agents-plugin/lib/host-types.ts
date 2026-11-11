@@ -66,6 +66,10 @@ export interface SubagentModelRecommendation {
 export interface PluginHost {
   models?: {
     find(modelId: string): { providerId?: string } | undefined
+    /** Provider-scoped lookup (no cross-provider fallback). Optional on older hosts. */
+    findForProvider?(modelId: string, providerId: string): { providerId?: string } | undefined
+    /** Every registered entry. Present on older hosts that lack `findForProvider`. */
+    list?(): readonly { id: string; providerId?: string; aliases?: readonly string[] }[]
   }
 }
 

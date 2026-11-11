@@ -39,26 +39,26 @@ Tests pinned the old sum: two turns `1000+200` and `1500+120` expected `2820`.
 
 Session `d08b3a0c-3880-431f-99c8-c57cf83b5b4d`. Lead Sara `554e8a47`.
 
-| turn | stored `input_tokens` | output | cache |
-| --- | ---: | ---: | ---: |
-| 1 | 31689 | 0 | 0 |
-| 2 | 35205 | 0 | 0 |
-| 3 | 35455 | 0 | 0 |
-| 4 | 36008 | 0 | 0 |
-| 5 | 36125 | 0 | 0 |
-| 6 | 36633 | 0 | 0 |
-| 7 | 36718 | 0 | 0 |
-| **old widget sum** | **247833** (`248k`) | | |
-| **new headline** | **36718** | | |
+| turn               | stored `input_tokens` | output | cache |
+| ------------------ | --------------------: | -----: | ----: |
+| 1                  |                 31689 |      0 |     0 |
+| 2                  |                 35205 |      0 |     0 |
+| 3                  |                 35455 |      0 |     0 |
+| 4                  |                 36008 |      0 |     0 |
+| 5                  |                 36125 |      0 |     0 |
+| 6                  |                 36633 |      0 |     0 |
+| 7                  |                 36718 |      0 |     0 |
+| **old widget sum** |   **247833** (`248k`) |        |       |
+| **new headline**   |             **36718** |        |       |
 
 7 JSONL assistant turns. **One** `AgentService/Run` body (217675 bytes) in net-dbg. Tool results stayed on the open bidi stream. The 248k figure was not 7 prefills.
 
 ### Cursor explorers (this investigation)
 
-| worker | tools | old sum | last context | Runs |
-| --- | ---: | ---: | ---: | --- |
-| `dc78104e` | 14 | 545645 | 42893 | 3 bodies 235k / 263k / 269k |
-| `9a704733` | 48 | 2761402 | 90724 | 3 bodies 236k / 477k / 496k |
+| worker     | tools | old sum | last context | Runs                        |
+| ---------- | ----: | ------: | -----------: | --------------------------- |
+| `dc78104e` |    14 |  545645 |        42893 | 3 bodies 235k / 263k / 269k |
+| `9a704733` |    48 | 2761402 |        90724 | 3 bodies 236k / 477k / 496k |
 
 Identical `input_tokens` repeated across consecutive turns is the fingerprint of absolute size copied every round.
 
@@ -66,11 +66,11 @@ Identical `input_tokens` repeated across consecutive turns is the fingerprint of
 
 On Meta, `input_tokens` is per-turn prefill and `output_tokens` is real. Cache read is reported as `cached_tokens`.
 
-| session | turns | input sum | last input | cache read sum |
-| --- | ---: | ---: | ---: | ---: |
-| lead `68a0d8fb` | 32 | 2186163 | 98252 (read 69105) | 223270 ~10% |
-| worker `e26fb1a2` | 7 | 373615 | 59219 | 4721 ~1% |
-| worker `60addf8d` | 6 | 297134 | 53126 (read 44145) | 44145 ~15% |
+| session           | turns | input sum |         last input | cache read sum |
+| ----------------- | ----: | --------: | -----------------: | -------------: |
+| lead `68a0d8fb`   |    32 |   2186163 | 98252 (read 69105) |    223270 ~10% |
+| worker `e26fb1a2` |     7 |    373615 |              59219 |       4721 ~1% |
+| worker `60addf8d` |     6 |    297134 | 53126 (read 44145) |     44145 ~15% |
 
 Old fleet display: 2 running showed 243k as A1 199k plus A2 44.5k. True last windows were ~50k to 98k. Factor about 4 to 5.
 
@@ -78,11 +78,11 @@ The old sum on Meta is closer to billed work than on Cursor. It is still not foo
 
 ## Provider mapping (why Cursor inflates harder)
 
-| provider | what `input_tokens` means | cache fields | old widget |
-| --- | --- | --- | --- |
-| Cursor | `conversation_checkpoint_update.used_tokens` (absolute size). `cursor-usage.ts` maps that to `inputTokens`. Output always 0. | not mapped | `turns × used_tokens` |
-| Meta / OpenAI / Grok | per-turn prefill. Output is real. | `cached_tokens` to `cacheRead` | sum of prefills (billed-ish, still not window) |
-| Anthropic host path | new input plus disjoint cache read/create | explicit `cache_control` | same integral if summed |
+| provider             | what `input_tokens` means                                                                                                    | cache fields                   | old widget                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
+| Cursor               | `conversation_checkpoint_update.used_tokens` (absolute size). `cursor-usage.ts` maps that to `inputTokens`. Output always 0. | not mapped                     | `turns × used_tokens`                          |
+| Meta / OpenAI / Grok | per-turn prefill. Output is real.                                                                                            | `cached_tokens` to `cacheRead` | sum of prefills (billed-ish, still not window) |
+| Anthropic host path  | new input plus disjoint cache read/create                                                                                    | explicit `cache_control`       | same integral if summed                        |
 
 Cursor carry (`conversation-carry.ts`) is the analog of a prompt cache. Worker sids in the Cursor samples had **no** `cursor-carry/*.json`. The lead Sara file was 1.1MB. `planCursorCarry` refuses a tail that contains tool blocks, so a fresh Run after a tool loop folds history.
 
