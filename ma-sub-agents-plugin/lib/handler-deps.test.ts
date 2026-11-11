@@ -34,6 +34,17 @@ interface MakeCtxOpts {
    * Simulates last-write-wins when two providers register the same bare id.
    */
   registryProviderByModel?: Record<string, string>
+  /**
+   * Provider-scoped catalog: maps a providerId to the model ids it serves.
+   * When set, the fake host exposes `models.findForProvider`.
+   */
+  modelsByProvider?: Record<string, string[]>
+  /**
+   * Registry entries for `models.list()` (the API older pinned cores have).
+   * Used with `modelsByProvider` unset to simulate a host without
+   * `findForProvider`.
+   */
+  listEntries?: { id: string; providerId: string; aliases?: string[] }[]
 }
 /** True when `opts` looks like a bare env map (legacy makeCtx(env) calls). */
 function isBareEnvMap(opts: object): opts is Record<string, string> {
@@ -42,7 +53,9 @@ function isBareEnvMap(opts: object): opts is Record<string, string> {
     !("model" in opts) &&
     !("providerId" in opts) &&
     !("effortLevels" in opts) &&
-    !("registryProviderByModel" in opts)
+    !("registryProviderByModel" in opts) &&
+    !("modelsByProvider" in opts) &&
+    !("listEntries" in opts)
   )
 }
 
@@ -58,6 +71,8 @@ function makeCtx(opts: MakeCtxOpts | Record<string, string> = {}, modelArg?: str
   const providerId = normalized.providerId
   const effortLevels = normalized.effortLevels
   const registry = normalized.registryProviderByModel ?? {}
+  const scoped = normalized.modelsByProvider
+  const listEntries = normalized.listEntries
 
   return {
     cwd: "/repo",
@@ -81,6 +96,13 @@ function makeCtx(opts: MakeCtxOpts | Record<string, string> = {}, modelArg?: str
           const pid = registry[modelId]
           return pid ? { providerId: pid } : undefined
         },
+        ...(scoped
+          ? {
+              findForProvider: (modelId: string, pid: string) =>
+                scoped[pid]?.includes(modelId) ? { providerId: pid } : undefined,
+            }
+          : {}),
+        ...(listEntries ? { list: () => listEntries } : {}),
       },
     },
   } as unknown as TUIContext
@@ -183,6 +205,75 @@ describe("serviceDepsFromCtx provider inheritance (dual-registered model ids)", 
     expect(deps?.resolveProvider?.("deepseek-v4-pro")).toBe("opencode")
     // Live lead model still pins to grok if someone resolves that id.
     expect(deps?.resolveProvider?.("grok-4.5")).toBe("grok")
+  })
+
+  it("keeps a DIFFERENT model on the lead provider when the lead provider serves it", () => {
+    // A1 bug: lead anthropic/claude-opus-5-5, spawn model claude-haiku-4-5.
+    // Unscoped last-write-wins says opencode-zen, but anthropic serves it too.
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "claude-opus-5-5",
+        providerId: "anthropic",
+        registryProviderByModel: { "claude-haiku-4-5": "opencode-zen" },
+        modelsByProvider: {
+          anthropic: ["claude-opus-5-5", "claude-haiku-4-5"],
+          "opencode-zen": ["claude-haiku-4-5"],
+        },
+      }),
+    )
+    expect(deps?.resolveProvider?.("claude-haiku-4-5")).toBe("anthropic")
+  })
+
+  it("falls back to the registry when the lead provider does NOT serve the model", () => {
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "claude-opus-5-5",
+        providerId: "anthropic",
+        registryProviderByModel: { "deepseek-v4-pro": "opencode" },
+        modelsByProvider: {
+          anthropic: ["claude-opus-5-5"],
+          opencode: ["deepseek-v4-pro"],
+        },
+      }),
+    )
+    expect(deps?.resolveProvider?.("deepseek-v4-pro")).toBe("opencode")
+  })
+
+  it("uses models.list() when the host has no findForProvider (pinned older core)", () => {
+    // Live A3 failure: the CLI pins a core without findForProvider. The alias
+    // claude-haiku-4-5 maps to anthropic's claude-haiku-4-5-20251001.
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "claude-opus-5-5",
+        providerId: "anthropic",
+        registryProviderByModel: { "claude-haiku-4-5": "opencode-zen" },
+        listEntries: [
+          { id: "claude-opus-5-5", providerId: "anthropic" },
+          {
+            id: "claude-haiku-4-5-20251001",
+            providerId: "anthropic",
+            aliases: ["claude-haiku-4-5"],
+          },
+          { id: "claude-haiku-4-5", providerId: "opencode-zen" },
+        ],
+      }),
+    )
+    expect(deps?.resolveProvider?.("claude-haiku-4-5")).toBe("anthropic")
+  })
+
+  it("models.list() fallback still leaves a model the lead does not serve to find()", () => {
+    const deps = serviceDepsFromCtx(
+      makeCtx({
+        model: "claude-opus-5-5",
+        providerId: "anthropic",
+        registryProviderByModel: { "deepseek-v4-pro": "opencode" },
+        listEntries: [
+          { id: "claude-opus-5-5", providerId: "anthropic" },
+          { id: "deepseek-v4-pro", providerId: "opencode" },
+        ],
+      }),
+    )
+    expect(deps?.resolveProvider?.("deepseek-v4-pro")).toBe("opencode")
   })
 })
 
