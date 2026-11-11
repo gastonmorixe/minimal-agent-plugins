@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "Computer",
-            "description": "Control this Mac. Two layers, prefer the first: (1) Accessibility (structured, reliable), inspect the UI tree and act on real elements by stable handle. (2) Raw input (last resort), synthesize mouse/keyboard at screen coordinates plus screenshots, for canvas/Electron/web UIs where the AX tree is thin. Backed by a signed helper (ComputerUseHelper.app) holding macOS Accessibility + Screen Recording permissions, and it auto-starts. Coordinates are logical points, top-left origin, across all displays (AX bbox is the same space, so click an element's bbox center directly). Handles like 'e7' come from snapshot/find/elementAtPoint/focused and stay valid until the UI changes (else 409 'stale, re-snapshot'). Check 'perms' first on any permission error.",
+            "description": "Control this Mac through the Accessibility tree or through raw input events. Use the Accessibility tree first, because it acts on named elements. Use raw input only for a canvas, Electron or web view whose tree is thin. Do not use it for a browser page when the ChromeCDP tool can reach it. There is no sandbox, so read the screen before you write to it. Coordinates are logical points with a top-left origin across all displays. Returns element handles with role, title, value and bbox for `snapshot` and `find`, one value for `getValue`, and a PNG path for `screenshot`.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -38,7 +38,7 @@
                     "keypress",
                     "screenshot"
                   ],
-                  "description": "What to do. ping: daemon liveness + permission status. perms: report (prompt:true also requests) Accessibility/Screen/Input permissions and open Settings. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost so input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree (flat list default, or nested), minting handles. find: search the tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at x,y. focused: the focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value. perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen or an area to PNG path or base64."
+                  "description": "What to do. ping: daemon liveness + permission status. perms: report (prompt:true also requests) Accessibility/Screen/Input permissions and open Settings. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost so input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree (flat list default, or nested), minting handles. find: search the tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at x,y. focused: the focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value. perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen or an area to PNG path or base64. Order to prefer: perms, apps, windows, snapshot, find, then perform, setValue or getValue, then mouse, type, key, keypress or screenshot."
                 },
                 "pid": {
                   "type": "number",
@@ -86,7 +86,7 @@
                 },
                 "el": {
                   "type": "string",
-                  "description": "An element handle like 'e7' from snapshot/find/elementAtPoint/focused. Required for describe/getValue/setValue/perform."
+                  "description": "An element handle like 'e7' from snapshot/find/elementAtPoint/focused. Required for describe/getValue/setValue/perform. Element handles expire when the UI changes, and the tool then returns 409 \"stale, re-snapshot\"."
                 },
                 "axAction": {
                   "type": "string",
@@ -112,11 +112,11 @@
                 },
                 "x": {
                   "type": "number",
-                  "description": "X coordinate (logical points, top-left origin). For mouse ops, elementAtPoint, and screenshot area."
+                  "description": "X coordinate in logical points, top-left origin. To click an AX element, use bbox[0] + bbox[2] / 2. On a 2x Retina screenshot, halve the pixel coordinate."
                 },
                 "y": {
                   "type": "number",
-                  "description": "Y coordinate (logical points, top-left origin)."
+                  "description": "Y coordinate in logical points, top-left origin. To click an AX element, use bbox[1] + bbox[3] / 2."
                 },
                 "toX": {
                   "type": "number",

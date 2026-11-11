@@ -22,7 +22,7 @@
           "type": "tool",
           "tool": {
             "name": "Task",
-            "description": "Manage a per-session task list. Plan additively with `add_many` + `tasks: [{title, children?}]` (aliases: `items`, flat `titles`). Use `replace_plan` only to explicitly replace the whole board. Mark progress with `start` / `done` using canonical ids such as `1` and `1a` from the board. Tool results begin with a plain `OK ...` acknowledgement. Configured result verbosity and the next-turn `<ma::agent::tasks>` attachment use the same canonical ids with no separate position column. Last open child auto-promotes its parent. Do not also `done` the parent.",
+            "description": "Plan and track a per-session task list that the user sees as a live board. Use it for work of 3 or more steps, or when the user asks for a plan. Use `add_many` with `tasks` to plan once, then `start` and `done` with a canonical id from the board. Do not use it for trivial work of 1 or 2 steps. Do not record lessons here, because memory owns those. Do not echo the board as prose. `canceled` means abandoned and `done` means finished. A finished phase header is `done`, not `canceled`. Returns an `OK` acknowledgement, then the updated board or a compact note, per the configured result verbosity.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -41,7 +41,7 @@
                     "list",
                     "clear"
                   ],
-                  "description": "What to do."
+                  "description": "What to do. add: one task. add_many: a task tree. replace_plan: a new plan that replaces the board. update: a title or a status. status: a new status. start: move to doing, and auto-start the parent. done: finish, and auto-promote the parent when the last open child closes. A parent stays `doing` while siblings stay open. remove: drop a task that never started. reorder: change top-level order. list: show the board. clear: empty the board. On a validation failure, retry once and do not drip add duplicates."
                 },
                 "id": {
                   "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."
@@ -52,7 +52,7 @@
                 },
                 "tasks": {
                   "type": "array",
-                  "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`.",
+                  "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. Children promote the parent, so do not also call `done` on the parent. Do not stringify the array.",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -110,7 +110,7 @@
                 "status": {
                   "type": "string",
                   "enum": ["todo", "doing", "done", "canceled"],
-                  "description": "New status. Required for: status. Optional for: update."
+                  "description": "New status. Required for: status. Optional for: update. `canceled` means abandoned and `done` means finished, and the board paints them with opposite marks, so pick the verb that matches the intent."
                 },
                 "reason": {
                   "type": "string",

@@ -19,7 +19,7 @@
           "type": "tool",
           "tool": {
             "name": "PromptNew",
-            "description": "Save a reusable prompt to the user's prompt library. Call this when the user asks to save, store, or remember a prompt or instruction for later reuse. The prompt becomes available via the '&' autocomplete menu and by typing '&name' in a message.",
+            "description": "Save a reusable prompt to the user's prompt library. Use it when the user asks to save, store or remember an instruction for later reuse. Do not use it for Agent Skills. Do not save a prompt the user did not ask for. Returns a result line. The prompt then appears in the '&' menu and expands from '&name'.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -60,7 +60,7 @@
           "type": "tool",
           "tool": {
             "name": "PromptList",
-            "description": "List every saved prompt with its name, description, scope, and file path. Use before saving or deleting to see what exists.",
+            "description": "List every saved prompt in the user's prompt library. Use it before you save, edit or delete a prompt, or when a typed '&name' did not expand. Do not use it to read a body: use PromptShow. Returns the name, description, scope and file path of each prompt.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -83,7 +83,7 @@
           "type": "tool",
           "tool": {
             "name": "PromptShow",
-            "description": "Show the full body of one saved prompt.",
+            "description": "Show the full body of one saved prompt by name. Use it when you must read or quote the exact prompt text. Call PromptList first when the name is unknown. Do not use it to find prompts: use PromptList. Returns the full body text. An unknown name returns an error.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -112,7 +112,7 @@
           "type": "tool",
           "tool": {
             "name": "PromptEdit",
-            "description": "Update a saved prompt's description and/or body, and optionally rename it. Only the fields supplied are changed.",
+            "description": "Update the description, body or name of one saved prompt. Use it when the user asks to change or rename a saved prompt. Supply at least one field. Only the fields you supply change. Do not use it to create a prompt: use PromptNew. Returns a result line with the prompt name. A failed update returns an error.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -153,7 +153,7 @@
           "type": "tool",
           "tool": {
             "name": "PromptDelete",
-            "description": "Delete a saved prompt. Errors if the name does not exist.",
+            "description": "Delete one saved prompt by name. Use it only when the user asks to remove a prompt. Do not use it to change a prompt: use PromptEdit. Do not delete a prompt to replace it: use PromptNew with `overwrite`. Returns a result line. An unknown name returns an error.",
             "input_schema": {
               "type": "object",
               "properties": {

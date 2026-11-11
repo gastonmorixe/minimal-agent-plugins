@@ -11,14 +11,14 @@
           "type": "tool",
           "tool": {
             "name": "Skill",
-            "description": "Inspect or activate an Agent Skill (SKILL.md pack). 'list' enumerates everything discovered, 'info' shows one skill's frontmatter, 'read' loads its full SKILL.md body into context. Skills are discovered at session start from <cwd>/.agents/skills/, ~/.agents/skills/, and ~/.minimal-agent/skills/.",
+            "description": "Discover, inspect and load an Agent Skill. A skill is a SKILL.md pack that holds instructions, scripts and references for one task. Discovery scans the skill roots at session start, and a closer root wins. Use it when a task matches a skill description, or when a workflow must be repeatable. Do not use it for a trivial one-off command. Do not paraphrase a skill from its catalog entry, because the catalog is a router. Returns the catalog for `list`, the frontmatter for `info`, and the body plus a sibling list for `read`.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "info", "read"],
-                  "description": "What to do. 'list' returns every discovered skill (with broken + shadowed diagnostics) in JSON. 'info' returns one skill's frontmatter only. 'read' loads the full SKILL.md body, plus a footer listing bundled sibling files (scripts/, references/, etc.) and any self-enforced allowed-tools."
+                  "description": "What to do. list: every discovered skill, with broken and shadowed entries, and no maxSkills cap. info: the frontmatter of one skill, with no body load. read: the full SKILL.md body, a trailer of bundled sibling files, and the allowed-tools field when declared."
                 },
                 "name": {
                   "type": "string",

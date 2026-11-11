@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "CompactContext",
-            "description": "Queue a context compaction: the host checkpoints the conversation (summary or verbatim tail) and prunes older history. MANUAL trigger: call when the user asks to compact, clean up, or shorten context. AUTO trigger: call proactively when context feels heavy (high context % in SessionInfo, long history, degrading recall) even without being asked. Args: mode (tail|local|remote|fork, default local), tail (trailing messages kept verbatim, default 6), focus (hint kept verbatim in the checkpoint), reason (manual|auto, default auto). Returns queued:true when the host accepted the request. The rewrite happens after this turn, so continue with the retained tail.",
+            "description": "Queue a context compaction, which checkpoints the conversation and prunes older history. Use it when the user asks to compact or shorten context. Use it when context fullness is high or recall is degrading. Do not use it inside a tool loop, because a pending tool call must finish first. Prefer a fresh session instead when the user wants a clean start. Returns queued true with a message when the host accepted the request. It never compacts mid-turn, so continue with the retained tail. A refusal returns queued false, so retry later.",
             "input_schema": {
               "type": "object",
               "properties": {

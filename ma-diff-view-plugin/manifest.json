@@ -12,13 +12,13 @@
           "tool": {
             "name": "ShowDiff",
             "aliases": ["show_diff"],
-            "description": "Render a unified diff with ANSI colors and return the rendered output. Use this when you want to display a concrete diff inline in the conversation (instead of pasting raw patch text). The `patch` argument must be a unified diff string (the output of `git diff`, `diff -u`, etc.).",
+            "description": "Render a unified diff with ANSI colors and return the colored text. Use it when the diff is the primary content of the reply. Do not use it for a hunk that must sit inside a longer explanation. Use the inline `<ma::emit::diff>` tag for that case instead. Do not paste raw patch text into the reply. Returns one string of colored diff text. Additions are lime green and deletions are hot pink.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "patch": {
                   "type": "string",
-                  "description": "The unified diff text to render."
+                  "description": "The full unified diff text to render, from git diff or diff -u."
                 },
                 "title": {
                   "type": "string",
