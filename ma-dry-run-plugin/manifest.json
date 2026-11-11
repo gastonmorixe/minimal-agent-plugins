@@ -1,0 +1,23 @@
+{
+  "id": "dry-run",
+  "name": "Dry run",
+  "version": "0.1.0",
+  "description": "Builds the full LLM request (system prompt, messages, tools, options), prints it as JSON, and blocks the send. No request reaches the provider. Disabled by default. Enable with --enable-plugin dry-run.",
+  "enabled": false,
+  "permissions": ["hooks:message.willSend"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "dump_and_halt",
+        "channel": "message.willSend",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dump_and_halt.ts",
+          "export": "default"
+        },
+        "priority": 0,
+        "timeoutMs": 5000
+      }
+    ]
+  }
+}
