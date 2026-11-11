@@ -50,6 +50,36 @@ export interface ScriptedTurn {
   readonly waitForAbort?: boolean
   /** Runs before the events, e.g. to simulate core adopting a model. */
   readonly before?: (runtime: FakeRuntime) => void
+  /** `ch: "diag"` entries to yield after the events (`data` of each entry). */
+  readonly diags?: readonly { readonly code: string; readonly message?: string }[]
+}
+
+/**
+ * The `options` of one `session.run` call. Typed locally: the pinned core
+ * has no `outputSchema` (D1) or `temperature` (D4) run option.
+ */
+export interface FakeRunOptions {
+  readonly emitDeltas?: boolean
+  readonly outputSchema?: object
+  readonly temperature?: number
+}
+
+/**
+ * The `capabilities` object the CLI puts on the runtime (CLI
+ * `HostRuntimeCapabilities`). Typed locally: core's `HostRuntime` does not
+ * declare it.
+ */
+export interface FakeCapabilities {
+  readonly systemPrompt: { readonly append: boolean; readonly override: boolean }
+  readonly outputSchema: boolean
+  readonly temperature: boolean
+}
+
+/** Every capability on: the default, so a test sees the full feature set. */
+export const ALL_CAPABILITIES: FakeCapabilities = {
+  systemPrompt: { append: true, override: true },
+  outputSchema: true,
+  temperature: true,
 }
 
 /** The fake runtime plus test hooks. */
@@ -62,6 +92,18 @@ export interface FakeRuntime extends HostRuntime {
   closeCalls: number
   /** True when the signal of the last `run` call fired. */
   lastRunAborted: boolean
+  /**
+   * The `options` argument of each `openSession` call (`undefined` when
+   * called with none). Typed locally: the pinned core has no
+   * `HostOpenSessionOptions`.
+   */
+  readonly openSessionCalls: Array<
+    { readonly systemPrompt?: { readonly mode: string; readonly text: string } } | undefined
+  >
+  /** The options of each `session.run` call, without the signal. */
+  readonly runOptions: FakeRunOptions[]
+  /** Absent when built with `capabilities: null` (an older CLI). */
+  readonly capabilities?: FakeCapabilities
 }
 
 function snapshot(m: FakeModel): ModelInfoSnapshot {
@@ -84,24 +126,35 @@ function snapshot(m: FakeModel): ModelInfoSnapshot {
   }
 }
 
-/** Build a fake runtime starting on `model` with `effort`. */
+/**
+ * Build a fake runtime starting on `model` with `effort`. `capabilities`
+ * defaults to {@link ALL_CAPABILITIES}. `null` leaves the field out (an
+ * older CLI with no capabilities object).
+ */
 export function createFakeRuntime(
-  start: { model?: string; effort?: string } = {},
+  start: { model?: string; effort?: string; capabilities?: FakeCapabilities | null } = {},
   models: readonly FakeModel[] = FAKE_MODELS,
 ): FakeRuntime {
   const find = (id: string): FakeModel | undefined => models.find((m) => m.id === id)
+  const capabilities = start.capabilities === undefined ? ALL_CAPABILITIES : start.capabilities
   const rt: FakeRuntime = {
+    ...(capabilities ? { capabilities } : {}),
     model: start.model ?? "alpha",
     effort: start.effort,
     turns: [],
     prompts: [],
     closeCalls: 0,
     lastRunAborted: false,
-    openSession(): Promise<HostSession> {
+    openSessionCalls: [],
+    runOptions: [],
+    openSession(...args: unknown[]): Promise<HostSession> {
+      rt.openSessionCalls.push(args[0] as FakeRuntime["openSessionCalls"][number])
       const session: HostSession = {
         sessionId: "sess_fake",
         run(input, options) {
           rt.prompts.push(input)
+          const { signal: _signal, ...rest } = options as FakeRunOptions & { signal: AbortSignal }
+          rt.runOptions.push(rest)
           rt.lastRunAborted = false
           options.signal.addEventListener(
             "abort",
@@ -120,6 +173,13 @@ export function createFakeRuntime(
             for (const data of turn.events) {
               await Bun.sleep(0)
               yield { ch: "event", data }
+            }
+            for (const d of turn.diags ?? []) {
+              await Bun.sleep(0)
+              yield {
+                ch: "diag",
+                data: { severity: 4, facility: 1, message: d.message ?? d.code, ...d },
+              }
             }
             if (turn.waitForAbort) {
               await new Promise<void>((r) => {

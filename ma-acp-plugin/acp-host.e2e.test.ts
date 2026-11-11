@@ -28,6 +28,27 @@
  * checkout (with its installed core) is missing. That CLI must pin a core
  * with the `failClosed` hook flag (core 5b7342c or later).
  *
+ * TODO(M4): add a case that sends `session/new` with `systemPrompt`
+ * (append and override) and checks the text in the model request body.
+ * Skipped for now: this harness runs the CLI with the core installed in
+ * `../minimal-agent-cli/node_modules` (pinned 82ff7e8), and that core has
+ * no `HostOpenSessionOptions` / `appendSystemPrompt`. Add the case when the
+ * CLI pins a core with M3. The plugin side is covered in
+ * `host-mode.lifecycle.test.ts`.
+ *
+ * TODO(D2/D5): add cases for `_meta["minimal-agent/outputSchema"]`
+ * (structuredOutput) and `_meta["minimal-agent/sampling"]` (temperature)
+ * that check the model request body. Skipped for now: the pinned core
+ * 82ff7e8 has no `setNextRunOutputSchema` / `setNextRunTemperature`, so the
+ * CLI drops both with a stderr warning and the plugin does not advertise
+ * the features (case (l)). Add the cases when the CLI pins a core with
+ * D1/D4.
+ *
+ * Case (l) checks the capabilities on the current core (M2/M3/D1/D4):
+ * `initialize` advertises `sessionCapabilities.systemPrompt` with
+ * append and override, and ext features `usage`, `structuredOutput` and
+ * `sampling`. A `session/new` with `systemPrompt` append is accepted.
+ *
  * @module acp-host.e2e.test
  */
 
@@ -434,7 +455,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     const a = spawnAgent("off", [], "reject_once")
     try {
       const id = await startTurn(a)
-      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 3002, inputTokens: 3000, outputTokens: 2 },
+      })
       expect(await finish(a)).toBe(0)
       expect(permissionRequests(a)).toEqual([])
       expect(existsSync(a.marker)).toBe(true)
@@ -447,7 +471,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     const a = spawnAgent("allow", ["--approval"], "allow_once")
     try {
       const id = await startTurn(a)
-      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 3002, inputTokens: 3000, outputTokens: 2 },
+      })
       expect(await finish(a)).toBe(0)
       const reqs = permissionRequests(a)
       expect(reqs).toHaveLength(1)
@@ -477,7 +504,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     const a = spawnAgent("reject", ["--approval"], "reject_once")
     try {
       const id = await startTurn(a)
-      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 3002, inputTokens: 3000, outputTokens: 2 },
+      })
       expect(await finish(a)).toBe(0)
       expect(permissionRequests(a)).toHaveLength(1)
       expect(existsSync(a.marker)).toBe(false)
@@ -506,7 +536,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       expect(existsSync(a.marker)).toBe(false)
       expect(JSON.stringify(updates(a))).toContain("the approval request failed")
       // EOF also aborts the run, so the prompt still gets its reply.
-      expect((await a.reply(3)).result).toEqual({ stopReason: "cancelled" })
+      expect((await a.reply(3)).result).toEqual({
+        stopReason: "cancelled",
+        usage: { totalTokens: 1001, inputTokens: 1000, outputTokens: 1 },
+      })
     } finally {
       a.proc.kill("SIGKILL")
     }
@@ -517,7 +550,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     try {
       const id = await startTurn(a)
       const reply = await a.reply(id)
-      expect(reply.result).toEqual({ stopReason: "cancelled" })
+      expect(reply.result).toEqual({
+        stopReason: "cancelled",
+        usage: { totalTokens: 1001, inputTokens: 1000, outputTokens: 1 },
+      })
       const cancelledAt = a.cancelledAt()
       expect(cancelledAt).toBeDefined()
       // The reply comes at once. The gate does not wait for the silent client.
@@ -539,7 +575,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     })
     try {
       const id = await startTurn(a)
-      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 3002, inputTokens: 3000, outputTokens: 2 },
+      })
       expect(await finish(a)).toBe(0)
       expect(permissionRequests(a)).toHaveLength(2)
       const finished = updates(a).filter(
@@ -576,7 +615,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       }
       const cancelAt = Date.now()
       a.send({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId } })
-      expect((await a.reply(id)).result).toEqual({ stopReason: "cancelled" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "cancelled",
+        usage: { totalTokens: 1001, inputTokens: 1000, outputTokens: 1 },
+      })
       // The cancel stops the 30 s sleep at once.
       expect(Date.now() - cancelAt).toBeLessThan(5000)
 
@@ -607,7 +649,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       // Cancel after the model request arrives (the answer asks for the same sleep).
       while (a.model.bodies.length === before) await Bun.sleep(20)
       a.send({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId } })
-      expect((await a.reply(6)).result).toEqual({ stopReason: "cancelled" })
+      expect((await a.reply(6)).result).toEqual({
+        stopReason: "cancelled",
+        usage: { totalTokens: 2001, inputTokens: 2000, outputTokens: 1 },
+      })
       expect(a.model.bodies[before]?.reasoning_effort).toBe("low")
       expect(await finish(a)).toBe(0)
 
@@ -630,7 +675,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     const a = spawnAgent("timeout", ["--approval", "--approval-timeout-ms", "200"], "never_answer")
     try {
       const id = await startTurn(a)
-      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 3002, inputTokens: 3000, outputTokens: 2 },
+      })
       expect(await finish(a)).toBe(0)
       expect(permissionRequests(a)).toHaveLength(1)
       expect(existsSync(a.marker)).toBe(false)
@@ -681,7 +729,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       const values = ((modelOption?.options ?? []) as Json[]).map((o) => o.value)
       expect(values).toContain("mock-small")
       expect(values).toContain("mock-big")
-      expect((await a.reply(id)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(id)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 1001, inputTokens: 1000, outputTokens: 1 },
+      })
       expect(a.model.bodies[0]?.model).toBe("mock-small")
       const sizes = (): unknown[] =>
         updates(a)
@@ -725,7 +776,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
         method: "session/prompt",
         params: { sessionId, prompt: [{ type: "text", text: "again" }] },
       })
-      expect((await a.reply(6)).result).toEqual({ stopReason: "end_turn" })
+      expect((await a.reply(6)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 2001, inputTokens: 2000, outputTokens: 1 },
+      })
       expect(a.model.bodies[before]?.model).toBe("mock-big")
       expect(sizes()).toEqual([32_000, 64_000])
       expect(await finish(a)).toBe(0)
@@ -774,4 +828,57 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       }
     }, 60_000)
   }
+
+  it("(l) current core: initialize advertises systemPrompt append+override and all ext features", async () => {
+    const a = spawnAgent("caps", [], "allow_once", { toolCalls: 0 })
+    try {
+      a.send({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: 1,
+          clientCapabilities: {
+            _meta: {
+              "minimal-agent/ext": {
+                version: 1,
+                features: ["usage", "structuredOutput", "sampling"],
+              },
+            },
+          },
+        },
+      })
+      const ac = ((await a.reply(1)).result as { agentCapabilities: Json }).agentCapabilities
+      // The CLI now resolves a core with M2/M3 (appendSystemPrompt, override)
+      // and D1/D4 (per-run output schema, temperature), so every feature is on.
+      expect(ac.sessionCapabilities).toEqual({ systemPrompt: { mode: { override: {} } } })
+      expect((ac._meta as Json)["minimal-agent/ext"]).toEqual({
+        version: 1,
+        features: ["usage", "structuredOutput", "sampling"],
+      })
+      // An advertised systemPrompt append is accepted.
+      a.send({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "session/new",
+        params: {
+          cwd: a.work,
+          mcpServers: [],
+          systemPrompt: { mode: "append", content: [{ type: "text", text: "RULES" }] },
+        },
+      })
+      expect(typeof ((await a.reply(2)).result as Json).sessionId).toBe("string")
+      a.send({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "session/new",
+        params: { cwd: a.work, mcpServers: [] },
+      })
+      // Level 1 is one session per process: the second session/new is refused.
+      expect(((await a.reply(3)).error as Json | undefined)?.code).toBeNumber()
+      expect(await finish(a)).toBe(0)
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
 })
