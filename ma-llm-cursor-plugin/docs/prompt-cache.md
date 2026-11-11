@@ -8,6 +8,7 @@ Status: mapper N/A locked 2026-10-04 (Donna `fcc46867`). Count fix landed separa
 ## Model
 
 No cache counters reported. Caps inherit defaults with no override: explicit false, automatic false, reports false, disjoint.
+
 - Code: `capabilities.ts` inherits `lib/capabilities.ts:235-242`.
 
 Blind display, not proof of no cache. Proto ConversationTokenDetails only decodes used_tokens#1 and max_tokens#2. Unknown fields are dropped. Do not invent cacheRead.

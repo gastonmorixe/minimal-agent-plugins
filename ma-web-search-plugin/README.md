@@ -16,9 +16,9 @@ Configured in `~/.minimal-agent/config.jsonc`:
 {
   "plugins": {
     "web-search": {
-      "providers": ["brave"],
-    },
-  },
+      "providers": ["brave"]
+    }
+  }
 }
 ```
 

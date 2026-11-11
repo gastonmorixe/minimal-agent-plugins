@@ -144,15 +144,17 @@ manifest.json:
   "version": "0.1.0",
   "description": "Real-time tokens-per-second readout, right-aligned on the quota footer line.",
   "capabilities": ["session-info:read"],
-  "liveAreaSlots": [{
-    "id": "tps",
-    "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
-    "position": "footer",
-    "refreshMs": 1000,
-    "timeoutMs": 800,
-    "placeholder": "",
-    "refreshOn": ["quota.headersReceived"]
-  }]
+  "liveAreaSlots": [
+    {
+      "id": "tps",
+      "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+      "position": "footer",
+      "refreshMs": 1000,
+      "timeoutMs": 800,
+      "placeholder": "",
+      "refreshOn": ["quota.headersReceived"]
+    }
+  ]
 }
 ```
 

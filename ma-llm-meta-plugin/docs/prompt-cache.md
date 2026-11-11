@@ -48,6 +48,7 @@ Automatic prefix KV cache. No Anthropic style `cache_control` or ephemeral break
 ## Live evidence 2026-10-04
 
 Early Chat era snapshots:
+
 - Lead session mid run: 32 turns, input sum 2.18M, read sum 223k near 10 percent, last turn in 98k with 69k read.
 - First turn probe: input 45717, read 0. Cold start normal.
 - Second turn resume fell back to cursor, so no valid meta turn 2.
@@ -55,6 +56,7 @@ Early Chat era snapshots:
 - Worker with 6 turns: read 44k near 15 percent.
 
 Responses era on same lead session `68a0d8fb` (Verified Live):
+
 - 176 billed assistant turns.
 - Input sum 22,055,474. Cache read sum 6,509,346. Hit rate 29.5 percent.
 - 66 turns with read greater than 0.

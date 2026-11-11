@@ -77,8 +77,8 @@ Drop into `~/.minimal-agent/config.jsonc`:
 ```jsonc
 {
   "plugins": {
-    "quota-status": { "enabled": false },
-  },
+    "quota-status": { "enabled": false }
+  }
 }
 ```
 
@@ -108,8 +108,8 @@ The segments and their order are declarative in
 {
   "statusBar": {
     // default order shown; reorder or omit ids to taste
-    "segments": ["quota", "context", "model", "sid"],
-  },
+    "segments": ["quota", "context", "model", "sid"]
+  }
 }
 ```
 
@@ -136,8 +136,8 @@ The config is read once at startup.
 ```jsonc
 {
   "statusBar": {
-    "script": "/usr/local/bin/my-status --compact",
-  },
+    "script": "/usr/local/bin/my-status --compact"
+  }
 }
 ```
 

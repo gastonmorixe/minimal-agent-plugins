@@ -48,15 +48,15 @@ Pure plugin plus two small additive host seams:
 
 ## Files
 
-| File | Role |
-| --- | --- |
-| `manifest.json` | `headless.events[]` subscriptions to `llm.outputDelta` and `llm.outputEnd`, plus `ui.liveAreaSlots` and `ui.setup` |
-| `handler.ts` | Slot handler: read tracker → publish tail. Always returns null (tail-only visual) |
-| `on_output_delta.ts` | Event handler: feed one delta batch into the shared tracker |
-| `on_output_end.ts` | Event handler: clear the readout when the stream ends |
-| `style.ts` | Style slots (plain until `ui/setup.ts` runs) |
-| `ui/setup.ts` | CLI only: installs the terminal kit into the style slots |
-| `tps-tracker.ts` | Pure TPS math: sliding window over deltas, sticky display, idle decay |
-| `render.ts` | Pure formatter: faint `N/tps` |
-| `tracker-holder.ts` | Shared tracker singleton bridging event handler and slot handler |
-| `host-types.ts` | Structural mirrors of the host slices consumed (no host imports) |
+| File                 | Role                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `manifest.json`      | `headless.events[]` subscriptions to `llm.outputDelta` and `llm.outputEnd`, plus `ui.liveAreaSlots` and `ui.setup` |
+| `handler.ts`         | Slot handler: read tracker → publish tail. Always returns null (tail-only visual)                                  |
+| `on_output_delta.ts` | Event handler: feed one delta batch into the shared tracker                                                        |
+| `on_output_end.ts`   | Event handler: clear the readout when the stream ends                                                              |
+| `style.ts`           | Style slots (plain until `ui/setup.ts` runs)                                                                       |
+| `ui/setup.ts`        | CLI only: installs the terminal kit into the style slots                                                           |
+| `tps-tracker.ts`     | Pure TPS math: sliding window over deltas, sticky display, idle decay                                              |
+| `render.ts`          | Pure formatter: faint `N/tps`                                                                                      |
+| `tracker-holder.ts`  | Shared tracker singleton bridging event handler and slot handler                                                   |
+| `host-types.ts`      | Structural mirrors of the host slices consumed (no host imports)                                                   |

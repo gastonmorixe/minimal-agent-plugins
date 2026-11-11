@@ -13,9 +13,9 @@ Two bugs collude to produce the observed behavior. First, `<ma::agent::mode-acti
 `minimal-agent-core/src/agent/tool-round.ts`, lines **874–877**:
 
 ```typescript
-const modeStamp = ctx.modeManager?.buildActiveModeStamp() ?? null;
+const modeStamp = ctx.modeManager?.buildActiveModeStamp() ?? null
 if (modeStamp) {
-  content = content.length > 0 ? `${content}\n\n${modeStamp}` : modeStamp;
+  content = content.length > 0 ? `${content}\n\n${modeStamp}` : modeStamp
 }
 ```
 
@@ -27,11 +27,11 @@ Every tool result (including errors) gets the `<ma::agent::mode-active id="..." 
 
 ```typescript
 export function toolResultToWireText(block: ToolResultBlock): string {
-  const parts: string[] = [];
+  const parts: string[] = []
   for (const c of block.content) {
-    if (c.type === "text" && c.text) parts.push(c.text);
+    if (c.type === "text" && c.text) parts.push(c.text)
   }
-  return parts.join("\n") || "(empty tool result)";
+  return parts.join("\n") || "(empty tool result)"
 }
 ```
 
@@ -42,18 +42,20 @@ This function joins **all** text blocks verbatim. It does not filter or strip `<
 `bidi-run.ts`, lines **145–160**:
 
 ```typescript
-const resultText = toolResultToWireText(match);          // line 145 — gets polluted text
-const payload = encodeAgentClientMessageExecResult({      // line 146 — encodes verbatim
+const resultText = toolResultToWireText(match) // line 145 — gets polluted text
+const payload = encodeAgentClientMessageExecResult({
+  // line 146 — encodes verbatim
   id: pending.id,
   execId: "",
   resultText,
   isError: Boolean(match.isError),
   nativeExecFieldNo: pending.nativeExecFieldNo,
-});
+})
 // ...
-cursorBidiLog("continue.write-mcp-result", {             // line 154
-  resultPreview: resultText.slice(0, 120),                // line 157 — shows the stamp!
-});
+cursorBidiLog("continue.write-mcp-result", {
+  // line 154
+  resultPreview: resultText.slice(0, 120), // line 157 — shows the stamp!
+})
 ```
 
 The debug output confirms the stamp leaks:
@@ -75,17 +77,17 @@ The debug output confirms the stamp leaks:
 ```typescript
 function encNativeResult(fieldNo: number, opts: ExecMcpResultOpts): Uint8Array {
   if (opts.isError) {
-    return encNativeError(fieldNo, opts.resultText);
+    return encNativeError(fieldNo, opts.resultText)
   }
   switch (fieldNo) {
-    case 2:  // shell_args → ShellSuccess
-    case 5:  // grep_args → GrepSuccess
-    case 7:  // read_args → ReadSuccess
-    case 8:  // ls_args → LsSuccess
+    case 2: // shell_args → ShellSuccess
+    case 5: // grep_args → GrepSuccess
+    case 7: // read_args → ReadSuccess
+    case 8: // ls_args → LsSuccess
     default: // ← field 14 ends up HERE
       return opts.isError
         ? encMcpResultError(opts.resultText)
-        : encMcpResultSuccess(opts.resultText, false);
+        : encMcpResultSuccess(opts.resultText, false)
   }
 }
 ```
@@ -97,12 +99,12 @@ Similarly, `encNativeError` at lines **100–117**:
 ```typescript
 function encNativeError(fieldNo: number, errorText: string): Uint8Array {
   switch (fieldNo) {
-    case 2:  // ShellResult.failure with stderr at field 6
-    case 5:  // GrepResult.error
-    case 7:  // ReadResult.error
-    case 8:  // LsResult.error
-    default:  // ← field 14 ends up HERE
-      return encMsg(2, encString(1, errorText)); // generic, not ShellResult shape
+    case 2: // ShellResult.failure with stderr at field 6
+    case 5: // GrepResult.error
+    case 7: // ReadResult.error
+    case 8: // LsResult.error
+    default: // ← field 14 ends up HERE
+      return encMsg(2, encString(1, errorText)) // generic, not ShellResult shape
   }
 }
 ```
@@ -118,7 +120,7 @@ const TOOL_CALL_ID_FIELD: ReadonlyMap<number, number> = new Map([
   [2, 4], // shell_args → field 4
   [7, 2], // read_args → field 2
   [8, 3], // ls_args → field 3
-]);
+])
 ```
 
 Field 14 is not in this map. So `extractNativeToolCallId` at line **94** returns `""` for shell_stream_args, forcing a `crypto.randomUUID()` at line **174**. While this doesn't break MA's internal result matching (the UUID is consistent within the session), it discards Cursor's original `tool_call_id`, which could confuse Cursor's tracking.
@@ -145,9 +147,8 @@ The cycle then repeats with the native path because the native encoding is also 
 `bidi-run.ts`, lines **124–126**:
 
 ```typescript
-const results = extractTrailingToolResults(req.messages);
-const match =
-  results.find((r) => r.toolUseId === pending.toolCallId) ?? results[results.length - 1];
+const results = extractTrailingToolResults(req.messages)
+const match = results.find((r) => r.toolUseId === pending.toolCallId) ?? results[results.length - 1]
 ```
 
 The matching logic itself is sound. The `toolUseId` on the result block is set from `tool.id` (tool-round.ts line 897), which originated from `exec.toolCallId` set by `emitExecMcpToolUse` (response-stream-bidi.ts line 218). The `pending.toolCallId` is the same value stored in `pendingExec` at response-stream-bidi.ts line 125. The fallback `results[results.length - 1]` would return the wrong result only if there were multiple tool results in the request and the `toolCallId` match failed. For field 14 with random UUIDs, the matching works because both sides use the same generated value. The fallback would only fire if the `toolCallId` somehow diverged — which doesn't happen in the current code flow.

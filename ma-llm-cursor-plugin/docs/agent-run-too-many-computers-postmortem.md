@@ -79,20 +79,20 @@ does not.**
 
 Workbench spike headers MA was sending (and CLI was not):
 
-| Header | MA (before fix) | Cursor Agent CLI AgentService interceptor |
-| ------ | --------------- | ----------------------------------------- |
-| `authorization` | Bearer from MA auth store | Bearer from CLI credential manager |
-| `x-ghost-mode` | `"true"` by default | from `privacyCache.ghostMode` (true here) |
-| `x-cursor-client-version` | `cli-YYYY.MM.DD-<sha>` | `cli-2026.08.11-e8db854` |
-| `x-cursor-client-type` | `"cli"` | telemetry `surface: "cli"` |
-| `x-request-id` | UUID | UUID |
-| `x-cursor-checksum` | **yes** (IDE scramble + telemetry machine ids) | **no** |
-| `x-client-key` | **yes** (sha256 of machineId) | **no** |
-| `x-session-id` | **yes** (fresh UUID per `loadClientIds()`) | **no** |
-| `x-cursor-client-arch` / `-os` / `-device-type` | **yes** | **no** |
-| `x-cursor-timezone` | **yes** | **no** |
-| `x-cursor-streaming` | **yes** | **no** |
-| `x-amzn-trace-id` | **yes** | **no** |
+| Header                                          | MA (before fix)                                | Cursor Agent CLI AgentService interceptor |
+| ----------------------------------------------- | ---------------------------------------------- | ----------------------------------------- |
+| `authorization`                                 | Bearer from MA auth store                      | Bearer from CLI credential manager        |
+| `x-ghost-mode`                                  | `"true"` by default                            | from `privacyCache.ghostMode` (true here) |
+| `x-cursor-client-version`                       | `cli-YYYY.MM.DD-<sha>`                         | `cli-2026.08.11-e8db854`                  |
+| `x-cursor-client-type`                          | `"cli"`                                        | telemetry `surface: "cli"`                |
+| `x-request-id`                                  | UUID                                           | UUID                                      |
+| `x-cursor-checksum`                             | **yes** (IDE scramble + telemetry machine ids) | **no**                                    |
+| `x-client-key`                                  | **yes** (sha256 of machineId)                  | **no**                                    |
+| `x-session-id`                                  | **yes** (fresh UUID per `loadClientIds()`)     | **no**                                    |
+| `x-cursor-client-arch` / `-os` / `-device-type` | **yes**                                        | **no**                                    |
+| `x-cursor-timezone`                             | **yes**                                        | **no**                                    |
+| `x-cursor-streaming`                            | **yes**                                        | **no**                                    |
+| `x-amzn-trace-id`                               | **yes**                                        | **no**                                    |
 
 CLI still sends Connect content-type / protocol headers via `@connectrpc/connect-node`.
 The interceptor in `~/.local/share/cursor-agent/versions/2026.08.11-e8db854/index.js`
@@ -152,10 +152,10 @@ been accepted** depending on the rest of the request.
 
 What MA saw tonight:
 
-| MA RequestedModel | With IDE fingerprint | After CLI headers |
-| ----------------- | -------------------- | ----------------- |
+| MA RequestedModel                   | With IDE fingerprint                                                | After CLI headers                     |
+| ----------------------------------- | ------------------------------------------------------------------- | ------------------------------------- |
 | parent `grok-4.6` + `effort`/`fast` | Connect `not_found` / `ERROR_BAD_MODEL_NAME` (“AI Model Not Found”) | **not re-A/B’d** after the header fix |
-| exploded SKU `cursor-grok-4.6-high` | `resource_exhausted` / “Too many computers” | **PONG** |
+| exploded SKU `cursor-grok-4.6-high` | `resource_exhausted` / “Too many computers”                         | **PONG**                              |
 
 We treated the `not_found` as “parent+params is an invalid Run id” and
 rewrote encode to always explode SKUs. That was a **correlated** failure
@@ -176,10 +176,10 @@ string as a **second provider-scoped id** is allowed (`modelsByProvider`).
 
 On this machine:
 
-| Shell | `which agent` | What it is |
-| ----- | ------------- | ---------- |
-| **fish** (user tmux) | `~/.grok/bin/agent` | xAI Grok shell. Debug log: `xai_grok_shell`, `base_url: https://cli-chat-proxy.grok.com/v1`, `X-XAI-Token-Auth: xai-grok-cli`. Completely different backend. |
-| **zsh** (many agent sessions) | `~/.local/bin/agent` → `…/cursor-agent/versions/2026.08.11-e8db854/cursor-agent` | Official Cursor Agent CLI. Speaks AgentService/Run. |
+| Shell                         | `which agent`                                                                    | What it is                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **fish** (user tmux)          | `~/.grok/bin/agent`                                                              | xAI Grok shell. Debug log: `xai_grok_shell`, `base_url: https://cli-chat-proxy.grok.com/v1`, `X-XAI-Token-Auth: xai-grok-cli`. Completely different backend. |
+| **zsh** (many agent sessions) | `~/.local/bin/agent` → `…/cursor-agent/versions/2026.08.11-e8db854/cursor-agent` | Official Cursor Agent CLI. Speaks AgentService/Run.                                                                                                          |
 
 The tmux pane that printed `Hello. How can I help you today?` for
 `agent --debug --debug-file /tmp/agent-debug-file-001.log -p "hello"` was
@@ -253,16 +253,16 @@ CLI install used on 2026-08-17:
   → ~/.local/share/cursor-agent/versions/2026.08.11-e8db854/cursor-agent
 ```
 
-| Question | Where we looked | Result |
-| -------- | --------------- | ------ |
-| Picker vs Run model id | `~/.cursor/cli-config.json` `selectedModel.modelId` + `modelParameters.grok-4.6` | Picker is parent `grok-4.6` + `{effort: high, fast: true}` |
-| Does Run send that picker shape? | `3363.index.js` `new o.RequestedModel({modelId:e.model.name, parameters:…})` | Yes, parent name + parameter values. `builtInModel` omitted (proto3 false). `isVariantStringRepresentation` omitted on that path. |
-| Agent URL | `cli-config.json` `serverConfigCache.agentUrlConfig` | `https://agentn.global.api5.cursor.sh` (same as plugin default after GetServerConfig overlay) |
-| HTTP/1 vs h2 | interceptor `X(…)` uses `httpVersion:"1.1"` for some clients; `useHttp1ForAgent` in config is `false`; server can force bidi/h2 | MA streams with host `NetworkClient` `protocol: "h2"`. Not the smoking gun; headers were. |
-| Checksum algorithm | plugin `checksum.ts` (IDE `workbench.desktop.main.js` reconstruction) | Still correct **for the IDE**. CLI AgentService does not send it. |
-| Machine ids MA used | Cursor IDE `storage.json` `telemetry.machineId` / `telemetry.macMachineId` via `ids.ts` | Fine for IDE. Irrelevant once we stop sending checksum. |
-| AvailableModels | plugin already used `use_model_parameters=true`, `do_not_use_markdown=true`, `clientType: "cli"` | Catalog is parameterized parents + `legacy_slug` variants. Keep that. |
-| Connect trailer | JSON `{ error: { code, message, details: [{ debug: { error, details: { title } } }] } }` | Parse `details` or you will debug the word `"Error"`. |
+| Question                         | Where we looked                                                                                                                 | Result                                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Picker vs Run model id           | `~/.cursor/cli-config.json` `selectedModel.modelId` + `modelParameters.grok-4.6`                                                | Picker is parent `grok-4.6` + `{effort: high, fast: true}`                                                                        |
+| Does Run send that picker shape? | `3363.index.js` `new o.RequestedModel({modelId:e.model.name, parameters:…})`                                                    | Yes, parent name + parameter values. `builtInModel` omitted (proto3 false). `isVariantStringRepresentation` omitted on that path. |
+| Agent URL                        | `cli-config.json` `serverConfigCache.agentUrlConfig`                                                                            | `https://agentn.global.api5.cursor.sh` (same as plugin default after GetServerConfig overlay)                                     |
+| HTTP/1 vs h2                     | interceptor `X(…)` uses `httpVersion:"1.1"` for some clients; `useHttp1ForAgent` in config is `false`; server can force bidi/h2 | MA streams with host `NetworkClient` `protocol: "h2"`. Not the smoking gun; headers were.                                         |
+| Checksum algorithm               | plugin `checksum.ts` (IDE `workbench.desktop.main.js` reconstruction)                                                           | Still correct **for the IDE**. CLI AgentService does not send it.                                                                 |
+| Machine ids MA used              | Cursor IDE `storage.json` `telemetry.machineId` / `telemetry.macMachineId` via `ids.ts`                                         | Fine for IDE. Irrelevant once we stop sending checksum.                                                                           |
+| AvailableModels                  | plugin already used `use_model_parameters=true`, `do_not_use_markdown=true`, `clientType: "cli"`                                | Catalog is parameterized parents + `legacy_slug` variants. Keep that.                                                             |
+| Connect trailer                  | JSON `{ error: { code, message, details: [{ debug: { error, details: { title } } }] } }`                                        | Parse `details` or you will debug the word `"Error"`.                                                                             |
 
 Do **not** paste JWTs, `auth.jsonc` secrets, or `--api-key` process argv into
 docs or chat. The Cursor IDE worker command line on this machine included a
@@ -378,16 +378,16 @@ Live E2E: `E2E=1 bun test cursor.e2e.test.ts` (needs auth; may still skip).
 
 ## File map
 
-| File | Role in this incident |
-| ---- | --------------------- |
-| `headers.ts` | CLI vs IDE fingerprint. Default is CLI. |
-| `checksum.ts` / `ids.ts` | IDE fingerprint only. |
-| `client-version.ts` / `wire-constants.ts` | `cli-*` stamp; do not go back to `3.12.30` as default. |
-| `request-body.ts` | SKU-first Run encode; parent+params fallback. |
-| `encode-spec.ts` | Per-id `runModelId` + parent SKU index. |
-| `catalog-expand.ts` | Parents + `legacy_slug` variants; `runModelId` = slug as-is. |
-| `models.ts` | Static seed, dual API ids, `resolveCursorWireId` keeps Grok SKUs. |
-| `proto/agent-run.ts` | Connect trailer + `details` titles. |
-| `response-stream.ts` | Surfaces `cause.message` to the host. |
-| `cursor.test.ts` / `auth.test.ts` / `response-stream.test.ts` | Header + encode + trailer regressions. |
-| `scripts/probe-run-encode.ts` | Live A/B helper. Easy to overuse; prefer the two-command loop above. |
+| File                                                          | Role in this incident                                                |
+| ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `headers.ts`                                                  | CLI vs IDE fingerprint. Default is CLI.                              |
+| `checksum.ts` / `ids.ts`                                      | IDE fingerprint only.                                                |
+| `client-version.ts` / `wire-constants.ts`                     | `cli-*` stamp; do not go back to `3.12.30` as default.               |
+| `request-body.ts`                                             | SKU-first Run encode; parent+params fallback.                        |
+| `encode-spec.ts`                                              | Per-id `runModelId` + parent SKU index.                              |
+| `catalog-expand.ts`                                           | Parents + `legacy_slug` variants; `runModelId` = slug as-is.         |
+| `models.ts`                                                   | Static seed, dual API ids, `resolveCursorWireId` keeps Grok SKUs.    |
+| `proto/agent-run.ts`                                          | Connect trailer + `details` titles.                                  |
+| `response-stream.ts`                                          | Surfaces `cause.message` to the host.                                |
+| `cursor.test.ts` / `auth.test.ts` / `response-stream.test.ts` | Header + encode + trailer regressions.                               |
+| `scripts/probe-run-encode.ts`                                 | Live A/B helper. Easy to overuse; prefer the two-command loop above. |

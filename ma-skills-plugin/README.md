@@ -88,13 +88,13 @@ User config at `~/.minimal-agent/config.jsonc` under `plugins["ma-skills"]`:
         "project": true,
         "projectClaudeCode": false, // .claude/skills/ interop
         "homeShared": true,
-        "userAgent": true,
+        "userAgent": true
       },
       "extraRoots": [],
       "maxSkills": 64, // Level-1 prompt table only. Skill tool is uncapped.
-      "allowReservedNames": false, // permit `claude`/`anthropic` in names
-    },
-  },
+      "allowReservedNames": false // permit `claude`/`anthropic` in names
+    }
+  }
 }
 ```
 

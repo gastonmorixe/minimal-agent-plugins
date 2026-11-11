@@ -99,6 +99,7 @@ produce a garbled result; with multi-key maps, only the last entry survived.
 **Fix:** Introduced `decodeMapEntry()` to decode a single map entry (key=field 1,
 value=field 2). All decode sites now iterate field-2 entries and accumulate
 key-value pairs into one object. Applied to three files:
+
 - `proto/exec-server-decode.ts` (decodeMcpArgsBody)
 - `proto/exec-mcp.ts` (decodeExecServerMcpRequest)
 - `proto/tool-call-decode.ts` (decodeMcpArgs for tool_call_started)
@@ -164,16 +165,16 @@ between `tool_use_start` and `tool_use_stop`.
 
 ## Files changed
 
-| File | Change |
-|------|--------|
-| `proto/value-decode.ts` | `decodeMapEntry()`, fixed `decodeProtobufValue()` field mapping |
-| `proto/exec-server-decode.ts` | Per-entry map decode, native exec handling, `nativeExecFieldNo` |
-| `proto/exec-mcp.ts` | Per-entry map decode |
-| `proto/tool-call-decode.ts` | Per-entry map decode |
-| `proto/client-message.ts` | `encNativeResult()` / `encNativeError()` for typed native results |
-| `response-stream-bidi.ts` | `tool_use_input_delta` emission, stateful translator, session lifecycle |
-| `response-stream.ts` | `tool_use_input_delta` emission (unary path) |
-| `bidi-run.ts` | Session continuation logic, `nativeExecFieldNo` pass-through |
-| `cursor-bidi-session.ts` | Session state management |
-| `connect/bidi-stream.ts` | Duplex h2 wire |
-| `minimal-agent-core/.../client.ts` | Forward `writeRequestBody` through `tapResponse()` |
+| File                               | Change                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------- |
+| `proto/value-decode.ts`            | `decodeMapEntry()`, fixed `decodeProtobufValue()` field mapping         |
+| `proto/exec-server-decode.ts`      | Per-entry map decode, native exec handling, `nativeExecFieldNo`         |
+| `proto/exec-mcp.ts`                | Per-entry map decode                                                    |
+| `proto/tool-call-decode.ts`        | Per-entry map decode                                                    |
+| `proto/client-message.ts`          | `encNativeResult()` / `encNativeError()` for typed native results       |
+| `response-stream-bidi.ts`          | `tool_use_input_delta` emission, stateful translator, session lifecycle |
+| `response-stream.ts`               | `tool_use_input_delta` emission (unary path)                            |
+| `bidi-run.ts`                      | Session continuation logic, `nativeExecFieldNo` pass-through            |
+| `cursor-bidi-session.ts`           | Session state management                                                |
+| `connect/bidi-stream.ts`           | Duplex h2 wire                                                          |
+| `minimal-agent-core/.../client.ts` | Forward `writeRequestBody` through `tapResponse()`                      |

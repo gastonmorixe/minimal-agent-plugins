@@ -11,23 +11,23 @@ In Cursor’s `agent.v1.ExecServerMessage` (rev-eng / agent-cli):
 
 `ShellArgs` fields include:
 
-| No | Name |
-|----|------|
-| 1 | `command` |
-| 2 | `working_directory` |
-| 4 | `tool_call_id` |
-| … | timeout, sandbox, etc. |
+| No  | Name                   |
+| --- | ---------------------- |
+| 1   | `command`              |
+| 2   | `working_directory`    |
+| 4   | `tool_call_id`         |
+| …   | timeout, sandbox, etc. |
 
 So `decodeNativeExecInput` fallthrough `case 2` / `case 14` reading field 1 as
 `command` is **correct**. The decode crash with `command.match` on `undefined`
 was from other failure modes (bad bytes / skipped MCP path / empty command),
 not from a mythical “repeated ShellStreamInput args” shape.
 
-## What *is* different: the result oneof
+## What _is_ different: the result oneof
 
-| Server args | Client result |
-|-------------|---------------|
-| `shell_args` (2) | unary `shell_result` (2) = `ShellResult` |
+| Server args              | Client result                                       |
+| ------------------------ | --------------------------------------------------- |
+| `shell_args` (2)         | unary `shell_result` (2) = `ShellResult`            |
 | `shell_stream_args` (14) | streamed `shell_stream` (14) = `ShellStream` events |
 
 `ShellStream` is a oneof of **events**: `stdout` / `stderr` / `exit` / `start` /

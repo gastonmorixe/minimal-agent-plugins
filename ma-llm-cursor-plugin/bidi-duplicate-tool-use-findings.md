@@ -56,6 +56,7 @@ For a frame with field 2, `decodeAgentServerExec()` returns the exec args, and t
 `push()` enters the `if (execFromField2)` block (line 123):
 
 `emitExecMcpToolUse()` (line 203):
+
 - Emits `tool_use_start` (index = `this.blockIndex++`, say 2).
 - Emits `tool_use_input_delta` + `tool_use_stop` with `exec.input`.
 - Calls `finish("tool_use")` → emits `message_delta(tool_use)` + `message_stop`.
@@ -117,6 +118,7 @@ case "tool_use_stop":
 ```
 
 `flushCur()` (line 793):
+
 ```typescript
 } else if (cur.kind === "tool_use") {
     blocks.push({
@@ -136,6 +138,7 @@ case "tool_use_stop":
 ## The Actual Scenario (from debug transcript)
 
 The debug transcript shows:
+
 - **Frame 1**: interaction_update → 3 events: `message_start`, `tool_use_start`, `tool_use_stop`
   - No `tool_call_completed` in this frame, so no `message_delta`/`message_stop`.
   - `pendingToolIndex` was set then cleared by `emitToolUseStop()`.
@@ -170,24 +173,24 @@ There is no "skip this if we already emitted it from the other path" logic anywh
 
 ## Key Line Numbers
 
-| File | Line(s) | Description |
-|------|---------|-------------|
-| `response-stream-bidi.ts` | 122-128 | Exec check runs FIRST; returns early on exec_server_message |
-| `response-stream-bidi.ts` | 130 | Falls through to interaction_update only when no exec |
-| `response-stream-bidi.ts` | 203-227 | `emitExecMcpToolUse()` — emits duplicate tool_use events from exec |
-| `response-stream-bidi.ts` | 229-285 | `handleMcpToolCall()` — emits tool_use events from interaction_update |
-| `response-stream-bidi.ts` | 244-262 | `started` phase: sets pendingToolInput, emits tool_use_start/stop |
-| `response-stream-bidi.ts` | 265-284 | `completed` phase: merges input, emits tool_use_start/stop + finish |
-| `response-stream-bidi.ts` | 168-190 | `emitToolUseStop()` — flushes pending tool state |
-| `response-stream-bidi.ts` | 192-201 | `finish()` — emits message_delta/message_stop |
-| `bidi-run.ts` | 191-249 | `readBidiUntilPauseOrEnd` — yields all events, pause logic |
-| `bidi-run.ts` | 208-216 | `session.pendingExec` only set when message_delta + tool_use |
-| `bidi-run.ts` | 235-243 | Backup pause: `pendingExec` may be null for interaction_update only |
-| `adapter-legacy.ts` | 897-914 | `tool_use_start`/`tool_use_stop` handlers — no deduplication |
-| `adapter-legacy.ts` | 809-822 | `flushCur` for tool_use — unconditionally pushes block |
-| `proto/exec-server-decode.ts` | 217-236 | `decodeAgentServerMessage` — detects kind |
-| `proto/exec-server-decode.ts` | 239-247 | `decodeAgentServerExec` — extracts field 2 exec |
-| `proto/exec-server-decode.ts` | 154-188 | `decodeExecServerMessageBody` — full args decode |
-| `proto/tool-call-decode.ts` | 35-59 | `decodeMcpArgs` — interaction_update args decode |
-| `proto/tool-call-decode.ts` | 115-127 | `decodeToolCallUpdate` — interaction_update tool call decode |
-| `proto/agent-run.ts` | 183-237 | `extractServerTextEvents` — extracts tool_call_started/completed |
+| File                          | Line(s) | Description                                                           |
+| ----------------------------- | ------- | --------------------------------------------------------------------- |
+| `response-stream-bidi.ts`     | 122-128 | Exec check runs FIRST; returns early on exec_server_message           |
+| `response-stream-bidi.ts`     | 130     | Falls through to interaction_update only when no exec                 |
+| `response-stream-bidi.ts`     | 203-227 | `emitExecMcpToolUse()` — emits duplicate tool_use events from exec    |
+| `response-stream-bidi.ts`     | 229-285 | `handleMcpToolCall()` — emits tool_use events from interaction_update |
+| `response-stream-bidi.ts`     | 244-262 | `started` phase: sets pendingToolInput, emits tool_use_start/stop     |
+| `response-stream-bidi.ts`     | 265-284 | `completed` phase: merges input, emits tool_use_start/stop + finish   |
+| `response-stream-bidi.ts`     | 168-190 | `emitToolUseStop()` — flushes pending tool state                      |
+| `response-stream-bidi.ts`     | 192-201 | `finish()` — emits message_delta/message_stop                         |
+| `bidi-run.ts`                 | 191-249 | `readBidiUntilPauseOrEnd` — yields all events, pause logic            |
+| `bidi-run.ts`                 | 208-216 | `session.pendingExec` only set when message_delta + tool_use          |
+| `bidi-run.ts`                 | 235-243 | Backup pause: `pendingExec` may be null for interaction_update only   |
+| `adapter-legacy.ts`           | 897-914 | `tool_use_start`/`tool_use_stop` handlers — no deduplication          |
+| `adapter-legacy.ts`           | 809-822 | `flushCur` for tool_use — unconditionally pushes block                |
+| `proto/exec-server-decode.ts` | 217-236 | `decodeAgentServerMessage` — detects kind                             |
+| `proto/exec-server-decode.ts` | 239-247 | `decodeAgentServerExec` — extracts field 2 exec                       |
+| `proto/exec-server-decode.ts` | 154-188 | `decodeExecServerMessageBody` — full args decode                      |
+| `proto/tool-call-decode.ts`   | 35-59   | `decodeMcpArgs` — interaction_update args decode                      |
+| `proto/tool-call-decode.ts`   | 115-127 | `decodeToolCallUpdate` — interaction_update tool call decode          |
+| `proto/agent-run.ts`          | 183-237 | `extractServerTextEvents` — extracts tool_call_started/completed      |

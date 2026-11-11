@@ -54,9 +54,9 @@ Or in `~/.minimal-agent/config.jsonc` (or your relocated agent home):
 {
   "plugins": {
     "agents-md": {
-      "enabled": false,
-    },
-  },
+      "enabled": false
+    }
+  }
 }
 ```
 
@@ -73,9 +73,9 @@ Or in `~/.minimal-agent/config.jsonc` (or your relocated agent home):
       // load <cwd>/AGENTS.md (default true)
       "project": true,
       // per-file size cap in bytes; oversized files are skipped (default 100000)
-      "maxBytes": 100000,
-    },
-  },
+      "maxBytes": 100000
+    }
+  }
 }
 ```
 

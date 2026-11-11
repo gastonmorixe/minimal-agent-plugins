@@ -44,7 +44,8 @@ can pick deliberately.
 ❯ /swift
 ```
 
- is typed and updates the query.
+is typed and updates the query.
+
 - `editor.key` (hook, priority 70, `handlers/on_key.ts`) handles
   navigation, Tab, Enter, and Esc while the menu is open.
 - `editor.footer.set` paints the menu. `editor.buffer.set` completes the
@@ -143,19 +144,19 @@ A provider exposes the items its plugin contributes. Shape:
 
 ```ts
 interface Provider {
-  id: string;
-  list(): Promise<Item[]> | Item[];
-  refreshOn?: string[]; // bus events that invalidate the cache
+  id: string
+  list(): Promise<Item[]> | Item[]
+  refreshOn?: string[] // bus events that invalidate the cache
 }
 
 interface Item {
-  slug: string; // bare id, no leading "/" or "$"
-  description: string;
-  category: "act" | "skl" | string;
-  tokens?: number; // approx token cost, shown as severity-graded chip
-  payload?: unknown; // opaque, returned to the dispatcher on invoke
-  disabled?: boolean;
-  disabledReason?: string;
+  slug: string // bare id, no leading "/" or "$"
+  description: string
+  category: "act" | "skl" | string
+  tokens?: number // approx token cost, shown as severity-graded chip
+  payload?: unknown // opaque, returned to the dispatcher on invoke
+  disabled?: boolean
+  disabledReason?: string
 }
 ```
 
@@ -182,7 +183,7 @@ three additional fields (kept here in the README, **not** in
       "captures": ["Up", "Down", "Tab", "Enter", "Escape", "PageUp", "PageDown"],
       "handler": "./lib/overlay.ts",
       "position": "above-editor",
-      "maxRows": 5,
+      "maxRows": 5
     },
     {
       "id": "dollar",
@@ -191,18 +192,18 @@ three additional fields (kept here in the README, **not** in
       "handler": "./lib/overlay.ts",
       "position": "above-editor",
       "maxRows": 5,
-      "options": { "mode": "forced" },
-    },
+      "options": { "mode": "forced" }
+    }
   ],
   "commandProviders": [
     { "id": "actions", "handler": "./providers/actions.ts" },
-    { "id": "skills", "handler": "./providers/skills.ts" },
+    { "id": "skills", "handler": "./providers/skills.ts" }
   ],
   "userMessageHook": {
     "id": "slash-dispatch",
     "handler": "./lib/dispatch.ts",
-    "channel": "user.willSubmit",
-  },
+    "channel": "user.willSubmit"
+  }
 }
 ```
 
@@ -298,7 +299,7 @@ type Dispatch =
   | { kind: "passthrough" } // send as-is
   | { kind: "rewrite"; text: string } // replace user text
   | { kind: "injectBefore"; blocks: ContentBlock[]; text: string } // prefix synthetic blocks
-  | { kind: "abort"; message: string }; // refuse, show error
+  | { kind: "abort"; message: string } // refuse, show error
 ```
 
 `{ kind: "injectBefore" }` is what `$` uses for hard activation: the
