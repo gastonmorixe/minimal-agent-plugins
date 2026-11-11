@@ -35,7 +35,22 @@ beforeAll(() => {
   slots.reset()
   TMP = mkdtempSync(join(tmpdir(), "ma-skills-bytes-"))
   process.env.HOME = join(TMP, "home")
-  process.env.MINIMAL_AGENT_CONFIG = join(TMP, "no-config.json")
+  // os.homedir() does not see a HOME set at run time, so the HOME override
+  // alone still scans the real ~/.agents/skills and ~/.minimal-agent/skills.
+  // Turn the home roots off in a config file, like skill.test.ts does, so the
+  // golden file holds only the project skills of this test.
+  const cfg = join(TMP, "config.json")
+  writeFileSync(
+    cfg,
+    JSON.stringify({
+      plugins: {
+        "ma-skills": {
+          roots: { project: true, projectClaudeCode: false, homeShared: false, userAgent: false },
+        },
+      },
+    }),
+  )
+  process.env.MINIMAL_AGENT_CONFIG = cfg
   const cwd = join(TMP, "cwd")
   const good = join(cwd, ".agents", "skills", "alpha")
   mkdirSync(join(good, "scripts"), { recursive: true })
