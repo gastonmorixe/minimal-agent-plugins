@@ -122,7 +122,8 @@ export interface AnthropicRequestBody {
   context_management?: { edits: Array<{ type: string; keep?: string }> }
   output_config?: {
     effort?: string
-    format?: { type: string; schema?: object; name?: string; strict?: boolean }
+    /** Anthropic format is exactly `type` + `schema`. No name, no strict. */
+    format?: { type: "json_schema"; schema: object }
     task_budget?: { type: string; total: number }
   }
   stream?: boolean
@@ -516,8 +517,6 @@ function buildOutputConfig(
     out.format = {
       type: "json_schema",
       schema: req.outputFormat.schema,
-      name: req.outputFormat.name,
-      strict: req.outputFormat.strict,
     }
   }
 

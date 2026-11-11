@@ -22,10 +22,12 @@ import {
   opencodeApiKeyAuth,
   readOpencodeApiKey,
 } from "./auth.ts"
+import { buildAnthropicRequestBody } from "./lib/anthropic-request.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { LIVE_MODEL_IDS } from "./models.ts"
 import { opencodeConsoleOAuthLogin } from "./oauth-login.ts"
 import { OPENCODE_VERSION_ENV, opencodeProjectId, opencodeSessionId } from "./opencode-identity.ts"
+import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
 
 const SES_RE = /^ses_[0-9a-f]{12}[0-9A-Za-z]{14}$/
 const LOGIN_HINT = "run: ma provider opencode-zen login"
@@ -238,8 +240,7 @@ describe("llm-opencode-zen", () => {
         "Bearer public",
       )
       expect(
-        (await capture("beam-free", { auth: { kind: "api-key", key: "" } })).headers
-          .authorization,
+        (await capture("beam-free", { auth: { kind: "api-key", key: "" } })).headers.authorization,
       ).toBe("Bearer public")
     })
 
@@ -485,5 +486,77 @@ describe("opencode-zen 401 with server_error body", () => {
     const err = taggedHttpError(401, body) as ProviderError & { streamErrorType?: string }
     expect(err.streamErrorType).toBeUndefined()
     expect(err.code).toBe("opencode.auth")
+  })
+})
+
+describe("Responses text.format (SPEC-ONESHOT T4c)", () => {
+  const schema = { type: "object", properties: { a: { type: "string" } } }
+  const req = (outputFormat: CanonicalRequest["outputFormat"]): CanonicalRequest => ({
+    modelId: "gpt-5.6-luna",
+    messages: [userText("hi")],
+    outputFormat,
+  })
+
+  it("sends a flat text.format and no response_format", () => {
+    const model = setup().resolveModel("gpt-5.6-luna")
+    const body = buildOpenAIResponsesBody(
+      req({ type: "json_schema", name: "title", schema, strict: true }),
+      model,
+    )
+    expect("response_format" in body).toBe(false)
+    expect(body.text).toEqual({
+      format: { type: "json_schema", name: "title", schema, strict: true },
+    })
+  })
+
+  it("gates strict on capabilities.structuredOutputs", () => {
+    const base = setup().resolveModel("gpt-5.6-luna")
+    const model = { ...base, capabilities: { ...base.capabilities, structuredOutputs: false } }
+    const body = buildOpenAIResponsesBody(
+      req({ type: "json_schema", name: "title", schema, strict: true }),
+      model,
+    )
+    expect(body.text?.format).toEqual({ type: "json_schema", name: "title", schema })
+    const loose = buildOpenAIResponsesBody(req({ type: "json_schema", name: "t", schema }), base)
+    expect("strict" in (loose.text?.format ?? {})).toBe(false)
+  })
+
+  it("sanitizes the schema name", () => {
+    const model = setup().resolveModel("gpt-5.6-luna")
+    const bad = buildOpenAIResponsesBody(req({ type: "json_schema", name: "a b.c", schema }), model)
+    expect(bad.text?.format).toMatchObject({ name: "a_b_c" })
+    const long = buildOpenAIResponsesBody(
+      req({ type: "json_schema", name: "x".repeat(80), schema }),
+      model,
+    )
+    expect(long.text?.format).toMatchObject({ name: "x".repeat(64) })
+    const none = buildOpenAIResponsesBody(req({ type: "json_schema", schema }), model)
+    expect(none.text?.format).toMatchObject({ name: "output" })
+  })
+
+  it("maps json_object and text", () => {
+    const model = setup().resolveModel("gpt-5.6-luna")
+    expect(buildOpenAIResponsesBody(req({ type: "json_object" }), model).text).toEqual({
+      format: { type: "json_object" },
+    })
+    expect(buildOpenAIResponsesBody(req({ type: "text" }), model).text).toEqual({
+      format: { type: "text" },
+    })
+  })
+})
+
+describe("Anthropic output_config.format (SPEC-ONESHOT T4c)", () => {
+  it("sends exactly {type, schema} (no name, no strict)", () => {
+    const model = setup().resolveModel("claude-sonnet-5")
+    const schema = { type: "object", properties: { a: { type: "string" } } }
+    const body = buildAnthropicRequestBody(
+      {
+        modelId: "claude-sonnet-5",
+        messages: [userText("hi")],
+        outputFormat: { type: "json_schema", name: "title", schema, strict: true },
+      },
+      model,
+    )
+    expect(body.output_config?.format).toEqual({ type: "json_schema", schema })
   })
 })

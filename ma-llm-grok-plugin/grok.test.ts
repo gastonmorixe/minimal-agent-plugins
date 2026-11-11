@@ -768,3 +768,59 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     }
   })
 })
+
+describe("Responses text.format (SPEC-ONESHOT T4c)", () => {
+  const schema = { type: "object", properties: { a: { type: "string" } } }
+  const req = (outputFormat: CanonicalRequest["outputFormat"]): CanonicalRequest => ({
+    modelId: "grok-4.6",
+    messages: [userText("hi")],
+    outputFormat,
+  })
+
+  it("sends a flat text.format and no response_format", () => {
+    const model = resolveModel("grok-4.6")
+    const body = buildOpenAIResponsesBody(
+      req({ type: "json_schema", name: "title", schema, strict: true }),
+      model,
+    )
+    expect("response_format" in body).toBe(false)
+    expect(body.text).toEqual({
+      format: { type: "json_schema", name: "title", schema, strict: true },
+    })
+  })
+
+  it("gates strict on capabilities.structuredOutputs", () => {
+    const base = resolveModel("grok-4.6")
+    const model = { ...base, capabilities: { ...base.capabilities, structuredOutputs: false } }
+    const body = buildOpenAIResponsesBody(
+      req({ type: "json_schema", name: "title", schema, strict: true }),
+      model,
+    )
+    expect(body.text?.format).toEqual({ type: "json_schema", name: "title", schema })
+    const loose = buildOpenAIResponsesBody(req({ type: "json_schema", name: "t", schema }), base)
+    expect("strict" in (loose.text?.format ?? {})).toBe(false)
+  })
+
+  it("sanitizes the schema name", () => {
+    const model = resolveModel("grok-4.6")
+    const bad = buildOpenAIResponsesBody(req({ type: "json_schema", name: "a b.c", schema }), model)
+    expect(bad.text?.format).toMatchObject({ name: "a_b_c" })
+    const long = buildOpenAIResponsesBody(
+      req({ type: "json_schema", name: "x".repeat(80), schema }),
+      model,
+    )
+    expect(long.text?.format).toMatchObject({ name: "x".repeat(64) })
+    const none = buildOpenAIResponsesBody(req({ type: "json_schema", schema }), model)
+    expect(none.text?.format).toMatchObject({ name: "output" })
+  })
+
+  it("maps json_object and text", () => {
+    const model = resolveModel("grok-4.6")
+    expect(buildOpenAIResponsesBody(req({ type: "json_object" }), model).text).toEqual({
+      format: { type: "json_object" },
+    })
+    expect(buildOpenAIResponsesBody(req({ type: "text" }), model).text).toEqual({
+      format: { type: "text" },
+    })
+  })
+})

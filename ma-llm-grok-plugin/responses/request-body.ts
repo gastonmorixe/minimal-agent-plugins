@@ -51,10 +51,13 @@ export interface OpenAIResponsesRequestBody {
     effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max"
     summary?: "auto" | "concise" | "detailed"
   }
-  response_format?:
-    | { type: "text" }
-    | { type: "json_object" }
-    | { type: "json_schema"; json_schema: { name: string; schema: object; strict?: boolean } }
+  /**
+   * Text output config. The Responses API has NO top-level
+   * `response_format` (that is Chat Completions). Structured output goes in
+   * `text.format`, flat (no `json_schema` wrapper). See
+   * research/spec-oneshot/R1-strict-fields.md section 3.1.
+   */
+  text?: { format: OpenAIResponsesTextFormat }
   max_output_tokens?: number
   stream?: boolean
   store?: boolean
@@ -78,6 +81,35 @@ export interface OpenAIResponsesRequestBody {
  * docs. `scale` is the enterprise Scale-tier value, kept for completeness.
  */
 export const OPENAI_SERVICE_TIERS = new Set(["auto", "default", "flex", "scale", "priority"])
+
+/** `text.format` on the Responses API (`ResponseFormatTextConfig`). */
+export type OpenAIResponsesTextFormat =
+  | { type: "text" }
+  | { type: "json_object" }
+  | { type: "json_schema"; name: string; schema: object; strict?: boolean }
+
+/** Fallback schema name when the request has none or it sanitizes to empty. */
+export const DEFAULT_SCHEMA_NAME = "output"
+
+/**
+ * Schema name rule (OpenAI): only [a-zA-Z0-9_-], max 64 chars. Other chars
+ * become "_". Empty result falls back to {@link DEFAULT_SCHEMA_NAME}.
+ */
+export function sanitizeSchemaName(name: string | undefined): string {
+  const clean = (name ?? "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64)
+  return clean.length > 0 ? clean : DEFAULT_SCHEMA_NAME
+}
+
+/**
+ * Strict gate (SPEC-ONESHOT D-4): send `strict: true` only when the request
+ * asks for it AND the model capability `structuredOutputs` is true.
+ */
+export function wantsStrictSchema(
+  fmt: { strict?: boolean },
+  model: Pick<ModelEntry, "capabilities">,
+): boolean {
+  return fmt.strict === true && model.capabilities.structuredOutputs === true
+}
 
 export type OpenAIResponsesInputItem =
   | OpenAIResponsesMessageItem
@@ -190,21 +222,19 @@ export function buildOpenAIResponsesBody(
     body.include = [...include]
   }
 
-  // Output format
+  // Output format -> `text.format` (flat). Strict gate: SPEC-ONESHOT D-4.
   if (req.outputFormat) {
-    if (req.outputFormat.type === "json_schema") {
-      body.response_format = {
+    const fmt = req.outputFormat
+    if (fmt.type === "json_schema") {
+      const format: Extract<OpenAIResponsesTextFormat, { type: "json_schema" }> = {
         type: "json_schema",
-        json_schema: {
-          name: req.outputFormat.name ?? "response",
-          schema: req.outputFormat.schema,
-          strict: req.outputFormat.strict,
-        },
+        name: sanitizeSchemaName(fmt.name),
+        schema: fmt.schema,
       }
+      if (wantsStrictSchema(fmt, model)) format.strict = true
+      body.text = { format }
     } else {
-      body.response_format = {
-        type: req.outputFormat.type === "json_object" ? "json_object" : "text",
-      }
+      body.text = { format: { type: fmt.type === "json_object" ? "json_object" : "text" } }
     }
   }
 

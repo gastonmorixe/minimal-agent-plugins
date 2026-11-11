@@ -32,6 +32,7 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
 import type { ServerToolId } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
+import { sanitizeSchemaName, wantsStrictSchema } from "../chat/request-body.ts"
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
 
@@ -51,10 +52,13 @@ export interface OpenAIResponsesRequestBody {
     effort?: "none" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
     summary?: "auto" | "concise" | "detailed"
   }
-  response_format?:
-    | { type: "text" }
-    | { type: "json_object" }
-    | { type: "json_schema"; json_schema: { name: string; schema: object; strict?: boolean } }
+  /**
+   * Text output config. The Responses API has NO top-level
+   * `response_format` (that is Chat Completions). Structured output goes in
+   * `text.format`, flat (no `json_schema` wrapper). See
+   * research/spec-oneshot/R1-strict-fields.md section 3.1.
+   */
+  text?: { format: OpenAIResponsesTextFormat }
   max_output_tokens?: number
   stream?: boolean
   store?: boolean
@@ -73,6 +77,12 @@ export interface OpenAIResponsesRequestBody {
   /** Retention hint (`in-memory` | `24h`). Optional; server default applies. */
   prompt_cache_retention?: string
 }
+
+/** `text.format` on the Responses API (`ResponseFormatTextConfig`). */
+export type OpenAIResponsesTextFormat =
+  | { type: "text" }
+  | { type: "json_object" }
+  | { type: "json_schema"; name: string; schema: object; strict?: boolean }
 
 /**
  * Service tiers OpenAI's Responses API accepts. The neutral
@@ -228,21 +238,19 @@ export function buildOpenAIResponsesBody(
     if (Object.keys(reasoning).length > 0) body.reasoning = reasoning
   }
 
-  // Output format
+  // Output format -> `text.format` (flat). Strict gate: SPEC-ONESHOT D-4.
   if (req.outputFormat) {
-    if (req.outputFormat.type === "json_schema") {
-      body.response_format = {
+    const fmt = req.outputFormat
+    if (fmt.type === "json_schema") {
+      const format: Extract<OpenAIResponsesTextFormat, { type: "json_schema" }> = {
         type: "json_schema",
-        json_schema: {
-          name: req.outputFormat.name ?? "response",
-          schema: req.outputFormat.schema,
-          strict: req.outputFormat.strict,
-        },
+        name: sanitizeSchemaName(fmt.name),
+        schema: fmt.schema,
       }
+      if (wantsStrictSchema(fmt, model)) format.strict = true
+      body.text = { format }
     } else {
-      body.response_format = {
-        type: req.outputFormat.type === "json_object" ? "json_object" : "text",
-      }
+      body.text = { format: { type: fmt.type === "json_object" ? "json_object" : "text" } }
     }
   }
 
