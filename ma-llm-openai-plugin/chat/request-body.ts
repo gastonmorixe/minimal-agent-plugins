@@ -143,7 +143,7 @@ export function buildOpenAIChatBody(
 
   // Output format
   if (req.outputFormat) {
-    body.response_format = toChatResponseFormat(req.outputFormat)
+    body.response_format = toChatResponseFormat(req.outputFormat, model)
   }
 
   // Streaming
@@ -336,18 +336,43 @@ function toChatToolChoice(choice: ToolChoice): OpenAIChatRequestBody["tool_choic
   }
 }
 
+/** Fallback schema name when the request carries none. */
+export const DEFAULT_SCHEMA_NAME = "output"
+
+/**
+ * Sanitize a schema name to OpenAI's rule: `[a-zA-Z0-9_-]`, max 64 chars
+ * (Chat `json_schema.name` and Responses `text.format.name`). Core sends a
+ * sanitized name already. This is a second check (defense). Empty input
+ * falls back to {@link DEFAULT_SCHEMA_NAME}.
+ */
+export function sanitizeSchemaName(name: string | undefined): string {
+  const clean = (name ?? "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64)
+  return clean.length > 0 ? clean : DEFAULT_SCHEMA_NAME
+}
+
+/**
+ * Strict gate (SPEC-ONESHOT D-4): send `strict: true` only when the request
+ * asks for it AND the model capability `structuredOutputs` is true.
+ * Otherwise omit the field (OpenAI treats a missing `strict` as off).
+ */
+export function wantsStrictSchema(
+  fmt: { strict?: boolean },
+  model: Pick<ModelEntry, "capabilities">,
+): boolean {
+  return fmt.strict === true && model.capabilities.structuredOutputs === true
+}
+
 function toChatResponseFormat(
   fmt: NonNullable<CanonicalRequest["outputFormat"]>,
+  model: ModelEntry,
 ): OpenAIChatResponseFormat {
   if (fmt.type === "json_schema") {
-    return {
-      type: "json_schema",
-      json_schema: {
-        name: fmt.name ?? "response",
-        schema: fmt.schema,
-        strict: fmt.strict,
-      },
+    const jsonSchema: { name: string; schema: object; strict?: boolean } = {
+      name: sanitizeSchemaName(fmt.name),
+      schema: fmt.schema,
     }
+    if (wantsStrictSchema(fmt, model)) jsonSchema.strict = true
+    return { type: "json_schema", json_schema: jsonSchema }
   }
   return fmt.type === "json_object" ? { type: "json_object" } : { type: "text" }
 }

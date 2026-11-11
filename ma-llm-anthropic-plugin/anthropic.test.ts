@@ -252,7 +252,23 @@ describe("classifyRequest", () => {
     expect(classifyRequest(req)).toBe("quota")
   })
 
-  it("classifies a title gen request", () => {
+  it("classifies a title gen request by the purpose marker", () => {
+    const req: CanonicalRequest = {
+      modelId: "claude-haiku-4-5-20251001",
+      messages: [userText("<session>…</session>")],
+      outputFormat: {
+        type: "json_schema",
+        schema: { type: "object", properties: { title: { type: "string" } } },
+      },
+      system: [{ type: "text", text: "title" }],
+      purpose: "title",
+    }
+    expect(classifyRequest(req)).toBe("title")
+  })
+
+  it("does not classify a zero-tool schema request as title without the marker", () => {
+    // The same shape as a user one-shot `--output-schema` run (T5a): it keeps
+    // the normal kind, so it gets the normal betas and the default effort.
     const req: CanonicalRequest = {
       modelId: "claude-haiku-4-5-20251001",
       messages: [userText("<session>…</session>")],
@@ -262,7 +278,7 @@ describe("classifyRequest", () => {
       },
       system: [{ type: "text", text: "title" }],
     }
-    expect(classifyRequest(req)).toBe("title")
+    expect(classifyRequest(req)).toBe("subtask")
   })
 
   it("classifies a multi-tool 1h-cache conversation", () => {
