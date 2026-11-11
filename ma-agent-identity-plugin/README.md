@@ -30,7 +30,7 @@ Pick a source (env wins over config):
 {
   // a literal name, "auto" for a per-session derived name (the default),
   // or "off" to disable naming entirely
-  "agentName": "auto",
+  "agentName": "auto"
 }
 ```
 

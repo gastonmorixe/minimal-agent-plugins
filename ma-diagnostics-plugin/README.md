@@ -16,17 +16,17 @@ Probes config files + `package.json` devDeps at the **file's project root**, and
 resolves binaries from that root's `node_modules/.bin` **or an ancestor's**
 (hoisted workspaces). Uses whatever is already present. Never installs.
 
-| tool                      | signal                     | how it runs                                  | speed               |
-| ------------------------- | -------------------------- | -------------------------------------------- | ------------------- |
-| **tsgo** (type)           | tsconfig + bin             | persistent `tsgo --lsp` (reused)             | ~2-3ms warm         |
-| **tsc** (type)            | tsconfig + bin, no tsgo    | `tsc --lsp` when TS≥7, else spawn `--noEmit` | ~2-3ms / ~300-800ms |
-| **php** (type)            | PATH `php` + composer/artisan | spawn `php -l` (project php, no version pin) | ~10-50ms          |
-| **biome** (format)        | bin / biome.json           | spawn `check --reporter=json`                | ~55ms               |
-| **prettier** (format)     | prettier config + bin      | spawn `--check` (suppressed by biome)        | ~50-150ms           |
-| **pint** (format)         | vendor/bin or PATH + pint.json / laravel/pint | `pint --test --format=json -v -- <file>` | ~100-800ms |
-| **oxlint** (lint)         | bin / .oxlintrc            | spawn `-f json` (opt-in)                     | ~400ms              |
-| **eslint** (lint)         | eslint config + bin        | spawn `--format json` (opt-in)               | varies              |
-| **sourcekit-lsp** (apple) | Package.swift / .xcodeproj | persistent LSP (reused)                      | ~2-5ms warm         |
+| tool                      | signal                                        | how it runs                                  | speed               |
+| ------------------------- | --------------------------------------------- | -------------------------------------------- | ------------------- |
+| **tsgo** (type)           | tsconfig + bin                                | persistent `tsgo --lsp` (reused)             | ~2-3ms warm         |
+| **tsc** (type)            | tsconfig + bin, no tsgo                       | `tsc --lsp` when TS≥7, else spawn `--noEmit` | ~2-3ms / ~300-800ms |
+| **php** (type)            | PATH `php` + composer/artisan                 | spawn `php -l` (project php, no version pin) | ~10-50ms            |
+| **biome** (format)        | bin / biome.json                              | spawn `check --reporter=json`                | ~55ms               |
+| **prettier** (format)     | prettier config + bin                         | spawn `--check` (suppressed by biome)        | ~50-150ms           |
+| **pint** (format)         | vendor/bin or PATH + pint.json / laravel/pint | `pint --test --format=json -v -- <file>`     | ~100-800ms          |
+| **oxlint** (lint)         | bin / .oxlintrc                               | spawn `-f json` (opt-in)                     | ~400ms              |
+| **eslint** (lint)         | eslint config + bin                           | spawn `--format json` (opt-in)               | varies              |
+| **sourcekit-lsp** (apple) | Package.swift / .xcodeproj                    | persistent LSP (reused)                      | ~2-5ms warm         |
 
 **Type provider priority**: `tsgo` wins when both `tsgo` and `tsc` are present.
 `tsc` is the fallback for projects that have the standard `typescript` package
@@ -80,9 +80,9 @@ plugins keeps separate `tsc --lsp` instances. The live-area footer shows
       "outOfScope": { "enabled": true }, // ad-hoc tsc for files outside tsconfig
       "severityFloor": "warning", // "error" | "warning" | "info"
       "maxInline": 8, // cap findings shown/sent
-      "timeoutMs": 2000, // per-provider ceiling
-    },
-  },
+      "timeoutMs": 2000 // per-provider ceiling
+    }
+  }
 }
 ```
 

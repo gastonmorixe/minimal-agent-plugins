@@ -32,13 +32,13 @@ by default and shadows user prompts by name.
 
 ## Keys in the menu
 
-| Key | Action |
-| --- | --- |
-| `↑` `↓` | Move the selection |
-| `Tab` | Complete the `&name` token, cursor ready to keep typing |
-| `Enter` | Insert the prompt NAME (`&review-pr`) |
-| `Alt+Enter` | Insert the full prompt BODY at the caret |
-| `Esc` | Close the menu, keep the buffer |
+| Key         | Action                                                  |
+| ----------- | ------------------------------------------------------- |
+| `↑` `↓`     | Move the selection                                      |
+| `Tab`       | Complete the `&name` token, cursor ready to keep typing |
+| `Enter`     | Insert the prompt NAME (`&review-pr`)                   |
+| `Alt+Enter` | Insert the full prompt BODY at the caret                |
+| `Esc`       | Close the menu, keep the buffer                         |
 
 Enter inserts the name so a large prompt never floods the input box. Alt+Enter
 expands it when the user wants the whole text. Both are expanded at submit

@@ -30,17 +30,17 @@ Special note on `grok-build` (`grok-build-0.1`): This is a purpose-built agentic
 (released May 2026), not a general-purpose model. It is optimized for interactive coding agents,
 tool use, and multi-step development workflows. It is the original model behind the Grok Build CLI/TUI.
 
-| Local id                  | Wire id                        | Surface       | Context | Vision | Notes                                 |
-| ------------------------- | ------------------------------ | ------------- | ------- | ------ | ------------------------------------- |
-| `grok-4.6` (default)        | `grok-4.6`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/high/**xhigh** |
-| `grok-4.6-chat`             | `grok-4.6`                     | Chat          | 500k    | yes    | Same SKU, chat surface                      |
-| `grok-4.5`                  | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high**       |
-| `grok-4.5-chat`            | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                   |
-| `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Still on api.x.ai; not in grok CLI baked catalog |
+| Local id                  | Wire id                        | Surface       | Context | Vision | Notes                                                                                                |
+| ------------------------- | ------------------------------ | ------------- | ------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `grok-4.6` (default)      | `grok-4.6`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/high/**xhigh**                                                          |
+| `grok-4.6-chat`           | `grok-4.6`                     | Chat          | 500k    | yes    | Same SKU, chat surface                                                                               |
+| `grok-4.5`                | `grok-4.5`                     | **Responses** | 500k    | yes    | Flagship; efforts low/medium/**high**                                                                |
+| `grok-4.5-chat`           | `grok-4.5`                     | Chat          | 500k    | yes    | Same SKU, chat surface                                                                               |
+| `grok-4.3`                | `grok-4.3`                     | Responses     | 1M      | yes    | Still on api.x.ai; not in grok CLI baked catalog                                                     |
 | `grok-build`              | `grok-build-0.1`               | Responses     | 256k    | yes    | Agentic coding SKU on api.x.ai (May 2026). Not in grok CLI baked catalog. Aliases: `grok-code-fast*` |
-| `grok-4.20-reasoning`     | `grok-4.20-0309-reasoning`     | Responses     | 1M      | yes    |                                       |
-| `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses     | 1M      | yes    | No effort knob                        |
-| `grok-4.20-multi-agent`   | `grok-4.20-multi-agent-0309`   | Responses     | 1M      | yes    | Effort = agent count                  |
+| `grok-4.20-reasoning`     | `grok-4.20-0309-reasoning`     | Responses     | 1M      | yes    |                                                                                                      |
+| `grok-4.20-non-reasoning` | `grok-4.20-0309-non-reasoning` | Responses     | 1M      | yes    | No effort knob                                                                                       |
+| `grok-4.20-multi-agent`   | `grok-4.20-multi-agent-0309`   | Responses     | 1M      | yes    | Effort = agent count                                                                                 |
 
 Pricing (under 200k prompt): grok-4.6 **$2 / $0.50 cached / $6** per 1M;
 grok-4.5 **$2 / $0.30 cached / $6** per 1M. Both double at ≥200k.
@@ -66,11 +66,11 @@ Runtime:
 On device-code login and every OAuth refresh, the plugin enriches the credential
 bag (best-effort) from:
 
-| Endpoint | Persisted fields |
-| -------- | ---------------- |
-| `GET auth.x.ai/oauth2/userinfo` | `emailAddress`, `displayName`, `givenName`, `familyName`, `emailVerified`, `picture` |
-| `GET grok.com/api/auth/session` | `xUserId` (plus identity fallbacks) |
-| `GET grok.com/rest/subscriptions` | `plan` (tier), `planStatus`, `planProvider`, `billingPeriodEnd` |
+| Endpoint                          | Persisted fields                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET auth.x.ai/oauth2/userinfo`   | `emailAddress`, `displayName`, `givenName`, `familyName`, `emailVerified`, `picture` |
+| `GET grok.com/api/auth/session`   | `xUserId` (plus identity fallbacks)                                                  |
+| `GET grok.com/rest/subscriptions` | `plan` (tier), `planStatus`, `planProvider`, `billingPeriodEnd`                      |
 
 JWT claims still fill `userId` / `principalId` / `teamId` / `jwtTier`. If profile
 fetches fail on refresh, prior email/plan fields are kept. xAI rotates refresh
@@ -109,18 +109,18 @@ windows — those endpoints only exist on cli-chat-proxy.
 
 OAuth requests must carry client identity or the proxy answers HTTP 426:
 
-| Header | Value |
-| ------ | ----- |
-| `x-grok-client-version` | `1.0.30` (installed grok CLI; must be ≥ 0.1.202) |
-| `x-grok-client-identifier` | `grok-shell` |
-| `X-XAI-Token-Auth` | `xai-grok-cli` |
-| `x-grok-model-override` | requested model id |
-| `x-grok-session-id` / `x-grok-conv-id` | host session id (sticky cache + routing) |
-| `x-grok-req-id` | per-request UUID |
-| `x-grok-agent-id` | process UUID |
-| `x-grok-client-mode` | `interactive` |
-| `x-compaction-at` | 80% of model context window |
-| `x-compactions-remaining` | `1` |
+| Header                                 | Value                                            |
+| -------------------------------------- | ------------------------------------------------ |
+| `x-grok-client-version`                | `1.0.30` (installed grok CLI; must be ≥ 0.1.202) |
+| `x-grok-client-identifier`             | `grok-shell`                                     |
+| `X-XAI-Token-Auth`                     | `xai-grok-cli`                                   |
+| `x-grok-model-override`                | requested model id                               |
+| `x-grok-session-id` / `x-grok-conv-id` | host session id (sticky cache + routing)         |
+| `x-grok-req-id`                        | per-request UUID                                 |
+| `x-grok-agent-id`                      | process UUID                                     |
+| `x-grok-client-mode`                   | `interactive`                                    |
+| `x-compaction-at`                      | 80% of model context window                      |
+| `x-compactions-remaining`              | `1`                                              |
 
 ## Tests
 

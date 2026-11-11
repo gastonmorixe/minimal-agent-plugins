@@ -187,13 +187,13 @@ Disable bidi with `MA_CURSOR_BIDI=0` to revert to one POST per agent loop step (
 
 ### Wire details (for debugging)
 
-| Piece                | Where                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------ |
-| MCP tool definitions | `AgentRunRequest.mcp_tools` (protobuf field 4)                                             |
-| Provider id on wire  | `minimal-agent` (`cursor-tool-policy.ts`)                                                  |
-| Filter native tools | Header `x-cursor-agent-allowed-tools` (MCP calls + discovery); exclude header for tool-less runs or the kill switch |
-| Tool call decode     | `proto/tool-call-decode.ts` → canonical `tool_use_*`                                       |
-| Built-in catalog     | `cursor-builtin-tools.ts` (checked against Cursor CLI bundle 2026.09.28-64d2043)             |
+| Piece                | Where                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| MCP tool definitions | `AgentRunRequest.mcp_tools` (protobuf field 4)                                                                      |
+| Provider id on wire  | `minimal-agent` (`cursor-tool-policy.ts`)                                                                           |
+| Filter native tools  | Header `x-cursor-agent-allowed-tools` (MCP calls + discovery); exclude header for tool-less runs or the kill switch |
+| Tool call decode     | `proto/tool-call-decode.ts` → canonical `tool_use_*`                                                                |
+| Built-in catalog     | `cursor-builtin-tools.ts` (checked against Cursor CLI bundle 2026.09.28-64d2043)                                    |
 
 `MINIMAL_AGENT_NET_DBG=1` writes binary-safe captures under `~/.minimal-agent/net-dbg/`.
 Run requests are stored as `base64:`-prefixed text; `*-04-res-body.txt` contains
@@ -205,11 +205,11 @@ Run body; later bidi client writes are not included in that file.
 
 ### Conversation identity (plugin vs CLI)
 
-| Field | Plugin behavior |
-| ----- | --------------- |
-| `conversation_id` (#5) | Host `metadata.sessionId` (or bidi session key). Fresh UUID only when neither is set. |
-| `conversation_group_id` (#16) | Optional via `metadata.custom["cursor-conversation-group-id"]`. |
-| `conversation_state` (#1) | **Empty** on each initial Run. This is a fresh/plugin MVP, not Cursor CLI resume. |
+| Field                         | Plugin behavior                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| `conversation_id` (#5)        | Host `metadata.sessionId` (or bidi session key). Fresh UUID only when neither is set. |
+| `conversation_group_id` (#16) | Optional via `metadata.custom["cursor-conversation-group-id"]`.                       |
+| `conversation_state` (#1)     | **Empty** on each initial Run. This is a fresh/plugin MVP, not Cursor CLI resume.     |
 
 The official CLI resume path reconstructs typed `ConversationState` from a persisted blob graph (`ConversationStateStructure` + turn blobs). This plugin does **not** claim that semantics yet. Bidi tool rounds continue on the open stream without re-POSTing folded history.
 
@@ -259,14 +259,14 @@ McpArgs body:
 
 Each `google.protobuf.Value` is a oneof:
 
-| Field | Type           | Wire |
-|-------|----------------|------|
-| 1     | null_value     | 0    |
-| 2     | number_value   | 1 (double, 8 bytes fixed) |
-| 3     | string_value   | 2    |
-| 4     | bool_value     | 0    |
-| 5     | struct_value   | 2    |
-| 6     | list_value     | 2    |
+| Field | Type         | Wire                      |
+| ----- | ------------ | ------------------------- |
+| 1     | null_value   | 0                         |
+| 2     | number_value | 1 (double, 8 bytes fixed) |
+| 3     | string_value | 2                         |
+| 4     | bool_value   | 0                         |
+| 5     | struct_value | 2                         |
+| 6     | list_value   | 2                         |
 
 Decoded in `proto/value-decode.ts` → `decodeProtobufValue()`.
 
@@ -317,12 +317,12 @@ and pending exec state across pause/resume cycles within the same user turn.
 When the server sends a native exec (despite the exclude header), the result must
 be encoded as the matching native result type, not `mcp_result`:
 
-| Exec field | Type           | Result oneof field | MA tool |
-|------------|----------------|--------------------|---------|
-| 2          | shell_args     | shell_result (2)   | Bash    |
-| 5          | grep_args      | grep_result (5)    | Grep    |
-| 7          | read_args      | read_result (7)    | Read    |
-| 8          | ls_args        | ls_result (8)      | Glob    |
+| Exec field | Type              | Result oneof field       | MA tool |
+| ---------- | ----------------- | ------------------------ | ------- |
+| 2          | shell_args        | shell_result (2)         | Bash    |
+| 5          | grep_args         | grep_result (5)          | Grep    |
+| 7          | read_args         | read_result (7)          | Read    |
+| 8          | ls_args           | ls_result (8)            | Glob    |
 | 14         | shell_stream_args | shell_stream (14) events | Bash    |
 
 Encoded in `proto/client-message.ts` → `encNativeResult()` / `encNativeError()`.
@@ -355,13 +355,13 @@ key-value pairs into one `input` object.
 
 **Root cause:** `decodeProtobufValue()` had wrong field-to-type mapping:
 
-| Field | Should be      | Was decoded as |
-|-------|----------------|----------------|
-| 1     | null_value     | `0` (number)   |
-| 2     | number_value   | string         |
-| 3     | string_value   | `f.value === 1` (boolean) |
-| 4     | bool_value     | struct         |
-| 5     | struct_value   | list           |
+| Field | Should be    | Was decoded as            |
+| ----- | ------------ | ------------------------- |
+| 1     | null_value   | `0` (number)              |
+| 2     | number_value | string                    |
+| 3     | string_value | `f.value === 1` (boolean) |
+| 4     | bool_value   | struct                    |
+| 5     | struct_value | list                      |
 
 A tool call like `Bash({command: "wc -w README.md"})` had its `command` value
 (a `string_value` at field 3) decoded as `false` instead of the actual string.
@@ -415,15 +415,15 @@ in between. So the host parsed `safeParseToolInput("") → {}`.
 
 ## Debug environment variables
 
-| Variable                 | Effect                                                       |
-|--------------------------|--------------------------------------------------------------|
-| `MA_CURSOR_BIDI_DEBUG=1` | Logs bidi frame flow, session state, tool pause/resume, KV acks |
-| `MA_CURSOR_BIDI_HEARTBEAT_MS` | Client heartbeat interval on keep-open Run (default `5000`; `0` disables) |
-| `MA_CURSOR_DEBUG_EXEC=1` | Logs raw protobuf fields in exec_server_message              |
-| `MINIMAL_AGENT_NET_DBG=1`| Binary captures to `~/.minimal-agent/net-dbg/`               |
-| `MA_CURSOR_BIDI=0`       | Force unary fallback (no bidi, one POST per loop step)       |
-| `MA_CURSOR_CARRY=0`      | Turn off conversation carry: fold the whole transcript into the user text again |
-| `MA_CURSOR_CARRY_DIR`    | Carry state directory (default `~/.minimal-agent/cursor-carry`, empty string keeps it in memory only) |
+| Variable                      | Effect                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `MA_CURSOR_BIDI_DEBUG=1`      | Logs bidi frame flow, session state, tool pause/resume, KV acks                                       |
+| `MA_CURSOR_BIDI_HEARTBEAT_MS` | Client heartbeat interval on keep-open Run (default `5000`; `0` disables)                             |
+| `MA_CURSOR_DEBUG_EXEC=1`      | Logs raw protobuf fields in exec_server_message                                                       |
+| `MINIMAL_AGENT_NET_DBG=1`     | Binary captures to `~/.minimal-agent/net-dbg/`                                                        |
+| `MA_CURSOR_BIDI=0`            | Force unary fallback (no bidi, one POST per loop step)                                                |
+| `MA_CURSOR_CARRY=0`           | Turn off conversation carry: fold the whole transcript into the user text again                       |
+| `MA_CURSOR_CARRY_DIR`         | Carry state directory (default `~/.minimal-agent/cursor-carry`, empty string keeps it in memory only) |
 
 ## Conversation carry
 

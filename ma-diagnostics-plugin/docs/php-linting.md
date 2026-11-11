@@ -7,9 +7,9 @@ How `ma-diagnostics-plugin` checks PHP files after `Edit` / `Write`.
 The plugin does not install PHP tools and does not pin PHP or Pint versions. It
 spawns whatever the project already resolves.
 
-| tool | kind | when it activates | how it runs |
-| --- | --- | --- | --- |
-| **php** | type | `php` on `PATH`, and a Composer/Laravel root signal (`composer.json` or `artisan`) | `php -l <file>` |
+| tool     | kind   | when it activates                                                                                              | how it runs                              |
+| -------- | ------ | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **php**  | type   | `php` on `PATH`, and a Composer/Laravel root signal (`composer.json` or `artisan`)                             | `php -l <file>`                          |
 | **pint** | format | `vendor/bin/pint` (Composer) or `pint` on `PATH`, plus `pint.json` and/or a `laravel/pint` Composer dependency | `pint --test --format=json -v -- <file>` |
 
 Pint always runs with `--test`. It never writes formatting changes to disk.

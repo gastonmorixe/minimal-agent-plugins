@@ -162,17 +162,17 @@ operator config. The model controls only what runs and an optional per-job
       "defaults": {
         "timeout": "10m", // default per-job deadline
         "maxTimeout": "1d", // hard ceiling (a request over it is clamped)
-        "allowInfinite": false, // gate the "infinite" timeout escape hatch
+        "allowInfinite": false // gate the "infinite" timeout escape hatch
       },
       "limits": {
         "maxConcurrent": 16, // running jobs at once
-        "maxTotal": 128, // retained index records (oldest terminal evicted)
+        "maxTotal": 128 // retained index records (oldest terminal evicted)
       },
       "log": {
-        "maxModelBytes": 65536, // cap on a single model-facing read
-      },
-    },
-  },
+        "maxModelBytes": 65536 // cap on a single model-facing read
+      }
+    }
+  }
 }
 ```
 

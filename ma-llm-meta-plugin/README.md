@@ -27,7 +27,6 @@ Flow (same shape as Muse CLI):
 
 Runtime auth uses the **minted API key** as Bearer on `api.meta.ai`, not the raw OIDC token.
 
-
 ### Model API key (pay-as-you-go)
 
 1. Create a key at [dev.meta.ai](https://dev.meta.ai/) (US preview; payment method required).
@@ -59,18 +58,18 @@ minimal-agent --provider meta --model muse-spark-1.3-chat
 include non-text SKUs (`sam-3.1`, `muse-image-1.0`, `muse-voice-transcribe-1.0`)
 that this text/agent plugin does not register.
 
-| Id | Surface | Context | Pricing / 1M (in / cached / out) | Notes |
-| --- | --- | --- | --- | --- |
-| `muse-spark-1.3` (default) | Responses | 1M | $1.25 / $0.15 / $4.25 | Current flagship · multimodal |
-| `muse-spark-1.3-chat` | Chat | 1M | same | Compatibility alias |
-| `muse-spark-1.3-contributor` | Responses | 1M | $0.10 / $0.002 / $0.20 | Cheap; **trains on your data** |
-| `muse-spark-1.3-contributor-chat` | Chat | 1M | same | Compatibility alias |
-| `muse-spark-1.2` | Responses | 1M | $1.25 / $0.15 / $4.25 | Prior |
-| `muse-spark-1.2-chat` | Chat | 1M | same | Compatibility alias |
-| `muse-spark-1.1` | Responses | 1M | $1.25 / $0.15 / $4.25 | Balanced |
-| `muse-spark-1.1-chat` | Chat | 1M | same | Compatibility alias |
-| `muse-spark-1.2-contributor` | Responses | 1M | $0.10 / $0.002 / $0.20 | Prior contributor |
-| `muse-spark-1.2-contributor-chat` | Chat | 1M | same | Compatibility alias |
+| Id                                | Surface   | Context | Pricing / 1M (in / cached / out) | Notes                          |
+| --------------------------------- | --------- | ------- | -------------------------------- | ------------------------------ |
+| `muse-spark-1.3` (default)        | Responses | 1M      | $1.25 / $0.15 / $4.25            | Current flagship · multimodal  |
+| `muse-spark-1.3-chat`             | Chat      | 1M      | same                             | Compatibility alias            |
+| `muse-spark-1.3-contributor`      | Responses | 1M      | $0.10 / $0.002 / $0.20           | Cheap; **trains on your data** |
+| `muse-spark-1.3-contributor-chat` | Chat      | 1M      | same                             | Compatibility alias            |
+| `muse-spark-1.2`                  | Responses | 1M      | $1.25 / $0.15 / $4.25            | Prior                          |
+| `muse-spark-1.2-chat`             | Chat      | 1M      | same                             | Compatibility alias            |
+| `muse-spark-1.1`                  | Responses | 1M      | $1.25 / $0.15 / $4.25            | Balanced                       |
+| `muse-spark-1.1-chat`             | Chat      | 1M      | same                             | Compatibility alias            |
+| `muse-spark-1.2-contributor`      | Responses | 1M      | $0.10 / $0.002 / $0.20           | Prior contributor              |
+| `muse-spark-1.2-contributor-chat` | Chat      | 1M      | same                             | Compatibility alias            |
 
 Aliases: `muse-spark`, `spark`, `spark-1.3` → 1.3 (Responses); `spark-contributor` → 1.3-contributor (Responses).
 Wire model id is always the bare Meta slug (`vendorIds.firstParty`).
@@ -81,10 +80,10 @@ Pricing: Standard/Contributor from https://dev.meta.ai/docs/pricing-rate-limits.
 Chat: `reasoning_effort`. Responses: `reasoning.effort` (+ optional
 `reasoning.summary`: `auto` | `concise` | `detailed`).
 
-| SKU | Levels |
-| --- | --- |
+| SKU                       | Levels                                                                 |
+| ------------------------- | ---------------------------------------------------------------------- |
 | Standard `muse-spark-1.3` | `minimal` \| `low` \| `medium` (default) \| `high` \| `xhigh` \| `max` |
-| Contributor / older Spark | `minimal` \| `low` \| `medium` (default) \| `high` \| `xhigh` |
+| Contributor / older Spark | `minimal` \| `low` \| `medium` (default) \| `high` \| `xhigh`          |
 
 `none` → HTTP 400 on Muse Spark. `max` is **Standard 1.3 only** (not Contributor).
 Reasoning tokens count against `max_output_tokens` / `max_tokens` and billed output.
@@ -113,20 +112,20 @@ Captured from `x-ratelimit-*` on every turn. Docs (team tier, 2026-10-04):
 
 ## Surfaces
 
-| Surface | Status |
-| --- | --- |
-| `openai-responses` | **v1 primary** (agent runs, encrypted CoT replay) |
-| `openai-chat-completions` | Compatibility (`*-chat` model ids) |
-| `anthropic-messages` | Live on Meta (`POST /v1/messages`); adapter TBD |
+| Surface                   | Status                                            |
+| ------------------------- | ------------------------------------------------- |
+| `openai-responses`        | **v1 primary** (agent runs, encrypted CoT replay) |
+| `openai-chat-completions` | Compatibility (`*-chat` model ids)                |
+| `anthropic-messages`      | Live on Meta (`POST /v1/messages`); adapter TBD   |
 
 ## Architecture
 
-| Host seam | Implementation |
-| --- | --- |
-| `provider.json` | `id: meta`, export `metaProviderPlugin` |
-| `apiKeyAuth` | `meta-api-key` → Bearer on `api.meta.ai` |
-| `listLiveModels` | `GET /v1/models` |
-| `fetchSessionInfo` / `primeSessionInfo` | `x-ratelimit-*` windows (`req` / `tok`) |
-| Surfaces | `openai-responses` + `openai-chat-completions` |
+| Host seam                               | Implementation                                 |
+| --------------------------------------- | ---------------------------------------------- |
+| `provider.json`                         | `id: meta`, export `metaProviderPlugin`        |
+| `apiKeyAuth`                            | `meta-api-key` → Bearer on `api.meta.ai`       |
+| `listLiveModels`                        | `GET /v1/models`                               |
+| `fetchSessionInfo` / `primeSessionInfo` | `x-ratelimit-*` windows (`req` / `tok`)        |
+| Surfaces                                | `openai-responses` + `openai-chat-completions` |
 
 Research corpus (private): `private/MA-49282-meta-provider/` in the monorepo.

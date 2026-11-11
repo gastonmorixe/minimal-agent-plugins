@@ -9,10 +9,10 @@ older 0.2.93 analysis in `~/Projects/vendor-b/api/research/`.
 
 Exactly two models listed:
 
-| id | ctx | backend | efforts (default) |
-| -- | --- | ------- | ----------------- |
+| id       | ctx    | backend   | efforts (default)            |
+| -------- | ------ | --------- | ---------------------------- |
 | grok-4.6 | 500000 | responses | xhigh, **high**, medium, low |
-| grok-4.5 | 500000 | responses | **high**, medium, low |
+| grok-4.5 | 500000 | responses | **high**, medium, low        |
 
 Both: `auto_compact_threshold_percent: 80`, `supports_backend_search: true`,
 `compactions_remaining: 1`, `compaction_at_tokens: true`.
@@ -45,29 +45,31 @@ Other headers seen in binary: `x-grok-session-id`, `x-grok-turn-id`,
 
 ## Endpoints (all verified 200 with OAuth token)
 
-| Path | Notes |
-| ---- | ----- |
-| `/v1/models` | core catalog |
-| `/v1/models-v2` | same + `supported_in_api`, `hidden`, `agent_type`, `laziness_detector` |
-| `/v1/settings` | remote feature flags (see below) |
-| `/v1/billing` | monthly: `monthlyLimit`, `used`, `onDemandCap`, history |
-| `/v1/billing?format=credits` | weekly unified billing (see below) |
-| `/v1/feedback/config`, `/v1/login-config`, `/v1/subagents/bundle` | unchanged from 0.2.93 RE |
-| `/v1/responses`, `/v1/chat/completions` | inference |
+| Path                                                              | Notes                                                                  |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `/v1/models`                                                      | core catalog                                                           |
+| `/v1/models-v2`                                                   | same + `supported_in_api`, `hidden`, `agent_type`, `laziness_detector` |
+| `/v1/settings`                                                    | remote feature flags (see below)                                       |
+| `/v1/billing`                                                     | monthly: `monthlyLimit`, `used`, `onDemandCap`, history                |
+| `/v1/billing?format=credits`                                      | weekly unified billing (see below)                                     |
+| `/v1/feedback/config`, `/v1/login-config`, `/v1/subagents/bundle` | unchanged from 0.2.93 RE                                               |
+| `/v1/responses`, `/v1/chat/completions`                           | inference                                                              |
 
 ## Weekly credits billing (`?format=credits`)
 
 ```json
-{"config": {
-  "currentPeriod": {"type": "USAGE_PERIOD_TYPE_WEEKLY",
-    "start": "...", "end": "..."},
-  "creditUsagePercent": 20.0,
-  "productUsage": [{"product": "GrokBuild", "usagePercent": 20.0}],
-  "isUnifiedBillingUser": true,
-  "prepaidBalance": {"val": 0},
-  "topUpMethod": "TOP_UP_METHOD_SAVED_PAYMENT_METHOD",
-  "onDemandCap": {"val": 0}, "onDemandUsed": {"val": 0}
-}}
+{
+  "config": {
+    "currentPeriod": { "type": "USAGE_PERIOD_TYPE_WEEKLY", "start": "...", "end": "..." },
+    "creditUsagePercent": 20.0,
+    "productUsage": [{ "product": "GrokBuild", "usagePercent": 20.0 }],
+    "isUnifiedBillingUser": true,
+    "prepaidBalance": { "val": 0 },
+    "topUpMethod": "TOP_UP_METHOD_SAVED_PAYMENT_METHOD",
+    "onDemandCap": { "val": 0 },
+    "onDemandUsed": { "val": 0 }
+  }
+}
 ```
 
 Monthly (`/v1/billing`) sample for a SuperGrok account: `monthlyLimit.val: 0`
