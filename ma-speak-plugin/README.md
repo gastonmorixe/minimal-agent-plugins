@@ -108,11 +108,12 @@ Backend I/O contract:
    git clone git@github.com:gastonmorixe/minimal-agent-plugins.git ~/minimal-agent-plugins
    ```
 
-2. Symlink the plugin into your minimal-agent home plugin root:
+2. Symlink the plugin into your project plugin root (the monorepo checkout
+   loads it automatically, so skip this step there):
 
    ```bash
-   mkdir -p ~/.agents/plugins
-   ln -s ~/minimal-agent-plugins/ma-speak-plugin ~/.agents/plugins/ma-speak-plugin
+   mkdir -p <project>/.agents/minimal-agent/plugins
+   ln -s ~/minimal-agent-plugins/ma-speak-plugin <project>/.agents/minimal-agent/plugins/ma-speak-plugin
    ```
 
 3. The default backend needs only macOS's built-in `say` (already on every

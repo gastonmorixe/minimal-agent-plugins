@@ -30,8 +30,10 @@ See the spec for the full grammar: <https://agentskills.io/specification>.
 
 ```bash
 git clone https://github.com/gastonmorixe/minimal-agent-plugins.git
-ln -sfn "$PWD/ma-skills-plugin" ~/.agents/plugins/ma-skills-plugin
+ln -sfn "$PWD/ma-skills-plugin" <project>/.agents/minimal-agent/plugins/ma-skills-plugin
 ```
+
+The monorepo checkout loads it automatically, with no symlink.
 
 Next time you launch minimal-agent, the plugin loader picks it up
 automatically. The startup tree's `tools` row will include

@@ -155,8 +155,8 @@ export function resolveAutoTier(env: NodeJS.ProcessEnv = process.env): boolean {
  * The guard policy, with env overrides over {@link DEFAULT_POLICY}. Lets a user
  * who wants to run fleets in the extreme (tens-to-hundreds of workers) raise
  * the caps, or a cautious user lower them:
- *   - `MINIMAL_AGENT_SUBAGENT_MAX_CONCURRENT` (default 8)
- *   - `MINIMAL_AGENT_SUBAGENT_MAX_TOTAL`      (default 64)
+ *   - `MINIMAL_AGENT_SUBAGENT_MAX_CONCURRENT` (default unlimited)
+ *   - `MINIMAL_AGENT_SUBAGENT_MAX_TOTAL`      (default unlimited)
  *   - `MINIMAL_AGENT_SUBAGENT_MAX_DEPTH`      (default 1 — the nesting ban)
  */
 export function resolvePolicy(env: NodeJS.ProcessEnv = process.env): GuardPolicy {

@@ -10,21 +10,28 @@ directory is a self-contained package consumed by the agent's plugin loader.
 The CLI gives core these roots. Core loads them in precedence order (closer
 to the user wins):
 
-1. `<cwd>/.agents/plugins/`: project-local
-2. `~/.agents/plugins/`: per-user home
-3. `~/.minimal-agent/plugins/`: first-party tree (cloned on first run)
-4. Embedded: `<cli>/plugins/`, then a sibling `minimal-agent-plugins/`
+1. `<cwd>/.agents/minimal-agent/plugins/`: project
+2. `~/.minimal-agent/plugins/`: user, first-party tree (cloned on the first
+   interactive start, install mode only)
+3. Embedded: `<cli>/plugins/`, then a sibling `minimal-agent-plugins/`
    directory next to the CLI checkout (dev). `MINIMAL_AGENT_PLUGIN_SIBLINGS`
    (colon-separated) replaces the sibling directory.
 
-To develop against a local checkout, symlink packages into the home root:
+To develop, work in the monorepo checkout. The CLI finds this repository next
+to it and loads it as dev mode: the user tier is empty and the CLI does not
+clone. For a single project, put or symlink a package into
+`<cwd>/.agents/minimal-agent/plugins/`:
 
 ```bash
-mkdir -p ~/.agents/plugins
-ln -sfn "$PWD/ma-fetch-plugin" ~/.agents/plugins/ma-fetch-plugin
+mkdir -p .agents/minimal-agent/plugins
+ln -sfn /path/to/minimal-agent-plugins/ma-fetch-plugin .agents/minimal-agent/plugins/ma-fetch-plugin
 ```
 
-Or clone this repository once into the runtime plugins directory:
+The CLI does not read `~/.agents/plugins/` or `<cwd>/.agents/plugins/`. It
+prints a warning when one of them holds plugin packages.
+
+Without a checkout (install mode), you can clone this repository once into
+the runtime plugins directory:
 
 ```bash
 git clone https://github.com/gastonmorixe/minimal-agent-plugins.git ~/.minimal-agent/plugins

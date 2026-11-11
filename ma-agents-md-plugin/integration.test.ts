@@ -79,7 +79,6 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
         siblingDirs: [siblingRoot],
         embeddedDir: join(tmp(), "no-embedded"),
         userDir: join(tmp(), "no-user"),
-        homeDir: join(tmp(), "no-home"),
         projectDir: join(tmp(), "no-project"),
         coreToolNames: new Set<string>(),
       })
@@ -136,7 +135,6 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
         siblingDirs: [siblingRoot],
         embeddedDir: join(tmp(), "no-embedded"),
         userDir: join(tmp(), "no-user"),
-        homeDir: join(tmp(), "no-home"),
         projectDir: join(tmp(), "no-project"),
         coreToolNames: new Set<string>(),
         disabledPluginIds: new Set(["agents-md"]),
@@ -169,7 +167,6 @@ describe.skipIf(!CORE_PRESENT)("agents-md via PluginLoader (afterInstructions pl
         siblingDirs: [siblingRoot],
         embeddedDir: join(tmp(), "no-embedded"),
         userDir: join(tmp(), "no-user"),
-        homeDir: join(tmp(), "no-home"),
         projectDir: join(tmp(), "no-project"),
         coreToolNames: new Set<string>(),
       })
