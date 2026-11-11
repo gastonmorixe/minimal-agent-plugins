@@ -4,10 +4,13 @@ import type { AgentEvent } from "@minimal-agent/core/sdk/events"
 
 import { createFakeRuntime } from "./__fixtures__/fake-runtime.ts"
 import { createSessionEncoder, toAcpToolKind, toAcpToolStatus, toolLocations } from "./encoder.ts"
+import { type ExtAdvert, NO_EXT } from "./ext.ts"
 
 type Update = Record<string, unknown>
 
-function setup(opts: { clientNotices?: boolean; model?: string; effort?: string } = {}) {
+function setup(
+  opts: { clientNotices?: boolean; model?: string; effort?: string; ext?: ExtAdvert } = {},
+) {
   const rt = createFakeRuntime({ model: opts.model ?? "alpha", effort: opts.effort })
   const sent: Update[] = []
   const enc = createSessionEncoder({
@@ -15,6 +18,7 @@ function setup(opts: { clientNotices?: boolean; model?: string; effort?: string 
     clientNotices: opts.clientNotices ?? false,
     runtime: rt,
     cwd: "/work",
+    ext: opts.ext ?? NO_EXT,
   })
   const feed = (...events: AgentEvent[]): void => {
     for (const e of events) enc.encode(e)
@@ -368,12 +372,18 @@ describe("finishTurn", () => {
     feed({ type: "turn_completed", turn: 1, stopReason: "refusal", usage: usage(1) })
     expect(enc.finishTurn("completed")).toEqual({
       kind: "reply",
-      result: { stopReason: "refusal" },
+      result: {
+        stopReason: "refusal",
+        usage: { totalTokens: 1000, inputTokens: 1, outputTokens: 999 },
+      },
     })
     // next turn: no turn_completed, no notice -> end_turn, not a stale refusal
     expect(enc.finishTurn("completed")).toEqual({
       kind: "reply",
-      result: { stopReason: "end_turn" },
+      result: {
+        stopReason: "end_turn",
+        usage: { totalTokens: 0, inputTokens: 0, outputTokens: 0 },
+      },
     })
   })
 
@@ -383,7 +393,11 @@ describe("finishTurn", () => {
     sent.length = 0
     expect(enc.finishTurn("completed")).toEqual({
       kind: "reply",
-      result: { stopReason: "end_turn", _meta: { "minimal-agent/stopReason": "pause_turn" } },
+      result: {
+        stopReason: "end_turn",
+        usage: { totalTokens: 1000, inputTokens: 1, outputTokens: 999 },
+        _meta: { "minimal-agent/stopReason": "pause_turn" },
+      },
     })
     expect(sent[0]).toMatchObject({ sessionUpdate: "notice", severity: "warning" })
   })
@@ -393,7 +407,10 @@ describe("finishTurn", () => {
     feed({ type: "notice", notice: { kind: "max_tokens_capped", severity: "warn", cap: 5 } })
     expect(enc.finishTurn("truncated")).toEqual({
       kind: "reply",
-      result: { stopReason: "max_tokens" },
+      result: {
+        stopReason: "max_tokens",
+        usage: { totalTokens: 0, inputTokens: 0, outputTokens: 0 },
+      },
     })
   })
 
@@ -404,5 +421,150 @@ describe("finishTurn", () => {
     expect(reply).toEqual({ kind: "error", code: -32603, message: "provider exploded" })
     expect(sent[0]?.sessionUpdate).toBe("agent_message_chunk")
     expect(JSON.stringify(sent[0])).toContain("provider exploded")
+  })
+})
+
+describe("prompt usage (M1, docs/acp-extensions.md section 5.a)", () => {
+  const USAGE_EXT: ExtAdvert = { version: 1, features: ["usage"] }
+  const round = (
+    turn: number,
+    u: { input: number; output: number; read?: number; write?: number },
+    stopReason: "end_turn" | "tool_use" | "pause_turn" = "tool_use",
+  ): AgentEvent => ({
+    type: "turn_completed",
+    turn,
+    stopReason,
+    usage: {
+      inputTokens: u.input,
+      outputTokens: u.output,
+      ...(u.read === undefined ? {} : { cacheReadTokens: u.read }),
+      ...(u.write === undefined ? {} : { cacheCreationTokens: u.write }),
+    },
+  })
+
+  it("sums every round of the prompt into the standard usage", () => {
+    const { enc, feed } = setup()
+    feed(round(1, { input: 100, output: 20, read: 1000, write: 50 }))
+    feed(round(2, { input: 10, output: 5, read: 1100 }, "end_turn"))
+    expect(enc.finishTurn("completed")).toEqual({
+      kind: "reply",
+      result: {
+        stopReason: "end_turn",
+        usage: {
+          totalTokens: 2285,
+          inputTokens: 2260, // 110 uncached + 2100 read + 50 write
+          outputTokens: 25,
+          cachedReadTokens: 2100,
+          cachedWriteTokens: 50,
+        },
+      },
+    })
+  })
+
+  it("adds _meta minimal-agent/usage with uncached input when usage is effective", () => {
+    const { enc, feed } = setup({ ext: USAGE_EXT })
+    feed(round(1, { input: 100, output: 20, read: 1000, write: 50 }))
+    feed(round(2, { input: 10, output: 5, read: 1100 }, "end_turn"))
+    const reply = enc.finishTurn("completed")
+    expect(reply).toMatchObject({ kind: "reply", result: { usage: { inputTokens: 2260 } } })
+    if (reply.kind !== "reply") throw new Error("expected a reply")
+    expect(reply.result._meta).toEqual({
+      "minimal-agent/usage": {
+        inputTokens: 110,
+        outputTokens: 25,
+        cacheReadTokens: 2100,
+        cacheWriteTokens: 50,
+      },
+    })
+  })
+
+  it("omits cache fields that no round reported (not reported, not zero)", () => {
+    const { enc, feed } = setup({ ext: USAGE_EXT })
+    feed(round(1, { input: 7, output: 3 }, "end_turn"))
+    expect(enc.finishTurn("completed")).toEqual({
+      kind: "reply",
+      result: {
+        stopReason: "end_turn",
+        usage: { totalTokens: 10, inputTokens: 7, outputTokens: 3 },
+        _meta: { "minimal-agent/usage": { inputTokens: 7, outputTokens: 3 } },
+      },
+    })
+  })
+
+  it("sends no minimal-agent/usage key without the feature, other _meta unchanged", () => {
+    const { enc, feed } = setup({ ext: { version: 1, features: [] } })
+    feed(round(1, { input: 4, output: 2 }, "pause_turn"))
+    expect(enc.finishTurn("completed")).toEqual({
+      kind: "reply",
+      result: {
+        stopReason: "end_turn",
+        usage: { totalTokens: 6, inputTokens: 4, outputTokens: 2 },
+        _meta: { "minimal-agent/stopReason": "pause_turn" },
+      },
+    })
+  })
+
+  it("keeps other _meta keys beside minimal-agent/usage", () => {
+    const { enc, feed } = setup({ ext: USAGE_EXT })
+    feed(round(1, { input: 4, output: 2 }, "pause_turn"))
+    const reply = enc.finishTurn("completed")
+    if (reply.kind !== "reply") throw new Error("expected a reply")
+    expect(reply.result._meta).toEqual({
+      "minimal-agent/stopReason": "pause_turn",
+      "minimal-agent/usage": { inputTokens: 4, outputTokens: 2 },
+    })
+  })
+
+  it("resets the counters after each reply (never cumulative)", () => {
+    const { enc, feed } = setup({ ext: USAGE_EXT })
+    feed(round(1, { input: 100, output: 20, read: 5 }, "end_turn"))
+    enc.finishTurn("completed")
+    feed(round(1, { input: 3, output: 1 }, "end_turn"))
+    expect(enc.finishTurn("completed")).toEqual({
+      kind: "reply",
+      result: {
+        stopReason: "end_turn",
+        usage: { totalTokens: 4, inputTokens: 3, outputTokens: 1 },
+        _meta: { "minimal-agent/usage": { inputTokens: 3, outputTokens: 1 } },
+      },
+    })
+  })
+
+  it("sends what was counted so far on a cancelled reply", () => {
+    const { enc, feed } = setup({ ext: USAGE_EXT })
+    feed(round(1, { input: 9, output: 4, read: 2 }))
+    expect(enc.finishTurn("aborted")).toEqual({
+      kind: "reply",
+      result: {
+        stopReason: "cancelled",
+        usage: { totalTokens: 15, inputTokens: 11, outputTokens: 4, cachedReadTokens: 2 },
+        _meta: { "minimal-agent/usage": { inputTokens: 9, outputTokens: 4, cacheReadTokens: 2 } },
+      },
+    })
+  })
+
+  it("resets the counters after an error reply too", () => {
+    const { enc, feed } = setup({ ext: USAGE_EXT })
+    feed(round(1, { input: 50, output: 5 }))
+    feed({ type: "error", message: "provider exploded" })
+    expect(enc.finishTurn("waiting")).toMatchObject({ kind: "error" })
+    feed(round(1, { input: 1, output: 1 }, "end_turn"))
+    expect(enc.finishTurn("completed")).toMatchObject({
+      kind: "reply",
+      result: {
+        usage: { totalTokens: 2, inputTokens: 1, outputTokens: 1 },
+        _meta: { "minimal-agent/usage": { inputTokens: 1, outputTokens: 1 } },
+      },
+    })
+  })
+
+  it("leaves the usage_update gauge unchanged", () => {
+    const { sent, feed } = setup({ model: "alpha", ext: USAGE_EXT })
+    feed(round(1, { input: 100, output: 20, read: 20, write: 3 }))
+    feed(round(2, { input: 50, output: 1 }))
+    expect(sent).toEqual([
+      { sessionUpdate: "usage_update", used: 123, size: 200_000 },
+      { sessionUpdate: "usage_update", used: 50, size: 200_000 },
+    ])
   })
 })

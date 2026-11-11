@@ -23,6 +23,12 @@
  * - `turn_completed` → `usage_update`: `used` = that turn's input + cache
  *   read + cache creation tokens (a PROXY for the context size, never a
  *   sum over turns), `size` = the model's `contextWindow`. No cost.
+ *   The encoder also adds the round's tokens to per-prompt counters.
+ * - {@link SessionEncoder.finishTurn} puts the counters on every reply with
+ *   a `stopReason` (also `cancelled`) and resets them: the standard
+ *   `PromptResponse.usage` (best effort, always) and
+ *   `_meta["minimal-agent/usage"]` when `usage` is in the effective
+ *   extension set (`docs/acp-extensions.md` section 5.a).
  * - `notice` → ACP notice (see `notices.ts`). `model_adopted` also pushes
  *   `config_option_update` with the complete option list, every time.
  *   `model_adopt_failed` pushes no `config_option_update`, because the
@@ -46,6 +52,7 @@ import {
 import type { TurnNotice } from "@minimal-agent/core/sdk/turn-notice"
 
 import { buildConfigOptions, type ConfigRuntime } from "./config-options.ts"
+import { EXT_NAMESPACE, type ExtAdvert, hasExtFeature } from "./ext.ts"
 import { type AcpNotice, noticeUpdate, toAcpNotice } from "./notices.ts"
 import {
   decideStopReason,
@@ -147,6 +154,56 @@ export interface SessionEncoderOptions {
   readonly runtime: ConfigRuntime
   /** Process cwd, to make tool locations absolute. */
   readonly cwd: string
+  /** The effective L3 extension set from `initialize` (`ext.ts`). */
+  readonly ext: ExtAdvert
+}
+
+/** The `_meta` key for per-prompt token totals (`docs/acp-extensions.md` section 5.a). */
+export const USAGE_META_KEY = `${EXT_NAMESPACE}/usage`
+
+/**
+ * Token counters for one `session/prompt`, summed over every model round.
+ * `inputTokens` is uncached input. A cache field is `undefined` until a
+ * round reports it ("not reported", not zero).
+ */
+export interface PromptUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number | undefined
+  cacheWriteTokens: number | undefined
+}
+
+const emptyPromptUsage = (): PromptUsage => ({
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: undefined,
+  cacheWriteTokens: undefined,
+})
+
+/** `_meta["minimal-agent/usage"]`: uncached input, cache fields apart. No `thoughtTokens`, no `cost` (not known). */
+export function toUsageMeta(u: PromptUsage): Record<string, number> {
+  return {
+    inputTokens: u.inputTokens,
+    outputTokens: u.outputTokens,
+    ...(u.cacheReadTokens === undefined ? {} : { cacheReadTokens: u.cacheReadTokens }),
+    ...(u.cacheWriteTokens === undefined ? {} : { cacheWriteTokens: u.cacheWriteTokens }),
+  }
+}
+
+/**
+ * Standard `PromptResponse.usage` (unstable ACP `Usage`), best effort:
+ * `inputTokens` is the full prompt size (input + cache read + cache write),
+ * `totalTokens` = `inputTokens + outputTokens`.
+ */
+export function toStandardUsage(u: PromptUsage): Record<string, number> {
+  const inputTokens = u.inputTokens + (u.cacheReadTokens ?? 0) + (u.cacheWriteTokens ?? 0)
+  return {
+    totalTokens: inputTokens + u.outputTokens,
+    inputTokens,
+    outputTokens: u.outputTokens,
+    ...(u.cacheReadTokens === undefined ? {} : { cachedReadTokens: u.cacheReadTokens }),
+    ...(u.cacheWriteTokens === undefined ? {} : { cachedWriteTokens: u.cacheWriteTokens }),
+  }
 }
 
 /** The prompt reply the host sends, or a JSON-RPC error to raise instead. */
@@ -179,7 +236,9 @@ const STOP_NOTICE_KINDS: ReadonlySet<TurnNotice["kind"]> = new Set([
 
 /** Create the encoder for one ACP session. */
 export function createSessionEncoder(options: SessionEncoderOptions): SessionEncoder {
-  const { send, clientNotices, runtime, cwd } = options
+  const { send, clientNotices, runtime, cwd, ext } = options
+  const usageMeta = hasExtFeature(ext, "usage")
+  let promptUsage = emptyPromptUsage()
   let noticeSeq = 0
   let lastStopReason: ProviderStopReason | undefined
   let lastNotice: TurnNotice | null = null
@@ -292,6 +351,15 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
       case "turn_completed": {
         lastStopReason = event.stopReason
         const usage = toWireUsage(event.usage)
+        promptUsage.inputTokens += usage.inputTokens
+        promptUsage.outputTokens += usage.outputTokens
+        if (usage.cacheReadTokens !== undefined) {
+          promptUsage.cacheReadTokens = (promptUsage.cacheReadTokens ?? 0) + usage.cacheReadTokens
+        }
+        if (usage.cacheCreationTokens !== undefined) {
+          promptUsage.cacheWriteTokens =
+            (promptUsage.cacheWriteTokens ?? 0) + usage.cacheCreationTokens
+        }
         const size = runtime.modelInfo(runtime.getModel())?.contextWindow
         // `size` is required by ACP; with no known window, send nothing.
         if (size === undefined || size <= 0) return
@@ -319,6 +387,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
 
   const finishTurn = (outcome: StopInputs["outcome"]): TurnReply => {
     let decision: StopDecision
+    const counted = promptUsage
     try {
       decision = decideStopReason({ outcome, lastStopReason, lastNotice, lastError })
     } finally {
@@ -326,16 +395,22 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
       lastNotice = null
       lastError = null
       openToolCalls.clear()
+      promptUsage = emptyPromptUsage()
     }
     if (decision.notice) sendNotice(decision.notice)
     if (decision.kind === "error") {
       return { kind: "error", code: decision.code, message: decision.message }
     }
+    const meta = {
+      ...decision.meta,
+      ...(usageMeta ? { [USAGE_META_KEY]: toUsageMeta(counted) } : {}),
+    }
     return {
       kind: "reply",
       result: {
         stopReason: decision.stopReason,
-        ...(decision.meta ? { _meta: decision.meta } : {}),
+        usage: toStandardUsage(counted),
+        ...(Object.keys(meta).length > 0 ? { _meta: meta } : {}),
       },
     }
   }

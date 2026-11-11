@@ -75,7 +75,10 @@ describe("host-mode process signals", () => {
       const code = await exitWithin(h.proc, 1000)
       expect(code).toBe(0)
       expect(Date.now() - t0).toBeLessThan(1000)
-      expect((await h.reply(3)).result).toEqual({ stopReason: "cancelled" })
+      expect((await h.reply(3)).result).toEqual({
+        stopReason: "cancelled",
+        usage: { totalTokens: 0, inputTokens: 0, outputTokens: 0 },
+      })
       const stderr = await new Response(h.proc.stderr).text()
       expect(stderr).toContain("closeCalls=1")
     } finally {

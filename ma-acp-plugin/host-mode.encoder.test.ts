@@ -151,7 +151,10 @@ describe("host-mode encoder wiring", () => {
         method: "session/prompt",
         params: { sessionId: h.sessionId, prompt: [{ type: "text", text: "go" }] },
       })
-      expect((await h.reply(3)).result).toEqual({ stopReason: "end_turn" })
+      expect((await h.reply(3)).result).toEqual({
+        stopReason: "end_turn",
+        usage: { totalTokens: 0, inputTokens: 0, outputTokens: 0 },
+      })
       expect(h.updates()[0]?.sessionUpdate).toBe(expected)
       if (expected === "notice") expect(h.updates()[0]?.severity).toBe("warning")
       await h.end()
@@ -204,6 +207,7 @@ describe("host-mode encoder wiring", () => {
     expect(done.result).toEqual({
       stopReason: "max_tokens",
       _meta: { "minimal-agent/stopReason": "context_window_exceeded" },
+      usage: { totalTokens: 11, inputTokens: 10, outputTokens: 1, cachedReadTokens: 3 },
     })
     const kinds = h.updates().map((u) => u.sessionUpdate)
     expect(kinds).toEqual([
@@ -266,14 +270,20 @@ describe("host-mode encoder wiring", () => {
     })
     expect((await h.reply(4)).error?.code).toBe(-32602) // a turn is already running
     h.send({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId: h.sessionId } })
-    expect((await h.reply(3)).result).toEqual({ stopReason: "cancelled" })
+    expect((await h.reply(3)).result).toEqual({
+      stopReason: "cancelled",
+      usage: { totalTokens: 0, inputTokens: 0, outputTokens: 0 },
+    })
     h.send({
       jsonrpc: "2.0",
       id: 5,
       method: "session/prompt",
       params: { sessionId: h.sessionId, prompt: [{ type: "text", text: "next" }] },
     })
-    expect((await h.reply(5)).result).toEqual({ stopReason: "end_turn" })
+    expect((await h.reply(5)).result).toEqual({
+      stopReason: "end_turn",
+      usage: { totalTokens: 0, inputTokens: 0, outputTokens: 0 },
+    })
     await h.end()
     expect(
       h.raw
