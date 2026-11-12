@@ -5,6 +5,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["ma-*-plugin/**/*.ts", "ma-*-kit/**/*.ts", "scripts/**/*.ts"],
+  "include": ["ma-*-plugin/**/*.ts", "ma-*-kit/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
   "exclude": ["**/node_modules", "**/.net-dbg", "**/dist", "**/build"]
 }
