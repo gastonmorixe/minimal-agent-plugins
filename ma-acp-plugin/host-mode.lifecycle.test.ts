@@ -21,6 +21,7 @@ import {
   type ScriptedTurn,
 } from "./__fixtures__/fake-runtime.ts"
 import { openInMemorySession, startInMemoryHost } from "./__fixtures__/in-memory-host.ts"
+import { retryBoundaryText } from "./encoder.ts"
 
 const text = (t: string) => [{ type: "text", text: t }]
 
@@ -589,6 +590,27 @@ describe("structuredOutput (contract 5.e)", () => {
       .filter((u) => u?.sessionUpdate === "agent_message_chunk")
       .map((u) => u?.messageId)
     expect(ids).toEqual(["1:text", "1:text-attempt-2", "1:text-attempt-3"])
+    h.end()
+    expect(await h.exit).toBe(0)
+  })
+
+  it("a retry-boundary event on attempt 2 gets the attempt suffix like the old marker text_delta", async () => {
+    const rt = createFakeRuntime()
+    const turn2 = textTurn('{"n": 1}')
+    rt.turns.push(textTurn("not json"), {
+      ...turn2,
+      events: [{ type: "retry-boundary", id: "1:text", attempt: 2 } as AgentEvent, ...turn2.events],
+    })
+    const h = await openExtSession(rt, ["structuredOutput"])
+    await h.prompt({ "minimal-agent/outputSchema": SCHEMA })
+    const chunks = h
+      .lines()
+      .map((m) => (m.params as { update?: Record<string, unknown> } | undefined)?.update)
+      .filter((u) => u?.sessionUpdate === "agent_message_chunk")
+    const marker = chunks.find(
+      (u) => (u?.content as { text?: string } | undefined)?.text === retryBoundaryText(2),
+    )
+    expect(marker?.messageId).toBe("1:text-attempt-2")
     h.end()
     expect(await h.exit).toBe(0)
   })
