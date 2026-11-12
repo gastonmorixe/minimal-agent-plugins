@@ -5,6 +5,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
+  "files": ["types/text-imports.d.ts"],
   "include": ["ma-*-plugin/**/*.ts", "ma-*-kit/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
   "exclude": ["**/node_modules", "**/.net-dbg", "**/dist", "**/build"]
 }

@@ -107,15 +107,21 @@ async function readStdin(): Promise<string> {
   return new TextDecoder("utf-8").decode(buf)
 }
 
-if (import.meta.main) {
-  await main()
-}
-
-async function main(): Promise<never> {
+/**
+ * Subprocess entry: read the utterance from stdin and speak it with `say`.
+ * Configuration comes from the environment, so `argv` is accepted for the
+ * shared entry-script contract and ignored. Exported so a compiled binary can
+ * dispatch it from its embedded script map (`<binary> __run speak/macos-say`).
+ *
+ * @param _argv - Arguments after the script (unused).
+ * @returns The exit code: 2 on empty input, 127 if `say` fails to start, else
+ *   the engine's own code (1 if none).
+ */
+export async function main(_argv: string[] = []): Promise<number> {
   const text = await readStdin()
   if (text.trim().length === 0) {
     process.stderr.write("[ma-speak/macos-say] empty utterance on stdin\n")
-    process.exit(2)
+    return 2
   }
 
   const bin = process.env.MA_SPEAK_BIN?.trim() || "say"
@@ -130,7 +136,7 @@ async function main(): Promise<never> {
     })
   } catch (e) {
     process.stderr.write(`[ma-speak/macos-say] failed to start speech engine: ${String(e)}\n`)
-    process.exit(127)
+    return 127
   }
 
   // Forward termination signals to `say` so a group-kill from the agent (or a
@@ -162,5 +168,9 @@ async function main(): Promise<never> {
   }
 
   const code = await proc.exited
-  process.exit(code ?? 1)
+  return code ?? 1
+}
+
+if (import.meta.main) {
+  process.exit(await main(process.argv.slice(2)))
 }

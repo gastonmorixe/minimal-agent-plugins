@@ -3,6 +3,9 @@
   "name": "Speak",
   "version": "0.1.0",
   "description": "Read text aloud to the user through a swappable speech backend. Tools: Speak, SpeakStatus, SpeakStop.",
+  "scripts": {
+    "macos-say": "./backends/macos-say.ts"
+  },
   "headless": {
     "tools": [
       {

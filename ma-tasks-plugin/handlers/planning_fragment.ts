@@ -23,16 +23,19 @@
  *
  * ## No hardcoded prompt text
  *
- * The paragraph is read from `prompts/planning.md` (a sibling file), never
+ * The paragraph lives in `prompts/planning.md` (a sibling file), never
  * embedded as a TS string literal. One uniform "prose lives in markdown"
- * convention, same as the rest of the agent's prompts.
+ * convention, same as the rest of the agent's prompts. The files come in as
+ * `with { type: "text" }` imports (inlined by Bun) rather than a read under
+ * `ctx.packageDir`, so they load the same from the on-disk checkout and from a
+ * compiled binary, where the plugin's files are not on disk.
  */
-
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 
 import type { PromptFragmentContext } from "../lib/host-types.ts"
 import { tasksFullResults } from "../lib/result-verbosity.ts"
+import planningMd from "../prompts/planning.md" with { type: "text" }
+import resultsCompactMd from "../prompts/results-compact.md" with { type: "text" }
+import resultsFullMd from "../prompts/results-full.md" with { type: "text" }
 
 /**
  * Render the PLAN/PHASES fragment.
@@ -51,18 +54,9 @@ export default function planningFragment(ctx: PromptFragmentContext): string {
   // section-level gate and emit.
   if (info && !info.tools.userDefined) return ""
 
-  const promptDir = join(ctx.packageDir, "prompts")
-  const resultGuidance = tasksFullResults(ctx.env) ? "results-full.md" : "results-compact.md"
-  try {
-    return ["planning.md", resultGuidance]
-      .map((name) => readFileSync(join(promptDir, name), "utf-8").trim())
-      .filter(Boolean)
-      .join("\n\n")
-  } catch (e) {
-    ctx.log.warn(
-      "planning-fragment",
-      `failed to read task prompt fragments: ${e instanceof Error ? e.message : String(e)}`,
-    )
-    return ""
-  }
+  const resultGuidance = tasksFullResults(ctx.env) ? resultsFullMd : resultsCompactMd
+  return [planningMd, resultGuidance]
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .join("\n\n")
 }

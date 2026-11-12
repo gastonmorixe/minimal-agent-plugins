@@ -28,20 +28,26 @@ import {
   type SystemPromptContext,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
-import { promptPath, renderPrompt } from "./lib/prompts.ts"
+import { renderTemplate } from "./lib/prompts.ts"
+// Text imports, not disk reads: Bun inlines these at build time, so the
+// prompts resolve the same way from the on-disk checkout and from a compiled
+// binary (where `import.meta.dir` is `/$bunfs/root` and the files are absent).
+import billingTemplate from "./prompts/billing.tmpl.md" with { type: "text" }
+import claudeCodeIdentity from "./prompts/identity.claude-code.md" with { type: "text" }
 import { BUILD_HASH, VERSION } from "./wire-constants.ts"
-
-/** Resolve a prompt file under this plugin's own `prompts/` directory. */
-function pluginPrompt(...segments: string[]): string {
-  return promptPath(import.meta, "prompts", ...segments)
-}
 
 /**
  * The exact Claude-Code identity line Anthropic's server validates on plan
  * (OAuth) auth (system[1]). Rendered from this plugin's
  * `prompts/identity.claude-code.md`. Single source of truth for the value.
  */
-export const CLAUDE_CODE_IDENTITY: string = renderPrompt(pluginPrompt("identity.claude-code.md"))
+export const CLAUDE_CODE_IDENTITY: string = renderTemplate(
+  claudeCodeIdentity,
+  {},
+  {
+    source: "prompts/identity.claude-code.md",
+  },
+)
 
 /**
  * Build the billing-attribution header text (system[0] on plan auth). Rendered
@@ -49,10 +55,11 @@ export const CLAUDE_CODE_IDENTITY: string = renderPrompt(pluginPrompt("identity.
  * server parses this for billing/attribution.
  */
 export function buildBillingHeaderText(): string {
-  return renderPrompt(pluginPrompt("billing.tmpl.md"), {
-    version: VERSION,
-    buildHash: BUILD_HASH,
-  })
+  return renderTemplate(
+    billingTemplate,
+    { version: VERSION, buildHash: BUILD_HASH },
+    { source: "prompts/billing.tmpl.md" },
+  )
 }
 
 /**

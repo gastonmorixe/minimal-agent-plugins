@@ -54,6 +54,12 @@ export interface CommandContext {
   log: PluginLogger
   emit: EmitFn
   agent?: AgentContext
+  /**
+   * This plugin's package dir. The host's `CommandContext` does not carry it
+   * yet (core adds it with the embedded-plugin `PluginSource` work), so it is
+   * optional here and `cmd_config.ts` falls back to the module URL.
+   */
+  packageDir?: string
 }
 
 /**

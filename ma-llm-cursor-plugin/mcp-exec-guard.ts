@@ -1,16 +1,14 @@
 /** Structured Cursor MCP bridge resolution and host dispatch validation. */
-import { readFileSync } from "node:fs"
-
 import { argumentsForValidation, isArgumentObject, validateMcpArguments } from "./mcp-schema.ts"
+// Text import (inlined by Bun), not a disk read via `import.meta.url`: works
+// from the checkout and from a compiled binary alike.
+import toolCatalogMd from "./prompts/tool-catalog.md" with { type: "text" }
 import type { DecodedExecMcpArgs } from "./proto/exec-server-decode.ts"
 import { decodeAgentServerExec } from "./proto/exec-server-decode.ts"
 import type { CursorMcpToolWire } from "./proto/mcp-tools.ts"
 
 const BRIDGE_NAMES = new Set(["GetDynamicTools", "CallDynamicTool"])
-const TOOL_CATALOG_PREAMBLE = readFileSync(
-  new URL("./prompts/tool-catalog.md", import.meta.url),
-  "utf8",
-).trim()
+const TOOL_CATALOG_PREAMBLE = toolCatalogMd.trim()
 
 export type UnregisteredMcpExec = { exec: DecodedExecMcpArgs; replyText: string; ok: boolean }
 export type CursorMcpResolution = { exec: DecodedExecMcpArgs; reply?: UnregisteredMcpExec }

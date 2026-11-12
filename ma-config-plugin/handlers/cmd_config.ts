@@ -50,7 +50,7 @@ export default function cmdConfig(ctx: CommandContext): CommandResult {
   }
 
   // Build the model: static schema + a toggle per discovered plugin.
-  const roots = discoveryRoots(packageDir(), ctx.cwd, ctx.env)
+  const roots = discoveryRoots(ctx.packageDir ?? packageDirFromModuleUrl(), ctx.cwd, ctx.env)
   const plugins = discoverPlugins(realDiscoverDeps(roots))
   const fields = [...SCHEMA, ...pluginFields(plugins)]
   const model = ConfigModel.load(realFsDeps(path), { fields })
@@ -114,8 +114,14 @@ function handleHeadless(argv: string, path: string): CommandResult | null {
   }
 }
 
-/** This plugin's package dir, derived from the handler's module URL. */
-function packageDir(): string {
+/**
+ * Fallback for this plugin's package dir, derived from the handler's module
+ * URL. Only used while the host's `CommandContext` has no `packageDir` (older
+ * core). In a compiled binary the module URL is under `/$bunfs/`, so this
+ * yields no usable root and discovery just finds nothing there. Allowlisted
+ * in `tests/embed-safety.test.ts`; delete it once core passes `ctx.packageDir`.
+ */
+function packageDirFromModuleUrl(): string {
   // handlers/cmd_config.ts → packageDir is one level up from this file's dir.
   return new URL("..", import.meta.url).pathname
 }

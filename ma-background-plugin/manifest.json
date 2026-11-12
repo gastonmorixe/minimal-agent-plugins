@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "description": "Run bash-like commands in the background, check status, read logs, and cancel. Each job runs under a detached supervised runner whose lifetime is bound to the harness: when minimal-agent exits (cleanly or not), every job is torn down too. Logs are durable and colocated with session history at ~/.minimal-agent/sessions/<sid>.bgjobs/. Tools: BackgroundRun, BackgroundStatus, BackgroundLogs, BackgroundStop. Disable with MINIMAL_AGENT_DISABLE_BGJOBS=1.",
   "prompt": "./PROMPT.md",
+  "scripts": {
+    "runner": "./bin/runner.ts"
+  },
   "headless": {
     "tools": [
       {
