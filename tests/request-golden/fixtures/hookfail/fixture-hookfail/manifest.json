@@ -1,0 +1,19 @@
+{
+  "id": "fixture-hookfail",
+  "name": "Fixture hookfail",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its fail-closed tool.willInvoke hook always throws.",
+  "permissions": ["hooks:tool.willInvoke"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "gate_throws",
+        "channel": "tool.willInvoke",
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "priority": 10,
+        "timeoutMs": 2000,
+        "failClosed": true
+      }
+    ]
+  }
+}
