@@ -1,0 +1,4 @@
+// Negative fixture: every code line below MUST trip the prompt-path-helper rule.
+// The gate drives its RULES regexes against this file directly.
+const t = promptPath(import.meta, "..", "prompts", "x.md")
+const u = await promptPath(ctx, "prompts", "y.md")

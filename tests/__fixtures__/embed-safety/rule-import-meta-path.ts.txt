@@ -1,0 +1,6 @@
+// Negative fixture: every code line below MUST trip the import-meta-path rule.
+// The gate drives its RULES regexes against this file directly.
+const d = join(import.meta.dir, "prompts")
+readFileSync(new URL("./p.md", import.meta.url))
+const here = dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)

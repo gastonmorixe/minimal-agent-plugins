@@ -1,0 +1,6 @@
+// Negative fixture: every code line below MUST trip the read-under-package-dir rule.
+// The gate drives its RULES regexes against this file directly.
+readFileSync(join(ctx.packageDir, "lib", "a.json"))
+readFileSync(join(packageDir, "data.json"))
+Bun.file(join(packageDir, "assets", "x.bin"))
+const t = await readFile(join(ctx.packageDir, "p.md"), "utf8")
