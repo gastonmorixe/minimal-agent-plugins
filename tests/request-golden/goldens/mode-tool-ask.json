@@ -33,7 +33,7 @@
                 "ttl": "5m",
                 "type": "ephemeral"
               },
-              "content": "{\n  \"id\": \"ask\",\n  \"label\": \"ASK\",\n  \"since\": \"2026-01-02T03:04:05.000Z\",\n  \"permissions\": {\n    \"tools\": [\n      {\n        \"tool\": \"*\",\n        \"allow\": true\n      }\n    ],\n    \"source\": \"default\"\n  }\n}\n\n<ma::agent::mode-active id=\"ask\" since=\"2026-01-02T03:04:05.000Z\" />",
+              "content": "{\n  \"id\": \"ask\",\n  \"label\": \"ASK\",\n  \"since\": \"2026-01-02T03:04:05.000Z\",\n  \"permissions\": {\n    \"tools\": [\n      {\n        \"tool\": \"*\",\n        \"allow\": true\n      },\n      {\n        \"tool\": \"Edit\",\n        \"allow\": false\n      },\n      {\n        \"tool\": \"Write\",\n        \"allow\": false\n      }\n    ],\n    \"source\": \"manifest\"\n  }\n}\n\n<ma::agent::mode-active id=\"ask\" since=\"2026-01-02T03:04:05.000Z\" />",
               "is_error": false,
               "tool_use_id": "call-1-0",
               "type": "tool_result"

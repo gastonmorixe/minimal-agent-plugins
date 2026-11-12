@@ -398,11 +398,11 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     keep: [-1],
   },
   {
-    // CHARACTERIZATION of CURRENT behavior, not a requirement. Pins a suspected
-    // gap, see board item 42: core parseMode drops `mode.permissions`, so the
-    // ask mode (deny Edit and Write in its manifest) may not refuse them.
-    // Expected to change when mode.permissions is parsed. The target file is
-    // created by `setup` in this scenario's own temp cwd (harness TMP_BASE).
+    // Board item 42: core parseMode keeps `mode.permissions`, so ask mode
+    // (deny Edit and Write in its manifest) refuses Edit. The golden pins the
+    // refusal. The name still says "allowed-today": a rename belongs to
+    // ticket 50. The target file is created by `setup` in this scenario's own
+    // temp cwd (harness TMP_BASE).
     name: "ask-mode-edit-allowed-today",
     script: [{ tools: [editA] }],
     setup: (cwd) => writeFileSync(join(cwd, "a.txt"), "hello\n"),
@@ -413,8 +413,8 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     keep: [-1],
   },
   {
-    // CHARACTERIZATION of CURRENT behavior, see board item 42 and the Edit case
-    // above. Write creates a new file in this scenario's own temp cwd.
+    // Board item 42, see the Edit case above: ask mode refuses Write. The name
+    // is kept until ticket 50. Write targets this scenario's own temp cwd.
     name: "ask-mode-write-allowed-today",
     script: [{ tools: [{ name: "Write", input: { file_path: "new.txt", content: "x\n" } }] }],
     run: async ({ turn, modes }) => {

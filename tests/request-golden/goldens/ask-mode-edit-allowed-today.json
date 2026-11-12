@@ -37,8 +37,8 @@
                 "ttl": "5m",
                 "type": "ephemeral"
               },
-              "content": "File edited: a.txt (1 replacement(s))\n\n<ma::agent::mode-active id=\"ask\" since=\"2026-01-02T03:04:05.000Z\" />",
-              "is_error": false,
+              "content": "Tool \"Edit\" is not permitted in ASK mode. Present the proposed change as a unified diff in a fenced code block (or via the ShowDiff tool); the user will apply it manually.\n\n<ma::agent::mode-active id=\"ask\" since=\"2026-01-02T03:04:05.000Z\" />",
+              "is_error": true,
               "tool_use_id": "call-1-0",
               "type": "tool_result"
             }
