@@ -28,7 +28,12 @@ import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-pat
 
 import type { MemorySummaryParams } from "./memory-config.ts"
 import { type Bullet, parseFile } from "./parse.ts"
-import { type CompleteFn, summarize as realSummarize, SummarizeError } from "./summarize.ts"
+import {
+  type CompleteFn,
+  type RenderFn,
+  summarize as realSummarize,
+  SummarizeError,
+} from "./summarize.ts"
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -229,6 +234,8 @@ export interface RefreshAndRenderOpts {
 }
 
 export interface RefreshAndRenderDeps {
+  /** Prompt renderer (`ctx.prompts.render`). */
+  render: RenderFn
   /** Override summarize for tests. Defaults to the real implementation. */
   summarize?: typeof realSummarize
   /** Override "now" for tests. Defaults to `() => new Date()`. */
@@ -280,7 +287,7 @@ function defaultLog(msg: string): void {
  */
 export async function refreshAndRender(
   opts: RefreshAndRenderOpts,
-  deps: RefreshAndRenderDeps = {},
+  deps: RefreshAndRenderDeps,
 ): Promise<RefreshResult> {
   const summarize = deps.summarize ?? realSummarize
   const now = deps.now ?? (() => new Date())
@@ -358,7 +365,7 @@ export async function refreshAndRender(
       const newSummaryBody = await summarize(
         memoryContent,
         { model: cfg.model, scope },
-        { ...(opts.completeFn ? { completeFn: opts.completeFn } : {}) },
+        { render: deps.render, ...(opts.completeFn ? { completeFn: opts.completeFn } : {}) },
       )
       const newCutoff = now().toISOString()
       summaryContent = withCutoffHeader(newSummaryBody, newCutoff)
