@@ -12,8 +12,10 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it } from "bun:test"
 
+import createProvider from "../../ma-prompt-template-plugin/provider.ts"
+
 import { DEFAULT_MEMORY_CONFIG, type MemorySummaryParams } from "./memory-config.ts"
-import { SummarizeError } from "./summarize.ts"
+import { type RenderFn, SummarizeError } from "./summarize.ts"
 import {
   headlineOf,
   parseCutoff,
@@ -24,6 +26,15 @@ import {
   summaryPathFor,
   withCutoffHeader,
 } from "./summary-refresh.ts"
+
+/** Renderer from the real prompts.template provider, bound to this plugin dir. */
+const render: RenderFn = (name, vars) =>
+  createProvider().render({
+    pluginId: "ma-memory-plugin",
+    pluginDir: join(import.meta.dirname, ".."),
+    name,
+    ...(vars ? { vars } : {}),
+  })
 
 const tempDirs: string[] = []
 function makeTempDir(): string {
@@ -272,12 +283,15 @@ function makeFakeSummarize(out: string) {
 describe("refreshAndRender: short-circuits", () => {
   it("returns empty text when memory file is absent", async () => {
     const dir = makeTempDir()
-    const r = await refreshAndRender({
-      scope: "project",
-      memoryPath: join(dir, "memory.md"),
-      summaryPath: join(dir, "memory.summary.md"),
-      cfg: ENABLED_CFG,
-    })
+    const r = await refreshAndRender(
+      {
+        scope: "project",
+        memoryPath: join(dir, "memory.md"),
+        summaryPath: join(dir, "memory.summary.md"),
+        cfg: ENABLED_CFG,
+      },
+      { render },
+    )
     expect(r.text).toBe("")
     expect(r.regenerated).toBe(false)
     expect(r.reason).toBe("no-memory-file")
@@ -286,12 +300,15 @@ describe("refreshAndRender: short-circuits", () => {
   it("returns empty text when memory file is empty", async () => {
     const dir = makeTempDir()
     writeFileSync(join(dir, "memory.md"), "")
-    const r = await refreshAndRender({
-      scope: "project",
-      memoryPath: join(dir, "memory.md"),
-      summaryPath: join(dir, "memory.summary.md"),
-      cfg: ENABLED_CFG,
-    })
+    const r = await refreshAndRender(
+      {
+        scope: "project",
+        memoryPath: join(dir, "memory.md"),
+        summaryPath: join(dir, "memory.summary.md"),
+        cfg: ENABLED_CFG,
+      },
+      { render },
+    )
     expect(r.text).toBe("")
     expect(r.reason).toBe("empty-memory")
   })
@@ -314,7 +331,7 @@ describe("refreshAndRender: short-circuits", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("below-threshold")
@@ -336,7 +353,7 @@ describe("refreshAndRender: short-circuits", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: cfgWithHighMinBytes,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("below-threshold")
@@ -359,7 +376,7 @@ describe("refreshAndRender: regen triggers", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
+      { render, summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
     )
     expect(r.regenerated).toBe(true)
     expect(r.reason).toContain("no-summary")
@@ -388,7 +405,7 @@ describe("refreshAndRender: regen triggers", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(true)
     expect(r.reason).toContain("no-cutoff-in-summary")
@@ -418,7 +435,7 @@ describe("refreshAndRender: regen triggers", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: { ...ENABLED_CFG, dirtyBullets: 3 }, // 5 dirty >= 3 → regen
       },
-      { summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
+      { render, summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
     )
     expect(r.regenerated).toBe(true)
     expect(r.reason).toContain("regenerated")
@@ -445,7 +462,7 @@ describe("refreshAndRender: fresh-enough path (no regen)", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("fresh")
@@ -473,7 +490,7 @@ describe("refreshAndRender: fresh-enough path (no regen)", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: { ...ENABLED_CFG, dirtyBullets: 5 }, // 1 dirty < 5 → no regen
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("fresh")
@@ -504,7 +521,7 @@ describe("refreshAndRender: failure modes", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: { ...ENABLED_CFG, dirtyBullets: 1 }, // force regen attempt
       },
-      { summarize: failingSummarize },
+      { render, summarize: failingSummarize },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("regen-failed-fallback")
@@ -528,7 +545,7 @@ describe("refreshAndRender: failure modes", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: failingSummarize },
+      { render, summarize: failingSummarize },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("regen-failed-no-fallback")
@@ -550,7 +567,7 @@ describe("refreshAndRender: atomic write", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     // No lingering .tmp.<pid> file should remain in the dir.
     const { readdirSync } = require("node:fs") as typeof import("node:fs")

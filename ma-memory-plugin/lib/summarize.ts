@@ -29,7 +29,12 @@
 // DERIVED from the runtime values (`ReturnType`/`Parameters`) below, so
 // the plugin re-declares no host wire-types and adds no extra src/ site.
 import { defaultSummaryModel } from "./memory-config.ts"
-import { promptPath, renderPrompt } from "./prompt-io.ts"
+
+/** Renders one prompt asset of this plugin (`ctx.prompts.render`). */
+export type RenderFn = (
+  name: string,
+  vars?: Readonly<Record<string, string | number | boolean>>,
+) => string
 
 /**
  * One-shot host-brokered completion, matching the `llm:complete` capability
@@ -78,6 +83,8 @@ export interface SummarizeDeps {
    * so the caller falls back to the last-good summary.
    */
   completeFn?: CompleteFn
+  /** Prompt renderer (`ctx.prompts.render`). */
+  render: RenderFn
 }
 
 /**
@@ -119,12 +126,10 @@ export const MAX_OUTPUT_RATIO = 1.0
  * @param scope - Which memory scope is being summarized.
  * @returns The rendered summarizer system prompt.
  */
-export function buildSystemPrompt(scope: "global" | "project"): string {
+export function buildSystemPrompt(scope: "global" | "project", render: RenderFn): string {
   const framingFile = scope === "global" ? "framing.global.md" : "framing.project.md"
-  const scopeFraming = renderPrompt(promptPath(import.meta, "..", "prompts", framingFile))
-  return renderPrompt(promptPath(import.meta, "..", "prompts", "summarize.tmpl.md"), {
-    scopeFraming,
-  })
+  const scopeFraming = render(framingFile)
+  return render("summarize.tmpl.md", { scopeFraming })
 }
 
 /**
@@ -161,7 +166,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export async function summarize(
   memoryMd: string,
   opts: SummarizeOptions,
-  deps: SummarizeDeps = {},
+  deps: SummarizeDeps,
 ): Promise<string> {
   const complete = deps.completeFn
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
@@ -178,7 +183,7 @@ export async function summarize(
     output = await withTimeout(
       complete({
         model: opts.model ?? defaultSummaryModel(),
-        system: buildSystemPrompt(opts.scope),
+        system: buildSystemPrompt(opts.scope, deps.render),
         userText: memoryMd,
         maxTokens: 8192,
         timeoutMs,

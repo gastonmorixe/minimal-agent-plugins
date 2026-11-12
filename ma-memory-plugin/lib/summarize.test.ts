@@ -8,7 +8,11 @@
  * captured args are inspected in that neutral shape.
  */
 
+import { join } from "node:path"
+
 import { describe, expect, it } from "bun:test"
+
+import createProvider from "../../ma-prompt-template-plugin/provider.ts"
 
 import {
   buildSystemPrompt,
@@ -16,9 +20,19 @@ import {
   DEFAULT_TIMEOUT_MS,
   MAX_OUTPUT_RATIO,
   MIN_OUTPUT_RATIO,
+  type RenderFn,
   SummarizeError,
   summarize,
 } from "./summarize.ts"
+
+/** Renderer from the real prompts.template provider, bound to this plugin dir. */
+const render: RenderFn = (name, vars) =>
+  createProvider().render({
+    pluginId: "ma-memory-plugin",
+    pluginDir: join(import.meta.dirname, ".."),
+    name,
+    ...(vars ? { vars } : {}),
+  })
 
 /** The request shape `ctx.host.llm.complete` receives. */
 type CompleteReq = Parameters<CompleteFn>[0]
@@ -53,26 +67,38 @@ const LONG_ENOUGH_RESPONSE =
 describe("summarize — happy path", () => {
   it("sends the memoryMd as the user text", async () => {
     const { completeFn, calls } = captureCompleteArgs(LONG_ENOUGH_RESPONSE)
-    await summarize(INPUT_600, { model: "claude-haiku-test", scope: "project" }, { completeFn })
+    await summarize(
+      INPUT_600,
+      { model: "claude-haiku-test", scope: "project" },
+      { completeFn, render },
+    )
     expect(calls.length).toBe(1)
     expect(calls[0].userText).toBe(INPUT_600)
   })
 
   it("uses the summarizer system prompt for the scope", async () => {
     const { completeFn, calls } = captureCompleteArgs(LONG_ENOUGH_RESPONSE)
-    await summarize(INPUT_600, { model: "claude-haiku-test", scope: "project" }, { completeFn })
-    expect(calls[0].system).toBe(buildSystemPrompt("project"))
+    await summarize(
+      INPUT_600,
+      { model: "claude-haiku-test", scope: "project" },
+      { completeFn, render },
+    )
+    expect(calls[0].system).toBe(buildSystemPrompt("project", render))
   })
 
   it("passes the configured model through", async () => {
     const { completeFn, calls } = captureCompleteArgs(LONG_ENOUGH_RESPONSE)
-    await summarize(INPUT_600, { model: "claude-custom", scope: "project" }, { completeFn })
+    await summarize(INPUT_600, { model: "claude-custom", scope: "project" }, { completeFn, render })
     expect(calls[0].model).toBe("claude-custom")
   })
 
   it("caps output tokens and forwards the timeout", async () => {
     const { completeFn, calls } = captureCompleteArgs(LONG_ENOUGH_RESPONSE)
-    await summarize(INPUT_600, { model: "claude-haiku-test", scope: "project" }, { completeFn })
+    await summarize(
+      INPUT_600,
+      { model: "claude-haiku-test", scope: "project" },
+      { completeFn, render },
+    )
     expect(calls[0].maxTokens).toBe(8192)
     expect(calls[0].timeoutMs).toBe(DEFAULT_TIMEOUT_MS)
   })
@@ -85,7 +111,7 @@ describe("summarize — happy path", () => {
     const out = await summarize(
       INPUT_600,
       { model: "claude-haiku-test", scope: "project" },
-      { completeFn },
+      { completeFn, render },
     )
     expect(out).toBe(body)
   })
@@ -95,7 +121,7 @@ describe("summarize — failure modes", () => {
   it("throws SummarizeError kind=send-failed when no completeFn is granted", async () => {
     let thrown: unknown
     try {
-      await summarize(INPUT_600, { model: "claude-haiku-test", scope: "project" }, {})
+      await summarize(INPUT_600, { model: "claude-haiku-test", scope: "project" }, { render })
     } catch (e) {
       thrown = e
     }
@@ -110,6 +136,7 @@ describe("summarize — failure modes", () => {
         INPUT_600,
         { model: "claude-haiku-test", scope: "project" },
         {
+          render,
           completeFn: async () => {
             throw new Error("network down")
           },
@@ -129,6 +156,7 @@ describe("summarize — failure modes", () => {
         INPUT_600,
         { model: "claude-haiku-test", scope: "project", timeoutMs: 50 },
         {
+          render,
           completeFn: () => new Promise((_resolve) => setTimeout(_resolve, 5000)),
         },
       )
@@ -145,7 +173,7 @@ describe("summarize — failure modes", () => {
       await summarize(
         INPUT_600,
         { model: "claude-haiku-test", scope: "project" },
-        { completeFn: async () => "    \n\n   " },
+        { render, completeFn: async () => "    \n\n   " },
       )
     } catch (e) {
       thrown = e
@@ -162,7 +190,7 @@ describe("summarize — failure modes", () => {
       await summarize(
         INPUT_600,
         { model: "claude-haiku-test", scope: "project" },
-        { completeFn: async () => tooShort },
+        { render, completeFn: async () => tooShort },
       )
     } catch (e) {
       thrown = e
@@ -178,7 +206,7 @@ describe("summarize — failure modes", () => {
       await summarize(
         INPUT_600,
         { model: "claude-haiku-test", scope: "project" },
-        { completeFn: async () => tooLong },
+        { render, completeFn: async () => tooLong },
       )
     } catch (e) {
       thrown = e
@@ -194,7 +222,7 @@ describe("summarize — failure modes", () => {
     const out = await summarize(
       INPUT_600,
       { model: "claude-haiku-test", scope: "project" },
-      { completeFn },
+      { completeFn, render },
     )
     expect(out).toBe(atLimit)
   })
