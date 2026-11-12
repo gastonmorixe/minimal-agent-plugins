@@ -16,6 +16,7 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { testRender } from "./lib/prompt-test-render.ts"
 import { type ServiceDeps, spawnAgent } from "./lib/service.ts"
 import { ENV_RESULT_PATH, realProbeDeps, realSpawnDeps } from "./lib/spawn.ts"
 import { SubagentStore } from "./lib/store.ts"
@@ -58,6 +59,7 @@ function svcDeps(store: SubagentStore): ServiceDeps {
     defaultModel: "claude-haiku-4-5",
     newSid: () => "9c1a4f2e-0b3d-4a6c-8e1f-2d3c4b5a6978",
     now: () => new Date(),
+    renderPrompt: testRender,
   }
 }
 
