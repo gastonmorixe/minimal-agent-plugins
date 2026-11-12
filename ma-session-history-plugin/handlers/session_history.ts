@@ -17,6 +17,7 @@
  * @module plugins/session-history/handlers/session_history
  */
 
+import { dumpMarkdown, dumpXml } from "../lib/dump-from-data.ts"
 import type { HandlerContextSlice, PluginHostSlice, ToolResultSlice } from "../lib/host-types.ts"
 import { parseInput, type SessionHistoryRequest } from "../lib/input.ts"
 import {
@@ -157,7 +158,7 @@ async function run(
     case "dump": {
       const sid = await resolveSid(req.sid, sessions, cwd)
       if (!sid.ok) return err(sid.error)
-      const d = await sessions.dump(sid.sid, { format: req.format })
+      const d = await dumpOf(sessions, sid.sid, req.format)
       if (!d) return err(unknownSid(sid.sid))
       const warn =
         d.bytes > DUMP_WARN_BYTES
@@ -171,6 +172,19 @@ async function run(
       return err(`Unhandled action: ${JSON.stringify(req satisfies never)}`)
     }
   }
+}
+
+/** Build the dump from raw records. Falls back to the host text for an older host. */
+async function dumpOf(
+  sessions: NonNullable<PluginHostSlice["sessions"]>,
+  sid: string,
+  format: "markdown" | "xml",
+): Promise<{ text: string; bytes: number } | null> {
+  if (!sessions.records) return sessions.dump(sid, { format })
+  const v = await sessions.records(sid)
+  if (!v) return null
+  const text = format === "xml" ? dumpXml(v) : dumpMarkdown(v)
+  return { text, bytes: Buffer.byteLength(text, "utf8") }
 }
 
 // ---------------------------------------------------------------------------
