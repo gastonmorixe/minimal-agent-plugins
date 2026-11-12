@@ -143,6 +143,61 @@ describe("summarize — failure modes", () => {
     expect((thrown as SummarizeError).kind).toBe("send-failed")
   })
 
+  /** Mimic a core CoreError: empty message, a `kind`, typed fields, toJSON. */
+  function coreLike(kind: string, fields: Record<string, unknown>): Error {
+    const err = new Error("")
+    return Object.assign(err, {
+      kind,
+      ...fields,
+      toJSON: () => ({ kind, fields }),
+    })
+  }
+
+  async function sendFailedMessage(err: unknown): Promise<string> {
+    try {
+      await summarize(
+        INPUT_600,
+        { model: "claude-haiku-test", scope: "project" },
+        {
+          completeFn: async () => {
+            throw err
+          },
+        },
+      )
+    } catch (e) {
+      expect((e as SummarizeError).kind).toBe("send-failed")
+      return (e as SummarizeError).message
+    }
+    throw new Error("summarize did not throw")
+  }
+
+  it("renders useful text for an empty-message NoProviderCredentialsError", async () => {
+    const msg = await sendFailedMessage(
+      coreLike("NoProviderCredentialsError", {
+        providerId: "anthropic",
+        modelId: "claude-x",
+        credentialedProviders: [],
+      }),
+    )
+    expect(msg).toContain('no credentials for provider "anthropic"')
+    expect(msg).toContain("minimal-agent provider anthropic login")
+  })
+
+  it("renders text for the other auth kinds and names an unknown kind", async () => {
+    expect(
+      await sendFailedMessage(coreLike("NoProviderSelectedError", { modelId: "m1" })),
+    ).toContain('no provider selected for model "m1"')
+    expect(
+      await sendFailedMessage(
+        coreLike("GenericEndpointAuthError", { authType: "bearer", missing: "api-key" }),
+      ),
+    ).toContain("generic-endpoint auth-type bearer requires --api-key")
+    expect(
+      await sendFailedMessage(coreLike("UnhandledAuthTypeError", { authType: "zzz" })),
+    ).toContain("unhandled generic-endpoint auth-type: zzz")
+    expect(await sendFailedMessage(coreLike("SomeNewError", {}))).toContain("SomeNewError")
+  })
+
   it("throws SummarizeError kind=timeout when the completion exceeds timeoutMs", async () => {
     let thrown: unknown
     try {

@@ -17,7 +17,8 @@
  */
 
 import type { NoticeSeverity, TurnNotice } from "@minimal-agent/core/sdk/turn-notice"
-import { formatTurnNoticePlain } from "@minimal-agent/core/sdk/turn-notice"
+
+import { noticeDescription } from "./notice-text.ts"
 
 /** ACP `NoticeSeverity` values this plugin sends. */
 export type AcpNoticeSeverity = "info" | "warning" | "error"
@@ -79,12 +80,12 @@ export function noticeTitle(notice: TurnNotice): string {
   }
 }
 
-/** Build the ACP notice body for a core notice. The description is core's own plain text. */
+/** Build the ACP notice body for a core notice. The description is the plugin's own plain text. */
 export function toAcpNotice(notice: TurnNotice): AcpNotice {
   return {
     severity: toAcpSeverity(notice.severity),
     title: noticeTitle(notice),
-    description: formatTurnNoticePlain(notice),
+    description: noticeDescription(notice),
   }
 }
 
