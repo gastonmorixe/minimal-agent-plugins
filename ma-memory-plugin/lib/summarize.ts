@@ -28,6 +28,7 @@
 // imported from `src/` until that capability lands. Their TYPES are
 // DERIVED from the runtime values (`ReturnType`/`Parameters`) below, so
 // the plugin re-declares no host wire-types and adds no extra src/ site.
+import { errorText } from "./error-text.ts"
 import { defaultSummaryModel } from "./memory-config.ts"
 import { promptPath, renderPrompt } from "./prompt-io.ts"
 
@@ -187,7 +188,7 @@ export async function summarize(
     )
   } catch (e) {
     if (e instanceof SummarizeError) throw e
-    throw new SummarizeError("send-failed", `LLM call failed: ${(e as Error).message}`)
+    throw new SummarizeError("send-failed", `LLM call failed: ${errorText(e)}`)
   }
 
   // Sanity checks.
