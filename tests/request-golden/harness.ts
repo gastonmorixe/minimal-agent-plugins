@@ -178,6 +178,10 @@ export async function runScenario(scenario: Scenario): Promise<string> {
   for (const k of volatileEnvKeys()) delete process.env[k]
   process.env.HOME = home
   process.env.MINIMAL_AGENT_HOME = home
+  // gather.sh pipes through sort, which follows the locale. en_US puts term_cols
+  // before term=, C puts term= first. The goldens use C order. Pin it. The
+  // finally block restores the old values.
+  process.env.LC_ALL = "C"
   // Bun's homedir() ignores HOME, so the ma-skills plugin would scan the real
   // home. Turn off every skill root through its config file in the temp home.
   writeFileSync(
