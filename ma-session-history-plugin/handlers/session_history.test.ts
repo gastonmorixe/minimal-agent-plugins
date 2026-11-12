@@ -3,7 +3,9 @@ import { describe, expect, it } from "bun:test"
 import type {
   BlobsReadApi,
   HandlerContextSlice,
+  RecordFacts,
   RecordView,
+  SessionRecordsView,
   SessionsReadApi,
 } from "../lib/host-types.ts"
 
@@ -13,16 +15,47 @@ import handler from "./session_history.ts"
 // Fake host (in-memory, deterministic)
 // ---------------------------------------------------------------------------
 
-function rec(index: number, kind: string, preview: string): RecordView {
+const ZERO_FACTS: RecordFacts = {
+  contentIsString: null,
+  toolResultCount: 0,
+  textBlockCount: 0,
+  blockCount: 0,
+  toolNames: [],
+  hasText: false,
+  stopReason: null,
+  isError: null,
+  toolUseId: null,
+  model: null,
+  cwd: null,
+  compactKind: null,
+  reason: null,
+  messagesBefore: null,
+  messagesAfter: null,
+  rewindTo: null,
+  droppedCount: null,
+  backupSid: null,
+  droppedRecordCount: null,
+  pid: null,
+  hostname: null,
+  round: null,
+}
+
+function rec(index: number, kind: string, body: string): RecordView {
   return {
     index,
     kind,
     ts: `2026-06-09T00:00:${String(index).padStart(2, "0")}Z`,
-    summary: `${kind} · fixture`,
-    preview,
-    clipped: false,
-    fullChars: preview.length,
-  }
+    previewChars: 600,
+    parts: [{ kind: "text", text: body, toolName: null }],
+    facts: { ...ZERO_FACTS, contentIsString: kind === "user" ? true : null },
+  } as RecordView
+}
+
+const FIXTURE_RECORDS: SessionRecordsView = {
+  sid: "sid-new",
+  meta: { sid: "sid-new", model: "m1", createdAt: "2026-06-09T10:00:00Z", cwd: "/proj" },
+  records: [],
+  messages: [{ role: "user", content: "hello" }],
 }
 
 const TOTAL = 25
@@ -48,7 +81,8 @@ function fakeSessions(overrides: Partial<SessionsReadApi> = {}): SessionsReadApi
         parentSid: null,
         recordCount: TOTAL,
         counts: { user: 8, assistant: 8, tool_result: 8, meta: 1 },
-        firstPrompt: "build the thing",
+        firstPromptChars: 100,
+        firstPromptParts: ["build the thing"],
         lastActivity: "2026-06-09T11:00:00Z",
         liveness: { status: "dead", source: "pid", reason: "pid-gone" },
         hasTasks: true,
@@ -84,8 +118,22 @@ function fakeSessions(overrides: Partial<SessionsReadApi> = {}): SessionsReadApi
       if (sid === "missing") return null
       return {
         hits: [
-          { index: 9, ts: null, tool: "Bash", toolUseId: "t9", inputPreview: `{"command":"ls"}` },
-          { index: 3, ts: null, tool: "Bash", toolUseId: "t3", inputPreview: `{"command":"pwd"}` },
+          {
+            index: 9,
+            ts: null,
+            tool: "Bash",
+            toolUseId: "t9",
+            inputJson: `{"command":"ls"}`,
+            inputPreviewChars: 200,
+          },
+          {
+            index: 3,
+            ts: null,
+            tool: "Bash",
+            toolUseId: "t3",
+            inputJson: `{"command":"pwd"}`,
+            inputPreviewChars: 200,
+          },
         ],
         total: 2,
       }
@@ -98,17 +146,19 @@ function fakeSessions(overrides: Partial<SessionsReadApi> = {}): SessionsReadApi
             index: 4,
             ts: null,
             kind: "user",
-            preview: `…found ${opts.query}…`,
+            parts: [{ kind: "text", text: `found ${opts.query}`, toolName: null }],
+            matchAt: 6,
+            matchLength: opts.query.length,
+            previewChars: 160,
           },
         ],
         total: 1,
         scannedSessions: opts.sid ? 1 : 2,
       }
     },
-    async dump(sid, opts = {}) {
+    async records(sid) {
       if (sid === "missing") return null
-      const text = opts.format === "xml" ? `<session id="${sid}"/>` : `# Session: ${sid}`
-      return { text, bytes: text.length }
+      return { ...FIXTURE_RECORDS, sid, meta: { ...FIXTURE_RECORDS.meta!, sid } }
     },
     ...overrides,
   }
@@ -286,11 +336,12 @@ describe("SessionHistory: blob + dump", () => {
   it("dump defaults to markdown", async () => {
     const r = await call({ action: "dump", sid: "sid-new" })
     expect(r.content).toContain("# Session: sid-new")
+    expect(r.content).toContain("## User")
   })
 
   it("dump xml", async () => {
     const r = await call({ action: "dump", sid: "sid-new", format: "xml" })
-    expect(r.content).toContain(`<session id="sid-new"/>`)
+    expect(r.content).toContain(`<session id="sid-new" model="m1"`)
   })
 })
 

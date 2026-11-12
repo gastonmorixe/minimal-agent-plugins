@@ -1,7 +1,8 @@
 /**
- * C47 proof: the plugin rebuilds, from the data fields, the same text that
- * core produces today (summary, preview, snippet, inputPreview, firstPrompt,
- * markdown dump, xml dump). Three synthetic fixture sessions.
+ * C47 proof: the plugin rebuilds, from the data fields alone, the text that
+ * core produced before S13.3 (summary, preview, snippet, inputPreview,
+ * firstPrompt, markdown dump, xml dump). The frozen golden files in
+ * `__golden__/` hold that text. Three synthetic fixture sessions.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -19,6 +20,7 @@ import type {
   ToolCallHit,
 } from "./host-types.ts"
 import {
+  bodyFromParts,
   firstPromptOf,
   inputPreviewOf,
   previewOf,
@@ -173,58 +175,6 @@ for (const [sid, recs] of Object.entries(fixtures)) {
 
 const api = createSessionsReadApi({ dir })
 
-describe.each(Object.keys(fixtures))("C47 equal text: %s", (sid) => {
-  it("summary and preview equal for several preview budgets", async () => {
-    for (const previewChars of [80, 600]) {
-      const w = await api.window(sid, { anchor: "start", limit: 100, previewChars })
-      if (!w) throw new Error("no window")
-      for (const r of w.items) {
-        expect(summaryOf(r as never)).toBe(r.summary)
-        const p = previewOf(r as never)
-        expect(p.text).toBe(r.preview)
-        expect(p.clipped).toBe(r.clipped)
-        expect(p.fullChars).toBe(r.fullChars)
-      }
-    }
-  })
-
-  it("search snippet equal", async () => {
-    for (const query of [
-      "needle-one",
-      "think",
-      "boom",
-      "after",
-      "e",
-      "thinking",
-      "tool_use",
-      "user:",
-    ]) {
-      for (const previewChars of [80, 160]) {
-        const r = await api.search({ sid, query, previewChars, limit: 200 })
-        for (const h of r.hits) expect(snippetOf(h as never)).toBe(h.preview)
-      }
-    }
-  })
-
-  it("inputPreview and firstPrompt equal", async () => {
-    const t = await api.toolCalls(sid, { limit: 200 })
-    for (const h of t?.hits ?? []) expect(inputPreviewOf(h as never)).toBe(h.inputPreview)
-    const m = await api.meta(sid)
-    if (!m) throw new Error("no meta")
-    expect(firstPromptOf(m as never)).toBe(m.firstPrompt)
-  })
-
-  it("markdown and xml dumps equal", async () => {
-    const rec = await api.records(sid)
-    if (!rec) throw new Error("no records")
-    const v = rec as unknown as SessionRecordsView
-    const md = await api.dump(sid)
-    const xml = await api.dump(sid, { format: "xml" })
-    expect(dumpMarkdown(v)).toBe(md?.text ?? "")
-    expect(dumpXml(v)).toBe(xml?.text ?? "")
-  })
-})
-
 describe("C47 edge cases", () => {
   it("unserializable input uses the placeholder", () => {
     const h: ToolCallHit = {
@@ -232,7 +182,6 @@ describe("C47 edge cases", () => {
       ts: null,
       tool: "T",
       toolUseId: null,
-      inputPreview: "[unserializable]",
       inputJson: null,
       inputPreviewChars: 200,
     }
@@ -241,15 +190,17 @@ describe("C47 edge cases", () => {
 
   it("fixtures cover clip, data-uri scrub and a dump with an error result", async () => {
     const w = await api.window("fx-two", { anchor: "start", limit: 100, previewChars: 80 })
-    expect(w?.items.some((r) => r.clipped)).toBe(true)
-    const md1 = await api.dump("fx-one")
-    expect(md1?.text).toContain("redacted-asset")
-    expect(md1?.text).toContain("**[ERROR]**")
+    const p = (w?.items ?? []).map((r) => previewOf(r as unknown as RecordView))
+    expect(p.some((x) => x.clipped)).toBe(true)
+    const rec = (await api.records("fx-one")) as unknown as SessionRecordsView
+    const md1 = dumpMarkdown(rec)
+    expect(md1).toContain("redacted-asset")
+    expect(md1).toContain("**[ERROR]**")
   })
 })
 
 // ---------------------------------------------------------------------------
-// S13.2 review: data path alone, frozen golden text, edge cases
+// Data path alone, frozen golden text, edge cases
 // ---------------------------------------------------------------------------
 
 const goldenDir = join(import.meta.dir, "__golden__")
@@ -257,13 +208,6 @@ const goldenPath = (sid: string) => join(goldenDir, `c47-${sid}.json`)
 const BUDGETS = [80, 600]
 const SEARCH_BUDGETS = [80, 160]
 const QUERIES = ["needle-one", "think", "boom", "after", "e", "thinking", "tool_use", "user:"]
-
-type Strip<T> = T
-const stripRecord = (r: RecordView): RecordView =>
-  ({ ...r, summary: "", preview: "", clipped: false, fullChars: -1 }) as Strip<RecordView>
-const stripHit = (h: SearchHit): SearchHit => ({ ...h, preview: "" })
-const stripCall = (h: ToolCallHit): ToolCallHit => ({ ...h, inputPreview: "" })
-const stripMeta = (m: SessionMetaView): SessionMetaView => ({ ...m, firstPrompt: null })
 
 interface Golden {
   windows: Record<
@@ -277,41 +221,7 @@ interface Golden {
   dumpXml: string
 }
 
-/** Text kinds from the core text fields (reference side). */
-async function coreText(sid: string): Promise<Golden> {
-  const g: Golden = {
-    windows: {},
-    snippets: {},
-    inputPreviews: [],
-    firstPrompt: null,
-    dumpMarkdown: "",
-    dumpXml: "",
-  }
-  for (const pc of BUDGETS) {
-    const w = await api.window(sid, { anchor: "start", limit: 100, previewChars: pc })
-    g.windows[String(pc)] = (w?.items ?? []).map((r) => ({
-      summary: r.summary,
-      preview: r.preview,
-      clipped: r.clipped,
-      fullChars: r.fullChars,
-    }))
-  }
-  for (const q of QUERIES) {
-    for (const pc of SEARCH_BUDGETS) {
-      const r = await api.search({ sid, query: q, previewChars: pc, limit: 200 })
-      g.snippets[`${q}|${pc}`] = r.hits.map((h) => h.preview)
-    }
-  }
-  g.inputPreviews = ((await api.toolCalls(sid, { limit: 200 }))?.hits ?? []).map(
-    (h) => h.inputPreview,
-  )
-  g.firstPrompt = (await api.meta(sid))?.firstPrompt ?? null
-  g.dumpMarkdown = (await api.dump(sid))?.text ?? ""
-  g.dumpXml = (await api.dump(sid, { format: "xml" }))?.text ?? ""
-  return g
-}
-
-/** Text kinds from the data fields alone: host text fields are stripped. */
+/** Text kinds from the data fields alone. */
 async function dataText(sid: string): Promise<Golden> {
   const g: Golden = {
     windows: {},
@@ -324,37 +234,32 @@ async function dataText(sid: string): Promise<Golden> {
   for (const pc of BUDGETS) {
     const w = await api.window(sid, { anchor: "start", limit: 100, previewChars: pc })
     g.windows[String(pc)] = (w?.items ?? []).map((raw) => {
-      const r = stripRecord(raw as unknown as RecordView)
+      const r = raw as unknown as RecordView
       const p = previewOf(r)
       return { summary: summaryOf(r), preview: p.text, clipped: p.clipped, fullChars: p.fullChars }
     })
   }
   for (const q of QUERIES) {
     for (const pc of SEARCH_BUDGETS) {
-      const r = await api.search({ sid, query: q, previewChars: pc, limit: 200 })
-      g.snippets[`${q}|${pc}`] = r.hits.map((h) => snippetOf(stripHit(h as unknown as SearchHit)))
+      const r = await api.search({
+        sid,
+        query: q,
+        previewChars: pc,
+        limit: 200,
+        renderBody: bodyFromParts,
+      })
+      g.snippets[`${q}|${pc}`] = r.hits.map((h) => snippetOf(h as unknown as SearchHit))
     }
   }
   g.inputPreviews = ((await api.toolCalls(sid, { limit: 200 }))?.hits ?? []).map((h) =>
-    inputPreviewOf(stripCall(h as unknown as ToolCallHit)),
+    inputPreviewOf(h as unknown as ToolCallHit),
   )
   const m = await api.meta(sid)
-  g.firstPrompt = m ? firstPromptOf(stripMeta(m as unknown as SessionMetaView)) : null
+  g.firstPrompt = m ? firstPromptOf(m as unknown as SessionMetaView) : null
   const rec = (await api.records(sid)) as unknown as SessionRecordsView
   g.dumpMarkdown = dumpMarkdown(rec)
   g.dumpXml = dumpXml(rec)
   return g
-}
-
-if (process.env.C47_UPDATE === "1") {
-  describe("C47 golden generator (C47_UPDATE=1)", () => {
-    it("writes golden files from the real core API", async () => {
-      mkdirSync(goldenDir, { recursive: true })
-      for (const sid of Object.keys(fixtures)) {
-        writeFileSync(goldenPath(sid), `${JSON.stringify(await coreText(sid), null, 2)}\n`)
-      }
-    })
-  })
 }
 
 describe("C47 data fields are present", () => {
@@ -399,11 +304,7 @@ describe("C47 data fields are present", () => {
   })
 })
 
-describe.each(Object.keys(fixtures))("C47 data path alone and golden: %s", (sid) => {
-  it("data-only text (host text fields stripped) equals the core text", async () => {
-    expect(await dataText(sid)).toEqual(await coreText(sid))
-  })
-
+describe.each(Object.keys(fixtures))("C47 data path equals the golden file: %s", (sid) => {
   it("data-only text equals the frozen golden file", async () => {
     expect(existsSync(goldenPath(sid))).toBe(true)
     const golden = JSON.parse(readFileSync(goldenPath(sid), "utf8")) as Golden

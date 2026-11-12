@@ -71,7 +71,8 @@ export interface SessionMetaView {
   readonly agentVersion: string | null
   readonly recordCount: number
   readonly counts: Readonly<Record<string, number>>
-  readonly firstPrompt: string | null
+  readonly firstPromptChars: number
+  readonly firstPromptParts: readonly string[] | null
   readonly lastActivity: string | null
   readonly liveness: HostSessionLiveness
   readonly hasTasks: boolean
@@ -83,10 +84,16 @@ export interface RecordView {
   readonly index: number
   readonly kind: string
   readonly ts: string | null
-  readonly summary: string
-  readonly preview: string
-  readonly clipped: boolean
-  readonly fullChars: number
+  readonly previewChars: number
+  readonly parts: readonly BodyPart[]
+}
+
+/** One piece of a record body, data only (core adds no prefix text). */
+export interface BodyPart {
+  readonly kind: string
+  readonly text: string
+  readonly toolName: string | null
+  readonly role?: string
 }
 
 /** A stable, lazy window into a session's records (`sessions:read` window). */

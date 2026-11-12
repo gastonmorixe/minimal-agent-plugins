@@ -115,9 +115,8 @@ export interface SessionMetaView {
   readonly parentSid: string | null
   readonly recordCount: number
   readonly counts: Readonly<Record<string, number>>
-  readonly firstPrompt: string | null
-  readonly firstPromptChars?: number
-  readonly firstPromptParts?: readonly string[] | null
+  readonly firstPromptChars: number
+  readonly firstPromptParts: readonly string[] | null
   readonly lastActivity: string | null
   readonly liveness: SessionLiveness
   readonly hasTasks: boolean
@@ -129,13 +128,9 @@ export interface RecordView {
   readonly index: number
   readonly kind: string
   readonly ts: string | null
-  readonly summary: string
-  readonly preview: string
-  readonly clipped: boolean
-  readonly fullChars: number
-  readonly previewChars?: number
-  readonly parts?: readonly BodyPart[]
-  readonly facts?: RecordFacts
+  readonly previewChars: number
+  readonly parts: readonly BodyPart[]
+  readonly facts: RecordFacts
 }
 
 export interface RecordWindow {
@@ -151,9 +146,8 @@ export interface ToolCallHit {
   readonly ts: string | null
   readonly tool: string
   readonly toolUseId: string | null
-  readonly inputPreview: string
-  readonly inputJson?: string | null
-  readonly inputPreviewChars?: number
+  readonly inputJson: string | null
+  readonly inputPreviewChars: number
 }
 
 export interface SearchHit {
@@ -161,11 +155,10 @@ export interface SearchHit {
   readonly index: number
   readonly ts: string | null
   readonly kind: string
-  readonly preview: string
-  readonly parts?: readonly BodyPart[]
-  readonly matchAt?: number
-  readonly matchLength?: number
-  readonly previewChars?: number
+  readonly parts: readonly BodyPart[]
+  readonly matchAt: number
+  readonly matchLength: number
+  readonly previewChars: number
 }
 
 export interface SessionsReadApi {
@@ -191,12 +184,10 @@ export interface SessionsReadApi {
     offset?: number
     previewChars?: number
     maxSessions?: number
+    /** Builds the body that the query is matched against, from the raw parts. */
+    renderBody?: (parts: readonly BodyPart[]) => string
   }): Promise<{ hits: readonly SearchHit[]; total: number; scannedSessions: number }>
-  records?(sid: string): Promise<SessionRecordsView | null>
-  dump(
-    sid: string,
-    opts?: { format?: "markdown" | "xml" },
-  ): Promise<{ text: string; bytes: number } | null>
+  records(sid: string): Promise<SessionRecordsView | null>
 }
 
 // ---------------------------------------------------------------------------

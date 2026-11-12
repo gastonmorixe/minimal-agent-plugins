@@ -27,6 +27,7 @@ import {
   renderToolCalls,
   renderWindow,
 } from "../lib/render.ts"
+import { bodyFromParts } from "../lib/render-from-data.ts"
 
 const DUMP_WARN_BYTES = 256 * 1024
 
@@ -115,6 +116,7 @@ async function run(
         limit: req.limit,
         offset: req.offset,
         previewChars: req.previewChars,
+        renderBody: bodyFromParts,
       })
       return ok(
         renderSearch(hits, total, scannedSessions, req.query, req.offset),
@@ -174,13 +176,12 @@ async function run(
   }
 }
 
-/** Build the dump from raw records. Falls back to the host text for an older host. */
+/** Build the dump from raw records. */
 async function dumpOf(
   sessions: NonNullable<PluginHostSlice["sessions"]>,
   sid: string,
   format: "markdown" | "xml",
 ): Promise<{ text: string; bytes: number } | null> {
-  if (!sessions.records) return sessions.dump(sid, { format })
   const v = await sessions.records(sid)
   if (!v) return null
   const text = format === "xml" ? dumpXml(v) : dumpMarkdown(v)
