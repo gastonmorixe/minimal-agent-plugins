@@ -37,6 +37,9 @@ export class PromptTemplateError extends Error {
 /**
  * Substitute placeholders in `template`.
  *
+ * There is no escape syntax. A prompt cannot hold a literal `%%name%%` for a
+ * name that is a valid placeholder. It is always substituted or reported as missing.
+ *
  * @throws PromptTemplateError when a required placeholder has no value.
  */
 export function renderTemplate(
