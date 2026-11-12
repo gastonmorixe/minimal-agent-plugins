@@ -3,7 +3,7 @@
  * stream salvage and compaction. Split from scenarios.ts to keep files small.
  */
 
-import { readFileSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import {
@@ -138,7 +138,25 @@ const staleFile = (
   keep: [-1],
 })
 
+/** Resume a recorded compacted session fixture, then run one new user turn. */
+const resumeFixture = (name: string, file: string): Scenario => ({
+  name,
+  script: [{ text: "after resume" }],
+  coreDeps: storeDeps,
+  run: async (ctx) => {
+    mkdirSync(sessionDir(ctx.root), { recursive: true })
+    copyFileSync(join(FIXTURES, file), join(sessionDir(ctx.root), `${SID}.jsonl`))
+    const next = await resumeCore(ctx)
+    await ctx.turnOn(next, "question five")
+  },
+  keep: [-1],
+})
+
 export const EXTRA_SCENARIOS: Scenario[] = [
+  resumeFixture("resume-old-compacted-tail", "old-compacted-tail.jsonl"),
+  resumeFixture("resume-old-compacted-local", "old-compacted-local.jsonl"),
+  resumeFixture("resume-new-compacted-tail", "new-compacted-tail.jsonl"),
+  resumeFixture("resume-new-compacted-local", "new-compacted-local.jsonl"),
   {
     name: "binary-read",
     script: [{ tools: [{ name: "Read", input: { file_path: "blob.bin" } }] }],

@@ -37,6 +37,9 @@ Scenario notes:
 - tail-compaction: core.compact({mode:"tail"}), the golden is the next request.
 - local-compaction: registerTestProvider plus a fake NetworkClient answers the
   summary call (public seam, no core edit). The golden is the next request.
+- resume-{old,new}-compacted-{tail,local}: copy a fixtures/_-compacted-_.jsonl into the
+  scenario store, resume, run one turn. Old rows have no `meta`, new rows (from
+  fixtures/record-new-compacted.ts) do. new-fixtures.test.ts asserts twin equality.
 - image-read: a test provider with image modality turns on image blocks.
 
 Env: every MINIMAL_AGENT_* var (including MINIMAL_AGENT_EFFORT) is cleared
