@@ -94,7 +94,9 @@ Backend output:
 
 3. Get obscura (the default backend). **Normally you do nothing here:** on
    first interactive start the host resolves the rolling `latest` release from
-   `gastonmorixe/obscura-dist` (no hardcoded build epoch in the plugin),
+   the public `gastonmorixe/obscura` Releases (no hardcoded build epoch in the
+   plugin, and no GitHub token: the download is anonymous and verified against
+   the published sha256), pins it to its immutable `build-<epoch>` tag,
    provisions it into the agent-managed dir (`~/.minimal-agent/bin`)
    automatically (see `setup.ts` plus minimal-agent's `binaries/` subsystem),
    and advertises that dir to the plugin via `MINIMAL_AGENT_BIN_DIR`. The

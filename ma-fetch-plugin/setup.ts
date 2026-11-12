@@ -8,18 +8,14 @@
  * progress. The plugin only maintains a small, non-secret release-coordinate
  * cache; it never touches managed binary files or the host binary manifest.
  *
- * ## Private binaries, account-less install
+ * ## Public binaries, no credentials
  *
- * obscura's SOURCE is private. Compiled binaries live in a PRIVATE release repo
- * (`obscura-dist`). This plugin ships an EMBEDDED read-only credential (a
- * fine-grained PAT scoped to only that repo, Contents: read-only). At setup we
- * resolve the rolling `latest` release via the GitHub API (no hardcoded build
- * epoch in source), then ask the host to fetch that asset with the same token.
- *
- * Security posture of the embedded token: read-only, single-repo, and it only
- * grants pulling the (already-distributed) obscura binaries. A leak exposes
- * nothing else. Rotate by bumping the plugin release. The token is read from a
- * sibling `obscura-token.ts`.
+ * Compiled binaries are published to the PUBLIC `gastonmorixe/obscura` repo's
+ * Releases by its Dist Release workflow. At setup we resolve the rolling
+ * `latest` release anonymously through the GitHub API (no hardcoded build
+ * epoch in source), pin the asset to its immutable `build-<epoch>` tag, and
+ * hand the host a plain public download URL plus the published sha256. No
+ * token is embedded, read from env, or borrowed from `gh`.
  *
  * ## How the backend finds the binary at runtime
  *
@@ -55,25 +51,15 @@ import {
 } from "./lib/obscura-release-cache.ts"
 import { agentHome } from "./lib/paths.ts"
 import {
-  OBSCURA_DIST_REPO,
+  obscuraDownloadUrl,
   type ResolvedObscuraBuild,
   ResolveObscuraError,
   resolveObscuraBuild,
 } from "./lib/resolve-obscura-release.ts"
-import { OBSCURA_DIST_TOKEN } from "./obscura-token.ts"
 
 // Structural copies of the host's setup types so this file type-checks
 // standalone (the plugin carries no dependency on the agent source tree).
-type SetupBinarySource =
-  | { kind: "url"; url: string; archive?: boolean }
-  | {
-      kind: "github-release"
-      repo: string
-      tag: string
-      asset: string
-      token?: string
-      archive?: boolean
-    }
+type SetupBinarySource = { kind: "url"; url: string; archive?: boolean }
 interface SetupBinarySpec {
   name: string
   version: string
@@ -108,21 +94,11 @@ interface SetupResult {
 let refreshInFlight: Promise<void> | null = null
 
 /** Build the binary-install descriptor returned to the host. */
-function setupResultFor(
-  build: ResolvedObscuraBuild,
-  haltIfMissing: boolean,
-  token?: string,
-): SetupResult {
+function setupResultFor(build: ResolvedObscuraBuild, haltIfMissing: boolean): SetupResult {
   const spec: SetupBinarySpec = {
     name: "obscura",
     version: build.version,
-    source: {
-      kind: "github-release",
-      repo: OBSCURA_DIST_REPO,
-      tag: build.tag,
-      asset: build.asset,
-      ...(OBSCURA_DIST_TOKEN ? { token: OBSCURA_DIST_TOKEN } : token ? { token } : {}),
-    },
+    source: { kind: "url", url: obscuraDownloadUrl(build), archive: true },
     sha256: build.sha256,
     archiveMember: "obscura",
     archiveExtraMembers: ["obscura-worker"],
@@ -148,17 +124,10 @@ function setupResultFor(
  * only to coalesce simultaneous setup calls; startup deliberately never awaits
  * it once a last-known-good record exists.
  */
-function refreshCachedBuild(
-  cachePath: string,
-  platform: string,
-  env: Record<string, string>,
-  log: SetupContext["log"],
-): void {
+function refreshCachedBuild(cachePath: string, platform: string, log: SetupContext["log"]): void {
   if (refreshInFlight) return
   refreshInFlight = (async () => {
-    const token = await resolveDistToken(env)
-    if (!token) return
-    const build = await resolveObscuraBuild({ token, platformKey: platform })
+    const build = await resolveObscuraBuild({ platformKey: platform })
     writeCachedObscuraRelease(cachePath, build)
     log.info("ma-fetch.setup", "refreshed obscura latest release", {
       tag: build.tag,
@@ -203,31 +172,6 @@ function configuredObscuraBin(): string | undefined {
   }
 }
 
-/**
- * Token used to read obscura-dist. Prefer the embedded read-only PAT; fall back
- * to host/env/`gh` so a dev box without a baked token still works.
- */
-async function resolveDistToken(env: Record<string, string>): Promise<string> {
-  if (OBSCURA_DIST_TOKEN.trim()) return OBSCURA_DIST_TOKEN.trim()
-  const fromEnv =
-    env.MINIMAL_AGENT_GITHUB_TOKEN?.trim() ||
-    env.GITHUB_TOKEN?.trim() ||
-    env.GH_TOKEN?.trim() ||
-    process.env.MINIMAL_AGENT_GITHUB_TOKEN?.trim() ||
-    process.env.GITHUB_TOKEN?.trim() ||
-    process.env.GH_TOKEN?.trim()
-  if (fromEnv) return fromEnv
-  try {
-    const proc = Bun.spawn(["gh", "auth", "token"], { stdout: "pipe", stderr: "ignore" })
-    const out = (await new Response(proc.stdout).text()).trim()
-    await proc.exited
-    if (proc.exitCode === 0 && out.length > 0) return out
-  } catch {
-    // fall through
-  }
-  return ""
-}
-
 const setup = async (ctx: SetupContext): Promise<SetupResult> => {
   // 1. Operator override → skip provisioning.
   const override = configuredObscuraBin()
@@ -248,7 +192,7 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
     if (isCachedObscuraReleaseFresh(cached)) {
       return setupResultFor(cached, !hasInstalledObscura)
     }
-    refreshCachedBuild(cachePath, platform, ctx.env, ctx.log)
+    refreshCachedBuild(cachePath, platform, ctx.log)
     // The current process can use the last verified coordinates immediately;
     // a future boot observes the completed refresh.
     return setupResultFor(cached, !hasInstalledObscura)
@@ -256,20 +200,9 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
 
   // 3. No usable cache means Fetch cannot operate yet, so this first install
   // intentionally resolves synchronously and allows the host to provision it.
-  const token = await resolveDistToken(ctx.env)
-  if (!token) {
-    ctx.log.notice(
-      "ma-fetch.setup",
-      'no GitHub token available to resolve obscura-dist; set plugins["ma-fetch"].obscura.bin or embed OBSCURA_DIST_TOKEN',
-      { platform },
-    )
-    return {}
-  }
-
   let build: ResolvedObscuraBuild
   try {
     build = await resolveObscuraBuild({
-      token,
       platformKey: platform,
       fetch: async (input, init) => {
         if (ctx.abort?.aborted) throw new ResolveObscuraError("setup aborted")
@@ -301,7 +234,7 @@ const setup = async (ctx: SetupContext): Promise<SetupResult> => {
     asset: build.asset,
     platform: build.platform,
   })
-  return setupResultFor(build, true, token)
+  return setupResultFor(build, true)
 }
 
 export default setup
