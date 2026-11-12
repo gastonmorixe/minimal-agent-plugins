@@ -64,8 +64,18 @@ export interface Scenario {
   coreDeps?: (paths: { root: string; cwd: string }) => CoreExtra
   /** Optional fixtures, runs before the core is built. */
   setup?: (cwd: string) => void
+  /** Extra plugin dirs, appended after the plugins root. Default: none. */
+  pluginRoots?: (paths: { root: string; cwd: string }) => string[]
   /** The driver. */
   run: (ctx: ScenarioCtx) => Promise<void>
+}
+
+/** Embedded plugin roots for a scenario: the plugins root plus any extras. */
+export function resolveEmbeddedRoots(
+  scenario: Pick<Scenario, "pluginRoots">,
+  paths: { root: string; cwd: string },
+): string[] {
+  return [PLUGINS_ROOT, ...(scenario.pluginRoots?.(paths) ?? [])]
 }
 
 const volatileEnvKeys = (): string[] =>
@@ -199,7 +209,7 @@ export async function runScenario(scenario: Scenario): Promise<string> {
     scenario.setup?.(cwd)
     process.chdir(cwd)
     const loader = await PluginLoader.load({
-      roots: { embedded: [PLUGINS_ROOT] },
+      roots: { embedded: resolveEmbeddedRoots(scenario, { root, cwd }) },
       logger: () => {},
     })
     const modes = new ModeManager(loader.getModes(), null, "dark", () => new Date(FIXED_NOW_MS))
