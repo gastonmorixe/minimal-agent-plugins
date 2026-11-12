@@ -149,3 +149,12 @@ describe("scanner", () => {
     expect(r.out.map((s) => s.slice(2)).join("")).toBe("a < b <m")
   })
 })
+
+describe("hostile input", () => {
+  test("many unclosed openers finish fast", () => {
+    const t0 = performance.now()
+    const out = codec.parse("<ma:policy>".repeat(20000))
+    expect(Array.isArray(out)).toBe(true)
+    expect(performance.now() - t0).toBeLessThan(1000)
+  })
+})
