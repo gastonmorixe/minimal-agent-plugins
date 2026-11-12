@@ -6,7 +6,12 @@ export interface HistoryEditHost {
       sid: string,
       opts: { anchor: "start" | "end"; offset?: number; limit?: number },
     ): Promise<{
-      items: readonly { index: number; kind: string; userId: string | null; preview: string }[]
+      items: readonly {
+        index: number
+        kind: string
+        userId: string | null
+        parts: readonly { kind: string; text: string; toolName: string | null }[]
+      }[]
       total: number
     } | null>
   }

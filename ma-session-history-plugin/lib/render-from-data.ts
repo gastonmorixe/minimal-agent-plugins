@@ -1,8 +1,6 @@
 /**
  * Rebuild the model-facing text of session records from structured data
  * (parts, facts, raw numbers) that the host provides. Pure functions.
- * When a view carries no data fields (an older host), each function
- * returns the host text field instead.
  *
  * @module plugins/session-history/lib/render-from-data
  */
@@ -86,15 +84,11 @@ export function summaryFromFacts(kind: string, f: RecordFacts, parts: readonly B
 
 /** Summary line of a record. */
 export function summaryOf(r: RecordView): string {
-  if (!r.facts || !r.parts) return r.summary
   return summaryFromFacts(r.kind, r.facts, r.parts)
 }
 
 /** Clipped preview and clip flag of a record. */
 export function previewOf(r: RecordView): { text: string; clipped: boolean; fullChars: number } {
-  if (!r.parts || r.previewChars === undefined) {
-    return { text: r.preview, clipped: r.clipped, fullChars: r.fullChars }
-  }
   const body = bodyFromParts(r.parts)
   const c = clip(body, r.previewChars)
   return { text: c.text, clipped: c.clipped, fullChars: body.length }
@@ -102,9 +96,6 @@ export function previewOf(r: RecordView): { text: string; clipped: boolean; full
 
 /** Snippet of a search hit, with the match in context. */
 export function snippetOf(h: SearchHit): string {
-  if (!h.parts || h.matchAt === undefined || h.matchLength === undefined || !h.previewChars) {
-    return h.preview
-  }
   const body = bodyFromParts(h.parts)
   const lead = Math.floor((h.previewChars - h.matchLength) / 2)
   const start = Math.max(0, h.matchAt - lead)
@@ -115,13 +106,11 @@ export function snippetOf(h: SearchHit): string {
 
 /** Clipped input preview of a tool call. */
 export function inputPreviewOf(h: ToolCallHit): string {
-  if (h.inputJson === undefined || h.inputPreviewChars === undefined) return h.inputPreview
   return clip(h.inputJson ?? "[unserializable]", h.inputPreviewChars).text
 }
 
 /** First prompt line of a session, or null. */
 export function firstPromptOf(m: SessionMetaView): string | null {
-  if (m.firstPromptParts === undefined || m.firstPromptChars === undefined) return m.firstPrompt
   if (m.firstPromptParts === null) return null
   const oneLine = m.firstPromptParts.join(" ").replace(/\s+/g, " ").trim()
   const max = m.firstPromptChars

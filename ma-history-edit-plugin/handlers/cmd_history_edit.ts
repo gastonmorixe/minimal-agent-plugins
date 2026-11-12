@@ -8,6 +8,14 @@ import {
   takePendingDraft,
 } from "../lib/state.ts"
 
+/** Newline join of the user text parts (same rule as the old core preview, no clip). */
+function userText(parts: readonly { kind: string; text: string }[]): string {
+  return parts
+    .filter((p) => p.kind === "text")
+    .map((p) => p.text)
+    .join("\n")
+}
+
 /** Open, stage, or commit the history-edit workflow through host capabilities. */
 export default async function cmdHistoryEdit(
   ctx: CommandContext,
@@ -85,7 +93,7 @@ export default async function cmdHistoryEdit(
         .reverse()
         .flatMap((item): PromptRow[] =>
           item.kind === "user" && item.userId !== null
-            ? [{ userId: item.userId, text: item.preview }]
+            ? [{ userId: item.userId, text: userText(item.parts) }]
             : [],
         ),
     )
