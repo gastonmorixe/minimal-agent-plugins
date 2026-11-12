@@ -207,6 +207,16 @@ interface SpawnOptions extends MockScript {
   readonly pluginRoot?: string
 }
 
+/**
+ * The parent env without any MINIMAL_AGENT_* key. An agent shell exports
+ * these (effort, sub-agent id, ...) and they change the spawned CLI.
+ */
+function cleanParentEnv(): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.startsWith("MINIMAL_AGENT_")),
+  )
+}
+
 function spawnAgent(
   name: string,
   hostArgs: readonly string[],
@@ -243,7 +253,7 @@ function spawnAgent(
       stdout: "pipe",
       stderr: "pipe",
       env: {
-        ...process.env,
+        ...cleanParentEnv(),
         NODE_ENV: "test",
         HOME: home,
         MINIMAL_AGENT_HOME: join(home, ".minimal-agent"),
