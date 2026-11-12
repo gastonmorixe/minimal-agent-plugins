@@ -42,7 +42,8 @@ export function bodyFromParts(parts: readonly BodyPart[]): string {
   return parts.map(partText).join("\n")
 }
 
-function summaryFromFacts(kind: string, f: RecordFacts, parts: readonly BodyPart[]): string {
+/** Summary line from raw facts and parts. */
+export function summaryFromFacts(kind: string, f: RecordFacts, parts: readonly BodyPart[]): string {
   switch (kind) {
     case "meta":
       return `meta · model ${f.model} · cwd ${f.cwd}`

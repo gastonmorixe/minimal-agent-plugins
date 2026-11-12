@@ -73,13 +73,14 @@ function quote(s: string): string {
     .join("\n")
 }
 
-function sourceDetail(block: BlockLike, textFallback: boolean): string {
+/** Raw detail. `undefined` when the field is missing, like core (markdown prints "undefined"). */
+function sourceDetail(block: BlockLike, textFallback: boolean): string | undefined {
   const s = block.source
   if (!s) return ""
-  if (s.type === "base64") return s.media_type ?? ""
-  if (s.type === "url") return s.url ?? ""
-  if (s.type === "file") return s.file_id ?? ""
-  return textFallback ? "text/plain" : (s.file_id ?? "")
+  if (s.type === "base64") return s.media_type
+  if (s.type === "url") return s.url
+  if (s.type === "file") return s.file_id
+  return textFallback ? "text/plain" : s.file_id
 }
 
 function blockAsMarkdown(block: BlockLike): string {
@@ -182,9 +183,9 @@ function blockAsXml(block: BlockLike, indent: number): string {
       )
     }
     case "image":
-      return `${pad}<image source="${escapeXml(block.source?.type ?? "")}" ref="${escapeXml(sourceDetail(block, false))}" />`
+      return `${pad}<image source="${escapeXml(block.source?.type ?? "")}" ref="${escapeXml(sourceDetail(block, false) ?? "")}" />`
     case "document":
-      return `${pad}<document source="${escapeXml(block.source?.type ?? "")}" ref="${escapeXml(sourceDetail(block, true))}" />`
+      return `${pad}<document source="${escapeXml(block.source?.type ?? "")}" ref="${escapeXml(sourceDetail(block, true) ?? "")}" />`
     default:
       return `${pad}<unknown>${escapeXml(JSON.stringify(block))}</unknown>`
   }

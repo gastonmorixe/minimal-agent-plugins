@@ -1,0 +1,130 @@
+{
+  "windows": {
+    "80": [
+      {
+        "summary": "meta · model model-x · cwd /proj/demo",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "  first   prompt\nwith   spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww…",
+        "clipped": true,
+        "fullChars": 232
+      },
+      {
+        "summary": "assistant · text + 1 tool_use (Bash) · stop=tool_use",
+        "preview": "[thinking] think <a> & \"b\"\nline2\nI will run it\n[tool_use Bash] {\"cmd\":\"echo 'hi…",
+        "clipped": true,
+        "fullChars": 100
+      },
+      {
+        "summary": "tool_result · ERROR · id tu-1",
+        "preview": "boom <err>\nline2",
+        "clipped": false,
+        "fullChars": 16
+      },
+      {
+        "summary": "user · 1 tool_result + text",
+        "preview": "boom <err>\nline2 data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+        "clipped": true,
+        "fullChars": 446
+      },
+      {
+        "summary": "assistant · (empty)",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      }
+    ],
+    "600": [
+      {
+        "summary": "meta · model model-x · cwd /proj/demo",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "  first   prompt\nwith   spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww ",
+        "clipped": false,
+        "fullChars": 232
+      },
+      {
+        "summary": "assistant · text + 1 tool_use (Bash) · stop=tool_use",
+        "preview": "[thinking] think <a> & \"b\"\nline2\nI will run it\n[tool_use Bash] {\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n\":[1,2]}",
+        "clipped": false,
+        "fullChars": 100
+      },
+      {
+        "summary": "tool_result · ERROR · id tu-1",
+        "preview": "boom <err>\nline2",
+        "clipped": false,
+        "fullChars": 16
+      },
+      {
+        "summary": "user · 1 tool_result + text",
+        "preview": "boom <err>\nline2 data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA z\nnext",
+        "clipped": false,
+        "fullChars": 446
+      },
+      {
+        "summary": "assistant · (empty)",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      }
+    ]
+  },
+  "snippets": {
+    "needle-one|80": [],
+    "needle-one|160": [],
+    "think|80": [
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi'…"
+    ],
+    "think|160": [
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n\":[1,2]}"
+    ],
+    "boom|80": [
+      "boom <err> line2",
+      "boom <err> line2 data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…"
+    ],
+    "boom|160": [
+      "boom <err> line2",
+      "boom <err> line2 data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…"
+    ],
+    "after|80": [],
+    "after|160": [],
+    "e|80": [
+      "first prompt with spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww…",
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi'…",
+      "boom <err> line2",
+      "boom <err> line2 data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…"
+    ],
+    "e|160": [
+      "first prompt with spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww…",
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n\":[1,2]}",
+      "boom <err> line2",
+      "boom <err> line2 data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…"
+    ],
+    "thinking|80": [
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi'…"
+    ],
+    "thinking|160": [
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n\":[1,2]}"
+    ],
+    "tool_use|80": [
+      "…hink <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n…"
+    ],
+    "tool_use|160": [
+      "[thinking] think <a> & \"b\" line2 I will run it [tool_use Bash] {\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n\":[1,2]}"
+    ],
+    "user:|80": [],
+    "user:|160": []
+  },
+  "inputPreviews": ["{\"cmd\":\"echo 'hi' > \\\"x\\\"\",\"n\":[1,2]}"],
+  "firstPrompt": "first prompt with spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww...",
+  "dumpMarkdown": "# Session: fx-one\n**Model**: model-x\n**Date**: 2026-01-01T00:00:00.000Z\n**CWD**: `/proj/demo`\n\n## User\n\n  first   prompt\nwith   spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww \n\n## Assistant\n\n> 🤔 **Thinking**\n> think <a> & \"b\"\n> line2\n\n> 🤔 **Thinking**\n> *(Redacted thinking, signature: sig-redacted-abc...)*\n\n> 🔒 **Redacted thinking** *(encrypted, 9 chars)*\n\nI will run it\n\n> 🛠️ **Tool Use**: `Bash` (id: tu-1)\n> ```json\n> {\n>   \"cmd\": \"echo 'hi' > \\\"x\\\"\",\n>   \"n\": [\n>     1,\n>     2\n>   ]\n> }\n> ```\n\n## User\n\n> 🔙 **Tool Result**: (id: tu-1) **[ERROR]**\n> ```\n> boom <err>\n> line2\n> ```\n\n> 🔙 **Tool Result**: (id: tu-1) **[ERROR]**\n> ```\n> boom <err>\n> line2 <ma::agent::redacted-asset kind=\"data_uri\" mime=\"image/png\" size=\"300B\" chars_removed=\"400\" /> z\n> \n> <ma::agent::context-sanitizer removed=\"1\" kinds=\"data_uri\" chars_removed=\"400\" saved=\"300B\" />\n> ```\n",
+  "dumpXml": "<session id=\"fx-one\" model=\"model-x\" date=\"2026-01-01T00:00:00.000Z\">\n  <turn role=\"user\">\n    <text>  first   prompt\nwith   spaces wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww </text>\n  </turn>\n  <turn role=\"assistant\">\n    <thinking>think &lt;a&gt; &amp; &quot;b&quot;\nline2</thinking>\n    <thinking signature=\"sig-redacted-abcdefghijklmnop\"/>\n    <redacted_thinking bytes=\"9\"/>\n    <text>I will run it</text>\n    <tool_use name=\"Bash\" id=\"tu-1\">\n      <input>{&quot;cmd&quot;:&quot;echo &apos;hi&apos; &gt; \\&quot;x\\&quot;&quot;,&quot;n&quot;:[1,2]}</input>\n    </tool_use>\n  </turn>\n  <turn role=\"user\">\n    <tool_result tool_use_id=\"tu-1\" is_error=\"true\">\n      <content>boom &lt;err&gt;\nline2</content>\n    </tool_result>\n    <tool_result tool_use_id=\"tu-1\" is_error=\"true\">\n      <content>boom &lt;err&gt;\nline2 &lt;ma::agent::redacted-asset kind=&quot;data_uri&quot; mime=&quot;image/png&quot; size=&quot;300B&quot; chars_removed=&quot;400&quot; /&gt; z\n\n&lt;ma::agent::context-sanitizer removed=&quot;1&quot; kinds=&quot;data_uri&quot; chars_removed=&quot;400&quot; saved=&quot;300B&quot; /&gt;</content>\n    </tool_result>\n  </turn>\n</session>\n"
+}

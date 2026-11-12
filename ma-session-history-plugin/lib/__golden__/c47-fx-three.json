@@ -1,0 +1,152 @@
+{
+  "windows": {
+    "80": [
+      {
+        "summary": "meta · model model-x · cwd /proj/demo",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "one",
+        "clipped": false,
+        "fullChars": 3
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "two",
+        "clipped": false,
+        "fullChars": 3
+      },
+      {
+        "summary": "rewind · to u1 · dropped 2",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "redo",
+        "clipped": false,
+        "fullChars": 4
+      },
+      {
+        "summary": "assistant · 2 tool_use (Read, Bash) · stop=tool_use",
+        "preview": "[tool_use Read] {\"path\":\"a/b.txt\"}\n[tool_use Bash] {\"cmd\":\"ls\"}",
+        "clipped": false,
+        "fullChars": 63
+      },
+      {
+        "summary": "tool_result · ok · id tu-9",
+        "preview": "data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+        "clipped": true,
+        "fullChars": 427
+      },
+      {
+        "summary": "user · 2 tool_result",
+        "preview": "x data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+        "clipped": true,
+        "fullChars": 427
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "end",
+        "clipped": false,
+        "fullChars": 3
+      }
+    ],
+    "600": [
+      {
+        "summary": "meta · model model-x · cwd /proj/demo",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "one",
+        "clipped": false,
+        "fullChars": 3
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "two",
+        "clipped": false,
+        "fullChars": 3
+      },
+      {
+        "summary": "rewind · to u1 · dropped 2",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "redo",
+        "clipped": false,
+        "fullChars": 4
+      },
+      {
+        "summary": "assistant · 2 tool_use (Read, Bash) · stop=tool_use",
+        "preview": "[tool_use Read] {\"path\":\"a/b.txt\"}\n[tool_use Bash] {\"cmd\":\"ls\"}",
+        "clipped": false,
+        "fullChars": 63
+      },
+      {
+        "summary": "tool_result · ok · id tu-9",
+        "preview": "data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA tail",
+        "clipped": false,
+        "fullChars": 427
+      },
+      {
+        "summary": "user · 2 tool_result",
+        "preview": "x data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA y\n",
+        "clipped": false,
+        "fullChars": 427
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "end",
+        "clipped": false,
+        "fullChars": 3
+      }
+    ]
+  },
+  "snippets": {
+    "needle-one|80": [],
+    "needle-one|160": [],
+    "think|80": [],
+    "think|160": [],
+    "boom|80": [],
+    "boom|160": [],
+    "after|80": [],
+    "after|160": [],
+    "e|80": [
+      "one",
+      "redo",
+      "[tool_use Read] {\"path\":\"a/b.txt\"} [tool_use Bash] {\"cmd\":\"ls\"}",
+      "data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+      "x data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+      "end"
+    ],
+    "e|160": [
+      "one",
+      "redo",
+      "[tool_use Read] {\"path\":\"a/b.txt\"} [tool_use Bash] {\"cmd\":\"ls\"}",
+      "data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+      "x data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA…",
+      "end"
+    ],
+    "thinking|80": [],
+    "thinking|160": [],
+    "tool_use|80": ["[tool_use Read] {\"path\":\"a/b.txt\"} [tool_use Bash] {\"cmd\":\"ls\"}"],
+    "tool_use|160": ["[tool_use Read] {\"path\":\"a/b.txt\"} [tool_use Bash] {\"cmd\":\"ls\"}"],
+    "user:|80": [],
+    "user:|160": []
+  },
+  "inputPreviews": ["{\"cmd\":\"ls\"}", "{\"path\":\"a/b.txt\"}"],
+  "firstPrompt": "one",
+  "dumpMarkdown": "# Session: fx-three\n**Model**: model-x\n**Date**: 2026-01-01T00:00:00.000Z\n**CWD**: `/proj/demo`\n\n## User\n\n> 📄 **Document**: (url https://example.test/d.pdf)\n\n## Assistant\n\nend\n",
+  "dumpXml": "<session id=\"fx-three\" model=\"model-x\" date=\"2026-01-01T00:00:00.000Z\">\n  <turn role=\"user\">\n    <document source=\"url\" ref=\"https://example.test/d.pdf\" />\n  </turn>\n  <turn role=\"assistant\">\n    <text>end</text>\n  </turn>\n</session>\n"
+}
