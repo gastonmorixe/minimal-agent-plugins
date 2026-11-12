@@ -54,3 +54,9 @@ Safety: UPDATE_REQUEST_GOLDENS=1 throws when CI is set. A test asserts that the
 golden files equal the scenario names (an extra golden fails).
 Size: each golden holds the full system and tools block (about 100 KB). Not deduped
 on purpose, see research/s0.1-worker2-report.md.
+
+## Extra plugin roots
+
+A scenario can set `pluginRoots: ({ root, cwd }) => string[]` to load more plugin
+dirs. The harness appends them after the plugins root. If the field is absent,
+only the plugins root loads, so existing goldens do not change.
