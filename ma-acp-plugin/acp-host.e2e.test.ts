@@ -259,6 +259,10 @@ function spawnAgent(
         MINIMAL_AGENT_HOME: join(home, ".minimal-agent"),
         // Load THIS plugins checkout, never a clone from GitHub.
         MINIMAL_AGENT_NO_PLUGIN_SYNC: "1",
+        // No plugin binary provisioning: every spawn would otherwise download
+        // obscura from GitHub into the empty home, and a failed download (no
+        // network, anonymous API rate limit) halts boot before ACP answers.
+        MINIMAL_AGENT_NO_BINARY_SETUP: "1",
         MINIMAL_AGENT_PLUGIN_SIBLINGS: options.pluginRoot ?? PLUGINS_ROOT,
         NO_PROXY: "127.0.0.1,localhost",
         no_proxy: "127.0.0.1,localhost",

@@ -1,5 +1,6 @@
 import {
   appendFileSync,
+  chmodSync,
   closeSync,
   mkdirSync,
   openSync,
@@ -175,7 +176,9 @@ describe("fix3: readFdCapped reads cap + 1, never trusts the fstat size", () => 
 describe("fix3: readUserFileCapped (no root confinement)", () => {
   it("reads an absolute regular file at any path", () => {
     const p = join(outside, "user.txt")
-    writeFileSync(p, "hello", { mode: 0o644 })
+    writeFileSync(p, "hello")
+    // Set the mode explicitly: a default ACL or umask can mask the create mode.
+    chmodSync(p, 0o644)
     const r = readUserFileCapped(p, 100)
     expect("ok" in r && r.value?.text).toBe("hello")
     expect("ok" in r && r.value?.mode).toBe(0o644)
