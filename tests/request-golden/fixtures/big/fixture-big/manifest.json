@@ -1,0 +1,25 @@
+{
+  "id": "fixture-big",
+  "name": "Fixture big",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool handler returns 1100 rows.",
+  "headless": {
+    "tools": [
+      {
+        "id": "fixture_big",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "FixtureBig",
+            "description": "Test fixture tool. Returns many rows.",
+            "input_schema": { "type": "object", "properties": {}, "additionalProperties": false },
+            "explicitName": true,
+            "reason": "fixture name is explicit"
+          }
+        },
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "interactive": false
+      }
+    ]
+  }
+}

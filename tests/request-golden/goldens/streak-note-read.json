@@ -1,0 +1,1898 @@
+{
+  "requests": [
+    {
+      "messages": [
+        {
+          "content": [
+            {
+              "text": "read the big file three times",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": [
+            {
+              "id": "call-1-0",
+              "input": {
+                "file_path": "big.txt"
+              },
+              "name": "Read",
+              "type": "tool_use"
+            }
+          ],
+          "role": "assistant"
+        },
+        {
+          "content": [
+            {
+              "content": "1\tl\n2\tl\n3\tl\n4\tl\n5\tl\n6\tl\n7\tl\n8\tl\n9\tl\n10\tl\n11\tl\n12\tl\n13\tl\n14\tl\n15\tl\n16\tl\n17\tl\n18\tl\n19\tl\n20\tl\n21\tl\n22\tl\n23\tl\n24\tl\n25\tl\n26\tl\n27\tl\n28\tl\n29\tl\n30\tl\n31\tl\n32\tl\n33\tl\n34\tl\n35\tl\n36\tl\n37\tl\n38\tl\n39\tl\n40\tl\n41\tl\n42\tl\n43\tl\n44\tl\n45\tl\n46\tl\n47\tl\n48\tl\n49\tl\n50\tl\n51\tl\n52\tl\n53\tl\n54\tl\n55\tl\n56\tl\n57\tl\n58\tl\n59\tl\n60\tl\n61\tl\n62\tl\n63\tl\n64\tl\n65\tl\n66\tl\n67\tl\n68\tl\n69\tl\n70\tl\n71\tl\n72\tl\n73\tl\n74\tl\n75\tl\n76\tl\n77\tl\n78\tl\n79\tl\n80\tl\n81\tl\n82\tl\n83\tl\n84\tl\n85\tl\n86\tl\n87\tl\n88\tl\n89\tl\n90\tl\n91\tl\n92\tl\n93\tl\n94\tl\n95\tl\n96\tl\n97\tl\n98\tl\n99\tl\n100\tl\n101\tl\n102\tl\n103\tl\n104\tl\n105\tl\n106\tl\n107\tl\n108\tl\n109\tl\n110\tl\n111\tl\n112\tl\n113\tl\n114\tl\n115\tl\n116\tl\n117\tl\n118\tl\n119\tl\n120\tl\n121\tl\n122\tl\n123\tl\n124\tl\n125\tl\n126\tl\n127\tl\n128\tl\n129\tl\n130\tl\n131\tl\n132\tl\n133\tl\n134\tl\n135\tl\n136\tl\n137\tl\n138\tl\n139\tl\n140\tl\n141\tl\n142\tl\n143\tl\n144\tl\n145\tl\n146\tl\n147\tl\n148\tl\n149\tl\n150\tl\n151\tl\n152\tl\n153\tl\n154\tl\n155\tl\n156\tl\n157\tl\n158\tl\n159\tl\n160\tl\n161\tl\n162\tl\n163\tl\n164\tl\n165\tl\n166\tl\n167\tl\n168\tl\n169\tl\n170\tl\n171\tl\n172\tl\n173\tl\n174\tl\n175\tl\n176\tl\n177\tl\n178\tl\n179\tl\n180\tl\n181\tl\n182\tl\n183\tl\n184\tl\n185\tl\n186\tl\n187\tl\n188\tl\n189\tl\n190\tl\n191\tl\n192\tl\n193\tl\n194\tl\n195\tl\n196\tl\n197\tl\n198\tl\n199\tl\n200\tl\n201\tl\n202\tl\n203\tl\n204\tl\n205\tl\n206\tl\n207\tl\n208\tl\n209\tl\n210\tl\n211\tl\n212\tl\n213\tl\n214\tl\n215\tl\n216\tl\n217\tl\n218\tl\n219\tl\n220\tl\n221\tl\n222\tl\n223\tl\n224\tl\n225\tl\n226\tl\n227\tl\n228\tl\n229\tl\n230\tl\n231\tl\n232\tl\n233\tl\n234\tl\n235\tl\n236\tl\n237\tl\n238\tl\n239\tl\n240\tl\n241\tl\n242\tl\n243\tl\n244\tl\n245\tl\n246\tl\n247\tl\n248\tl\n249\tl\n250\tl\n251\tl\n252\tl\n253\tl\n254\tl\n255\tl\n256\tl\n257\tl\n258\tl\n259\tl\n260\tl\n261\tl\n262\tl\n263\tl\n264\tl\n265\tl\n266\tl\n267\tl\n268\tl\n269\tl\n270\tl\n271\tl\n272\tl\n273\tl\n274\tl\n275\tl\n276\tl\n277\tl\n278\tl\n279\tl\n280\tl\n281\tl\n282\tl\n283\tl\n284\tl\n285\tl\n286\tl\n287\tl\n288\tl\n289\tl\n290\tl\n291\tl\n292\tl\n293\tl\n294\tl\n295\tl\n296\tl\n297\tl\n298\tl\n299\tl\n300\tl\n301\tl\n302\tl\n303\tl\n304\tl\n305\tl\n306\tl\n307\tl\n308\tl\n309\tl\n310\tl\n311\tl\n312\tl\n313\tl\n314\tl\n315\tl\n316\tl\n317\tl\n318\tl\n319\tl\n320\tl\n321\tl\n322\tl\n323\tl\n324\tl\n325\tl\n326\tl\n327\tl\n328\tl\n329\tl\n330\tl\n331\tl\n332\tl\n333\tl\n334\tl\n335\tl\n336\tl\n337\tl\n338\tl\n339\tl\n340\tl\n341\tl\n342\tl\n343\tl\n344\tl\n345\tl\n346\tl\n347\tl\n348\tl\n349\tl\n350\tl\n351\tl\n352\tl\n353\tl\n354\tl\n355\tl\n356\tl\n357\tl\n358\tl\n359\tl\n360\tl\n361\tl\n362\tl\n363\tl\n364\tl\n365\tl\n366\tl\n367\tl\n368\tl\n369\tl\n370\tl\n371\tl\n372\tl\n373\tl\n374\tl\n375\tl\n376\tl\n377\tl\n378\tl\n379\tl\n380\tl\n381\tl\n382\tl\n383\tl\n384\tl\n385\tl\n386\tl\n387\tl\n388\tl\n389\tl\n390\tl\n391\tl\n392\tl\n393\tl\n394\tl\n395\tl\n396\tl\n397\tl\n398\tl\n399\tl\n400\tl\n401\tl\n402\tl\n403\tl\n404\tl\n405\tl\n406\tl\n407\tl\n408\tl\n409\tl\n410\tl\n411\tl\n412\tl\n413\tl\n414\tl\n415\tl\n416\tl\n417\tl\n418\tl\n419\tl\n420\tl\n421\tl\n422\tl\n423\tl\n424\tl\n425\tl\n426\tl\n427\tl\n428\tl\n429\tl\n430\tl\n431\tl\n432\tl\n433\tl\n434\tl\n435\tl\n436\tl\n437\tl\n438\tl\n439\tl\n440\tl\n441\tl\n442\tl\n443\tl\n444\tl\n445\tl\n446\tl\n447\tl\n448\tl\n449\tl\n450\tl\n451\tl\n452\tl\n453\tl\n454\tl\n455\tl\n456\tl\n457\tl\n458\tl\n459\tl\n460\tl\n461\tl\n462\tl\n463\tl\n464\tl\n465\tl\n466\tl\n467\tl\n468\tl\n469\tl\n470\tl\n471\tl\n472\tl\n473\tl\n474\tl\n475\tl\n476\tl\n477\tl\n478\tl\n479\tl\n480\tl\n481\tl\n482\tl\n483\tl\n484\tl\n485\tl\n486\tl\n487\tl\n488\tl\n489\tl\n490\tl\n491\tl\n492\tl\n493\tl\n494\tl\n495\tl\n496\tl\n497\tl\n498\tl\n499\tl\n500\tl\n501\tl\n502\tl\n503\tl\n504\tl\n505\tl\n506\tl\n507\tl\n508\tl\n509\tl\n510\tl\n511\tl\n512\tl\n513\tl\n514\tl\n515\tl\n516\tl\n517\tl\n518\tl\n519\tl\n520\tl\n521\tl\n522\tl\n523\tl\n524\tl\n525\tl\n526\tl\n527\tl\n528\tl\n529\tl\n530\tl\n531\tl\n532\tl\n533\tl\n534\tl\n535\tl\n536\tl\n537\tl\n538\tl\n539\tl\n540\tl\n541\tl\n542\tl\n543\tl\n544\tl\n545\tl\n546\tl\n547\tl\n548\tl\n549\tl\n550\tl\n551\tl\n552\tl\n553\tl\n554\tl\n555\tl\n556\tl\n557\tl\n558\tl\n559\tl\n560\tl\n561\tl\n562\tl\n563\tl\n564\tl\n565\tl\n566\tl\n567\tl\n568\tl\n569\tl\n570\tl\n571\tl\n572\tl\n573\tl\n574\tl\n575\tl\n576\tl\n577\tl\n578\tl\n579\tl\n580\tl\n581\tl\n582\tl\n583\tl\n584\tl\n585\tl\n586\tl\n587\tl\n588\tl\n589\tl\n590\tl\n591\tl\n592\tl\n593\tl\n594\tl\n595\tl\n596\tl\n597\tl\n598\tl\n599\tl\n600\tl\n601\tl\n602\tl\n603\tl\n604\tl\n605\tl\n606\tl\n607\tl\n608\tl\n609\tl\n610\tl\n611\tl\n612\tl\n613\tl\n614\tl\n615\tl\n616\tl\n617\tl\n618\tl\n619\tl\n620\tl\n621\tl\n622\tl\n623\tl\n624\tl\n625\tl\n626\tl\n627\tl\n628\tl\n629\tl\n630\tl\n631\tl\n632\tl\n633\tl\n634\tl\n635\tl\n636\tl\n637\tl\n638\tl\n639\tl\n640\tl\n641\tl\n642\tl\n643\tl\n644\tl\n645\tl\n646\tl\n647\tl\n648\tl\n649\tl\n650\tl\n651\tl\n652\tl\n653\tl\n654\tl\n655\tl\n656\tl\n657\tl\n658\tl\n659\tl\n660\tl\n661\tl\n662\tl\n663\tl\n664\tl\n665\tl\n666\tl\n667\tl\n668\tl\n669\tl\n670\tl\n671\tl\n672\tl\n673\tl\n674\tl\n675\tl\n676\tl\n677\tl\n678\tl\n679\tl\n680\tl\n681\tl\n682\tl\n683\tl\n684\tl\n685\tl\n686\tl\n687\tl\n688\tl\n689\tl\n690\tl\n691\tl\n692\tl\n693\tl\n694\tl\n695\tl\n696\tl\n697\tl\n698\tl\n699\tl\n700\tl\n701\tl\n702\tl\n703\tl\n704\tl\n705\tl\n706\tl\n707\tl\n708\tl\n709\tl\n710\tl\n711\tl\n712\tl\n713\tl\n714\tl\n715\tl\n716\tl\n717\tl\n718\tl\n719\tl\n720\tl\n721\tl\n722\tl\n723\tl\n724\tl\n725\tl\n726\tl\n727\tl\n728\tl\n729\tl\n730\tl\n731\tl\n732\tl\n733\tl\n734\tl\n735\tl\n736\tl\n737\tl\n738\tl\n739\tl\n740\tl\n741\tl\n742\tl\n743\tl\n744\tl\n745\tl\n746\tl\n747\tl\n748\tl\n749\tl\n750\tl\n751\tl\n752\tl\n753\tl\n754\tl\n755\tl\n756\tl\n757\tl\n758\tl\n759\tl\n760\tl\n761\tl\n762\tl\n763\tl\n764\tl\n765\tl\n766\tl\n767\tl\n768\tl\n769\tl\n770\tl\n771\tl\n772\tl\n773\tl\n774\tl\n775\tl\n776\tl\n777\tl\n778\tl\n779\tl\n780\tl\n781\tl\n782\tl\n783\tl\n784\tl\n785\tl\n786\tl\n787\tl\n788\tl\n789\tl\n790\tl\n791\tl\n792\tl\n793\tl\n794\tl\n795\tl\n796\tl\n797\tl\n798\tl\n799\tl\n800\tl\n801\tl\n802\tl\n803\tl\n804\tl\n805\tl\n806\tl\n807\tl\n808\tl\n809\tl\n810\tl\n811\tl\n812\tl\n813\tl\n814\tl\n815\tl\n816\tl\n817\tl\n818\tl\n819\tl\n820\tl\n821\tl\n822\tl\n823\tl\n824\tl\n825\tl\n826\tl\n827\tl\n828\tl\n829\tl\n830\tl\n831\tl\n832\tl\n833\tl\n834\tl\n835\tl\n836\tl\n837\tl\n838\tl\n839\tl\n840\tl\n841\tl\n842\tl\n843\tl\n844\tl\n845\tl\n846\tl\n847\tl\n848\tl\n849\tl\n850\tl\n851\tl\n852\tl\n853\tl\n854\tl\n855\tl\n856\tl\n857\tl\n858\tl\n859\tl\n860\tl\n861\tl\n862\tl\n863\tl\n864\tl\n865\tl\n866\tl\n867\tl\n868\tl\n869\tl\n870\tl\n871\tl\n872\tl\n873\tl\n874\tl\n875\tl\n876\tl\n877\tl\n878\tl\n879\tl\n880\tl\n881\tl\n882\tl\n883\tl\n884\tl\n885\tl\n886\tl\n887\tl\n888\tl\n889\tl\n890\tl\n891\tl\n892\tl\n893\tl\n894\tl\n895\tl\n896\tl\n897\tl\n898\tl\n899\tl\n900\tl\n901\tl\n902\tl\n903\tl\n904\tl\n905\tl\n906\tl\n907\tl\n908\tl\n909\tl\n910\tl\n911\tl\n912\tl\n913\tl\n914\tl\n915\tl\n916\tl\n917\tl\n918\tl\n919\tl\n920\tl\n921\tl\n922\tl\n923\tl\n924\tl\n925\tl\n926\tl\n927\tl\n928\tl\n929\tl\n930\tl\n931\tl\n932\tl\n933\tl\n934\tl\n935\tl\n936\tl\n937\tl\n938\tl\n939\tl\n940\tl\n941\tl\n942\tl\n943\tl\n944\tl\n945\tl\n946\tl\n947\tl\n948\tl\n949\tl\n950\tl\n951\tl\n952\tl\n953\tl\n954\tl\n955\tl\n956\tl\n957\tl\n958\tl\n959\tl\n960\tl\n961\tl\n962\tl\n963\tl\n964\tl\n965\tl\n966\tl\n967\tl\n968\tl\n969\tl\n970\tl\n971\tl\n972\tl\n973\tl\n974\tl\n975\tl\n976\tl\n977\tl\n978\tl\n979\tl\n980\tl\n981\tl\n982\tl\n983\tl\n984\tl\n985\tl\n986\tl\n987\tl\n988\tl\n989\tl\n990\tl\n991\tl\n992\tl\n993\tl\n994\tl\n995\tl\n996\tl\n997\tl\n998\tl\n999\tl\n1000\tl\n\n[truncated: shown 5892 of 2200 bytes, 1000/1101 lines, cut at byte 5892, line 1000. to continue, call Read with offset=1000 (and limit as needed).]\n\n<ma::agent::output-preview shown=\"15\" total=\"1000\" tool=\"Read\">the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).</ma::agent::output-preview>",
+              "is_error": false,
+              "tool_use_id": "call-1-0",
+              "type": "tool_result"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": [
+            {
+              "id": "call-2-0",
+              "input": {
+                "file_path": "big.txt"
+              },
+              "name": "Read",
+              "type": "tool_use"
+            }
+          ],
+          "role": "assistant"
+        },
+        {
+          "content": [
+            {
+              "content": "1\tl\n2\tl\n3\tl\n4\tl\n5\tl\n6\tl\n7\tl\n8\tl\n9\tl\n10\tl\n11\tl\n12\tl\n13\tl\n14\tl\n15\tl\n16\tl\n17\tl\n18\tl\n19\tl\n20\tl\n21\tl\n22\tl\n23\tl\n24\tl\n25\tl\n26\tl\n27\tl\n28\tl\n29\tl\n30\tl\n31\tl\n32\tl\n33\tl\n34\tl\n35\tl\n36\tl\n37\tl\n38\tl\n39\tl\n40\tl\n41\tl\n42\tl\n43\tl\n44\tl\n45\tl\n46\tl\n47\tl\n48\tl\n49\tl\n50\tl\n51\tl\n52\tl\n53\tl\n54\tl\n55\tl\n56\tl\n57\tl\n58\tl\n59\tl\n60\tl\n61\tl\n62\tl\n63\tl\n64\tl\n65\tl\n66\tl\n67\tl\n68\tl\n69\tl\n70\tl\n71\tl\n72\tl\n73\tl\n74\tl\n75\tl\n76\tl\n77\tl\n78\tl\n79\tl\n80\tl\n81\tl\n82\tl\n83\tl\n84\tl\n85\tl\n86\tl\n87\tl\n88\tl\n89\tl\n90\tl\n91\tl\n92\tl\n93\tl\n94\tl\n95\tl\n96\tl\n97\tl\n98\tl\n99\tl\n100\tl\n101\tl\n102\tl\n103\tl\n104\tl\n105\tl\n106\tl\n107\tl\n108\tl\n109\tl\n110\tl\n111\tl\n112\tl\n113\tl\n114\tl\n115\tl\n116\tl\n117\tl\n118\tl\n119\tl\n120\tl\n121\tl\n122\tl\n123\tl\n124\tl\n125\tl\n126\tl\n127\tl\n128\tl\n129\tl\n130\tl\n131\tl\n132\tl\n133\tl\n134\tl\n135\tl\n136\tl\n137\tl\n138\tl\n139\tl\n140\tl\n141\tl\n142\tl\n143\tl\n144\tl\n145\tl\n146\tl\n147\tl\n148\tl\n149\tl\n150\tl\n151\tl\n152\tl\n153\tl\n154\tl\n155\tl\n156\tl\n157\tl\n158\tl\n159\tl\n160\tl\n161\tl\n162\tl\n163\tl\n164\tl\n165\tl\n166\tl\n167\tl\n168\tl\n169\tl\n170\tl\n171\tl\n172\tl\n173\tl\n174\tl\n175\tl\n176\tl\n177\tl\n178\tl\n179\tl\n180\tl\n181\tl\n182\tl\n183\tl\n184\tl\n185\tl\n186\tl\n187\tl\n188\tl\n189\tl\n190\tl\n191\tl\n192\tl\n193\tl\n194\tl\n195\tl\n196\tl\n197\tl\n198\tl\n199\tl\n200\tl\n201\tl\n202\tl\n203\tl\n204\tl\n205\tl\n206\tl\n207\tl\n208\tl\n209\tl\n210\tl\n211\tl\n212\tl\n213\tl\n214\tl\n215\tl\n216\tl\n217\tl\n218\tl\n219\tl\n220\tl\n221\tl\n222\tl\n223\tl\n224\tl\n225\tl\n226\tl\n227\tl\n228\tl\n229\tl\n230\tl\n231\tl\n232\tl\n233\tl\n234\tl\n235\tl\n236\tl\n237\tl\n238\tl\n239\tl\n240\tl\n241\tl\n242\tl\n243\tl\n244\tl\n245\tl\n246\tl\n247\tl\n248\tl\n249\tl\n250\tl\n251\tl\n252\tl\n253\tl\n254\tl\n255\tl\n256\tl\n257\tl\n258\tl\n259\tl\n260\tl\n261\tl\n262\tl\n263\tl\n264\tl\n265\tl\n266\tl\n267\tl\n268\tl\n269\tl\n270\tl\n271\tl\n272\tl\n273\tl\n274\tl\n275\tl\n276\tl\n277\tl\n278\tl\n279\tl\n280\tl\n281\tl\n282\tl\n283\tl\n284\tl\n285\tl\n286\tl\n287\tl\n288\tl\n289\tl\n290\tl\n291\tl\n292\tl\n293\tl\n294\tl\n295\tl\n296\tl\n297\tl\n298\tl\n299\tl\n300\tl\n301\tl\n302\tl\n303\tl\n304\tl\n305\tl\n306\tl\n307\tl\n308\tl\n309\tl\n310\tl\n311\tl\n312\tl\n313\tl\n314\tl\n315\tl\n316\tl\n317\tl\n318\tl\n319\tl\n320\tl\n321\tl\n322\tl\n323\tl\n324\tl\n325\tl\n326\tl\n327\tl\n328\tl\n329\tl\n330\tl\n331\tl\n332\tl\n333\tl\n334\tl\n335\tl\n336\tl\n337\tl\n338\tl\n339\tl\n340\tl\n341\tl\n342\tl\n343\tl\n344\tl\n345\tl\n346\tl\n347\tl\n348\tl\n349\tl\n350\tl\n351\tl\n352\tl\n353\tl\n354\tl\n355\tl\n356\tl\n357\tl\n358\tl\n359\tl\n360\tl\n361\tl\n362\tl\n363\tl\n364\tl\n365\tl\n366\tl\n367\tl\n368\tl\n369\tl\n370\tl\n371\tl\n372\tl\n373\tl\n374\tl\n375\tl\n376\tl\n377\tl\n378\tl\n379\tl\n380\tl\n381\tl\n382\tl\n383\tl\n384\tl\n385\tl\n386\tl\n387\tl\n388\tl\n389\tl\n390\tl\n391\tl\n392\tl\n393\tl\n394\tl\n395\tl\n396\tl\n397\tl\n398\tl\n399\tl\n400\tl\n401\tl\n402\tl\n403\tl\n404\tl\n405\tl\n406\tl\n407\tl\n408\tl\n409\tl\n410\tl\n411\tl\n412\tl\n413\tl\n414\tl\n415\tl\n416\tl\n417\tl\n418\tl\n419\tl\n420\tl\n421\tl\n422\tl\n423\tl\n424\tl\n425\tl\n426\tl\n427\tl\n428\tl\n429\tl\n430\tl\n431\tl\n432\tl\n433\tl\n434\tl\n435\tl\n436\tl\n437\tl\n438\tl\n439\tl\n440\tl\n441\tl\n442\tl\n443\tl\n444\tl\n445\tl\n446\tl\n447\tl\n448\tl\n449\tl\n450\tl\n451\tl\n452\tl\n453\tl\n454\tl\n455\tl\n456\tl\n457\tl\n458\tl\n459\tl\n460\tl\n461\tl\n462\tl\n463\tl\n464\tl\n465\tl\n466\tl\n467\tl\n468\tl\n469\tl\n470\tl\n471\tl\n472\tl\n473\tl\n474\tl\n475\tl\n476\tl\n477\tl\n478\tl\n479\tl\n480\tl\n481\tl\n482\tl\n483\tl\n484\tl\n485\tl\n486\tl\n487\tl\n488\tl\n489\tl\n490\tl\n491\tl\n492\tl\n493\tl\n494\tl\n495\tl\n496\tl\n497\tl\n498\tl\n499\tl\n500\tl\n501\tl\n502\tl\n503\tl\n504\tl\n505\tl\n506\tl\n507\tl\n508\tl\n509\tl\n510\tl\n511\tl\n512\tl\n513\tl\n514\tl\n515\tl\n516\tl\n517\tl\n518\tl\n519\tl\n520\tl\n521\tl\n522\tl\n523\tl\n524\tl\n525\tl\n526\tl\n527\tl\n528\tl\n529\tl\n530\tl\n531\tl\n532\tl\n533\tl\n534\tl\n535\tl\n536\tl\n537\tl\n538\tl\n539\tl\n540\tl\n541\tl\n542\tl\n543\tl\n544\tl\n545\tl\n546\tl\n547\tl\n548\tl\n549\tl\n550\tl\n551\tl\n552\tl\n553\tl\n554\tl\n555\tl\n556\tl\n557\tl\n558\tl\n559\tl\n560\tl\n561\tl\n562\tl\n563\tl\n564\tl\n565\tl\n566\tl\n567\tl\n568\tl\n569\tl\n570\tl\n571\tl\n572\tl\n573\tl\n574\tl\n575\tl\n576\tl\n577\tl\n578\tl\n579\tl\n580\tl\n581\tl\n582\tl\n583\tl\n584\tl\n585\tl\n586\tl\n587\tl\n588\tl\n589\tl\n590\tl\n591\tl\n592\tl\n593\tl\n594\tl\n595\tl\n596\tl\n597\tl\n598\tl\n599\tl\n600\tl\n601\tl\n602\tl\n603\tl\n604\tl\n605\tl\n606\tl\n607\tl\n608\tl\n609\tl\n610\tl\n611\tl\n612\tl\n613\tl\n614\tl\n615\tl\n616\tl\n617\tl\n618\tl\n619\tl\n620\tl\n621\tl\n622\tl\n623\tl\n624\tl\n625\tl\n626\tl\n627\tl\n628\tl\n629\tl\n630\tl\n631\tl\n632\tl\n633\tl\n634\tl\n635\tl\n636\tl\n637\tl\n638\tl\n639\tl\n640\tl\n641\tl\n642\tl\n643\tl\n644\tl\n645\tl\n646\tl\n647\tl\n648\tl\n649\tl\n650\tl\n651\tl\n652\tl\n653\tl\n654\tl\n655\tl\n656\tl\n657\tl\n658\tl\n659\tl\n660\tl\n661\tl\n662\tl\n663\tl\n664\tl\n665\tl\n666\tl\n667\tl\n668\tl\n669\tl\n670\tl\n671\tl\n672\tl\n673\tl\n674\tl\n675\tl\n676\tl\n677\tl\n678\tl\n679\tl\n680\tl\n681\tl\n682\tl\n683\tl\n684\tl\n685\tl\n686\tl\n687\tl\n688\tl\n689\tl\n690\tl\n691\tl\n692\tl\n693\tl\n694\tl\n695\tl\n696\tl\n697\tl\n698\tl\n699\tl\n700\tl\n701\tl\n702\tl\n703\tl\n704\tl\n705\tl\n706\tl\n707\tl\n708\tl\n709\tl\n710\tl\n711\tl\n712\tl\n713\tl\n714\tl\n715\tl\n716\tl\n717\tl\n718\tl\n719\tl\n720\tl\n721\tl\n722\tl\n723\tl\n724\tl\n725\tl\n726\tl\n727\tl\n728\tl\n729\tl\n730\tl\n731\tl\n732\tl\n733\tl\n734\tl\n735\tl\n736\tl\n737\tl\n738\tl\n739\tl\n740\tl\n741\tl\n742\tl\n743\tl\n744\tl\n745\tl\n746\tl\n747\tl\n748\tl\n749\tl\n750\tl\n751\tl\n752\tl\n753\tl\n754\tl\n755\tl\n756\tl\n757\tl\n758\tl\n759\tl\n760\tl\n761\tl\n762\tl\n763\tl\n764\tl\n765\tl\n766\tl\n767\tl\n768\tl\n769\tl\n770\tl\n771\tl\n772\tl\n773\tl\n774\tl\n775\tl\n776\tl\n777\tl\n778\tl\n779\tl\n780\tl\n781\tl\n782\tl\n783\tl\n784\tl\n785\tl\n786\tl\n787\tl\n788\tl\n789\tl\n790\tl\n791\tl\n792\tl\n793\tl\n794\tl\n795\tl\n796\tl\n797\tl\n798\tl\n799\tl\n800\tl\n801\tl\n802\tl\n803\tl\n804\tl\n805\tl\n806\tl\n807\tl\n808\tl\n809\tl\n810\tl\n811\tl\n812\tl\n813\tl\n814\tl\n815\tl\n816\tl\n817\tl\n818\tl\n819\tl\n820\tl\n821\tl\n822\tl\n823\tl\n824\tl\n825\tl\n826\tl\n827\tl\n828\tl\n829\tl\n830\tl\n831\tl\n832\tl\n833\tl\n834\tl\n835\tl\n836\tl\n837\tl\n838\tl\n839\tl\n840\tl\n841\tl\n842\tl\n843\tl\n844\tl\n845\tl\n846\tl\n847\tl\n848\tl\n849\tl\n850\tl\n851\tl\n852\tl\n853\tl\n854\tl\n855\tl\n856\tl\n857\tl\n858\tl\n859\tl\n860\tl\n861\tl\n862\tl\n863\tl\n864\tl\n865\tl\n866\tl\n867\tl\n868\tl\n869\tl\n870\tl\n871\tl\n872\tl\n873\tl\n874\tl\n875\tl\n876\tl\n877\tl\n878\tl\n879\tl\n880\tl\n881\tl\n882\tl\n883\tl\n884\tl\n885\tl\n886\tl\n887\tl\n888\tl\n889\tl\n890\tl\n891\tl\n892\tl\n893\tl\n894\tl\n895\tl\n896\tl\n897\tl\n898\tl\n899\tl\n900\tl\n901\tl\n902\tl\n903\tl\n904\tl\n905\tl\n906\tl\n907\tl\n908\tl\n909\tl\n910\tl\n911\tl\n912\tl\n913\tl\n914\tl\n915\tl\n916\tl\n917\tl\n918\tl\n919\tl\n920\tl\n921\tl\n922\tl\n923\tl\n924\tl\n925\tl\n926\tl\n927\tl\n928\tl\n929\tl\n930\tl\n931\tl\n932\tl\n933\tl\n934\tl\n935\tl\n936\tl\n937\tl\n938\tl\n939\tl\n940\tl\n941\tl\n942\tl\n943\tl\n944\tl\n945\tl\n946\tl\n947\tl\n948\tl\n949\tl\n950\tl\n951\tl\n952\tl\n953\tl\n954\tl\n955\tl\n956\tl\n957\tl\n958\tl\n959\tl\n960\tl\n961\tl\n962\tl\n963\tl\n964\tl\n965\tl\n966\tl\n967\tl\n968\tl\n969\tl\n970\tl\n971\tl\n972\tl\n973\tl\n974\tl\n975\tl\n976\tl\n977\tl\n978\tl\n979\tl\n980\tl\n981\tl\n982\tl\n983\tl\n984\tl\n985\tl\n986\tl\n987\tl\n988\tl\n989\tl\n990\tl\n991\tl\n992\tl\n993\tl\n994\tl\n995\tl\n996\tl\n997\tl\n998\tl\n999\tl\n1000\tl\n\n[truncated: shown 5892 of 2200 bytes, 1000/1101 lines, cut at byte 5892, line 1000. to continue, call Read with offset=1000 (and limit as needed).]\n\n<ma::agent::output-preview shown=\"15\" total=\"1000\" tool=\"Read\">the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).</ma::agent::output-preview>",
+              "is_error": false,
+              "tool_use_id": "call-2-0",
+              "type": "tool_result"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": [
+            {
+              "id": "call-3-0",
+              "input": {
+                "file_path": "big.txt"
+              },
+              "name": "Read",
+              "type": "tool_use"
+            }
+          ],
+          "role": "assistant"
+        },
+        {
+          "content": [
+            {
+              "cache_control": {
+                "ttl": "5m",
+                "type": "ephemeral"
+              },
+              "content": "1\tl\n2\tl\n3\tl\n4\tl\n5\tl\n6\tl\n7\tl\n8\tl\n9\tl\n10\tl\n11\tl\n12\tl\n13\tl\n14\tl\n15\tl\n16\tl\n17\tl\n18\tl\n19\tl\n20\tl\n21\tl\n22\tl\n23\tl\n24\tl\n25\tl\n26\tl\n27\tl\n28\tl\n29\tl\n30\tl\n31\tl\n32\tl\n33\tl\n34\tl\n35\tl\n36\tl\n37\tl\n38\tl\n39\tl\n40\tl\n41\tl\n42\tl\n43\tl\n44\tl\n45\tl\n46\tl\n47\tl\n48\tl\n49\tl\n50\tl\n51\tl\n52\tl\n53\tl\n54\tl\n55\tl\n56\tl\n57\tl\n58\tl\n59\tl\n60\tl\n61\tl\n62\tl\n63\tl\n64\tl\n65\tl\n66\tl\n67\tl\n68\tl\n69\tl\n70\tl\n71\tl\n72\tl\n73\tl\n74\tl\n75\tl\n76\tl\n77\tl\n78\tl\n79\tl\n80\tl\n81\tl\n82\tl\n83\tl\n84\tl\n85\tl\n86\tl\n87\tl\n88\tl\n89\tl\n90\tl\n91\tl\n92\tl\n93\tl\n94\tl\n95\tl\n96\tl\n97\tl\n98\tl\n99\tl\n100\tl\n101\tl\n102\tl\n103\tl\n104\tl\n105\tl\n106\tl\n107\tl\n108\tl\n109\tl\n110\tl\n111\tl\n112\tl\n113\tl\n114\tl\n115\tl\n116\tl\n117\tl\n118\tl\n119\tl\n120\tl\n121\tl\n122\tl\n123\tl\n124\tl\n125\tl\n126\tl\n127\tl\n128\tl\n129\tl\n130\tl\n131\tl\n132\tl\n133\tl\n134\tl\n135\tl\n136\tl\n137\tl\n138\tl\n139\tl\n140\tl\n141\tl\n142\tl\n143\tl\n144\tl\n145\tl\n146\tl\n147\tl\n148\tl\n149\tl\n150\tl\n151\tl\n152\tl\n153\tl\n154\tl\n155\tl\n156\tl\n157\tl\n158\tl\n159\tl\n160\tl\n161\tl\n162\tl\n163\tl\n164\tl\n165\tl\n166\tl\n167\tl\n168\tl\n169\tl\n170\tl\n171\tl\n172\tl\n173\tl\n174\tl\n175\tl\n176\tl\n177\tl\n178\tl\n179\tl\n180\tl\n181\tl\n182\tl\n183\tl\n184\tl\n185\tl\n186\tl\n187\tl\n188\tl\n189\tl\n190\tl\n191\tl\n192\tl\n193\tl\n194\tl\n195\tl\n196\tl\n197\tl\n198\tl\n199\tl\n200\tl\n201\tl\n202\tl\n203\tl\n204\tl\n205\tl\n206\tl\n207\tl\n208\tl\n209\tl\n210\tl\n211\tl\n212\tl\n213\tl\n214\tl\n215\tl\n216\tl\n217\tl\n218\tl\n219\tl\n220\tl\n221\tl\n222\tl\n223\tl\n224\tl\n225\tl\n226\tl\n227\tl\n228\tl\n229\tl\n230\tl\n231\tl\n232\tl\n233\tl\n234\tl\n235\tl\n236\tl\n237\tl\n238\tl\n239\tl\n240\tl\n241\tl\n242\tl\n243\tl\n244\tl\n245\tl\n246\tl\n247\tl\n248\tl\n249\tl\n250\tl\n251\tl\n252\tl\n253\tl\n254\tl\n255\tl\n256\tl\n257\tl\n258\tl\n259\tl\n260\tl\n261\tl\n262\tl\n263\tl\n264\tl\n265\tl\n266\tl\n267\tl\n268\tl\n269\tl\n270\tl\n271\tl\n272\tl\n273\tl\n274\tl\n275\tl\n276\tl\n277\tl\n278\tl\n279\tl\n280\tl\n281\tl\n282\tl\n283\tl\n284\tl\n285\tl\n286\tl\n287\tl\n288\tl\n289\tl\n290\tl\n291\tl\n292\tl\n293\tl\n294\tl\n295\tl\n296\tl\n297\tl\n298\tl\n299\tl\n300\tl\n301\tl\n302\tl\n303\tl\n304\tl\n305\tl\n306\tl\n307\tl\n308\tl\n309\tl\n310\tl\n311\tl\n312\tl\n313\tl\n314\tl\n315\tl\n316\tl\n317\tl\n318\tl\n319\tl\n320\tl\n321\tl\n322\tl\n323\tl\n324\tl\n325\tl\n326\tl\n327\tl\n328\tl\n329\tl\n330\tl\n331\tl\n332\tl\n333\tl\n334\tl\n335\tl\n336\tl\n337\tl\n338\tl\n339\tl\n340\tl\n341\tl\n342\tl\n343\tl\n344\tl\n345\tl\n346\tl\n347\tl\n348\tl\n349\tl\n350\tl\n351\tl\n352\tl\n353\tl\n354\tl\n355\tl\n356\tl\n357\tl\n358\tl\n359\tl\n360\tl\n361\tl\n362\tl\n363\tl\n364\tl\n365\tl\n366\tl\n367\tl\n368\tl\n369\tl\n370\tl\n371\tl\n372\tl\n373\tl\n374\tl\n375\tl\n376\tl\n377\tl\n378\tl\n379\tl\n380\tl\n381\tl\n382\tl\n383\tl\n384\tl\n385\tl\n386\tl\n387\tl\n388\tl\n389\tl\n390\tl\n391\tl\n392\tl\n393\tl\n394\tl\n395\tl\n396\tl\n397\tl\n398\tl\n399\tl\n400\tl\n401\tl\n402\tl\n403\tl\n404\tl\n405\tl\n406\tl\n407\tl\n408\tl\n409\tl\n410\tl\n411\tl\n412\tl\n413\tl\n414\tl\n415\tl\n416\tl\n417\tl\n418\tl\n419\tl\n420\tl\n421\tl\n422\tl\n423\tl\n424\tl\n425\tl\n426\tl\n427\tl\n428\tl\n429\tl\n430\tl\n431\tl\n432\tl\n433\tl\n434\tl\n435\tl\n436\tl\n437\tl\n438\tl\n439\tl\n440\tl\n441\tl\n442\tl\n443\tl\n444\tl\n445\tl\n446\tl\n447\tl\n448\tl\n449\tl\n450\tl\n451\tl\n452\tl\n453\tl\n454\tl\n455\tl\n456\tl\n457\tl\n458\tl\n459\tl\n460\tl\n461\tl\n462\tl\n463\tl\n464\tl\n465\tl\n466\tl\n467\tl\n468\tl\n469\tl\n470\tl\n471\tl\n472\tl\n473\tl\n474\tl\n475\tl\n476\tl\n477\tl\n478\tl\n479\tl\n480\tl\n481\tl\n482\tl\n483\tl\n484\tl\n485\tl\n486\tl\n487\tl\n488\tl\n489\tl\n490\tl\n491\tl\n492\tl\n493\tl\n494\tl\n495\tl\n496\tl\n497\tl\n498\tl\n499\tl\n500\tl\n501\tl\n502\tl\n503\tl\n504\tl\n505\tl\n506\tl\n507\tl\n508\tl\n509\tl\n510\tl\n511\tl\n512\tl\n513\tl\n514\tl\n515\tl\n516\tl\n517\tl\n518\tl\n519\tl\n520\tl\n521\tl\n522\tl\n523\tl\n524\tl\n525\tl\n526\tl\n527\tl\n528\tl\n529\tl\n530\tl\n531\tl\n532\tl\n533\tl\n534\tl\n535\tl\n536\tl\n537\tl\n538\tl\n539\tl\n540\tl\n541\tl\n542\tl\n543\tl\n544\tl\n545\tl\n546\tl\n547\tl\n548\tl\n549\tl\n550\tl\n551\tl\n552\tl\n553\tl\n554\tl\n555\tl\n556\tl\n557\tl\n558\tl\n559\tl\n560\tl\n561\tl\n562\tl\n563\tl\n564\tl\n565\tl\n566\tl\n567\tl\n568\tl\n569\tl\n570\tl\n571\tl\n572\tl\n573\tl\n574\tl\n575\tl\n576\tl\n577\tl\n578\tl\n579\tl\n580\tl\n581\tl\n582\tl\n583\tl\n584\tl\n585\tl\n586\tl\n587\tl\n588\tl\n589\tl\n590\tl\n591\tl\n592\tl\n593\tl\n594\tl\n595\tl\n596\tl\n597\tl\n598\tl\n599\tl\n600\tl\n601\tl\n602\tl\n603\tl\n604\tl\n605\tl\n606\tl\n607\tl\n608\tl\n609\tl\n610\tl\n611\tl\n612\tl\n613\tl\n614\tl\n615\tl\n616\tl\n617\tl\n618\tl\n619\tl\n620\tl\n621\tl\n622\tl\n623\tl\n624\tl\n625\tl\n626\tl\n627\tl\n628\tl\n629\tl\n630\tl\n631\tl\n632\tl\n633\tl\n634\tl\n635\tl\n636\tl\n637\tl\n638\tl\n639\tl\n640\tl\n641\tl\n642\tl\n643\tl\n644\tl\n645\tl\n646\tl\n647\tl\n648\tl\n649\tl\n650\tl\n651\tl\n652\tl\n653\tl\n654\tl\n655\tl\n656\tl\n657\tl\n658\tl\n659\tl\n660\tl\n661\tl\n662\tl\n663\tl\n664\tl\n665\tl\n666\tl\n667\tl\n668\tl\n669\tl\n670\tl\n671\tl\n672\tl\n673\tl\n674\tl\n675\tl\n676\tl\n677\tl\n678\tl\n679\tl\n680\tl\n681\tl\n682\tl\n683\tl\n684\tl\n685\tl\n686\tl\n687\tl\n688\tl\n689\tl\n690\tl\n691\tl\n692\tl\n693\tl\n694\tl\n695\tl\n696\tl\n697\tl\n698\tl\n699\tl\n700\tl\n701\tl\n702\tl\n703\tl\n704\tl\n705\tl\n706\tl\n707\tl\n708\tl\n709\tl\n710\tl\n711\tl\n712\tl\n713\tl\n714\tl\n715\tl\n716\tl\n717\tl\n718\tl\n719\tl\n720\tl\n721\tl\n722\tl\n723\tl\n724\tl\n725\tl\n726\tl\n727\tl\n728\tl\n729\tl\n730\tl\n731\tl\n732\tl\n733\tl\n734\tl\n735\tl\n736\tl\n737\tl\n738\tl\n739\tl\n740\tl\n741\tl\n742\tl\n743\tl\n744\tl\n745\tl\n746\tl\n747\tl\n748\tl\n749\tl\n750\tl\n751\tl\n752\tl\n753\tl\n754\tl\n755\tl\n756\tl\n757\tl\n758\tl\n759\tl\n760\tl\n761\tl\n762\tl\n763\tl\n764\tl\n765\tl\n766\tl\n767\tl\n768\tl\n769\tl\n770\tl\n771\tl\n772\tl\n773\tl\n774\tl\n775\tl\n776\tl\n777\tl\n778\tl\n779\tl\n780\tl\n781\tl\n782\tl\n783\tl\n784\tl\n785\tl\n786\tl\n787\tl\n788\tl\n789\tl\n790\tl\n791\tl\n792\tl\n793\tl\n794\tl\n795\tl\n796\tl\n797\tl\n798\tl\n799\tl\n800\tl\n801\tl\n802\tl\n803\tl\n804\tl\n805\tl\n806\tl\n807\tl\n808\tl\n809\tl\n810\tl\n811\tl\n812\tl\n813\tl\n814\tl\n815\tl\n816\tl\n817\tl\n818\tl\n819\tl\n820\tl\n821\tl\n822\tl\n823\tl\n824\tl\n825\tl\n826\tl\n827\tl\n828\tl\n829\tl\n830\tl\n831\tl\n832\tl\n833\tl\n834\tl\n835\tl\n836\tl\n837\tl\n838\tl\n839\tl\n840\tl\n841\tl\n842\tl\n843\tl\n844\tl\n845\tl\n846\tl\n847\tl\n848\tl\n849\tl\n850\tl\n851\tl\n852\tl\n853\tl\n854\tl\n855\tl\n856\tl\n857\tl\n858\tl\n859\tl\n860\tl\n861\tl\n862\tl\n863\tl\n864\tl\n865\tl\n866\tl\n867\tl\n868\tl\n869\tl\n870\tl\n871\tl\n872\tl\n873\tl\n874\tl\n875\tl\n876\tl\n877\tl\n878\tl\n879\tl\n880\tl\n881\tl\n882\tl\n883\tl\n884\tl\n885\tl\n886\tl\n887\tl\n888\tl\n889\tl\n890\tl\n891\tl\n892\tl\n893\tl\n894\tl\n895\tl\n896\tl\n897\tl\n898\tl\n899\tl\n900\tl\n901\tl\n902\tl\n903\tl\n904\tl\n905\tl\n906\tl\n907\tl\n908\tl\n909\tl\n910\tl\n911\tl\n912\tl\n913\tl\n914\tl\n915\tl\n916\tl\n917\tl\n918\tl\n919\tl\n920\tl\n921\tl\n922\tl\n923\tl\n924\tl\n925\tl\n926\tl\n927\tl\n928\tl\n929\tl\n930\tl\n931\tl\n932\tl\n933\tl\n934\tl\n935\tl\n936\tl\n937\tl\n938\tl\n939\tl\n940\tl\n941\tl\n942\tl\n943\tl\n944\tl\n945\tl\n946\tl\n947\tl\n948\tl\n949\tl\n950\tl\n951\tl\n952\tl\n953\tl\n954\tl\n955\tl\n956\tl\n957\tl\n958\tl\n959\tl\n960\tl\n961\tl\n962\tl\n963\tl\n964\tl\n965\tl\n966\tl\n967\tl\n968\tl\n969\tl\n970\tl\n971\tl\n972\tl\n973\tl\n974\tl\n975\tl\n976\tl\n977\tl\n978\tl\n979\tl\n980\tl\n981\tl\n982\tl\n983\tl\n984\tl\n985\tl\n986\tl\n987\tl\n988\tl\n989\tl\n990\tl\n991\tl\n992\tl\n993\tl\n994\tl\n995\tl\n996\tl\n997\tl\n998\tl\n999\tl\n1000\tl\n\n[truncated: shown 5892 of 2200 bytes, 1000/1101 lines, cut at byte 5892, line 1000. to continue, call Read with offset=1000 (and limit as needed).]\n\n[note: you've truncated 3 Read calls in a row. Use the totals from the last [truncated: ...] notice to compute a single offset+limit that lands where you need to read, instead of paging from byte 0.]\n\n<ma::agent::output-preview shown=\"15\" total=\"1000\" tool=\"Read\">the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).</ma::agent::output-preview>",
+              "is_error": false,
+              "tool_use_id": "call-3-0",
+              "type": "tool_result"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "model": "test-model",
+      "system": [
+        {
+          "text": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.",
+          "type": "text"
+        },
+        {
+          "cache_control": {
+            "scope": "global",
+            "ttl": "5m",
+            "type": "ephemeral"
+          },
+          "text": "# Instructions\n\n- Be concise and direct in responses.\n- When given a task, do it without unnecessary explanation.\n- If you need to use tools, use them efficiently.\n- **Trust the user.** The user is the authority on their situation, their machine, and what they are telling you. Take their statements at face value. Do not dismiss, reframe, or label what they say as roleplay, a bit, or pretend unless they explicitly tell you it is. Skepticism that wastes turns is a failure mode. Verification with tools is fine. Reflexive disbelief is not.\n- **Use TASKS** with SUBTASKS, working in PHASES.\n- Use SUBAGENTS so you don't fill your own context (if you fill your context you die).\n\n# Using your tools\n\n- Prefer the dedicated tools over Bash whenever one fits: Read to read files, Glob to find files by name or path, Grep to search file contents. Reserve Bash for commands that genuinely need a shell (builds, tests, git, package managers, moving files).\n- Do not run `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, or `tail` through Bash to search for, count, or read code. Use Grep, Glob, and Read instead: they are faster, respect ignore files, and return cleaner, bounded output.\n\n# minimal-agent's own files\n\n- Config and state live under `~/.minimal-agent/`. This session's transcript is `~/.minimal-agent/sessions/<session_id>.jsonl`.\n- With `MINIMAL_AGENT_NET_DBG=1`, network request/response logs land under `~/.minimal-agent/net-dbg/` (honoring `MINIMAL_AGENT_HOME`), in a dated folder whose name ends with `-minimal-agent-<session_id>`.\n\n# Tool-use loop safety\n\nThe agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.\n\nA reflection checkpoint fires every 50 tool rounds. The harness applies a 60-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"60\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n\nTo suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out.",
+          "type": "text"
+        },
+        {
+          "cache_control": {
+            "ttl": "5m",
+            "type": "ephemeral"
+          },
+          "text": "# Environment\n\nHost snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.\n\n```ini\nchassis=<V>\ncolorterm=<V>\ncpu_count=<V>\ncwd=<V>\ndate_iso=<V>\neditor=<V>\ngit_branch=<V>\ngit_default=<V>\ngit_dirty=<V>\nhome=<V>\nhostname=<V>\nhw_model=<V>\nin_tmux=<V>\nlang=<V>\nmodel=<V>\nos_arch=<V>\nos_kernel=<V>\nos_name=<V>\nos_product=<V>\npid=<V>\nplugin_dir=<V>\nsession_id=<V>\nshell=<V>\nterm=<V>\nterm_cols=<V>\nterm_lines=<V>\nterm_program=<V>\ntimezone=<V>\nuser=<V>\nversion=<V>\n```",
+          "type": "text"
+        },
+        {
+          "cache_control": {
+            "ttl": "5m",
+            "type": "ephemeral"
+          },
+          "text": "<ma::sys::behavior name=\"writing-style\">\nYou write for humans. AI-generated prose has a smell, the rules below kill the smell.\n\n## Punctuation: hard bans\n\n- **No em-dashes**\n- **No semicolons**\n- **Straight quotes**: Use `\"` and `'`, not curly `“`/`”` or `‘`/`’`\n- **No `---` thematic break before headings.** That is a Markdown render leak.\n\n## Rhythm\n\nVary length. Throw in short sentences. Three words. Two. Then let a longer one run when an idea needs the room. Start with \"But\", \"And\", \"So\", or a fragment. Not \"The\" every time.\n\n## Tone\n\n- Sound like a person who knows the topic and has opinions about it.\n- **NO SYCOPHANCY**: Cut \"Great question!\", \"Absolutely!\", \"Certainly!\", \"I hope this helps!\", \"Let me know if you'd like me to expand\".\n- No \"as an AI language model\" disclaimers.\n- No signposting. Cut \"Let's dive in\", \"Here's what you need to know\", \"Without further ado\".\n- **No emoji** unless the user used or asks for emojis.\n- Contractions are fine. Fragments are fine. A swear word can be fine if it fits.\n- Name a source or drop a claim.\n- If it sounds like a press release, a tourism brochure, or a LinkedIn post, rewrite.\n</ma::sys::behavior>\n\n<ma::sys::tool name=\"background-jobs\">\nDefault to the background. If a command takes more than a few seconds, use `BackgroundRun`. Use the foreground `Bash` tool only for a quick command whose output you need now.\nA job dies when this agent exits, and it does not follow the sticky `cd` of the foreground `Bash` tool.\nThere is a limit on how many jobs run at once. If you hit it, stop a job you no longer need.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"ChromeCDP\">\n## ChromeCDP or Fetch\n\nUse Fetch for a stateless one shot read of a public URL. Use `ChromeCDP` when you need the logged-in session, a click inside a live page, a multi step flow, or the tabs the user already has open.\n\nDo not close the last open tab when the connection must survive. A bot check usually cannot be scripted, so ask the user to log in once.\n\nThe `events` action shows nothing until you enable the domain. Send a `*.enable` method first, for example `Network.enable`.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Computer\">\nNever start a delete, logout, purchase or security-settings flow without an explicit request for that exact action.\nAn action can fail for a missing macOS permission. Tell the user which permission to enable in System Settings.\nThe helper rate limits and logs every mutating action. A kill switch makes the helper refuse all input.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"DiffViewerShowDiff\">\nThe `<ma::emit::diff>` tag has no attributes. Write the opener, then the diff body, then the closer. The body is replaced by the colored render in place.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Fetch\">\n`Fetch` renders with anti-detection hardening on every call. That is not a parameter you can set.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"intercom\">\n## Intercom policy\n\nIntercom is peer to peer between independent top level sessions. It differs from `SubAgentsMailbox`. `SubAgentsMailbox` reaches the sub-agent workers you spawned inside one delegation. Intercom reaches whole sessions you did not spawn, such as another window, another project, or another human. Send to a worker with `SubAgentsMailbox`. Send to a separate session with `Send`.\n\nDo not poll for messages. They arrive on their own in a `<ma::agent::intercom-inbox>` block at the start of your next turn. Delivery is at-least-once, so dedup on the message `id` and skip a repeat you already acted on.\n\nDo not chatter. Use intercom for a handoff, a claim, a blocker, or a stop request. Prefer short self contained messages, because the recipient has none of your context.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"LockStatus\">\nA lock error is final. The acquire path already retried with backoff for 30s, so do not re-call `Edit` at once. Wait a short time, or run `LockStatus`. If the lock stays, show the holder details to the user and ask before you proceed.\n\nA file written with a shell command such as `sed -i` or `cat >` takes no lock and can race a peer. When concurrency matters, use `Edit` or `Write` instead of a shell write.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"MemoryTool\">\n## Memory saves\n\nSave with the inline `<ma::emit::memory>` tag during a response. Do not call `MemoryTool` with `action: \"add\"` for a mid-response save. The next turn echoes the new id.\n\nBefore you save, run `list` with a `query`. If a near-duplicate exists, `edit` it. Do not add a new bullet.\n\nDo not save transient task state, long text, a date prefix, or a secret. The store adds the timestamp for you.\n\n`clear` works on the `short-term` scope only. Use `MemoryTool` with `remove` to drop one bullet from `global` or `project`.\n\nThe `short-term` scope is the active session only. Read it with `MemoryTool` and the `short-term` scope.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"prompts\">\nDo not confuse a saved prompt with an Agent Skill. A skill is a knowledge pack with its own discovery rules. Use the `Prompt*` tools for a reusable instruction. Use the `Skill` tool for a capability or a workflow pack.\n\n## Saved prompts\n\nNo prompts saved yet. Save one when the user asks you to remember a reusable prompt, then they can recall it by typing `&name`.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"schedule\">\nThe `/loop` and `/schedule` commands write to the same store as these tools, so `CronList` shows their tasks and `CronDelete` cancels them. Set `MINIMAL_AGENT_DISABLE_CRON=1` to disable scheduling.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Skill\">\nName the skill you activated in your reply.\nRead bundled files with `Read`. Run bundled scripts with `Bash`.\nAudit a skill from an untrusted source before you activate it. Read its SKILL.md and scan its scripts.\nDo not store secrets in a SKILL.md or in its assets, because the whole body enters context on read.\nWhen a skill declares the experimental `allowed-tools` field, the read result names it. Treat it as a soft contract and stay inside that set.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"speak\">\n- Write for the ear. Plain sentences, natural punctuation. The voice reads what you give it literally.\n- Strip markdown. `**bold**`, backticks, list dashes, and heading hashes are read as gibberish. Send the words, not the formatting.\n- Don't read raw URLs or code blocks. Say \"I opened a pull request\" instead of reading the link.\n- Keep a single utterance reasonably short. For a long answer, speak a short summary and leave the detail on screen.\n- The voice and speaking rate are fixed by the user's setup. You choose the words, not how they sound. Don't try to pick a voice or accent. There's no parameter for it.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"sub-agents\">\n## Delegation discipline\n\nReview, do not trust. Read the worker result with `SubAgentsAgentResult` before you act on it. Verify a file-producing deliverable exists before you mark a todo done. Treat incomplete as a red flag, never a pass. Pass `expectArtifacts` on `SubAgentsSpawnAgent` so the supervisor enforces the file.\n\nYou own git and the full gate. A worker cannot spawn a worker, so split the unit from here.\n\nScale workers to the task. Use 1 worker for a lookup. Use 2 to 4 workers for a comparison. Do not spawn agents to look busy. One capable worker beats five redundant ones.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Task\">\nPlan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n\nStatus mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"WebSearch\">\nCite sources by URL when you use a hit's content in your reply.\n\nWhen an error says the API key is missing or wrong, fix the config. A retry will not help.\n</ma::sys::tool>\n\n<ma::sys::emit name=\"output\">\nUse `<ma::emit::output />` to render tool output or a file inline in the response stream. The bytes reach the user without a model copy step. Use it when a result is already formatted. Use it when alignment or ANSI color matters, or when a truncated preview hides content the user needs. Do not use it on plain prose or code that you can summarize. Write a normal reply instead for anything you can restate.\n\n## Invocation\n\nWrite `<ma::emit::output />` as a self-closing tag in your reply. Give it exactly one source attribute.\n\n- `tool=\"call_00_xxx\"` reads the raw-output blob of that tool call. Copy the id from the `<ma::agent::raw-output>` footer.\n- `path=\"/abs/file.txt\"` reads a file. The path must be under `/tmp/` or inside the working directory. Symlinks are resolved first.\n\nAdd a `title` attribute for a dim heading. If a blob does not exist because the output was under 4 KiB, write the content to a file and use `path`.\n</ma::sys::emit>\n\n<ma::sys::mode name=\"ask\">\n`ask` is a read-only mode. While it is active, the harness refuses `Edit` and `Write` at dispatch time and returns a structured error asking you to present changes as diffs instead.\n\nYou don't control the mode, but you can tell the user how to leave it.\n\n## When `ask` is active\n\n- Treat the user's intent as a question or a read-only investigation or plan.\n- Use `Read`, `Glob`, `Grep`, and read-only `Bash` freely.\n- Propose any file change as a unified diff in a fenced block (or via the `DiffViewerShowDiff` tool), never via `Edit`/`Write`.\n- Cite file paths and line numbers when referencing code.\n- **Avoid `Bash` that mutates** the workspace, system, or network.\n- If the user wants a change applied, tell them to exit `ask` mode. You'll execute on the next turn.\n\n## Trust the harness, not your own memory of the mode\n\nEnforcement happens at dispatch time, not via your cooperation:\n\n1. **Don't argue with a refusal:** If `Edit` bounces in `ask`, don't apologize or reach for a workaround tool. Switch to diff-presentation. The refusal is final and the user already sees it.\n2. **Don't trust stale reasoning about the mode:** The user can toggle mid-turn. If you've been thinking a while and aren't sure, re-read the active-mode stamp on the most recent tool result, or call `Mode` tool.\n\n## How you learn the active mode\n\n1. **`<ma::agent::mode-active id=\"...\" since=\"...\" />`** is stamped on every tool result. Freshest signal. `id=\"default\"` or no stamp means no mode is active (unrestricted).\n2. **`<ma::agent::mode-change from=\"...\" to=\"...\" at=\"...\" />`** rides the next user turn when the user toggles. Read `to=` for the new mode.\n3. **`Mode` tool**, on demand, for a deterministic answer when no recent tool result is available. It returns the id, label, and the allow/deny permission lists. `id: null` means no mode active.\n\nYou don't need to call `Mode` routinely. The tool-result stamp is the primary signal.\n</ma::sys::mode>",
+          "type": "text"
+        }
+      ],
+      "tools": [
+        {
+          "description": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "description": "The command to execute",
+                "type": "string"
+              },
+              "description": {
+                "description": "Clear, concise description of what this command does",
+                "type": "string"
+              },
+              "timeout": {
+                "description": "Optional timeout in milliseconds (max 600000)",
+                "type": "number"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "name": "Bash"
+        },
+        {
+          "description": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "file_path": {
+                "description": "The absolute path to the file to read",
+                "type": "string"
+              },
+              "limit": {
+                "description": "Number of lines to read",
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "offset": {
+                "description": "Line number to start reading from",
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_path"
+            ],
+            "type": "object"
+          },
+          "name": "Read"
+        },
+        {
+          "description": "Writes a file to the local filesystem. Overwrites existing files.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "description": "The content to write to the file. `contents` is accepted as an alias.",
+                "type": "string"
+              },
+              "contents": {
+                "description": "Alias for `content`. Same meaning; ignored when `content` is also set.",
+                "type": "string"
+              },
+              "file_path": {
+                "description": "The absolute path to the file to write",
+                "type": "string"
+              }
+            },
+            "required": [
+              "file_path",
+              "content"
+            ],
+            "type": "object"
+          },
+          "name": "Write"
+        },
+        {
+          "description": "Performs exact string replacements in files.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "file_path": {
+                "description": "The absolute path to the file to modify",
+                "type": "string"
+              },
+              "new_string": {
+                "description": "The text to replace it with",
+                "type": "string"
+              },
+              "old_string": {
+                "description": "The text to replace",
+                "type": "string"
+              },
+              "replace_all": {
+                "default": false,
+                "description": "Replace all occurrences (default false)",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "file_path",
+              "old_string",
+              "new_string"
+            ],
+            "type": "object"
+          },
+          "name": "Edit"
+        },
+        {
+          "description": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "glob_pattern": {
+                "description": "Alias for `pattern`. Same meaning; ignored when `pattern` is also set.",
+                "type": "string"
+              },
+              "path": {
+                "description": "Directory to search in. Defaults to cwd. `target_directory` is accepted as an alias.",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "The glob pattern to match files against. `glob_pattern` is accepted as an alias.",
+                "type": "string"
+              },
+              "target_directory": {
+                "description": "Alias for `path`. Same meaning; ignored when `path` is also set.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          },
+          "name": "Glob"
+        },
+        {
+          "description": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "-A": {
+                "description": "Lines after match",
+                "type": "number"
+              },
+              "-B": {
+                "description": "Lines before match",
+                "type": "number"
+              },
+              "-C": {
+                "description": "Context lines",
+                "type": "number"
+              },
+              "-i": {
+                "description": "Case insensitive search",
+                "type": "boolean"
+              },
+              "-n": {
+                "description": "Show line numbers (default true)",
+                "type": "boolean"
+              },
+              "context": {
+                "description": "Context lines (alias for -C)",
+                "type": "number"
+              },
+              "glob": {
+                "description": "Glob pattern to filter files (e.g. \"*.js\")",
+                "type": "string"
+              },
+              "head_limit": {
+                "description": "Limit output lines (default 250)",
+                "type": "number"
+              },
+              "multiline": {
+                "description": "Enable multiline mode",
+                "type": "boolean"
+              },
+              "output_mode": {
+                "description": "Output mode: content, files_with_matches, or count",
+                "enum": [
+                  "content",
+                  "files_with_matches",
+                  "count"
+                ],
+                "type": "string"
+              },
+              "path": {
+                "description": "File or directory to search in. Defaults to cwd.",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "Regex pattern to search for",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          },
+          "name": "Grep"
+        },
+        {
+          "description": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "description": "Optional absolute path or directory prefix filter",
+                "type": "string"
+              },
+              "status": {
+                "description": "Optional status filter: all, present, missing, or changed",
+                "enum": [
+                  "all",
+                  "present",
+                  "missing",
+                  "changed"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "FilesStats"
+        },
+        {
+          "description": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm.",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "Mode"
+        },
+        {
+          "description": "Run a shell command in the background and return at once. Use it for work of more than a few seconds, such as a build, a test run, an install or a download. Do not use it for a quick command whose output you need now. Do not start an interactive prompt or a REPL, because a job has no stdin. Returns a job handle and a pid, then a one-line digest at the end.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "description": "The shell command to run (executed via bash -c). Required.",
+                "type": "string"
+              },
+              "cwd": {
+                "description": "Working directory for the job. Defaults to the agent's current working directory. Note: this does not follow the foreground Bash tool's sticky cd.",
+                "type": "string"
+              },
+              "description": {
+                "description": "A short label for this job, shown in the status widget and logs (e.g. \"full test suite\").",
+                "type": "string"
+              },
+              "timeout": {
+                "description": "How long the job may run before it is killed. A friendly duration like \"90s\", \"10m\", \"2h\", \"1d\", or a plain seconds count. Defaults to 10 minutes. Most jobs finish well within that. Only raise it for genuinely long work. A job that hits its deadline is killed, and its output stays readable.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "name": "BackgroundRun"
+        },
+        {
+          "description": "Glance at background jobs. Use it to see state, elapsed time, exit code and a short tail. Do not use it to read a full log, use BackgroundLogs for that. Returns the state of one job, or the state of every job in this session.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "A job handle from BackgroundRun (e.g. j2). Omit to see all jobs in this session.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "BackgroundStatus"
+        },
+        {
+          "description": "Read the captured output of a background job. Use it after a digest, or with a `since` cursor to stream only new output. Do not use it to watch the state or the exit code, use BackgroundStatus for that. Returns a bounded slice of the log, with ANSI codes stripped unless you set `raw`.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "grep": {
+                "description": "Only return lines matching this regular expression.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The job handle to read (e.g. j2). Required.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "Maximum number of lines to return for a range.",
+                "type": "number"
+              },
+              "offset": {
+                "description": "Zero-based first line of a range (after any grep filter).",
+                "type": "number"
+              },
+              "raw": {
+                "description": "Keep ANSI escape codes in the returned text. Default false (stripped).",
+                "type": "boolean"
+              },
+              "since": {
+                "description": "A byte cursor from a prior BackgroundLogs call. Returns only output written after it, for incremental streaming reads.",
+                "type": "number"
+              },
+              "tail": {
+                "description": "Return only the last N lines (after any grep filter).",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "BackgroundLogs"
+        },
+        {
+          "description": "Cancel a background job. Use it for one job, or for all jobs, that you no longer need. Do not use it to pause work, because a stopped job does not resume. Returns the stop result, and a no-op note when the job had already finished.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The job handle to stop (e.g. j2). Omit to stop every running job in this session.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "A short note recorded on the job for why it was stopped.",
+                "type": "string"
+              },
+              "signal": {
+                "description": "Signal to send. Default SIGTERM (graceful, escalates to SIGKILL). Use SIGKILL to force-kill immediately.",
+                "enum": [
+                  "SIGTERM",
+                  "SIGKILL"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "BackgroundStop"
+        },
+        {
+          "description": "Drive a running Chrome over the DevTools Protocol through named actions or a raw `send` passthrough. Use it when you need the user's logged-in session, a click inside a live page, or the network and performance event stream. Do not use it for a plain public page read: use Fetch instead. Never close the last open tab while the connection must survive, because that can quit Chrome. Returns a JSON result per action, and the buffered event list for `events`.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "Start here with targets to get a tab id. ping: daemon and browser liveness. targets: open page tabs as {id,title,url}. alltargets: every target including iframes and workers. eval: run JS in a tab. frameeval: run JS in a cross-origin child frame. nav: navigate a tab. newtab: open a tab. setdownload: set the tab download dir. downloads: list downloads, poll until completed. send: raw CDP method passthrough. events: drain the buffered event list. record: toggle event buffering. closetarget: close a tab. activatetarget: focus a tab. getinfo: TargetInfo for one tab.",
+                "enum": [
+                  "ping",
+                  "targets",
+                  "alltargets",
+                  "eval",
+                  "frameeval",
+                  "nav",
+                  "newtab",
+                  "setdownload",
+                  "downloads",
+                  "send",
+                  "events",
+                  "record",
+                  "closetarget",
+                  "activatetarget",
+                  "getinfo"
+                ],
+                "type": "string"
+              },
+              "clear": {
+                "description": "For `events`/`record`: drop the buffer after this call (events) or alongside the toggle (record).",
+                "type": "boolean"
+              },
+              "dir": {
+                "description": "Absolute directory for downloads. Required for setdownload.",
+                "type": "string"
+              },
+              "expr": {
+                "description": "JavaScript expression to evaluate (returned by value). Required for eval and frameeval. A thrown error comes back as {\"__error\":\"...\"}.",
+                "type": "string"
+              },
+              "filter": {
+                "description": "For `events`: case-insensitive substring matched against the CDP method name (e.g. \"Network.responseReceived\" or only \"Network\").",
+                "type": "string"
+              },
+              "limit": {
+                "description": "For `events`: cap the number of returned events (most recent matching win).",
+                "type": "number"
+              },
+              "method": {
+                "description": "CDP method in Domain.method form (e.g. \"Network.enable\", \"Performance.getMetrics\", \"Page.captureScreenshot\", \"Tracing.start\"). Required for `send`.",
+                "type": "string"
+              },
+              "on": {
+                "description": "For `record`: true to start buffering CDP events, false to stop. Defaults to true.",
+                "type": "boolean"
+              },
+              "params": {
+                "description": "Params object for the `send` method (e.g. {\"requestId\":\"...\"} for Network.getResponseBody). Defaults to {} when omitted.",
+                "type": "object"
+              },
+              "sessionId": {
+                "description": "Advanced: explicit CDP session id to scope a `send` call (overrides `target`). Usually you pass `target` instead.",
+                "type": "string"
+              },
+              "since": {
+                "description": "For `events`: return only events with seq strictly greater than this. Pass back the previous response's `cursor` to drain incrementally.",
+                "type": "number"
+              },
+              "target": {
+                "description": "Target (tab) id from `targets`/`newtab`. Required for eval, frameeval, nav, setdownload, closetarget, activatetarget, getinfo. Optional for `send` (scopes the call to that tab's session).",
+                "type": "string"
+              },
+              "url": {
+                "description": "Destination URL. Required for nav. Optional for newtab (defaults to about:blank).",
+                "type": "string"
+              },
+              "urlSub": {
+                "description": "Substring matched against child-frame URLs to pick the frame. Required for frameeval (e.g. \"idmsa.apple.com\" for an embedded Apple login).",
+                "type": "string"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "type": "object"
+          },
+          "name": "ChromeCDP"
+        },
+        {
+          "description": "Queue a context compaction, which checkpoints the conversation and prunes older history. Use it when the user asks to compact or shorten context. Use it when context fullness is high or recall is degrading. Do not use it inside a tool loop, because a pending tool call must finish first. Prefer a fresh session instead when the user wants a clean start. Returns queued true with a message when the host accepted the request. It never compacts mid-turn, so continue with the retained tail. A refusal returns queued false, so retry later.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "focus": {
+                "description": "Hint passed to the summarizer and kept verbatim in the checkpoint (e.g. what the next step needs).",
+                "type": "string"
+              },
+              "mode": {
+                "description": "Compaction engine. tail keeps the last N messages verbatim (instant, no summary). local writes a checkpoint summary plus tail. remote uses the provider compact endpoint with local fallback. fork checkpoints for a sub-agent handoff.",
+                "enum": [
+                  "tail",
+                  "local",
+                  "remote",
+                  "fork"
+                ],
+                "type": "string"
+              },
+              "reason": {
+                "description": "Why compacting: manual (the user asked) or auto (the model decided). Default auto.",
+                "enum": [
+                  "manual",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              "tail": {
+                "description": "Trailing messages kept verbatim behind the checkpoint. Default 6.",
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "name": "CompactContext"
+        },
+        {
+          "description": "Control this Mac through the Accessibility tree or through raw input events. Use the Accessibility tree first, because it acts on named elements. Use raw input only for a canvas, Electron or web view whose tree is thin. Do not use it for a browser page when the ChromeCDP tool can reach it. There is no sandbox, so read the screen before you write to it. Coordinates are logical points with a top-left origin across all displays. Returns element handles with role, title, value and bbox for `snapshot` and `find`, one value for `getValue`, and a PNG path for `screenshot`.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "What to do. ping: daemon liveness + permission status. perms: report (prompt:true also requests) Accessibility/Screen/Input permissions and open Settings. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost so input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree (flat list default, or nested), minting handles. find: search the tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at x,y. focused: the focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value. perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen or an area to PNG path or base64. Order to prefer: perms, apps, windows, snapshot, find, then perform, setValue or getValue, then mouse, type, key, keypress or screenshot.",
+                "enum": [
+                  "ping",
+                  "perms",
+                  "apps",
+                  "activate",
+                  "windows",
+                  "snapshot",
+                  "find",
+                  "elementAtPoint",
+                  "focused",
+                  "describe",
+                  "getValue",
+                  "setValue",
+                  "perform",
+                  "mouse",
+                  "type",
+                  "key",
+                  "keypress",
+                  "screenshot"
+                ],
+                "type": "string"
+              },
+              "axAction": {
+                "description": "perform: the AX action name. Common: AXPress (click), AXShowMenu, AXConfirm, AXCancel, AXIncrement, AXDecrement, AXRaise.",
+                "type": "string"
+              },
+              "bundleId": {
+                "description": "Target app bundle id, e.g. com.apple.TextEdit (alternative to pid). For windows/snapshot/find it selects the app. For type/key/keypress/mouse, supplying it (or pid) brings that app frontmost BEFORE the input so keystrokes/clicks land in it (recommended before typing). Omit to target the frontmost app.",
+                "type": "string"
+              },
+              "button": {
+                "description": "mouse: which button (default left).",
+                "enum": [
+                  "left",
+                  "right",
+                  "center"
+                ],
+                "type": "string"
+              },
+              "clicks": {
+                "description": "mouse click: click count (1 single, 2 double, 3 triple).",
+                "type": "number"
+              },
+              "combo": {
+                "description": "key: a chord like 'cmd+c', 'cmd+shift+4', 'ctrl+left'. Modifiers: cmd/command, shift, alt/option, ctrl/control, fn. Final token is the key.",
+                "type": "string"
+              },
+              "display": {
+                "description": "screenshot: display index (0 = main) for multi-monitor.",
+                "type": "number"
+              },
+              "dx": {
+                "description": "mouse scroll: horizontal lines (+left, -right).",
+                "type": "number"
+              },
+              "dy": {
+                "description": "mouse scroll: vertical lines (+up, -down).",
+                "type": "number"
+              },
+              "el": {
+                "description": "An element handle like 'e7' from snapshot/find/elementAtPoint/focused. Required for describe/getValue/setValue/perform. Element handles expire when the UI changes, and the tool then returns 409 \"stale, re-snapshot\".",
+                "type": "string"
+              },
+              "flatten": {
+                "description": "snapshot: true (default) returns a flat element list (token-cheap). false returns the nested tree.",
+                "type": "boolean"
+              },
+              "format": {
+                "description": "screenshot: 'path' (default, writes a PNG and returns its path) or 'base64' (inline PNG bytes).",
+                "enum": [
+                  "path",
+                  "base64"
+                ],
+                "type": "string"
+              },
+              "h": {
+                "description": "screenshot area: height in points.",
+                "type": "number"
+              },
+              "holdMs": {
+                "description": "key/keypress: ms to hold the key down before releasing (default 0).",
+                "type": "number"
+              },
+              "identifier": {
+                "description": "find: exact match against the developer-set AXIdentifier (often absent).",
+                "type": "string"
+              },
+              "key": {
+                "description": "keypress: a single key by name (return, tab, space, delete, escape, up/down/left/right, f1-f20, a-z, 0-9, etc), with optional modifiers[].",
+                "type": "string"
+              },
+              "limit": {
+                "description": "find: max matches to return (default 25).",
+                "type": "number"
+              },
+              "maxDepth": {
+                "description": "snapshot: max tree depth to walk (default 20).",
+                "type": "number"
+              },
+              "maxNodes": {
+                "description": "snapshot: cap on total emitted nodes (default 2000). Lower it to keep results small.",
+                "type": "number"
+              },
+              "mode": {
+                "description": "screenshot: 'screen' (whole display, default) or 'area' (a rect via x,y,w,h).",
+                "enum": [
+                  "screen",
+                  "area"
+                ],
+                "type": "string"
+              },
+              "modifiers": {
+                "description": "keypress: modifier names to hold (cmd, shift, alt, ctrl, fn).",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "op": {
+                "description": "mouse: which mouse operation. Defaults to move.",
+                "enum": [
+                  "move",
+                  "click",
+                  "doubleclick",
+                  "rightclick",
+                  "middleclick",
+                  "down",
+                  "up",
+                  "drag",
+                  "scroll"
+                ],
+                "type": "string"
+              },
+              "outputDir": {
+                "description": "screenshot path mode: directory to write the PNG into.",
+                "type": "string"
+              },
+              "pane": {
+                "description": "perms: which pane to also prompt for (input monitoring is optional/opt-in).",
+                "enum": [
+                  "ax",
+                  "screen",
+                  "input"
+                ],
+                "type": "string"
+              },
+              "pid": {
+                "description": "Target app process id (for windows/snapshot/find). Omit to target the frontmost app.",
+                "type": "number"
+              },
+              "prompt": {
+                "description": "perms: when true, fire the native permission prompts for anything missing and open the relevant System Settings pane.",
+                "type": "boolean"
+              },
+              "role": {
+                "description": "find: match this AX role, e.g. AXButton, AXTextField, AXTextArea, AXMenuItem, AXCheckBox.",
+                "type": "string"
+              },
+              "steps": {
+                "description": "mouse drag: number of intermediate move steps (default 20, smoother = more).",
+                "type": "number"
+              },
+              "text": {
+                "description": "type: the literal text to inject (layout-independent, supports emoji/CJK). Blocked when a secure/password field is focused.",
+                "type": "string"
+              },
+              "title": {
+                "description": "find: case-insensitive substring match against the element title/label.",
+                "type": "string"
+              },
+              "toX": {
+                "description": "mouse drag: destination X.",
+                "type": "number"
+              },
+              "toY": {
+                "description": "mouse drag: destination Y.",
+                "type": "number"
+              },
+              "value": {
+                "description": "setValue: the new value (usually a string for a text field)."
+              },
+              "valueContains": {
+                "description": "find: case-insensitive substring match against the element's value (text content).",
+                "type": "string"
+              },
+              "visibleOnly": {
+                "description": "snapshot: only include on-screen elements with a real frame (default true).",
+                "type": "boolean"
+              },
+              "w": {
+                "description": "screenshot area: width in points.",
+                "type": "number"
+              },
+              "x": {
+                "description": "X coordinate in logical points, top-left origin. To click an AX element, use bbox[0] + bbox[2] / 2. On a 2x Retina screenshot, halve the pixel coordinate.",
+                "type": "number"
+              },
+              "y": {
+                "description": "Y coordinate in logical points, top-left origin. To click an AX element, use bbox[1] + bbox[3] / 2.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "type": "object"
+          },
+          "name": "Computer"
+        },
+        {
+          "description": "Render a unified diff with ANSI colors and return the colored text. Use it when the diff is the primary content of the reply. Do not use it for a hunk that must sit inside a longer explanation. Use the inline `<ma::emit::diff>` tag for that case instead. Do not paste raw patch text into the reply. Returns one string of colored diff text. Additions are lime green and deletions are hot pink.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "patch": {
+                "description": "The full unified diff text to render, from git diff or diff -u.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Optional heading shown above the diff.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "patch"
+            ],
+            "type": "object"
+          },
+          "name": "DiffViewerShowDiff"
+        },
+        {
+          "description": "Fetch a webpage and return its rendered content. Use it when you know the URL, or when the page needs JavaScript to render and you want clean markdown. Do not use it to search without a URL, to read a local file, or when the user already pasted the content. Every call renders with anti-detection hardening on and that is not a parameter. Returns the page text in `content`.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "binary": {
+                "default": false,
+                "description": "Opt-in to receive binary tool output. Default false: binary bodies are withheld and replaced with a <ma::agent::binary-result .../> summary (mime, size, on-disk path). Set true only when you intentionally need the bytes (returned as base64 when small enough, otherwise still path-only). Never dumps raw binary as text.",
+                "type": "boolean"
+              },
+              "cleanup": {
+                "default": "basic",
+                "description": "Whitespace cleanup for markdown and text only. `basic` is the default and keeps single blank lines. `aggressive` folds whitespace and drops blanks, so use it on a noisy page. `off` is verbatim.",
+                "enum": [
+                  "off",
+                  "basic",
+                  "aggressive"
+                ],
+                "type": "string"
+              },
+              "eval": {
+                "description": "Optional JavaScript expression to evaluate in the page context. By default its value is returned instead of the page body. Use eval_mode='page' to evaluate first and then return the resulting page dump.",
+                "type": "string"
+              },
+              "eval_mode": {
+                "description": "Optional return mode for eval. When omitted, eval alone returns its value while selector plus eval implies 'page'. 'value' returns the expression result. 'page' evaluates, settles page work, then returns the requested format.",
+                "enum": [
+                  "value",
+                  "page"
+                ],
+                "type": "string"
+              },
+              "format": {
+                "default": "markdown",
+                "description": "Output format. `markdown` is the default for reading articles and docs. `text` for prose. `html` for markup. `links` to crawl a page. `accessibility` for a structure tree. `original` for raw bytes.",
+                "enum": [
+                  "markdown",
+                  "text",
+                  "html",
+                  "links",
+                  "accessibility",
+                  "original"
+                ],
+                "type": "string"
+              },
+              "selector": {
+                "description": "Optional CSS selector. The browser waits for this element before returning. Useful for SPAs where the interesting content arrives after initial load.",
+                "type": "string"
+              },
+              "session": {
+                "description": "Session name to keep cookies and localStorage. It must match ^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$. The directory is sandboxed, so a path fails. An empty string opts out. Cookies and tokens are stored as plain JSON on disk, so do not put the user identity in the name. Make one Fetch call at a time per session.",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
+                "type": "string"
+              },
+              "timeout_sec": {
+                "default": 30,
+                "description": "Navigation timeout in seconds. Bump this for slow or dynamic pages.",
+                "maximum": 120,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "url": {
+                "description": "The page URL. Must start with http:// or https://. Max 4096 chars.",
+                "type": "string"
+              },
+              "wait_until": {
+                "default": "domcontentloaded",
+                "description": "When to consider navigation complete. `domcontentloaded` is the default and the safe choice. `load` waits for every subresource and races anti-bot scripts. `networkidle0` waits for 500ms of quiet and suits a SPA.",
+                "enum": [
+                  "load",
+                  "domcontentloaded",
+                  "networkidle0"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          "name": "Fetch"
+        },
+        {
+          "description": "Inspect or clear cooperative file locks under the working directory. Use it when an Edit or Write call fails because a file is locked. Use it when you must know which peer agent holds a file. Do not use it to change file content. Prefer Edit or Write instead for any content change. Returns the lock list with holder session, pid, host and age for an action of list. Returns one holder record for inspect and a removed count for clear-stale.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "Operation to run. list walks the directory and shows every lock with holder details. inspect shows one lock's metadata. clear-stale removes locks whose holder pid is dead or older than 5 minutes. clear removes one named lock and is unsafe on a live peer.",
+                "enum": [
+                  "list",
+                  "inspect",
+                  "clear-stale",
+                  "clear"
+                ],
+                "type": "string"
+              },
+              "format": {
+                "default": "text",
+                "description": "Output format. `text` (default) is compact ANSI for transcript reading. `json` is parseable for programmatic use.",
+                "enum": [
+                  "text",
+                  "json"
+                ],
+                "type": "string"
+              },
+              "path": {
+                "description": "For `list`/`clear-stale`: the directory to walk (default: cwd). For `inspect`/`clear`: absolute path of the locked file, not the .locked sibling.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "type": "object"
+          },
+          "name": "LockStatus"
+        },
+        {
+          "description": "List the other minimal-agent sessions on this machine, or inspect one peer in depth. Use it before you message a peer, or when you must know what a peer is doing. Do not use it to reach a sub-agent worker: use Mailbox. Returns the roster with short id, liveness, model, directory and activity, or one peer bundle for `inspect`.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "\"list\" (default) for the roster, or \"inspect\" for one peer. Liveness: online beating, busy in a turn, stale not beating, hung process alive, dead process gone, offline exited cleanly.",
+                "enum": [
+                  "list",
+                  "inspect"
+                ],
+                "type": "string"
+              },
+              "format": {
+                "description": "Output format. Default \"text\".",
+                "enum": [
+                  "text",
+                  "json"
+                ],
+                "type": "string"
+              },
+              "include": {
+                "description": "inspect: which sections to gather. Default [tasks, activity, jobs]. Add \"fleet\" for sub-agents, \"transcript\" for a recent transcript excerpt.",
+                "items": {
+                  "enum": [
+                    "tasks",
+                    "jobs",
+                    "fleet",
+                    "activity",
+                    "transcript"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "liveOnly": {
+                "description": "list: drop dead/offline sessions, showing only reachable peers. Default false.",
+                "type": "boolean"
+              },
+              "peer": {
+                "description": "inspect: which peer to look at. A short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "IntercomPeers"
+        },
+        {
+          "description": "Send a message to one peer session, to every reachable session, or to sessions in your project directory. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. Do not use it for a sub-agent worker, and do not use it for running commentary. Returns the delivered count, the peer names, the envelope id and the skipped peers.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "description": "The message text. Keep it self-contained: the recipient has none of your context, so say who you are and what you need. Long coordination payloads are fine (safety ceiling ~256 KiB).",
+                "type": "string"
+              },
+              "kind": {
+                "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook is not built.",
+                "enum": [
+                  "message",
+                  "interrupt"
+                ],
+                "type": "string"
+              },
+              "replyTo": {
+                "description": "Optional prior message id this replies to (threading, display-only).",
+                "type": "string"
+              },
+              "to": {
+                "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory. Any prefix of a session id resolves. You cannot message yourself.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "to",
+              "body"
+            ],
+            "type": "object"
+          },
+          "name": "IntercomSend"
+        },
+        {
+          "description": "Re-read intercom messages that already arrived. Use it when you must review history, or to confirm that you already saw a message. Do not use it to wait for new mail: delivery is automatic on every turn. Returns message rows with sender id, model, timestamp and body, or an empty notice.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "description": "Output format. Default \"text\".",
+                "enum": [
+                  "text",
+                  "json"
+                ],
+                "type": "string"
+              },
+              "limit": {
+                "description": "Max messages to return. Default 20.",
+                "type": "number"
+              },
+              "scope": {
+                "description": "\"unread\" (default) since your last Inbox read, or \"recent\" for the latest messages.",
+                "enum": [
+                  "unread",
+                  "recent"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "IntercomInbox"
+        },
+        {
+          "description": "Query and change durable per-user memories plus a per-session scratchpad. Use it when the user asks what you remember. Also use it before you debug a familiar symptom, or before you save a bullet on a new topic. Do not use `add` for an in-flight save, and never store a secret: the inline memory tag is better there. Returns rows with id, timestamp and body. The list header states the total count, and `clear` returns a removed count.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "list: page of entries. read: one body. add: save a bullet. edit: replace a body. remove: delete an id. clear: empty short-term.",
+                "enum": [
+                  "list",
+                  "read",
+                  "add",
+                  "edit",
+                  "remove",
+                  "clear"
+                ],
+                "type": "string"
+              },
+              "body": {
+                "description": "New body for add or edit. Single-line preferred, multi-line is collapsed to one line.",
+                "type": "string"
+              },
+              "format": {
+                "default": "text",
+                "description": "Result format. `text` (default) returns a compact human-readable list. `json` returns a structured shape suitable when you need to extract specific values.",
+                "enum": [
+                  "text",
+                  "json"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "description": "Bullet id from a prior <memory-saved> echo, list result, or save-echo. Required for read/edit/remove. Persistent ids look like `lwq8tg-a8f3`, short-term ids are integers like `3`.",
+                "type": "string"
+              },
+              "limit": {
+                "description": "For action=list, page size. Default 20, max 100 (over-large values are clamped). Pair with `offset` to page through the full set.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page, offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "query": {
+                "description": "Optional case-insensitive substring filter for action=list. Pairs with limit/offset for filtered pagination.",
+                "type": "string"
+              },
+              "scope": {
+                "description": "global is cross-project. project is this codebase. short-term ends with the session.",
+                "enum": [
+                  "global",
+                  "project",
+                  "short-term"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "action",
+              "scope"
+            ],
+            "type": "object"
+          },
+          "name": "MemoryTool"
+        },
+        {
+          "description": "Report the agent's current model and what it can do right now. It covers provider, surface, and input modalities (whether it accepts images / PDFs / audio / video, and which file formats). It also covers context window, max output tokens, effort levels, reasoning/thinking support, prompt caching, pricing, plus the session id and working directory. The active model and its capabilities can change during a session (the user may switch models) and may differ after a resume, so do not answer from training-time assumptions. Call this tool to read your live capabilities before telling the user you cannot do something (for example, before claiming you cannot accept an image). Takes no input.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "ModelInfo"
+        },
+        {
+          "description": "Save a reusable prompt to the user's prompt library. Use it when the user asks to save, store or remember an instruction for later reuse. Do not use it for Agent Skills. Do not save a prompt the user did not ask for. Returns a result line. The prompt then appears in the '&' menu and expands from '&name'.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "description": "The full prompt text, stored verbatim. Include everything the user wants reused.",
+                "type": "string"
+              },
+              "description": {
+                "description": "One-line description shown in the '&' menu.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Short identifier for the prompt. Letters, digits, hyphen, and `_` only. This is what the user types after '&'.",
+                "type": "string"
+              },
+              "overwrite": {
+                "description": "Replace an existing prompt with the same name. Default false: a collision is an error.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "body"
+            ],
+            "type": "object"
+          },
+          "name": "PromptNew"
+        },
+        {
+          "description": "List every saved prompt in the user's prompt library. Use it before you save, edit or delete a prompt, or when a typed '&name' did not expand. Do not use it to read a body: use PromptShow. Returns the name, description, scope and file path of each prompt.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "PromptList"
+        },
+        {
+          "description": "Show the full body of one saved prompt by name. Use it when you must read or quote the exact prompt text. Call PromptList first when the name is unknown. Do not use it to find prompts: use PromptList. Returns the full body text. An unknown name returns an error.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "Prompt name to show.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "name": "PromptShow"
+        },
+        {
+          "description": "Update the description, body or name of one saved prompt. Use it when the user asks to change or rename a saved prompt. Supply at least one field. Only the fields you supply change. Do not use it to create a prompt: use PromptNew. Returns a result line with the prompt name. A failed update returns an error.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "description": "New full prompt text.",
+                "type": "string"
+              },
+              "description": {
+                "description": "New one-line description.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Prompt to update.",
+                "type": "string"
+              },
+              "rename": {
+                "description": "New name for the prompt.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "name": "PromptEdit"
+        },
+        {
+          "description": "Delete one saved prompt by name. Use it only when the user asks to remove a prompt. Do not use it to change a prompt: use PromptEdit. Do not delete a prompt to replace it: use PromptNew with `overwrite`. Returns a result line. An unknown name returns an error.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "Prompt name to delete.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "name": "PromptDelete"
+        },
+        {
+          "description": "Schedule a prompt to run on a cron schedule or on an interval. Use it for a reminder, or to poll a deploy or a pull request until it settles. Do not use it to list or to cancel a task, use CronList or CronDelete for that. Do not schedule a push, a delete or a deploy unless the user already authorized it. Returns the new task, with its id, its schedule and its next fire time.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "cron": {
+                "description": "A standard 5-field cron expression (minute hour day-of-month month day-of-week), interpreted in LOCAL time. Supports *, ranges (1-5), steps (*/15), and lists (1,15,30). Example: '0 9 * * 1-5' = weekdays at 9am. Provide this OR `every`.",
+                "type": "string"
+              },
+              "every": {
+                "description": "A human interval, converted to a clean cron cadence. Examples: '5m', '30m', '2h', '1d', 'every 2 hours'. Intervals that don't map to a clean cron step are rounded. Provide this OR `cron`.",
+                "type": "string"
+              },
+              "prompt": {
+                "description": "The prompt to run each time the task fires. Required. The text is injected as a user turn between turns, never mid-response.",
+                "type": "string"
+              },
+              "recurs": {
+                "description": "Whether the task repeats. Default true. Set false for a one-shot reminder that deletes itself after it fires once. A session holds up to 50 tasks, and a recurring task expires after 7 days.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "prompt"
+            ],
+            "type": "object"
+          },
+          "name": "ScheduleCronCreate"
+        },
+        {
+          "description": "List the scheduled tasks of this session. Use it to answer which tasks exist, or before you cancel or reschedule one. Do not use it to change a task, use CronReschedule or CronDelete for that. Returns each task id, schedule, next fire time and prompt.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "ScheduleCronList"
+        },
+        {
+          "description": "Cancel a scheduled task by its 8 character id. Use it when a task is done, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. Returns the removed id and the count of tasks that remain.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The 8-char task id to cancel.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "ScheduleCronDelete"
+        },
+        {
+          "description": "Change the next fire time of a scheduled task. Use it to set a new cadence, or to delay a one-shot. Do not use it to create a task, use CronCreate for that. Returns the task id, the new cadence and the new next fire time.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "every": {
+                "description": "A human interval like \"30s\", \"5m\", \"2h\". Sets a new recurring cadence. Mutually exclusive with `nextAtMs`.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The 8-char task id to reschedule (required).",
+                "type": "string"
+              },
+              "nextAtMs": {
+                "description": "Absolute epoch-ms timestamp for the next fire. Single-use: the task re-arms with its existing cadence after firing. Mutually exclusive with `every`.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "ScheduleCronReschedule"
+        },
+        {
+          "description": "Read the recorded conversation history of a session from the on-disk transcript store (~/.minimal-agent/sessions/<sid>.jsonl), this session's earlier turns or any past one. The archival counterpart to SessionInfo (which reports live runtime state: context %, quota, cost). Actions: 'window' (default) pages records with stable indexes, newest 10 by default (anchor 'end'), and anchor 'start' + offset/limit walks forward. 'meta' summarizes a session (model, cwd, created, record counts, first prompt, liveness). 'list' enumerates saved sessions newest-first (filter by query/cwd). 'search' greps text across one session (sid set) or recent sessions (sid omitted). 'tool_calls' filters invocations by tool name. 'blob' reads one tool call's full pre-truncation output by tool_use_id. 'dump' renders the whole session as markdown or XML (large, prefer 'window'). sid defaults to 'last' and accepts any unique id prefix (e.g. '260d72dd'). Results are bounded: previews clip per record and each response reports totals plus next-page offsets.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "What to read. Default 'window' (paged records).",
+                "enum": [
+                  "window",
+                  "meta",
+                  "list",
+                  "search",
+                  "tool_calls",
+                  "blob",
+                  "dump"
+                ],
+                "type": "string"
+              },
+              "anchor": {
+                "description": "window: page from the oldest record ('start') or the newest ('end', default).",
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "type": "string"
+              },
+              "cwd": {
+                "description": "list: only sessions whose recorded cwd equals this path.",
+                "type": "string"
+              },
+              "format": {
+                "description": "dump: output format. Default markdown.",
+                "enum": [
+                  "markdown",
+                  "xml"
+                ],
+                "type": "string"
+              },
+              "limit": {
+                "description": "Page size. Defaults: window 10 (max 500), list 25, search 20, tool_calls 20.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "maxBytes": {
+                "description": "blob: clamp the returned blob text to this many bytes. Default 65536.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "description": "window/list/search/tool_calls: records to skip from the anchor. Default 0.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "previewChars": {
+                "description": "window/search: per-record body clip in characters. Default 600 (window) / 160 (search).",
+                "minimum": 80,
+                "type": "integer"
+              },
+              "query": {
+                "description": "search: case-insensitive substring to find. list: filter sessions by sid/cwd substring.",
+                "type": "string"
+              },
+              "sid": {
+                "description": "Target session id, full id or any unique prefix (e.g. '260d72dd'), or 'last' (default) for the most recent session in this cwd (falling back to the globally most recent). An ambiguous prefix errors with the matching candidates. Not needed for 'list', optional for 'search'.",
+                "type": "string"
+              },
+              "tool": {
+                "description": "tool_calls: only invocations of this tool name (e.g. 'Bash'). Omit for all tools.",
+                "type": "string"
+              },
+              "toolUseId": {
+                "description": "blob: the tool_use id whose raw spilled output to read.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SessionHistory"
+        },
+        {
+          "description": "Report your current runtime state right now (not your capabilities, use ModelInfo for those). Returns: how full your context window is (tokens used / total / percent / headroom) and turn count. The selected effort level, reasoning/thinking mode, and whether fast-mode is on. Provider quota windows (e.g. 5h / 7d utilization and reset). Cumulative token usage and a rough USD cost estimate. The live working directory (which may have changed since startup). And how long this run has been going. Call this when the user asks about context/token budget, cost, quota, how long the session has run, the current working directory, or your current settings. Also use it to self-regulate (for example, to decide whether to compact context when it is getting full). Takes no input.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "SessionInfo"
+        },
+        {
+          "description": "Discover, inspect and load an Agent Skill. A skill is a SKILL.md pack that holds instructions, scripts and references for one task. Discovery scans the skill roots at session start, and a closer root wins. Use it when a task matches a skill description, or when a workflow must be repeatable. Do not use it for a trivial one-off command. Do not paraphrase a skill from its catalog entry, because the catalog is a router. Returns the catalog for `list`, the frontmatter for `info`, and the body plus a sibling list for `read`.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "What to do. list: every discovered skill, with broken and shadowed entries, and no maxSkills cap. info: the frontmatter of one skill, with no body load. read: the full SKILL.md body, a trailer of bundled sibling files, and the allowed-tools field when declared.",
+                "enum": [
+                  "list",
+                  "info",
+                  "read"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "description": "Skill name (must match the SKILL.md frontmatter `name` field). Required for 'info' and 'read'.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "type": "object"
+          },
+          "name": "Skill"
+        },
+        {
+          "description": "Read text aloud to the user through the computer speakers. Use it when the user asks to hear an answer, or when a short spoken alert helps. Do not use it for code, a raw URL, a table or dense markdown. Do not narrate a written answer that the user reads. Returns a job handle at once, and the speech plays while you keep working.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "description": "The text to read aloud. Plain prose works best. Markdown syntax, code, and raw URLs are read literally and sound bad, so paraphrase them into speech-friendly wording first. Max 8000 characters. The voice reads the text literally, so use plain sentences and strip markdown.",
+                "type": "string"
+              },
+              "wait": {
+                "default": false,
+                "description": "When false (default), return immediately with a job handle and let the speech play in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line you want confirmed as fully spoken before you move on, never for long passages, which would stall the turn.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "name": "Speak"
+        },
+        {
+          "description": "Report whether speech is playing. Use it before you decide to wait, to speak again, or to stop a job. Do not use it to silence a job, use SpeakStop for that. Returns the state of one job, or the state of every job in this session.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "A speech job handle returned by Speak (e.g. `s1`). Omit to get the state of all jobs in this session.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SpeakStatus"
+        },
+        {
+          "description": "Stop speech that is playing. Use it the moment the user says stop, or when you spoke the wrong thing. Do not use it to check whether a job is still talking, use SpeakStatus for that. Returns that the job stopped, and a no-op note when the job had already finished.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "A speech job handle returned by Speak (e.g. `s1`). Omit to stop every active speech job in this session.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SpeakStop"
+        },
+        {
+          "description": "Delegate one self-contained unit of work to a background sub-agent. Use it when the unit floods your context, or when it is genuinely independent of the other work. Do not use it for a quick edit you can do yourself, or for work that needs constant back-and-forth. Returns the worker id, its label and its isolation tier. A one line digest arrives between turns.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "description": "Named specialist: explorer (files), planner (a plan), worker (edits), reviewer (issues), integrator (gate, commit), log-miner (log findings). Omit to use `system`.",
+                "type": "string"
+              },
+              "budget": {
+                "additionalProperties": false,
+                "description": "Optional runtime budget. The supervisor stops a worker that exceeds it.",
+                "properties": {
+                  "deadlineSec": {
+                    "description": "Wall-clock deadline in seconds.",
+                    "type": "number"
+                  },
+                  "maxTokens": {
+                    "description": "Soft token ceiling (advisory).",
+                    "type": "number"
+                  },
+                  "maxTurns": {
+                    "description": "Max agentic turns.",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "effort": {
+                "description": "Optional reasoning effort for the worker. Only pass a value the target model accepts (check ModelInfo for the lead/worker model: effort.levels). Do not invent levels from a universal menu: models differ (e.g. some accept low/medium/high, others medium/high/max only). Prefer omitting effort so the model default applies. That is safer than guessing. An unsupported value fails the spawn (or used to crash the child at boot).",
+                "type": "string"
+              },
+              "expectArtifacts": {
+                "description": "Absolute paths this worker must produce to count as done. When set, the supervisor refuses to mark the worker done unless every path exists and is non-empty, and a missing one flips it to 'incomplete' with a warning. Use for delegations whose whole point is to produce a file (e.g. ['/abs/findings.md']) so the system enforces the deliverable instead of you having to check.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "isolation": {
+                "description": "Context tier. `fresh` (default): a clean context with only the task plus the worker's system prompt, for maximum context compression. `fork`: inherit this conversation's full history (shares the prompt cache, sees your context) for a side task that needs the background without re-explaining.",
+                "enum": [
+                  "fresh",
+                  "fork"
+                ],
+                "type": "string"
+              },
+              "label": {
+                "description": "Short display name for the worker in the fleet widget. Defaults to the agent type.",
+                "type": "string"
+              },
+              "model": {
+                "description": "Optional model id for the worker. When omitted, the worker inherits the model YOU the lead are running, for both named specialists and inline workers. Delegating does not downgrade your model. (Opt into per-role models, cheap scout and flagship deep, by setting MINIMAL_AGENT_SUBAGENT_AUTO_TIER=1. Even then an explicit model here still wins.) Pass `model` when you want a specific model for one spawn. Accepts any model id your provider exposes. An unknown id makes the worker crash at startup, which surfaces as a `failed` handle with the real error.",
+                "type": "string"
+              },
+              "system": {
+                "description": "Inline system prompt defining the worker's role, used when `agent` is omitted. Folded above the task.",
+                "type": "string"
+              },
+              "task": {
+                "description": "The delegation prompt: a clear objective, the scope/file boundaries the worker must stay inside, and the exact output you want back. The single biggest lever on whether delegation succeeds. Required.",
+                "type": "string"
+              },
+              "taskId": {
+                "description": "Link this worker to a task from the Task tool using its canonical id, such as `1` or `1a`. When the worker finishes the linked todo is ticked done automatically (or canceled with a reason if the worker fails). Use it to make a worker own one of your todos.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "task"
+            ],
+            "type": "object"
+          },
+          "name": "SubAgentsSpawnAgent"
+        },
+        {
+          "description": "List this session's sub-agents at a glance. Use it to see the fleet before you pull a result or stop a worker. Do not use it for one worker in depth: use SubAgentsAgentStatus. It pulls no worker transcript. Returns the id, type, status, elapsed time, tokens and current activity of each sub-agent.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "SubAgentsListAgents"
+        },
+        {
+          "description": "Show the status of one sub-agent, or of the whole fleet when you give no id. Use it to check progress, model, isolation tier and linked session. Do not use it to read a result: use SubAgentsAgentResult. Do not use it to read activity: use SubAgentsAgentOutput. Returns a status text with no transcript.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The sub-agent handle (e.g. A2). Omit for the whole fleet.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SubAgentsAgentStatus"
+        },
+        {
+          "description": "Pull the distilled deliverable of a finished sub-agent into your context. Use it after a worker reaches `done`. This is the only sub-agent tool that carries real worker content back. Do not use it to watch a running worker: use SubAgentsAgentOutput. Returns the result summary and artifact references, not the full transcript. The text is bounded.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The sub-agent handle (e.g. A2). Required.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "SubAgentsAgentResult"
+        },
+        {
+          "description": "Tail the recent activity of one sub-agent: its latest tool calls and notes with timestamps. Use it to see what a worker does right now. Use it sparingly, because the fleet widget and the digest usually suffice. Do not use it to read a final result: use SubAgentsAgentResult. Returns a bounded activity text, never the whole transcript.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The sub-agent handle (e.g. A2). Required.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "SubAgentsAgentOutput"
+        },
+        {
+          "description": "Post and read short notes on a shared board between sibling sub-agents and the lead. Use it only when your task tells you to coordinate, to claim a file, flag a blocker or hand off a finding. Do not use it for general talk. Returns the posted note, or the notes addressed to you after a `since` cursor.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "post a message, or read your messages. Default read.",
+                "enum": [
+                  "post",
+                  "read"
+                ],
+                "type": "string"
+              },
+              "body": {
+                "description": "The message text. Required for post.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "Short category: note | claim | blocker | handoff. Default note. (post only)",
+                "type": "string"
+              },
+              "since": {
+                "description": "ISO timestamp cursor: read only messages newer than this. (read only)",
+                "type": "string"
+              },
+              "to": {
+                "description": "Recipient: a worker id (e.g. A3) or \"*\" for broadcast. Default broadcast. (post only)",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SubAgentsMailbox"
+        },
+        {
+          "description": "Cancel a running sub-agent by id. This signals its process and marks it stopped. Use it when a worker is no longer needed, was superseded or goes off track. Do not use it to read a result: use SubAgentsAgentResult. Returns a line that names the stopped sub-agent and the reason, if you gave one. An unknown id returns an error.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "The sub-agent handle (e.g. A2). Required.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "Optional short reason, recorded on the handle.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "SubAgentsStopAgent"
+        },
+        {
+          "description": "Plan and track a per-session task list that the user sees as a live board. Use it for work of 3 or more steps, or when the user asks for a plan. Use `add_many` with `tasks` to plan once, then `start` and `done` with a canonical id from the board. Do not use it for trivial work of 1 or 2 steps. Do not record lessons here, because memory owns those. Do not echo the board as prose. `canceled` means abandoned and `done` means finished. A finished phase header is `done`, not `canceled`. Returns an `OK` acknowledgement, then the updated board or a compact note, per the configured result verbosity.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "What to do. add: one task. add_many: a task tree. replace_plan: a new plan that replaces the board. update: a title or a status. status: a new status. start: move to doing, and auto-start the parent. done: finish, and auto-promote the parent when the last open child closes. A parent stays `doing` while siblings stay open. remove: drop a task that never started. reorder: change top-level order. list: show the board. clear: empty the board. On a validation failure, retry once and do not drip add duplicates.",
+                "enum": [
+                  "add",
+                  "add_many",
+                  "replace_plan",
+                  "update",
+                  "status",
+                  "start",
+                  "done",
+                  "remove",
+                  "reorder",
+                  "list",
+                  "clear"
+                ],
+                "type": "string"
+              },
+              "after": {
+                "description": "Insert the new task immediately after this task instead of at the end. Top-level only. Optional for: add."
+              },
+              "filter": {
+                "description": "Filter for `list` (currently advisory, full set is always rendered).",
+                "enum": [
+                  "all",
+                  "active",
+                  "done",
+                  "canceled"
+                ],
+                "type": "string"
+              },
+              "force": {
+                "description": "For `clear`: override the refusal when any task is `doing`. Default false.",
+                "type": "boolean"
+              },
+              "format": {
+                "default": "text",
+                "description": "Result content format. `text` returns a plain acknowledgement and, when applicable under the configured verbosity, a canonical-id task board. `json` returns the equivalent parseable shape. Human TUI display is always ANSI.",
+                "enum": [
+                  "text",
+                  "json"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."
+              },
+              "items": {
+                "description": "Alias of `tasks`. Prefer `tasks`. Tree form: `{title, children?}[]`. Mutually exclusive with `tasks` and `titles`. Cannot combine with `parent`.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "children": {
+                      "description": "Optional subtask titles under this parent (depth 2 only, strings, not nested objects).",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "title": {
+                      "description": "Top-level task title.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "order": {
+                "description": "Top-level task ids in the desired new order. Subtasks ride along with their parent. Required for: reorder.",
+                "type": "array"
+              },
+              "parallel": {
+                "description": "For `start`: accepted for compatibility. `start` always keeps other `doing` tasks as `doing` (no demotion).",
+                "type": "boolean"
+              },
+              "parent": {
+                "description": "Make this task a subtask of the given parent. Accepts the same shapes as `id`. Optional for: add, and for flat add_many with `titles`. Not allowed with tree `tasks`/`items`."
+              },
+              "query": {
+                "description": "Substring filter for `list` titles (currently advisory).",
+                "type": "string"
+              },
+              "reason": {
+                "description": "Optional reason recorded when setting status to canceled.",
+                "type": "string"
+              },
+              "status": {
+                "description": "New status. Required for: status. Optional for: update. `canceled` means abandoned and `done` means finished, and the board paints them with opposite marks, so pick the verb that matches the intent.",
+                "enum": [
+                  "todo",
+                  "doing",
+                  "done",
+                  "canceled"
+                ],
+                "type": "string"
+              },
+              "tasks": {
+                "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. Children promote the parent, so do not also call `done` on the parent. Do not stringify the array.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "children": {
+                      "description": "Optional subtask titles under this parent (depth 2 only, strings, not nested objects).",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "title": {
+                      "description": "Top-level task title.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "title": {
+                "description": "Task title (single line). Required for: add. Optional for: update (at least one of title or status must be provided).",
+                "type": "string"
+              },
+              "titles": {
+                "description": "Flat list of task titles (alias). For add_many: send exactly one of `tasks` (preferred), `items` (same as tasks), or `titles`. Use `titles` only for a flat plan or a flat batch under `parent`.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "type": "object"
+          },
+          "name": "Task"
+        },
+        {
+          "description": "Search the open web for current information. Use it when the user asks about facts that may have changed since training. Use it for a recent release, a recent event, or a URL. Use it to verify a claim before you state it. Do not use it when the answer is already in the conversation or in files you read. Prefer Grep or Read instead when a local search is faster. Returns ranked hits with title, URL, snippet, age and source. The host retries transient failures 3 times, so do not re-fire at once.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "default": 10,
+                "description": "How many hits to return. Default 10. Smaller is usually better, top 5 are typically the only ones worth reading.",
+                "maximum": 20,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "country": {
+                "description": "ISO-2 country code (e.g. 'US', 'DE') or 'ALL'. Affects result region.",
+                "type": "string"
+              },
+              "format": {
+                "default": "text",
+                "description": "Result format. 'text' (default) returns a compact human-readable list. 'json' returns a structured shape with the same fields, suitable when you need to extract specific values.",
+                "enum": [
+                  "text",
+                  "json"
+                ],
+                "type": "string"
+              },
+              "freshness": {
+                "description": "Time filter: 'pd' (past day), 'pw' (past week), 'pm' (past month), 'py' (past year), or 'YYYY-MM-DDtoYYYY-MM-DD' for a custom range.",
+                "type": "string"
+              },
+              "lang": {
+                "description": "2-character language code (e.g. 'en', 'de'). Affects result language.",
+                "type": "string"
+              },
+              "offset": {
+                "description": "Page index (0-based). Use to paginate beyond the first page.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "query": {
+                "description": "The search query (required). Max 400 characters. Brevity helps, most providers do better with 2-6 well-chosen keywords than full sentences.",
+                "type": "string"
+              },
+              "safesearch": {
+                "description": "Adult content filter.",
+                "enum": [
+                  "off",
+                  "moderate",
+                  "strict"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "default": "web",
+                "description": "Search vertical. 'web' = general results, 'news' = time-sensitive recent articles.",
+                "enum": [
+                  "web",
+                  "news"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "type": "object"
+          },
+          "name": "WebSearch"
+        }
+      ]
+    }
+  ],
+  "scenario": "streak-note-read"
+}
