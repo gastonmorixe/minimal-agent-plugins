@@ -1,0 +1,25 @@
+{
+  "id": "fixture-nonresult",
+  "name": "Fixture nonresult",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool handler returns a value that is not a tool_result.",
+  "headless": {
+    "tools": [
+      {
+        "id": "fixture_nonresult",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "FixtureNonResult",
+            "description": "Test fixture tool. Returns a rendered value.",
+            "input_schema": { "type": "object", "properties": {}, "additionalProperties": false },
+            "explicitName": true,
+            "reason": "fixture name is explicit"
+          }
+        },
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "interactive": false
+      }
+    ]
+  }
+}
