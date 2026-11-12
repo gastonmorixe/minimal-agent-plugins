@@ -16,11 +16,15 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { renderFor } from "../tests/support/prompt-render.ts"
+
 import { type ServiceDeps, spawnAgent } from "./lib/service.ts"
 import { ENV_RESULT_PATH, realProbeDeps, realSpawnDeps } from "./lib/spawn.ts"
 import { SubagentStore } from "./lib/store.ts"
 import { runSupervisor, type SupervisorDeps } from "./lib/supervisor-shell.ts"
 import { sessionId } from "./lib/types.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/.`)
 
 const LEAD = "11111111-1111-4111-8111-111111111111"
 
@@ -58,6 +62,7 @@ function svcDeps(store: SubagentStore): ServiceDeps {
     defaultModel: "claude-haiku-4-5",
     newSid: () => "9c1a4f2e-0b3d-4a6c-8e1f-2d3c4b5a6978",
     now: () => new Date(),
+    renderPrompt: testRender,
   }
 }
 
