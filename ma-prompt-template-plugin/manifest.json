@@ -1,0 +1,10 @@
+{
+  "id": "ma-prompt-template-plugin",
+  "name": "Prompt template",
+  "version": "0.1.0",
+  "description": "Provides the prompts.template slot: fills %%name%% placeholders in plugin prompt files.",
+  "required": true,
+  "provides": ["prompts.template"],
+  "promptTemplate": { "id": "percent-v1", "entry": "./provider.ts" },
+  "capabilities": []
+}

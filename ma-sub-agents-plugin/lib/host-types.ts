@@ -16,6 +16,12 @@
  * @module sub-agents/lib/host-types
  */
 
+/** The slice of `ctx.prompts` this plugin uses. Mirror of `PluginPromptsContext`. */
+export interface PluginPrompts {
+  render(name: string, vars?: Readonly<Record<string, string | number | boolean>>): string
+  expand(text: string): string
+}
+
 /** Boot-time agent identity. Mirror of the host's `AgentContext`. */
 export interface AgentContext {
   readonly sessionId: string
@@ -105,6 +111,8 @@ export interface TUIContext {
   stderr: NodeJS.WriteStream
   log: PluginLogger
   agent?: AgentContext
+  /** Prompt template access. Absent when the host wires no provider. */
+  prompts?: PluginPrompts
   queryModelInfo?: () => ModelInfoSnapshot | undefined
   recommendSubagentModels?: () => SubagentModelRecommendation[]
   host?: PluginHost

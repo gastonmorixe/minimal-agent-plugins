@@ -2,6 +2,7 @@
   "id": "memory",
   "name": "Memory",
   "version": "0.4.0",
+  "requires": ["prompts.template"],
   "description": "Persistent cross-session memory plus a per-session short-term scratchpad. Saves via the inline <ma::emit::memory> tag (zero-friction, mid-response), reads/edits/removes via the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). Persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`), while short-term rides as a per-turn user-message attachment.",
   "headless": {
     "tools": [

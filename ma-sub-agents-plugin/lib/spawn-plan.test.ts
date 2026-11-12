@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
+import { renderFor } from "../../tests/support/prompt-render.ts"
+
 import { renderResultProtocol } from "./prompts.ts"
 import {
   buildSpawnPlan,
@@ -13,6 +15,8 @@ import {
   SUBAGENT_DISABLED_PLUGINS,
 } from "./spawn-plan.ts"
 import { sessionId, subagentId } from "./types.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/..`)
 
 function input(overrides: Partial<SpawnInput> = {}): SpawnInput {
   return {
@@ -112,7 +116,7 @@ describe("buildSpawnPlan disables intercom for every worker", () => {
 
 describe("renderResultProtocol (the markdown template)", () => {
   it("teaches: leaf worker, no delegation, write the file, then call ReportResult; with the fallback path", () => {
-    const out = renderResultProtocol("/sessions/abc.result.json")
+    const out = renderResultProtocol(testRender, "/sessions/abc.result.json")
     expect(out).toMatch(/leaf worker/i)
     expect(out).toMatch(/cannot delegate/i)
     expect(out).toMatch(/SpawnAgent/)
@@ -216,7 +220,7 @@ describe("buildSpawnPlan — fresh", () => {
 
   it("threads the rendered protocol into the composed --prompt", () => {
     const r = buildSpawnPlan(
-      input({ resultProtocol: renderResultProtocol("/sessions/9c.result.json") }),
+      input({ resultProtocol: renderResultProtocol(testRender, "/sessions/9c.result.json") }),
     )
     expect(r.ok).toBe(true)
     if (!r.ok) return

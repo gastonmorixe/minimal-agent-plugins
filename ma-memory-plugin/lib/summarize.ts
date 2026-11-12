@@ -29,7 +29,12 @@
 // DERIVED from the runtime values (`ReturnType`/`Parameters`) below, so
 // the plugin re-declares no host wire-types and adds no extra src/ site.
 import { defaultSummaryModel } from "./memory-config.ts"
-import { promptPath, renderPrompt } from "./prompt-io.ts"
+
+/** Renders one prompt asset of this plugin (`ctx.prompts.render`). */
+export type RenderFn = (
+  name: string,
+  vars?: Readonly<Record<string, string | number | boolean>>,
+) => string
 
 /**
  * One-shot host-brokered completion, matching the `llm:complete` capability
@@ -78,6 +83,8 @@ export interface SummarizeDeps {
    * so the caller falls back to the last-good summary.
    */
   completeFn?: CompleteFn
+  /** Prompt renderer (`ctx.prompts.render`). */
+  render: RenderFn
 }
 
 /**
@@ -94,11 +101,38 @@ export class SummarizeError extends Error {
     | "empty-output"
     | "too-short"
     | "too-long"
-  constructor(kind: SummarizeError["kind"], message: string) {
-    super(message)
+  constructor(kind: SummarizeError["kind"], message: string, options?: { cause?: unknown }) {
+    super(message, options)
     this.name = "SummarizeError"
     this.kind = kind
   }
+}
+
+/** Typed diagnostic id emitted when the `prompts.template` provider is missing. */
+export const PROMPT_PROVIDER_MISSING_ID = "memory.prompt_provider_missing"
+
+/** Core error name (CoreError static kind) for a missing template provider. */
+const PROVIDER_MISSING_KIND = "PromptTemplateProviderMissingError"
+
+/**
+ * True when `e` (or its `cause` chain) is core's missing-provider error.
+ * Matches by `kind` or `name` because a plugin cannot import core `src/`.
+ */
+export function isPromptProviderMissing(e: unknown): boolean {
+  let cur: unknown = e
+  for (let i = 0; i < 4 && cur instanceof Error; i++) {
+    const k = (cur as { kind?: unknown }).kind
+    if (k === PROVIDER_MISSING_KIND || cur.name === PROVIDER_MISSING_KIND) return true
+    cur = cur.cause
+  }
+  return false
+}
+
+/** Error a render function throws when `ctx.prompts` is undefined. */
+export function providerMissingError(): Error {
+  const err = new Error("prompts.template provider is not available")
+  err.name = PROVIDER_MISSING_KIND
+  return err
 }
 
 /** Default timeout in milliseconds. */
@@ -119,12 +153,10 @@ export const MAX_OUTPUT_RATIO = 1.0
  * @param scope - Which memory scope is being summarized.
  * @returns The rendered summarizer system prompt.
  */
-export function buildSystemPrompt(scope: "global" | "project"): string {
+export function buildSystemPrompt(scope: "global" | "project", render: RenderFn): string {
   const framingFile = scope === "global" ? "framing.global.md" : "framing.project.md"
-  const scopeFraming = renderPrompt(promptPath(import.meta, "..", "prompts", framingFile))
-  return renderPrompt(promptPath(import.meta, "..", "prompts", "summarize.tmpl.md"), {
-    scopeFraming,
-  })
+  const scopeFraming = render(framingFile)
+  return render("summarize.tmpl.md", { scopeFraming })
 }
 
 /**
@@ -161,7 +193,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export async function summarize(
   memoryMd: string,
   opts: SummarizeOptions,
-  deps: SummarizeDeps = {},
+  deps: SummarizeDeps,
 ): Promise<string> {
   const complete = deps.completeFn
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
@@ -178,7 +210,7 @@ export async function summarize(
     output = await withTimeout(
       complete({
         model: opts.model ?? defaultSummaryModel(),
-        system: buildSystemPrompt(opts.scope),
+        system: buildSystemPrompt(opts.scope, deps.render),
         userText: memoryMd,
         maxTokens: 8192,
         timeoutMs,
@@ -187,7 +219,9 @@ export async function summarize(
     )
   } catch (e) {
     if (e instanceof SummarizeError) throw e
-    throw new SummarizeError("send-failed", `LLM call failed: ${(e as Error).message}`)
+    throw new SummarizeError("send-failed", `LLM call failed: ${(e as Error).message}`, {
+      cause: e,
+    })
   }
 
   // Sanity checks.

@@ -1,0 +1,1 @@
+x-anthropic-billing-header: cc_version=<VERSION>.<BUILD_HASH>; cc_entrypoint=cli; cch=00000;

@@ -13,6 +13,7 @@ import type { LiveAreaHandlerContext, TUIContext } from "../lib/host-types.ts"
 
 import { resolveDefinition } from "./library.ts"
 import { presenceDir } from "./presence.ts"
+import { type PromptRender } from "./prompts.ts"
 import {
   resolveAgentBin,
   resolveAutoTier,
@@ -195,6 +196,15 @@ function makeEffortLevelsForModel(
   }
 }
 
+/** Bind `ctx.prompts.render`. Throws on use when the host wired no prompt provider. */
+function promptRenderFromCtx(ctx: TUIContext): PromptRender {
+  const prompts = ctx.prompts
+  return (name, vars) => {
+    if (!prompts) throw new Error("sub-agents: ctx.prompts is not available")
+    return prompts.render(name, vars)
+  }
+}
+
 /** Build {@link ServiceDeps} for a tool handler, or `null` when no session id is plumbed. */
 export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   const leadSid = ctx.agent?.sessionId
@@ -204,6 +214,7 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   const defaultModel = resolveLeadModel(ctx)
   const resolveProvider = makeResolveProvider(ctx)
   const effortLevelsForModel = makeEffortLevelsForModel(ctx)
+  const renderPrompt = promptRenderFromCtx(ctx)
   // Lead identity for child spawn: credential + effort + provider. Argv is the
   // lead process's own process.argv (workers re-invoke via resolveAgentBin).
   const leadProvider = resolveLeadProvider(ctx)
@@ -220,7 +231,8 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
     defaultModel,
     newSid: () => randomUUID(),
     now: () => new Date(),
-    resolveDefinition,
+    renderPrompt,
+    resolveDefinition: (name) => resolveDefinition(name, renderPrompt),
     ...(recommendForRole ? { recommendForRole } : {}),
     ...(resolveProvider ? { resolveProvider } : {}),
     ...(effortLevelsForModel ? { effortLevelsForModel } : {}),
