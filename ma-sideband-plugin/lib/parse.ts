@@ -213,6 +213,7 @@ export function parseAt(
   pos: number,
   ctx: ParseContext,
   accept?: (kind: string) => boolean,
+  noClose?: Set<string>,
 ): ParseAtResult {
   const hit = matchQname(text, pos + 1)
   if (!hit) {
@@ -241,8 +242,13 @@ export function parseAt(
   }
   if (form !== "v2") node.legacyQname = hit.text
   if (open.empty) return { status: "node", node, end: open.end }
+  const key = `${kind}|${form}`
+  if (noClose?.has(key)) return { status: "incomplete", phase: "body" }
   const close = findEnd(text, open.end, kind, form, ctx)
-  if (close.status === "incomplete") return { status: "incomplete", phase: "body" }
+  if (close.status === "incomplete") {
+    noClose?.add(key)
+    return { status: "incomplete", phase: "body" }
+  }
   node.body = decodeBody(text.slice(open.end, close.bodyEnd), form, decl)
   node.span = { start: pos, end: close.end }
   return { status: "node", node, end: close.end }
@@ -251,12 +257,13 @@ export function parseAt(
 /** Parse text into top-level nodes in text order. Never throws. */
 export function parseText(text: string, ctx: ParseContext): SidebandNode[] {
   const nodes: SidebandNode[] = []
+  const noClose = new Set<string>()
   try {
     let pos = 0
     for (;;) {
       const i = text.indexOf("<", pos)
       if (i < 0) break
-      const r = parseAt(text, i, ctx)
+      const r = parseAt(text, i, ctx, undefined, noClose)
       if (r.status === "node") {
         nodes.push(r.node)
         pos = r.end

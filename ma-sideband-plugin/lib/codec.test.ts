@@ -6,14 +6,6 @@ import type { SidebandKind, SidebandMessage } from "./types.ts"
 
 const codec = createCodec(makeRegistry())
 
-// Mirrors of the core emitters. Each cites the source (core worktree, same commit).
-// escapeAttr: tools/binary-guard.ts:296, tools/embedded-payload-scrub.ts:200 (E3, no ">").
-const e3 = (s: string): string =>
-  s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
-// escapeTagAttr: plugins/loader/helpers.ts:148 (E4).
-const e4 = (s: string): string =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-
 interface Row {
   name: string
   kind: SidebandKind
@@ -93,7 +85,7 @@ const rows: Row[] = [
     name: "4 special",
     kind: K.binaryResult!,
     msg: { kind: "binary-result", attrs: { mime: SP, size: "3B", tool: SP } },
-    expected: `<ma::agent::binary-result mime="${e3(SP)}" size="3B" tool="${e3(SP)}" />`,
+    expected: `<ma::agent::binary-result mime="a&amp;b &quot;q&quot; &lt;t> >" size="3B" tool="a&amp;b &quot;q&quot; &lt;t> >" />`,
   },
   // tools/binary-guard.ts:300 formatBinaryOptInContent (E3, raw body, block)
   {
@@ -115,7 +107,7 @@ const rows: Row[] = [
       attrs: { mime: SP, size: "3B", encoding: "base64", path: SP },
       body: "A<&>",
     },
-    expected: `<ma::agent::binary-result mime="${e3(SP)}" size="3B" encoding="base64" path="${e3(SP)}">\nA<&>\n</ma::agent::binary-result>`,
+    expected: `<ma::agent::binary-result mime="a&amp;b &quot;q&quot; &lt;t> >" size="3B" encoding="base64" path="a&amp;b &quot;q&quot; &lt;t> >">\nA<&>\n</ma::agent::binary-result>`,
   },
   // tools/embedded-payload-scrub.ts:188 formatRedactedAssetStub (E3)
   {
@@ -141,7 +133,7 @@ const rows: Row[] = [
       kind: "redacted-asset",
       attrs: { kind: "data_uri", mime: SP, size: "1B", chars_removed: 1 },
     },
-    expected: `<ma::agent::redacted-asset kind="data_uri" mime="${e3(SP)}" size="1B" chars_removed="1" />`,
+    expected: `<ma::agent::redacted-asset kind="data_uri" mime="a&amp;b &quot;q&quot; &lt;t> >" size="1B" chars_removed="1" />`,
   },
   // tools/embedded-payload-scrub.ts:198 formatSanitizerFooter (E3)
   {
@@ -161,7 +153,7 @@ const rows: Row[] = [
       kind: "context-sanitizer",
       attrs: { removed: 1, kinds: "data_uri", chars_removed: 1, saved: SP },
     },
-    expected: `<ma::agent::context-sanitizer removed="1" kinds="data_uri" chars_removed="1" saved="${e3(SP)}" />`,
+    expected: `<ma::agent::context-sanitizer removed="1" kinds="data_uri" chars_removed="1" saved="a&amp;b &quot;q&quot; &lt;t> >" />`,
   },
   // agent/tool-preview-budget.ts:92 formatDiagnosticsAnnotation without the leading "\n\n" (count raw)
   {
@@ -201,7 +193,7 @@ const rows: Row[] = [
     name: "10 special",
     kind: K.sysTool!,
     msg: { kind: "tool", attrs: { name: SP }, body: SP },
-    expected: `<ma::sys::tool name="${e4(SP)}">\n${SP}\n</ma::sys::tool>`,
+    expected: `<ma::sys::tool name="a&amp;b &quot;q&quot; &lt;t&gt; &gt;">\n${SP}\n</ma::sys::tool>`,
   },
   // agent/context-compact.ts:105,264 (kind enum, literal)
   {
@@ -224,9 +216,36 @@ describe("render table (v1 bytes)", () => {
       expect(codec.render(r.kind, r.msg)).toBe(r.expected)
     })
   }
-  test("e3 leaves > raw, e4 escapes it", () => {
-    expect(e3(">")).toBe(">")
-    expect(e4(">")).toBe("&gt;")
+  test("e3 leaves > raw, e4 escapes it (literal)", () => {
+    const sp = { kind: "binary-result", attrs: { mime: ">&", size: "1" } }
+    expect(codec.render(K.binaryResult!, sp)).toBe(
+      '<ma::agent::binary-result mime=">&amp;" size="1" />',
+    )
+    const t = { kind: "tool", attrs: { name: ">&" } }
+    expect(codec.render(K.sysTool!, t)).toBe('<ma::sys::tool name="&gt;&amp;" />')
+  })
+  test("all five sys roles escape as e4", () => {
+    for (const role of ["behavior", "context", "emit", "mode", "tool"]) {
+      const k: SidebandKind = { ...K.sysTool!, kind: role, layout: undefined }
+      expect(codec.render(k, { kind: role, attrs: { name: 'a>"' } })).toBe(
+        `<ma::sys::${role} name="a&gt;&quot;" />`,
+      )
+    }
+  })
+  test("control chars pass through render unchanged", () => {
+    const v = "a\u0000b\u0001c"
+    expect(codec.render(K.modeActive!, { kind: "mode-active", attrs: { id: v, since: "s" } })).toBe(
+      `<ma::agent::mode-active id="${v}" since="s" />`,
+    )
+    expect(codec.render(K.policy!, { kind: "policy", body: v })).toBe(
+      `<ma::agent::policy>${v}</ma::agent::policy>`,
+    )
+  })
+  test("empty and null optional attrs are omitted", () => {
+    const m = { kind: "binary-result", attrs: { mime: "x", size: "1", path: "", sha256: null } }
+    expect(codec.render(K.binaryResult!, m as unknown as SidebandMessage)).toBe(
+      '<ma::agent::binary-result mime="x" size="1" />',
+    )
   })
   test("row 12 system-instruction passes through", () => {
     const text = "<system-instruction>\nYou are X.\n</system-instruction>"

@@ -10,6 +10,8 @@ const BODY_CAP = 65536
  * across chunks is held until the next chunk.
  */
 export function createScanner(registry: ReadonlySidebandRegistry): StreamScanner {
+  const ctx = makeContext(registry)
+  const accept = (kind: string): boolean => ctx.kind(kind)?.direction === "from-model"
   let buf = ""
   let textCb: ((text: string) => void) | undefined
   let nodeCb: ((node: SidebandNode, raw: string) => void) | undefined
@@ -18,9 +20,7 @@ export function createScanner(registry: ReadonlySidebandRegistry): StreamScanner
     if (t.length > 0) textCb?.(t)
   }
 
-  const pump = (final: boolean): void => {
-    const ctx = makeContext(registry)
-    const accept = (kind: string): boolean => ctx.kind(kind)?.direction === "from-model"
+  const pumpInner = (final: boolean): void => {
     let pos = 0
     while (pos < buf.length) {
       const idx = buf.indexOf("<", pos)
@@ -49,6 +49,16 @@ export function createScanner(registry: ReadonlySidebandRegistry): StreamScanner
       pos = idx + 1
     }
     buf = buf.slice(pos)
+  }
+
+  const pump = (final: boolean): void => {
+    try {
+      pumpInner(final)
+    } catch {
+      const rest = buf
+      buf = ""
+      text(rest)
+    }
   }
 
   return {
