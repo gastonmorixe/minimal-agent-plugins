@@ -243,6 +243,13 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     run: async ({ turn }) => turn("call a tool that does not exist"),
     keep: [-1],
   },
+  {
+    name: "grep-bad-regex",
+    needsRg: true,
+    script: [{ tools: [{ name: "Grep", input: { pattern: "(" } }] }],
+    run: async ({ turn }) => turn("grep with a broken regex"),
+    keep: [-1],
+  },
   staleFile("stale-file-never-read", [{ tools: [editA] }]),
   staleFile(
     "stale-file-changed",
