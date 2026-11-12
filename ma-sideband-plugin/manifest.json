@@ -1,0 +1,10 @@
+{
+  "id": "sideband",
+  "name": "Sideband",
+  "version": "0.1.0",
+  "description": "Sideband codec xml-ma-v1: renders the current v1 wire form, reads v1, v2 and bare legacy forms, and neutralizes untrusted text.",
+  "required": true,
+  "provides": ["sideband.codec"],
+  "embeddable": true,
+  "sidebandCodec": { "id": "xml-ma-v1", "entry": "./lib/codec.ts" }
+}
