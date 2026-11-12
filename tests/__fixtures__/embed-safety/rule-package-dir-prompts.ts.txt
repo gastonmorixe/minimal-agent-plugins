@@ -1,0 +1,4 @@
+// Negative fixture: every code line below MUST trip the package-dir-prompts rule.
+// The gate drives its RULES regexes against this file directly.
+const d = join(ctx.packageDir, "prompts")
+const t = resolve(packageDir, "templates", "x.md")

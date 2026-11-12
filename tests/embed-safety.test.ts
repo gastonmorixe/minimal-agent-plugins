@@ -20,7 +20,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs"
-import { join, relative } from "node:path"
+import { isAbsolute, join, posix, relative } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
@@ -73,17 +73,21 @@ const RULES: readonly Rule[] = [
   },
 ]
 
-/** One allowed (file, rule) pair and why it is safe. */
+/** One allowed (file, rule) pair and why it is safe. `line` is a distinctive
+ * substring of the offending line; when the line moves or changes without the
+ * entry changing, the entry is stale and the gate fails. */
 interface AllowEntry {
   file: string
   rule: string
   reason: string
+  line: string
 }
 
 const ALLOWLIST: readonly AllowEntry[] = [
   {
     file: "ma-diagnostics-plugin/lib/tsconfig-scope.ts",
     rule: "import-meta-path",
+    line: "createRequire(import.meta.url)",
     reason:
       "createRequire(import.meta.url) resolves the optional `typescript` package, not a plugin " +
       "file. It sits in a try/catch and degrades when absent (embedded or not).",
@@ -91,6 +95,7 @@ const ALLOWLIST: readonly AllowEntry[] = [
   {
     file: "ma-config-plugin/handlers/cmd_config.ts",
     rule: "import-meta-path",
+    line: 'new URL("..", import.meta.url)',
     reason:
       "Fallback only, used while the host CommandContext lacks packageDir (older core). " +
       "ctx.packageDir wins when present. Delete once core passes it (W2 step 4).",
@@ -98,6 +103,7 @@ const ALLOWLIST: readonly AllowEntry[] = [
   {
     file: "ma-chrome-cdp-plugin/bin/cdpd.ts",
     rule: "import-meta-path",
+    line: "fileURLToPath(import.meta.url)",
     reason:
       "Derives the package dir only as the SOURCE-run devPath of cdp-server.ts for " +
       'selfSpawn().script("ma-chrome-cdp/cdp-server", ...). Compiled, the helper ignores ' +
@@ -106,6 +112,7 @@ const ALLOWLIST: readonly AllowEntry[] = [
   {
     file: "ma-computer-use-plugin/bin/cud.ts",
     rule: "import-meta-path",
+    line: "fileURLToPath(import.meta.url)",
     reason:
       "macOS developer tool (xcodegen/xcodebuild of the helper app), never a runtime path. " +
       "W2 section 5 leaves it as is.",
@@ -113,26 +120,31 @@ const ALLOWLIST: readonly AllowEntry[] = [
   {
     file: "ma-security-plugin/src/test-support.ts",
     rule: "import-meta-path",
+    line: "dirname(import.meta.dir)",
     reason: "Test support module, imported by tests only.",
   },
   {
     file: "ma-llm-openai-plugin/openai.test-helpers.ts",
     rule: "import-meta-path",
+    line: 'join(import.meta.dir, "__fixtures__"',
     reason: "Test helper reading __fixtures__, imported by tests only.",
   },
   {
     file: "ma-llm-cursor-plugin/scripts/generate-static-catalog.ts",
     rule: "import-meta-path",
+    line: 'join(import.meta.dir, "..")',
     reason: "Developer script run from the checkout, not part of the plugin runtime.",
   },
   {
     file: "ma-llm-cursor-plugin/scripts/probe-carry.ts",
     rule: "import-meta-path",
+    line: "import.meta.dir,",
     reason: "Developer probe run from the checkout, not part of the plugin runtime.",
   },
   {
     file: "ma-llm-cursor-plugin/scripts/probe-run-encode.ts",
     rule: "import-meta-path",
+    line: "import.meta.dir,",
     reason: "Developer probe run from the checkout, not part of the plugin runtime.",
   },
 ]
@@ -216,6 +228,13 @@ describe("embed safety", () => {
     expect(stale.map((a) => `${a.file} [${a.rule}]`)).toEqual([])
   })
 
+  it("every allowlist entry still matches the recorded line (no drifted entries)", () => {
+    const drifted = ALLOWLIST.filter(
+      (a) => !hits.some((h) => h.file === a.file && h.rule === a.rule && h.text.includes(a.line)),
+    )
+    expect(drifted.map((a) => `${a.file} [${a.rule}] line ${JSON.stringify(a.line)}`)).toEqual([])
+  })
+
   it("every allowlist entry documents its reason", () => {
     for (const a of ALLOWLIST) expect(a.reason.length).toBeGreaterThan(20)
   })
@@ -232,6 +251,43 @@ describe("embed safety", () => {
     )
     expect(probe('const d = join(ctx.packageDir, "prompts")')).toContain("package-dir-prompts")
     expect(probe('import t from "./prompts/a.md" with { type: "text" }')).toEqual([])
+  })
+
+  it("negative fixtures trip their rule and only their rule", () => {
+    const cases: [string, string[]][] = [
+      ["rule-import-meta-path.ts.txt", ["import-meta-path"]],
+      ["rule-prompt-path-helper.ts.txt", ["prompt-path-helper"]],
+      ["rule-read-under-package-dir.ts.txt", ["read-under-package-dir"]],
+      ["rule-package-dir-prompts.ts.txt", ["package-dir-prompts"]],
+    ]
+    const fixtures = join(ROOT, "tests", "__fixtures__", "embed-safety")
+    let covered = 0
+    for (const [name, want] of cases) {
+      const lines = stripComments(readFileSync(join(fixtures, name), "utf8")).split("\n")
+      let fired = 0
+      for (const raw of lines) {
+        const line = raw.trim()
+        // Comment header and blank lines carry no pattern; every code line must trip.
+        if (line === "" || line.startsWith("//")) continue
+        const got = RULES.filter((r) => r.re.test(raw)).map((r) => r.id)
+        expect(got.sort()).toEqual([...want].sort())
+        fired++
+      }
+      expect(fired).toBeGreaterThan(0)
+      covered += fired
+    }
+    expect(covered).toBeGreaterThanOrEqual(cases.length)
+  })
+
+  it("static text imports trip no rule", () => {
+    const src = readFileSync(
+      join(ROOT, "tests", "__fixtures__", "embed-safety", "negative-text-import.ts.txt"),
+      "utf8",
+    )
+    for (const raw of stripComments(src).split("\n")) {
+      if (raw.trim() === "" || raw.trim().startsWith("//")) continue
+      expect(RULES.filter((r) => r.re.test(raw)).map((r) => r.id)).toEqual([])
+    }
   })
 })
 
@@ -254,4 +310,161 @@ describe("migrated prompt text imports are byte-identical to the files", () => {
       expect(imported).toBe(readFileSync(join(ROOT, rel), "utf8"))
     })
   }
+})
+
+/**
+ * Asset enumeration: every first-party plugin asset reachable at runtime must
+ * exist on disk and is therefore covered by the embedding contract.
+ *
+ * Mirrors the ref kinds `scripts/gen-embedded-plugins.ts` (minimal-agent-cli,
+ * READ ONLY: never edited from here) consumes per package: any module-type
+ * handler object with a path anywhere in the manifest (tools, hooks, setup,
+ * ui.setup, liveAreaSlots, and so on), any subprocess-type handler command
+ * exe, the promptTemplate / sidebandCodec / errorRenderers entry fields,
+ * every `scripts` value, `manifest.prompt`, and the provider entry.
+ *
+ * Gap note: the generator doc also names `cli.commands` handlers, but no
+ * manifest ships a `cli` key today, so the generic module walk covers that
+ * kind vacuously. If a `cli` key ever appears with module handlers, this
+ * block picks them up with no change.
+ */
+describe("every manifest asset resolves on disk (embedding contract)", () => {
+  /** Local mirror of core `normalizePackagePath` (src/plugins/source.ts). */
+  function normalizePackagePath(rel: string): string | null {
+    if (rel.length === 0 || rel.includes("\0") || rel.includes("\\")) return null
+    if (isAbsolute(rel) || rel.startsWith("/")) return null
+    if (rel.endsWith("/")) return null
+    const n = posix.normalize(rel)
+    if (n === "." || n === ".." || n.startsWith("../") || n.startsWith("/")) return null
+    return n
+  }
+
+  /** Module file extensions, same set the generator uses for run files. */
+  const MODULE_EXT_RE = /\.(?:[cm]?[jt]sx?)$/
+
+  function isObject(v: unknown): v is Record<string, unknown> {
+    return v !== null && typeof v === "object" && !Array.isArray(v)
+  }
+
+  interface AssetRef {
+    pkg: string
+    kind: string
+    rel: string
+  }
+
+  function collectRefs(): { modules: AssetRef[]; files: AssetRef[]; packages: string[] } {
+    const modules: AssetRef[] = []
+    const files: AssetRef[] = []
+    const packages: string[] = []
+    const walk = (pkg: string, node: unknown): void => {
+      if (Array.isArray(node)) {
+        for (const item of node) walk(pkg, item)
+        return
+      }
+      if (!isObject(node)) return
+      if (node.type === "module" && typeof node.path === "string") {
+        modules.push({ pkg, kind: "module path", rel: node.path })
+      }
+      if (node.type === "subprocess" && Array.isArray(node.command)) {
+        const exe = node.command[0]
+        if (typeof exe === "string" && normalizePackagePath(exe) !== null) {
+          const ref = { pkg, kind: "subprocess command", rel: exe }
+          if (MODULE_EXT_RE.test(exe)) modules.push(ref)
+          else files.push(ref)
+        }
+      }
+      for (const value of Object.values(node)) walk(pkg, value)
+    }
+    for (const name of readdirSync(ROOT).sort()) {
+      if (!name.startsWith("ma-")) continue
+      const dir = join(ROOT, name)
+      if (!statSync(dir).isDirectory()) continue
+      const manifestPath = join(dir, "manifest.json")
+      const providerPath = join(dir, "provider.json")
+      let isPackage = false
+      const readJson = (p: string): unknown => JSON.parse(readFileSync(p, "utf8"))
+      const entryOf = (v: unknown, kind: string): void => {
+        if (isObject(v) && typeof v.entry === "string")
+          modules.push({ pkg: name, kind, rel: v.entry })
+      }
+      try {
+        if (statSync(manifestPath).isFile()) {
+          isPackage = true
+          const manifest = readJson(manifestPath)
+          walk(name, manifest)
+          if (isObject(manifest)) {
+            entryOf(manifest.promptTemplate, "promptTemplate entry")
+            entryOf(manifest.sidebandCodec, "sidebandCodec entry")
+            if (Array.isArray(manifest.errorRenderers)) {
+              for (const er of manifest.errorRenderers) entryOf(er, "errorRenderers entry")
+            }
+            if (isObject(manifest.scripts)) {
+              for (const v of Object.values(manifest.scripts)) {
+                if (typeof v === "string")
+                  modules.push({ pkg: name, kind: "scripts value", rel: v })
+              }
+            }
+            if (typeof manifest.prompt === "string") {
+              modules.push({ pkg: name, kind: "manifest prompt", rel: manifest.prompt })
+            }
+          }
+        }
+      } catch {
+        // Not valid JSON or unreadable: the loader / typecheck gate owns that.
+      }
+      try {
+        if (statSync(providerPath).isFile()) {
+          isPackage = true
+          const provider = readJson(providerPath)
+          if (isObject(provider) && typeof provider.entry === "string") {
+            modules.push({ pkg: name, kind: "provider entry", rel: provider.entry })
+          }
+        }
+      } catch {
+        // Same as above: another gate's problem, not this scan's.
+      }
+      if (isPackage) packages.push(name)
+    }
+    return { modules, files, packages }
+  }
+
+  const { modules, files, packages } = collectRefs()
+
+  it("every first-party package dir carries a manifest or provider", () => {
+    expect(packages.length).toBeGreaterThanOrEqual(50)
+  })
+
+  it("every module, prompt and provider ref resolves to a file on disk", () => {
+    const missing = modules
+      .filter((r) => {
+        const key = normalizePackagePath(r.rel)
+        if (key === null) return true
+        try {
+          return !statSync(join(ROOT, r.pkg, key)).isFile()
+        } catch {
+          return true
+        }
+      })
+      .map((r) => `${r.pkg} [${r.kind}] ${r.rel}`)
+    expect(missing).toEqual([])
+  })
+
+  it("every subprocess run file resolves to a file on disk", () => {
+    const missing = files
+      .filter((r) => {
+        const key = normalizePackagePath(r.rel)
+        if (key === null) return true
+        try {
+          return !statSync(join(ROOT, r.pkg, key)).isFile()
+        } catch {
+          return true
+        }
+      })
+      .map((r) => `${r.pkg} [${r.kind}] ${r.rel}`)
+    expect(missing).toEqual([])
+  })
+
+  it("the embedded module count is sane (generator embeds >100 modules)", () => {
+    expect(modules.length).toBeGreaterThan(100)
+  })
 })

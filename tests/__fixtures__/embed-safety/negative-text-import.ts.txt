@@ -1,0 +1,6 @@
+// Legit pattern: static text imports are inlined at build time and MUST NOT
+// trip any rule. This file must contain no runtime lookup of any kind.
+import billing from "../ma-tasks-plugin/prompts/planning.md" with { type: "text" }
+import catalog from "../ma-llm-cursor-plugin/prompts/tool-catalog.md" with { type: "text" }
+const body = billing + catalog
+export default body
