@@ -159,6 +159,7 @@ describe("summarize — failure modes", () => {
         INPUT_600,
         { model: "claude-haiku-test", scope: "project" },
         {
+          render,
           completeFn: async () => {
             throw err
           },
