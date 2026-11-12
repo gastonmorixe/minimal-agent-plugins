@@ -12,7 +12,7 @@
  */
 
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
-import { renderResultProtocol } from "./prompts.ts"
+import { type PromptRender, renderResultProtocol } from "./prompts.ts"
 import { ENV_RESULT_PATH, launchWorker, type SpawnDeps } from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { type SubagentStore } from "./store.ts"
@@ -124,6 +124,8 @@ export interface ServiceDeps {
   /** Mint a fresh child session id (uuid). Injected for determinism in tests. */
   readonly newSid: () => string
   readonly now: () => Date
+  /** Render a prompt file of this plugin (from `ctx.prompts.render`). */
+  readonly renderPrompt: PromptRender
   /** Resolve a named definition, or undefined. Injected (library discovery). */
   readonly resolveDefinition?: (name: string) => WorkerDefinition | undefined
   /**
@@ -331,7 +333,7 @@ export async function spawnAgent(
   // Render the deliverable protocol from its markdown template (the prose lives
   // on disk, never in code — repo convention). The worker reads how to finish:
   // write any required file itself, then call `ReportResult`.
-  const resultProtocol = renderResultProtocol(resultPath)
+  const resultProtocol = renderResultProtocol(deps.renderPrompt, resultPath)
   const planResult = buildSpawnPlan({
     agentBin: deps.agentBin,
     childSid,

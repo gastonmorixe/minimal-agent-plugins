@@ -4,6 +4,7 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { testRender } from "./prompt-test-render.ts"
 import {
   type ServiceDeps,
   spawnAgent,
@@ -41,6 +42,7 @@ function makeDeps(
     newSid: () => FIXED_SID,
     now: () => new Date("2026-05-30T12:00:00.000Z"),
     launched,
+    renderPrompt: testRender,
     ...over,
   }
 }
