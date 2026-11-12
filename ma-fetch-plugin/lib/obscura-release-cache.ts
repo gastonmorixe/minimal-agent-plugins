@@ -17,7 +17,12 @@ import { type ResolvedObscuraBuild, targetForPlatform } from "./resolve-obscura-
 /** Refresh a release record at most once per six hours for a given installation. */
 export const OBSCURA_RELEASE_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
-const CACHE_SCHEMA_VERSION = 1
+/**
+ * v2: coordinates point at the public `gastonmorixe/obscura` releases and the
+ * tag is the immutable `build-<epoch>`. v1 records (private obscura-dist,
+ * rolling `latest` tag) are treated as absent so they re-resolve once.
+ */
+const CACHE_SCHEMA_VERSION = 2
 
 export interface CachedObscuraRelease extends ResolvedObscuraBuild {
   /** Epoch milliseconds when these coordinates last resolved successfully. */
@@ -46,7 +51,7 @@ export function readCachedObscuraRelease(path: string): CachedObscuraRelease | n
       typeof value.version !== "string" ||
       !/^\d+$/.test(value.version) ||
       typeof value.tag !== "string" ||
-      value.tag.length === 0 ||
+      value.tag !== `build-${value.version}` ||
       typeof value.asset !== "string" ||
       !/^obscura-[a-z0-9_]+-[a-z0-9]+-\d+\.tar\.gz$/.test(value.asset) ||
       typeof value.sha256 !== "string" ||

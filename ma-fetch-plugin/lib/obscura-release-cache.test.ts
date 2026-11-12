@@ -13,7 +13,7 @@ import {
 
 const BUILD = {
   version: "424242",
-  tag: "latest",
+  tag: "build-424242",
   asset: "obscura-aarch64-macos-424242.tar.gz",
   sha256: "c".repeat(64),
   platform: "darwin-arm64",
@@ -56,13 +56,25 @@ describe("obscura release cache", () => {
     writeFileSync(path, "not json")
     expect(readCachedObscuraRelease(path)).toBeNull()
 
-    writeFileSync(path, JSON.stringify({ schemaVersion: 1, checkedAt: 1, ...BUILD, sha256: "bad" }))
+    writeFileSync(path, JSON.stringify({ schemaVersion: 2, checkedAt: 1, ...BUILD, sha256: "bad" }))
     expect(readCachedObscuraRelease(path)).toBeNull()
 
     writeFileSync(
       path,
-      JSON.stringify({ schemaVersion: 1, checkedAt: 1, ...BUILD, platform: "other" }),
+      JSON.stringify({ schemaVersion: 2, checkedAt: 1, ...BUILD, platform: "other" }),
     )
+    expect(readCachedObscuraRelease(path)).toBeNull()
+
+    // A rolling tag is not an immutable pin.
+    writeFileSync(path, JSON.stringify({ schemaVersion: 2, checkedAt: 1, ...BUILD, tag: "latest" }))
+    expect(readCachedObscuraRelease(path)).toBeNull()
+  })
+
+  test("treats a v1 (obscura-dist era) record as absent", () => {
+    const home = tempDir()
+    const path = obscuraReleaseCachePath(home, BUILD.platform)
+    mkdirSync(join(home, "cache", "ma-fetch"), { recursive: true })
+    writeFileSync(path, JSON.stringify({ schemaVersion: 1, checkedAt: 1, ...BUILD }))
     expect(readCachedObscuraRelease(path)).toBeNull()
   })
 })

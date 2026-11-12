@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test"
 
 import {
   type FetchLike,
+  obscuraDownloadUrl,
   pickAssetForTarget,
+  ResolveObscuraError,
   resolveObscuraBuild,
   targetForPlatform,
 } from "./resolve-obscura-release.ts"
@@ -36,8 +38,54 @@ describe("pickAssetForTarget", () => {
   })
 })
 
+describe("obscuraDownloadUrl", () => {
+  test("builds the public release download URL", () => {
+    expect(
+      obscuraDownloadUrl({ tag: "build-999", asset: "obscura-aarch64-linux-999.tar.gz" }),
+    ).toBe(
+      "https://github.com/gastonmorixe/obscura/releases/download/build-999/obscura-aarch64-linux-999.tar.gz",
+    )
+  })
+})
+
 describe("resolveObscuraBuild", () => {
-  test("resolves rolling latest via tag, then sidecar sha256", async () => {
+  test("resolves rolling latest anonymously, sha256 from sidecar, pins build tag", async () => {
+    const calls: { url: string; auth: string | null }[] = []
+    const fetchImpl: FetchLike = async (input, init) => {
+      const url = String(input)
+      calls.push({ url, auth: new Headers(init?.headers).get("authorization") })
+      if (url.endsWith("/repos/gastonmorixe/obscura/releases/tags/latest")) {
+        return Response.json({
+          tag_name: "latest",
+          assets: [
+            { id: 10, name: "obscura-aarch64-macos-999.tar.gz" },
+            {
+              id: 11,
+              name: "obscura-aarch64-macos-999.tar.gz.sha256",
+              browser_download_url: "https://github.com/x/sidecar",
+            },
+          ],
+        })
+      }
+      if (url === "https://github.com/x/sidecar") {
+        return new Response(`${"a".repeat(64)}  obscura-aarch64-macos-999.tar.gz\n`)
+      }
+      return new Response("not found", { status: 404 })
+    }
+
+    const build = await resolveObscuraBuild({ platformKey: "darwin-arm64", fetch: fetchImpl })
+    expect(build).toEqual({
+      version: "999",
+      tag: "build-999",
+      asset: "obscura-aarch64-macos-999.tar.gz",
+      sha256: "a".repeat(64),
+      platform: "darwin-arm64",
+    })
+    expect(calls[0]!.url).toContain("/releases/tags/latest")
+    expect(calls.every((c) => c.auth === null)).toBe(true)
+  })
+
+  test("prefers GitHub asset digest and skips the sidecar request", async () => {
     const calls: string[] = []
     const fetchImpl: FetchLike = async (input) => {
       const url = String(input)
@@ -46,35 +94,20 @@ describe("resolveObscuraBuild", () => {
         return Response.json({
           tag_name: "latest",
           assets: [
-            { id: 10, name: "obscura-aarch64-macos-999.tar.gz" },
-            { id: 11, name: "obscura-aarch64-macos-999.tar.gz.sha256" },
+            {
+              id: 30,
+              name: "obscura-x86_64-linux-777.tar.gz",
+              digest: `sha256:${"E".repeat(64)}`,
+            },
+            { id: 31, name: "obscura-x86_64-linux-777.tar.gz.sha256" },
           ],
         })
       }
-      if (url.endsWith("/releases/assets/11")) {
-        return new Response(
-          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  obscura-aarch64-macos-999.tar.gz\n",
-          {
-            headers: { "Content-Type": "application/octet-stream" },
-          },
-        )
-      }
-      return new Response("not found", { status: 404 })
+      return new Response("unexpected", { status: 500 })
     }
-
-    const build = await resolveObscuraBuild({
-      token: "t",
-      platformKey: "darwin-arm64",
-      fetch: fetchImpl,
-    })
-    expect(build).toEqual({
-      version: "999",
-      tag: "latest",
-      asset: "obscura-aarch64-macos-999.tar.gz",
-      sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      platform: "darwin-arm64",
-    })
-    expect(calls[0]).toContain("/releases/tags/latest")
+    const build = await resolveObscuraBuild({ platformKey: "linux-x64", fetch: fetchImpl })
+    expect(build.sha256).toBe("e".repeat(64))
+    expect(calls).toHaveLength(1)
   })
 
   test("falls back to /releases/latest when rolling tag is missing", async () => {
@@ -92,19 +125,29 @@ describe("resolveObscuraBuild", () => {
           ],
         })
       }
-      if (url.endsWith("/releases/assets/21")) {
-        return new Response("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n")
+      if (
+        url ===
+        "https://github.com/gastonmorixe/obscura/releases/download/build-1780598942/obscura-aarch64-linux-1780598942.tar.gz.sha256"
+      ) {
+        return new Response(`${"b".repeat(64)}\n`)
       }
       return new Response("nope", { status: 404 })
     }
 
-    const build = await resolveObscuraBuild({
-      token: "t",
-      platformKey: "linux-arm64",
-      fetch: fetchImpl,
-    })
+    const build = await resolveObscuraBuild({ platformKey: "linux-arm64", fetch: fetchImpl })
     expect(build.tag).toBe("build-1780598942")
     expect(build.version).toBe("1780598942")
-    expect(build.sha256.startsWith("bbbb")).toBe(true)
+    expect(build.sha256).toBe("b".repeat(64))
+  })
+
+  test("fails closed when no checksum is published", async () => {
+    const fetchImpl: FetchLike = async () =>
+      Response.json({
+        tag_name: "latest",
+        assets: [{ id: 40, name: "obscura-aarch64-linux-5.tar.gz" }],
+      })
+    await expect(
+      resolveObscuraBuild({ platformKey: "linux-arm64", fetch: fetchImpl }),
+    ).rejects.toBeInstanceOf(ResolveObscuraError)
   })
 })

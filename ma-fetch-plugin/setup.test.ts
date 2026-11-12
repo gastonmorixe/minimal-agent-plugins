@@ -1,6 +1,6 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
@@ -88,7 +88,7 @@ describe("ma-fetch setup()", () => {
     const sha = "c".repeat(64)
     writeCachedObscuraRelease(obscuraReleaseCachePath(cfgDir, platform), {
       version: "424242",
-      tag: "latest",
+      tag: "build-424242",
       asset,
       sha256: sha,
       platform,
@@ -122,9 +122,11 @@ describe("ma-fetch setup()", () => {
 
     const asset = `obscura-${target}-424242.tar.gz`
     const sha = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-    globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const authHeaders: (string | null)[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url.includes("/releases/tags/latest")) {
+      authHeaders.push(new Headers(init?.headers).get("authorization"))
+      if (url.includes("/repos/gastonmorixe/obscura/releases/tags/latest")) {
         return Response.json({
           tag_name: "latest",
           assets: [
@@ -133,7 +135,7 @@ describe("ma-fetch setup()", () => {
           ],
         })
       }
-      if (url.includes("/releases/assets/2")) {
+      if (url.endsWith(`/releases/download/latest/${asset}.sha256`)) {
         return new Response(`${sha}  ${asset}\n`)
       }
       return new Response("nope", { status: 404 })
@@ -147,12 +149,13 @@ describe("ma-fetch setup()", () => {
     expect(spec!.sha256).toBe(sha)
     expect(spec!.archiveMember).toBe("obscura")
     expect(spec!.archiveExtraMembers).toEqual(["obscura-worker"])
-    expect(spec!.source.kind).toBe("github-release")
-    if (spec!.source.kind === "github-release") {
-      expect(spec!.source.repo).toBe("gastonmorixe/obscura-dist")
-      expect(spec!.source.tag).toBe("latest")
-      expect(spec!.source.asset).toBe(asset)
-    }
+    expect(spec!.source).toEqual({
+      kind: "url",
+      url: `https://github.com/gastonmorixe/obscura/releases/download/build-424242/${asset}`,
+      archive: true,
+    })
+    expect(spec!.source).not.toHaveProperty("token")
+    expect(authHeaders.every((h) => h === null)).toBe(true)
     expect(result.haltIfMissing).toEqual(["obscura"])
   })
 
@@ -170,7 +173,7 @@ describe("ma-fetch setup()", () => {
       obscuraReleaseCachePath(cfgDir, platform),
       {
         version: "424242",
-        tag: "latest",
+        tag: "build-424242",
         asset: oldAsset,
         sha256: "c".repeat(64),
         platform,
@@ -188,7 +191,7 @@ describe("ma-fetch setup()", () => {
           ],
         })
       }
-      if (url.includes("/releases/assets/2"))
+      if (url.endsWith(`/releases/download/latest/${freshAsset}.sha256`))
         return new Response(`${"d".repeat(64)}  ${freshAsset}\n`)
       return new Response("nope", { status: 404 })
     }) as unknown as typeof fetch
@@ -200,6 +203,44 @@ describe("ma-fetch setup()", () => {
 
     const refreshed = await setup(ctx())
     expect(refreshed.requireBinaries?.[0]?.version).toBe("424243")
+  })
+
+  test("ignores a v1 cache record from obscura-dist and re-resolves", async () => {
+    const cfgPath = join(cfgDir, "config.jsonc")
+    writeFileSync(cfgPath, `{}`)
+    process.env.MINIMAL_AGENT_CONFIG = cfgPath
+
+    const platform = `${process.platform}-${process.arch}`
+    const target = TARGET_BY_PLATFORM[platform]
+    if (!target) return
+    const cachePath = obscuraReleaseCachePath(cfgDir, platform)
+    mkdirSync(dirname(cachePath), { recursive: true })
+    writeFileSync(
+      cachePath,
+      JSON.stringify({
+        schemaVersion: 1,
+        checkedAt: Date.now(),
+        version: "1785979910",
+        tag: "latest",
+        asset: `obscura-${target}-1785979910.tar.gz`,
+        sha256: "f".repeat(64),
+        platform,
+      }),
+    )
+    const asset = `obscura-${target}-555.tar.gz`
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes("/releases/tags/latest")) {
+        return Response.json({
+          tag_name: "latest",
+          assets: [{ id: 1, name: asset, digest: `sha256:${"9".repeat(64)}` }],
+        })
+      }
+      return new Response("nope", { status: 404 })
+    }) as unknown as typeof fetch
+
+    const result = await setup(ctx())
+    expect(result.requireBinaries?.[0]?.version).toBe("555")
   })
 
   test("keeps installed binary when latest resolve fails", async () => {
