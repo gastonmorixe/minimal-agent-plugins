@@ -19,8 +19,7 @@
  * @module handlers/on_key
  */
 
-import { type KeyName, offsetToRowCol, transition } from "ma-autocomplete-kit"
-
+import { type KeyName, offsetToRowCol, transition } from "../../ma-autocomplete-kit/src/index.ts"
 import { loadPromptsConfig } from "../lib/config.ts"
 import type { HookHandlerContext } from "../lib/host-types.ts"
 import { getFsmState, getItems, providerFor, setFsmState, specFor } from "../lib/menu.ts"

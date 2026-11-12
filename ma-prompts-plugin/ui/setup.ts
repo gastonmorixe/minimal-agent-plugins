@@ -7,7 +7,8 @@
  */
 
 import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
-import { styleSlots } from "ma-autocomplete-kit"
+
+import { styleSlots } from "../../ma-autocomplete-kit/src/index.ts"
 
 /** Install the CLI terminal kit into the autocomplete kit's style slots. */
 export default function setup(ctx: UiSetupContext): void {

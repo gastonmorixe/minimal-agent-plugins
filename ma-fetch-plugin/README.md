@@ -95,8 +95,8 @@ Backend output:
 3. Get obscura (the default backend). **Normally you do nothing here:** on
    first interactive start the host resolves the rolling `latest` release from
    the public `gastonmorixe/obscura` Releases (no hardcoded build epoch in the
-   plugin, and no GitHub token: the download is anonymous and verified against
-   the published sha256), pins it to its immutable `build-<epoch>` tag,
+   plugin, and the download is anonymous and verified against the published
+   sha256), pins it to its immutable `build-<epoch>` tag,
    provisions it into the agent-managed dir (`~/.minimal-agent/bin`)
    automatically (see `setup.ts` plus minimal-agent's `binaries/` subsystem),
    and advertises that dir to the plugin via `MINIMAL_AGENT_BIN_DIR`. The
@@ -108,6 +108,24 @@ Backend output:
    no credential and is separate from the host-owned binary manifest. A newer
    `latest` is therefore picked up on a later start without putting GitHub I/O
    on the critical startup path.
+
+   The release lookup on `api.github.com` is anonymous unless the environment
+   already holds a token: `MINIMAL_AGENT_GITHUB_TOKEN`, then `GITHUB_TOKEN`,
+   then `GH_TOKEN`. A token is sent on that lookup only (never on the CDN
+   download) and only lifts the anonymous limit of 60 requests per hour per
+   IP. It is never required, a rejected token falls back to anonymous, and the
+   plugin never runs `gh`.
+
+   **A missing obscura never stops the agent.** If the first lookup or the
+   install fails (offline, rate limited, no build for this platform), startup
+   prints one warning line, `Fetch disabled: ...`, and the rest of the agent
+   boots. Fetch is then hidden from the model for that session (the handler's
+   `available` export), so the model doesn't waste calls on it. The next
+   start retries. If Fetch is still called directly, it returns an
+   `engine-unavailable` error that tells the model not to retry. Scripted
+   runs (`-p`, piped) skip provisioning entirely and use an
+   already-installed copy if there is one. `MINIMAL_AGENT_NO_BINARY_SETUP=1`
+   skips provisioning on every run.
 
    The plugin does **not** look on your `PATH`. A `obscura` you drop into
    `/usr/local/bin` is ignored on purpose (silently running a user's binary is

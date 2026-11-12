@@ -214,6 +214,13 @@ export async function runScenario(scenario: Scenario): Promise<string> {
   for (const k of volatileEnvKeys()) delete process.env[k]
   process.env.HOME = home
   process.env.MINIMAL_AGENT_HOME = home
+  // ma-fetch hides Fetch when its render engine is not installed. The goldens
+  // pin the normal, provisioned toolset, so give the managed bin dir a stub
+  // `obscura` (never executed: no scenario calls Fetch).
+  const binDir = join(home, "bin")
+  mkdirSync(binDir)
+  writeFileSync(join(binDir, "obscura"), "#!/bin/sh\nexit 1\n", { mode: 0o755 })
+  process.env.MINIMAL_AGENT_BIN_DIR = binDir
   // gather.sh pipes through sort, which follows the locale. en_US puts term_cols
   // before term=, C puts term= first. The goldens use C order. Pin it. The
   // finally block restores the old values.

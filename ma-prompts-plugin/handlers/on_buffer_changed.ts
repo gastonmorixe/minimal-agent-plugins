@@ -11,8 +11,7 @@
  * @module handlers/on_buffer_changed
  */
 
-import { sigilStyleSpans, transition } from "ma-autocomplete-kit"
-
+import { sigilStyleSpans, transition } from "../../ma-autocomplete-kit/src/index.ts"
 import { loadPromptsConfig } from "../lib/config.ts"
 import type { EventHandlerContext } from "../lib/host-types.ts"
 import { getFsmState, getItems, providerFor, setFsmState, specFor } from "../lib/menu.ts"
