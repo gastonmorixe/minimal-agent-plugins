@@ -1,0 +1,18 @@
+{
+  "id": "fixture-deny",
+  "name": "Fixture deny",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool.willInvoke hook halts with no reason.",
+  "permissions": ["hooks:tool.willInvoke"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "deny_all",
+        "channel": "tool.willInvoke",
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "priority": 10,
+        "timeoutMs": 2000
+      }
+    ]
+  }
+}

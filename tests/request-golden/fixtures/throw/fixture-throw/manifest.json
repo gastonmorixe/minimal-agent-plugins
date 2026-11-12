@@ -1,0 +1,25 @@
+{
+  "id": "fixture-throw",
+  "name": "Fixture throw",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool handler always throws.",
+  "headless": {
+    "tools": [
+      {
+        "id": "fixture_throw",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "FixtureThrow",
+            "description": "Test fixture tool. Always fails.",
+            "input_schema": { "type": "object", "properties": {}, "additionalProperties": false },
+            "explicitName": true,
+            "reason": "fixture name is explicit"
+          }
+        },
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "interactive": false
+      }
+    ]
+  }
+}
