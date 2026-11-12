@@ -295,4 +295,22 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     run: async ({ turn }) => turn("run bash under a deny hook"),
     keep: [-1],
   },
+  {
+    // Pins the stream-interrupted continue text (text with no tool calls).
+    name: "stream-interrupted-text-continue",
+    script: [
+      { text: "partial", stopDetails: { type: "stream_closed_without_terminal" } },
+      { text: "rest" },
+    ],
+    run: async ({ turn }) => turn("write, the stream will drop"),
+    keep: [-1],
+  },
+  {
+    // Pins the placeholder core inserts for an empty assistant reply that
+    // hit the output-token limit, plus the output-truncated continue text.
+    name: "empty-response-placeholder",
+    script: [{ stopReason: "max_tokens" }, { text: "rest" }],
+    run: async ({ turn }) => turn("answer, the reply will be empty"),
+    keep: [-1],
+  },
 ]
