@@ -59,7 +59,7 @@ import {
   globalMemoryPath as storeGlobalMemoryPath,
   projectMemoryPath as storeProjectMemoryPath,
 } from "../lib/store.ts"
-import type { CompleteFn, RenderFn } from "../lib/summarize.ts"
+import { type CompleteFn, providerMissingError, type RenderFn } from "../lib/summarize.ts"
 import { refreshAndRender, summaryPathFor } from "../lib/summary-refresh.ts"
 
 // ---------------------------------------------------------------------------
@@ -121,6 +121,8 @@ type InjectStrategy = (args: {
   completeFn?: CompleteFn
   /** Prompt renderer (`ctx.prompts.render`). */
   render: RenderFn
+  /** Typed diagnostic sink (source id only). */
+  diagnostic: (id: string) => void
 }) => Promise<string[]>
 
 /** Strategy: emit nothing. The model relies on `MemoryTool` to query. */
@@ -142,6 +144,7 @@ const summaryStrategy: InjectStrategy = async ({
   refresh,
   completeFn,
   render,
+  diagnostic,
 }) => {
   // refreshAndRender reads the file itself, so we don't pre-read here.
   // It also already short-circuits if the file is missing/empty.
@@ -153,7 +156,7 @@ const summaryStrategy: InjectStrategy = async ({
       cfg: cfg.summary,
       ...(completeFn ? { completeFn } : {}),
     },
-    { render },
+    { render, diagnostic },
   )
   if (!result.text) return []
   return [`### ${label} (\`${memoryPath}\`)`, "", result.text, ""]
@@ -241,7 +244,13 @@ export default async function loadMemories(
 
   // Prompt renderer of this plugin. Lazy: a missing provider fails at the first
   // render call (core throws PromptTemplateProviderMissingError), not here.
-  const render: RenderFn = (name, vars) => ctx.prompts!.render(name, vars)
+  const render: RenderFn = (name, vars) => {
+    const prompts = ctx.prompts
+    if (!prompts) throw providerMissingError()
+    return prompts.render(name, vars)
+  }
+
+  const diagnostic = (id: string): void => ctx.log.warn(id, "")
 
   const globalSection = await strategy({
     label: "Global",
@@ -250,6 +259,7 @@ export default async function loadMemories(
     cfg,
     refresh,
     render,
+    diagnostic,
     ...(completeFn ? { completeFn } : {}),
   })
   const projectSection = await strategy({
@@ -259,6 +269,7 @@ export default async function loadMemories(
     cfg,
     refresh,
     render,
+    diagnostic,
     ...(completeFn ? { completeFn } : {}),
   })
 

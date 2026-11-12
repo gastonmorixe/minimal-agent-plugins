@@ -8,9 +8,12 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import { renderFor } from "../../tests/support/prompt-render.ts"
+
 import { getLibrary } from "./library.ts"
-import { testRender } from "./prompt-test-render.ts"
 import { leafDiscipline, renderResultProtocol } from "./prompts.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/..`)
 
 const FIXTURES = join(import.meta.dir, "__fixtures__", "prompt-bytes")
 const RESULT_PATH = "/sessions/fixed-sid.result.json"

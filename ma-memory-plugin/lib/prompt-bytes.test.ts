@@ -9,7 +9,7 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
-import createProvider from "../../ma-prompt-template-plugin/provider.ts"
+import { renderFor } from "../../tests/support/prompt-render.ts"
 
 import { buildSystemPrompt, type RenderFn } from "./summarize.ts"
 
@@ -22,13 +22,7 @@ function fixture(name: string): Buffer {
 }
 
 /** Renderer from the real prompts.template provider, bound to this plugin dir. */
-const render: RenderFn = (name, vars) =>
-  createProvider().render({
-    pluginId: "ma-memory-plugin",
-    pluginDir: join(import.meta.dirname, ".."),
-    name,
-    ...(vars ? { vars } : {}),
-  })
+const render: RenderFn = renderFor("ma-memory-plugin", join(import.meta.dirname, ".."))
 
 describe("memory prompt bytes", () => {
   it("framing.global.md", () => {

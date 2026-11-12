@@ -4,7 +4,8 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
-import { testRender } from "./prompt-test-render.ts"
+import { renderFor } from "../../tests/support/prompt-render.ts"
+
 import {
   type ServiceDeps,
   spawnAgent,
@@ -15,6 +16,8 @@ import {
 import { type SpawnDeps } from "./spawn.ts"
 import { SubagentStore } from "./store.ts"
 import { sessionId, subagentId } from "./types.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/..`)
 
 const LEAD = sessionId("ba0ad20f-1111-4111-8111-111111111111")
 const FIXED_SID = "9c1a4f2e-0b3d-4a6c-8e1f-2d3c4b5a6978"

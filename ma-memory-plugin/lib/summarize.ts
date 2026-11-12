@@ -101,11 +101,38 @@ export class SummarizeError extends Error {
     | "empty-output"
     | "too-short"
     | "too-long"
-  constructor(kind: SummarizeError["kind"], message: string) {
-    super(message)
+  constructor(kind: SummarizeError["kind"], message: string, options?: { cause?: unknown }) {
+    super(message, options)
     this.name = "SummarizeError"
     this.kind = kind
   }
+}
+
+/** Typed diagnostic id emitted when the `prompts.template` provider is missing. */
+export const PROMPT_PROVIDER_MISSING_ID = "memory.prompt_provider_missing"
+
+/** Core error name (CoreError static kind) for a missing template provider. */
+const PROVIDER_MISSING_KIND = "PromptTemplateProviderMissingError"
+
+/**
+ * True when `e` (or its `cause` chain) is core's missing-provider error.
+ * Matches by `kind` or `name` because a plugin cannot import core `src/`.
+ */
+export function isPromptProviderMissing(e: unknown): boolean {
+  let cur: unknown = e
+  for (let i = 0; i < 4 && cur instanceof Error; i++) {
+    const k = (cur as { kind?: unknown }).kind
+    if (k === PROVIDER_MISSING_KIND || cur.name === PROVIDER_MISSING_KIND) return true
+    cur = cur.cause
+  }
+  return false
+}
+
+/** Error a render function throws when `ctx.prompts` is undefined. */
+export function providerMissingError(): Error {
+  const err = new Error("prompts.template provider is not available")
+  err.name = PROVIDER_MISSING_KIND
+  return err
 }
 
 /** Default timeout in milliseconds. */
@@ -192,7 +219,9 @@ export async function summarize(
     )
   } catch (e) {
     if (e instanceof SummarizeError) throw e
-    throw new SummarizeError("send-failed", `LLM call failed: ${(e as Error).message}`)
+    throw new SummarizeError("send-failed", `LLM call failed: ${(e as Error).message}`, {
+      cause: e,
+    })
   }
 
   // Sanity checks.

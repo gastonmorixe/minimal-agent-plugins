@@ -16,12 +16,15 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
-import { testRender } from "./lib/prompt-test-render.ts"
+import { renderFor } from "../tests/support/prompt-render.ts"
+
 import { type ServiceDeps, spawnAgent } from "./lib/service.ts"
 import { ENV_RESULT_PATH, realProbeDeps, realSpawnDeps } from "./lib/spawn.ts"
 import { SubagentStore } from "./lib/store.ts"
 import { runSupervisor, type SupervisorDeps } from "./lib/supervisor-shell.ts"
 import { sessionId } from "./lib/types.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/.`)
 
 const LEAD = "ba0ad20f-1111-4111-8111-111111111111"
 

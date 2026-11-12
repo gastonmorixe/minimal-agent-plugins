@@ -1,7 +1,10 @@
 import { describe, expect, it } from "bun:test"
 
+import { renderFor } from "../../tests/support/prompt-render.ts"
+
 import { getLibrary, libraryNames, resolveDefinition } from "./library.ts"
-import { testRender } from "./prompt-test-render.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/..`)
 
 describe("library specialists", () => {
   it("ships the expected named specialists, resolvable by name", () => {
