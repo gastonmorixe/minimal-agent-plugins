@@ -60,3 +60,6 @@ on purpose, see research/s0.1-worker2-report.md.
 A scenario can set `pluginRoots: ({ root, cwd }) => string[]` to load more plugin
 dirs. The harness appends them after the plugins root. If the field is absent,
 only the plugins root loads, so existing goldens do not change.
+
+Grep errors: normalizeText keeps the prefix "Grep error: " and replaces the rest of the string with <RG_STDERR>. rg stderr differs per version.
+A scenario can set needsRg: true. runScenario then throws RgMissingError when rg is not on PATH. Other scenarios still run.
