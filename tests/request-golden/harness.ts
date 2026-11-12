@@ -75,7 +75,7 @@ export interface Scenario {
   coreDeps?: (paths: { root: string; cwd: string }) => CoreExtra
   /**
    * Build a plain AgentCore with NO_TOOLS_EXECUTOR and one listed stub tool
-   * instead of buildTestCore. The system block is a short fixed string by design.
+   * instead of buildTestCore. The system block is core's own default text, by design.
    */
   noExecutor?: true
   /** Optional fixtures, runs before the core is built. */
