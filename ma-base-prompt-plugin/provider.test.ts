@@ -62,6 +62,21 @@ describe("base prompt provider", () => {
     expect(p.identity?.(ctx)).toBe("late")
   })
 
+  test("the instructions file is read at the first call of instructionParts, not at creation", () => {
+    const dir = stage("lazy-instructions")
+    const p = createBaseProvider(dir)
+    writeFileSync(join(dir, "prompts", "instructions.md"), "late instructions\n")
+    expect(p.instructionParts?.()).toEqual([{ slot: "instructions", text: "late instructions" }])
+  })
+
+  test("the instructions text is read once and kept after the first call", () => {
+    const dir = stage("memo-instructions")
+    const p = createBaseProvider(dir)
+    const first = p.instructionParts?.()[0]?.text
+    writeFileSync(join(dir, "prompts", "instructions.md"), "changed after the first call\n")
+    expect(p.instructionParts?.()[0]?.text).toBe(first ?? "")
+  })
+
   test("neither data file holds a percent placeholder marker", () => {
     for (const name of ["identity.neutral.md", "instructions.md"]) {
       expect(readFileSync(join(import.meta.dir, "prompts", name), "utf-8").includes("%%")).toBe(
