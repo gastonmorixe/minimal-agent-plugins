@@ -33,6 +33,79 @@ export interface SessionLiveness {
   readonly reason?: string
 }
 
+/** Structured piece of a record body (data only). */
+export interface BodyPart {
+  readonly kind: string
+  readonly text: string
+  readonly toolName: string | null
+  readonly role?: string
+}
+
+/** Raw kind-specific values of a record. Mirrors host RecordFacts. */
+export interface RecordFacts {
+  readonly contentIsString: boolean | null
+  readonly toolResultCount: number
+  readonly textBlockCount: number
+  readonly blockCount: number
+  readonly toolNames: readonly string[]
+  readonly hasText: boolean
+  readonly stopReason: string | null
+  readonly isError: boolean | null
+  readonly toolUseId: string | null
+  readonly model: string | null
+  readonly cwd: string | null
+  readonly compactKind: string | null
+  readonly reason: string | null
+  readonly messagesBefore: number | null
+  readonly messagesAfter: number | null
+  readonly rewindTo: string | null
+  readonly droppedCount: number | null
+  readonly backupSid: string | null
+  readonly droppedRecordCount: number | null
+  readonly pid: number | null
+  readonly hostname: string | null
+  readonly round: number | null
+}
+
+/** Content block as stored. Loose on purpose: the plugin only reads what it renders. */
+export interface BlockLike {
+  readonly type: string
+  readonly text?: string
+  readonly thinking?: string
+  readonly signature?: string
+  readonly data?: string
+  readonly id?: string
+  readonly name?: string
+  readonly input?: unknown
+  readonly tool_use_id?: string
+  readonly content?: string | readonly BlockLike[]
+  readonly is_error?: boolean
+  readonly source?: {
+    readonly type: string
+    readonly media_type?: string
+    readonly url?: string
+    readonly file_id?: string
+  }
+}
+
+export interface MessageLike {
+  readonly role: string
+  readonly content: string | readonly BlockLike[]
+}
+
+/** Raw records view (host `sessions.records`). */
+export interface SessionRecordsView {
+  readonly sid: string
+  readonly meta: {
+    readonly sid: string
+    readonly model: string
+    readonly createdAt: string
+    readonly cwd: string
+  } | null
+  readonly records: readonly unknown[]
+  readonly messages: readonly MessageLike[]
+}
+
 export interface SessionMetaView {
   readonly sid: string
   readonly createdAt: string | null
@@ -42,7 +115,8 @@ export interface SessionMetaView {
   readonly parentSid: string | null
   readonly recordCount: number
   readonly counts: Readonly<Record<string, number>>
-  readonly firstPrompt: string | null
+  readonly firstPromptChars: number
+  readonly firstPromptParts: readonly string[] | null
   readonly lastActivity: string | null
   readonly liveness: SessionLiveness
   readonly hasTasks: boolean
@@ -54,10 +128,9 @@ export interface RecordView {
   readonly index: number
   readonly kind: string
   readonly ts: string | null
-  readonly summary: string
-  readonly preview: string
-  readonly clipped: boolean
-  readonly fullChars: number
+  readonly previewChars: number
+  readonly parts: readonly BodyPart[]
+  readonly facts: RecordFacts
 }
 
 export interface RecordWindow {
@@ -73,7 +146,8 @@ export interface ToolCallHit {
   readonly ts: string | null
   readonly tool: string
   readonly toolUseId: string | null
-  readonly inputPreview: string
+  readonly inputJson: string | null
+  readonly inputPreviewChars: number
 }
 
 export interface SearchHit {
@@ -81,7 +155,10 @@ export interface SearchHit {
   readonly index: number
   readonly ts: string | null
   readonly kind: string
-  readonly preview: string
+  readonly parts: readonly BodyPart[]
+  readonly matchAt: number
+  readonly matchLength: number
+  readonly previewChars: number
 }
 
 export interface SessionsReadApi {
@@ -107,11 +184,10 @@ export interface SessionsReadApi {
     offset?: number
     previewChars?: number
     maxSessions?: number
+    /** Builds the body that the query is matched against, from the raw parts. */
+    renderBody?: (parts: readonly BodyPart[]) => string
   }): Promise<{ hits: readonly SearchHit[]; total: number; scannedSessions: number }>
-  dump(
-    sid: string,
-    opts?: { format?: "markdown" | "xml" },
-  ): Promise<{ text: string; bytes: number } | null>
+  records(sid: string): Promise<SessionRecordsView | null>
 }
 
 // ---------------------------------------------------------------------------
