@@ -147,3 +147,53 @@ describe("ACP stop reason (design doc 4a)", () => {
     }
   })
 })
+
+describe("ACP stop reason with core errors (empty message)", () => {
+  const coreLike = (kind: string, fields: Record<string, unknown>) => ({
+    message: "",
+    kind,
+    toJSON: () => ({ kind, fields }),
+  })
+  const oldText =
+    'no credentials for provider "p1" (model "m1"). Run minimal-agent provider p1 login. ' +
+    "No provider credentials found. Run `minimal-agent provider <id> login` " +
+    "(e.g. `minimal-agent provider example-provider login`)."
+
+  it("failed + CoreError cause gives the old text in message and description", () => {
+    const d = decideStopReason({
+      outcome: "failed",
+      lastError: coreLike("NoProviderCredentialsError", {
+        providerId: "p1",
+        modelId: "m1",
+        credentialedProviders: [],
+      }),
+    })
+    if (d.kind !== "error") throw new Error("expected error")
+    expect(d.message).toBe(oldText)
+    expect(d.notice.description).toBe(oldText)
+  })
+
+  it("waiting + CoreError lastError gives the old text", () => {
+    const d = decideStopReason({
+      outcome: "waiting",
+      lastError: coreLike("NoProviderCredentialsError", {
+        providerId: "p1",
+        modelId: "m1",
+        credentialedProviders: [],
+      }),
+    })
+    if (d.kind !== "error") throw new Error("expected error")
+    expect(d.message).toBe(oldText)
+    expect(d.notice.description).toBe(oldText)
+  })
+
+  it("failed + plain Error keeps today's bytes", () => {
+    const d = decideStopReason({ outcome: "failed", lastError: { message: "boom" } })
+    expect(d).toEqual({
+      kind: "error",
+      code: -32603,
+      message: "boom",
+      notice: { severity: "error", title: "Turn failed", description: "boom" },
+    })
+  })
+})
