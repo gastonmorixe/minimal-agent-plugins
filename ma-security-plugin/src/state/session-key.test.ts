@@ -214,7 +214,9 @@ describe("session key", () => {
     const f = sessionFile()
     const target = join(outside, "planted.key")
     const planted = `${"ab".repeat(32)}\n`
-    writeFileSync(target, planted, { mode: 0o644 })
+    writeFileSync(target, planted)
+    // Set the mode explicitly: a default ACL or umask can mask the create mode.
+    chmodSync(target, 0o644)
     symlinkSync(target, sidecarPathFor(f))
     const k = openSessionKey(f)
     expect(k.status).not.toBe("loaded")

@@ -16,6 +16,8 @@ export const GOLDEN_DIR = resolve(import.meta.dir, "goldens")
 const TMP_BASE = resolve(import.meta.dir, ".tmp")
 const PLUGINS_ROOT = resolve(import.meta.dir, "../..")
 const FIXED_NOW_MS = Date.UTC(2026, 0, 2, 3, 4, 5)
+/** Platform the goldens are recorded against, whatever the host OS is. */
+const GOLDEN_PLATFORM = "macos" as const
 
 /** A scripted model reply for one round. */
 export interface ScriptedReply {
@@ -235,6 +237,11 @@ export async function runScenario(scenario: Scenario): Promise<string> {
     const loader = await PluginLoader.load({
       roots: { embedded: resolveEmbeddedRoots(scenario, { root, cwd }) },
       logger: () => {},
+      // Pin platform gating so goldens are host-independent. They are recorded
+      // as macOS (the CI runner), which loads macOS-only plugins such as
+      // ma-chrome-cdp and ma-computer-use. Without this a Linux host drops
+      // their tools and prompt fragments and every golden differs.
+      effectivePlatform: GOLDEN_PLATFORM,
     })
     const modes = new ModeManager(loader.getModes(), null, "dark", () => new Date(FIXED_NOW_MS))
     const captured: Array<Record<string, unknown>> = []
