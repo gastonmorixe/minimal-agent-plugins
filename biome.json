@@ -7,6 +7,7 @@
       "ma-*-plugin/**",
       "scripts/**",
       "tests/**",
+      "types/**",
       "!**/goldens/**",
       "package.json",
       "tsconfig.json",

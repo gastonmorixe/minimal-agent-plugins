@@ -12,6 +12,13 @@
  * Run:  bun run bin/cdp-server.ts          (from the plugin dir)
  * Env:  CDP_PORT (9222) · CDP_SOCK (/tmp/cdp.sock) · CDP_DTAP (auto) · CDP_LOG
  *
+ * Exports {@link main} so a compiled binary can dispatch it from its embedded
+ * script map (`<binary> __run chrome-cdp/cdp-server`). Importing the module has
+ * no side effects: Chrome discovery, signal handlers and the socket all start
+ * inside `main`. Run directly, the `import.meta.main` guard at the bottom calls
+ * it. `main` resolves with `undefined` once the server is listening (the
+ * caller must NOT exit then: the daemon lives on), or with 1 on a fatal error.
+ *
  * @module bin/cdp-server
  */
 
@@ -31,9 +38,8 @@ function log(msg: string): void {
   console.log(`[cdp-server] ${msg}`)
 }
 
-const dtapPath = resolveDtapPath({ home: homedir(), override: process.env.CDP_DTAP })
-const { wsPath } = parseDevToolsActivePort(readFileSync(dtapPath, "utf8"))
-const wsUrl = browserWsUrl(PORT, wsPath)
+// Chrome's browser WebSocket URL, resolved once at the start of `main`.
+let wsUrl: string
 
 // The live connection. Reassigned by the reconnect loop after an unexpected
 // close, so callers always read the current `conn` via the module binding.
@@ -54,7 +60,31 @@ function freshConnection(): CdpConnection {
   })
 }
 
-async function main(): Promise<void> {
+/**
+ * Start the daemon: resolve Chrome's WebSocket from `DevToolsActivePort`,
+ * connect once, then serve the HTTP API on the unix socket.
+ *
+ * @param _argv - Arguments after the script (unused, config is env-only).
+ * @returns `undefined` once listening (keep the process alive), 1 on a fatal error.
+ */
+export async function main(_argv: string[] = []): Promise<number | undefined> {
+  try {
+    await serve()
+    return undefined
+  } catch (e: unknown) {
+    log(`fatal: ${String(e)}`)
+    return 1
+  }
+}
+
+async function serve(): Promise<void> {
+  const dtapPath = resolveDtapPath({ home: homedir(), override: process.env.CDP_DTAP })
+  const { wsPath } = parseDevToolsActivePort(readFileSync(dtapPath, "utf8"))
+  wsUrl = browserWsUrl(PORT, wsPath)
+
+  process.on("SIGTERM", bye)
+  process.on("SIGINT", bye)
+
   conn = freshConnection()
   await conn.connect()
   // Turn on browser-level download events up front so /downloads works.
@@ -110,10 +140,8 @@ function bye(): void {
   }
   process.exit(0)
 }
-process.on("SIGTERM", bye)
-process.on("SIGINT", bye)
 
-main().catch((e: unknown) => {
-  log(`fatal: ${String(e)}`)
-  process.exit(1)
-})
+if (import.meta.main) {
+  const code = await main(process.argv.slice(2))
+  if (code !== undefined) process.exit(code)
+}

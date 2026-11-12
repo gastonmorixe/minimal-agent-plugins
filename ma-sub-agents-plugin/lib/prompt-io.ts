@@ -1,22 +1,18 @@
 /**
- * Prompt loading + templating, LOCAL to the sub-agents plugin.
+ * Prompt templating, LOCAL to the sub-agents plugin.
  *
- * A faithful, self-contained copy of the host's pure prompt helpers (source of
- * truth: `src/prompts.ts`), re-declared here so the plugin imports NOTHING from
- * the host repo (the decoupling contract). Same `%%name%%` / `%%name?%%`
- * placeholder grammar, same disk-read + memoization behavior. Only the pure
- * helpers this plugin actually uses are reproduced (`promptPath`,
- * `loadPromptText`, `renderPrompt`, plus the underlying `renderTemplate`).
+ * A faithful, self-contained copy of the host's pure `renderTemplate` (source
+ * of truth: `src/prompts.ts`), re-declared here so the plugin imports NOTHING
+ * from the host repo (the decoupling contract). Same `%%name%%` / `%%name?%%`
+ * placeholder grammar.
  *
- * The plugin keeps EVERY model-facing string in `../prompts/*.md`, loaded here,
- * never hardcoded as a TypeScript literal — the same convention the host uses.
+ * The plugin keeps EVERY model-facing string in `../prompts/*.md`, never
+ * hardcoded as a TypeScript literal, the same convention the host uses. Those
+ * files are loaded with `with { type: "text" }` imports (see `./prompts.ts`),
+ * not disk reads, so they work from the checkout and from a compiled binary.
  *
  * @module sub-agents/lib/prompt-io
  */
-
-import { readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 
 /** Matches `%%name%%` (required) and `%%name?%%` (optional). */
 const PLACEHOLDER_RE = /%%([A-Za-z0-9_.-]+)(\?)?%%/g
@@ -24,7 +20,7 @@ const PLACEHOLDER_RE = /%%([A-Za-z0-9_.-]+)(\?)?%%/g
 /** A value that can be substituted into a template placeholder. */
 export type PromptVar = string | number | boolean | null | undefined
 
-/** Variable bag passed to {@link renderTemplate} / {@link renderPrompt}. */
+/** Variable bag passed to {@link renderTemplate}. */
 export type PromptVars = Record<string, PromptVar>
 
 /**
@@ -35,7 +31,7 @@ export type PromptVars = Record<string, PromptVar>
 export class PromptTemplateError extends Error {
   /** The required placeholder names that had no value. */
   readonly missing: string[]
-  /** Absolute path of the template file, when rendered from disk. */
+  /** Plugin-relative path of the template file (e.g. `prompts/x.md`), when known. */
   readonly source?: string
   constructor(missing: string[], source?: string) {
     const where = source ? ` in ${source}` : ""
@@ -46,7 +42,7 @@ export class PromptTemplateError extends Error {
   }
 }
 
-/** Options for {@link renderTemplate} and {@link renderPrompt}. */
+/** Options for {@link renderTemplate}. */
 export interface RenderOptions {
   /** Trim leading/trailing whitespace from the final string. Default `true`. */
   trim?: boolean
@@ -89,38 +85,4 @@ export function renderTemplate(
     out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n")
   }
   return opts.trim === false ? out : out.trim()
-}
-
-/** In-process cache of raw file contents, keyed by absolute path. */
-const fileCache = new Map<string, string>()
-
-/**
- * Read a prompt file's raw text, memoized by absolute path. The on-disk bytes
- * are returned verbatim; {@link renderPrompt} handles trimming after
- * substitution.
- */
-export function loadPromptText(absPath: string): string {
-  const cached = fileCache.get(absPath)
-  if (cached !== undefined) return cached
-  const text = readFileSync(absPath, "utf-8")
-  fileCache.set(absPath, text)
-  return text
-}
-
-/** Load a prompt file and render its placeholders in one step. */
-export function renderPrompt(
-  absPath: string,
-  vars: PromptVars = {},
-  opts: RenderOptions = {},
-): string {
-  return renderTemplate(loadPromptText(absPath), vars, { ...opts, source: opts.source ?? absPath })
-}
-
-/**
- * Resolve an absolute path to a prompt file relative to the CALLING module.
- * Pass `import.meta` from the caller.
- */
-export function promptPath(meta: ImportMeta, ...segments: string[]): string {
-  const dir = meta.dirname ?? dirname(fileURLToPath(meta.url))
-  return join(dir, ...segments)
 }

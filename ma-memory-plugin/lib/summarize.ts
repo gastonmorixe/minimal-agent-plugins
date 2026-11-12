@@ -28,8 +28,14 @@
 // imported from `src/` until that capability lands. Their TYPES are
 // DERIVED from the runtime values (`ReturnType`/`Parameters`) below, so
 // the plugin re-declares no host wire-types and adds no extra src/ site.
+// Prompt prose comes in as text imports (inlined by Bun), not disk reads via
+// `import.meta`, so it loads from the checkout and from a compiled binary.
+import framingGlobal from "../prompts/framing.global.md" with { type: "text" }
+import framingProject from "../prompts/framing.project.md" with { type: "text" }
+import summarizeTmpl from "../prompts/summarize.tmpl.md" with { type: "text" }
+
 import { defaultSummaryModel } from "./memory-config.ts"
-import { promptPath, renderPrompt } from "./prompt-io.ts"
+import { renderTemplate } from "./prompt-io.ts"
 
 /**
  * One-shot host-brokered completion, matching the `llm:complete` capability
@@ -121,10 +127,9 @@ export const MAX_OUTPUT_RATIO = 1.0
  */
 export function buildSystemPrompt(scope: "global" | "project"): string {
   const framingFile = scope === "global" ? "framing.global.md" : "framing.project.md"
-  const scopeFraming = renderPrompt(promptPath(import.meta, "..", "prompts", framingFile))
-  return renderPrompt(promptPath(import.meta, "..", "prompts", "summarize.tmpl.md"), {
-    scopeFraming,
-  })
+  const framing = scope === "global" ? framingGlobal : framingProject
+  const scopeFraming = renderTemplate(framing, {}, { source: `prompts/${framingFile}` })
+  return renderTemplate(summarizeTmpl, { scopeFraming }, { source: "prompts/summarize.tmpl.md" })
 }
 
 /**

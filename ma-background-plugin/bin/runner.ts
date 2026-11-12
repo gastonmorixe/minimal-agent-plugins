@@ -22,7 +22,11 @@
  *   - own signals: SIGTERM/SIGINT/SIGHUP forwarded to the job, recorded as a stop.
  *
  * This file is the imperative shell. Its logic lives in `lib/runner-core.ts`
- * (pure, unit-tested). It runs only as an executable, it exports nothing.
+ * (pure, unit-tested). It exports only {@link main}, so a compiled binary can
+ * dispatch it (`<binary> __run background/runner`) from its embedded script
+ * map. Run directly (`bun bin/runner.ts`), the `import.meta.main` guard below
+ * calls `main` and exits with its code. The caller must `process.exit` with
+ * the returned code: the stdin watcher keeps the event loop alive.
  *
  * @module bin/runner
  */
@@ -45,11 +49,19 @@ import { type Sidecar, serializeSidecar } from "../lib/sidecar.ts"
 const KILL_GRACE_MS = 2000
 const PPID_POLL_MS = 1000
 
-async function main(): Promise<never> {
+/**
+ * Run one supervised job. Configuration comes from the environment
+ * (`parseRunnerEnv`), not `argv`, which is accepted for the shared
+ * entry-script contract and ignored.
+ *
+ * @param _argv - Arguments after the script (unused).
+ * @returns The process exit code: 2 on a bad environment, 0 once the job ended.
+ */
+export async function main(_argv: string[] = []): Promise<number> {
   const parsed = parseRunnerEnv(process.env as Record<string, string | undefined>)
   if (!parsed.ok) {
     process.stderr.write(`[ma-bg/runner] ${parsed.error}\n`)
-    process.exit(2)
+    return 2
   }
   const cfg = parsed.value
   const startedAt = new Date().toISOString()
@@ -174,9 +186,9 @@ async function main(): Promise<never> {
     }),
   )
 
-  process.exit(0)
+  return 0
 }
 
 if (import.meta.main) {
-  await main()
+  process.exit(await main(process.argv.slice(2)))
 }

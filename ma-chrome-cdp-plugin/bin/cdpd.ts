@@ -6,6 +6,10 @@
  * afterwards the `ChromeCDP` tool and `curl --unix-socket` talk to it with no
  * further prompts.
  *
+ * Exports {@link main} so a compiled binary can dispatch it from its embedded
+ * script map (`<binary> __run chrome-cdp/cdpd`). Run directly, the
+ * `import.meta.main` guard at the bottom calls it with `process.argv.slice(2)`.
+ *
  * @module bin/cdpd
  */
 
@@ -14,6 +18,10 @@ import { closeSync, existsSync, openSync, unlinkSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+// Sibling-script lookup via the module URL. Fine from the on-disk checkout;
+// in a compiled binary this is `/$bunfs/root`, so the spawn sites below move
+// to `selfSpawn().script("chrome-cdp/cdp-server", ...)` (W2 step 5).
+// Allowlisted in `tests/embed-safety.test.ts` until then.
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SERVER = join(HERE, "cdp-server.ts")
 const SOCK = process.env.CDP_SOCK ?? "/tmp/cdp.sock"
@@ -35,67 +43,79 @@ async function ping(): Promise<unknown> {
   }
 }
 
-const cmd = process.argv[2] ?? ""
+/**
+ * Run one control verb.
+ *
+ * @param argv - `[verb, ...args]`, e.g. `["logs", "80"]`.
+ * @returns The exit code: 2 on an unknown verb, else 0.
+ */
+export async function main(argv: string[]): Promise<number> {
+  const cmd = argv[0] ?? ""
 
-switch (cmd) {
-  case "start": {
-    if (running()) {
-      console.log("already running")
+  switch (cmd) {
+    case "start": {
+      if (running()) {
+        console.log("already running")
+        break
+      }
+      // Append the daemon's stdout+stderr to LOG so `cdpd logs` and the
+      // failure hint ("check CDP_LOG") actually have something to show. Opened
+      // in append mode and handed to the detached child as fds 1 and 2; the
+      // parent closes its own copies right after spawn (the child keeps them).
+      const logFd = openSync(LOG, "a")
+      const child = spawn("bun", ["run", SERVER], {
+        detached: true,
+        stdio: ["ignore", logFd, logFd],
+        env: process.env,
+      })
+      child.unref()
+      closeSync(logFd)
+      await new Promise((r) => setTimeout(r, 1500))
+      console.log(
+        running() ? "started" : "failed to start; check Chrome --remote-debugging-port and CDP_LOG",
+      )
       break
     }
-    // Append the daemon's stdout+stderr to LOG so `cdpd logs` and the
-    // failure hint ("check CDP_LOG") actually have something to show. Opened
-    // in append mode and handed to the detached child as fds 1 and 2; the
-    // parent closes its own copies right after spawn (the child keeps them).
-    const logFd = openSync(LOG, "a")
-    const child = spawn("bun", ["run", SERVER], {
-      detached: true,
-      stdio: ["ignore", logFd, logFd],
-      env: process.env,
-    })
-    child.unref()
-    closeSync(logFd)
-    await new Promise((r) => setTimeout(r, 1500))
-    console.log(
-      running() ? "started" : "failed to start; check Chrome --remote-debugging-port and CDP_LOG",
-    )
-    break
-  }
-  case "stop": {
-    spawnSync("pkill", ["-f", "cdp-server.ts"])
-    try {
-      unlinkSync(SOCK)
-    } catch {
-      // ignore
-    }
-    console.log("stopped")
-    break
-  }
-  case "restart": {
-    spawnSync("pkill", ["-f", "cdp-server.ts"])
-    await new Promise((r) => setTimeout(r, 800))
-    spawnSync("bun", ["run", join(HERE, "cdpd.ts"), "start"], {
-      stdio: "inherit",
-      env: process.env,
-    })
-    break
-  }
-  case "status": {
-    if (!running()) {
-      console.log("not running")
+    case "stop": {
+      spawnSync("pkill", ["-f", "cdp-server.ts"])
+      try {
+        unlinkSync(SOCK)
+      } catch {
+        // ignore
+      }
+      console.log("stopped")
       break
     }
-    console.log("running")
-    console.log(JSON.stringify(await ping()))
-    break
+    case "restart": {
+      spawnSync("pkill", ["-f", "cdp-server.ts"])
+      await new Promise((r) => setTimeout(r, 800))
+      spawnSync("bun", ["run", join(HERE, "cdpd.ts"), "start"], {
+        stdio: "inherit",
+        env: process.env,
+      })
+      break
+    }
+    case "status": {
+      if (!running()) {
+        console.log("not running")
+        break
+      }
+      console.log("running")
+      console.log(JSON.stringify(await ping()))
+      break
+    }
+    case "logs": {
+      if (existsSync(LOG)) spawnSync("tail", ["-n", argv[1] ?? "40", LOG], { stdio: "inherit" })
+      else console.log("(no log yet)")
+      break
+    }
+    default:
+      console.log("usage: bun run bin/cdpd.ts {start|stop|restart|status|logs}")
+      return 2
   }
-  case "logs": {
-    if (existsSync(LOG))
-      spawnSync("tail", ["-n", process.argv[3] ?? "40", LOG], { stdio: "inherit" })
-    else console.log("(no log yet)")
-    break
-  }
-  default:
-    console.log("usage: bun run bin/cdpd.ts {start|stop|restart|status|logs}")
-    process.exit(2)
+  return 0
+}
+
+if (import.meta.main) {
+  process.exit(await main(process.argv.slice(2)))
 }

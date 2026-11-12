@@ -1,20 +1,15 @@
 /**
- * Prompt loading + templating, LOCAL to the memory plugin.
+ * Prompt templating, LOCAL to the memory plugin.
  *
- * A faithful, self-contained copy of the host's pure prompt helpers (source of
- * truth: `src/prompts.ts`), re-declared here so the plugin imports NOTHING from
- * the host repo (the Wave D decoupling contract). Same `%%name%%` / `%%name?%%`
- * placeholder grammar, same disk-read + memoization behavior. Only the helpers
- * this plugin actually uses are reproduced (`promptPath`, `loadPromptText`,
- * `renderPrompt`, plus the underlying `renderTemplate`). Mirrors the
- * sub-agents/schedule plugins' own `prompt-io.ts` idiom.
+ * A faithful, self-contained copy of the host's pure `renderTemplate` (source
+ * of truth: `src/prompts.ts`), re-declared here so the plugin imports NOTHING
+ * from the host repo (the Wave D decoupling contract). Same `%%name%%` /
+ * `%%name?%%` placeholder grammar. The prompt text itself arrives through
+ * `with { type: "text" }` imports at the call site (no disk read), so it loads
+ * the same from the checkout and from a compiled binary.
  *
  * @module memory/lib/prompt-io
  */
-
-import { readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 
 /** Matches `%%name%%` (required) and `%%name?%%` (optional). */
 const PLACEHOLDER_RE = /%%([A-Za-z0-9_.-]+)(\?)?%%/g
@@ -22,7 +17,7 @@ const PLACEHOLDER_RE = /%%([A-Za-z0-9_.-]+)(\?)?%%/g
 /** A value that can be substituted into a template placeholder. */
 export type PromptVar = string | number | boolean | null | undefined
 
-/** Variable bag passed to {@link renderTemplate} / {@link renderPrompt}. */
+/** Variable bag passed to {@link renderTemplate}. */
 export type PromptVars = Record<string, PromptVar>
 
 /**
@@ -33,7 +28,7 @@ export type PromptVars = Record<string, PromptVar>
 export class PromptTemplateError extends Error {
   /** The required placeholder names that had no value. */
   readonly missing: string[]
-  /** Absolute path of the template file, when rendered from disk. */
+  /** Plugin-relative path of the template file (e.g. `prompts/x.md`), when known. */
   readonly source?: string
   constructor(missing: string[], source?: string) {
     const where = source ? ` in ${source}` : ""
@@ -44,7 +39,7 @@ export class PromptTemplateError extends Error {
   }
 }
 
-/** Options for {@link renderTemplate} and {@link renderPrompt}. */
+/** Options for {@link renderTemplate}. */
 export interface RenderOptions {
   /** Trim leading/trailing whitespace from the final string. Default `true`. */
   trim?: boolean
@@ -87,38 +82,4 @@ export function renderTemplate(
     out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n")
   }
   return opts.trim === false ? out : out.trim()
-}
-
-/** In-process cache of raw file contents, keyed by absolute path. */
-const fileCache = new Map<string, string>()
-
-/**
- * Read a prompt file's raw text, memoized by absolute path. The on-disk bytes
- * are returned verbatim; {@link renderPrompt} handles trimming after
- * substitution.
- */
-export function loadPromptText(absPath: string): string {
-  const cached = fileCache.get(absPath)
-  if (cached !== undefined) return cached
-  const text = readFileSync(absPath, "utf-8")
-  fileCache.set(absPath, text)
-  return text
-}
-
-/** Load a prompt file and render its placeholders in one step. */
-export function renderPrompt(
-  absPath: string,
-  vars: PromptVars = {},
-  opts: RenderOptions = {},
-): string {
-  return renderTemplate(loadPromptText(absPath), vars, { ...opts, source: opts.source ?? absPath })
-}
-
-/**
- * Resolve an absolute path to a prompt file relative to the CALLING module.
- * Pass `import.meta` from the caller.
- */
-export function promptPath(meta: ImportMeta, ...segments: string[]): string {
-  const dir = meta.dirname ?? dirname(fileURLToPath(meta.url))
-  return join(dir, ...segments)
 }

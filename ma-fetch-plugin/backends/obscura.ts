@@ -238,23 +238,23 @@ export function parseEnv(env: Record<string, string | undefined>): BuildArgvOpti
 // ---------------------------------------------------------------------------
 
 /**
- * When this file is executed directly (not imported), parse env, spawn
- * obscura, and propagate its stdout/stderr/exit verbatim.
+ * Subprocess entry: parse env, spawn obscura, and propagate its
+ * stdout/stderr verbatim. Configuration comes from the environment, so
+ * `argv` is accepted for the shared entry-script contract and ignored.
+ * Exported so a compiled binary can dispatch it from its embedded script map
+ * (`<binary> __run fetch/obscura`).
  *
- * Bun's `import.meta.main` is true when this file is the entry point.
+ * @param _argv - Arguments after the script (unused).
+ * @returns The exit code: 2 on bad input, else obscura's own code (1 if none).
  */
-if (import.meta.main) {
-  await main()
-}
-
-async function main(): Promise<never> {
+export async function main(_argv: string[] = []): Promise<number> {
   let opts: BuildArgvOptions
   try {
     opts = parseEnv(process.env as Record<string, string | undefined>)
   } catch (e) {
     const msg = e instanceof BackendInputError ? e.message : String(e)
     process.stderr.write(`[ma-fetch/obscura] ${msg}\n`)
-    process.exit(2)
+    return 2
   }
 
   // The binary path is REQUIRED. The plugin only ever runs the agent-managed
@@ -267,7 +267,7 @@ async function main(): Promise<never> {
     process.stderr.write(
       "[ma-fetch/obscura] MA_FETCH_BIN is required (no managed binary resolved); refusing to run a PATH fallback\n",
     )
-    process.exit(2)
+    return 2
   }
   const argv = [bin, ...buildArgv(opts)]
 
@@ -277,5 +277,10 @@ async function main(): Promise<never> {
     stderr: "inherit",
   })
   const code = await proc.exited
-  process.exit(code ?? 1)
+  return code ?? 1
+}
+
+/** Bun's `import.meta.main` is true when this file is the entry point. */
+if (import.meta.main) {
+  process.exit(await main(process.argv.slice(2)))
 }

@@ -1,16 +1,14 @@
 // source: plugin-api-adjacent core src/prompts/prompts.ts (vendored minimal slice for Wave G self-containment)
 /**
- * Minimal prompt loader + `%%name%%` templating for the Anthropic plugin's own
- * `prompts/` dir (identity.claude-code.md, billing.tmpl.md). A repo-separated
- * plugin cannot import core `src/prompts/prompts.ts`, so the tiny slice it needs
- * (renderPrompt + promptPath + the `%%name%%` substitution) is vendored here.
+ * Minimal `%%name%%` templating for the Anthropic plugin's own `prompts/` dir
+ * (identity.claude-code.md, billing.tmpl.md). A repo-separated plugin cannot
+ * import core `src/prompts/prompts.ts`, so the tiny slice it needs (the
+ * `%%name%%` substitution) is vendored here. The prompt text itself arrives
+ * through `with { type: "text" }` imports at the call site, never a disk read,
+ * so it works the same from the checkout and from a compiled binary.
  *
  * @module lib/prompts
  */
-
-import { readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 
 /** Matches `%%name%%` (required) and `%%name?%%` (optional). */
 const PLACEHOLDER_RE = /%%([A-Za-z0-9_.-]+)(\?)?%%/g
@@ -18,7 +16,7 @@ const PLACEHOLDER_RE = /%%([A-Za-z0-9_.-]+)(\?)?%%/g
 /** A value that can be substituted into a template placeholder. */
 export type PromptVar = string | number | boolean | null | undefined
 
-/** Variable bag passed to {@link renderTemplate} / {@link renderPrompt}. */
+/** Variable bag passed to {@link renderTemplate}. */
 export type PromptVars = Record<string, PromptVar>
 
 /** Thrown when a REQUIRED `%%name%%` placeholder has no supplied value. */
@@ -34,7 +32,7 @@ export class PromptTemplateError extends Error {
   }
 }
 
-/** Options for {@link renderTemplate} / {@link renderPrompt}. */
+/** Options for {@link renderTemplate}. */
 export interface RenderOptions {
   trim?: boolean
   source?: string
@@ -65,36 +63,4 @@ export function renderTemplate(
     out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n")
   }
   return opts.trim === false ? out : out.trim()
-}
-
-/** In-process cache of raw file contents, keyed by absolute path. */
-const fileCache = new Map<string, string>()
-
-/** Read a prompt file's raw text, memoized by absolute path. */
-export function loadPromptText(absPath: string): string {
-  const cached = fileCache.get(absPath)
-  if (cached !== undefined) return cached
-  const text = readFileSync(absPath, "utf-8")
-  fileCache.set(absPath, text)
-  return text
-}
-
-/** Load a prompt file and render its placeholders in one step. */
-export function renderPrompt(
-  absPath: string,
-  vars: PromptVars = {},
-  opts: RenderOptions = {},
-): string {
-  return renderTemplate(loadPromptText(absPath), vars, { ...opts, source: opts.source ?? absPath })
-}
-
-/** Resolve an absolute path to a prompt file relative to the CALLING module. */
-export function promptPath(meta: ImportMeta, ...segments: string[]): string {
-  const dir = meta.dirname ?? dirname(fileURLToPath(meta.url))
-  return join(dir, ...segments)
-}
-
-/** Clear the raw-file cache. Tests only. */
-export function clearPromptCache(): void {
-  fileCache.clear()
 }

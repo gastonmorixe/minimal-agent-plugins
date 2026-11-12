@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "description": "Fetch web pages with a real JS-rendering headless browser. Tool: Fetch.",
   "permissions": ["hooks:agent.willStop"],
+  "scripts": {
+    "obscura": "./backends/obscura.ts"
+  },
   "headless": {
     "setup": {
       "type": "module",
