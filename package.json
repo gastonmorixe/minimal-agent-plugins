@@ -26,7 +26,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#c0bdfbea01aaa0e7ed0645c08dc9b555f053372d"
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#621e657ad8ef0462b835b318f62a005c39bb6ac3"
   },
   "scripts": {
     "test": "bun test",
