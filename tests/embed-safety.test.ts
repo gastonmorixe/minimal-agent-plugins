@@ -99,8 +99,9 @@ const ALLOWLIST: readonly AllowEntry[] = [
     file: "ma-chrome-cdp-plugin/bin/cdpd.ts",
     rule: "import-meta-path",
     reason:
-      "Locates the sibling cdp-server.ts to spawn it. A spawn site, migrated to " +
-      'selfSpawn().script("chrome-cdp/cdp-server", ...) in W2 step 5.',
+      "Derives the package dir only as the SOURCE-run devPath of cdp-server.ts for " +
+      'selfSpawn().script("ma-chrome-cdp/cdp-server", ...). Compiled, the helper ignores ' +
+      "it and spawns `<binary> __run`. No file is read from it.",
   },
   {
     file: "ma-computer-use-plugin/bin/cud.ts",

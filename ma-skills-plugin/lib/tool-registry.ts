@@ -17,6 +17,8 @@ import { existsSync, realpathSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
+import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
+
 import type { ToolSpec } from "./types.ts"
 
 // ---------------------------------------------------------------------------
@@ -181,6 +183,30 @@ export async function loadScriptedTools(skillDir: string): Promise<ToolSpec[]> {
 // ---------------------------------------------------------------------------
 
 /**
+ * The env a skill script runs with: `base` (default `process.env`) minus
+ * `BUN_BE_BUN` (core `childEnv`).
+ *
+ * Skill scripts are user files on disk, run directly so their shebang picks
+ * the interpreter (`#!/bin/sh`, `#!/usr/bin/env python3`, `#!/usr/bin/env bun`).
+ * They are deliberately NOT run through the agent binary as a runtime
+ * (`BUN_BE_BUN=1 <binary> <script>`): that env var would then sit in the
+ * script's environment and leak into everything it starts, so a
+ * `minimal-agent` it launched would boot as the plain `bun` CLI. A `.ts` skill
+ * script therefore needs its own runtime on PATH, like any other interpreter.
+ */
+export function skillScriptEnv(
+  base: Readonly<Record<string, string | undefined>> = process.env,
+): Record<string, string> {
+  return childEnv(base)
+}
+
+/** Test seams for {@link toolSpecToHandler}. */
+export interface ToolHandlerOptions {
+  /** Base env for script handlers. Default `process.env`. */
+  readonly env?: Readonly<Record<string, string | undefined>>
+}
+
+/**
  * Convert a validated ToolSpec into an object structurally compatible with
  * the PluginLoader's `ResolvedHandler` interface.
  *
@@ -191,9 +217,14 @@ export async function loadScriptedTools(skillDir: string): Promise<ToolSpec[]> {
  *
  * @param spec - A validated ToolSpec.
  * @param skillDir - Absolute path to the skill's directory.
+ * @param opts - Test seams (base env).
  * @returns An object compatible with ResolvedHandler.
  */
-export function toolSpecToHandler(spec: ToolSpec, skillDir: string): unknown {
+export function toolSpecToHandler(
+  spec: ToolSpec,
+  skillDir: string,
+  opts: ToolHandlerOptions = {},
+): unknown {
   const handlerId = `dynamic:${spec.name}`
 
   const definition = {
@@ -277,9 +308,7 @@ export function toolSpecToHandler(spec: ToolSpec, skillDir: string): unknown {
         stdout: "pipe",
         stderr: "pipe",
         cwd: skillDir,
-        env: {
-          ...(process.env as Record<string, string>),
-        },
+        env: skillScriptEnv(opts.env),
       })
 
       const timer = setTimeout(() => {

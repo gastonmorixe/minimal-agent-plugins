@@ -2,7 +2,7 @@
  * Backend dispatcher (the speech "mechanism" layer).
  *
  * Picks a backend script from `<packageDir>/backends/<config.backend>.ts`,
- * spawns it DETACHED as its own process-group leader, feeds the utterance on
+ * spawns it (core `selfSpawn().script`, see {@link buildBackendArgv}) DETACHED as its own process-group leader, feeds the utterance on
  * stdin, and hands back a {@link SpeechController} (pid + `stop()`) plus an
  * `exited` promise the caller wires to the registry's reaper.
  *
@@ -24,6 +24,13 @@
 
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+
+import {
+  childEnv,
+  isStandaloneExecutable,
+  type SelfSpawnOptions,
+  selfSpawn,
+} from "@minimal-agent/core/plugin-api/utils/self-spawn"
 
 import type { BackendConfig, SpeakConfig } from "./config.ts"
 import { BACKEND_NAME_PATTERN } from "./config.ts"
@@ -104,6 +111,11 @@ export interface SpeechDeps {
   /** Grace period (ms) between SIGTERM and the SIGKILL escalation on stop.
    *  Default 1500. */
   killGraceMs?: number
+  /**
+   * Test seam for the run mode (`standalone`, `execPath`) handed to core
+   * `selfSpawn`. Default: this process.
+   */
+  selfSpawn?: Pick<SelfSpawnOptions, "execPath" | "standalone">
 }
 
 type TimerHandle = ReturnType<typeof setTimeout>
@@ -192,6 +204,31 @@ export function killGroup(proc: SpawnedProcess, signal: NodeJS.Signals): void {
 // Pure helpers (testable without spawn)
 // ---------------------------------------------------------------------------
 
+/**
+ * Backends declared in `manifest.json` `scripts` (each name maps to `./backends/<name>.ts`).
+ * A compiled binary embeds exactly these (`<binary> __run ma-speak/<name>`).
+ * Kept in sync with the manifest by a unit test.
+ */
+export const EMBEDDED_BACKENDS: ReadonlySet<string> = new Set(["macos-say"])
+
+/**
+ * The argv that runs backend `backend` (script at `scriptPath`). Core
+ * `selfSpawn().script("ma-speak/<backend>", scriptPath)`:
+ * `[bun, <pkg>/backends/<backend>.ts]` from source and
+ * `[<binary>, "__run", "ma-speak/<backend>"]` compiled. No `bun` on PATH is
+ * assumed in either mode.
+ *
+ * @throws Error when `backend` is not a valid script-id part (lowercase
+ *   `[a-z0-9_-]`) or `scriptPath` is not absolute in a source run.
+ */
+export function buildBackendArgv(
+  backend: string,
+  scriptPath: string,
+  opts: Pick<SelfSpawnOptions, "execPath" | "standalone"> = {},
+): string[] {
+  return selfSpawn(opts).script(`ma-speak/${backend}`, scriptPath)
+}
+
 /** Resolve the absolute path to the backend script for a given config. */
 export function resolveBackendPath(packageDir: string, backend: string): string {
   if (!BACKEND_NAME_PATTERN.test(backend)) {
@@ -203,8 +240,10 @@ export function resolveBackendPath(packageDir: string, backend: string): string 
 /**
  * Build the `MA_SPEAK_*` env block from per-backend config.
  *
- * Inherits `process.env` so the backend keeps PATH, HOME, etc. (lets bun find
- * itself and the speech CLI), then layers our `MA_SPEAK_*` block on top. The
+ * Inherits `process.env` so the backend keeps PATH, HOME, etc. (lets the
+ * backend find the speech CLI), minus `BUN_BE_BUN` (core `childEnv`: a
+ * compiled `<binary> __run ma-speak/<name>` must not start as the plain `bun`
+ * CLI), then layers our `MA_SPEAK_*` block on top. The
  * utterance text is NOT here: it travels on stdin, which dodges argv length
  * limits and keeps the text out of `ps` output.
  *
@@ -214,10 +253,7 @@ export function buildSpeechEnv(
   backendCfg: BackendConfig | undefined,
   baseEnv: Record<string, string | undefined> = process.env as Record<string, string | undefined>,
 ): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [k, v] of Object.entries(baseEnv)) {
-    if (typeof v === "string") env[k] = v
-  }
+  const env = childEnv(baseEnv)
   if (backendCfg?.bin && backendCfg.bin.length > 0) env.MA_SPEAK_BIN = backendCfg.bin
   if (backendCfg?.voice && backendCfg.voice.length > 0) env.MA_SPEAK_VOICE = backendCfg.voice
   if (typeof backendCfg?.rate === "number") env.MA_SPEAK_RATE = String(backendCfg.rate)
@@ -260,15 +296,19 @@ export function spawnSpeech(
 
   const backendFile = `${config.backend}.ts`
   const scriptPath = resolveBackendPath(packageDir, config.backend)
-  if (!exists(scriptPath)) {
+  // From source the backend is a file on disk. A compiled binary embeds only
+  // the manifest-declared backends and has no script file to check.
+  const standalone = deps.selfSpawn?.standalone ?? isStandaloneExecutable()
+  const scriptAvailable = standalone ? EMBEDDED_BACKENDS.has(config.backend) : exists(scriptPath)
+  if (!scriptAvailable) {
     return { ok: false, backend: backendFile, scriptMissing: true }
   }
 
   const env = buildSpeechEnv(config.backends[config.backend])
-  const argv = ["bun", scriptPath]
 
   let proc: SpawnedProcess
   try {
+    const argv = buildBackendArgv(config.backend, scriptPath, { ...deps.selfSpawn, standalone })
     proc = spawn(argv, {
       env,
       stdin: "pipe",

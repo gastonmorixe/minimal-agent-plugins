@@ -32,8 +32,7 @@ function noopRegistry(): RunnerRegistry {
 
 function paths(): ServicePaths {
   return {
-    runnerPath: "/pkg/bin/runner.ts",
-    runtime: ["bun", "run"],
+    runnerArgv: ["bun", "/pkg/bin/runner.ts"],
     logPath: (id) => join(dir, `${id}.log`),
     statusPath: (id) => join(dir, `${id}.status.json`),
     ensureJobsDir: () => {},

@@ -38,10 +38,8 @@ export interface StartJobInput {
 
 /** Filesystem + path helpers the service needs (injected). */
 export interface ServicePaths {
-  /** Absolute path to `bin/runner.ts`. */
-  readonly runnerPath: string
-  /** How to invoke the runtime, e.g. `["bun", "run"]`. */
-  readonly runtime: readonly string[]
+  /** The full argv that starts the runner (see `resolveRunnerArgv`). */
+  readonly runnerArgv: readonly string[]
   /** Per-job log path. */
   readonly logPath: (id: string) => string
   /** Per-job status sidecar path. */
@@ -94,8 +92,7 @@ export function startJob(input: StartJobInput, deps: ServiceDeps): Result<JobRec
 
   const launched = launchRunner(
     {
-      runnerPath: deps.paths.runnerPath,
-      runtime: deps.paths.runtime,
+      runnerArgv: deps.paths.runnerArgv,
       jobId: id,
       command,
       cwd: input.cwd,

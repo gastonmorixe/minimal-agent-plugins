@@ -10,6 +10,8 @@
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 
+import { type SelfSpawnOptions, selfSpawn } from "@minimal-agent/core/plugin-api/utils/self-spawn"
+
 import type { BgConfig } from "./config.ts"
 import type { AgentContext } from "./host-types.ts"
 import { defaultSessionsDir, jobsDir, logPath, statusPath } from "./paths.ts"
@@ -27,22 +29,37 @@ export interface DepsContext {
   readonly agent?: AgentContext
 }
 
-/**
- * Resolve how to launch the runner: the bun runtime + the runner script path.
- * Honors `MINIMAL_AGENT_BIN` (space-separated argv) for packaged installs,
- * else uses this process's own runtime (`process.execPath`), so a dev checkout
- * and a built binary both spawn the runner the same way.
- */
-export function resolveRuntime(env: Record<string, string>): string[] {
-  const override = env.MINIMAL_AGENT_BG_RUNTIME?.trim()
-  if (override) return override.split(/\s+/)
-  // `process.execPath` is the bun binary running the agent.
-  return [process.execPath]
-}
+/** The embedded script id of `bin/runner.ts` (manifest `scripts.runner`). */
+export const RUNNER_SCRIPT_ID = "ma-bg/runner"
 
 /** Absolute path to `bin/runner.ts` inside the plugin package. */
 export function runnerPathFor(packageDir: string): string {
   return join(packageDir, "bin", "runner.ts")
+}
+
+/**
+ * The full argv that starts the runner. Priority:
+ *   1. `MINIMAL_AGENT_BG_RUNTIME` (space-separated runtime argv), then the
+ *      runner path: `[...override, <pkg>/bin/runner.ts]`. An escape hatch for
+ *      a custom runtime from a disk checkout.
+ *   2. Core `selfSpawn().script("ma-bg/runner", <pkg>/bin/runner.ts)`:
+ *      `[bun, <pkg>/bin/runner.ts]` from source and
+ *      `[<binary>, "__run", "ma-bg/runner"]` from a compiled binary, where
+ *      `process.execPath` cannot run a `.ts` file.
+ *
+ * @param packageDir - The plugin package dir (holds `bin/runner.ts`).
+ * @param env - Env read for the `MINIMAL_AGENT_BG_RUNTIME` override.
+ * @param opts - Test seam forwarded to `selfSpawn` (run mode, execPath).
+ */
+export function resolveRunnerArgv(
+  packageDir: string,
+  env: Record<string, string | undefined>,
+  opts: Pick<SelfSpawnOptions, "execPath" | "standalone"> = {},
+): string[] {
+  const runnerPath = runnerPathFor(packageDir)
+  const override = env.MINIMAL_AGENT_BG_RUNTIME?.trim()
+  if (override) return [...override.split(/\s+/), runnerPath]
+  return selfSpawn(opts).script(RUNNER_SCRIPT_ID, runnerPath)
 }
 
 /** Build {@link ServicePaths} bound to a session. */
@@ -53,8 +70,7 @@ function pathsFor(
   env: Record<string, string>,
 ): ServicePaths {
   return {
-    runnerPath: runnerPathFor(packageDir),
-    runtime: resolveRuntime(env),
+    runnerArgv: resolveRunnerArgv(packageDir, env),
     logPath: (id) => logPath(sessionsDir, sid, id),
     statusPath: (id) => statusPath(sessionsDir, sid, id),
     ensureJobsDir: () => {

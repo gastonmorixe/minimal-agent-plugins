@@ -10,6 +10,8 @@
  * @module lib/spawn
  */
 
+import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
+
 import { ENV } from "./runner-core.ts"
 import { err, ok, type Result } from "./types.ts"
 
@@ -26,10 +28,12 @@ export interface RunnerHandle {
 
 /** Everything a launch needs. The runner reads these from its env. */
 export interface LaunchSpec {
-  /** Absolute path to `bin/runner.ts`. */
-  readonly runnerPath: string
-  /** How to invoke the agent runtime, e.g. `["bun", "run"]` or `[bunPath]`. */
-  readonly runtime: readonly string[]
+  /**
+   * The full argv that starts the runner, e.g. `[bun, /pkg/bin/runner.ts]`
+   * from source or `[<binary>, "__run", "ma-bg/runner"]` compiled. Built by
+   * `resolveRunnerArgv` (handler-deps).
+   */
+  readonly runnerArgv: readonly string[]
   readonly jobId: string
   readonly command: string
   readonly cwd: string
@@ -43,12 +47,14 @@ export interface LaunchSpec {
 /** The injected launcher: start a runner, return its handle. May throw. */
 export type LaunchFn = (spec: LaunchSpec) => RunnerHandle
 
-/** Build the env block the runner reads. Pure. */
+/**
+ * Build the env block the runner reads. Pure. The base env goes through core
+ * `childEnv`, so `BUN_BE_BUN` never reaches the runner: a compiled binary
+ * started as `<binary> __run ma-bg/runner` with it set would run as the plain
+ * `bun` CLI instead of dispatching the runner.
+ */
 export function buildRunnerEnv(spec: LaunchSpec): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [k, v] of Object.entries(spec.baseEnv)) {
-    if (typeof v === "string") env[k] = v
-  }
+  const env = childEnv(spec.baseEnv)
   env[ENV.JOB_ID] = spec.jobId
   env[ENV.COMMAND] = spec.command
   env[ENV.CWD] = spec.cwd
@@ -60,7 +66,7 @@ export function buildRunnerEnv(spec: LaunchSpec): Record<string, string> {
 
 /** Build the argv to launch the runner. Pure. */
 export function buildRunnerArgv(spec: LaunchSpec): string[] {
-  return [...spec.runtime, spec.runnerPath]
+  return [...spec.runnerArgv]
 }
 
 /**

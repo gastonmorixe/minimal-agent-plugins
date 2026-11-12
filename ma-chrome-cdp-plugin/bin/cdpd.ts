@@ -7,7 +7,7 @@
  * further prompts.
  *
  * Exports {@link main} so a compiled binary can dispatch it from its embedded
- * script map (`<binary> __run chrome-cdp/cdpd`). Run directly, the
+ * script map (`<binary> __run ma-chrome-cdp/cdpd`). Run directly, the
  * `import.meta.main` guard at the bottom calls it with `process.argv.slice(2)`.
  *
  * @module bin/cdpd
@@ -15,20 +15,20 @@
 
 import { spawn, spawnSync } from "node:child_process"
 import { closeSync, existsSync, openSync, unlinkSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-// Sibling-script lookup via the module URL. Fine from the on-disk checkout;
-// in a compiled binary this is `/$bunfs/root`, so the spawn sites below move
-// to `selfSpawn().script("chrome-cdp/cdp-server", ...)` (W2 step 5).
-// Allowlisted in `tests/embed-safety.test.ts` until then.
-const HERE = dirname(fileURLToPath(import.meta.url))
-const SERVER = join(HERE, "cdp-server.ts")
+import { daemonEnv, SERVER_PROCESS_PATTERN, serverArgv } from "../lib/daemon-spawn.ts"
+
+// The package dir, for the SOURCE-run devPath of cdp-server.ts only. In a
+// compiled binary this is `/$bunfs/`, and `serverArgv` ignores the path there
+// (it spawns `<binary> __run ma-chrome-cdp/cdp-server`). Nothing is read from it.
+const PACKAGE_DIR = dirname(dirname(fileURLToPath(import.meta.url)))
 const SOCK = process.env.CDP_SOCK ?? "/tmp/cdp.sock"
 const LOG = process.env.CDP_LOG ?? "/tmp/cdp-server.log"
 
 function running(): boolean {
-  const r = spawnSync("pgrep", ["-f", "cdp-server.ts"], { encoding: "utf8" })
+  const r = spawnSync("pgrep", ["-f", SERVER_PROCESS_PATTERN], { encoding: "utf8" })
   return r.status === 0 && r.stdout.trim().length > 0
 }
 
@@ -63,10 +63,11 @@ export async function main(argv: string[]): Promise<number> {
       // in append mode and handed to the detached child as fds 1 and 2; the
       // parent closes its own copies right after spawn (the child keeps them).
       const logFd = openSync(LOG, "a")
-      const child = spawn("bun", ["run", SERVER], {
+      const [cmd, ...args] = serverArgv(PACKAGE_DIR)
+      const child = spawn(cmd, args, {
         detached: true,
         stdio: ["ignore", logFd, logFd],
-        env: process.env,
+        env: daemonEnv(),
       })
       child.unref()
       closeSync(logFd)
@@ -77,7 +78,7 @@ export async function main(argv: string[]): Promise<number> {
       break
     }
     case "stop": {
-      spawnSync("pkill", ["-f", "cdp-server.ts"])
+      spawnSync("pkill", ["-f", SERVER_PROCESS_PATTERN])
       try {
         unlinkSync(SOCK)
       } catch {
@@ -87,13 +88,10 @@ export async function main(argv: string[]): Promise<number> {
       break
     }
     case "restart": {
-      spawnSync("pkill", ["-f", "cdp-server.ts"])
+      spawnSync("pkill", ["-f", SERVER_PROCESS_PATTERN])
       await new Promise((r) => setTimeout(r, 800))
-      spawnSync("bun", ["run", join(HERE, "cdpd.ts"), "start"], {
-        stdio: "inherit",
-        env: process.env,
-      })
-      break
+      // In-process: no re-spawn of this script, so no runtime is assumed.
+      return main(["start"])
     }
     case "status": {
       if (!running()) {

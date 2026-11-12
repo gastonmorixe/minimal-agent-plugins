@@ -14,8 +14,13 @@
  *     caller falls back to the built-in renderer;
  *   - output is the first non-empty stdout line, trimmed; empty stdout → `null`.
  *
+ *   - env: the agent's env minus `BUN_BE_BUN` (core `childEnv`), so a
+ *     `minimal-agent` the script starts never boots as the plain `bun` CLI.
+ *
  * @module quota-status/script-runner
  */
+
+import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
 
 /** Hard cap for a status script, independent of the caller signal. */
 const SCRIPT_TIMEOUT_MS = 4_000
@@ -49,6 +54,7 @@ export async function runStatusScript(
   script: string,
   payload: unknown,
   signal?: AbortSignal,
+  env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<string | null> {
   const argv = parseFormatterCommand(script)
   if (argv.length === 0) return null
@@ -64,6 +70,7 @@ export async function runStatusScript(
 
   try {
     const proc = Bun.spawn(argv, {
+      env: childEnv(env),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "ignore",

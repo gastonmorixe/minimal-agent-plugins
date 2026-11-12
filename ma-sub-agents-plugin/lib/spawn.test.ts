@@ -7,6 +7,7 @@ import {
   parseResultDigest,
   probeWorker,
   type SpawnDeps,
+  workerEnv,
 } from "./spawn.ts"
 import { buildSpawnPlan, type SpawnInput } from "./spawn-plan.ts"
 import { type Progress, sessionId, subagentId } from "./types.ts"
@@ -373,5 +374,19 @@ describe("parseResultDigest", () => {
   })
   it("leaves incomplete unset for an ordinary finished sentinel", () => {
     expect(parseResultDigest({ short: "found 3 callers" })?.incomplete).toBeUndefined()
+  })
+})
+
+describe("workerEnv", () => {
+  it("merges the plan overlay over the base env and strips BUN_BE_BUN", () => {
+    const env = workerEnv(
+      { MINIMAL_AGENT_SUBAGENT_DEPTH: "1", HOME: "/child" },
+      { PATH: "/usr/bin", HOME: "/lead", BUN_BE_BUN: "1", GONE: undefined },
+    )
+    expect(env).toEqual({ PATH: "/usr/bin", HOME: "/child", MINIMAL_AGENT_SUBAGENT_DEPTH: "1" })
+    expect("BUN_BE_BUN" in env).toBe(false)
+  })
+  it("strips BUN_BE_BUN even when the overlay sets it", () => {
+    expect("BUN_BE_BUN" in workerEnv({ BUN_BE_BUN: "1" }, {})).toBe(false)
   })
 })

@@ -418,7 +418,8 @@ describe("callBackend - happy path", () => {
     expect(result.stderr).toBe("info: ok")
     expect(result.backend).toBe("obscura.ts")
     expect(calls).toHaveLength(1)
-    expect(calls[0].argv).toEqual(["bun", "/plugin/backends/obscura.ts"])
+    // Source run: this process's own bun runs the script, never a PATH `bun`.
+    expect(calls[0].argv).toEqual([process.execPath, "/plugin/backends/obscura.ts"])
     expect(calls[0].env.MA_FETCH_URL).toBe("https://x")
   })
 

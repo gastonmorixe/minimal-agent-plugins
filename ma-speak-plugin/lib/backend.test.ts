@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test"
 
+import manifest from "../manifest.json"
+
 import {
+  buildBackendArgv,
   buildSpeechEnv,
   DEFAULT_KILL_GRACE_MS,
   defaultParentExitHook,
+  EMBEDDED_BACKENDS,
   killGroup,
   resolveBackendPath,
   type SpawnedProcess,
@@ -11,6 +15,110 @@ import {
   spawnSpeech,
 } from "./backend.ts"
 import { defaultConfig } from "./config.ts"
+
+// ---------------------------------------------------------------------------
+// buildBackendArgv (selfSpawn) + run modes
+// ---------------------------------------------------------------------------
+
+describe("buildBackendArgv (selfSpawn)", () => {
+  test("source run: [execPath, <pkg>/backends/<name>.ts]", () => {
+    expect(
+      buildBackendArgv("macos-say", "/p/backends/macos-say.ts", {
+        execPath: "/usr/bin/bun",
+        standalone: false,
+      }),
+    ).toEqual(["/usr/bin/bun", "/p/backends/macos-say.ts"])
+  })
+  test("compiled: [<binary>, __run, ma-speak/<name>]", () => {
+    expect(
+      buildBackendArgv("macos-say", "/p/backends/macos-say.ts", {
+        execPath: "/opt/minimal-agent",
+        standalone: true,
+      }),
+    ).toEqual(["/opt/minimal-agent", "__run", "ma-speak/macos-say"])
+  })
+  test("EMBEDDED_BACKENDS matches the manifest scripts map", () => {
+    const m = manifest as { id: string; scripts: Record<string, string> }
+    expect(m.id).toBe("ma-speak")
+    expect([...EMBEDDED_BACKENDS].sort()).toEqual(Object.keys(m.scripts).sort())
+    for (const name of EMBEDDED_BACKENDS) expect(m.scripts[name]).toBe(`./backends/${name}.ts`)
+  })
+  test("the speech env never carries BUN_BE_BUN", () => {
+    const env = buildSpeechEnv({ voice: "Samantha" }, { PATH: "/usr/bin", BUN_BE_BUN: "1" })
+    expect("BUN_BE_BUN" in env).toBe(false)
+    expect(env.PATH).toBe("/usr/bin")
+    expect(env.MA_SPEAK_VOICE).toBe("Samantha")
+  })
+})
+
+describe("spawnSpeech - run modes", () => {
+  const fake = (): SpawnedProcess => ({
+    pid: 7,
+    stdin: { write() {}, end() {} },
+    stderr: null,
+    exited: new Promise<number>(() => {}),
+    kill: () => true,
+  })
+
+  test("source run spawns this process's runtime, not a PATH `bun`", () => {
+    const calls: string[][] = []
+    const res = spawnSpeech(
+      "/pkg",
+      defaultConfig(),
+      { text: "hi" },
+      {
+        existsFn: () => true,
+        spawnFn: (argv) => {
+          calls.push([...argv])
+          return fake()
+        },
+        parentExitHook: () => () => {},
+        selfSpawn: { execPath: "/usr/bin/bun", standalone: false },
+      },
+    )
+    expect(res.ok).toBe(true)
+    expect(calls).toEqual([["/usr/bin/bun", "/pkg/backends/macos-say.ts"]])
+  })
+
+  test("compiled: __run ma-speak/macos-say with no script file on disk", () => {
+    const calls: string[][] = []
+    const res = spawnSpeech(
+      "/$bunfs/root",
+      defaultConfig(),
+      { text: "hi" },
+      {
+        existsFn: () => false,
+        spawnFn: (argv) => {
+          calls.push([...argv])
+          return fake()
+        },
+        parentExitHook: () => () => {},
+        selfSpawn: { execPath: "/opt/ma", standalone: true },
+      },
+    )
+    expect(res.ok).toBe(true)
+    expect(calls).toEqual([["/opt/ma", "__run", "ma-speak/macos-say"]])
+  })
+
+  test("compiled: an undeclared backend is scriptMissing, no spawn", () => {
+    let spawned = false
+    const res = spawnSpeech(
+      "/x",
+      { ...defaultConfig(), backend: "piper" },
+      { text: "hi" },
+      {
+        existsFn: () => true,
+        spawnFn: () => {
+          spawned = true
+          return fake()
+        },
+        selfSpawn: { execPath: "/opt/ma", standalone: true },
+      },
+    )
+    expect(res.scriptMissing).toBe(true)
+    expect(spawned).toBe(false)
+  })
+})
 
 // ---------------------------------------------------------------------------
 // resolveBackendPath

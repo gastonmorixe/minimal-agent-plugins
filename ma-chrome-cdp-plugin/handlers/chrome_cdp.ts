@@ -14,9 +14,9 @@
 
 import { spawn } from "node:child_process"
 import { closeSync, openSync } from "node:fs"
-import { join } from "node:path"
 
 import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/client.ts"
+import { daemonEnv, serverArgv } from "../lib/daemon-spawn.ts"
 import { validateToolInput } from "../lib/input.ts"
 import {
   describeRequest,
@@ -39,17 +39,18 @@ const LOG = process.env.CDP_LOG ?? "/tmp/cdp-server.log"
  * streams if the log file can't be opened.
  */
 function spawnDaemon(packageDir: string): void {
-  const server = join(packageDir, "bin", "cdp-server.ts")
+  // Source: [bun, <pkg>/bin/cdp-server.ts]. Compiled: [<binary>, __run, ...].
+  const [cmd, ...args] = serverArgv(packageDir)
   let logFd: number | undefined
   try {
     logFd = openSync(LOG, "a")
   } catch {
     logFd = undefined
   }
-  const child = spawn("bun", ["run", server], {
+  const child = spawn(cmd, args, {
     detached: true,
     stdio: logFd === undefined ? "ignore" : ["ignore", logFd, logFd],
-    env: process.env,
+    env: daemonEnv(),
   })
   child.unref()
   if (logFd !== undefined) closeSync(logFd)

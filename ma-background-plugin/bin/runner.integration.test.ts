@@ -31,6 +31,7 @@ interface SpawnOpts {
   command: string
   timeoutMs?: number
   stdin?: "pipe" | "ignore"
+  extraEnv?: Record<string, string>
 }
 
 function spawnRunner(opts: SpawnOpts) {
@@ -39,6 +40,7 @@ function spawnRunner(opts: SpawnOpts) {
   const proc = Bun.spawn(["bun", "run", RUNNER], {
     env: {
       ...process.env,
+      ...opts.extraEnv,
       [ENV.JOB_ID]: "j1",
       [ENV.COMMAND]: opts.command,
       [ENV.CWD]: dir,
@@ -106,6 +108,18 @@ describe("runner: normal completion", () => {
     await proc.exited
     const log = readFileSync(logPath, "utf-8")
     expect(log).toContain("\x1b[31m")
+  })
+})
+
+describe("runner: job env", () => {
+  test("BUN_BE_BUN set on the runner never reaches the user command", async () => {
+    const { proc, logPath, statusPath } = spawnRunner({
+      command: 'echo "be=${BUN_BE_BUN-unset} keep=$MA_BG_TEST_KEEP"',
+      extraEnv: { BUN_BE_BUN: "1", MA_BG_TEST_KEEP: "yes" },
+    })
+    await proc.exited
+    expect(readFileSync(logPath, "utf-8")).toContain("be=unset keep=yes")
+    expect(readSidecar(statusPath)?.exitCode).toBe(0)
   })
 })
 
