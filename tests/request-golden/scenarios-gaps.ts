@@ -12,6 +12,13 @@ const bash = (command: string) => ({ name: "Bash", input: { command } })
 
 export const GAP_SCENARIOS: Scenario[] = [
   {
+    // No tool executor: core's NO_TOOLS_EXECUTOR text returns as the tool_result.
+    name: "no-executor",
+    noExecutor: true,
+    script: [{ tools: [{ name: "Stub", input: {} }] }],
+    run: async ({ turn }) => turn("call the stub tool"),
+  },
+  {
     // Subprocess handler prints 6000000 bytes. Core caps stdout at 5 MiB.
     name: "subprocess-overflow",
     script: [{ tools: [{ name: "FixtureOverflow", input: {} }] }],

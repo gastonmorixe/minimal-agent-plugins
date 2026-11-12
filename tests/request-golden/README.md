@@ -63,3 +63,6 @@ only the plugins root loads, so existing goldens do not change.
 
 Grep errors: normalizeText keeps the prefix "Grep error: " and replaces the rest of the string with <RG_STDERR>. rg stderr differs per version.
 A scenario can set needsRg: true. runScenario then throws RgMissingError when rg is not on PATH. Other scenarios still run.
+
+A scenario can set `noExecutor: true`. The harness then builds a plain AgentCore with NO_TOOLS_EXECUTOR and one listed stub tool, not buildTestCore.
+Its system block is a short fixed string by design. If the field is absent, nothing changes.
