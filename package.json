@@ -30,6 +30,8 @@
   },
   "scripts": {
     "test": "bun test",
+    "test:golden": "bun test tests/request-golden",
+    "test:golden:update": "UPDATE_REQUEST_GOLDENS=1 bun test tests/request-golden",
     "test:plugins": "bun run --parallel --elide-lines=20 --filter 'ma-*' test",
     "typecheck": "bun run scripts/typecheck.ts",
     "lint": "oxlint",

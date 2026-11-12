@@ -6,6 +6,8 @@
     "includes": [
       "ma-*-plugin/**",
       "scripts/**",
+      "tests/**",
+      "!**/goldens/**",
       "package.json",
       "tsconfig.json",
       "biome.json",
