@@ -76,6 +76,8 @@ describe("anthropic system prompt bytes", () => {
     expect(got.equals(fixture("api-key.txt"))).toBe(true)
   })
 
+  // This baseline records that the override is ignored today. A later step
+  // that honors the field must update this fixture on purpose.
   it("oauth with providerPreambleOverride: bytes captured as they are today", () => {
     const got = serialize(
       resolveAnthropicSystemPrompt({
@@ -88,6 +90,8 @@ describe("anthropic system prompt bytes", () => {
     expect(got.equals(fixture("oauth-preamble-replace.txt"))).toBe(true)
   })
 
+  // This baseline records that the override is ignored today. A later step
+  // that honors the field must update this fixture on purpose.
   it("oauth with providerPreambleOverride omit: bytes captured as they are today", () => {
     const got = serialize(
       resolveAnthropicSystemPrompt({ ...base, providerPreambleOverride: { kind: "omit" } }),
