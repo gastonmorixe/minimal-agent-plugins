@@ -12,6 +12,7 @@ import {
   type NetworkTransport,
 } from "@minimal-agent/core/host/network"
 import { loadSession } from "@minimal-agent/core/host/session-restore"
+import { FileTrackingStore } from "@minimal-agent/core/host-kit/file-tracking-store"
 import { SessionStore } from "@minimal-agent/core/host-kit/session-store"
 import {
   registerTestProvider,
@@ -107,6 +108,34 @@ function compactDeps(): CoreExtra {
     networkClient: new NetworkClient({ primary: transport }),
   }
 }
+
+const editA = {
+  name: "Edit",
+  input: { file_path: "a.txt", old_string: "hello", new_string: "bye" },
+}
+
+/** Edit-after-state scenario: core gets a file tracking store so the precondition runs. */
+const staleFile = (
+  name: string,
+  script: Scenario["script"],
+  shell?: (file: string) => string,
+): Scenario => ({
+  name,
+  script,
+  setup: (cwd) => {
+    writeFileSync(join(cwd, "a.txt"), "hello\n")
+    // Bash keeps its own cwd from process start, so it needs the absolute path.
+    if (shell) {
+      const call = script.flatMap((r) => r.tools ?? []).find((t) => t.name === "Bash")
+      if (call) call.input = { command: shell(join(cwd, "a.txt")) }
+    }
+  },
+  coreDeps: ({ root, cwd }) => ({
+    fileTrackingStore: new FileTrackingStore({ sid: SID, dir: join(root, "ft"), cwd }),
+  }),
+  run: async ({ turn }) => turn("edit a.txt"),
+  keep: [-1],
+})
 
 export const EXTRA_SCENARIOS: Scenario[] = [
   {
@@ -205,6 +234,43 @@ export const EXTRA_SCENARIOS: Scenario[] = [
       await core.compact({ mode: "local", keepTail: 2, reason: "manual" })
       await turn("question three")
     },
+    keep: [-1],
+  },
+  {
+    name: "unknown-tool",
+    script: [{ tools: [{ name: "NoSuchTool", input: {} }] }],
+    run: async ({ turn }) => turn("call a tool that does not exist"),
+    keep: [-1],
+  },
+  staleFile("stale-file-never-read", [{ tools: [editA] }]),
+  staleFile(
+    "stale-file-changed",
+    [
+      { tools: [{ name: "Read", input: { file_path: "a.txt" } }] },
+      { tools: [bash("")] },
+      { tools: [editA] },
+    ],
+    (f) => `echo x >> '${f}'`,
+  ),
+  staleFile(
+    "stale-file-missing",
+    [
+      { tools: [{ name: "Read", input: { file_path: "a.txt" } }] },
+      { tools: [bash("")] },
+      { tools: [editA] },
+    ],
+    (f) => `rm '${f}'`,
+  ),
+  {
+    name: "invalid-input-missing",
+    script: [{ tools: [{ name: "Read", input: {} }] }],
+    run: async ({ turn }) => turn("read with no path"),
+    keep: [-1],
+  },
+  {
+    name: "invalid-input-type",
+    script: [{ tools: [{ name: "Bash", input: { command: 5 } }] }],
+    run: async ({ turn }) => turn("run bash with a number"),
     keep: [-1],
   },
 ]
