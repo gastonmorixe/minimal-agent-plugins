@@ -55,6 +55,21 @@ describe("message chunks", () => {
   })
 })
 
+describe("retry boundary (S14.4)", () => {
+  it("sends the same agent_message_chunk bytes the old text_delta marker sent", () => {
+    const { sent, feed } = setup()
+    const old = (n: number): string => `\n↳ stream stalled — retrying (attempt ${n})…\n`
+    feed({ type: "retry-boundary", id: "1:text", attempt: 2 })
+    expect(sent).toEqual([
+      {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "1:text",
+        content: { type: "text", text: old(2) },
+      },
+    ])
+  })
+})
+
 describe("tool updates (design section 6)", () => {
   it("maps neutral categories to ACP kinds (run -> execute)", () => {
     expect(toAcpToolKind("run")).toBe("execute")

@@ -539,7 +539,12 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                 for await (const entry of run) {
                   if (entry.ch === "event") {
                     let ev = entry.data
-                    if (attempt > 1 && (ev.type === "text_delta" || ev.type === "thinking_delta")) {
+                    if (
+                      attempt > 1 &&
+                      (ev.type === "text_delta" ||
+                        ev.type === "thinking_delta" ||
+                        ev.type === "retry-boundary")
+                    ) {
                       ev = { ...ev, id: `${ev.id}-attempt-${attempt}` }
                     }
                     if (ev.type === "text_delta") {
