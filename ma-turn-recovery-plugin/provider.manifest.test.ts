@@ -6,9 +6,9 @@ import { getDiagnosticBus, type LogEvent } from "@minimal-agent/core/host/diagno
 import { PluginLoader } from "@minimal-agent/core/host-kit/plugin-loader"
 
 const PLUGINS_ROOT = join(import.meta.dir, "..")
-const PLUGIN_ID = "ma-turn-recovery-plugin"
+const PLUGIN_ID = "turn-recovery"
 
-describe("ma-turn-recovery-plugin manifest", () => {
+describe("turn-recovery manifest", () => {
   test("loads through the plugin loader and exposes one provider", async () => {
     const events: LogEvent[] = []
     const off = getDiagnosticBus().on("*", (e) => events.push(e))

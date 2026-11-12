@@ -1,6 +1,6 @@
 # ma-turn-recovery-plugin
 
-Owns the model-facing text of 4 synthetic tool results. Core asks this plugin
+The plugin id is `turn-recovery`. Owns the model-facing text of 4 synthetic tool results. Core asks this plugin
 through the manifest key `syntheticText`.
 
 ## Kinds and facts
