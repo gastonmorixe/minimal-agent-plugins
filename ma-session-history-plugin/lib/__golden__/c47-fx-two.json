@@ -1,0 +1,136 @@
+{
+  "windows": {
+    "80": [
+      {
+        "summary": "meta · model model-x · cwd /proj/demo",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "Question one\nmore",
+        "clipped": false,
+        "fullChars": 17
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "alpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha b…",
+        "clipped": true,
+        "fullChars": 2171
+      },
+      {
+        "summary": "note",
+        "preview": "a note NEEDLE-ONE inside",
+        "clipped": false,
+        "fullChars": 24
+      },
+      {
+        "summary": "compact · local · manual · 9→2",
+        "preview": "user: summary of the past NEEDLE-ONE\nassistant: ack",
+        "clipped": false,
+        "fullChars": 51
+      },
+      {
+        "summary": "user · text",
+        "preview": "after compact",
+        "clipped": false,
+        "fullChars": 13
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "done",
+        "clipped": false,
+        "fullChars": 4
+      }
+    ],
+    "600": [
+      {
+        "summary": "meta · model model-x · cwd /proj/demo",
+        "preview": "",
+        "clipped": false,
+        "fullChars": 0
+      },
+      {
+        "summary": "user · text",
+        "preview": "Question one\nmore",
+        "clipped": false,
+        "fullChars": 17
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "alpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha beta  gamma\nalpha…",
+        "clipped": true,
+        "fullChars": 2171
+      },
+      {
+        "summary": "note",
+        "preview": "a note NEEDLE-ONE inside",
+        "clipped": false,
+        "fullChars": 24
+      },
+      {
+        "summary": "compact · local · manual · 9→2",
+        "preview": "user: summary of the past NEEDLE-ONE\nassistant: ack",
+        "clipped": false,
+        "fullChars": 51
+      },
+      {
+        "summary": "user · text",
+        "preview": "after compact",
+        "clipped": false,
+        "fullChars": 13
+      },
+      {
+        "summary": "assistant · text · stop=end_turn",
+        "preview": "done",
+        "clipped": false,
+        "fullChars": 4
+      }
+    ]
+  },
+  "snippets": {
+    "needle-one|80": [
+      "…lpha beta gamma alpha beta gamma NEEDLE-ONE delta delta delta delta delta delt…",
+      "a note NEEDLE-ONE inside",
+      "user: summary of the past NEEDLE-ONE assistant: ack"
+    ],
+    "needle-one|160": [
+      "…ma alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma NEEDLE-ONE delta delta delta delta delta delta delta delta delta delta delta delta de…",
+      "a note NEEDLE-ONE inside",
+      "user: summary of the past NEEDLE-ONE assistant: ack"
+    ],
+    "think|80": [],
+    "think|160": [],
+    "boom|80": [],
+    "boom|160": [],
+    "after|80": ["after compact"],
+    "after|160": ["after compact"],
+    "e|80": [
+      "Question one more",
+      "alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma alpha be…",
+      "a note NEEDLE-ONE inside",
+      "user: summary of the past NEEDLE-ONE assistant: ack",
+      "after compact",
+      "done"
+    ],
+    "e|160": [
+      "Question one more",
+      "alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamma alpha beta gamm…",
+      "a note NEEDLE-ONE inside",
+      "user: summary of the past NEEDLE-ONE assistant: ack",
+      "after compact",
+      "done"
+    ],
+    "thinking|80": [],
+    "thinking|160": [],
+    "tool_use|80": [],
+    "tool_use|160": [],
+    "user:|80": ["user: summary of the past NEEDLE-ONE assistant: ack"],
+    "user:|160": ["user: summary of the past NEEDLE-ONE assistant: ack"]
+  },
+  "inputPreviews": [],
+  "firstPrompt": "Question one more",
+  "dumpMarkdown": "# Session: fx-two\n**Model**: model-x\n**Date**: 2026-01-01T00:00:00.000Z\n**CWD**: `/proj/demo`\n\n## User\n\nsummary of the past NEEDLE-ONE\n\n## Assistant\n\nack\n\n## User\n\nafter compact\n\n## Assistant\n\ndone\n",
+  "dumpXml": "<session id=\"fx-two\" model=\"model-x\" date=\"2026-01-01T00:00:00.000Z\">\n  <turn role=\"user\">\n    <text>summary of the past NEEDLE-ONE</text>\n  </turn>\n  <turn role=\"assistant\">\n    <text>ack</text>\n  </turn>\n  <turn role=\"user\">\n    <text>after compact</text>\n  </turn>\n  <turn role=\"assistant\">\n    <text>done</text>\n  </turn>\n</session>\n"
+}

@@ -3,7 +3,7 @@
  * core produces today (summary, preview, snippet, inputPreview, firstPrompt,
  * markdown dump, xml dump). Three synthetic fixture sessions.
  */
-import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { afterAll, describe, expect, it } from "bun:test"
@@ -11,12 +11,19 @@ import { afterAll, describe, expect, it } from "bun:test"
 import { createSessionsReadApi } from "@minimal-agent/core/host/sessions-read"
 
 import { dumpMarkdown, dumpXml } from "./dump-from-data.ts"
-import type { SessionRecordsView, ToolCallHit } from "./host-types.ts"
+import type {
+  RecordView,
+  SearchHit,
+  SessionMetaView,
+  SessionRecordsView,
+  ToolCallHit,
+} from "./host-types.ts"
 import {
   firstPromptOf,
   inputPreviewOf,
   previewOf,
   snippetOf,
+  summaryFromFacts,
   summaryOf,
 } from "./render-from-data.ts"
 
@@ -238,5 +245,222 @@ describe("C47 edge cases", () => {
     const md1 = await api.dump("fx-one")
     expect(md1?.text).toContain("redacted-asset")
     expect(md1?.text).toContain("**[ERROR]**")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S13.2 review: data path alone, frozen golden text, edge cases
+// ---------------------------------------------------------------------------
+
+const goldenDir = join(import.meta.dir, "__golden__")
+const goldenPath = (sid: string) => join(goldenDir, `c47-${sid}.json`)
+const BUDGETS = [80, 600]
+const SEARCH_BUDGETS = [80, 160]
+const QUERIES = ["needle-one", "think", "boom", "after", "e", "thinking", "tool_use", "user:"]
+
+type Strip<T> = T
+const stripRecord = (r: RecordView): RecordView =>
+  ({ ...r, summary: "", preview: "", clipped: false, fullChars: -1 }) as Strip<RecordView>
+const stripHit = (h: SearchHit): SearchHit => ({ ...h, preview: "" })
+const stripCall = (h: ToolCallHit): ToolCallHit => ({ ...h, inputPreview: "" })
+const stripMeta = (m: SessionMetaView): SessionMetaView => ({ ...m, firstPrompt: null })
+
+interface Golden {
+  windows: Record<
+    string,
+    { summary: string; preview: string; clipped: boolean; fullChars: number }[]
+  >
+  snippets: Record<string, string[]>
+  inputPreviews: string[]
+  firstPrompt: string | null
+  dumpMarkdown: string
+  dumpXml: string
+}
+
+/** Text kinds from the core text fields (reference side). */
+async function coreText(sid: string): Promise<Golden> {
+  const g: Golden = {
+    windows: {},
+    snippets: {},
+    inputPreviews: [],
+    firstPrompt: null,
+    dumpMarkdown: "",
+    dumpXml: "",
+  }
+  for (const pc of BUDGETS) {
+    const w = await api.window(sid, { anchor: "start", limit: 100, previewChars: pc })
+    g.windows[String(pc)] = (w?.items ?? []).map((r) => ({
+      summary: r.summary,
+      preview: r.preview,
+      clipped: r.clipped,
+      fullChars: r.fullChars,
+    }))
+  }
+  for (const q of QUERIES) {
+    for (const pc of SEARCH_BUDGETS) {
+      const r = await api.search({ sid, query: q, previewChars: pc, limit: 200 })
+      g.snippets[`${q}|${pc}`] = r.hits.map((h) => h.preview)
+    }
+  }
+  g.inputPreviews = ((await api.toolCalls(sid, { limit: 200 }))?.hits ?? []).map(
+    (h) => h.inputPreview,
+  )
+  g.firstPrompt = (await api.meta(sid))?.firstPrompt ?? null
+  g.dumpMarkdown = (await api.dump(sid))?.text ?? ""
+  g.dumpXml = (await api.dump(sid, { format: "xml" }))?.text ?? ""
+  return g
+}
+
+/** Text kinds from the data fields alone: host text fields are stripped. */
+async function dataText(sid: string): Promise<Golden> {
+  const g: Golden = {
+    windows: {},
+    snippets: {},
+    inputPreviews: [],
+    firstPrompt: null,
+    dumpMarkdown: "",
+    dumpXml: "",
+  }
+  for (const pc of BUDGETS) {
+    const w = await api.window(sid, { anchor: "start", limit: 100, previewChars: pc })
+    g.windows[String(pc)] = (w?.items ?? []).map((raw) => {
+      const r = stripRecord(raw as unknown as RecordView)
+      const p = previewOf(r)
+      return { summary: summaryOf(r), preview: p.text, clipped: p.clipped, fullChars: p.fullChars }
+    })
+  }
+  for (const q of QUERIES) {
+    for (const pc of SEARCH_BUDGETS) {
+      const r = await api.search({ sid, query: q, previewChars: pc, limit: 200 })
+      g.snippets[`${q}|${pc}`] = r.hits.map((h) => snippetOf(stripHit(h as unknown as SearchHit)))
+    }
+  }
+  g.inputPreviews = ((await api.toolCalls(sid, { limit: 200 }))?.hits ?? []).map((h) =>
+    inputPreviewOf(stripCall(h as unknown as ToolCallHit)),
+  )
+  const m = await api.meta(sid)
+  g.firstPrompt = m ? firstPromptOf(stripMeta(m as unknown as SessionMetaView)) : null
+  const rec = (await api.records(sid)) as unknown as SessionRecordsView
+  g.dumpMarkdown = dumpMarkdown(rec)
+  g.dumpXml = dumpXml(rec)
+  return g
+}
+
+if (process.env.C47_UPDATE === "1") {
+  describe("C47 golden generator (C47_UPDATE=1)", () => {
+    it("writes golden files from the real core API", async () => {
+      mkdirSync(goldenDir, { recursive: true })
+      for (const sid of Object.keys(fixtures)) {
+        writeFileSync(goldenPath(sid), `${JSON.stringify(await coreText(sid), null, 2)}\n`)
+      }
+    })
+  })
+}
+
+describe("C47 data fields are present", () => {
+  it("every view the test uses carries data fields", async () => {
+    for (const sid of Object.keys(fixtures)) {
+      const w = await api.window(sid, { anchor: "start", limit: 100, previewChars: 80 })
+      expect(w?.items.length).toBeGreaterThan(0)
+      for (const r of w?.items ?? []) {
+        expect(Array.isArray(r.parts)).toBe(true)
+        expect(r.facts).toBeDefined()
+        expect(typeof r.previewChars).toBe("number")
+      }
+      let hits = 0
+      for (const query of QUERIES) {
+        const s = await api.search({ sid, query, previewChars: 80, limit: 200 })
+        for (const h of s.hits) {
+          hits++
+          expect(Array.isArray(h.parts)).toBe(true)
+          expect(typeof h.matchAt).toBe("number")
+          expect(typeof h.matchLength).toBe("number")
+          expect(typeof h.previewChars).toBe("number")
+        }
+      }
+      expect(hits).toBeGreaterThan(0)
+      for (const h of (await api.toolCalls(sid, { limit: 200 }))?.hits ?? []) {
+        expect(h.inputJson !== undefined).toBe(true)
+        expect(typeof h.inputPreviewChars).toBe("number")
+      }
+      const m = await api.meta(sid)
+      expect(m?.firstPromptParts !== undefined).toBe(true)
+      expect(typeof m?.firstPromptChars).toBe("number")
+      const rec = await api.records(sid)
+      expect(rec).not.toBeNull()
+      expect(rec?.records.length).toBeGreaterThan(0)
+      expect(rec?.messages.length).toBeGreaterThan(0)
+    }
+  })
+
+  it("tool call hits exist in at least one fixture", async () => {
+    const t = await api.toolCalls("fx-one", { limit: 200 })
+    expect(t?.hits.length).toBeGreaterThan(0)
+  })
+})
+
+describe.each(Object.keys(fixtures))("C47 data path alone and golden: %s", (sid) => {
+  it("data-only text (host text fields stripped) equals the core text", async () => {
+    expect(await dataText(sid)).toEqual(await coreText(sid))
+  })
+
+  it("data-only text equals the frozen golden file", async () => {
+    expect(existsSync(goldenPath(sid))).toBe(true)
+    const golden = JSON.parse(readFileSync(goldenPath(sid), "utf8")) as Golden
+    expect(await dataText(sid)).toEqual(golden)
+  })
+})
+
+describe("C47 unknown kind and image source edge", () => {
+  const zeroFacts = {
+    contentIsString: null,
+    toolResultCount: 0,
+    textBlockCount: 0,
+    blockCount: 0,
+    toolNames: [],
+    hasText: false,
+    stopReason: null,
+    isError: null,
+    toolUseId: null,
+    model: null,
+    cwd: null,
+    compactKind: null,
+    reason: null,
+    messagesBefore: null,
+    messagesAfter: null,
+    rewindTo: null,
+    droppedCount: null,
+    backupSid: null,
+    droppedRecordCount: null,
+    pid: null,
+    hostname: null,
+    round: null,
+  }
+
+  it("summaryFromFacts for an unknown kind prints the raw JSON of the record", () => {
+    const rec = { kind: "zzz", ts: "t" }
+    const raw = JSON.stringify(rec)
+    expect(summaryFromFacts("zzz", zeroFacts, [{ kind: "raw", text: raw, toolName: null }])).toBe(
+      `unknown · ${raw}`,
+    )
+  })
+
+  it("image and document with a missing source detail print undefined like core", () => {
+    const mk = (block: Record<string, unknown>): SessionRecordsView =>
+      ({
+        sid: "x",
+        meta: null,
+        records: [],
+        messages: [{ role: "user", content: [block] }],
+      }) as unknown as SessionRecordsView
+    expect(dumpMarkdown(mk({ type: "image", source: { type: "file" } }))).toContain(
+      "**Image**: (file undefined)",
+    )
+    expect(dumpMarkdown(mk({ type: "image", source: { type: "url" } }))).toContain(
+      "**Image**: (url undefined)",
+    )
+    expect(dumpMarkdown(mk({ type: "document", source: { type: "base64" } }))).toContain(
+      "**Document**: (base64 undefined)",
+    )
   })
 })
