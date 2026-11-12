@@ -1,0 +1,23 @@
+[
+  {
+    "type": "text",
+    "text": "x-anthropic-billing-header: cc_version=<VERSION>.<BUILD_HASH>; cc_entrypoint=cli; cch=00000;"
+  },
+  {
+    "type": "text",
+    "text": "You are Claude Code, Anthropic's official CLI for Claude."
+  },
+  {
+    "type": "text",
+    "text": "INSTRUCTIONS",
+    "cache_control": {
+      "type": "ephemeral",
+      "ttl": "1h",
+      "scope": "global"
+    }
+  },
+  {
+    "type": "text",
+    "text": "SESSION CONTEXT"
+  }
+]
