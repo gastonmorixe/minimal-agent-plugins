@@ -8,3 +8,5 @@ For any error it prints the `kind` and the `fields` as JSON, for example
 
 Use `createDevErrorRenderer()` and register it with an `ErrorRendererRegistry`
 under the owner id `ma-host-text-plugin`.
+
+The manifest declares this renderer in `errorRenderers`, so the plugin loader registers it in the host's registry by itself.
