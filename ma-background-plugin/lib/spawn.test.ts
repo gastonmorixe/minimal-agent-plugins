@@ -5,8 +5,7 @@ import { buildRunnerArgv, buildRunnerEnv, type LaunchSpec, launchRunner } from "
 
 function spec(over: Partial<LaunchSpec> = {}): LaunchSpec {
   return {
-    runnerPath: "/pkg/bin/runner.ts",
-    runtime: ["bun", "run"],
+    runnerArgv: ["bun", "/pkg/bin/runner.ts"],
     jobId: "j1",
     command: "echo hi",
     cwd: "/work",
@@ -33,15 +32,28 @@ describe("buildRunnerEnv", () => {
   })
 })
 
-describe("buildRunnerArgv", () => {
-  test("runtime then runner path", () => {
-    expect(buildRunnerArgv(spec())).toEqual(["bun", "run", "/pkg/bin/runner.ts"])
+describe("buildRunnerEnv strips BUN_BE_BUN", () => {
+  test("a BUN_BE_BUN in the base env never reaches the runner", () => {
+    const env = buildRunnerEnv(spec({ baseEnv: { PATH: "/usr/bin", BUN_BE_BUN: "1" } }))
+    expect("BUN_BE_BUN" in env).toBe(false)
+    expect(env.PATH).toBe("/usr/bin")
   })
-  test("single-element runtime", () => {
-    expect(buildRunnerArgv(spec({ runtime: ["/usr/local/bin/bun"] }))).toEqual([
-      "/usr/local/bin/bun",
-      "/pkg/bin/runner.ts",
-    ])
+})
+
+describe("buildRunnerArgv", () => {
+  test("source argv: runtime then runner path", () => {
+    expect(buildRunnerArgv(spec())).toEqual(["bun", "/pkg/bin/runner.ts"])
+  })
+  test("compiled argv: binary + __run dispatch", () => {
+    expect(
+      buildRunnerArgv(
+        spec({ runnerArgv: ["/usr/local/bin/minimal-agent", "__run", "ma-bg/runner"] }),
+      ),
+    ).toEqual(["/usr/local/bin/minimal-agent", "__run", "ma-bg/runner"])
+  })
+  test("returns a copy, not the spec array", () => {
+    const s = spec()
+    expect(buildRunnerArgv(s)).not.toBe(s.runnerArgv)
   })
 })
 

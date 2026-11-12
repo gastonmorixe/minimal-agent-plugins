@@ -23,7 +23,7 @@
  *
  * This file is the imperative shell. Its logic lives in `lib/runner-core.ts`
  * (pure, unit-tested). It exports only {@link main}, so a compiled binary can
- * dispatch it (`<binary> __run background/runner`) from its embedded script
+ * dispatch it (`<binary> __run ma-bg/runner`) from its embedded script
  * map. Run directly (`bun bin/runner.ts`), the `import.meta.main` guard below
  * calls `main` and exits with its code. The caller must `process.exit` with
  * the returned code: the stdin watcher keeps the event loop alive.
@@ -33,6 +33,8 @@
 
 import { mkdirSync, openSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
+
+import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
 
 import {
   buildJobArgv,
@@ -76,7 +78,9 @@ export async function main(_argv: string[] = []): Promise<number> {
   // interactive, matching the foreground Bash tool).
   const proc = Bun.spawn(buildJobArgv(cfg.command), {
     cwd: cfg.cwd,
-    env: process.env as Record<string, string>,
+    // `childEnv` drops BUN_BE_BUN: the user command must never inherit it, or
+    // a `minimal-agent` it starts would boot as the plain `bun` CLI.
+    env: childEnv(process.env),
     stdin: "ignore",
     stdout: logFd,
     stderr: logFd,

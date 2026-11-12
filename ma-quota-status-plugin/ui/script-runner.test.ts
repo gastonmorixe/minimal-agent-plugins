@@ -15,6 +15,16 @@ describe("runStatusScript", () => {
     expect(out).toBe(JSON.stringify({ contextWindow: 200000, sid: "abc" }))
   })
 
+  it("the script never inherits BUN_BE_BUN", async () => {
+    const out = await runStatusScript(
+      "sh -c 'echo be=${BUN_BE_BUN-unset} keep=$QS_KEEP'",
+      {},
+      undefined,
+      { PATH: process.env.PATH, BUN_BE_BUN: "1", QS_KEEP: "yes" },
+    )
+    expect(out).toBe("be=unset keep=yes")
+  })
+
   it("returns only the FIRST non-empty line", async () => {
     const out = await runStatusScript("printf 'FOOTER LINE\\nignored\\n'", {})
     expect(out).toBe("FOOTER LINE")

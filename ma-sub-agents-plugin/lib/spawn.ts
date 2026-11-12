@@ -20,6 +20,7 @@
 import { existsSync, mkdirSync, openSync, readFileSync, statSync } from "node:fs"
 import { dirname } from "node:path"
 
+import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
 import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 
 import { parseFinalText, parseProgress } from "./progress.ts"
@@ -263,6 +264,20 @@ export function parseResultDigest(raw: unknown): ResultDigest | undefined {
   }
 }
 
+/**
+ * The env a worker process starts with. The plan env is an OVERLAY: a real
+ * worker still needs the parent's PATH / HOME / credentials, so `base`
+ * (default `process.env`) sits underneath it. `BUN_BE_BUN` is stripped from
+ * the result (core `childEnv`): a compiled `minimal-agent` that inherits it
+ * would boot as the plain `bun` CLI instead of the agent.
+ */
+export function workerEnv(
+  overlay: Readonly<Record<string, string>>,
+  base: Readonly<Record<string, string | undefined>> = process.env,
+): Record<string, string> {
+  return childEnv({ ...base, ...overlay })
+}
+
 /** Production spawn deps: `Bun.spawn` with stdout/stderr → a log file. */
 export function realSpawnDeps(): SpawnDeps {
   return {
@@ -277,11 +292,10 @@ export function realSpawnDeps(): SpawnDeps {
         globalThis as unknown as { Bun: { spawn: (cmd: string[], o: object) => { pid: number } } }
       ).Bun.spawn(
         [...argv],
-        // The plan env is an OVERLAY: a real worker still needs the parent's
-        // PATH / HOME / credentials, so merge process.env underneath it.
+        // The plan env is an OVERLAY over process.env (see workerEnv).
         {
           cwd: opts.cwd,
-          env: { ...process.env, ...opts.env },
+          env: workerEnv(opts.env),
           stdin: "ignore",
           stdout: fd,
           stderr: fd,

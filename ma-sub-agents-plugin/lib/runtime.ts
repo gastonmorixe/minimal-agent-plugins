@@ -7,6 +7,8 @@
  * @module sub-agents/lib/runtime
  */
 
+import { selfSpawn } from "@minimal-agent/core/plugin-api/utils/self-spawn"
+
 import { DEFAULT_POLICY, type GuardPolicy } from "./guard.ts"
 import { ENV_DEPTH } from "./spawn-plan.ts"
 import { defaultSessionsDir } from "./store.ts"
@@ -19,22 +21,31 @@ function intEnv(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
+/** Test seam for {@link resolveAgentBin}: the run mode and runtime binary. */
+export interface AgentBinOptions {
+  /** Default `process.execPath` (bun from source, the agent binary compiled). */
+  readonly execPath?: string
+  /** Default `isStandaloneExecutable()` (true in a `bun build --compile` binary). */
+  readonly standalone?: boolean
+}
+
 /**
- * How to launch a child `minimal-agent`. Priority:
- *   1. `MINIMAL_AGENT_BIN` (space-separated argv), for packaged installs.
- *   2. `[execPath, entry]` — re-invoke this process's own runtime + entry
- *      (e.g. `[bun, /…/src/index.ts]`), so a dev checkout and a built binary
- *      both spawn the same agent that is running now.
+ * How to launch a child `minimal-agent`. Delegates to core's
+ * `selfSpawn().agent()`, which is the single place that knows both run modes:
+ *   1. `MINIMAL_AGENT_BIN` (space-separated argv) wins when set. The helper
+ *      reads it from `env`, so it is applied exactly once, here.
+ *   2. Source run: `[execPath, entry]`, this runtime (bun) plus the CLI entry
+ *      from `argv[1]` (e.g. `[bun, /…/src/index.ts]`).
+ *   3. Compiled binary: `[execPath]`, the binary itself. `argv` there is
+ *      `["bun", "/$bunfs/root/…"]`, which names no runnable file, so it is
+ *      never used.
  */
 export function resolveAgentBin(
   env: NodeJS.ProcessEnv = process.env,
   argv: readonly string[] = process.argv,
+  opts: AgentBinOptions = {},
 ): string[] {
-  const override = env.MINIMAL_AGENT_BIN?.trim()
-  if (override) return override.split(/\s+/)
-  const exec = argv[0] ?? "bun"
-  const entry = argv[1]
-  return entry ? [exec, entry] : [exec]
+  return selfSpawn({ env, argv, ...opts }).agent()
 }
 
 /**

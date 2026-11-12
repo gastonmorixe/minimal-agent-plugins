@@ -13,18 +13,46 @@ import {
 } from "./runtime.ts"
 
 describe("resolveAgentBin", () => {
-  it("prefers MINIMAL_AGENT_BIN (split on whitespace)", () => {
-    expect(resolveAgentBin({ MINIMAL_AGENT_BIN: "bun run /x/index.ts" }, [])).toEqual([
+  it("prefers MINIMAL_AGENT_BIN (split on whitespace), in both run modes", () => {
+    const env = { MINIMAL_AGENT_BIN: "bun run /x/index.ts" }
+    expect(resolveAgentBin(env, [])).toEqual(["bun", "run", "/x/index.ts"])
+    expect(resolveAgentBin(env, [], { execPath: "/opt/ma", standalone: true })).toEqual([
       "bun",
       "run",
       "/x/index.ts",
     ])
   })
-  it("falls back to [execPath, entry]", () => {
-    expect(resolveAgentBin({}, ["/usr/bin/bun", "/repo/src/index.ts", "--flag"])).toEqual([
-      "/usr/bin/bun",
-      "/repo/src/index.ts",
-    ])
+  it("source run: [execPath, entry]", () => {
+    expect(
+      resolveAgentBin({}, ["/usr/bin/bun", "/repo/src/index.ts", "--flag"], {
+        execPath: "/usr/bin/bun",
+        standalone: false,
+      }),
+    ).toEqual(["/usr/bin/bun", "/repo/src/index.ts"])
+  })
+  it("source run uses execPath, not argv[0]", () => {
+    expect(
+      resolveAgentBin({}, ["bun", "/repo/src/index.ts"], {
+        execPath: "/home/u/.bun/bin/bun",
+        standalone: false,
+      }),
+    ).toEqual(["/home/u/.bun/bin/bun", "/repo/src/index.ts"])
+  })
+  it("compiled: just the binary, never the literal bun or the /$bunfs entry", () => {
+    expect(
+      resolveAgentBin({}, ["bun", "/$bunfs/root/minimal-agent", "-p", "x"], {
+        execPath: "/usr/local/bin/minimal-agent",
+        standalone: true,
+      }),
+    ).toEqual(["/usr/local/bin/minimal-agent"])
+  })
+  it("a blank MINIMAL_AGENT_BIN is ignored", () => {
+    expect(
+      resolveAgentBin({ MINIMAL_AGENT_BIN: "   " }, ["bun", "/e.ts"], {
+        execPath: "/b",
+        standalone: false,
+      }),
+    ).toEqual(["/b", "/e.ts"])
   })
 })
 

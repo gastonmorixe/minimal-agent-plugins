@@ -2,7 +2,8 @@
  * Backend dispatcher.
  *
  * Picks a backend script from `<packageDir>/backends/<config.backend>.ts`,
- * spawns it with an `MA_FETCH_*` env block, and shapes the captured
+ * spawns it (core `selfSpawn().script`, see {@link buildBackendArgv}) with an
+ * `MA_FETCH_*` env block, and shapes the captured
  * stdout/stderr/exit into a `BackendCallResult`. Backend swaps are a
  * config + filename change: no handler edit required.
  *
@@ -16,6 +17,13 @@
 
 import { existsSync } from "node:fs"
 import { isAbsolute, join } from "node:path"
+
+import {
+  childEnv,
+  isStandaloneExecutable,
+  type SelfSpawnOptions,
+  selfSpawn,
+} from "@minimal-agent/core/plugin-api/utils/self-spawn"
 
 import type { FetchConfig, FetchFormat, WaitUntil } from "./config.ts"
 
@@ -130,6 +138,11 @@ export interface BackendDeps {
   setTimeoutFn?: (cb: () => void, ms: number) => TimerHandle
   /** Test seam paired with setTimeoutFn (default: clearTimeout). */
   clearTimeoutFn?: (handle: TimerHandle) => void
+  /**
+   * Test seam for the run mode (`standalone`, `execPath`) handed to core
+   * `selfSpawn`. Default: this process.
+   */
+  selfSpawn?: Pick<SelfSpawnOptions, "execPath" | "standalone">
 }
 
 /**
@@ -208,6 +221,32 @@ export function killBackend(proc: SpawnedProcess, signal: NodeJS.Signals): void 
 // Pure helpers (testable without spawn)
 // ---------------------------------------------------------------------------
 
+/**
+ * Backends declared in `manifest.json` `scripts` (each name maps to `./backends/<name>.ts`).
+ * A compiled binary embeds exactly these, so they are the only backends it can
+ * run (`<binary> __run ma-fetch/<name>`). Kept in sync with the manifest by a
+ * unit test.
+ */
+export const EMBEDDED_BACKENDS: ReadonlySet<string> = new Set(["obscura"])
+
+/**
+ * The argv that runs backend `backend` (script at `scriptPath`). Core
+ * `selfSpawn().script("ma-fetch/<backend>", scriptPath)`:
+ * `[bun, <pkg>/backends/<backend>.ts]` from source and
+ * `[<binary>, "__run", "ma-fetch/<backend>"]` compiled. No `bun` on PATH is
+ * assumed in either mode.
+ *
+ * @throws Error when `backend` is not a valid script-id part (lowercase
+ *   `[a-z0-9_-]`) or `scriptPath` is not absolute in a source run.
+ */
+export function buildBackendArgv(
+  backend: string,
+  scriptPath: string,
+  opts: Pick<SelfSpawnOptions, "execPath" | "standalone"> = {},
+): string[] {
+  return selfSpawn(opts).script(`ma-fetch/${backend}`, scriptPath)
+}
+
 /** Resolve the absolute path to the backend script for a given config. */
 export function resolveBackendPath(packageDir: string, backend: string): string {
   // `config.ts:parseFetchConfig` already restricts `backend` to a safe id,
@@ -282,12 +321,11 @@ export function buildBackendEnv(
   input: BackendCallInput,
   baseEnv: Record<string, string | undefined> = process.env as Record<string, string | undefined>,
 ): Record<string, string> {
-  const env: Record<string, string> = {}
   // Carry forward the base env, filtering out undefined entries (Node's
-  // process.env may contain holes on some platforms).
-  for (const [k, v] of Object.entries(baseEnv)) {
-    if (typeof v === "string") env[k] = v
-  }
+  // process.env may contain holes on some platforms). `childEnv` also drops
+  // BUN_BE_BUN: a compiled `<binary> __run ma-fetch/<backend>` must start as
+  // the agent's dispatcher, not as the plain `bun` CLI.
+  const env = childEnv(baseEnv)
   // Required fields.
   env.MA_FETCH_URL = input.url
   env.MA_FETCH_FORMAT = input.format
@@ -376,7 +414,11 @@ export async function callBackend(
   const watchdogSlackSec = deps.watchdogSlackSec ?? DEFAULT_WATCHDOG_SLACK_SEC
 
   const scriptPath = resolveBackendPath(packageDir, config.backend)
-  if (!exists(scriptPath)) {
+  // From source the backend is a file on disk. A compiled binary embeds only
+  // the manifest-declared backends and has no script file to check.
+  const standalone = deps.selfSpawn?.standalone ?? isStandaloneExecutable()
+  const scriptAvailable = standalone ? EMBEDDED_BACKENDS.has(config.backend) : exists(scriptPath)
+  if (!scriptAvailable) {
     return {
       ok: false,
       exitCode: -1,
@@ -406,10 +448,10 @@ export async function callBackend(
   }
 
   const env = buildBackendEnv(config, input)
-  const argv = ["bun", scriptPath]
 
   let proc: SpawnedProcess
   try {
+    const argv = buildBackendArgv(config.backend, scriptPath, { ...deps.selfSpawn, standalone })
     proc = spawn(argv, {
       env,
       stdin: "ignore",
