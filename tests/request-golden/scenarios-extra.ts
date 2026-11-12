@@ -331,4 +331,88 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     run: async ({ turn }) => turn("answer, the reply will be empty"),
     keep: [-1],
   },
+  {
+    // Pins the streak note on the 3rd truncated Read in a row.
+    name: "streak-note-read",
+    script: Array.from({ length: 3 }, () => ({
+      tools: [{ name: "Read", input: { file_path: "big.txt" } }],
+    })),
+    setup: (cwd) => {
+      const lines = Array.from({ length: 1100 }, () => "l")
+      writeFileSync(join(cwd, "big.txt"), `${lines.join("\n")}\n`)
+    },
+    run: async ({ turn }) => turn("read the big file three times"),
+    keep: [-1],
+  },
+  {
+    // Pins the base64 body when the model opts in to binary output.
+    name: "binary-read-optin",
+    script: [{ tools: [{ name: "Read", input: { file_path: "blob.bin", binary: true } }] }],
+    setup: (cwd) => {
+      const bytes = new Uint8Array(512)
+      for (let i = 0; i < bytes.length; i++) bytes[i] = i % 7 === 0 ? 0 : (i * 31) % 256
+      writeFileSync(join(cwd, "blob.bin"), bytes)
+    },
+    run: async ({ turn }) => turn("read the binary file as base64"),
+    keep: [-1],
+  },
+  {
+    // Pins the Read output-preview with a path and the recover text.
+    name: "output-preview-read-blob",
+    blobStore: true,
+    script: [{ tools: [{ name: "Read", input: { file_path: "big.txt" } }] }],
+    setup: (cwd) => {
+      const lines = Array.from({ length: 3000 }, (_, i) => `line ${i}`)
+      writeFileSync(join(cwd, "big.txt"), `${lines.join("\n")}\n`)
+    },
+    run: async ({ turn }) => turn("read the big file"),
+    keep: [-1],
+  },
+  {
+    // Pins the output-preview without a path: a store exists, the body is small.
+    name: "output-preview-small-no-blob",
+    blobStore: true,
+    script: [{ tools: [bash("seq 1 20")] }],
+    run: async ({ turn }) => turn("print twenty numbers"),
+    keep: [-1],
+  },
+  {
+    name: "mode-tool-default",
+    script: [{ tools: [{ name: "Mode", input: {} }] }],
+    run: async ({ turn }) => turn("which mode is active"),
+    keep: [-1],
+  },
+  {
+    name: "mode-tool-ask",
+    script: [{ tools: [{ name: "Mode", input: {} }] }],
+    run: async ({ turn, modes }) => {
+      modes.setMode("ask")
+      await turn("which mode is active")
+    },
+    keep: [-1],
+  },
+  {
+    // Pins the diagnostics annotation added by a tool.didInvoke hook.
+    name: "diagnostics-note",
+    script: [{ tools: [bash("echo hi")] }],
+    pluginRoots: () => [join(FIXTURES, "diag")],
+    run: async ({ turn }) => turn("run bash with a diagnostics hook"),
+    keep: [-1],
+  },
+  {
+    // Pins the policy note added when a hook rewrites the tool input.
+    name: "policy-rewrite-note",
+    script: [{ tools: [bash("echo orig")] }],
+    pluginRoots: () => [join(FIXTURES, "rewrite")],
+    run: async ({ turn }) => turn("run bash under a rewrite hook"),
+    keep: [-1],
+  },
+  {
+    // Pins the core clamp on a plugin tool result.
+    name: "plugin-tool-clamp",
+    script: [{ tools: [{ name: "FixtureBig", input: {} }] }],
+    pluginRoots: () => [join(FIXTURES, "big")],
+    run: async ({ turn }) => turn("call the big fixture tool"),
+    keep: [-1],
+  },
 ]
