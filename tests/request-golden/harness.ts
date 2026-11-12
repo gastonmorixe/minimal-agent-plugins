@@ -7,10 +7,19 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
+import { NO_TOOLS_EXECUTOR } from "@minimal-agent/core"
 import { BlobStore } from "@minimal-agent/core/host-kit/blob-store"
 import { ModeManager } from "@minimal-agent/core/host-kit/modes"
 import { PluginLoader } from "@minimal-agent/core/host-kit/plugin-loader"
+import { AgentCore } from "@minimal-agent/core/sdk/agent-core"
 import { buildTestCore } from "@minimal-agent/core/testing/test-core"
+
+/** The one tool the noExecutor path lists. A name and an input schema only. */
+const NO_EXECUTOR_TOOL = {
+  name: "Stub",
+  description: "Stub tool for the no-executor scenario.",
+  input_schema: { type: "object", properties: {}, additionalProperties: false },
+}
 
 export const GOLDEN_DIR = resolve(import.meta.dir, "goldens")
 const TMP_BASE = resolve(import.meta.dir, ".tmp")
@@ -64,6 +73,11 @@ export interface Scenario {
   keep?: number[]
   /** Extra deps for the first core. Runs after setup, before the core is built. */
   coreDeps?: (paths: { root: string; cwd: string }) => CoreExtra
+  /**
+   * Build a plain AgentCore with NO_TOOLS_EXECUTOR and one listed stub tool
+   * instead of buildTestCore. The system block is core's own default text, by design.
+   */
+  noExecutor?: true
   /** Optional fixtures, runs before the core is built. */
   setup?: (cwd: string) => void
   /** Extra plugin dirs, appended after the plugins root. Default: none. */
@@ -243,15 +257,28 @@ export async function runScenario(scenario: Scenario): Promise<string> {
       ? new BlobStore({ sid: "golden-sid", dir: join(root, "blobs") })
       : null
     const newCore = (extra: CoreExtra = {}) =>
-      buildTestCore({
-        auth: { type: "api-key", token: "test-token" },
-        sendFn: send as never,
-        loader,
-        modeManager: modes,
-        blobStore,
-        retry: { clock: { now: () => FIXED_NOW_MS, sleep: async () => {} } },
-        ...extra,
-      } as never)
+      scenario.noExecutor
+        ? Promise.resolve(
+            new AgentCore({
+              auth: { type: "api-key", token: "test-token" },
+              model: "test-model",
+              systemPrompt: "You are a test agent.",
+              maxTokens: 8192,
+              toolRegistry: { list: () => [NO_EXECUTOR_TOOL] },
+              toolExecutor: NO_TOOLS_EXECUTOR,
+              sendFn: send as never,
+              retry: { clock: { now: () => FIXED_NOW_MS, sleep: async () => {} } },
+            } as never),
+          )
+        : buildTestCore({
+            auth: { type: "api-key", token: "test-token" },
+            sendFn: send as never,
+            loader,
+            modeManager: modes,
+            blobStore,
+            retry: { clock: { now: () => FIXED_NOW_MS, sleep: async () => {} } },
+            ...extra,
+          } as never)
     const core = await newCore(scenario.coreDeps?.({ root, cwd }))
     const turnOn: ScenarioCtx["turnOn"] = async (c, text, opts) => {
       const gen = c.run(text, opts?.signal ? { signal: opts.signal } : undefined)
