@@ -1,0 +1,7 @@
+{
+  "id": "ma-host-text-plugin",
+  "name": "Host text",
+  "version": "0.1.0",
+  "description": "Host-owned text for core errors. Holds only the dev error renderer for now: it shows the error kind and the JSON fields. No user text yet.",
+  "capabilities": []
+}
