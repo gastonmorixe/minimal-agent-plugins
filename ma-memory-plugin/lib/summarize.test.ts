@@ -12,7 +12,7 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
-import createProvider from "../../ma-prompt-template-plugin/provider.ts"
+import { renderFor } from "../../tests/support/prompt-render.ts"
 
 import {
   buildSystemPrompt,
@@ -26,13 +26,7 @@ import {
 } from "./summarize.ts"
 
 /** Renderer from the real prompts.template provider, bound to this plugin dir. */
-const render: RenderFn = (name, vars) =>
-  createProvider().render({
-    pluginId: "ma-memory-plugin",
-    pluginDir: join(import.meta.dirname, ".."),
-    name,
-    ...(vars ? { vars } : {}),
-  })
+const render: RenderFn = renderFor("ma-memory-plugin", join(import.meta.dirname, ".."))
 
 /** The request shape `ctx.host.llm.complete` receives. */
 type CompleteReq = Parameters<CompleteFn>[0]

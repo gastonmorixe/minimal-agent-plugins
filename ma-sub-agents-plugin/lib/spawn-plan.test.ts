@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
-import { testRender } from "./prompt-test-render.ts"
+import { renderFor } from "../../tests/support/prompt-render.ts"
+
 import { renderResultProtocol } from "./prompts.ts"
 import {
   buildSpawnPlan,
@@ -14,6 +15,8 @@ import {
   SUBAGENT_DISABLED_PLUGINS,
 } from "./spawn-plan.ts"
 import { sessionId, subagentId } from "./types.ts"
+
+const testRender = renderFor("ma-sub-agents-plugin", `${import.meta.dirname}/..`)
 
 function input(overrides: Partial<SpawnInput> = {}): SpawnInput {
   return {

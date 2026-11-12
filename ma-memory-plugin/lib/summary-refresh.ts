@@ -30,6 +30,8 @@ import type { MemorySummaryParams } from "./memory-config.ts"
 import { type Bullet, parseFile } from "./parse.ts"
 import {
   type CompleteFn,
+  isPromptProviderMissing,
+  PROMPT_PROVIDER_MISSING_ID,
   type RenderFn,
   summarize as realSummarize,
   SummarizeError,
@@ -242,6 +244,8 @@ export interface RefreshAndRenderDeps {
   now?: () => Date
   /** Optional logger (e.g. for "regen skipped: X" messages). Defaults to stderr. */
   log?: (msg: string) => void
+  /** Typed diagnostic sink: receives a source id only, no message text. */
+  diagnostic?: (id: string) => void
 }
 
 export interface RefreshResult {
@@ -377,6 +381,7 @@ export async function refreshAndRender(
     } catch (e) {
       const kind = e instanceof SummarizeError ? e.kind : "unknown"
       log(`regen failed (${kind}): ${(e as Error).message}`)
+      if (isPromptProviderMissing(e)) deps.diagnostic?.(PROMPT_PROVIDER_MISSING_ID)
       // Fall through: use the existing summaryContent (if any) and
       // current pending list. If summaryContent is null, we have to
       // fall back to verbatim.

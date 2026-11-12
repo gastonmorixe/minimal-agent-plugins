@@ -533,3 +533,38 @@ describe("loadMemories: inject='latest'", () => {
     expect(out).not.toContain("Snapshot taken at session start") // not verbatim mode
   })
 })
+
+// ---------------------------------------------------------------------------
+// ctx.prompts undefined: typed diagnostic, last-good summary kept
+// ---------------------------------------------------------------------------
+
+describe("loadMemories: ctx.prompts undefined", () => {
+  it("logs the typed diagnostic id per scope and keeps the last-good summary", async () => {
+    process.env.MINIMAL_AGENT_MEMORY_NAMESPACE = "loadtest"
+    const home = makeTempDir()
+    const cwd = "/Users/x/proj"
+    const bullets = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `- [#b${i}] [2026-05-12T00:00:${String(i).padStart(2, "0")}+00:00] ${"x".repeat(60)}`,
+    ).join("\n")
+    primeNamespaced(home, cwd, { global: bullets })
+    const nsDir = join(home, ".minimal-agent", "namespaces", "loadtest")
+    writeFileSync(
+      join(nsDir, "memory.summary.md"),
+      "<!-- regen-cutoff: 2026-05-01T00:00:00+00:00 -->\n\n## Last-good\n- old. Sources: #b0\n",
+    )
+    const ctx = makeCtx(home, cwd)
+    const ids: string[] = []
+    const msgs: string[] = []
+    ctx.log.warn = (source, message) => {
+      ids.push(source)
+      msgs.push(message)
+    }
+    ctx.host = { llm: { complete: async () => ({ text: "unused" }) } } as never
+    const out = await loadMemories(ctx, { loadConfig: () => cfgWith("summary") })
+    expect(ids).toEqual(["memory.prompt_provider_missing"])
+    expect(msgs).toEqual([""])
+    expect(out).toContain("## Last-good")
+  })
+})

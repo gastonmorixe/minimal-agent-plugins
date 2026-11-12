@@ -12,7 +12,7 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it } from "bun:test"
 
-import createProvider from "../../ma-prompt-template-plugin/provider.ts"
+import { renderFor } from "../../tests/support/prompt-render.ts"
 
 import { DEFAULT_MEMORY_CONFIG, type MemorySummaryParams } from "./memory-config.ts"
 import { type RenderFn, SummarizeError } from "./summarize.ts"
@@ -28,13 +28,7 @@ import {
 } from "./summary-refresh.ts"
 
 /** Renderer from the real prompts.template provider, bound to this plugin dir. */
-const render: RenderFn = (name, vars) =>
-  createProvider().render({
-    pluginId: "ma-memory-plugin",
-    pluginDir: join(import.meta.dirname, ".."),
-    name,
-    ...(vars ? { vars } : {}),
-  })
+const render: RenderFn = renderFor("ma-memory-plugin", join(import.meta.dirname, ".."))
 
 const tempDirs: string[] = []
 function makeTempDir(): string {
@@ -551,6 +545,53 @@ describe("refreshAndRender: failure modes", () => {
     expect(r.reason).toContain("regen-failed-no-fallback")
     expect(r.text).toBe(memContent.trim())
     expect(existsSync(join(dir, "memory.summary.md"))).toBe(false)
+  })
+})
+
+describe("refreshAndRender: missing prompt provider diagnostic", () => {
+  function setup() {
+    const dir = makeTempDir()
+    writeFileSync(join(dir, "memory.md"), manyBullets(20, "2026-05-12T00:00:00-04:00"))
+    const oldSummary = withCutoffHeader(
+      "## Last-good\n- old takeaway. Sources: #b0",
+      "2026-05-05T00:00:00-04:00",
+    )
+    writeFileSync(join(dir, "memory.summary.md"), oldSummary)
+    const opts = {
+      scope: "project" as const,
+      memoryPath: join(dir, "memory.md"),
+      summaryPath: join(dir, "memory.summary.md"),
+      cfg: { ...ENABLED_CFG, dirtyBullets: 1 },
+      completeFn: async () => "unused",
+    }
+    return opts
+  }
+
+  it("emits exactly one typed diagnostic and keeps the last-good summary", async () => {
+    const diagnostics: string[] = []
+    const err = new Error("provider missing")
+    err.name = "PromptTemplateProviderMissingError"
+    const r = await refreshAndRender(setup(), {
+      render: () => {
+        throw err
+      },
+      diagnostic: (id) => diagnostics.push(id),
+    })
+    expect(diagnostics).toEqual(["memory.prompt_provider_missing"])
+    expect(r.reason).toContain("regen-failed-fallback")
+    expect(r.text).toContain("## Last-good")
+  })
+
+  it("emits no diagnostic for another render error", async () => {
+    const diagnostics: string[] = []
+    const r = await refreshAndRender(setup(), {
+      render: () => {
+        throw new Error("template broken")
+      },
+      diagnostic: (id) => diagnostics.push(id),
+    })
+    expect(diagnostics).toEqual([])
+    expect(r.text).toContain("## Last-good")
   })
 })
 
