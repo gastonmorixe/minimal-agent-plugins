@@ -27,6 +27,7 @@ import type { TurnCompletedEvent } from "@minimal-agent/core/sdk/events"
 import { deriveStopCause } from "@minimal-agent/core/sdk/events"
 import type { TurnNotice } from "@minimal-agent/core/sdk/turn-notice"
 
+import { errorText } from "./error-text.ts"
 import type { AcpNotice } from "./notices.ts"
 import { RPC_ERROR } from "./transport.ts"
 
@@ -92,15 +93,19 @@ export function decideStopReason(inputs: StopInputs): StopDecision {
         : { kind: "reply", stopReason: "end_turn", meta: { [META_REASON]: "interrupted_text" } }
     case "aborted":
       return { kind: "reply", stopReason: "cancelled" }
-    case "failed":
+    case "failed": {
+      const failedText = inputs.lastError ? errorText(inputs.lastError) : cause.message
       return {
         kind: "error",
         code: RPC_ERROR.internal,
-        message: cause.message,
-        notice: { severity: "error", title: "Turn failed", description: cause.message },
+        message: failedText,
+        notice: { severity: "error", title: "Turn failed", description: failedText },
       }
+    }
     case "waiting": {
-      const message = inputs.lastError?.message ?? "the run paused after a permanent error"
+      const message = inputs.lastError
+        ? errorText(inputs.lastError)
+        : "the run paused after a permanent error"
       return {
         kind: "error",
         code: RPC_ERROR.internal,
