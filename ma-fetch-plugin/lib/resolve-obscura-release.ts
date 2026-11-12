@@ -1,14 +1,21 @@
 /**
  * Resolve the current obscura binary for this platform from the PUBLIC
- * `gastonmorixe/obscura` releases. No token, no hardcoded build epoch: we read
- * the rolling `latest` release (with `/releases/latest` as fallback)
- * anonymously, pick the asset for this platform, and pin it to its immutable
+ * `gastonmorixe/obscura` releases. No hardcoded build epoch: we read the
+ * rolling `latest` release (with `/releases/latest` as fallback), pick the
+ * asset for this platform, and pin it to its immutable
  * `build-<epoch>` tag so a later `latest` refresh (which prunes old assets)
  * can never 404 a cached install coordinate.
  *
  * The sha256 comes from GitHub's own asset `digest` field when present, else
  * from the `<asset>.sha256` sidecar the Dist Release workflow publishes. The
  * host verifies the downloaded bytes against it before install.
+ *
+ * The lookup is anonymous by default. Anonymous `api.github.com` calls share
+ * a 60 per hour limit per IP, so when the environment already carries a
+ * GitHub token (`MINIMAL_AGENT_GITHUB_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN`) it
+ * is sent on the API lookup only, never on the public CDN download. A token
+ * is never required, and a rejected one (401) falls back to anonymous. The
+ * plugin never runs `gh` or reads a credential store.
  *
  * @module lib/resolve-obscura-release
  */
@@ -74,6 +81,28 @@ export interface ResolveObscuraOptions {
   fetch?: FetchLike
   /** Prefer this tag first (`latest`). Empty means only `/releases/latest`. */
   preferTag?: string
+  /**
+   * Optional GitHub token for the `api.github.com` lookup (rate limit only;
+   * the repo is public). See {@link githubTokenFromEnv}.
+   */
+  token?: string
+}
+
+/** Env vars checked, in order, for an optional GitHub API token. */
+export const GITHUB_TOKEN_ENV_VARS = ["MINIMAL_AGENT_GITHUB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"]
+
+/**
+ * First non-empty GitHub token in `env` (see {@link GITHUB_TOKEN_ENV_VARS}),
+ * or undefined. Env only: no `gh auth token`, no keychain, no subprocess.
+ */
+export function githubTokenFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): string | undefined {
+  for (const k of GITHUB_TOKEN_ENV_VARS) {
+    const v = env[k]?.trim()
+    if (v) return v
+  }
+  return undefined
 }
 
 /** Thrown when the latest obscura release cannot be resolved for this host. */
@@ -125,29 +154,54 @@ export function pickAssetForTarget(
   return undefined
 }
 
+/** Human-readable reason for a failed GitHub API response. */
+function apiFailure(res: Response, repo: string, what: string, hadToken: boolean): string {
+  const limited =
+    (res.status === 403 || res.status === 429) && res.headers.get("x-ratelimit-remaining") === "0"
+  if (limited) {
+    return (
+      `GitHub API rate limit reached for ${repo} ${what}` +
+      (hadToken ? "" : " (set GITHUB_TOKEN or MINIMAL_AGENT_GITHUB_TOKEN to raise it)")
+    )
+  }
+  return `GitHub API ${res.status} for ${repo} ${what}`
+}
+
 /**
- * Load a release anonymously: try the rolling `latest` tag first, then
- * GitHub's `/releases/latest` pointer.
+ * Load a release: try the rolling `latest` tag first, then GitHub's
+ * `/releases/latest` pointer. Sends `token` when given, and retries a 401
+ * (bad or expired token) once anonymously, since the repo is public.
  */
 export async function fetchObscuraRelease(
-  opts: Pick<ResolveObscuraOptions, "repo" | "fetch" | "preferTag"> = {},
+  opts: Pick<ResolveObscuraOptions, "repo" | "fetch" | "preferTag" | "token"> = {},
 ): Promise<ObscuraRelease> {
   const repo = opts.repo ?? OBSCURA_REPO
   const fetchImpl = opts.fetch ?? globalThis.fetch
   const prefer = opts.preferTag ?? OBSCURA_ROLLING_TAG
   const base = `https://api.github.com/repos/${repo}/releases`
+  let token = opts.token
+  const get = async (url: string): Promise<Response> => {
+    const headers: Record<string, string> = { ...HEADERS }
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetchImpl(url, { headers })
+    if (res.status === 401 && token) {
+      token = undefined
+      return await fetchImpl(url, { headers: { ...HEADERS } })
+    }
+    return res
+  }
 
   if (prefer) {
-    const res = await fetchImpl(`${base}/tags/${encodeURIComponent(prefer)}`, { headers: HEADERS })
+    const res = await get(`${base}/tags/${encodeURIComponent(prefer)}`)
     if (res.ok) return (await res.json()) as ObscuraRelease
     if (res.status !== 404) {
-      throw new ResolveObscuraError(`GitHub API ${res.status} for ${repo} tag ${prefer}`)
+      throw new ResolveObscuraError(apiFailure(res, repo, `tag ${prefer}`, !!token))
     }
   }
 
-  const res = await fetchImpl(`${base}/latest`, { headers: HEADERS })
+  const res = await get(`${base}/latest`)
   if (!res.ok) {
-    throw new ResolveObscuraError(`GitHub API ${res.status} for ${repo} /releases/latest`)
+    throw new ResolveObscuraError(apiFailure(res, repo, "/releases/latest", !!token))
   }
   return (await res.json()) as ObscuraRelease
 }
@@ -206,7 +260,12 @@ export async function resolveObscuraBuild(
 
   const repo = opts.repo ?? OBSCURA_REPO
   const fetchImpl = opts.fetch ?? globalThis.fetch
-  const release = await fetchObscuraRelease({ repo, fetch: fetchImpl, preferTag: opts.preferTag })
+  const release = await fetchObscuraRelease({
+    repo,
+    fetch: fetchImpl,
+    preferTag: opts.preferTag,
+    token: opts.token,
+  })
   const picked = pickAssetForTarget(release.assets, target)
   if (!picked) {
     throw new ResolveObscuraError(

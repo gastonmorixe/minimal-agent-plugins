@@ -8,7 +8,7 @@
  * @module lib/provider
  */
 
-import type { Item, Provider } from "ma-autocomplete-kit"
+import type { Item, Provider } from "../../ma-autocomplete-kit/src/index.ts"
 
 import type { LoadResult, StoreDeps } from "./store.ts"
 import { loadPrompts } from "./store.ts"

@@ -363,6 +363,9 @@ describe("runWithDeps - error paths", () => {
       expectToolResult(r)
       expect(r.is_error).toBe(true)
       expect(r.content).toContain("render engine is unavailable")
+      // Tells the model to move on instead of retrying, and the user how it heals.
+      expect(r.content).toContain("Do not retry Fetch")
+      expect(r.content).toContain("next interactive start")
       expect(r.content.toLowerCase()).not.toContain("obscura")
       expect(r.content.toLowerCase()).not.toContain("path")
       expect(r.displayHeader).toContain("engine-unavailable")

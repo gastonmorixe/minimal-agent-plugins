@@ -25,6 +25,7 @@ import {
   type BackendDeps,
   callBackend,
   type EvalMode,
+  resolveBackendBin,
 } from "../lib/backend.ts"
 import {
   classifyBinaryBytes,
@@ -356,6 +357,31 @@ export function buildDisplayFooter(opts: {
 }
 
 /** Default export: the tool handler the loader will invoke. */
+/** Latched once the engine resolves, so a found binary never flips Fetch off. */
+let engineSeen = false
+
+/**
+ * Advertise Fetch only when its render engine resolves (operator override or
+ * the host-managed binary). When setup could not install it (offline, rate
+ * limited, unsupported platform), Fetch is hidden from the model instead of
+ * failing on every call, and the rest of the agent is unaffected. The
+ * handler keeps its own `engine-unavailable` result for a direct call.
+ *
+ * Cheap and side-effect free: one config read plus one `existsSync`. The
+ * result only changes when the binary appears, which happens during boot
+ * provisioning, so the prompt prefix stays stable within a session.
+ */
+export const available = (ctx: { env: Record<string, string | undefined> }): boolean => {
+  if (engineSeen) return true
+  engineSeen = resolveBackendBin(loadFetchConfig(), ctx.env) !== null
+  return engineSeen
+}
+
+/** Test-only: forget a latched engine lookup. */
+export function resetFetchAvailabilityForTest(): void {
+  engineSeen = false
+}
+
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
   if (ctx.trigger.type !== "tool") {
     return { kind: "tool_result", content: "Fetch: wrong trigger type", is_error: true }
@@ -465,16 +491,20 @@ export async function runWithDeps(
   }
 
   if (result.scriptMissing || result.binUnavailable) {
-    // Plugin-misconfiguration path. Generic by design: the model must not
-    // learn which render engine is (or isn't) installed. Two distinct causes
-    // collapse to one message: the backend SCRIPT is missing (broken plugin
-    // checkout), or the managed BINARY couldn't be resolved (provisioning did
-    // not run / was skipped, and no operator override is set). Operators fix
-    // either via config + the ma-fetch plugin README.
+    // Generic by design: the model must not learn which render engine is (or
+    // isn't) installed. Two causes, two messages. The managed BINARY can't be
+    // resolved (offline first start, provisioning skipped, no operator
+    // override): tell the model not to retry so it moves on, and tell the user
+    // a restart fixes it. The backend SCRIPT is missing: a broken plugin
+    // checkout, fixed via the ma-fetch plugin README.
     return fetchErrorResult(
       new FetchError(
         "engine-unavailable",
-        "Fetch: the render engine is unavailable (ma-fetch plugin misconfiguration). See the plugin README for setup.",
+        result.binUnavailable
+          ? "Fetch: the render engine is unavailable (not installed on this machine yet). " +
+              "Do not retry Fetch in this session. It installs on the next interactive start " +
+              "with network access."
+          : "Fetch: the render engine is unavailable (ma-fetch plugin misconfiguration). See the plugin README for setup.",
       ),
       input.url,
       input.format,

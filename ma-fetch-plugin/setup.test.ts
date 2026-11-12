@@ -14,6 +14,9 @@ interface FakeInv {
   status(): "satisfied" | "missing" | "outdated" | "unknown-version"
 }
 
+/** Warnings the fake logger received, reset per test. */
+let warnings: string[] = []
+
 function ctx(inv: Partial<FakeInv> = {}, env: Record<string, string> = {}) {
   return {
     packageDir: "/pkg",
@@ -26,7 +29,13 @@ function ctx(inv: Partial<FakeInv> = {}, env: Record<string, string> = {}) {
       status: () => "missing" as const,
       ...inv,
     },
-    log: { info: () => {}, notice: () => {} },
+    log: {
+      info: () => {},
+      notice: () => {},
+      warn: (_source: string, message: string) => {
+        warnings.push(message)
+      },
+    },
   }
 }
 
@@ -36,6 +45,9 @@ const TARGET_BY_PLATFORM: Record<string, string> = {
   "linux-arm64": "aarch64-linux",
   "linux-x64": "x86_64-linux",
 }
+
+const TOKEN_VARS = ["MINIMAL_AGENT_GITHUB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"]
+const prevTokens: Record<string, string | undefined> = {}
 
 describe("ma-fetch setup()", () => {
   let cfgDir: string
@@ -49,6 +61,11 @@ describe("ma-fetch setup()", () => {
     prevHome = process.env.MINIMAL_AGENT_HOME
     prevFetch = globalThis.fetch
     process.env.MINIMAL_AGENT_HOME = cfgDir
+    warnings = []
+    for (const k of TOKEN_VARS) {
+      prevTokens[k] = process.env[k]
+      delete process.env[k]
+    }
     resetObscuraReleaseRefreshForTest()
   })
   afterEach(() => {
@@ -57,6 +74,10 @@ describe("ma-fetch setup()", () => {
     if (prevHome === undefined) delete process.env.MINIMAL_AGENT_HOME
     else process.env.MINIMAL_AGENT_HOME = prevHome
     globalThis.fetch = prevFetch
+    for (const k of TOKEN_VARS) {
+      if (prevTokens[k] === undefined) delete process.env[k]
+      else process.env[k] = prevTokens[k]
+    }
     resetObscuraReleaseRefreshForTest()
     rmSync(cfgDir, { recursive: true, force: true })
   })
@@ -73,7 +94,7 @@ describe("ma-fetch setup()", () => {
     process.env.MINIMAL_AGENT_CONFIG = cfgPath
     const result = await setup(ctx())
     expect(result.requireBinaries).toBeUndefined()
-    expect(result.haltIfMissing).toBeUndefined()
+    expect(result).not.toHaveProperty("haltIfMissing")
   })
 
   test("uses fresh cached release metadata without contacting GitHub", async () => {
@@ -104,7 +125,8 @@ describe("ma-fetch setup()", () => {
     expect(requests).toBe(0)
     expect(spec?.version).toBe("424242")
     expect(spec?.sha256).toBe(sha)
-    expect(result.haltIfMissing).toEqual(["obscura"])
+    // Never fatal: a missing engine disables Fetch, it does not halt boot.
+    expect(result).not.toHaveProperty("haltIfMissing")
   })
 
   test("declares obscura from resolved latest release", async () => {
@@ -156,7 +178,7 @@ describe("ma-fetch setup()", () => {
     })
     expect(spec!.source).not.toHaveProperty("token")
     expect(authHeaders.every((h) => h === null)).toBe(true)
-    expect(result.haltIfMissing).toEqual(["obscura"])
+    expect(result).not.toHaveProperty("haltIfMissing")
   })
 
   test("uses stale cached metadata immediately and refreshes it in the background", async () => {
@@ -253,6 +275,90 @@ describe("ma-fetch setup()", () => {
 
     const result = await setup(ctx({ has: () => true }))
     expect(result.requireBinaries).toBeUndefined()
-    expect(result.haltIfMissing).toBeUndefined()
+    expect(result).not.toHaveProperty("haltIfMissing")
+  })
+
+  test("offline first start: no halt, one warning, Fetch left off", async () => {
+    const cfgPath = join(cfgDir, "config.jsonc")
+    writeFileSync(cfgPath, `{}`)
+    process.env.MINIMAL_AGENT_CONFIG = cfgPath
+    globalThis.fetch = (async () => {
+      throw new TypeError("fetch failed: getaddrinfo ENOTFOUND api.github.com")
+    }) as unknown as typeof fetch
+
+    const result = await setup(ctx())
+    expect(result).toEqual({})
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toStartWith("Fetch disabled:")
+    expect(warnings[0]).not.toContain("\n")
+  })
+
+  test("rate limited: the warning names the limit and the token env var", async () => {
+    const cfgPath = join(cfgDir, "config.jsonc")
+    writeFileSync(cfgPath, `{}`)
+    process.env.MINIMAL_AGENT_CONFIG = cfgPath
+    if (!TARGET_BY_PLATFORM[`${process.platform}-${process.arch}`]) return
+    globalThis.fetch = (async () =>
+      new Response("rate limited", {
+        status: 403,
+        headers: { "x-ratelimit-remaining": "0" },
+      })) as unknown as typeof fetch
+
+    const result = await setup(ctx())
+    expect(result).toEqual({})
+    expect(warnings[0]).toContain("rate limit")
+    expect(warnings[0]).toContain("GITHUB_TOKEN")
+  })
+
+  test("sends an env GitHub token on the API lookup only, never on the download URL", async () => {
+    const cfgPath = join(cfgDir, "config.jsonc")
+    writeFileSync(cfgPath, `{}`)
+    process.env.MINIMAL_AGENT_CONFIG = cfgPath
+    const target = TARGET_BY_PLATFORM[`${process.platform}-${process.arch}`]
+    if (!target) return
+    process.env.GH_TOKEN = "gh-env-token"
+    const asset = `obscura-${target}-777.tar.gz`
+    const seen: Array<{ url: string; auth: string | null }> = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      seen.push({ url, auth: new Headers(init?.headers).get("authorization") })
+      if (url.includes("/releases/tags/latest")) {
+        return Response.json({
+          tag_name: "latest",
+          assets: [{ id: 1, name: asset, digest: `sha256:${"a".repeat(64)}` }],
+        })
+      }
+      return new Response("nope", { status: 404 })
+    }) as unknown as typeof fetch
+
+    const result = await setup(ctx())
+    expect(result.requireBinaries?.[0]?.version).toBe("777")
+    expect(seen).toHaveLength(1)
+    expect(seen[0]?.auth).toBe("Bearer gh-env-token")
+    expect(result.requireBinaries?.[0]?.source).not.toHaveProperty("token")
+  })
+
+  test("a rejected token (401) falls back to an anonymous lookup", async () => {
+    const cfgPath = join(cfgDir, "config.jsonc")
+    writeFileSync(cfgPath, `{}`)
+    process.env.MINIMAL_AGENT_CONFIG = cfgPath
+    const target = TARGET_BY_PLATFORM[`${process.platform}-${process.arch}`]
+    if (!target) return
+    process.env.MINIMAL_AGENT_GITHUB_TOKEN = "expired"
+    const asset = `obscura-${target}-778.tar.gz`
+    const auths: Array<string | null> = []
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const auth = new Headers(init?.headers).get("authorization")
+      auths.push(auth)
+      if (auth) return new Response("bad creds", { status: 401 })
+      return Response.json({
+        tag_name: "latest",
+        assets: [{ id: 1, name: asset, digest: `sha256:${"b".repeat(64)}` }],
+      })
+    }) as unknown as typeof fetch
+
+    const result = await setup(ctx())
+    expect(result.requireBinaries?.[0]?.version).toBe("778")
+    expect(auths).toEqual(["Bearer expired", null])
   })
 })

@@ -12,7 +12,13 @@
  * @module lib/menu
  */
 
-import { CLOSED, type Item, type Provider, type State, type TriggerSpec } from "ma-autocomplete-kit"
+import {
+  CLOSED,
+  type Item,
+  type Provider,
+  type State,
+  type TriggerSpec,
+} from "../../ma-autocomplete-kit/src/index.ts"
 
 import type { PromptsConfig } from "./config.ts"
 import { makePromptsProvider } from "./provider.ts"
