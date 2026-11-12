@@ -56,6 +56,8 @@ export interface Scenario {
   name: string
   /** Scripted replies per round. After the script ends the model says "done". */
   script: ScriptedReply[]
+  /** Needs the rg binary on PATH. The scenario fails with RgMissingError if absent. */
+  needsRg?: true
   /** Give the core a blob store. */
   blobStore?: boolean
   /** Keep only these request indexes (negative counts from the end). Default: all. */
@@ -82,7 +84,7 @@ const volatileEnvKeys = (): string[] =>
   Object.keys(process.env).filter((k) => k.startsWith("MINIMAL_AGENT_"))
 
 /** Env-info keys have volatile values. Keep the key, drop the value. */
-function normalizeText(text: string, roots: string[]): string {
+export function normalizeText(text: string, roots: string[]): string {
   let out = text
   for (const root of roots) out = out.split(root).join("<ROOT>")
   out = out.split(PLUGINS_ROOT).join("<PLUGINS>")
@@ -93,6 +95,8 @@ function normalizeText(text: string, roots: string[]): string {
     return `\`\`\`ini\n${lines.join("\n")}\n\`\`\``
   })
   out = out.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<UUID>")
+  // Grep returns "Grep error: <rg stderr, trimmed>" as the whole result. rg text differs per version.
+  out = out.replace(/(Grep error: )[\s\S]*$/, "$1<RG_STDERR>")
   out = out.replace(/"durationMs":\d+/g, '"durationMs":0')
   return out
 }
@@ -175,8 +179,28 @@ function scriptedSend(
   }
 }
 
+/** Typed failure: a scenario needs rg but rg is not on PATH. */
+export class RgMissingError extends Error {
+  readonly kind = "RgMissingError"
+  readonly scenario: string
+  constructor(scenario: string) {
+    super(`scenario "${scenario}" needs rg (ripgrep) on PATH, but rg was not found`)
+    this.name = "RgMissingError"
+    this.scenario = scenario
+  }
+}
+
+/** Throw RgMissingError when the scenario sets needsRg and rg is missing. */
+export function assertRgAvailable(
+  scenario: Pick<Scenario, "name" | "needsRg">,
+  which: (cmd: string) => string | null = (c) => Bun.which(c),
+): void {
+  if (scenario.needsRg && !which("rg")) throw new RgMissingError(scenario.name)
+}
+
 /** Run one scenario and return its canonical golden text. */
 export async function runScenario(scenario: Scenario): Promise<string> {
+  assertRgAvailable(scenario)
   mkdirSync(TMP_BASE, { recursive: true })
   const root = realpathSync(mkdtempSync(join(TMP_BASE, `${scenario.name}-`)))
   const cwd = join(root, "cwd")
