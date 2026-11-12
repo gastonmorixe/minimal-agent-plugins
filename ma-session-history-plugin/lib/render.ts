@@ -18,6 +18,13 @@ import type {
   SessionMetaView,
   ToolCallHit,
 } from "./host-types.ts"
+import {
+  firstPromptOf,
+  inputPreviewOf,
+  previewOf,
+  snippetOf,
+  summaryOf,
+} from "./render-from-data.ts"
 
 /** Render a paged window of session records with stable indexes. */
 export function renderWindow(w: RecordWindow, anchor: "start" | "end", offset: number): string {
@@ -28,11 +35,12 @@ export function renderWindow(w: RecordWindow, anchor: "start" | "end", offset: n
   ]
   for (const r of w.items) {
     const ts = r.ts ? ` ${r.ts}` : ""
-    lines.push(`[#${r.index}]${ts} ${r.summary}`)
-    if (r.preview.length > 0) {
-      for (const ln of r.preview.split("\n")) lines.push(`    ${ln}`)
-      if (r.clipped)
-        lines.push(`    ... (${r.fullChars} chars total. Raise previewChars to see more.)`)
+    lines.push(`[#${r.index}]${ts} ${summaryOf(r)}`)
+    const pv = previewOf(r)
+    if (pv.text.length > 0) {
+      for (const ln of pv.text.split("\n")) lines.push(`    ${ln}`)
+      if (pv.clipped)
+        lines.push(`    ... (${pv.fullChars} chars total. Raise previewChars to see more.)`)
     }
   }
   const hint = nextWindowHint(w, anchor, offset)
@@ -74,7 +82,7 @@ export function renderMeta(m: SessionMetaView): string {
     `CWD: ${m.cwd ?? "(unknown)"}`,
     `Agent process: ${live}`,
     `Records: ${m.recordCount} (${counts})`,
-    `First prompt: ${m.firstPrompt ?? "(none)"}`,
+    `First prompt: ${firstPromptOf(m) ?? "(none)"}`,
     `Sidecars: tasks=${m.hasTasks ? "yes" : "no"} scratch=${m.hasScratch ? "yes" : "no"} blobs=${m.blobCount}`,
   ]
     .filter((l): l is string => l !== null)
@@ -112,7 +120,7 @@ export function renderToolCalls(
     lines.push(
       `[#${h.index}]${h.ts ? ` ${h.ts}` : ""} ${h.tool}${h.toolUseId ? ` (${h.toolUseId})` : ""}`,
     )
-    lines.push(`    ${h.inputPreview}`)
+    lines.push(`    ${inputPreviewOf(h)}`)
   }
   if (offset + hits.length < total) {
     lines.push("", `More exist: call again with {offset:${offset + hits.length}}.`)
@@ -134,7 +142,7 @@ export function renderSearch(
   const lines: string[] = []
   for (const h of hits) {
     lines.push(`${h.sid} [#${h.index}]${h.ts ? ` ${h.ts}` : ""} (${h.kind})`)
-    lines.push(`    ${h.preview}`)
+    lines.push(`    ${snippetOf(h)}`)
   }
   if (offset + hits.length < total) {
     lines.push("", `More exist: call again with {offset:${offset + hits.length}}.`)

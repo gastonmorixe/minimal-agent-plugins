@@ -28,3 +28,6 @@ build/
 
 # Local private workspace (never commit)
 private/
+
+# C47 test fixtures (written and removed by the test)
+ma-session-history-plugin/lib/.c47-fixtures/
