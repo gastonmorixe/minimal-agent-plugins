@@ -1,0 +1,26 @@
+{
+  "id": "fixture-overflow",
+  "name": "Fixture overflow",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its subprocess tool prints more than 5 MiB.",
+  "headless": {
+    "tools": [
+      {
+        "id": "fixture_overflow",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "FixtureOverflow",
+            "description": "Test fixture tool. Prints 6000000 bytes.",
+            "input_schema": { "type": "object", "properties": {}, "additionalProperties": false },
+            "explicitName": true,
+            "reason": "fixture name is explicit"
+          }
+        },
+        "handler": { "type": "subprocess", "command": ["./emit.sh"] },
+        "timeoutMs": 20000,
+        "interactive": false
+      }
+    ]
+  }
+}
