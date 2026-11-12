@@ -23,6 +23,7 @@ import type { CoreExtra, Scenario, ScenarioCtx } from "./harness.ts"
 
 const bash = (command: string) => ({ name: "Bash", input: { command } })
 const SID = "golden-sid"
+const FIXTURES = join(import.meta.dir, "fixtures")
 
 /** Fixed 24 byte PNG header (16x16), enough for the media probe. */
 function pngBytes(): Uint8Array {
@@ -271,6 +272,20 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     name: "invalid-input-type",
     script: [{ tools: [{ name: "Bash", input: { command: 5 } }] }],
     run: async ({ turn }) => turn("run bash with a number"),
+    keep: [-1],
+  },
+  {
+    name: "plugin-handler-throws",
+    script: [{ tools: [{ name: "FixtureThrow", input: {} }] }],
+    pluginRoots: () => [join(FIXTURES, "throw")],
+    run: async ({ turn }) => turn("call the throwing fixture tool"),
+    keep: [-1],
+  },
+  {
+    name: "policy-deny-default",
+    script: [{ tools: [bash("echo hi")] }],
+    pluginRoots: () => [join(FIXTURES, "deny")],
+    run: async ({ turn }) => turn("run bash under a deny hook"),
     keep: [-1],
   },
 ]
