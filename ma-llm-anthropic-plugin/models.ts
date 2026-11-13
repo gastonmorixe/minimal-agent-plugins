@@ -31,6 +31,7 @@ import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token
 import {
   CAPS_FABLE_5,
   CAPS_FABLE_5_1,
+  CAPS_FABLE_5_2,
   CAPS_HAIKU_45,
   CAPS_HAIKU_55,
   CAPS_OPUS_5,
@@ -49,8 +50,11 @@ import { clearLocalCatalog, recordModel } from "./lib/registry.ts"
 import {
   ANTHROPIC_FABLE_5,
   ANTHROPIC_FABLE_5_1,
+  ANTHROPIC_FABLE_5_2,
+  ANTHROPIC_FABLE_5_2_FAST,
   ANTHROPIC_HAIKU_45,
   ANTHROPIC_HAIKU_55,
+  ANTHROPIC_HAIKU_55_LONG_PROMPT,
   ANTHROPIC_OPUS_4X_FAST_LEGACY,
   ANTHROPIC_OPUS_4X_STANDARD,
   ANTHROPIC_OPUS_48_FAST,
@@ -59,6 +63,7 @@ import {
   ANTHROPIC_SONNET_5_INTRO,
   ANTHROPIC_SONNET_55,
   ANTHROPIC_SONNET_STANDARD,
+  HAIKU_55_LONG_PROMPT_THRESHOLD,
 } from "./pricing.ts"
 
 /**
@@ -88,6 +93,48 @@ const opus55PricingFor = (req: CanonicalRequest): MTokRate =>
 
 const legacyOpusFastPricingFor = (req: CanonicalRequest): MTokRate =>
   req.speed === "fast" ? ANTHROPIC_OPUS_4X_FAST_LEGACY : ANTHROPIC_OPUS_4X_STANDARD
+
+/**
+ * Fable 5.2 rate picker: $16/$80 on the fast tier, $8/$40 standard. Fable 5.2
+ * is the only Fable with a fast tier (5 and 5.1 are flat-rate), and it is the
+ * cheapest base rate in the family despite being the newest.
+ */
+const fable52PricingFor = (req: CanonicalRequest): MTokRate =>
+  req.speed === "fast" ? ANTHROPIC_FABLE_5_2_FAST : ANTHROPIC_FABLE_5_2
+
+/**
+ * Prompt length at which Haiku 5.5 leaves its base rate. Mirrors the server's
+ * own accounting: the threshold counts input tokens PLUS cache reads PLUS
+ * cache writes, because the pricing page defines prompt length that way ("A
+ * request's prompt length counts all of its input tokens, including cache
+ * reads and cache writes"). Omitting the cache terms would under-count a
+ * cached long prompt and silently bill it at the cheap rate.
+ *
+ * Exported for unit testing the boundary without a live request.
+ *
+ * @param req - The request about to be sent.
+ * @returns The prompt token total the long-prompt gate compares against.
+ */
+export function haiku55PromptTokens(req: CanonicalRequest): number {
+  // `estimatePromptTokens` is the neutral counter; it covers the message text
+  // and system blocks. Cache read/write totals are not known before the
+  // response (they are server-reported), so the pre-flight estimate uses the
+  // request's own token estimate, which already includes cached blocks as
+  // ordinary input. That is the right conservative reading: a cached long
+  // prompt is exactly the case that must not be billed at the base rate.
+  return estimateAnthropicTokens(req)
+}
+
+/**
+ * Per-request pricing picker for Haiku 5.5, the one length-tiered model in the
+ * catalog: base $0.10/$0.50 up to 100k prompt tokens, then $0.50/$2.50 above.
+ * The gate is strictly greater-than, matching "prompts up to 100,000 tokens"
+ * and the baked catalog's `above_prompt_tokens: 1e5`.
+ */
+const haiku55PricingFor = (req: CanonicalRequest): MTokRate =>
+  haiku55PromptTokens(req) > HAIKU_55_LONG_PROMPT_THRESHOLD
+    ? ANTHROPIC_HAIKU_55_LONG_PROMPT
+    : ANTHROPIC_HAIKU_55
 
 /**
  * First instant (UTC) at which Claude Sonnet 5 leaves introductory pricing.
