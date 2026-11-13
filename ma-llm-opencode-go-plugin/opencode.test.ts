@@ -51,8 +51,8 @@ function resolveProvider(id: string) {
   return reg.resolveProvider(id)
 }
 
-function sseStream(raw: string): ReadableStream<Uint8Array> {
-  const bytes = new TextEncoder().encode(raw)
+function sseStream(raw: string | Uint8Array): ReadableStream<Uint8Array> {
+  const bytes = typeof raw === "string" ? new TextEncoder().encode(raw) : raw
   return new ReadableStream({
     start(controller) {
       controller.enqueue(bytes)
@@ -512,6 +512,132 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
     const withoutUserAgent = buildOpenAIHeaders({ auth: { kind: "api-key", key: "sk-test" } })
     expect(withoutUserAgent["user-agent"]).toBeUndefined()
+  })
+
+  it("pins accept-encoding: gzip on the streaming request path and no other encoding", async () => {
+    setup()
+    const adapter = resolveProvider("opencode-go")
+    const cases: Array<{ modelId: string; fixture: string }> = [
+      { modelId: "deepseek-v4-pro", fixture: openaiChatPong() },
+      { modelId: "qwen3.8-max", fixture: anthropicPong() },
+      { modelId: "gpt-5.6-luna", fixture: openaiResponsesPong() },
+    ]
+
+    for (const { modelId, fixture } of cases) {
+      const captured: NetworkRequestInput[] = []
+      const networkClient: NetworkClient = {
+        async request(input) {
+          captured.push(input)
+          return {
+            status: 200,
+            ok: true,
+            headers: new Headers(),
+            body: sseStream(fixture),
+            transport: { id: "mock" },
+            async text() {
+              return ""
+            },
+            async json<T>(): Promise<T> {
+              return {} as T
+            },
+          }
+        },
+      }
+      const req: CanonicalRequest = { modelId, messages: [userText("hi")] }
+      const ctx: RunContext = {
+        auth: { kind: "api-key", key: "sk-test" },
+        sessionId: "conversation-42",
+        networkClient,
+      }
+      for await (const _ of adapter.run(req, resolveModel(modelId), ctx)) {
+        // drain stream
+      }
+
+      expect(captured).toHaveLength(1)
+      const headers = captured[0]!.headers!
+      // gzip negotiated explicitly, so Bun never advertises br/zstd (which it
+      // buffers whole, stalling token delivery) and node:http2 is not left
+      // sending nothing at all.
+      expect(headers["accept-encoding"]).toBe("gzip")
+      expect(headers["accept-encoding"]).not.toContain("br")
+      expect(headers["accept-encoding"]).not.toContain("zstd")
+      expect(headers["accept-encoding"]).not.toBe("identity")
+    }
+  })
+
+  it("passes the response content-encoding to parseSse so a gzip SSE body decodes", async () => {
+    setup()
+    const adapter = resolveProvider("opencode-go")
+    // node:http2 hands back raw gzip with no decompression. The old parser fed
+    // that to TextDecoder, yielding zero events and no error (a silent hang).
+    const gz = new Uint8Array(Bun.gzipSync(new TextEncoder().encode(openaiChatPong())))
+    const networkClient: NetworkClient = {
+      async request() {
+        return {
+          status: 200,
+          ok: true,
+          headers: new Headers({ "content-encoding": "gzip" }),
+          body: sseStream(gz),
+          transport: { id: "mock" },
+          async text() {
+            return ""
+          },
+          async json<T>(): Promise<T> {
+            return {} as T
+          },
+        }
+      },
+    }
+    const req: CanonicalRequest = {
+      modelId: "deepseek-v4-pro",
+      messages: [userText("hi")],
+    }
+    const ctx: RunContext = {
+      auth: { kind: "api-key", key: "sk-test" },
+      sessionId: "conversation-42",
+      networkClient,
+    }
+    let text = ""
+    for await (const ev of adapter.run(req, resolveModel("deepseek-v4-pro"), ctx))
+      if (isEvent(ev, "text_delta")) text += ev.text
+    // Proves the gzip frame was inflated: before the guard this yielded "".
+    expect(text).toBe("pong")
+  })
+
+  it("throws an actionable error instead of hanging on a brotli SSE body", async () => {
+    setup()
+    const adapter = resolveProvider("opencode-go")
+    const networkClient: NetworkClient = {
+      async request() {
+        return {
+          status: 200,
+          ok: true,
+          headers: new Headers({ "content-encoding": "br" }),
+          body: sseStream(openaiChatPong()),
+          transport: { id: "mock" },
+          async text() {
+            return ""
+          },
+          async json<T>(): Promise<T> {
+            return {} as T
+          },
+        }
+      },
+    }
+    const req: CanonicalRequest = {
+      modelId: "deepseek-v4-pro",
+      messages: [userText("hi")],
+    }
+    const ctx: RunContext = {
+      auth: { kind: "api-key", key: "sk-test" },
+      sessionId: "conversation-42",
+      networkClient,
+    }
+    await expect(async () => {
+      for await (const _ of adapter.run(req, resolveModel("deepseek-v4-pro"), ctx)) {
+        // should throw before yielding
+      }
+    }).toThrow(/"br"/)
   })
 
   it("sends opencode identity headers, inference URLs, stream, and read mapping on all surfaces", async () => {

@@ -114,6 +114,51 @@ export const ANTHROPIC_FABLE_5_1: MTokRate = {
 }
 
 /**
+ * Claude Fable 5.2 base rate : $8 / 1M input, $40 / 1M output. 20% below
+ * Fable 5.1 despite being the newer model. Cache reads are $0.20/M (0.025x
+ * input, the Fable-5.2-and-later multiplier), cache writes $10/M at the
+ * standard 1.25x schedule.
+ *
+ * Source, verified 2026-11-13 two ways:
+ *   - the platform pricing table (`Claude Fable 5.2 | $8 / MTok | $40 / MTok |
+ *     $10 / MTok | $16 / MTok | $0.20 / MTok`), plus the cache-hit multiplier
+ *     note ("Claude Fable 5.2 and Claude Mythos 5.2 | 0.025x");
+ *   - the claude-code 2.1.323 baked catalog, tier
+ *     `tier_8_40_cache_read_0_20` = `{input:8, output:40, cache_write_5m:10,
+ *     cache_write_1h:16, cache_read:0.2, web_search:0.01}`.
+ */
+export const ANTHROPIC_FABLE_5_2: MTokRate = {
+  inputUSD: 8,
+  outputUSD: 40,
+  cacheWriteUSD: 10,
+  cacheReadUSD: 0.2,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
+ * Claude Fable 5.2 with `speed:"fast"` : 2x the base rate, $16 / 1M input and
+ * $80 / 1M output, with cache reads held at $0.20/M.
+ *
+ * Source: the pricing page fast-mode table (`Claude Fable 5.2 | $16 USD / MTok
+ * | $80 USD / MTok`) and the 2.1.323 binary's `kA` constant, the rate the CLI
+ * bills for `claude-fable-5-2` when `speed==="fast"`: `{inputTokens:16,
+ * outputTokens:80, promptCacheWriteTokens:20, promptCacheWrite1hTokens:32,
+ * promptCacheReadTokens:0.4}`.
+ *
+ * The fast cache-read rate in the bundle is 0.4, i.e. 0.025x of the FAST input
+ * rate, matching how the base tier's 0.2 is 0.025x of 8. The pricing page only
+ * prints the token columns for fast mode, so both readings agree on the two
+ * numbers the page documents.
+ */
+export const ANTHROPIC_FABLE_5_2_FAST: MTokRate = {
+  inputUSD: 16,
+  outputUSD: 80,
+  cacheWriteUSD: 20,
+  cacheReadUSD: 0.4,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
  * Anthropic's `dx1` rate : opus 4.5/4.6/4.7 with `speed:"fast"`. 6× standard.
  * Verified against `cli.patched.cjs` L116523.
  */
@@ -161,32 +206,74 @@ export const ANTHROPIC_SONNET_5_INTRO: MTokRate = {
 }
 
 /**
- * Claude Sonnet 5.5 (`claude-sonnet-5-5`) standard rate : $3 / 1M input,
- * $15 / 1M output (mirrors the Sonnet 5 post-intro `$3/$15` schedule; the
- * 2026-09-28 launch post-dates the 2026-09-01 Sonnet 5 cutover, so no
- * intro tier applies). Kept as a separate table because the two rates move
- * independently.
+ * Claude Sonnet 5.5 (`claude-sonnet-5-5`) standard rate : $2 / 1M input,
+ * $10 / 1M output with cache reads at $0.10/M (0.05x input) and cache writes
+ * at $2.50/M. The 2026-09-28 launch post-dates the Sonnet 5 cutover, so this
+ * is the model's own tier and not the Sonnet 5 post-intro rate: the pricing
+ * page lists Sonnet 5.5 at $2/$10 alongside Sonnet 5, and its cache-hit
+ * multiplier is 0.05x rather than the standard 0.1x.
+ *
+ * Verified 2026-11-13 against the pricing table (`Claude Sonnet 5.5 | $2 /
+ * MTok | $10 / MTok | $2.50 / MTok | $4 / MTok | $0.10 / MTok`), the
+ * cache-hit multiplier table (`Claude Sonnet 5.5 | 0.05x | $0.10 USD`), and
+ * the 2.1.323 baked catalog tier `tier_2_10_cache_read_0_10`
+ * (`{input:2, output:10, cache_write_5m:2.5, cache_write_1h:4,
+ * cache_read:0.1}`).
  */
 export const ANTHROPIC_SONNET_55: MTokRate = {
-  inputUSD: 3,
-  outputUSD: 15,
-  cacheWriteUSD: 3.75,
-  cacheReadUSD: 0.3,
+  inputUSD: 2,
+  outputUSD: 10,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.1,
   webSearchPerCallUSD: 0.01,
 }
 
 /**
- * Claude Haiku 5.5 (`claude-haiku-5-5`) standard rate : $1 / 1M input,
- * $5 / 1M output (mirrors the Haiku 4.5 `l78` schedule). Kept as a separate
- * table because the two rates move independently.
+ * Claude Haiku 5.5 (`claude-haiku-5-5`) base rate for prompts up to 100,000
+ * tokens: $0.10 / 1M input, $0.50 / 1M output. This is a 10x drop from Haiku
+ * 4.5 and the cheapest tier in the catalog.
+ *
+ * Haiku 5.5 is the ONE model priced by prompt length: a request whose prompt
+ * (input + cache reads + cache writes) exceeds 100k tokens pays
+ * {@link ANTHROPIC_HAIKU_55_LONG_PROMPT} instead. Pricing is per request, so a
+ * long request pays the higher rate even when most of it is a cache hit.
+ * {@link haiku55RateForInputTokens} picks between the two.
+ *
+ * Verified 2026-11-13 against the pricing table (`$0.10 / MTok for prompts up
+ * to 100,000 tokens`), the long-context section, and the 2.1.323 baked tier
+ * `haiku_55` (`{input:0.1, output:0.5, cache_write_5m:0.125,
+ * cache_write_1h:0.2, cache_read:0.01, long_prompt:{above_prompt_tokens:1e5,
+ * input:0.5, output:2.5, cache_write_5m:0.625, cache_read:0.05}}`).
  */
 export const ANTHROPIC_HAIKU_55: MTokRate = {
-  inputUSD: 1,
-  outputUSD: 5,
-  cacheWriteUSD: 1.25,
-  cacheReadUSD: 0.1,
+  inputUSD: 0.1,
+  outputUSD: 0.5,
+  cacheWriteUSD: 0.125,
+  cacheReadUSD: 0.01,
   webSearchPerCallUSD: 0.01,
 }
+
+/**
+ * Claude Haiku 5.5 long-prompt rate, applied when a single request's prompt
+ * exceeds {@link HAIKU_55_LONG_PROMPT_THRESHOLD} tokens: $0.50 / 1M input,
+ * $2.50 / 1M output (5x the base rate, matching the documented step).
+ *
+ * The 1h cache-write rate ($1/M) has no slot in {@link MTokRate}, so only the
+ * 5m rate is carried.
+ */
+export const ANTHROPIC_HAIKU_55_LONG_PROMPT: MTokRate = {
+  inputUSD: 0.5,
+  outputUSD: 2.5,
+  cacheWriteUSD: 0.625,
+  cacheReadUSD: 0.05,
+  webSearchPerCallUSD: 0.01,
+}
+
+/**
+ * Prompt length above which Haiku 5.5 switches to its long-prompt rate.
+ * Strictly greater than: a 100,000-token prompt still pays the base rate.
+ */
+export const HAIKU_55_LONG_PROMPT_THRESHOLD = 100_000
 
 /**
  * Anthropic's `l78` rate : haiku 4.5.

@@ -8,10 +8,10 @@
  * in the provider plugin, never in core.
  *
  * Source of truth for VERSION / Stainless / billing-header format: the
- * claude-code 2.1.280 bundle. Since 2.1.2xx the npm root package is a thin
+ * claude-code 2.1.323 bundle. Since 2.1.2xx the npm root package is a thin
  * installer; the real code ships as a Bun single-file executable in the
- * platform package (`@anthropic-ai/claude-code-darwin-arm64`), so the
- * evidence below comes from strings extracted out of that binary.
+ * platform package (`@anthropic-ai/claude-code-<platform>`), so the evidence
+ * below comes from strings extracted out of that binary.
  *
  * @module llm/providers/anthropic/wire-constants
  */
@@ -22,23 +22,42 @@ import { createHash } from "node:crypto"
  * claude-code CLI version string. Sent in the User-Agent and the billing
  * header; the server validates it. Models gate on a minimum CLI version, so
  * a stale value here makes the API reject new models with HTTP 400
- * `claude_code_version_too_old` ("version 2.1.280 or newer is required").
+ * `claude_code_version_too_old` ("version N or newer is required").
  * This is the upstream CLI's version we mimic, NOT minimal-agent's own
  * version (that's `AGENT_VERSION` in `src/build-info.ts`).
  *
- * Source: the inlined build-info literal in the 2.1.280 binary,
- * `{…,VERSION:"2.1.280",BUILD_TIME:"2026-09-21T20:40:17Z",GIT_SHA:"80abbfe7…"}`.
+ * Per-model floors from the 2.1.323 catalog, live-verified 2026-11-13 against
+ * `POST /v1/messages` with this plan credential:
+ *   - `claude-fable-5-2`  → 2.1.290
+ *   - `claude-opus-5-5`   → 2.1.280
+ *   - `claude-fable-5-1`  → 2.1.251
+ * A value under the addressed model's floor is a hard 400, so this constant
+ * tracks the HIGHEST floor in the catalog (Fable 5.2's 2.1.290), not the
+ * version we happened to extract strings from. Keeping it current costs
+ * nothing: the version is only an attribution/fingerprint claim, and every
+ * modelled beta flag is independently gated by capability.
+ *
+ * Source: the inlined build-info literal in the 2.1.323 binary,
+ * `{…,VERSION:"2.1.323",BUILD_TIME:"2026-11-12T18:26:07Z",GIT_SHA:"66b1ade1…"}`.
  */
-export const VERSION = "2.1.280"
+export const VERSION = "2.1.323"
+
+/**
+ * Lowest `VERSION` the modern catalog accepts, i.e. the highest per-model
+ * `min_claude_code_version` floor the CLI ships. Named so a test can assert
+ * `VERSION >= MIN_SUPPORTED_VERSION` rather than hardcoding a literal twice.
+ */
+export const MIN_SUPPORTED_VERSION = "2.1.290"
 
 /**
  * Salt the CLI mixes into the billing-header hash suffix.
- * Source: `var sOn="59cf53e54c78"` in the 2.1.280 binary.
+ * Source: `var j="59cf53e54c78"` in the 2.1.323 binary. Unchanged since
+ * 2.1.280, so a stale salt is not a thing that can drift silently here.
  */
 const BUILD_HASH_SALT = "59cf53e54c78"
 
 /**
- * Compute the billing-header hash suffix the way claude-code 2.1.280 does.
+ * Compute the billing-header hash suffix the way claude-code 2.1.323 does.
  *
  * The suffix is NOT a per-build constant (it was through 2.1.154). The CLI
  * derives it per conversation from the FIRST user message text:
@@ -48,8 +67,10 @@ const BUILD_HASH_SALT = "59cf53e54c78"
  * sha256(`${salt}${s}${version}`).slice(0, 3)
  * ```
  *
- * The server logs the suffix for attribution but does not validate it, so a
- * caller with no first-message text in hand can use {@link BUILD_HASH}.
+ * In 2.1.323 the first message is the first `role:"user"` entry that is not
+ * `isMeta`, and if its content is an array the FIRST `type:"text"` block is
+ * used. The server logs the suffix for attribution but does not validate it,
+ * so a caller with no first-message text in hand can use {@link BUILD_HASH}.
  *
  * @param firstUserText - Text of the first user message ("" when unknown).
  * @param version - CLI version string mixed into the digest.
@@ -74,14 +95,14 @@ export const BUILD_HASH: string = buildHashFor("")
 
 /**
  * Build timestamp + git sha. Not sent in requests, informational only.
- * Source: the build-info literal in the 2.1.280 binary.
+ * Source: the build-info literal in the 2.1.323 binary.
  */
-export const BUILD_TIME = "2026-09-21T20:40:17Z"
-export const GIT_SHA = "80abbfe7d7232280011ff01a21ae3338f4c6e372"
+export const BUILD_TIME = "2026-11-12T18:26:07Z"
+export const GIT_SHA = "66b1ade1dce6269a9b608cea1920135b24a97a66"
 
 /**
  * Anthropic API version header value. Constant "2023-06-01" across every
- * version tracked (2.1.12 through 2.1.280).
+ * version tracked (2.1.12 through 2.1.323).
  */
 export const ANTHROPIC_VERSION = "2023-06-01"
 
@@ -107,9 +128,10 @@ export const USER_AGENT_MCP = `claude-code/${VERSION} (cli)`
 
 /**
  * Stainless `@anthropic-ai/sdk` package version bundled into the CLI, sent as
- * `x-stainless-package-version`. 0.112.1 in v2.1.280 (was 0.94.0 in 2.1.154).
+ * `x-stainless-package-version`. 0.128.0 in v2.1.323 (was 0.112.1 in 2.1.280,
+ * 0.94.0 in 2.1.154).
  */
-export const STAINLESS_SDK_VERSION = "0.112.1"
+export const STAINLESS_SDK_VERSION = "0.128.0"
 
 /** Bootstrap endpoint introduced in v2.1.154. */
 export const BOOTSTRAP_URL_BASE = "https://api.anthropic.com/api/claude_cli/bootstrap"

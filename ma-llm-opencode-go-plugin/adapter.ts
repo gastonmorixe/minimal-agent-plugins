@@ -77,6 +77,15 @@ const OPENCODE_RESPONSES_URL = "https://opencode.ai/inference/go/openai/v1/respo
 const PROVIDER_ID = "opencode-go"
 
 /**
+ * `accept-encoding` pinned on the streaming request path.
+ *
+ * gzip only: gzip decompresses incrementally under Bun `fetch`, while br and
+ * zstd buffer the entire body and would stall token delivery. See
+ * `reports/04-compression.md` for the measurement.
+ */
+export const STREAM_ACCEPT_ENCODING = "gzip"
+
+/**
  * Quota codes that do not clear by waiting
  * (opencode `packages/ai/src/provider-error.ts:119-127`).
  */
@@ -297,11 +306,24 @@ export const opencodeAdapter: ProviderAdapter = {
       throw new Error(`OpenCode Go adapter: unhandled surface "${model.surfaceId}"`)
     }
 
+    // Pin the stream encoding instead of inheriting the transport default.
+    //
+    // Bun's `fetch` advertises `gzip, deflate, br, zstd` and node:http2
+    // advertises nothing at all, so the effective encoding is a per-transport
+    // accident. Measurement (research/2026-11-13-opencode-wire-transport/
+    // reports/04-compression.md) showed Bun decompresses gzip *incrementally*
+    // but buffers the whole body for br and zstd (first byte 401 ms vs 103 ms
+    // on a 600 ms stream). On a token stream that turns incremental delivery
+    // into one long stall, so pin gzip: it keeps the bandwidth win, excludes
+    // br/zstd by construction, and stops depending on a Bun default that is
+    // not part of our API surface. `identity` buys nothing (the edge is
+    // gzip-only and gzip streams for free).
+    headers["accept-encoding"] = STREAM_ACCEPT_ENCODING
+
     ctx.debug?.header(`POST ${url}`)
     ctx.debug?.kv("model", model.id)
     ctx.debug?.headers(headers)
     ctx.debug?.body(body)
-
     const response = await networkClient.request({
       label,
       method: "POST",
@@ -315,12 +337,24 @@ export const opencodeAdapter: ProviderAdapter = {
     }
     if (!response.body) throw new Error("OpenCode Go API: empty response body for stream")
 
+    // Hand the parser the response encoding so it can inflate a body a
+    // transport left compressed (node:http2) or reject one it cannot decode,
+    // instead of silently yielding zero events.
+    const contentEncoding = response.headers.get("content-encoding")
+
     let events: AsyncIterable<CanonicalEvent>
     if (model.surfaceId === "openai-chat-completions")
-      events = translateOpenAIChatStream(parseSse<OpenAIChatChunk>(response.body))
+      events = translateOpenAIChatStream(
+        parseSse<OpenAIChatChunk>(response.body, { contentEncoding }),
+      )
     else if (model.surfaceId === "anthropic-messages")
-      events = translateAnthropicStream(parseSse<AnthropicStreamEvent>(response.body))
-    else events = translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body))
+      events = translateAnthropicStream(
+        parseSse<AnthropicStreamEvent>(response.body, { contentEncoding }),
+      )
+    else
+      events = translateOpenAIResponsesStream(
+        parseSse<OpenAIResponsesEvent>(response.body, { contentEncoding }),
+      )
     yield* renamed ? fromOpencodeToolEvents(events) : events
   },
 

@@ -132,6 +132,7 @@ export const CAPS_OPUS_47: Capabilities = { ...CAPS_OPUS_48 }
  * thinking, effort low/medium/high/xhigh/max (default high), fast tier,
  * image + pdf input, structured outputs, full tools + caching. Pricing
  * stays $5/$25 standard (verified against platform.claude.com pricing).
+ * Knowledge cutoff: May 2026 per the 2.1.323 baked catalog.
  */
 export const CAPS_OPUS_5: Capabilities = { ...CAPS_OPUS_48 }
 
@@ -223,6 +224,38 @@ export const CAPS_FABLE_5: Capabilities = {
  * see pricing.ts); caps stay shared with Fable 5.
  */
 export const CAPS_FABLE_5_1: Capabilities = { ...CAPS_OPUS_48, speedFast: false }
+
+/**
+ * Claude Fable 5.2 (`claude-fable-5-2`), live 2026-11-09 per
+ * `GET /v1/models` and the newest model in the catalog. It is NOT a caps twin
+ * of Fable 5 / 5.1: three things changed on the wire.
+ *
+ *   1. Default effort is `medium`, not `high` (the 2.1.323 baked catalog's
+ *      `default_effort:"medium"`; Fable 5 and 5.1 both ship `high`).
+ *   2. Fast mode is BACK: `speedFast` is true and `speed:"fast"` costs 2x
+ *      ($16/$80, see `ANTHROPIC_FABLE_5_2_FAST`). Fable 5 and 5.1 are the only
+ *      modern models without it.
+ *   3. Output ceiling is 128k (Fable 5/5.1 cap at 64k), so
+ *      `maxOutputTokens` is 128_000.
+ *
+ * Everything else matches the Fable family: 1M context, adaptive-only thinking
+ * (extended/enabled rejected, `rejects_disabled_thinking` in the baked
+ * capabilities so `thinking:{type:"disabled"}` is refused), the full effort
+ * ladder low/medium/high/xhigh/max, image + pdf input, structured outputs,
+ * full tools + caching.
+ *
+ * Live `GET /v1/models` agrees on every field it reports:
+ * `max_input_tokens 1000000`, `max_tokens 128000`, all five effort levels
+ * supported, `thinking.types {adaptive:true, enabled:false, disabled:false,
+ * between_tools:false}`, image/pdf/structured-outputs/context-management all
+ * true, `lifecycle:"active"`.
+ */
+export const CAPS_FABLE_5_2: Capabilities = {
+  ...CAPS_OPUS_48,
+  maxOutputTokens: 128_000,
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "medium" },
+  speedFast: true,
+}
 
 // ---------------------------------------------------------------------------
 // Opus 4.6 (transition tier — extended thinking still functional)
