@@ -29,7 +29,12 @@ import { fieldById, SCHEMA } from "../lib/schema.ts"
 import { CONFIG_OVERLAY_OWNER, getState, setModel, setState } from "../lib/state.ts"
 import { effectiveValue } from "../lib/view.ts"
 
-import { discoveryRoots, realDiscoverDeps, realFsDeps, resolveConfigPath } from "./wiring.ts"
+import {
+  discoveryRoots,
+  embeddedAwareDiscoverDeps,
+  realFsDeps,
+  resolveConfigPath,
+} from "./wiring.ts"
 
 const MAX_ROWS = 9
 
@@ -50,8 +55,10 @@ export default function cmdConfig(ctx: CommandContext): CommandResult {
   }
 
   // Build the model: static schema + a toggle per discovered plugin.
+  // `embeddedAwareDiscoverDeps` also surfaces plugins embedded in a compiled
+  // binary, whose manifests live in memory rather than next to the cache dir.
   const roots = discoveryRoots(ctx.packageDir ?? packageDirFromModuleUrl(), ctx.cwd, ctx.env)
-  const plugins = discoverPlugins(realDiscoverDeps(roots))
+  const plugins = discoverPlugins(embeddedAwareDiscoverDeps(roots))
   const fields = [...SCHEMA, ...pluginFields(plugins)]
   const model = ConfigModel.load(realFsDeps(path), { fields })
   setModel(model)
