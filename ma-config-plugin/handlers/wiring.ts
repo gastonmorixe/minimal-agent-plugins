@@ -9,6 +9,10 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
+import {
+  embeddedPluginPackages,
+  type PluginPackage,
+} from "@minimal-agent/core/host-kit/embedded-plugins"
 import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
 
 import type { DiscoverDeps } from "../lib/discovery.ts"
@@ -99,6 +103,63 @@ export function realDiscoverDeps(roots: string[]): DiscoverDeps {
       } catch {
         return null
       }
+    },
+  }
+}
+
+/**
+ * Discovery deps that also see plugins EMBEDDED in a compiled binary.
+ *
+ * In a binary every first-party package lives in the generated table, not on
+ * disk: core creates an empty `cache/embedded/<buildId>/<name>` dir and keeps
+ * the manifest in memory, so scanning the parent root finds no
+ * `manifest.json` and `/config` would show no plugin toggles at all.
+ *
+ * `discoverPlugins` treats every root as the PARENT of package dirs, so this
+ * adds the shared build dir (`cache/embedded/<buildId>`) as one extra root and
+ * serves its directory listing plus each `manifest.json` from the table. That
+ * keeps the existing root-based precedence working: disk roots are scanned
+ * first, so a project or user copy of an id wins, exactly as the loader does.
+ */
+export function embeddedAwareDiscoverDeps(roots: string[]): DiscoverDeps {
+  const base = realDiscoverDeps(roots)
+  // No roots means discovery was explicitly opted out
+  // (`MINIMAL_AGENT_CONFIG_SKIP_PLUGIN_DISCOVERY=1`): honor it, do not smuggle
+  // the embedded table back in.
+  if (roots.length === 0) return base
+  let packages: readonly PluginPackage[] = []
+  try {
+    packages = embeddedPluginPackages()
+  } catch {
+    // A source run registers no table. A failure here must never break
+    // discovery for the disk roots.
+    packages = []
+  }
+  if (packages.length === 0) return base
+
+  const byDir = new Map(packages.map((pkg) => [pkg.dir, pkg]))
+  // Every embedded package dir is `<buildRoot>/<name>`, so one shared parent.
+  const buildRoot = dirname(packages[0]?.dir ?? "")
+  const names = packages.map((pkg) => {
+    const parts = pkg.dir.split(/[/\\]/)
+    return parts[parts.length - 1] ?? pkg.name
+  })
+
+  return {
+    ...base,
+    roots: [...roots, buildRoot],
+    readDir: (path: string) => {
+      if (path === buildRoot) return [...names]
+      return base.readDir(path)
+    },
+    readFile: (path: string) => {
+      const fromDisk = base.readFile(path)
+      if (fromDisk !== null) return fromDisk
+      const pkg = byDir.get(dirname(path))
+      if (pkg !== undefined && path.endsWith("manifest.json")) {
+        return pkg.readText("manifest.json")
+      }
+      return null
     },
   }
 }
