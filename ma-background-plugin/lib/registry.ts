@@ -148,29 +148,92 @@ export class RunnerRegistry {
 // Shared parent-exit fan-out (flat listener count, like ma-speak)
 // ---------------------------------------------------------------------------
 
-const PARENT_EXIT_EVENTS = ["exit", "SIGINT", "SIGTERM", "SIGHUP"] as const
-const parentExitCallbacks = new Set<() => void>()
-let parentExitDispatch: (() => void) | null = null
+const PARENT_EXIT_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const
+type ParentExitSignal = (typeof PARENT_EXIT_SIGNALS)[number]
 
-function installParentExitDispatch(): void {
-  if (parentExitDispatch) return
-  const dispatch = () => {
-    for (const cb of [...parentExitCallbacks]) {
-      try {
-        cb()
-      } catch {
-        // never let cleanup throw during shutdown
-      }
+const parentExitCallbacks = new Set<() => void>()
+let onExitEvent: (() => void) | null = null
+const onSignal = new Map<ParentExitSignal, () => void>()
+// One shutdown runs the fan-out once: a signal followed by the `exit` event
+// that its handler causes must not close every pipe twice.
+let fannedOut = false
+
+function fanOut(): void {
+  if (fannedOut) return
+  fannedOut = true
+  for (const cb of [...parentExitCallbacks]) {
+    try {
+      cb()
+    } catch {
+      // never let cleanup throw during shutdown
     }
   }
-  parentExitDispatch = dispatch
-  for (const ev of PARENT_EXIT_EVENTS) process.on(ev, dispatch)
+}
+
+/**
+ * Shared marker on every signal fan-out listener. `Symbol.for` gives the same
+ * symbol in every module, so ma-background and ma-speak see each other's tag
+ * without an import. Keep the name identical in both plugins.
+ */
+const FANOUT: unique symbol = Symbol.for("minimal-agent.signal-fanout")
+
+/** A signal listener that may carry the {@link FANOUT} tag. */
+type FanOutListener = ((...args: unknown[]) => void) & { [FANOUT]?: true }
+
+/** Number of listeners for `sig` that are not a fan-out (they own the exit). */
+function ownerListenerCount(sig: NodeJS.Signals): number {
+  return process.listeners(sig).filter((l) => (l as FanOutListener)[FANOUT] !== true).length
+}
+
+/**
+ * A listener on SIGINT, SIGTERM, or SIGHUP removes the default action (the
+ * process exits). See https://nodejs.org/api/process.html#signal-events. When
+ * no listener other than a fan-out (this one or the ma-speak one) exists,
+ * nobody ends the host, so remove this listener and raise the signal again:
+ * once every fan-out has removed itself, the default action runs. When another
+ * listener exists (the CLI one calls `process.exit`), leave it to that
+ * listener. The re-raise happens at most once, because the listener is gone.
+ * The count runs BEFORE the fan-out, so a callback cannot change it.
+ */
+function signalListener(sig: ParentExitSignal): () => void {
+  const listener: FanOutListener = (): void => {
+    const owners = ownerListenerCount(sig)
+    fanOut()
+    if (owners > 0) {
+      // A later listener that exits does so in this same emit, so its `exit`
+      // event sees the guard. If no listener exits (a host that only cancels
+      // a turn on SIGINT), re-arm so a later shutdown fans out again.
+      setImmediate(() => {
+        fannedOut = false
+      })
+      return
+    }
+    process.off(sig, listener)
+    onSignal.delete(sig)
+    process.kill(process.pid, sig)
+  }
+  listener[FANOUT] = true
+  return listener
+}
+
+function installParentExitDispatch(): void {
+  if (onExitEvent) return
+  fannedOut = false
+  onExitEvent = fanOut
+  process.on("exit", onExitEvent)
+  for (const sig of PARENT_EXIT_SIGNALS) {
+    const listener = signalListener(sig)
+    onSignal.set(sig, listener)
+    process.on(sig, listener)
+  }
 }
 
 function removeParentExitDispatch(): void {
-  if (!parentExitDispatch) return
-  for (const ev of PARENT_EXIT_EVENTS) process.off(ev, parentExitDispatch)
-  parentExitDispatch = null
+  if (!onExitEvent) return
+  process.off("exit", onExitEvent)
+  onExitEvent = null
+  for (const [sig, listener] of onSignal) process.off(sig, listener)
+  onSignal.clear()
 }
 
 /**

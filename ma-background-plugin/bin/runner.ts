@@ -20,6 +20,10 @@
  *   - stdin EOF  : foolproof, survives a harness SIGKILL (no JS needed there).
  *   - ppid poll  : if reparented to init (ppid === 1), self-terminate.
  *   - own signals: SIGTERM/SIGINT/SIGHUP forwarded to the job, recorded as a stop.
+ *   - group drain: when the leader exits (by itself or on a stop), the runner
+ *     signals the rest of its group (SIGTERM, grace, SIGKILL) and exits only
+ *     when the group is empty. So a `cmd &` daemon dies with the job. A job
+ *     that wants a survivor must start it with `setsid` (out of our reach).
  *
  * This file is the imperative shell. Its logic lives in `lib/runner-core.ts`
  * (pure, unit-tested). It exports only {@link main}, so a compiled binary can
@@ -50,6 +54,7 @@ import { type Sidecar, serializeSidecar } from "../lib/sidecar.ts"
 
 const KILL_GRACE_MS = 2000
 const PPID_POLL_MS = 1000
+const GROUP_POLL_MS = 50
 
 /**
  * Run one supervised job. Configuration comes from the environment
@@ -120,18 +125,41 @@ export async function main(_argv: string[] = []): Promise<number> {
     }
   }
 
-  // Escalate SIGTERM -> SIGKILL so a job ignoring SIGTERM still dies.
-  let escalation: ReturnType<typeof setTimeout> | undefined
-  const terminate = (): void => {
-    killGroup("SIGTERM")
-    escalation = setTimeout(() => killGroup("SIGKILL"), KILL_GRACE_MS)
-    escalation.unref?.()
+  // True while any process is still in the job group. Only ESRCH means empty:
+  // EPERM or another error counts as alive, so the grace wait still runs.
+  const groupAlive = (): boolean => {
+    try {
+      process.kill(-jobPid, 0)
+      return true
+    } catch (err) {
+      return (err as NodeJS.ErrnoException).code !== "ESRCH"
+    }
   }
+
+  // Poll until the group is empty or `untilMs` (epoch ms) passes.
+  const waitGroupEmpty = async (untilMs: number): Promise<void> => {
+    while (groupAlive() && Date.now() < untilMs) await Bun.sleep(GROUP_POLL_MS)
+  }
+
+  // Escalate SIGTERM -> SIGKILL so a job ignoring SIGTERM still dies. The
+  // timer stays ref'd (leak E2): the runner must not exit before it fires
+  // while a descendant that ignores SIGTERM is still in the group.
+  let escalation: ReturnType<typeof setTimeout> | undefined
+  let termSentAt: number | undefined
+  const terminate = (): void => {
+    termSentAt ??= Date.now()
+    killGroup("SIGTERM")
+    escalation ??= setTimeout(() => killGroup("SIGKILL"), KILL_GRACE_MS)
+  }
+
+  // Set once the leader has exited. A stop path after that point only signals
+  // the rest of the group: the leader exit code is the outcome to record.
+  let leaderDone = false
 
   // The cleanup paths that pre-empt a natural exit. Each records its reason,
   // signals the job, and then lets the `proc.exited` await below resolve.
   const stopWith = (reason: string): void => {
-    settle(stoppedSidecar(base, new Date().toISOString(), reason))
+    if (!leaderDone) settle(stoppedSidecar(base, new Date().toISOString(), reason))
     terminate()
   }
 
@@ -177,14 +205,29 @@ export async function main(_argv: string[] = []): Promise<number> {
 
   // Wait for the job to exit (whether naturally or because a path killed it).
   const exitCode = await proc.exited
+  leaderDone = true
+  const endedAt = new Date().toISOString()
+  const signal = proc.signalCode ? String(proc.signalCode) : undefined
   if (deadline) clearTimeout(deadline)
-  if (escalation) clearTimeout(escalation)
   clearInterval(ppidTimer)
 
+  // The leader is gone, but a `cmd &` child (leak E1) or a descendant that
+  // ignores SIGTERM (leak E2) can still be in the group. Empty the group
+  // before we record and exit: SIGTERM, wait the grace time, then SIGKILL.
+  // A process that called setsid is in another group and is not reached.
+  if (groupAlive()) {
+    terminate()
+    await waitGroupEmpty((termSentAt ?? Date.now()) + KILL_GRACE_MS)
+    if (groupAlive()) {
+      killGroup("SIGKILL")
+      await waitGroupEmpty(Date.now() + KILL_GRACE_MS)
+    }
+  }
+  if (escalation) clearTimeout(escalation)
+
   // If no cleanup path already settled, this is a natural exit.
-  const signal = proc.signalCode ? String(proc.signalCode) : undefined
   settle(
-    exitedSidecar(base, new Date().toISOString(), {
+    exitedSidecar(base, endedAt, {
       ...(typeof exitCode === "number" ? { exitCode } : {}),
       ...(signal ? { signal } : {}),
     }),

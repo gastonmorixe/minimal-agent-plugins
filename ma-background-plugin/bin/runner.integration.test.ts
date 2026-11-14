@@ -19,11 +19,34 @@ import { parseSidecar, type Sidecar } from "../lib/sidecar.ts"
 
 const RUNNER = join(import.meta.dir, "runner.ts")
 
+/** The runner's SIGTERM to SIGKILL grace, mirrored from `bin/runner.ts`. */
+const GRACE_MS = 2000
+
 let dir: string
+/** Every pid a test started (runners and job children), killed by exact pid. */
+let startedPids: number[] = []
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "bgrunner-"))
+  startedPids = []
 })
 afterEach(() => {
+  // The job group this test started (its pgid is the job leader pid).
+  const jobPid = readSidecar(join(dir, "j1.status.json"))?.jobPid
+  if (jobPid && jobPid > 0) {
+    try {
+      process.kill(-jobPid, "SIGKILL")
+    } catch {
+      // group already empty
+    }
+  }
+  for (const pid of startedPids) {
+    try {
+      process.kill(pid, "SIGKILL")
+    } catch {
+      // already gone
+    }
+  }
+  startedPids = []
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -52,7 +75,19 @@ function spawnRunner(opts: SpawnOpts) {
     stdout: "ignore",
     stderr: "ignore",
   })
+  startedPids.push(proc.pid)
   return { proc, logPath, statusPath }
+}
+
+/** Wait for the first line of the job log to hold a pid, track it, return it. */
+async function readLoggedPid(logPath: string): Promise<number> {
+  const firstLine = (): string =>
+    existsSync(logPath) ? (readFileSync(logPath, "utf-8").split("\n")[0] ?? "").trim() : ""
+  expect(await waitFor(() => /^\d+$/.test(firstLine()))).toBe(true)
+  const pid = Number(firstLine())
+  expect(pid).toBeGreaterThan(0)
+  startedPids.push(pid)
+  return pid
 }
 
 function readSidecar(path: string): Sidecar | undefined {
@@ -179,4 +214,32 @@ describe("runner: harness-death via stdin EOF (the hard requirement)", () => {
     const dead = await waitFor(() => !pidAlive(gcPid), 4000)
     expect(dead).toBe(true)
   }, 15000)
+})
+
+describe("runner: no survivor in the job group", () => {
+  test("a natural leader exit kills a `cmd &` child (leak E1)", async () => {
+    const { proc, logPath, statusPath } = spawnRunner({
+      command: "bash -c 'sleep 300 & echo $! ; echo started'",
+    })
+    const sleepPid = await readLoggedPid(logPath)
+    expect(await waitFor(() => readSidecar(statusPath)?.phase === "exited", 10000)).toBe(true)
+    expect(readSidecar(statusPath)?.exitCode).toBe(0)
+    const dead = await waitFor(() => !pidAlive(sleepPid), GRACE_MS + 2000)
+    expect(dead).toBe(true)
+    await proc.exited
+  }, 20000)
+
+  test("a stop kills a grandchild that ignores SIGTERM (leak E2)", async () => {
+    const { proc, logPath, statusPath } = spawnRunner({
+      command: `bash -c '(trap "" TERM; sleep 300) & echo $!; wait'`,
+    })
+    expect(await waitFor(() => readSidecar(statusPath)?.phase === "running")).toBe(true)
+    const gcPid = await readLoggedPid(logPath)
+    // BackgroundStop sends SIGTERM to the runner.
+    proc.kill("SIGTERM")
+    const dead = await waitFor(() => !pidAlive(gcPid), GRACE_MS + 1000)
+    expect(dead).toBe(true)
+    await proc.exited
+    expect(readSidecar(statusPath)?.phase).toBe("stopped")
+  }, 20000)
 })
