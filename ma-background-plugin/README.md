@@ -132,6 +132,40 @@ Defense in depth, layered:
 `bin/runner.integration.test.ts` proves the load-bearing case end to end. Closing
 the runner's stdin kills the job and its grandchild.
 
+### The whole job group dies with the job
+
+The job runs in its own process group. When the job leader exits, by itself or
+on a stop, the runner signals the rest of that group: SIGTERM, a 2 s grace, then
+SIGKILL. The runner exits only when the group is empty (`kill(-pgid, 0)` gives
+ESRCH) or SIGKILL was sent after the grace. The sidecar keeps the leader exit
+code.
+
+So a job like `server & echo started` no longer leaves `server` running after
+the job ends. A process that must outlive its job has to leave the group. Linux
+has a `setsid` command (`setsid server &`). macOS has no `setsid` on `PATH`, so
+use the Perl form, which works on both:
+
+```sh
+perl -MPOSIX -e 'POSIX::setsid() or die "setsid: $!"; exec @ARGV' server &
+```
+
+`POSIX::setsid` calls the C `setsid()`
+([perldoc POSIX](https://perldoc.perl.org/POSIX#setsid)), so `server` starts in
+a new session and a new process group. The runner does not reach a process in
+another group, so this is also an escape that this plugin does not catch.
+
+The harness fan-out listens on SIGINT, SIGTERM, and SIGHUP. A listener on one of
+these signals removes its default exit action
+([Node.js signal events](https://nodejs.org/api/process.html#signal-events)).
+ma-speak installs the same kind of fan-out. Each fan-out listener carries a
+shared tag (`Symbol.for("minimal-agent.signal-fanout")`), and each one counts
+only the listeners without the tag, before it runs its callbacks. When that
+count is 0, the fan-out runs its callbacks, removes itself, and raises the
+signal again. The next fan-out does the same, and after the last one the
+default action ends the host. When an untagged listener exists (the CLI one
+calls `process.exit`), the fan-out leaves the exit to that listener. The
+fan-out runs once for each shutdown.
+
 ## Persistence (durable, colocated, complete)
 
 Everything lives under the session directory, so it travels with the transcript
