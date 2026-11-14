@@ -200,6 +200,101 @@ export function skillScriptEnv(
   return childEnv(base)
 }
 
+/**
+ * SIGKILL a detached skill script and its process group (negative pid), so
+ * grandchildren die too. Falls back to the single pid when the group kill
+ * fails. Never throws.
+ */
+function killScriptGroup(proc: { readonly pid: number; kill(sig?: number | string): void }): void {
+  if (proc.pid > 0) {
+    try {
+      process.kill(-proc.pid, "SIGKILL")
+      return
+    } catch {
+      // group gone or not a leader: fall through to the single pid
+    }
+  }
+  try {
+    proc.kill("SIGKILL")
+  } catch {
+    // already gone
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Live script groups: killed when the host process exits (fix-3i)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pids of detached skill scripts whose process group may still hold a live
+ * process. Each pid is also its pgid (`detached: true` calls `setsid()`).
+ *
+ * A detached script leaves the CLI session, so a terminal-close SIGHUP never
+ * reaches it, and Bun kills no child on exit. ONE lazy `process.on("exit")`
+ * listener SIGKILLs every group in this set. The `exit` event fires on
+ * `process.exit()` and when the loop drains
+ * (https://nodejs.org/api/process.html#event-exit), never on SIGKILL or on a
+ * signal that has no listener. Core does the same for its own detached spawns
+ * (`minimal-agent-core/src/infra/child-registry.ts`).
+ *
+ * While the CLI lives, a normal script exit kills nothing: a background child
+ * that the script left keeps running, and its group stays in the set until it
+ * is empty.
+ */
+const liveScriptGroups = new Set<number>()
+let exitListenerInstalled = false
+
+/** True while the process group `pgid` has at least one member. */
+function groupAlive(pgid: number): boolean {
+  try {
+    process.kill(-pgid, 0)
+    return true
+  } catch {
+    // ESRCH: empty group. EPERM: a reused id we cannot signal, so not ours.
+    return false
+  }
+}
+
+/** Drop each tracked group that has no live member. */
+function pruneScriptGroups(): void {
+  for (const pgid of liveScriptGroups) {
+    if (!groupAlive(pgid)) liveScriptGroups.delete(pgid)
+  }
+}
+
+/** SIGKILL every tracked group. Synchronous: an `exit` listener cannot await. */
+function killScriptGroupsOnExit(): void {
+  for (const pgid of liveScriptGroups) {
+    try {
+      process.kill(-pgid, "SIGKILL")
+    } catch {
+      // group already gone
+    }
+  }
+  liveScriptGroups.clear()
+}
+
+/** Track a script group. Skips pid 1 and lower (`kill(-1)` hits every user process) and our own pid. */
+function trackScriptGroup(pgid: number): void {
+  if (!Number.isInteger(pgid) || pgid <= 1 || pgid === process.pid) return
+  pruneScriptGroups()
+  liveScriptGroups.add(pgid)
+  if (!exitListenerInstalled) {
+    exitListenerInstalled = true
+    process.on("exit", killScriptGroupsOnExit)
+  }
+}
+
+/** Drop a group after its script exited, only when the group is empty. */
+function releaseScriptGroupIfEmpty(pgid: number): void {
+  if (liveScriptGroups.has(pgid) && !groupAlive(pgid)) liveScriptGroups.delete(pgid)
+}
+
+/** Snapshot of the tracked script group pids (tests and diagnostics). */
+export function liveScriptGroupPids(): number[] {
+  return [...liveScriptGroups]
+}
+
 /** Test seams for {@link toolSpecToHandler}. */
 export interface ToolHandlerOptions {
   /** Base env for script handlers. Default `process.env`. */
@@ -303,17 +398,28 @@ export function toolSpecToHandler(
         }
       }
 
+      // `detached` puts the script in its own process group, so a timeout or
+      // an abort can SIGKILL the whole group, grandchildren included. A
+      // normal exit kills nothing: a skill may start a service on purpose.
+      // The group is tracked, so it dies when the host process exits.
+      // tty effect: `setsid()` leaves the script with no controlling tty.
+      // stdio are pipes, so normal I/O is the same, but an open of
+      // `/dev/tty` fails in the script.
       const proc = Bun.spawn([scriptPath, ...args], {
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",
         cwd: skillDir,
         env: skillScriptEnv(opts.env),
+        detached: true,
       })
+      trackScriptGroup(proc.pid)
 
-      const timer = setTimeout(() => {
-        proc.kill("SIGKILL")
-      }, timeoutMs)
+      const killTree = () => killScriptGroup(proc)
+      const timer = setTimeout(killTree, timeoutMs)
+      const abort = ctx.abort instanceof AbortSignal ? ctx.abort : undefined
+      if (abort?.aborted) killTree()
+      else abort?.addEventListener("abort", killTree, { once: true })
 
       try {
         if (argTemplate) {
@@ -349,6 +455,12 @@ export function toolSpecToHandler(
         }
       } finally {
         clearTimeout(timer)
+        abort?.removeEventListener("abort", killTree)
+        // Check the group only after the leader exited and was reaped. On the
+        // error path the stdout read can throw before `exited` settles.
+        const release = () => releaseScriptGroupIfEmpty(proc.pid)
+        if (proc.exitCode !== null || proc.signalCode !== null) release()
+        else void proc.exited.then(release, release)
       }
     }
 

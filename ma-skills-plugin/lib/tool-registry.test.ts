@@ -1,4 +1,12 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -39,5 +47,114 @@ describe("script tool handler env", () => {
     const r = await h.invoke({ trigger: { type: "tool", input: {} } })
     expect(r.is_error).toBeUndefined()
     expect(r.content).toBe("be=unset keep=yes")
+  })
+})
+
+/** True while `pid` exists (signal 0 probe). */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function waitGone(pid: number, ms: number): Promise<boolean> {
+  const end = Date.now() + ms
+  while (Date.now() < end) {
+    if (!alive(pid)) return true
+    await Bun.sleep(20)
+  }
+  return !alive(pid)
+}
+
+/** Resolve with `p`, or reject when `p` does not settle within `ms`. */
+async function within<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`invoke did not return within ${ms} ms`)), ms)
+  })
+  try {
+    return await Promise.race([p, late])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+describe("script tool handler timeout and abort", () => {
+  let dir: string
+  const started: number[] = []
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "skill-kill-"))
+    mkdirSync(join(dir, "scripts"))
+    const script = join(dir, "scripts", "forks")
+    // Write the script pid and the background sleep pid to a file, then block.
+    // `exec` keeps the blocking sleep on the script pid, so 2 pids cover all.
+    // The shell pid variable is built by repeat so no editor collapses the pair.
+    const selfPid = "$".repeat(2)
+    writeFileSync(
+      script,
+      `#!/bin/sh\nsleep 300 &\necho "${selfPid} $!" > "${join(dir, "pids")}"\nexec sleep 300\n`,
+    )
+    chmodSync(script, 0o755)
+  })
+  afterEach(() => {
+    for (const pid of started.splice(0)) {
+      try {
+        process.kill(pid, "SIGKILL")
+      } catch {
+        // already gone
+      }
+    }
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  function handler(timeoutMs: number) {
+    const spec = {
+      name: "Forks",
+      description: "fork a background sleep",
+      parameters: { type: "object", properties: {} },
+      handler: { type: "script", path: "scripts/forks", argTemplate: "x", timeoutMs },
+    } as unknown as ToolSpec
+    return toolSpecToHandler(spec, dir, { env: { PATH: process.env.PATH } }) as {
+      invoke: (ctx: Record<string, unknown>) => Promise<Record<string, unknown>>
+    }
+  }
+
+  async function readPids(): Promise<number[]> {
+    const file = join(dir, "pids")
+    const end = Date.now() + 2000
+    while (Date.now() < end) {
+      if (existsSync(file)) {
+        const pids = readFileSync(file, "utf8").trim().split(/\s+/).map(Number)
+        if (pids.length === 2 && pids.every((p) => p > 0)) {
+          started.push(...pids)
+          return pids
+        }
+      }
+      await Bun.sleep(20)
+    }
+    throw new Error("script did not write its pids")
+  }
+
+  test("timeout kills the script and its background child", async () => {
+    const run = handler(300).invoke({ trigger: { type: "tool", input: {} } })
+    const [script, bg] = await readPids()
+    const r = await within(run, 3000)
+    expect(r.is_error).toBe(true)
+    expect(await waitGone(script, 1000)).toBe(true)
+    expect(await waitGone(bg, 1000)).toBe(true)
+  })
+
+  test("abort kills the script and its background child", async () => {
+    const ac = new AbortController()
+    const run = handler(30_000).invoke({ trigger: { type: "tool", input: {} }, abort: ac.signal })
+    const [script, bg] = await readPids()
+    ac.abort()
+    const r = await within(run, 3000)
+    expect(r.is_error).toBe(true)
+    expect(await waitGone(script, 1000)).toBe(true)
+    expect(await waitGone(bg, 1000)).toBe(true)
   })
 })
