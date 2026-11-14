@@ -18,6 +18,10 @@ function stage(name: string): string {
   return dir
 }
 
+/** Reader of a staged `<dir>/prompts` copy, read at each call. */
+const diskReader = (dir: string) => (name: string) =>
+  readFileSync(join(dir, "prompts", name), "utf-8")
+
 describe("base prompt provider", () => {
   beforeAll(() => rmSync(TMP, { recursive: true, force: true }))
   afterAll(() => rmSync(TMP, { recursive: true, force: true }))
@@ -40,7 +44,7 @@ describe("base prompt provider", () => {
     appendFileSync(join(dir, "prompts", "identity.neutral.md"), "\n \n")
     appendFileSync(join(dir, "prompts", "instructions.md"), "\n")
     appendFileSync(join(dir, "prompts", "instructions.md"), "\n \n")
-    const p = createBaseProvider(dir)
+    const p = createBaseProvider(diskReader(dir))
     expect(bytes(p.identity?.(ctx) ?? "").equals(fixture("old-identity.txt"))).toBe(true)
     const text = p.instructionParts?.()[0]?.text ?? ""
     expect(bytes(text).equals(fixture("old-instructions.txt"))).toBe(true)
@@ -50,28 +54,28 @@ describe("base prompt provider", () => {
     const dir = stage("empty")
     writeFileSync(join(dir, "prompts", "identity.neutral.md"), "")
     writeFileSync(join(dir, "prompts", "instructions.md"), "")
-    const p = createBaseProvider(dir)
+    const p = createBaseProvider(diskReader(dir))
     expect(p.identity?.(ctx)).toBe("")
     expect(p.instructionParts?.()).toEqual([{ slot: "instructions", text: "" }])
   })
 
   test("the provider reads the files at first call, not at creation", () => {
     const dir = stage("lazy")
-    const p = createBaseProvider(dir)
+    const p = createBaseProvider(diskReader(dir))
     writeFileSync(join(dir, "prompts", "identity.neutral.md"), "late\n")
     expect(p.identity?.(ctx)).toBe("late")
   })
 
   test("the instructions file is read at the first call of instructionParts, not at creation", () => {
     const dir = stage("lazy-instructions")
-    const p = createBaseProvider(dir)
+    const p = createBaseProvider(diskReader(dir))
     writeFileSync(join(dir, "prompts", "instructions.md"), "late instructions\n")
     expect(p.instructionParts?.()).toEqual([{ slot: "instructions", text: "late instructions" }])
   })
 
   test("the instructions text is read once and kept after the first call", () => {
     const dir = stage("memo-instructions")
-    const p = createBaseProvider(dir)
+    const p = createBaseProvider(diskReader(dir))
     const first = p.instructionParts?.()[0]?.text
     writeFileSync(join(dir, "prompts", "instructions.md"), "changed after the first call\n")
     expect(p.instructionParts?.()[0]?.text).toBe(first ?? "")
