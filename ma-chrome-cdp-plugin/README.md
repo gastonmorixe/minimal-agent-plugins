@@ -105,12 +105,37 @@ widgets, setting React inputs, download verification, iframe/login caveats, the
 
 ## Config (env)
 
-| Var        | Default               | Meaning                                 |
-| ---------- | --------------------- | --------------------------------------- |
-| `CDP_PORT` | `9222`                | Chrome remote-debugging port            |
-| `CDP_SOCK` | `/tmp/cdp.sock`       | unix socket the daemon listens on       |
-| `CDP_DTAP` | auto-detected         | path to `DevToolsActivePort` (override) |
-| `CDP_LOG`  | `/tmp/cdp-server.log` | daemon log file                         |
+| Var                    | Default               | Meaning                                                      |
+| ---------------------- | --------------------- | ------------------------------------------------------------ |
+| `CDP_PORT`             | `9222`                | Chrome remote-debugging port                                 |
+| `CDP_SOCK`             | `/tmp/cdp.sock`       | unix socket the daemon listens on                            |
+| `CDP_DTAP`             | auto-detected         | path to `DevToolsActivePort` (override)                      |
+| `CDP_LOG`              | `/tmp/cdp-server.log` | daemon log file                                              |
+| `CDP_LEASE_DIR`        | `<CDP_SOCK>.leases`   | one file per client pid (lease)                              |
+| `CDP_IDLE_MS`          | `600000`              | exit after this idle time with no live lease (`0` = never)   |
+| `CDP_LEASE_CHECK_MS`   | `30000`               | interval of the lease sweep and idle check                   |
+| `CDP_MAX_RECONNECT`    | `30`                  | exit after this many failed Chrome reconnects (`0` = no cap) |
+| `CDP_READY_TIMEOUT_MS` | `15000`               | a request waits this long for the first Chrome connect       |
+| `CDP_LEASE_MAX_AGE_MS` | `86400000`            | drop a lease not refreshed for this long (`0` = no limit)    |
+
+### Daemon lifetime
+
+1. One daemon per socket. A new daemon pings the socket under
+   `<CDP_SOCK>.bind.lock`. If a live daemon answers, the new one exits 0.
+   A stale lock is moved away with an atomic rename, so only one caller
+   breaks it.
+2. The `ChromeCDP` handler takes `<CDP_SOCK>.spawn.lock` before it spawns,
+   so two sessions at once start one daemon. Its ping times out after 2 s.
+3. Each client process writes `<lease dir>/<pid>` (`{"pid","time"}`) on each
+   call and removes it when the process exits. The daemon removes the leases
+   of dead pids and the leases not refreshed for `CDP_LEASE_MAX_AGE_MS`. It
+   exits when no live lease is left and no request came for `CDP_IDLE_MS`.
+   The idle timer starts when the socket is bound, before the Chrome connect.
+   If the first connect does not settle in `CDP_READY_TIMEOUT_MS`, a request
+   gets 503 `{"error":"chrome connect timeout"}`.
+4. When Chrome goes away, the daemon tries `CDP_MAX_RECONNECT` reconnects,
+   one per second, then exits 0.
+5. On exit the daemon removes the socket only if the file is the one it bound.
 
 ## Tests
 
