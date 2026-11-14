@@ -134,28 +134,95 @@ const PARENT_EXIT_EVENTS = ["exit", "SIGINT", "SIGTERM", "SIGHUP"] as const
  * Node's MaxListenersExceededWarning or stack N copies of a signal handler.
  */
 const parentExitCallbacks = new Set<() => void>()
-let parentExitDispatch: (() => void) | null = null
+type ParentExitEvent = (typeof PARENT_EXIT_EVENTS)[number]
+let parentExitListeners: Map<ParentExitEvent, () => void> | null = null
+// One shutdown runs the fan-out once: a signal followed by the `exit` event
+// that its handler causes must not kill every job twice.
+let fannedOut = false
 
-function installParentExitDispatch(): void {
-  if (parentExitDispatch) return
-  const dispatch = () => {
-    // Snapshot: a callback may unsubscribe (mutating the set) as it runs.
-    for (const cb of [...parentExitCallbacks]) {
-      try {
-        cb()
-      } catch {
-        // never let cleanup throw during shutdown
-      }
+function runParentExitCallbacks(): void {
+  if (fannedOut) return
+  fannedOut = true
+  // Snapshot: a callback may unsubscribe (mutating the set) as it runs.
+  for (const cb of [...parentExitCallbacks]) {
+    try {
+      cb()
+    } catch {
+      // never let cleanup throw during shutdown
     }
   }
-  parentExitDispatch = dispatch
-  for (const ev of PARENT_EXIT_EVENTS) process.on(ev, dispatch)
+}
+
+/**
+ * Shared marker on every signal fan-out listener. `Symbol.for` gives the same
+ * symbol in every module, so ma-speak and ma-background see each other's tag
+ * without an import. Keep the name identical in both plugins.
+ */
+const FANOUT: unique symbol = Symbol.for("minimal-agent.signal-fanout")
+
+/** A signal listener that may carry the {@link FANOUT} tag. */
+type FanOutListener = ((...args: unknown[]) => void) & { [FANOUT]?: true }
+
+/** Number of listeners for `sig` that are not a fan-out (they own the exit). */
+function ownerListenerCount(sig: NodeJS.Signals): number {
+  return process.listeners(sig).filter((l) => (l as FanOutListener)[FANOUT] !== true).length
+}
+
+/**
+ * Keep the default action of a termination signal. A listener removes the
+ * default exit (Node signal events), so when no listener other than a fan-out
+ * (this one or the ma-background one) exists for `sig`, drop all fan-out
+ * listeners of this module and re-raise `sig` at this process. Once every
+ * fan-out has removed itself, the default action runs. When another listener
+ * exists, that listener owns the exit.
+ */
+function reraise(sig: NodeJS.Signals): void {
+  removeParentExitDispatch()
+  try {
+    process.kill(process.pid, sig)
+  } catch {
+    // not signalable: nothing more to do
+  }
+}
+
+/** The fan-out listener for one termination signal, tagged with {@link FANOUT}. */
+function signalListener(sig: NodeJS.Signals): () => void {
+  const listener: FanOutListener = () => {
+    // Decide before the fan-out: a callback may unsubscribe and remove
+    // this listener while it runs.
+    const owners = ownerListenerCount(sig)
+    runParentExitCallbacks()
+    if (owners === 0) {
+      reraise(sig)
+      return
+    }
+    // A later listener that exits does so in this same emit, so its `exit`
+    // event sees the guard. If no listener exits (a host that only cancels a
+    // turn on SIGINT), re-arm so a later shutdown fans out again.
+    setImmediate(() => {
+      fannedOut = false
+    })
+  }
+  listener[FANOUT] = true
+  return listener
+}
+
+function installParentExitDispatch(): void {
+  if (parentExitListeners) return
+  fannedOut = false
+  const listeners = new Map<ParentExitEvent, () => void>()
+  for (const ev of PARENT_EXIT_EVENTS) {
+    const listener = ev === "exit" ? runParentExitCallbacks : signalListener(ev)
+    listeners.set(ev, listener)
+    process.on(ev, listener)
+  }
+  parentExitListeners = listeners
 }
 
 function removeParentExitDispatch(): void {
-  if (!parentExitDispatch) return
-  for (const ev of PARENT_EXIT_EVENTS) process.off(ev, parentExitDispatch)
-  parentExitDispatch = null
+  if (!parentExitListeners) return
+  for (const [ev, listener] of parentExitListeners) process.off(ev, listener)
+  parentExitListeners = null
 }
 
 /**

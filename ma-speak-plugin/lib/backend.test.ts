@@ -242,8 +242,13 @@ describe("defaultParentExitHook", () => {
       throw new Error("boom")
     })
     const u3 = defaultParentExitHook(() => calls.push("c"))
+    // A second SIGHUP listener: the fan-out is not the sole listener, so it
+    // does not re-raise SIGHUP at the test runner.
+    const keepAlive = () => {}
+    process.on("SIGHUP", keepAlive)
     // Emitting SIGHUP drives the shared dispatch synchronously.
     process.emit("SIGHUP" as never)
+    process.off("SIGHUP", keepAlive)
     expect(calls.sort()).toEqual(["a", "b", "c"])
     u1()
     u2()
