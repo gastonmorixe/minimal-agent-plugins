@@ -232,9 +232,11 @@ describe("anthropic plan OAuth: login against a fake 127.0.0.1 server", () => {
         client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
         redirect_uri: "https://platform.claude.com/oauth/code/callback",
       })
+      // A login with no name gets the next `{serviceId}-N` (core 83a0740).
+      // Only an entry from before that change has the display name.
       const secrets = new AuthStore({ path: join(dir, "auth.jsonc") }).getSecrets(
         LEGACY_ID,
-        LEGACY_NAME,
+        `${LEGACY_ID}-1`,
       )
       if (!secrets) throw new Error("login wrote no entry")
       expect(anthropicOAuthLogin.readAuth?.(secrets)).toEqual({
