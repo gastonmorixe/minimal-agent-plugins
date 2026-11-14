@@ -23,6 +23,7 @@ import { appendEnvelope, readInbox } from "./inbox.ts"
 import { classifyLiveness, isReachable, type Liveness } from "./liveness.ts"
 import { inboxPath, presenceDir, presencePath, sessionsDir } from "./paths.ts"
 import { type PresenceRecord, readPresenceDir, writePresence } from "./presence.ts"
+import { bodyFromParts } from "./record-preview.ts"
 import type { InspectBundle } from "./render.ts"
 import { buildRoster, type RosterRow } from "./roster.ts"
 import {
@@ -456,7 +457,9 @@ export async function inspectPeer(
       if (win) {
         const rows = win.items.map(
           (r) =>
-            `#${r.index} ${r.kind}${r.ts ? ` ${r.ts.slice(11, 19)}` : ""}: ${r.preview.replace(/\s+/g, " ").slice(0, include.has("transcript") ? 200 : 90)}`,
+            `#${r.index} ${r.kind}${r.ts ? ` ${r.ts.slice(11, 19)}` : ""}: ${bodyFromParts(r.parts)
+              .replace(/\s+/g, " ")
+              .slice(0, include.has("transcript") ? 200 : 90)}`,
         )
         if (include.has("transcript")) bundle.transcript = rows
         else bundle.activity = rows

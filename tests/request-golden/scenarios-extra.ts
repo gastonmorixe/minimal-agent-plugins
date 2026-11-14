@@ -3,7 +3,7 @@
  * stream salvage and compaction. Split from scenarios.ts to keep files small.
  */
 
-import { readFileSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import {
@@ -138,7 +138,25 @@ const staleFile = (
   keep: [-1],
 })
 
+/** Resume a recorded compacted session fixture, then run one new user turn. */
+const resumeFixture = (name: string, file: string): Scenario => ({
+  name,
+  script: [{ text: "after resume" }],
+  coreDeps: storeDeps,
+  run: async (ctx) => {
+    mkdirSync(sessionDir(ctx.root), { recursive: true })
+    copyFileSync(join(FIXTURES, file), join(sessionDir(ctx.root), `${SID}.jsonl`))
+    const next = await resumeCore(ctx)
+    await ctx.turnOn(next, "question five")
+  },
+  keep: [-1],
+})
+
 export const EXTRA_SCENARIOS: Scenario[] = [
+  resumeFixture("resume-old-compacted-tail", "old-compacted-tail.jsonl"),
+  resumeFixture("resume-old-compacted-local", "old-compacted-local.jsonl"),
+  resumeFixture("resume-new-compacted-tail", "new-compacted-tail.jsonl"),
+  resumeFixture("resume-new-compacted-local", "new-compacted-local.jsonl"),
   {
     name: "binary-read",
     script: [{ tools: [{ name: "Read", input: { file_path: "blob.bin" } }] }],
@@ -311,6 +329,116 @@ export const EXTRA_SCENARIOS: Scenario[] = [
     name: "empty-response-placeholder",
     script: [{ stopReason: "max_tokens" }, { text: "rest" }],
     run: async ({ turn }) => turn("answer, the reply will be empty"),
+    keep: [-1],
+  },
+  {
+    // Pins the streak note on the 3rd truncated Read in a row.
+    name: "streak-note-read",
+    script: Array.from({ length: 3 }, () => ({
+      tools: [{ name: "Read", input: { file_path: "big.txt" } }],
+    })),
+    setup: (cwd) => {
+      const lines = Array.from({ length: 1100 }, () => "l")
+      writeFileSync(join(cwd, "big.txt"), `${lines.join("\n")}\n`)
+    },
+    run: async ({ turn }) => turn("read the big file three times"),
+    keep: [-1],
+  },
+  {
+    // Pins the base64 body when the model opts in to binary output.
+    name: "binary-read-optin",
+    script: [{ tools: [{ name: "Read", input: { file_path: "blob.bin", binary: true } }] }],
+    setup: (cwd) => {
+      const bytes = new Uint8Array(512)
+      for (let i = 0; i < bytes.length; i++) bytes[i] = i % 7 === 0 ? 0 : (i * 31) % 256
+      writeFileSync(join(cwd, "blob.bin"), bytes)
+    },
+    run: async ({ turn }) => turn("read the binary file as base64"),
+    keep: [-1],
+  },
+  {
+    // Pins the Read output-preview with a path and the recover text.
+    name: "output-preview-read-blob",
+    blobStore: true,
+    script: [{ tools: [{ name: "Read", input: { file_path: "big.txt" } }] }],
+    setup: (cwd) => {
+      const lines = Array.from({ length: 3000 }, (_, i) => `line ${i}`)
+      writeFileSync(join(cwd, "big.txt"), `${lines.join("\n")}\n`)
+    },
+    run: async ({ turn }) => turn("read the big file"),
+    keep: [-1],
+  },
+  {
+    // Pins the output-preview without a path: a store exists, the body is small.
+    name: "output-preview-small-no-blob",
+    blobStore: true,
+    script: [{ tools: [bash("seq 1 20")] }],
+    run: async ({ turn }) => turn("print twenty numbers"),
+    keep: [-1],
+  },
+  {
+    name: "mode-tool-default",
+    script: [{ tools: [{ name: "Mode", input: {} }] }],
+    run: async ({ turn }) => turn("which mode is active"),
+    keep: [-1],
+  },
+  {
+    name: "mode-tool-ask",
+    script: [{ tools: [{ name: "Mode", input: {} }] }],
+    run: async ({ turn, modes }) => {
+      modes.setMode("ask")
+      await turn("which mode is active")
+    },
+    keep: [-1],
+  },
+  {
+    // Pins the diagnostics annotation added by a tool.didInvoke hook.
+    name: "diagnostics-note",
+    script: [{ tools: [bash("echo hi")] }],
+    pluginRoots: () => [join(FIXTURES, "diag")],
+    run: async ({ turn }) => turn("run bash with a diagnostics hook"),
+    keep: [-1],
+  },
+  {
+    // Pins the policy note added when a hook rewrites the tool input.
+    name: "policy-rewrite-note",
+    script: [{ tools: [bash("echo orig")] }],
+    pluginRoots: () => [join(FIXTURES, "rewrite")],
+    run: async ({ turn }) => turn("run bash under a rewrite hook"),
+    keep: [-1],
+  },
+  {
+    // Pins the core clamp on a plugin tool result.
+    name: "plugin-tool-clamp",
+    script: [{ tools: [{ name: "FixtureBig", input: {} }] }],
+    pluginRoots: () => [join(FIXTURES, "big")],
+    run: async ({ turn }) => turn("call the big fixture tool"),
+    keep: [-1],
+  },
+  {
+    // Board item 42: core parseMode keeps `mode.permissions`, so ask mode
+    // (deny Edit and Write in its manifest) refuses Edit. The golden pins the
+    // refusal. The name still says "allowed-today": a rename belongs to
+    // ticket 50. The target file is created by `setup` in this scenario's own
+    // temp cwd (harness TMP_BASE).
+    name: "ask-mode-edit-allowed-today",
+    script: [{ tools: [editA] }],
+    setup: (cwd) => writeFileSync(join(cwd, "a.txt"), "hello\n"),
+    run: async ({ turn, modes }) => {
+      modes.setMode("ask")
+      await turn("edit a.txt in ask mode")
+    },
+    keep: [-1],
+  },
+  {
+    // Board item 42, see the Edit case above: ask mode refuses Write. The name
+    // is kept until ticket 50. Write targets this scenario's own temp cwd.
+    name: "ask-mode-write-allowed-today",
+    script: [{ tools: [{ name: "Write", input: { file_path: "new.txt", content: "x\n" } }] }],
+    run: async ({ turn, modes }) => {
+      modes.setMode("ask")
+      await turn("write new.txt in ask mode")
+    },
     keep: [-1],
   },
 ]

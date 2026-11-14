@@ -1,0 +1,18 @@
+{
+  "id": "fixture-diag",
+  "name": "Fixture diag",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool.didInvoke hook adds two notes.",
+  "permissions": ["hooks:tool.didInvoke"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "diag_note",
+        "channel": "tool.didInvoke",
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "priority": 10,
+        "timeoutMs": 2000
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "turn-recovery",
+  "name": "Turn recovery",
+  "version": "0.1.0",
+  "description": "Owns the model-facing text of tool results that core makes when a tool call fails, stops, aborts or is denied.",
+  "capabilities": [],
+  "syntheticText": [
+    {
+      "id": "tool-result",
+      "entry": "./provider.ts",
+      "export": "createTurnRecoveryProvider"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+[
+  {
+    "type": "text",
+    "text": "OVERRIDE PREAMBLE"
+  },
+  {
+    "type": "text",
+    "text": "INSTRUCTIONS",
+    "cache_control": {
+      "type": "ephemeral",
+      "ttl": "1h",
+      "scope": "global"
+    }
+  },
+  {
+    "type": "text",
+    "text": "SESSION CONTEXT"
+  }
+]

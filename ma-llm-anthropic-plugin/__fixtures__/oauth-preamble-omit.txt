@@ -1,0 +1,19 @@
+[
+  {
+    "type": "text",
+    "text": "You are Minimal Agent, an interactive CLI agent."
+  },
+  {
+    "type": "text",
+    "text": "INSTRUCTIONS",
+    "cache_control": {
+      "type": "ephemeral",
+      "ttl": "1h",
+      "scope": "global"
+    }
+  },
+  {
+    "type": "text",
+    "text": "SESSION CONTEXT"
+  }
+]

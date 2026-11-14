@@ -24,6 +24,7 @@
  * @module transport
  */
 
+import { errorText } from "./error-text.ts"
 /** A JSON-RPC 2.0 id this side sends: a number or a string. */
 export type JsonRpcId = number | string
 
@@ -352,7 +353,7 @@ function destroyStream(stream: unknown): void {
 }
 
 function describeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e)
+  return errorText(e)
 }
 
 function toBytes(chunk: Uint8Array | Buffer | string): Uint8Array {

@@ -12,8 +12,10 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it } from "bun:test"
 
+import { renderFor } from "../../tests/support/prompt-render.ts"
+
 import { DEFAULT_MEMORY_CONFIG, type MemorySummaryParams } from "./memory-config.ts"
-import { SummarizeError } from "./summarize.ts"
+import { type RenderFn, SummarizeError } from "./summarize.ts"
 import {
   headlineOf,
   parseCutoff,
@@ -24,6 +26,9 @@ import {
   summaryPathFor,
   withCutoffHeader,
 } from "./summary-refresh.ts"
+
+/** Renderer from the real prompts.template provider, bound to this plugin dir. */
+const render: RenderFn = renderFor("ma-memory-plugin", join(import.meta.dirname, ".."))
 
 const tempDirs: string[] = []
 function makeTempDir(): string {
@@ -272,12 +277,15 @@ function makeFakeSummarize(out: string) {
 describe("refreshAndRender: short-circuits", () => {
   it("returns empty text when memory file is absent", async () => {
     const dir = makeTempDir()
-    const r = await refreshAndRender({
-      scope: "project",
-      memoryPath: join(dir, "memory.md"),
-      summaryPath: join(dir, "memory.summary.md"),
-      cfg: ENABLED_CFG,
-    })
+    const r = await refreshAndRender(
+      {
+        scope: "project",
+        memoryPath: join(dir, "memory.md"),
+        summaryPath: join(dir, "memory.summary.md"),
+        cfg: ENABLED_CFG,
+      },
+      { render },
+    )
     expect(r.text).toBe("")
     expect(r.regenerated).toBe(false)
     expect(r.reason).toBe("no-memory-file")
@@ -286,12 +294,15 @@ describe("refreshAndRender: short-circuits", () => {
   it("returns empty text when memory file is empty", async () => {
     const dir = makeTempDir()
     writeFileSync(join(dir, "memory.md"), "")
-    const r = await refreshAndRender({
-      scope: "project",
-      memoryPath: join(dir, "memory.md"),
-      summaryPath: join(dir, "memory.summary.md"),
-      cfg: ENABLED_CFG,
-    })
+    const r = await refreshAndRender(
+      {
+        scope: "project",
+        memoryPath: join(dir, "memory.md"),
+        summaryPath: join(dir, "memory.summary.md"),
+        cfg: ENABLED_CFG,
+      },
+      { render },
+    )
     expect(r.text).toBe("")
     expect(r.reason).toBe("empty-memory")
   })
@@ -314,7 +325,7 @@ describe("refreshAndRender: short-circuits", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("below-threshold")
@@ -336,7 +347,7 @@ describe("refreshAndRender: short-circuits", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: cfgWithHighMinBytes,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("below-threshold")
@@ -359,7 +370,7 @@ describe("refreshAndRender: regen triggers", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
+      { render, summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
     )
     expect(r.regenerated).toBe(true)
     expect(r.reason).toContain("no-summary")
@@ -388,7 +399,7 @@ describe("refreshAndRender: regen triggers", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(true)
     expect(r.reason).toContain("no-cutoff-in-summary")
@@ -418,7 +429,7 @@ describe("refreshAndRender: regen triggers", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: { ...ENABLED_CFG, dirtyBullets: 3 }, // 5 dirty >= 3 → regen
       },
-      { summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
+      { render, summarize: fake.fn, now: () => new Date("2026-05-14T03:00:00Z") },
     )
     expect(r.regenerated).toBe(true)
     expect(r.reason).toContain("regenerated")
@@ -445,7 +456,7 @@ describe("refreshAndRender: fresh-enough path (no regen)", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("fresh")
@@ -473,7 +484,7 @@ describe("refreshAndRender: fresh-enough path (no regen)", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: { ...ENABLED_CFG, dirtyBullets: 5 }, // 1 dirty < 5 → no regen
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("fresh")
@@ -504,7 +515,7 @@ describe("refreshAndRender: failure modes", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: { ...ENABLED_CFG, dirtyBullets: 1 }, // force regen attempt
       },
-      { summarize: failingSummarize },
+      { render, summarize: failingSummarize },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("regen-failed-fallback")
@@ -528,12 +539,59 @@ describe("refreshAndRender: failure modes", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: failingSummarize },
+      { render, summarize: failingSummarize },
     )
     expect(r.regenerated).toBe(false)
     expect(r.reason).toContain("regen-failed-no-fallback")
     expect(r.text).toBe(memContent.trim())
     expect(existsSync(join(dir, "memory.summary.md"))).toBe(false)
+  })
+})
+
+describe("refreshAndRender: missing prompt provider diagnostic", () => {
+  function setup() {
+    const dir = makeTempDir()
+    writeFileSync(join(dir, "memory.md"), manyBullets(20, "2026-05-12T00:00:00-04:00"))
+    const oldSummary = withCutoffHeader(
+      "## Last-good\n- old takeaway. Sources: #b0",
+      "2026-05-05T00:00:00-04:00",
+    )
+    writeFileSync(join(dir, "memory.summary.md"), oldSummary)
+    const opts = {
+      scope: "project" as const,
+      memoryPath: join(dir, "memory.md"),
+      summaryPath: join(dir, "memory.summary.md"),
+      cfg: { ...ENABLED_CFG, dirtyBullets: 1 },
+      completeFn: async () => "unused",
+    }
+    return opts
+  }
+
+  it("emits exactly one typed diagnostic and keeps the last-good summary", async () => {
+    const diagnostics: string[] = []
+    const err = new Error("provider missing")
+    err.name = "PromptTemplateProviderMissingError"
+    const r = await refreshAndRender(setup(), {
+      render: () => {
+        throw err
+      },
+      diagnostic: (id) => diagnostics.push(id),
+    })
+    expect(diagnostics).toEqual(["memory.prompt_provider_missing"])
+    expect(r.reason).toContain("regen-failed-fallback")
+    expect(r.text).toContain("## Last-good")
+  })
+
+  it("emits no diagnostic for another render error", async () => {
+    const diagnostics: string[] = []
+    const r = await refreshAndRender(setup(), {
+      render: () => {
+        throw new Error("template broken")
+      },
+      diagnostic: (id) => diagnostics.push(id),
+    })
+    expect(diagnostics).toEqual([])
+    expect(r.text).toContain("## Last-good")
   })
 })
 
@@ -550,7 +608,7 @@ describe("refreshAndRender: atomic write", () => {
         summaryPath: join(dir, "memory.summary.md"),
         cfg: ENABLED_CFG,
       },
-      { summarize: fake.fn },
+      { render, summarize: fake.fn },
     )
     // No lingering .tmp.<pid> file should remain in the dir.
     const { readdirSync } = require("node:fs") as typeof import("node:fs")

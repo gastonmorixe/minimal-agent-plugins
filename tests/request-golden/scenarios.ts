@@ -5,6 +5,7 @@ import { join } from "node:path"
 
 import type { Scenario } from "./harness.ts"
 import { EXTRA_SCENARIOS } from "./scenarios-extra.ts"
+import { GAP_SCENARIOS } from "./scenarios-gaps.ts"
 
 const bash = (command: string) => ({ name: "Bash", input: { command } })
 
@@ -81,4 +82,5 @@ export const SCENARIOS: Scenario[] = [
     run: async ({ turn }) => turn("do many rounds"),
   },
   ...EXTRA_SCENARIOS,
+  ...GAP_SCENARIOS,
 ]

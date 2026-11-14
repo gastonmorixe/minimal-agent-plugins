@@ -111,4 +111,12 @@ export interface PromptFragmentContext {
   stderr: NodeJS.WriteStream
   log: PluginLogger
   host?: PluginHost
+  /** Prompt template access (`ctx.prompts`). Absent when the host wires no provider. */
+  prompts?: PluginPrompts
+}
+
+/** The slice of `ctx.prompts` this plugin uses. Mirror of `PluginPromptsContext`. */
+export interface PluginPrompts {
+  render(name: string, vars?: Readonly<Record<string, string | number | boolean>>): string
+  expand(text: string): string
 }
