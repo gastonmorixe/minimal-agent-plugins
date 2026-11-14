@@ -1,3 +1,7 @@
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
 import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
@@ -8,7 +12,7 @@ import { slots } from "../lib/style.ts"
 import type { TUIContext } from "../lib/types.ts"
 import setup from "../ui/setup.ts"
 
-import { runWithDeps } from "./chrome_cdp.ts"
+import { type HandlerDeps, runWithDeps } from "./chrome_cdp.ts"
 
 // The display tests below check styled bytes: install the test kit (S41).
 beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
@@ -29,10 +33,61 @@ function ctxFor(input: Record<string, unknown>): TUIContext {
 
 const ensureUp = async () => true
 
+/** `runWithDeps` with a no-op lease writer, so no test writes a real lease file. */
+function run(ctx: TUIContext, deps: HandlerDeps) {
+  return runWithDeps(ctx, { writeLease: () => {}, ...deps })
+}
+
+describe("ChromeCDP handler lifetime wiring", () => {
+  test("writes the lease before ensure, and passes the spawn lock path", async () => {
+    const calls: string[] = []
+    let lockPath: string | undefined
+    await runWithDeps(ctxFor({ action: "ping" }), {
+      writeLease: () => calls.push("lease"),
+      ensure: async (deps) => {
+        calls.push("ensure")
+        lockPath = deps.lockPath
+        return true
+      },
+      socketFetch: async () => ({ status: 200, body: { ok: true } }),
+    })
+    expect(calls).toEqual(["lease", "ensure"])
+    expect(lockPath?.endsWith(".spawn.lock")).toBe(true)
+  })
+
+  test("a client process refreshes its lease on each call and removes it on a normal exit", async () => {
+    const base = process.env.CDP_TEST_DIR ?? tmpdir()
+    mkdirSync(base, { recursive: true })
+    const dir = mkdtempSync(join(base, "hl-"))
+    const leaseDir = join(dir, "leases")
+    const p = Bun.spawn([process.execPath, join(import.meta.dir, "chrome_cdp.lease.fixture.ts")], {
+      env: { ...process.env, CDP_SOCK: join(dir, "d.sock"), CDP_LEASE_DIR: leaseDir },
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    try {
+      const out = await new Response(p.stdout).text()
+      expect(await p.exited).toBe(0)
+      const [a, b] = out
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as { pid: number; time: number })
+      expect(a?.pid).toBe(p.pid)
+      expect(b?.pid).toBe(p.pid)
+      expect((b?.time ?? 0) > (a?.time ?? 0)).toBe(true)
+      expect(existsSync(join(leaseDir, String(p.pid)))).toBe(false)
+    } finally {
+      if (p.exitCode === null) p.kill("SIGKILL")
+      await p.exited
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }, 15_000)
+})
+
 describe("ChromeCDP handler", () => {
   test("rejects invalid input before touching the daemon", async () => {
     let fetched = false
-    const r = await runWithDeps(ctxFor({ action: "nope" }), {
+    const r = await run(ctxFor({ action: "nope" }), {
       ensure: ensureUp,
       socketFetch: async () => {
         fetched = true
@@ -57,7 +112,7 @@ describe("ChromeCDP handler", () => {
       if (route === "ping") return { status: 200, body: { ok: true } }
       return { status: 200, body: [{ id: "A", title: "Tab", url: "https://a" }] }
     }
-    const r = await runWithDeps(ctxFor({ action: "targets" }), { ensure: ensureUp, socketFetch })
+    const r = await run(ctxFor({ action: "targets" }), { ensure: ensureUp, socketFetch })
     if (r.kind === "tool_result") {
       expect(r.is_error).toBeFalsy()
       expect(r.content).toContain('"id": "A"')
@@ -74,7 +129,7 @@ describe("ChromeCDP handler", () => {
       if (route === "ping") return { status: 200, body: { ok: true } }
       return { status: 200, body: { result: 42 } }
     }
-    const r = await runWithDeps(ctxFor({ action: "eval", target: "TAB99", expr: "21*2" }), {
+    const r = await run(ctxFor({ action: "eval", target: "TAB99", expr: "21*2" }), {
       ensure: ensureUp,
       socketFetch,
     })
@@ -95,7 +150,7 @@ describe("ChromeCDP handler", () => {
       if (route === "ping") return { status: 200, body: { ok: true } }
       return { status: 200, body: { result: { __error: "Error: boom" } } }
     }
-    const r = await runWithDeps(ctxFor({ action: "eval", target: "T", expr: "throw 1" }), {
+    const r = await run(ctxFor({ action: "eval", target: "T", expr: "throw 1" }), {
       ensure: ensureUp,
       socketFetch,
     })
@@ -106,7 +161,7 @@ describe("ChromeCDP handler", () => {
   })
 
   test("reports a clear error when the daemon can't be started", async () => {
-    const r = await runWithDeps(ctxFor({ action: "ping" }), {
+    const r = await run(ctxFor({ action: "ping" }), {
       ensure: async () => false,
       socketFetch: async () => ({ status: 200, body: {} }),
       spawnDaemon: () => {},
@@ -127,7 +182,7 @@ describe("ChromeCDP handler", () => {
       seen = body
       return { status: 200, body: { result: 42 } }
     }
-    await runWithDeps(ctxFor({ action: "eval", target: "T1", expr: "21*2" }), {
+    await run(ctxFor({ action: "eval", target: "T1", expr: "21*2" }), {
       ensure: ensureUp,
       socketFetch,
     })

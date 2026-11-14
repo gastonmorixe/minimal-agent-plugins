@@ -13,11 +13,12 @@
  */
 
 import { spawn } from "node:child_process"
-import { closeSync, openSync } from "node:fs"
+import { closeSync, openSync, unlinkSync } from "node:fs"
 
 import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/client.ts"
 import { daemonEnv, serverArgv } from "../lib/daemon-spawn.ts"
 import { validateToolInput } from "../lib/input.ts"
+import { leaseDirFor, writeLease } from "../lib/lifetime.ts"
 import {
   describeRequest,
   dim,
@@ -56,10 +57,44 @@ function spawnDaemon(packageDir: string): void {
   if (logFd !== undefined) closeSync(logFd)
 }
 
+// The lease file this process wrote, and whether the exit cleanup is armed.
+let leasePath: string | undefined
+let exitHookArmed = false
+
+/** Remove this process's lease. Sync, because it runs in the `exit` event. */
+function removeLease(): void {
+  if (leasePath === undefined) return
+  try {
+    unlinkSync(leasePath)
+  } catch {
+    // already swept or never written
+  }
+}
+
+/**
+ * Write or refresh this process's lease on each call, so the daemon sweep
+ * sees a recent time (see lib/lifetime). The first write arms one `exit`
+ * listener that removes the lease. A failure is ignored: the idle rule still
+ * applies.
+ */
+function refreshLease(): void {
+  try {
+    leasePath = writeLease(leaseDirFor(SOCK, process.env.CDP_LEASE_DIR))
+  } catch {
+    // no lease: the daemon then ends after CDP_IDLE_MS of no requests
+    return
+  }
+  if (exitHookArmed) return
+  exitHookArmed = true
+  process.on("exit", removeLease)
+}
+
 export interface HandlerDeps {
   socketFetch?: SocketFetch
   ensure?: typeof ensureDaemon
   spawnDaemon?: (packageDir: string) => void
+  /** Lease writer (tests). Default: write or refresh `<lease dir>/<pid>` on each call. */
+  writeLease?: () => void
 }
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
@@ -90,8 +125,13 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   const ensure = deps.ensure ?? ensureDaemon
   const doSpawn = deps.spawnDaemon ?? spawnDaemon
 
+  // The lease tells the daemon this process still uses it (see lib/lifetime).
+  // Written before the ensure, so a fresh daemon sees it at once.
+  ;(deps.writeLease ?? refreshLease)()
+
   const up = await ensure({
     sock: SOCK,
+    lockPath: `${SOCK}.spawn.lock`,
     ping: async () => {
       try {
         const r = await socketFetch("ping")
