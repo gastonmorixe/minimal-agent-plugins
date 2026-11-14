@@ -57,4 +57,39 @@ describe("resolveAnthropicSystemPrompt", () => {
     expect(out[0].text).toBe(NEUTRAL_IDENTITY_STAND_IN)
     expect(out.some((b) => b.text.startsWith("x-anthropic-billing-header"))).toBe(false)
   })
+
+  it("OAuth + providerPreambleOverride omit: no billing block, no Claude-Code identity", () => {
+    const out = resolveAnthropicSystemPrompt({
+      identity: NEUTRAL_IDENTITY_STAND_IN,
+      body,
+      authKind: "oauth",
+      modelId: "claude-opus-4-7",
+      providerPreambleOverride: { kind: "omit" },
+    })
+    expect(out.map((b) => b.text)).toEqual([NEUTRAL_IDENTITY_STAND_IN, "INSTRUCTIONS"])
+    expect(out.some((b) => b.text.startsWith("x-anthropic-billing-header"))).toBe(false)
+    expect(out.some((b) => b.text === CLAUDE_CODE_IDENTITY)).toBe(false)
+  })
+
+  it("OAuth + providerPreambleOverride replace: the text replaces the preamble", () => {
+    const out = resolveAnthropicSystemPrompt({
+      identity: NEUTRAL_IDENTITY_STAND_IN,
+      body,
+      authKind: "oauth",
+      modelId: "claude-opus-4-7",
+      providerPreambleOverride: { kind: "replace", text: "CUSTOM PREAMBLE" },
+    })
+    expect(out.map((b) => b.text)).toEqual(["CUSTOM PREAMBLE", "INSTRUCTIONS"])
+  })
+
+  it("api-key ignores providerPreambleOverride (no provider preamble to change)", () => {
+    const out = resolveAnthropicSystemPrompt({
+      identity: NEUTRAL_IDENTITY_STAND_IN,
+      body,
+      authKind: "api-key",
+      modelId: "claude-opus-4-7",
+      providerPreambleOverride: { kind: "replace", text: "CUSTOM PREAMBLE" },
+    })
+    expect(out.map((b) => b.text)).toEqual([NEUTRAL_IDENTITY_STAND_IN, "INSTRUCTIONS"])
+  })
 })

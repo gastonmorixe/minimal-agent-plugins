@@ -76,9 +76,17 @@ export function buildBillingBlock(): SystemPromptBlock {
  * Resolve Anthropic's final system-prompt blocks. OAuth/plan auth gets the
  * mandatory billing + Claude-Code identity preamble; everything else keeps the
  * agent's neutral identity.
+ *
+ * `ctx.providerPreambleOverride` (set only behind the unsafe opt-in) changes
+ * the OAuth preamble: `omit` drops the billing block and the Claude-Code
+ * identity and keeps the neutral identity, `replace` sends its text as the one
+ * preamble block. The server may reject such a request (see module doc).
  */
 export function resolveAnthropicSystemPrompt(ctx: SystemPromptContext): SystemPromptBlock[] {
   if (ctx.authKind === "oauth") {
+    const override = ctx.providerPreambleOverride
+    if (override?.kind === "omit") return neutralSystemPrompt(ctx)
+    if (override?.kind === "replace") return [{ type: "text", text: override.text }, ...ctx.body]
     return [buildBillingBlock(), { type: "text", text: CLAUDE_CODE_IDENTITY }, ...ctx.body]
   }
   return neutralSystemPrompt(ctx)
