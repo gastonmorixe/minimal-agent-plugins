@@ -26,6 +26,7 @@
 
 import type { HostRuntime } from "@minimal-agent/core/host-kit/host-mode"
 
+import { errorText } from "./error-text.ts"
 import { RPC_ERROR, RpcError } from "./transport.ts"
 
 /** The part of the host runtime this module uses. */
@@ -134,7 +135,7 @@ export function setConfigOption(
     if (option.id === CONFIG_ID.model) runtime.setModel(value)
     else runtime.setEffort(value)
   } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e)
+    const detail = errorText(e)
     throw new RpcError(
       RPC_ERROR.invalidParams,
       `cannot set "${option.id}" to "${value}": ${detail}`,

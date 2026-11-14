@@ -64,6 +64,7 @@ import type {
 
 import { buildConfigOptions, setConfigOption } from "./config-options.ts"
 import { createSessionEncoder, type SessionEncoder, type SessionEncoderOptions } from "./encoder.ts"
+import { errorText } from "./error-text.ts"
 import {
   EXT_CAPABILITY_KEY,
   EXT_NAMESPACE,
@@ -539,7 +540,12 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                 for await (const entry of run) {
                   if (entry.ch === "event") {
                     let ev = entry.data
-                    if (attempt > 1 && (ev.type === "text_delta" || ev.type === "thinking_delta")) {
+                    if (
+                      attempt > 1 &&
+                      (ev.type === "text_delta" ||
+                        ev.type === "thinking_delta" ||
+                        ev.type === "retry-boundary")
+                    ) {
                       ev = { ...ev, id: `${ev.id}-attempt-${attempt}` }
                     }
                     if (ev.type === "text_delta") {
@@ -580,7 +586,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                 // ACP: a cancel MUST answer `cancelled`, even when the cancel
                 // made the run throw. Any other throw is a failed turn.
                 if (!controller.signal.aborted) {
-                  runError = e instanceof Error ? e.message : String(e)
+                  runError = errorText(e)
                   // A failed retry is reported as outputError (below), not
                   // as the turn error.
                   if (retriesUsed === 0) enc.encode({ type: "error", message: runError })
@@ -619,7 +625,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                   kind: "done",
                   meta: {
                     [OUTPUT_ERROR_META_KEY]: {
-                      message: `the output check failed (${e instanceof Error ? e.message : String(e)})`,
+                      message: `the output check failed (${errorText(e)})`,
                     },
                   },
                 }
@@ -675,7 +681,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
     try {
       await session.close()
     } catch (e) {
-      ctx.log.warn("acp", `session.close failed: ${e instanceof Error ? e.message : String(e)}`)
+      ctx.log.warn("acp", `session.close failed: ${errorText(e)}`)
     }
   }
   return 0

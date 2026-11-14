@@ -144,6 +144,11 @@ export function toolLocations(
   }
 }
 
+/** Host text of a retry boundary (S14.4). Same bytes core used to emit as `text_delta`. */
+export function retryBoundaryText(attempt: number): string {
+  return `\n↳ stream stalled — retrying (attempt ${attempt})…\n`
+}
+
 /** What a session encoder needs from its host. */
 export interface SessionEncoderOptions {
   /** Sends one `session/update` `update` object. */
@@ -289,6 +294,15 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
           sessionUpdate: wire.channel === "answer" ? "agent_message_chunk" : "agent_thought_chunk",
           messageId: wire.messageId,
           content: { type: "text", text: wire.text },
+        })
+        return
+      }
+      case "retry-boundary": {
+        // S14.4: core sends data. The host text is the same chunk core used to send.
+        send({
+          sessionUpdate: "agent_message_chunk",
+          messageId: event.id,
+          content: { type: "text", text: retryBoundaryText(event.attempt) },
         })
         return
       }

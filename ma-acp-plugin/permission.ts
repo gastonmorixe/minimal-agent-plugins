@@ -44,6 +44,7 @@ import { toolKindOf } from "@minimal-agent/core/sdk/events"
 import type { ToolWillInvokePayload } from "@minimal-agent/core/sdk/lifecycle"
 
 import { type AcpToolKind, toAcpToolKind } from "./encoder.ts"
+import { errorText } from "./error-text.ts"
 
 /** How long the gate waits for an answer before it denies (10 min). `--approval-timeout-ms` changes it. */
 export const DEFAULT_APPROVAL_DEADLINE_MS = 10 * 60 * 1000
@@ -159,7 +160,7 @@ function deny(reason: string): GateResult {
 }
 
 function describeError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e)
+  return errorText(e)
 }
 
 /** What `allow_always` / `reject_always` applies to: a named tool kind, or one tool of kind `other`. */

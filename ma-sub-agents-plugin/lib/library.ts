@@ -20,7 +20,7 @@
  * @module sub-agents/lib/library
  */
 
-import { leafDiscipline } from "./prompts.ts"
+import { leafDiscipline, type PromptRender } from "./prompts.ts"
 import { type WorkerDefinition } from "./service.ts"
 
 /** The shipped specialists before the shared leaf-discipline clause is folded in. */
@@ -130,8 +130,8 @@ const BASE_LIBRARY: readonly WorkerDefinition[] = [
  * result-protocol is appended per-spawn by `composePrompt`; this is the
  * behavioral reminder that rides the role itself.
  */
-export const LIBRARY: readonly WorkerDefinition[] = (() => {
-  const clause = leafDiscipline()
+function buildLibrary(render: PromptRender): readonly WorkerDefinition[] {
+  const clause = leafDiscipline(render)
   const withClause = (d: WorkerDefinition): WorkerDefinition => {
     const systemPrompt = d.systemPrompt ? `${d.systemPrompt} ${clause}` : clause
     return {
@@ -147,16 +147,28 @@ export const LIBRARY: readonly WorkerDefinition[] = (() => {
     }
   }
   return BASE_LIBRARY.map(withClause)
-})()
+}
 
-const BY_NAME = new Map(LIBRARY.map((d) => [d.name, d]))
+const CACHE = new WeakMap<PromptRender, readonly WorkerDefinition[]>()
+
+/** The shipped specialists for one renderer, built on first use and memoized. */
+export function getLibrary(render: PromptRender): readonly WorkerDefinition[] {
+  const hit = CACHE.get(render)
+  if (hit) return hit
+  const built = buildLibrary(render)
+  CACHE.set(render, built)
+  return built
+}
 
 /** Resolve a built-in worker definition by name, or `undefined`. */
-export function resolveDefinition(name: string): WorkerDefinition | undefined {
-  return BY_NAME.get(name)
+export function resolveDefinition(
+  name: string,
+  render: PromptRender,
+): WorkerDefinition | undefined {
+  return getLibrary(render).find((d) => d.name === name)
 }
 
 /** The list of spawnable type names (for help + the prompt). */
-export function libraryNames(): string[] {
-  return LIBRARY.map((d) => d.name)
+export function libraryNames(render: PromptRender): string[] {
+  return getLibrary(render).map((d) => d.name)
 }

@@ -253,7 +253,10 @@ describe("anthropic plan OAuth: login against a fake 127.0.0.1 server", () => {
     const server = startFakeOAuthServer(400)
     try {
       const store = new AuthStore({ path: join(dir, "auth.jsonc") })
-      await expect(login(server, store)).rejects.toThrow(/Token exchange failed \(400\)/)
+      await expect(login(server, store)).rejects.toMatchObject({
+        kind: "TokenExchangeError",
+        status: 400,
+      })
       expect(store.list()).toEqual([])
     } finally {
       server.stop()

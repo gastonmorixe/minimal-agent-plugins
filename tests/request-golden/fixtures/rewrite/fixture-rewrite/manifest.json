@@ -1,0 +1,18 @@
+{
+  "id": "fixture-rewrite",
+  "name": "Fixture rewrite",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool.willInvoke hook rewrites the Bash command.",
+  "permissions": ["hooks:tool.willInvoke"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "rewrite_cmd",
+        "channel": "tool.willInvoke",
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "priority": 10,
+        "timeoutMs": 2000
+      }
+    ]
+  }
+}

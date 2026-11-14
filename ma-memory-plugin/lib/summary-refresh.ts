@@ -28,7 +28,14 @@ import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-pat
 
 import type { MemorySummaryParams } from "./memory-config.ts"
 import { type Bullet, parseFile } from "./parse.ts"
-import { type CompleteFn, summarize as realSummarize, SummarizeError } from "./summarize.ts"
+import {
+  type CompleteFn,
+  isPromptProviderMissing,
+  PROMPT_PROVIDER_MISSING_ID,
+  type RenderFn,
+  summarize as realSummarize,
+  SummarizeError,
+} from "./summarize.ts"
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -229,12 +236,16 @@ export interface RefreshAndRenderOpts {
 }
 
 export interface RefreshAndRenderDeps {
+  /** Prompt renderer (`ctx.prompts.render`). */
+  render: RenderFn
   /** Override summarize for tests. Defaults to the real implementation. */
   summarize?: typeof realSummarize
   /** Override "now" for tests. Defaults to `() => new Date()`. */
   now?: () => Date
   /** Optional logger (e.g. for "regen skipped: X" messages). Defaults to stderr. */
   log?: (msg: string) => void
+  /** Typed diagnostic sink: receives a source id only, no message text. */
+  diagnostic?: (id: string) => void
 }
 
 export interface RefreshResult {
@@ -280,7 +291,7 @@ function defaultLog(msg: string): void {
  */
 export async function refreshAndRender(
   opts: RefreshAndRenderOpts,
-  deps: RefreshAndRenderDeps = {},
+  deps: RefreshAndRenderDeps,
 ): Promise<RefreshResult> {
   const summarize = deps.summarize ?? realSummarize
   const now = deps.now ?? (() => new Date())
@@ -358,7 +369,7 @@ export async function refreshAndRender(
       const newSummaryBody = await summarize(
         memoryContent,
         { model: cfg.model, scope },
-        { ...(opts.completeFn ? { completeFn: opts.completeFn } : {}) },
+        { render: deps.render, ...(opts.completeFn ? { completeFn: opts.completeFn } : {}) },
       )
       const newCutoff = now().toISOString()
       summaryContent = withCutoffHeader(newSummaryBody, newCutoff)
@@ -370,6 +381,7 @@ export async function refreshAndRender(
     } catch (e) {
       const kind = e instanceof SummarizeError ? e.kind : "unknown"
       log(`regen failed (${kind}): ${(e as Error).message}`)
+      if (isPromptProviderMissing(e)) deps.diagnostic?.(PROMPT_PROVIDER_MISSING_ID)
       // Fall through: use the existing summaryContent (if any) and
       // current pending list. If summaryContent is null, we have to
       // fall back to verbatim.

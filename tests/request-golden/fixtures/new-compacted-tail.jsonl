@@ -1,0 +1,11 @@
+{"kind":"meta","formatVersion":1,"sid":"golden-sid","createdAt":"2026-01-02T03:04:05.000Z","model":"test-model","cwd":"/w/proj/cwd","systemHash":"h","toolsHash":"h","agentVersion":"test"}
+{"kind":"user","ts":"2026-01-02T03:04:05.002Z","content":[{"type":"text","text":"question one"}],"id":"id-002"}
+{"kind":"assistant","ts":"2026-01-02T03:04:05.003Z","content":[{"type":"text","text":"a1"}],"stopReason":"end_turn","usage":{"input_tokens":10,"output_tokens":3}}
+{"kind":"user","ts":"2026-01-02T03:04:05.004Z","content":[{"type":"text","text":"question two"}],"id":"id-004"}
+{"kind":"assistant","ts":"2026-01-02T03:04:05.005Z","content":[{"type":"text","text":"a2"}],"stopReason":"end_turn","usage":{"input_tokens":10,"output_tokens":3}}
+{"kind":"user","ts":"2026-01-02T03:04:05.006Z","content":[{"type":"text","text":"question three"}],"id":"id-006"}
+{"kind":"assistant","ts":"2026-01-02T03:04:05.007Z","content":[{"type":"text","text":"a3"}],"stopReason":"end_turn","usage":{"input_tokens":10,"output_tokens":3}}
+{"kind":"compact","ts":"2026-01-02T03:04:05.008Z","reason":"manual","compactKind":"local","messagesBefore":6,"messagesAfter":3,"replacementMessages":[{"role":"user","content":[{"type":"text","text":"<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nRetained last 2 message(s) verbatim. Older history was dropped."}]},{"role":"user","content":[{"type":"text","text":"question three"}]},{"role":"assistant","content":[{"type":"text","text":"a3"}]}],"meta":{"kind":"tail","retained":2,"at":"2026-01-02T03:04:05.008Z"}}
+{"kind":"note","ts":"2026-01-02T03:04:05.009Z","text":"compact: tail reason=manual keepTail=2 messages 6->3"}
+{"kind":"user","ts":"2026-01-02T03:04:05.010Z","content":[{"type":"text","text":"question four"}],"id":"id-010"}
+{"kind":"assistant","ts":"2026-01-02T03:04:05.011Z","content":[{"type":"text","text":"after compact"}],"stopReason":"end_turn","usage":{"input_tokens":10,"output_tokens":3}}

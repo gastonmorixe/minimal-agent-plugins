@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { getState, setState } from "../lib/state.ts"
+import { getCachedRows, getState, setState } from "../lib/state.ts"
 
 import cmdHistoryEdit from "./cmd_history_edit.ts"
 import onKey from "./on_key.ts"
@@ -195,14 +195,35 @@ describe("/history-edit prompt discovery", () => {
             if (opts.offset === 0) {
               return {
                 items: [
-                  { index: 5, kind: "assistant", userId: null, preview: "reply" },
-                  { index: 6, kind: "tool_result", userId: null, preview: "tool" },
+                  {
+                    index: 5,
+                    kind: "assistant",
+                    userId: null,
+                    parts: [{ kind: "text", text: "reply", toolName: null }],
+                  },
+                  {
+                    index: 6,
+                    kind: "tool_result",
+                    userId: null,
+                    parts: [{ kind: "tool_result", text: "tool", toolName: null }],
+                  },
                 ],
                 total: 3,
               }
             }
             return {
-              items: [{ index: 4, kind: "user", userId: "u1", preview: "earlier prompt" }],
+              items: [
+                {
+                  index: 4,
+                  kind: "user",
+                  userId: "u1",
+                  parts: [
+                    { kind: "text", text: "earlier", toolName: null },
+                    { kind: "text", text: "prompt", toolName: null },
+                    { kind: "tool_result", text: "ignored", toolName: null },
+                  ],
+                },
+              ],
               total: 3,
             }
           },
@@ -214,5 +235,6 @@ describe("/history-edit prompt discovery", () => {
       { offset: 0, limit: 100 },
       { offset: 2, limit: 100 },
     ])
+    expect(getCachedRows()).toEqual([{ userId: "u1", text: "earlier\nprompt" }])
   })
 })

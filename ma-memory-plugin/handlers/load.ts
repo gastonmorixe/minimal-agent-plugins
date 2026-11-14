@@ -59,7 +59,7 @@ import {
   globalMemoryPath as storeGlobalMemoryPath,
   projectMemoryPath as storeProjectMemoryPath,
 } from "../lib/store.ts"
-import type { CompleteFn } from "../lib/summarize.ts"
+import { type CompleteFn, providerMissingError, type RenderFn } from "../lib/summarize.ts"
 import { refreshAndRender, summaryPathFor } from "../lib/summary-refresh.ts"
 
 // ---------------------------------------------------------------------------
@@ -119,6 +119,10 @@ type InjectStrategy = (args: {
   refresh: typeof refreshAndRender
   /** Host-brokered one-shot completion (`ctx.host.llm.complete`), or undefined. */
   completeFn?: CompleteFn
+  /** Prompt renderer (`ctx.prompts.render`). */
+  render: RenderFn
+  /** Typed diagnostic sink (source id only). */
+  diagnostic: (id: string) => void
 }) => Promise<string[]>
 
 /** Strategy: emit nothing. The model relies on `MemoryTool` to query. */
@@ -139,16 +143,21 @@ const summaryStrategy: InjectStrategy = async ({
   cfg,
   refresh,
   completeFn,
+  render,
+  diagnostic,
 }) => {
   // refreshAndRender reads the file itself, so we don't pre-read here.
   // It also already short-circuits if the file is missing/empty.
-  const result = await refresh({
-    scope,
-    memoryPath,
-    summaryPath: summaryPathFor(memoryPath),
-    cfg: cfg.summary,
-    ...(completeFn ? { completeFn } : {}),
-  })
+  const result = await refresh(
+    {
+      scope,
+      memoryPath,
+      summaryPath: summaryPathFor(memoryPath),
+      cfg: cfg.summary,
+      ...(completeFn ? { completeFn } : {}),
+    },
+    { render, diagnostic },
+  )
   if (!result.text) return []
   return [`### ${label} (\`${memoryPath}\`)`, "", result.text, ""]
 }
@@ -233,12 +242,24 @@ export default async function loadMemories(
     ? (req: Parameters<CompleteFn>[0]) => ctx.host!.llm!.complete(req)
     : undefined
 
+  // Prompt renderer of this plugin. Lazy: a missing provider fails at the first
+  // render call (core throws PromptTemplateProviderMissingError), not here.
+  const render: RenderFn = (name, vars) => {
+    const prompts = ctx.prompts
+    if (!prompts) throw providerMissingError()
+    return prompts.render(name, vars)
+  }
+
+  const diagnostic = (id: string): void => ctx.log.warn(id, "")
+
   const globalSection = await strategy({
     label: "Global",
     memoryPath: gPath,
     scope: "global",
     cfg,
     refresh,
+    render,
+    diagnostic,
     ...(completeFn ? { completeFn } : {}),
   })
   const projectSection = await strategy({
@@ -247,6 +268,8 @@ export default async function loadMemories(
     scope: "project",
     cfg,
     refresh,
+    render,
+    diagnostic,
     ...(completeFn ? { completeFn } : {}),
   })
 
