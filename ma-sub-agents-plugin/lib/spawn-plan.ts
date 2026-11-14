@@ -11,12 +11,18 @@
  * @module sub-agents/lib/spawn-plan
  */
 
+import { ENV_LEAD_PID } from "./lead-watch.ts"
 import { err, type Isolation, ok, type Result, type SessionId, type SubagentId } from "./types.ts"
 
 /** Env keys the plan stamps so a child knows its lineage + depth. */
 export const ENV_DEPTH = "MINIMAL_AGENT_SUBAGENT_DEPTH"
 export const ENV_LEAD = "MINIMAL_AGENT_SUBAGENT_LEAD"
 export const ENV_ID = "MINIMAL_AGENT_SUBAGENT_ID"
+/**
+ * The lead's OS pid. The worker's lead watch (`lead-watch.ts`) polls it and
+ * exits when the lead is gone, also after a SIGKILL that ran no lead cleanup.
+ */
+export { ENV_LEAD_PID }
 
 /**
  * The plugin-disable env var the agent boot consumes
@@ -43,6 +49,11 @@ export interface SpawnInput {
   readonly childSid: SessionId
   /** The lead session that is spawning this worker. */
   readonly leadSid: SessionId
+  /**
+   * The lead's OS pid, stamped as {@link ENV_LEAD_PID} for the worker's lead
+   * watch. Default `process.pid` (the lead process builds the plan).
+   */
+  readonly leadPid?: number
   /** Short handle id (`"A2"`) — stamped into the child env for its own self-id. */
   readonly id: SubagentId
   /** The delegation prompt (objective + boundaries). */
@@ -220,6 +231,9 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
     // already disabled) off. Spread LAST so the worker-disable contract can't be
     // accidentally clobbered by an extraEnv entry for the same key.
     [ENV_DISABLE_PLUGINS]: mergeDisabledPlugins(input.inheritedDisabledPlugins),
+    // The lead's pid for the worker's lead watch. Spread after extraEnv so a
+    // caller cannot point the watch at a wrong process.
+    [ENV_LEAD_PID]: String(input.leadPid ?? process.pid),
     // Pin model/provider env to the plan so a lead's MINIMAL_AGENT_MODEL /
     // MINIMAL_AGENT_PROVIDER cannot outrank the worker's flags on any reader
     // that prefers env over argv (or when --model is omitted).

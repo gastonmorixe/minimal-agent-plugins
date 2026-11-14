@@ -8,6 +8,7 @@ import {
   ENV_DISABLE_PLUGINS,
   ENV_ID,
   ENV_LEAD,
+  ENV_LEAD_PID,
   mergeDisabledPlugins,
   type SpawnInput,
   SUBAGENT_DISABLED_PLUGINS,
@@ -247,5 +248,30 @@ describe("buildSpawnPlan — validation (Result, not throw)", () => {
     expect(buildSpawnPlan(input({ depth: 0 })).ok).toBe(false)
     const bad = buildSpawnPlan(input({ depth: 0 }))
     expect(bad.ok ? "" : bad.error).toMatch(/depth/)
+  })
+})
+
+describe("buildSpawnPlan: lead pid for the worker lead watch (fix-3d)", () => {
+  it("stamps MINIMAL_AGENT_LEAD_PID with this process pid by default", () => {
+    const r = buildSpawnPlan(input())
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(ENV_LEAD_PID).toBe("MINIMAL_AGENT_LEAD_PID")
+    expect(r.value.env[ENV_LEAD_PID]).toBe(String(process.pid))
+  })
+
+  it("uses an injected leadPid, and extraEnv cannot override it", () => {
+    const r = buildSpawnPlan(input({ leadPid: 4242, extraEnv: { [ENV_LEAD_PID]: "1" } }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_LEAD_PID]).toBe("4242")
+  })
+
+  it("keeps the existing lineage keys next to the lead pid", () => {
+    const r = buildSpawnPlan(input())
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.env[ENV_LEAD]).toBe("11111111-1111-4111-8111-111111111111")
+    expect(r.value.env[ENV_DEPTH]).toBe("1")
+    expect(r.value.env[ENV_ID]).toBe("A2")
   })
 })
