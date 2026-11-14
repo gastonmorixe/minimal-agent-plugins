@@ -166,6 +166,7 @@
           "export": "default"
         },
         "position": "footer",
+        "order": 95,
         "refreshMs": 1000,
         "timeoutMs": 4000
       }
