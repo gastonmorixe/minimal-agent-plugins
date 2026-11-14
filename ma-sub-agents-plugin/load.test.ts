@@ -79,6 +79,12 @@ describe("sub-agents manifest contract", () => {
     expect(MANIFEST.permissions).toContain("hooks:agent.willStop")
   })
 
+  it("registers agent.didStart to start the worker lead watch", () => {
+    const hook = MANIFEST.hooks?.find((h) => h.channel === "agent.didStart")
+    expect(hook?.id).toBe("on_agent_did_start")
+    expect(MANIFEST.permissions).toContain("hooks:agent.didStart")
+  })
+
   it("contributes a system-prompt block mentioning SpawnAgent", () => {
     const prompt = readFileSync(join(import.meta.dir, "PROMPT.md"), "utf-8")
     expect(prompt).toContain("SpawnAgent")

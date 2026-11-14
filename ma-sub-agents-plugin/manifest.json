@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "capabilities": ["models:read"],
   "description": "Delegation: spawn background minimal-agent workers, steer them, review their work, fold results back. A worker is a real headless agent process with its own session id. A 1s heartbeat supervises it: it reaps exits, paints a live fleet widget, and injects each finished worker's distilled result between turns. State lives at ~/.minimal-agent/sessions/<leadSid>.subagents.jsonl. Disable with MINIMAL_AGENT_DISABLE_SUBAGENTS=1.",
-  "permissions": ["hooks:agent.willStop"],
+  "permissions": ["hooks:agent.willStop", "hooks:agent.didStart"],
   "headless": {
     "tools": [
       {
@@ -313,6 +313,16 @@
           "export": "default"
         },
         "priority": 10,
+        "timeoutMs": 2000
+      },
+      {
+        "id": "on_agent_did_start",
+        "channel": "agent.didStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_agent_did_start.ts",
+          "export": "default"
+        },
         "timeoutMs": 2000
       }
     ],
