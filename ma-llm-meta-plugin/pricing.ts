@@ -42,3 +42,14 @@ export const PRICING_MUSE_SPARK_1_3_CONTRIBUTOR: MTokRate = CONTRIBUTOR
 
 /** Muse Spark 1.2 Contributor. */
 export const PRICING_MUSE_SPARK_1_2_CONTRIBUTOR: MTokRate = CONTRIBUTOR
+
+/** Muse Wonder 1.0: $4 / $0.20 cached / $20 (models.dev, 2026-11-15). */
+export const PRICING_MUSE_WONDER_1_0: MTokRate = rate(4, 20, 0.2)
+
+/**
+ * Muse Ember 1.0: $0.10 / $0.004 cached / $0.50 up to 200k context
+ * (models.dev, 2026-11-15). Above 200k the rate is $0.30 / $0.012 / $1.50.
+ * This plugin has no per-request pricing picker, so only the base tier is
+ * recorded here.
+ */
+export const PRICING_MUSE_EMBER_1_0: MTokRate = rate(0.1, 0.5, 0.004)

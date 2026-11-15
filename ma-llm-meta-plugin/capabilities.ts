@@ -169,6 +169,43 @@ export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR_RESPONSES: Capabilities = responses
   vision: true,
 })
 
+/**
+ * Muse Wonder 1.0 (live 2026-11-15, released 2026-10-12). models.dev: 1M
+ * context, 131072 output, effort minimal..max, text/image/video/pdf/audio in.
+ * Audio stays false, same as the Spark tables.
+ */
+const EFFORT_MUSE_FULL = EFFORT_MUSE_1_3_STANDARD
+
+/** Muse Wonder 1.0 Responses. */
+export const CAPS_MUSE_WONDER_1_0_RESPONSES: Capabilities = responsesCaps({
+  vision: true,
+  effort: EFFORT_MUSE_FULL,
+})
+
+/** Muse Wonder 1.0 Chat Completions. */
+export const CAPS_MUSE_WONDER_1_0_CHAT: Capabilities = chatCaps({
+  vision: true,
+  effort: EFFORT_MUSE_FULL,
+})
+
+/**
+ * Muse Ember 1.0 (live 2026-11-15, released 2026-11-09). models.dev: 1M
+ * context, 524288 output, effort minimal..max.
+ */
+const MAX_OUT_EMBER = 524_288
+
+/** Muse Ember 1.0 Responses. */
+export const CAPS_MUSE_EMBER_1_0_RESPONSES: Capabilities = {
+  ...responsesCaps({ vision: true, effort: EFFORT_MUSE_FULL }),
+  maxOutputTokens: MAX_OUT_EMBER,
+}
+
+/** Muse Ember 1.0 Chat Completions. */
+export const CAPS_MUSE_EMBER_1_0_CHAT: Capabilities = {
+  ...chatCaps({ vision: true, effort: EFFORT_MUSE_FULL }),
+  maxOutputTokens: MAX_OUT_EMBER,
+}
+
 /** @deprecated use CAPS_MUSE_SPARK_1_3_RESPONSES */
 export const CAPS_MUSE_SPARK_1_3 = CAPS_MUSE_SPARK_1_3_RESPONSES
 
