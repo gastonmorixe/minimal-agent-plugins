@@ -35,6 +35,10 @@ export interface UsageTotals {
   output: number
   cacheRead: number
   cacheCreate: number
+  /** Thinking tokens, a part of `output`. Absent when the host does not report it. */
+  thinking?: number
+  /** Of `cacheCreate`, the 1 hour TTL writes. Absent when the host does not report it. */
+  cacheCreate1h?: number
 }
 
 /**
@@ -157,8 +161,10 @@ export function formatSessionInfo(s: SessionInfoSnapshot): string {
   }
 
   const cost = s.estCostUSD !== undefined ? ` · ~$${s.estCostUSD.toFixed(2)}` : ""
+  // Thinking is a part of output, so it shows inside the output figure.
+  const thinking = s.usage.thinking ? ` (thinking ${n(s.usage.thinking)})` : ""
   lines.push(
-    `Usage so far: in ${n(s.usage.input)}, out ${n(s.usage.output)}, cache-read ${n(
+    `Usage so far: in ${n(s.usage.input)}, out ${n(s.usage.output)}${thinking}, cache-read ${n(
       s.usage.cacheRead,
     )}, cache-write ${n(s.usage.cacheCreate)}${cost}`,
   )

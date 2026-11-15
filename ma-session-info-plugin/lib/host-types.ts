@@ -33,6 +33,7 @@ export interface ModelRateView {
   inputUSD: number
   outputUSD: number
   cacheWriteUSD: number
+  cacheWrite1hUSD?: number
   cacheReadUSD: number
 }
 
@@ -88,6 +89,9 @@ export interface SessionTokensView {
   output: number
   cacheRead: number
   cacheCreate: number
+  cacheCreate1h?: number
+  thinking?: number
+  webSearchRequests?: number
   total: number
   turns: number
   contextSize: number

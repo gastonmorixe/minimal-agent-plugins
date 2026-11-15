@@ -29,7 +29,7 @@
 import { hostname } from "node:os"
 
 import type { TUIContext } from "./host-types.ts"
-import type { QuotaLine, SessionInfoSnapshot } from "./snapshot.ts"
+import type { QuotaLine, SessionInfoSnapshot, UsageTotals } from "./snapshot.ts"
 
 /**
  * The subset of the host's live model snapshot this tool reads. A structural
@@ -46,6 +46,7 @@ interface LiveModelInfo {
     inputPerMTok: number
     outputPerMTok: number
     cacheWritePerMTok: number
+    cacheWrite1hPerMTok?: number
     cacheReadPerMTok: number
   }
 }
@@ -56,7 +57,13 @@ interface ModelBits {
   providerId: string
   contextWindow?: number
   reasoning: string[]
-  pricing?: { in: number; out: number; cacheWrite: number; cacheRead: number }
+  pricing?: {
+    in: number
+    out: number
+    cacheWrite: number
+    cacheWrite1h?: number
+    cacheRead: number
+  }
 }
 
 function reasoningOf(t: { adaptive: boolean; extended: boolean; interleaved: boolean }): string[] {
@@ -112,6 +119,7 @@ function resolveModelBits(ctx: TUIContext): ModelBits {
         in: info.pricing.inputPerMTok,
         out: info.pricing.outputPerMTok,
         cacheWrite: info.pricing.cacheWritePerMTok,
+        cacheWrite1h: info.pricing.cacheWrite1hPerMTok,
         cacheRead: info.pricing.cacheReadPerMTok,
       },
     }
@@ -131,12 +139,35 @@ function resolveModelBits(ctx: TUIContext): ModelBits {
         in: e.pricing.inputUSD,
         out: e.pricing.outputUSD,
         cacheWrite: e.pricing.cacheWriteUSD,
+        cacheWrite1h: e.pricing.cacheWrite1hUSD,
         cacheRead: e.pricing.cacheReadUSD,
       },
     }
   } catch {
     return { modelId, modelLabel: modelId, providerId: "unknown", reasoning: [] }
   }
+}
+
+/**
+ * Session cost from the counters. Thinking is a part of output, so it is not
+ * priced again. The 1 hour part of the cache writes uses the 1 hour rate
+ * when the model has one.
+ */
+export function estimateCostUSD(
+  usage: UsageTotals,
+  pricing: NonNullable<ModelBits["pricing"]>,
+): number {
+  const oneHour =
+    pricing.cacheWrite1h !== undefined ? Math.min(usage.cacheCreate1h ?? 0, usage.cacheCreate) : 0
+  const writeUSD =
+    (usage.cacheCreate - oneHour) * pricing.cacheWrite + oneHour * (pricing.cacheWrite1h ?? 0)
+  return (
+    (usage.input * pricing.in +
+      usage.output * pricing.out +
+      writeUSD +
+      usage.cacheRead * pricing.cacheRead) /
+    1_000_000
+  )
 }
 
 /** Collect a full live snapshot of the current session/context state. */
@@ -161,14 +192,11 @@ export async function gatherSessionInfo(ctx: TUIContext): Promise<SessionInfoSna
     output: tok.output,
     cacheRead: tok.cacheRead,
     cacheCreate: tok.cacheCreate,
+    // Optional: an older host does not report these.
+    ...(tok.thinking !== undefined ? { thinking: tok.thinking } : {}),
+    ...(tok.cacheCreate1h !== undefined ? { cacheCreate1h: tok.cacheCreate1h } : {}),
   }
-  const estCostUSD = bits.pricing
-    ? (usage.input * bits.pricing.in +
-        usage.output * bits.pricing.out +
-        usage.cacheCreate * bits.pricing.cacheWrite +
-        usage.cacheRead * bits.pricing.cacheRead) /
-      1_000_000
-    : undefined
+  const estCostUSD = bits.pricing ? estimateCostUSD(usage, bits.pricing) : undefined
 
   // Quota: cache-only, non-blocking. Also a backstop for contextWindow.
   let quota: QuotaLine[] = []

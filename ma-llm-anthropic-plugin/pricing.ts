@@ -19,6 +19,7 @@ export const ANTHROPIC_OPUS_4X_STANDARD: MTokRate = {
   inputUSD: 5,
   outputUSD: 25,
   cacheWriteUSD: 6.25,
+  cacheWrite1hUSD: 10,
   cacheReadUSD: 0.5,
   webSearchPerCallUSD: 0.01,
 }
@@ -37,13 +38,12 @@ export const ANTHROPIC_OPUS_4X_STANDARD: MTokRate = {
  *  promptCacheWrite1hTokens:8, promptCacheReadTokens:0.2}
  * ```
  *
- * The 1h cache-write rate ($8/M) has no slot in {@link MTokRate}, so only
- * the 5m rate is carried here.
  */
 export const ANTHROPIC_OPUS_55_STANDARD: MTokRate = {
   inputUSD: 4,
   outputUSD: 20,
   cacheWriteUSD: 5,
+  cacheWrite1hUSD: 8,
   cacheReadUSD: 0.2,
   webSearchPerCallUSD: 0.01,
 }
@@ -66,6 +66,7 @@ export const ANTHROPIC_OPUS_55_FAST: MTokRate = {
   inputUSD: 8,
   outputUSD: 40,
   cacheWriteUSD: 10,
+  cacheWrite1hUSD: 16,
   cacheReadUSD: 0.4,
   webSearchPerCallUSD: 0.01,
 }
@@ -78,6 +79,7 @@ export const ANTHROPIC_OPUS_48_FAST: MTokRate = {
   inputUSD: 10,
   outputUSD: 50,
   cacheWriteUSD: 12.5,
+  cacheWrite1hUSD: 20,
   cacheReadUSD: 1,
   webSearchPerCallUSD: 0.01,
 }
@@ -95,6 +97,7 @@ export const ANTHROPIC_FABLE_5: MTokRate = {
   inputUSD: 10,
   outputUSD: 50,
   cacheWriteUSD: 12.5,
+  cacheWrite1hUSD: 20,
   cacheReadUSD: 1,
   webSearchPerCallUSD: 0.01,
 }
@@ -109,6 +112,7 @@ export const ANTHROPIC_FABLE_5_1: MTokRate = {
   inputUSD: 10,
   outputUSD: 50,
   cacheWriteUSD: 12.5,
+  cacheWrite1hUSD: 20,
   cacheReadUSD: 0.25,
   webSearchPerCallUSD: 0.01,
 }
@@ -131,6 +135,7 @@ export const ANTHROPIC_FABLE_5_2: MTokRate = {
   inputUSD: 8,
   outputUSD: 40,
   cacheWriteUSD: 10,
+  cacheWrite1hUSD: 16,
   cacheReadUSD: 0.2,
   webSearchPerCallUSD: 0.01,
 }
@@ -154,6 +159,7 @@ export const ANTHROPIC_FABLE_5_2_FAST: MTokRate = {
   inputUSD: 16,
   outputUSD: 80,
   cacheWriteUSD: 20,
+  cacheWrite1hUSD: 32,
   cacheReadUSD: 0.4,
   webSearchPerCallUSD: 0.01,
 }
@@ -166,6 +172,7 @@ export const ANTHROPIC_OPUS_4X_FAST_LEGACY: MTokRate = {
   inputUSD: 30,
   outputUSD: 150,
   cacheWriteUSD: 37.5,
+  cacheWrite1hUSD: 60,
   cacheReadUSD: 3,
   webSearchPerCallUSD: 0.01,
 }
@@ -179,6 +186,7 @@ export const ANTHROPIC_SONNET_STANDARD: MTokRate = {
   inputUSD: 3,
   outputUSD: 15,
   cacheWriteUSD: 3.75,
+  cacheWrite1hUSD: 6,
   cacheReadUSD: 0.3,
   webSearchPerCallUSD: 0.01,
 }
@@ -201,6 +209,7 @@ export const ANTHROPIC_SONNET_5_INTRO: MTokRate = {
   inputUSD: 2,
   outputUSD: 10,
   cacheWriteUSD: 2.5,
+  cacheWrite1hUSD: 4,
   cacheReadUSD: 0.2,
   webSearchPerCallUSD: 0.01,
 }
@@ -224,6 +233,7 @@ export const ANTHROPIC_SONNET_55: MTokRate = {
   inputUSD: 2,
   outputUSD: 10,
   cacheWriteUSD: 2.5,
+  cacheWrite1hUSD: 4,
   cacheReadUSD: 0.1,
   webSearchPerCallUSD: 0.01,
 }
@@ -249,6 +259,7 @@ export const ANTHROPIC_HAIKU_55: MTokRate = {
   inputUSD: 0.1,
   outputUSD: 0.5,
   cacheWriteUSD: 0.125,
+  cacheWrite1hUSD: 0.2,
   cacheReadUSD: 0.01,
   webSearchPerCallUSD: 0.01,
 }
@@ -258,13 +269,12 @@ export const ANTHROPIC_HAIKU_55: MTokRate = {
  * exceeds {@link HAIKU_55_LONG_PROMPT_THRESHOLD} tokens: $0.50 / 1M input,
  * $2.50 / 1M output (5x the base rate, matching the documented step).
  *
- * The 1h cache-write rate ($1/M) has no slot in {@link MTokRate}, so only the
- * 5m rate is carried.
  */
 export const ANTHROPIC_HAIKU_55_LONG_PROMPT: MTokRate = {
   inputUSD: 0.5,
   outputUSD: 2.5,
   cacheWriteUSD: 0.625,
+  cacheWrite1hUSD: 1,
   cacheReadUSD: 0.05,
   webSearchPerCallUSD: 0.01,
 }
@@ -282,6 +292,7 @@ export const ANTHROPIC_HAIKU_45: MTokRate = {
   inputUSD: 1,
   outputUSD: 5,
   cacheWriteUSD: 1.25,
+  cacheWrite1hUSD: 2,
   cacheReadUSD: 0.1,
   webSearchPerCallUSD: 0.01,
 }
@@ -293,6 +304,7 @@ export const ANTHROPIC_HAIKU_35: MTokRate = {
   inputUSD: 0.8,
   outputUSD: 4,
   cacheWriteUSD: 1,
+  cacheWrite1hUSD: 1.6,
   cacheReadUSD: 0.08,
   webSearchPerCallUSD: 0.01,
 }
@@ -304,6 +316,7 @@ export const ANTHROPIC_OPUS_40_41: MTokRate = {
   inputUSD: 15,
   outputUSD: 75,
   cacheWriteUSD: 18.75,
+  cacheWrite1hUSD: 30,
   cacheReadUSD: 1.5,
   webSearchPerCallUSD: 0.01,
 }

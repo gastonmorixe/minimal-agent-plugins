@@ -25,6 +25,8 @@ export interface ModelRate {
   inputUSD: number
   outputUSD: number
   cacheWriteUSD: number
+  /** Optional 1 hour TTL cache write rate. Unset: every write uses `cacheWriteUSD`. */
+  cacheWrite1hUSD?: number
   cacheReadUSD: number
   webSearchPerCallUSD: number
   reasoningUSD?: number
