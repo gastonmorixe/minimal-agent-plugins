@@ -30,16 +30,49 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+/**
+ * Behavior of the fake Chrome on a WebSocket upgrade, like Chromium with the
+ * remote debugging setting on: each upgrade raises one "Allow" dialog.
+ * approve: user clicks Allow. deny: user clicks Cancel (403). pend: the
+ * dialog stays open until {@link releasePending}.
+ */
+let chromeMode: "approve" | "deny" | "pend" = "approve"
+/** Count of upgrade requests seen, that is, of dialogs raised. */
+let chromeUpgrades = 0
+let pendingUpgrades: Array<() => void> = []
+const chromeSockets = new Set<{ close(code?: number, reason?: string): void }>()
+
+function releasePending(): void {
+  chromeMode = "approve"
+  for (const r of pendingUpgrades.splice(0)) r()
+}
+
+/** Close every live browser socket from the Chrome side (as a sleep/wake does). */
+function dropChromeSockets(): void {
+  for (const ws of chromeSockets) ws.close(1001, "gone")
+}
+
 /** A fake Chrome: answers every CDP command with an empty result. */
 function startFakeChrome(): ReturnType<typeof Bun.serve> {
   const srv = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
-    fetch(req, server) {
+    async fetch(req, server) {
+      if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+        chromeUpgrades++
+        if (chromeMode === "deny") return new Response("denied", { status: 403 })
+        if (chromeMode === "pend") await new Promise<void>((r) => pendingUpgrades.push(r))
+      }
       if (server.upgrade(req)) return undefined
       return Response.json({ webSocketDebuggerUrl: "ws://127.0.0.1/devtools/browser/fake" })
     },
     websocket: {
+      open(ws) {
+        chromeSockets.add(ws)
+      },
+      close(ws) {
+        chromeSockets.delete(ws)
+      },
       message(ws, msg) {
         const m = JSON.parse(String(msg)) as { id?: number }
         if (typeof m.id === "number") ws.send(JSON.stringify({ id: m.id, result: {} }))
@@ -83,6 +116,20 @@ async function ping(): Promise<{ ok?: boolean; connected?: boolean } | null> {
   }
 }
 
+async function post(route: string): Promise<{ status: number; body: unknown }> {
+  try {
+    const res = await fetch(`http://localhost/${route}`, {
+      unix: sock,
+      method: "POST",
+      body: "{}",
+      signal: AbortSignal.timeout(5000),
+    } as RequestInit & { unix: string })
+    return { status: res.status, body: await res.json().catch(() => null) }
+  } catch {
+    return { status: -1, body: null }
+  }
+}
+
 async function waitFor(cond: () => Promise<boolean> | boolean, ms: number): Promise<boolean> {
   const end = Date.now() + ms
   while (Date.now() < end) {
@@ -121,6 +168,10 @@ beforeEach(() => {
   sock = join(dir, "d.sock")
   leaseDir = join(dir, "leases")
   dtap = join(dir, "DevToolsActivePort")
+  chromeMode = "approve"
+  chromeUpgrades = 0
+  pendingUpgrades = []
+  chromeSockets.clear()
   chrome = startFakeChrome()
 })
 
@@ -129,6 +180,7 @@ afterEach(async () => {
     if (alive(p)) p.kill("SIGKILL")
     await p.exited
   }
+  releasePending()
   await chrome?.stop(true)
   chrome = undefined
   rmSync(dir, { recursive: true, force: true })
@@ -217,14 +269,80 @@ describe("cdp-server lifetime", () => {
     }
   }, 15_000)
 
-  test("Chrome gone: stops after CDP_MAX_RECONNECT failed reconnects", async () => {
-    lease(process.pid)
-    const p = spawnDaemon({ CDP_MAX_RECONNECT: "3" })
-    expect(await waitFor(async () => (await ping())?.connected === true, 3000)).toBe(true)
+  test("Chrome gone: a request fails fast, no retry loop, idle exit still works", async () => {
+    const p = spawnDaemon({ CDP_IDLE_MS: "1500", CDP_LEASE_CHECK_MS: "200" })
+    expect(await waitFor(async () => (await ping())?.ok === true, 3000)).toBe(true)
+    expect((await post("targets")).status).toBe(200)
     await chrome?.stop(true)
     chrome = undefined
-    expect(await exitsWithin(p, 6000)).toBe(true)
-    expect(p.exitCode).toBe(0)
+    const r = await post("targets")
+    expect(r.status).toBe(503)
+    expect(await exitsWithin(p, 5000)).toBe(true)
     expect(existsSync(sock)).toBe(false)
+  }, 15_000)
+
+  // Chromium with remote debugging turned on in its settings (no launch flag)
+  // shows an "Allow remote debugging?" dialog for EVERY new browser WebSocket.
+  // Chromium queues those dialogs and keeps them after the client gives up.
+  // So any connect attempt the user did not ask for becomes a dialog, and
+  // retries while the Mac is locked pile up into hundreds of them.
+
+  test("starting the daemon opens no Chrome connection until a request needs it", async () => {
+    lease(process.pid)
+    spawnDaemon({})
+    expect(await waitFor(async () => (await ping())?.ok === true, 3000)).toBe(true)
+    await sleep(500)
+    expect(chromeUpgrades).toBe(0)
+  }, 15_000)
+
+  test("connection dropped (sleep/wake): no background reconnect", async () => {
+    lease(process.pid)
+    const p = spawnDaemon({})
+    expect(await waitFor(async () => (await ping())?.ok === true, 3000)).toBe(true)
+    expect((await post("targets")).status).toBe(200)
+    expect(chromeUpgrades).toBe(1)
+    dropChromeSockets()
+    await sleep(3000)
+    expect(chromeUpgrades).toBe(1)
+    expect(alive(p)).toBe(true)
+    // The next real request reconnects, once.
+    expect((await post("targets")).status).toBe(200)
+    expect(chromeUpgrades).toBe(2)
+  }, 15_000)
+
+  test("user cancels the dialog (403): no retry, clear error, cooldown", async () => {
+    lease(process.pid)
+    chromeMode = "deny"
+    const p = spawnDaemon({ CDP_DENY_COOLDOWN_MS: "2000" })
+    expect(await waitFor(async () => (await ping())?.ok === true, 3000)).toBe(true)
+    const r = await post("targets")
+    expect(r.status).toBe(403)
+    expect(String((r.body as { error?: string })?.error)).toContain("denied")
+    // A looping caller inside the cooldown raises no new dialog.
+    expect((await post("targets")).status).toBe(403)
+    await sleep(1000)
+    expect(chromeUpgrades).toBe(1)
+    expect(alive(p)).toBe(true)
+    // After the cooldown, an explicit request may ask once more.
+    await sleep(1500)
+    chromeMode = "approve"
+    expect((await post("targets")).status).toBe(200)
+    expect(chromeUpgrades).toBe(2)
+  }, 15_000)
+
+  test("dialog left unanswered: concurrent and repeated requests share one attempt", async () => {
+    lease(process.pid)
+    chromeMode = "pend"
+    spawnDaemon({ CDP_READY_TIMEOUT_MS: "500" })
+    expect(await waitFor(async () => (await ping())?.ok === true, 3000)).toBe(true)
+    const rs = await Promise.all([post("targets"), post("targets"), post("targets")])
+    expect(rs.map((r) => r.status)).toEqual([503, 503, 503])
+    expect((await post("targets")).status).toBe(503)
+    expect(chromeUpgrades).toBe(1)
+    // The user comes back and clicks Allow: the same attempt goes through.
+    releasePending()
+    expect(await waitFor(async () => (await ping())?.connected === true, 3000)).toBe(true)
+    expect((await post("targets")).status).toBe(200)
+    expect(chromeUpgrades).toBe(1)
   }, 15_000)
 })

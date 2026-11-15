@@ -2,8 +2,9 @@
 /**
  * Persistent CDP daemon.
  *
- * Connects to Chrome's browser-level WebSocket ONCE and stays connected, then
- * serves a tiny HTTP API over a UNIX DOMAIN SOCKET. Why: macOS Local Network
+ * Connects to Chrome's browser-level WebSocket on the first request that needs
+ * it and keeps that connection, then serves a tiny HTTP API over a UNIX
+ * DOMAIN SOCKET. Why: macOS Local Network
  * privacy prompts on every NEW process that opens a TCP socket to Chrome's
  * debug port, so a short-lived client per command means a prompt per command.
  * A unix socket is a filesystem object (not "network"), so clients hitting the
@@ -12,8 +13,8 @@
  * Run:  bun run bin/cdp-server.ts          (from the plugin dir)
  * Env:  CDP_PORT (9222) · CDP_SOCK (/tmp/cdp.sock) · CDP_DTAP (auto) · CDP_LOG
  *       CDP_LEASE_DIR (`<sock>.leases`) · CDP_IDLE_MS (600000, 0 = off)
- *       CDP_LEASE_CHECK_MS (30000) · CDP_MAX_RECONNECT (30, 0 = no cap)
- *       CDP_READY_TIMEOUT_MS (15000) · CDP_LEASE_MAX_AGE_MS (86400000, 0 = off)
+ *       CDP_LEASE_CHECK_MS (30000) · CDP_READY_TIMEOUT_MS (15000)
+ *       CDP_LEASE_MAX_AGE_MS (86400000, 0 = off) · CDP_DENY_COOLDOWN_MS (30000)
  *
  * Lifetime:
  * 1. One daemon per socket. Under `<sock>.bind.lock` the daemon pings the
@@ -23,10 +24,19 @@
  *    refreshes it on each call and removes it on exit. Every
  *    CDP_LEASE_CHECK_MS the daemon removes the leases of dead pids and the
  *    leases not refreshed for CDP_LEASE_MAX_AGE_MS. It exits when no live
- *    lease is left and no request came for CDP_IDLE_MS. The timer starts at
- *    bind, before the Chrome connect. A request waits for the first connect
- *    at most CDP_READY_TIMEOUT_MS, then gets 503 `chrome connect timeout`.
- * 3. After CDP_MAX_RECONNECT failed Chrome reconnects in a row it exits 0.
+ *    lease is left and no request came for CDP_IDLE_MS.
+ * 3. Connect on demand only. Chromium with remote debugging turned on in its
+ *    settings (no `--remote-debugging-port` flag) shows an "Allow remote
+ *    debugging?" dialog for EVERY new browser WebSocket. It queues those
+ *    dialogs and keeps them after the client gives up. So the daemon never
+ *    connects on its own: not at start, not after a drop (sleep/wake, Chrome
+ *    restart). Only a request that needs Chrome starts a connect, and at most
+ *    one attempt is in flight. Requests that come while it is pending share
+ *    it. A request waits for it at most CDP_READY_TIMEOUT_MS, then gets 503
+ *    `chrome connect timeout`. The attempt keeps going (the user may still
+ *    click Allow). A 403 means the user clicked Cancel: requests get 403 for
+ *    CDP_DENY_COOLDOWN_MS without a new attempt, so a looping caller cannot
+ *    raise a dialog storm.
  * 4. On exit it removes the socket only if the file is still the one it bound.
  *
  * Exports {@link main} so a compiled binary can dispatch it from its embedded
@@ -49,8 +59,8 @@ import { dispatch } from "../lib/dispatch.ts"
 import {
   DEFAULT_IDLE_MS,
   DEFAULT_LEASE_CHECK_MS,
+  DEFAULT_DENY_COOLDOWN_MS,
   DEFAULT_LEASE_MAX_AGE_MS,
-  DEFAULT_MAX_RECONNECT,
   DEFAULT_READY_TIMEOUT_MS,
   envInt,
   leaseDirFor,
@@ -71,9 +81,9 @@ const LEASE_CHECK_MS = Math.max(
   10,
   envInt(process.env.CDP_LEASE_CHECK_MS, DEFAULT_LEASE_CHECK_MS) || DEFAULT_LEASE_CHECK_MS,
 )
-const MAX_RECONNECT = envInt(process.env.CDP_MAX_RECONNECT, DEFAULT_MAX_RECONNECT)
 const READY_TIMEOUT_MS = envInt(process.env.CDP_READY_TIMEOUT_MS, DEFAULT_READY_TIMEOUT_MS)
 const LEASE_MAX_AGE_MS = envInt(process.env.CDP_LEASE_MAX_AGE_MS, DEFAULT_LEASE_MAX_AGE_MS)
+const DENY_COOLDOWN_MS = envInt(process.env.CDP_DENY_COOLDOWN_MS, DEFAULT_DENY_COOLDOWN_MS)
 
 function log(msg: string): void {
   console.log(`[cdp-server] ${msg}`)
@@ -82,12 +92,14 @@ function log(msg: string): void {
 // Chrome's browser WebSocket URL, resolved once at the start of `main`.
 let wsUrl: string
 
-// The live connection. Reassigned by the reconnect loop after an unexpected
-// close, so callers always read the current `conn` via the module binding.
+// The current connection. Replaced only by {@link ensureConnected}, on demand.
 let conn: CdpConnection
 
-// Failed reconnects in a row since the last good connect.
-let reconnects = 0
+// The connect attempt in flight, shared by every request that waits for it.
+let connecting: Promise<void> | undefined
+// Until this time, requests get 403 without a new attempt (user clicked Cancel).
+let deniedUntil = 0
+
 // Inode of the socket file this daemon bound, or undefined when it bound none.
 let boundIno: number | undefined
 let lastActivity = Date.now()
@@ -100,28 +112,51 @@ function freshConnection(): CdpConnection {
     url: wsUrl,
     socketFactory: (url) => new WebSocket(url),
     log,
-    onClose: () => {
-      if (shuttingDown) return
-      if (MAX_RECONNECT > 0 && reconnects >= MAX_RECONNECT) {
-        log(`chrome unreachable after ${reconnects} reconnects, exiting`)
-        shutdown(0)
-        return
-      }
-      reconnects++
-      log(`reconnecting in 1s (${reconnects}/${MAX_RECONNECT || "no cap"})`)
-      setTimeout(() => {
-        if (shuttingDown) return
-        conn = freshConnection()
-        conn.connect().then(
-          () => {
-            reconnects = 0
-          },
-          (e: unknown) => log(`reconnect failed: ${String(e)}`),
-        )
-      }, 1000)
-    },
+    // No reconnect here. A background attempt would raise a Chromium dialog
+    // nobody asked for (see the module doc). The next request reconnects.
+    onClose: () => log("chrome connection closed, reconnect on next request"),
   })
 }
+
+/** Thrown when the user denied the connection (Chromium answered 403). */
+class DeniedError extends Error {}
+
+/**
+ * Start a connect, or join the one in flight. Never runs a second attempt
+ * while one is pending. A 403 starts the deny cooldown.
+ */
+function ensureConnected(): Promise<void> {
+  if (conn?.connected) return Promise.resolve()
+  if (connecting) return connecting
+  if (Date.now() < deniedUntil) return Promise.reject(new DeniedError(DENIED_MSG))
+  const c = freshConnection()
+  conn = c
+  connecting = c
+    .connect()
+    .then(async () => {
+      // Turn on browser-level download events up front so /downloads works.
+      await c
+        .send("Browser.setDownloadBehavior", { behavior: "default", eventsEnabled: true })
+        .catch(() => {})
+    })
+    .catch((e: unknown) => {
+      const msg = String(e)
+      log(`connect failed: ${msg}`)
+      if (/\b403\b/.test(msg)) {
+        deniedUntil = Date.now() + DENY_COOLDOWN_MS
+        throw new DeniedError(DENIED_MSG)
+      }
+      throw e
+    })
+    .finally(() => {
+      connecting = undefined
+    })
+  return connecting
+}
+
+const DENIED_MSG =
+  "chrome denied the remote debugging connection (the Allow dialog was cancelled). " +
+  "Ask the user, then retry"
 
 /**
  * Start the daemon: resolve Chrome's WebSocket from `DevToolsActivePort`,
@@ -150,7 +185,6 @@ async function serve(): Promise<number | undefined> {
 
   // Bind first, under a lock, so two daemons started at once cannot both
   // unlink+bind. The loser sees a live daemon and steps aside.
-  let ready: Promise<void> = Promise.resolve()
   const release = await acquireLockWait(`${SOCK}.bind.lock`)
   try {
     if (await socketAnswers(SOCK)) {
@@ -162,7 +196,7 @@ async function serve(): Promise<number | undefined> {
     } catch {
       // socket file may not exist; fine
     }
-    listen(() => ready)
+    listen()
     boundIno = statSync(SOCK).ino
   } finally {
     release()
@@ -172,35 +206,28 @@ async function serve(): Promise<number | undefined> {
   process.on("SIGTERM", bye)
   process.on("SIGINT", bye)
 
-  // Arm the lease sweep and idle rule before the Chrome connect, so a connect
-  // that never settles cannot keep the daemon up for ever.
+  // No Chrome connect here: the first request that needs Chrome starts it.
   leaseTimer = setInterval(checkIdle, LEASE_CHECK_MS)
   leaseTimer.unref()
   log(`idle exit ${IDLE_MS}ms, lease check ${LEASE_CHECK_MS}ms, leases ${LEASE_DIR}`)
 
-  ready = conn.connect()
-  await ready
-  // Turn on browser-level download events up front so /downloads works.
-  await conn
-    .send("Browser.setDownloadBehavior", { behavior: "default", eventsEnabled: true })
-    .catch(() => {})
   return undefined
 }
 
 /**
- * Wait for `ready` at most `ms`. Resolves true when it settled (resolved or
- * rejected), false on timeout.
+ * Wait for `ready` at most `ms`. Resolves "ok", "timeout", or the rejection
+ * error. On timeout the attempt keeps running: the user may still click Allow.
  */
-async function settledWithin(ready: Promise<void>, ms: number): Promise<boolean> {
+async function settleWithin(ready: Promise<void>, ms: number): Promise<"ok" | "timeout" | Error> {
   let timer: ReturnType<typeof setTimeout> | undefined
-  const timeout = new Promise<false>((res) => {
-    timer = setTimeout(() => res(false), ms)
+  const timeout = new Promise<"timeout">((res) => {
+    timer = setTimeout(() => res("timeout"), ms)
   })
   try {
     return await Promise.race([
       ready.then(
-        () => true,
-        () => true,
+        () => "ok" as const,
+        (e: unknown) => (e instanceof Error ? e : new Error(String(e))),
       ),
       timeout,
     ])
@@ -209,7 +236,7 @@ async function settledWithin(ready: Promise<void>, ms: number): Promise<boolean>
   }
 }
 
-function listen(ready: () => Promise<void>): void {
+function listen(): void {
   Bun.serve({
     unix: SOCK,
     async fetch(req: Request): Promise<Response> {
@@ -224,10 +251,20 @@ function listen(ready: () => Promise<void>): void {
       inflight++
       lastActivity = Date.now()
       try {
-        // The socket is up before Chrome: let real work wait for the connect,
-        // but not for ever (a port that accepts TCP and never upgrades).
-        if (route !== "ping" && !(await settledWithin(ready(), READY_TIMEOUT_MS))) {
-          return json(503, { error: "chrome connect timeout" })
+        // Real work connects on demand (one shared attempt), but waits for it
+        // only so long: an unanswered Allow dialog holds the upgrade open.
+        if (route !== "ping") {
+          const r = await settleWithin(ensureConnected(), READY_TIMEOUT_MS)
+          if (r === "timeout") {
+            return json(503, {
+              error: "chrome connect timeout",
+              hint: "an 'Allow remote debugging?' dialog may be waiting in the browser",
+            })
+          }
+          if (r instanceof DeniedError) return json(403, { error: r.message })
+          if (r instanceof Error) {
+            return json(503, { error: `chrome unreachable: ${r.message}` })
+          }
         }
         const raw =
           req.method === "POST" || req.headers.get("content-length") ? await safeJson(req) : {}
