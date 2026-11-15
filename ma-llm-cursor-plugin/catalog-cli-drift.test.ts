@@ -14,7 +14,7 @@ import { registerCursorModels } from "./models.ts"
 
 const fixturePath = join(
   dirname(fileURLToPath(import.meta.url)),
-  "__fixtures__/cursor-cli-models.2026.09.28.txt",
+  "__fixtures__/cursor-cli-models.2026.11.15.txt",
 )
 
 function parseCliModelIds(text: string): string[] {

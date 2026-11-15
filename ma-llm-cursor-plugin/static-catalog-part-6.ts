@@ -3,22 +3,6 @@ import type { CursorStaticCatalogRow } from "./static-catalog-row.ts"
 
 export const CURSOR_STATIC_CATALOG_PART: readonly CursorStaticCatalogRow[] = [
   {
-    id: "cursor-claude-sonnet-4",
-    wireId: "claude-sonnet-4",
-    displayName: "Claude Sonnet 4",
-    defaultOn: false,
-    supportsThinking: true,
-    supportsImages: true,
-    contextWindow: 200000,
-    maxOutputTokens: 16384,
-    effortLevels: [],
-    defaultRunModelId: "claude-4-sonnet",
-    defaultParameterValues: [
-      { id: "thinking", value: "false" },
-      { id: "context", value: "200k" },
-    ],
-  },
-  {
     id: "cursor-claude-4-sonnet",
     wireId: "claude-4-sonnet",
     displayName: "Claude Sonnet 4 Context 200k",
