@@ -114,6 +114,27 @@ export function fmtTokens(n: number): string {
   return `${Math.round(n / 1000)}k`
 }
 
+/**
+ * One worker's (or the fleet's) token figures. `tokens` is last-turn context.
+ * `output` and `thinking` are summed generated tokens.
+ */
+export interface SpendCounts {
+  readonly tokens: number
+  readonly output?: number
+  readonly thinking?: number
+}
+
+/**
+ * Format token figures: `"ctx 61.3k · out 2.8k (thinking 61)"`. When no
+ * output is known (an old record, or a provider that reports none, such as
+ * Cursor), fall back to the old single figure `"61.3k tok"`.
+ */
+export function fmtSpend(c: SpendCounts): string {
+  if (!c.output) return `${fmtTokens(c.tokens)} tok`
+  const thinking = c.thinking ? ` (thinking ${fmtTokens(c.thinking)})` : ""
+  return `ctx ${fmtTokens(c.tokens)} · out ${fmtTokens(c.output)}${thinking}`
+}
+
 /** Format an elapsed-ms duration: "0m31", "1m22", "1h04". Empty under 1s. */
 export function fmtElapsed(ms: number): string {
   if (!Number.isFinite(ms) || ms < 1000) return ""

@@ -11,7 +11,7 @@
  * @module sub-agents/lib/widget
  */
 
-import { ANSI, color, fmtElapsed, fmtTokens, GLYPHS, SPINNER } from "./style.ts"
+import { ANSI, color, fmtElapsed, fmtSpend, GLYPHS, SPINNER } from "./style.ts"
 import { fleetStats, type SubagentRecord, type SubagentStatus } from "./types.ts"
 
 /** Options for {@link renderWidget}. */
@@ -42,7 +42,7 @@ function rowDetail(r: SubagentRecord, ansi: boolean): string {
         .replace(/\s+/g, " ")
         .trim()
       const tools = color(ansi, ANSI.DGRAY, `${s.progress.tools} tools`)
-      const tok = color(ansi, ANSI.DGRAY, fmtTokens(s.progress.tokens))
+      const tok = color(ansi, ANSI.DGRAY, fmtSpend(s.progress))
       const dot = color(ansi, ANSI.DGRAY, GLYPHS.bullet)
       return `${clip(act, 40)} ${dot} ${tools} ${dot} ${tok}`
     }
@@ -135,7 +135,7 @@ export function renderWidget(
       ? ` ${dot} ${color(ansi, `${ANSI.GOLD}${ANSI.BOLD}`, GLYPHS.incomplete)} ${color(ansi, ANSI.GOLD, String(stats.incomplete))}`
       : ""
   const overBudget = opts.tokenBudget !== undefined && stats.tokens > opts.tokenBudget
-  const tok = color(ansi, overBudget ? ANSI.GOLD : ANSI.DGRAY, `${fmtTokens(stats.tokens)} tok`)
+  const tok = color(ansi, overBudget ? ANSI.GOLD : ANSI.DGRAY, fmtSpend(stats))
   const header = ` ${brand} ${fleetLabel} ${dot} ${run} ${dot} ${done}${inc} ${dot} ${fail} ${dot} ${tok}`
 
   // Rows, ranked; cap at maxRows.
