@@ -166,8 +166,10 @@ describe("llm-grok provider plugin (prime/session)", () => {
   it("registerGrokModels returns dual-surface catalog size", () => {
     setup()
     const ids = registerGrokModels(reg.models)
-    // 2×4.6 + 2×4.5 + 2×build + 2×4.3 + 3×4.20 = 11
-    expect(ids.length).toBe(11)
+    // 2×4.6 + 2×4.7 + 2×4.5 + 2×build + 2×4.3 + 3×4.20 = 13
+    expect(ids.length).toBe(13)
+    expect(ids).toContain("grok-4.7")
+    expect(ids).toContain("grok-4.7-chat")
     registerGrokModels(reg.models) // idempotent
   })
 

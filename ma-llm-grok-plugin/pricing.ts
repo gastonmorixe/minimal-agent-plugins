@@ -40,6 +40,27 @@ export const PRICING_GROK_46: MTokRate = {
 }
 
 /**
+ * grok-4.7: frontier. Snapshot 2026-11-15, models.dev `xai` and
+ * https://docs.x.ai/developers/models/grok-4.7: input $2, cached $0.50,
+ * output $6 below 200k prompt tokens. At or above 200k all tokens double.
+ * Same numbers as grok-4.6.
+ */
+export const PRICING_GROK_47: MTokRate = {
+  inputUSD: 2,
+  outputUSD: 6,
+  cacheWriteUSD: 2,
+  cacheReadUSD: 0.5,
+  webSearchPerCallUSD: 0.005,
+  longContext: {
+    thresholdTokens: 200_000,
+    inputUSD: 4,
+    outputUSD: 12,
+    cacheWriteUSD: 4,
+    cacheReadUSD: 1,
+  },
+}
+
+/**
  * grok-4.5 — frontier. Live: prompt 20000, cached 3000, completion 60000;
  * long-context (≥200k) doubles.
  */
