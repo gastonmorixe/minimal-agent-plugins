@@ -26,9 +26,9 @@ export interface AnthropicModelInfo {
 const MODELS_URL = "https://api.anthropic.com/v1/models?beta=true"
 
 /**
- * The model families that support the 1M context window (live 2026-11-01):
+ * The model families that support the 1M context window (live 2026-11-15):
  * Haiku 5.5; Sonnet 4.6 / 5 / 5.5; Opus 4.6 / 4.7 / 4.8 / 5 / 5.5 (gated
- * explicitly to avoid the 200k opus-4-0/4-1/4-5 ids); Fable 5 / 5.1
+ * explicitly to avoid the 200k opus-4-0/4-1/4-5 ids); Fable 5 / 5.1 / 5.2
  * (1M-native).
  */
 function supports1M(id: string): boolean {
