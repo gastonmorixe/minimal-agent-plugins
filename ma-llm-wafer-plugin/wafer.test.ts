@@ -129,10 +129,10 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
 
   it("registers models on the openai-chat-completions surface", () => {
     setup()
-    const m = resolveModel("GLM-5.1")
+    const m = resolveModel("GLM-5.2")
     expect(m.providerId).toBe("wafer")
     expect(m.surfaceId).toBe("openai-chat-completions")
-    expect(m.vendorIds?.firstParty).toBe("GLM-5.1")
+    expect(m.vendorIds?.firstParty).toBe("GLM-5.2")
     expect(m.tags).toContain("balanced")
 
     const adapter = resolveProvider("wafer")
@@ -140,16 +140,22 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(adapter.displayName).toBe("Wafer")
   })
 
-  it("registers all 7 built-in models", () => {
+  it("registers all 13 built-in models (live 2026-11-15)", () => {
     setup()
     const ids = [
-      "GLM-5.1",
-      "Kimi-K3",
-      "Kimi-K2.6",
-      "MiniMax-M3",
       "GLM-5.2",
-      "kimi-k3-fast",
-      "glm5.2-fast",
+      "GLM-5.3",
+      "GLM-5.3-Flash",
+      "Kimi-K3",
+      "Kimi-K3.1-Pro",
+      "Kimi-K3.1-Pro-US",
+      "MiniMax-M3.1-Flash",
+      "DeepSeek-V4-Pro",
+      "DeepSeek-V4.1-Flash",
+      "DeepSeek-V4.1-Flash-1017",
+      "DeepSeek-V4-Flash-0423",
+      "DeepSeek-V4-Flash-0731-Fast",
+      "Qwen3.8-27B",
     ]
     for (const id of ids) {
       const m = resolveModel(id)
@@ -182,49 +188,47 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("validates a plain request via the REUSED OpenAI validator", () => {
     setup()
     const adapter = resolveProvider("wafer")
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
-    expect(adapter.validate(req, resolveModel("GLM-5.1")).ok).toBe(true)
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
+    expect(adapter.validate(req, resolveModel("GLM-5.2")).ok).toBe(true)
   })
 
   it("recommends sub-agent models by tag", () => {
     setup()
     const recs = waferAdapter.recommendSubagentModels?.() ?? []
     const byRole = new Map(recs.map((r) => [r.role, r.modelId]))
-    expect(byRole.get("scout")).toBe("glm5.2-fast")
-    expect(byRole.get("balanced")).toBe("GLM-5.1")
-    expect(byRole.get("deep")).toBe("GLM-5.2")
+    expect(byRole.get("scout")).toBe("GLM-5.3-Flash")
+    expect(byRole.get("balanced")).toBe("GLM-5.2")
+    expect(byRole.get("deep")).toBe("GLM-5.3")
   })
 
   it("has correct pricing for known models", () => {
     setup()
-    const glm51 = resolveModel("GLM-5.1")
-    expect(glm51.pricing.inputUSD).toBe(1.0) // 100 cents/mil = 1.0 USD/mil
-    expect(glm51.pricing.outputUSD).toBe(3.2)
+    const glm52 = resolveModel("GLM-5.2")
+    expect(glm52.pricing.inputUSD).toBe(0.19) // 19 cents/mil
+    expect(glm52.pricing.outputUSD).toBe(4.4)
 
-    const glmFast = resolveModel("glm5.2-fast")
-    expect(glmFast.pricing.inputUSD).toBe(2.1) // 210 cents/mil
-    expect(glmFast.pricing.outputUSD).toBe(6.6)
-
-    const kimi = resolveModel("Kimi-K2.6")
-    expect(kimi.pricing.inputUSD).toBe(1.14) // 114 cents/mil
-    expect(kimi.pricing.outputUSD).toBe(4.8)
-    expect(kimi.pricing.cacheReadUSD).toBe(0.19)
-
-    // All 7 models pricing (live API 2026-07-30)
+    // All 13 models pricing (live API 2026-11-15). Cache read uses the
+    // microcents field when present (e.g. MiniMax-M3.1-Flash 1.5 cents).
     const pricingTable: Record<string, { input: number; output: number; cacheRead: number }> = {
-      "GLM-5.1": { input: 1.0, output: 3.2, cacheRead: 0.1 },
-      "Kimi-K3": { input: 3.0, output: 15.0, cacheRead: 0.3 },
-      "Kimi-K2.6": { input: 1.14, output: 4.8, cacheRead: 0.19 },
-      "MiniMax-M3": { input: 0.33, output: 1.32, cacheRead: 0.07 },
-      "GLM-5.2": { input: 1.26, output: 3.96, cacheRead: 0.23 },
-      "kimi-k3-fast": { input: 4.5, output: 22.5, cacheRead: 0.45 },
-      "glm5.2-fast": { input: 2.1, output: 6.6, cacheRead: 0.21 },
+      "GLM-5.2": { input: 0.19, output: 4.4, cacheRead: 0.18 },
+      "GLM-5.3": { input: 0.2, output: 1.8, cacheRead: 0.18 },
+      "GLM-5.3-Flash": { input: 0.05, output: 0.2, cacheRead: 0.03 },
+      "Kimi-K3": { input: 0.6, output: 15.0, cacheRead: 0.2 },
+      "Kimi-K3.1-Pro": { input: 2.0, output: 10.0, cacheRead: 0.2 },
+      "Kimi-K3.1-Pro-US": { input: 2.0, output: 10.0, cacheRead: 0.2 },
+      "MiniMax-M3.1-Flash": { input: 0.15, output: 0.6, cacheRead: 0.015 },
+      "DeepSeek-V4-Pro": { input: 0.28, output: 3.96, cacheRead: 0.044 },
+      "DeepSeek-V4.1-Flash": { input: 0.19, output: 0.65, cacheRead: 0.012 },
+      "DeepSeek-V4.1-Flash-1017": { input: 0.13, output: 0.5, cacheRead: 0.008 },
+      "DeepSeek-V4-Flash-0423": { input: 0.14, output: 0.28, cacheRead: 0.028 },
+      "DeepSeek-V4-Flash-0731-Fast": { input: 0.13, output: 0.23, cacheRead: 0.028 },
+      "Qwen3.8-27B": { input: 0.06, output: 2.3, cacheRead: 0.05 },
     }
     for (const [id, prices] of Object.entries(pricingTable)) {
       const m = resolveModel(id)
-      expect(m.pricing.inputUSD, `${id} inputUSD`).toBe(prices.input)
-      expect(m.pricing.outputUSD, `${id} outputUSD`).toBe(prices.output)
-      expect(m.pricing.cacheReadUSD, `${id} cacheReadUSD`).toBe(prices.cacheRead)
+      expect(m.pricing.inputUSD, `${id} inputUSD`).toBeCloseTo(prices.input, 10)
+      expect(m.pricing.outputUSD, `${id} outputUSD`).toBeCloseTo(prices.output, 10)
+      expect(m.pricing.cacheReadUSD, `${id} cacheReadUSD`).toBeCloseTo(prices.cacheRead, 10)
     }
   })
 
@@ -235,11 +239,11 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("classifies 429 rate_limit_error as retryable with streamErrorType", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const body = JSON.stringify({
       error: { code: "ttfb_gate_shed", message: "model at capacity" },
     })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(429, body),
@@ -253,9 +257,9 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("classifies 503 server_error as retryable with streamErrorType", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const body = JSON.stringify({ error: { code: "server_error", message: "down" } })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(503, body),
@@ -269,11 +273,11 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("does NOT tag 402 insufficient_quota as retryable", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const body = JSON.stringify({
       error: { code: "insufficient_quota", message: "out of credits" },
     })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(402, body),
@@ -287,9 +291,9 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("classifies non-JSON error body by HTTP status alone", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const body = "Gateway Timeout"
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(504, body),
@@ -303,10 +307,10 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("classifies 500 with type field (fallback from code) as retryable", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     // No `code` field — parser falls back to `type`
     const body = JSON.stringify({ error: { type: "server_error", message: "boom" } })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(500, body),
@@ -320,11 +324,11 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("does NOT tag 401 invalid_api_key as retryable", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const body = JSON.stringify({
       error: { code: "invalid_api_key", message: "bad key" },
     })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(401, body),
@@ -338,11 +342,11 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("does NOT tag 400 invalid_request_error as retryable", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const body = JSON.stringify({
       error: { code: "invalid_request_error", message: "bad request" },
     })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(400, body),
@@ -356,10 +360,10 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("classifies 429 with JSON but no code or type by HTTP status alone", async () => {
     setup()
     const provider = resolveProvider("wafer")
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     // Valid JSON, error object, but no code or type field
     const body = JSON.stringify({ error: { message: "too many requests" } })
-    const req: CanonicalRequest = { modelId: "GLM-5.1", messages: [userText("hi")] }
+    const req: CanonicalRequest = { modelId: "GLM-5.2", messages: [userText("hi")] }
     const ctx: RunContext = {
       auth: { kind: "api-key", key: "wfr_test" },
       networkClient: fakeNetworkClient(429, body),
@@ -460,52 +464,60 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   })
 
   // ---------------------------------------------------------------------------
-  // Capability validation for all 7 models (live API 2026-07-30)
+  // Capability validation (live API 2026-11-15)
   // ---------------------------------------------------------------------------
 
   it("each model has correct capabilities", () => {
     setup()
-    // GLM-5.1 — 202K context, reasoning on, vision off
-    const glm51 = resolveModel("GLM-5.1")
-    expect(glm51.capabilities.contextWindow).toBe(202_752)
-    expect(glm51.capabilities.thinking.adaptive).toBe(true)
-    expect(glm51.capabilities.effort.levels).toEqual(["low", "medium", "high"])
-    expect(glm51.capabilities.modalities.image).toBe(false)
-    expect(glm51.capabilities.speedFast).toBe(false)
-
-    // GLM-5.2 — 1M context, flagship/deep
+    // GLM-5.2 — 1M context, reasoning on, vision off, balanced
     const glm52 = resolveModel("GLM-5.2")
     expect(glm52.capabilities.contextWindow).toBe(1_048_576)
-    expect(glm52.tags).toContain("flagship")
-    expect(glm52.tags).toContain("deep")
+    expect(glm52.capabilities.thinking.adaptive).toBe(true)
+    expect(glm52.capabilities.effort.levels).toEqual(["low", "medium", "high"])
+    expect(glm52.capabilities.modalities.image).toBe(false)
+    expect(glm52.capabilities.speedFast).toBe(false)
+    expect(glm52.tags).toContain("balanced")
 
-    // Kimi-K3 — 912K context, vision
+    // GLM-5.3 — 1M context, flagship/deep, text-only
+    const glm53 = resolveModel("GLM-5.3")
+    expect(glm53.capabilities.contextWindow).toBe(1_048_576)
+    expect(glm53.capabilities.modalities.image).toBe(false)
+    expect(glm53.tags).toContain("flagship")
+    expect(glm53.tags).toContain("deep")
+
+    // GLM-5.3-Flash — cheap scout, vision
+    const glmFlash = resolveModel("GLM-5.3-Flash")
+    expect(glmFlash.capabilities.modalities.image).toBe(true)
+    expect(glmFlash.tags).toContain("cheap")
+    expect(glmFlash.tags).toContain("scout")
+
+    // Kimi-K3 — now 1M context (was 912K), vision
     expect(resolveModel("Kimi-K3").capabilities.modalities.image).toBe(true)
-    expect(resolveModel("Kimi-K3").capabilities.contextWindow).toBe(912_384)
+    expect(resolveModel("Kimi-K3").capabilities.contextWindow).toBe(1_048_576)
 
-    // Kimi-K2.6 — vision
-    expect(resolveModel("Kimi-K2.6").capabilities.modalities.image).toBe(true)
-    expect(resolveModel("Kimi-K2.6").capabilities.contextWindow).toBe(262_144)
+    // Kimi-K3.1-Pro — vision, 1M
+    expect(resolveModel("Kimi-K3.1-Pro").capabilities.modalities.image).toBe(true)
+    expect(resolveModel("Kimi-K3.1-Pro-US").capabilities.contextWindow).toBe(1_048_576)
 
-    // kimi-k3-fast — 1M context, vision, speedFast
-    const kimiFast = resolveModel("kimi-k3-fast")
-    expect(kimiFast.capabilities.contextWindow).toBe(1_048_576)
-    expect(kimiFast.capabilities.speedFast).toBe(true)
-    expect(kimiFast.capabilities.modalities.image).toBe(true)
+    // DeepSeek V4 Pro — text-only; V4.1 Flash — vision
+    expect(resolveModel("DeepSeek-V4-Pro").capabilities.modalities.image).toBe(false)
+    expect(resolveModel("DeepSeek-V4.1-Flash").capabilities.modalities.image).toBe(true)
 
-    // glm5.2-fast — cheap scout, speedFast
-    const glmFast = resolveModel("glm5.2-fast")
-    expect(glmFast.capabilities.contextWindow).toBe(1_048_576)
-    expect(glmFast.capabilities.speedFast).toBe(true)
-    expect(glmFast.tags).toContain("cheap")
-    expect(glmFast.tags).toContain("scout")
+    // High-TPS DeepSeek V4 Flash SKUs — speedFast
+    expect(resolveModel("DeepSeek-V4-Flash-0731-Fast").capabilities.speedFast).toBe(true)
+    expect(resolveModel("DeepSeek-V4-Flash-0423").capabilities.speedFast).toBe(true)
 
-    // MiniMax-M3 — vision + reasoning (no interleaved flag in live wafer.capabilities)
-    const mm3 = resolveModel("MiniMax-M3")
-    expect(mm3.capabilities.thinking.adaptive).toBe(true)
-    expect(mm3.capabilities.thinking.interleaved).toBe(false)
-    expect(mm3.capabilities.contextWindow).toBe(1_048_576)
-    expect(mm3.capabilities.modalities.image).toBe(true)
+    // Qwen3.8-27B — 256K context, vision
+    const qwen = resolveModel("Qwen3.8-27B")
+    expect(qwen.capabilities.contextWindow).toBe(262_144)
+    expect(qwen.capabilities.modalities.image).toBe(true)
+
+    // MiniMax-M3.1-Flash — vision + reasoning (no interleaved flag in live wafer.capabilities)
+    const mm = resolveModel("MiniMax-M3.1-Flash")
+    expect(mm.capabilities.thinking.adaptive).toBe(true)
+    expect(mm.capabilities.thinking.interleaved).toBe(false)
+    expect(mm.capabilities.contextWindow).toBe(1_048_576)
+    expect(mm.capabilities.modalities.image).toBe(true)
   })
 
   // ---------------------------------------------------------------------------
@@ -514,12 +526,13 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
 
   it("modelVersionToken strips vendor prefixes for all families", () => {
     const fn = waferProviderPlugin.modelVersionToken!
-    expect(fn("GLM-5.1")).toBe("5.1")
     expect(fn("GLM-5.2")).toBe("5.2")
+    expect(fn("GLM-5.3-Flash")).toBe("5.3-Flash")
     expect(fn("Kimi-K3")).toBe("K3")
-    expect(fn("Kimi-K2.6")).toBe("K2.6")
-    expect(fn("MiniMax-M3")).toBe("M3")
-    expect(fn("kimi-k3-fast")).toBe("k3-fast")
+    expect(fn("Kimi-K3.1-Pro")).toBe("K3.1-Pro")
+    expect(fn("MiniMax-M3.1-Flash")).toBe("M3.1-Flash")
+    expect(fn("DeepSeek-V4-Pro")).toBe("V4-Pro")
+    expect(fn("Qwen3.8-27B")).toBe("3.8-27B")
     expect(fn("glm5.2-fast")).toBe("5.2-fast")
   })
 
@@ -558,7 +571,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     const adapter = resolveProvider("wafer")
     expect(adapter.displayName).toBe("Wafer")
     // Model should still resolve
-    expect(resolveModel("GLM-5.1").providerId).toBe("wafer")
+    expect(resolveModel("GLM-5.2").providerId).toBe("wafer")
   })
 
   // ---------------------------------------------------------------------------
@@ -578,14 +591,14 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
       },
     }
     registerWaferModels(spyModels)
-    expect(captured.length).toBe(7)
-    expect(captured[0]!.id).toBe("GLM-5.1")
+    expect(captured.length).toBe(13)
+    expect(captured[0]!.id).toBe("GLM-5.2")
     expect(captured[0]!.providerId).toBe("wafer")
     expect(captured[0]!.surfaceId).toBe("openai-chat-completions")
 
-    const seam = local.resolveModel("GLM-5.1")
+    const seam = local.resolveModel("GLM-5.2")
     expect(seam.providerId).toBe("wafer")
-    expect(seam.capabilities.contextWindow).toBe(202_752)
+    expect(seam.capabilities.contextWindow).toBe(1_048_576)
   })
 
   it("registerWaferModel ad-hoc also supports registrar", () => {
@@ -601,23 +614,25 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
       },
     }
     registerWaferModels(spyModels)
-    expect(captured.some((c) => c.id === "GLM-5.1")).toBe(true)
+    expect(captured.some((c) => c.id === "GLM-5.2")).toBe(true)
   })
 
   // ---------------------------------------------------------------------------
   // Model tags
   // ---------------------------------------------------------------------------
 
-  it("model tags are correct for all 7 models", () => {
+  it("model tags are correct for all models", () => {
     setup()
     const tagChecks: Record<string, string[]> = {
-      "GLM-5.1": ["reasoning", "balanced"],
-      "Kimi-K3": ["reasoning", "vision"],
-      "Kimi-K2.6": ["reasoning", "vision", "balanced"],
-      "MiniMax-M3": ["reasoning", "vision", "1m-context"],
-      "GLM-5.2": ["reasoning", "1m-context", "flagship", "deep"],
-      "kimi-k3-fast": ["reasoning", "vision", "1m-context", "fast"],
-      "glm5.2-fast": ["reasoning", "cheap", "scout", "fast"],
+      "GLM-5.2": ["reasoning", "1m-context", "balanced"],
+      "GLM-5.3": ["reasoning", "1m-context", "flagship", "deep"],
+      "GLM-5.3-Flash": ["reasoning", "vision", "1m-context", "cheap", "scout"],
+      "Kimi-K3": ["reasoning", "vision", "1m-context"],
+      "Kimi-K3.1-Pro": ["reasoning", "vision", "1m-context"],
+      "MiniMax-M3.1-Flash": ["reasoning", "vision", "1m-context", "cheap"],
+      "DeepSeek-V4-Pro": ["reasoning", "1m-context"],
+      "DeepSeek-V4-Flash-0731-Fast": ["reasoning", "1m-context", "cheap", "fast"],
+      "Qwen3.8-27B": ["reasoning", "vision", "cheap"],
     }
     for (const [id, expectedTags] of Object.entries(tagChecks)) {
       const m = resolveModel(id)
@@ -634,10 +649,10 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   it("primeWaferSessionInfo deduplicates concurrent calls", () => {
     setup()
     const p1 = waferProviderPlugin.primeSessionInfo!({
-      modelId: "GLM-5.1",
+      modelId: "GLM-5.2",
     })
     const p2 = waferProviderPlugin.primeSessionInfo!({
-      modelId: "GLM-5.1",
+      modelId: "GLM-5.2",
     })
     // Same promise reference — deduped
     expect(p1).toBe(p2)
@@ -649,12 +664,12 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   // 402/401 as success (both confirm auth + wire are correct; completing
   // the round-trip just needs active credits).
   const KEY = process.env.MINIMAL_AGENT_WAFER_LIVE_KEY
-  it.skipIf(!KEY)("live: GLM-5.1 via Wafer (auth + wire reach the API)", async () => {
+  it.skipIf(!KEY)("live: GLM-5.2 via Wafer (auth + wire reach the API)", async () => {
     setup()
-    const model = resolveModel("GLM-5.1")
+    const model = resolveModel("GLM-5.2")
     const provider = resolveProvider("wafer")
     const req: CanonicalRequest = {
-      modelId: "GLM-5.1",
+      modelId: "GLM-5.2",
       messages: [userText("Reply with the single word: pong")],
       generation: { maxOutputTokens: 16 },
     }
