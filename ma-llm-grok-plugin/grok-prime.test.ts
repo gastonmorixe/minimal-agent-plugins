@@ -150,7 +150,7 @@ describe("llm-grok provider plugin (prime/session)", () => {
   it("recommends subagent models by tags", () => {
     setup()
     const recs = grokAdapter.recommendSubagentModels?.() ?? []
-    expect(recs.find((r) => r.role === "deep")?.modelId).toBe("grok-4.6")
+    expect(recs.find((r) => r.role === "deep")?.modelId).toBe("grok-4.7")
     expect(recs.find((r) => r.role === "scout")?.modelId).toBe("grok-4.3")
     // grok-build lost "balanced" in the 2026-08-21 catalog refresh (it is a
     // specialized coding SKU); grok-build-chat carries balanced+code now.
