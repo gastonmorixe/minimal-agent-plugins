@@ -1,4 +1,4 @@
-/** OpenCode Zen's complete live model registry. Live check 2026-11-01: 78 ids. */
+/** OpenCode Zen's complete live model registry. Live check 2026-11-15: 86 ids. */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
@@ -54,6 +54,7 @@ const capsFor = (family: Family): Capabilities =>
 const LIVE_MODEL_IDS = [
   "claude-fable-5",
   "claude-fable-5-1",
+  "claude-fable-5-2",
   "claude-opus-5",
   "claude-opus-5-5",
   "claude-opus-4-8",
@@ -72,6 +73,8 @@ const LIVE_MODEL_IDS = [
   "gemini-3.5-flash-lite",
   "gemini-3.5-flash",
   "gemini-4-argon",
+  "gemini-4-carbon",
+  "gemini-4-hydrogen",
   "gpt-6.1-sol",
   "gpt-6-sol",
   "gpt-6-luna",
@@ -103,6 +106,7 @@ const LIVE_MODEL_IDS = [
   "muse-spark-1.3",
   "muse-spark-1.2",
   "muse-wonder-1.0",
+  "muse-ember-1.0",
   "mistral-large-4",
   "deepseek-v4.1-flash",
   "deepseek-v4.1-flash-free",
@@ -114,6 +118,7 @@ const LIVE_MODEL_IDS = [
   "glm-5.1",
   "glm-5",
   "minimax-m3",
+  "minimax-m3.1-flash-free",
   "minimax-m2.7",
   "minimax-m2.5",
   "kimi-k3",
@@ -126,6 +131,9 @@ const LIVE_MODEL_IDS = [
   "qwen3.8-flash",
   "beam-free",
   "flint-40b-free",
+  "iceman-free",
+  "inkling-2-small-free",
+  "longcat-2.5-free",
   "mimo-v2.6-flash-free",
   "big-pickle",
   "nemotron-3.5-lightning-free",

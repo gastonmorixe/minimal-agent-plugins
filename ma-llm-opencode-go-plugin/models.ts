@@ -10,7 +10,7 @@
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
  * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
  * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
- * (2026-11-01).
+ * (2026-11-15).
  *
  * @module llm/providers/opencode/models
  */
@@ -31,12 +31,14 @@ import {
   CAPS_GPT_6_LUNA,
   CAPS_GROK_4_7,
   CAPS_HY3,
+  CAPS_HY4,
   CAPS_HY4_PREVIEW,
   CAPS_ICEMAN_CONTRIBUTOR_FREE,
   CAPS_KIMI_K2_7_CODE,
   CAPS_KIMI_K3,
   CAPS_KIMI_K3_1_PRO,
   CAPS_LONGCAT_2_0,
+  CAPS_LONGCAT_2_5_FREE,
   CAPS_MIMO_V2_6_FLASH,
   CAPS_MIMO_V2_6_PRO,
   CAPS_MINIMAX_M3,
@@ -63,12 +65,14 @@ import {
   PRICING_GPT_6_LUNA,
   PRICING_GROK_4_7,
   PRICING_HY3,
+  PRICING_HY4,
   PRICING_HY4_PREVIEW,
   PRICING_ICEMAN_CONTRIBUTOR_FREE,
   PRICING_KIMI_K2_7_CODE,
   PRICING_KIMI_K3,
   PRICING_KIMI_K3_1_PRO,
   PRICING_LONGCAT_2_0,
+  PRICING_LONGCAT_2_5_FREE,
   PRICING_MIMO_V2_6_FLASH,
   PRICING_MIMO_V2_6_PRO,
   PRICING_MINIMAX_M3,
@@ -195,6 +199,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       pricing: PRICING_HY3,
       surfaceId: "openai-chat-completions",
     }),
+    makeSpec("hy4", {
+      displayName: "Hy4",
+      tags: ["opencode-go", "openai-compatible", "hy"],
+      capabilities: CAPS_HY4,
+      pricing: PRICING_HY4,
+      surfaceId: "openai-chat-completions",
+    }),
     makeSpec("hy4-preview", {
       displayName: "Hy4 Preview",
       tags: ["opencode-go", "openai-compatible", "hy"],
@@ -207,6 +218,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode-go", "openai-compatible", "longcat"],
       capabilities: CAPS_LONGCAT_2_0,
       pricing: PRICING_LONGCAT_2_0,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("longcat-2.5-free", {
+      displayName: "LongCat 2.5 Free",
+      tags: ["opencode-go", "openai-compatible", "longcat", "free", "cheap"],
+      capabilities: CAPS_LONGCAT_2_5_FREE,
+      pricing: PRICING_LONGCAT_2_5_FREE,
       surfaceId: "openai-chat-completions",
     }),
     makeSpec("mimo-v2.6-flash", {

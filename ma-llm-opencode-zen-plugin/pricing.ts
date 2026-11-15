@@ -1,4 +1,7 @@
-/** OpenCode Zen pricing in USD per 1M tokens, from the Zen docs. Live check 2026-11-01. */
+/**
+ * OpenCode Zen pricing in USD per 1M tokens, from the Zen docs. Live check
+ * 2026-11-15. The 2026-11-15 additions are priced from models.dev `opencode`.
+ */
 import type { MTokRate } from "./lib/host-types.ts"
 
 const rate = (
@@ -20,6 +23,7 @@ export const PRICING_OPENCODE_ZEN_GENERIC = PRICING_OX_ALPHA_FREE
 export const ZEN_PRICING: Record<string, MTokRate> = {
   "claude-fable-5": rate(10, 50, 1, 12.5),
   "claude-fable-5-1": rate(10, 50, 0.25, 12.5),
+  "claude-fable-5-2": rate(8, 40, 0.2, 10),
   "claude-opus-5": rate(5, 25, 0.5, 6.25),
   "claude-opus-4-8": rate(5, 25, 0.5, 6.25),
   "claude-opus-4-7": rate(5, 25, 0.5, 6.25),
@@ -63,7 +67,11 @@ export const ZEN_PRICING: Record<string, MTokRate> = {
   "muse-spark-1.2": rate(1.25, 4.25, 0.15),
   "muse-spark-1.3": rate(1.25, 4.25, 0.15),
   "muse-wonder-1.0": rate(4, 20, 0.2),
+  // Base tier (context <= 200K). models.dev lists $0.30/$1.50/$0.012 above 200K.
+  "muse-ember-1.0": rate(0.1, 0.5, 0.004),
   "gemini-4-argon": rate(2, 10, 0.1),
+  "gemini-4-carbon": rate(2, 10, 0.1),
+  "gemini-4-hydrogen": rate(1.5, 7.5, 0.075),
   "mistral-large-4": rate(0.68, 2.09, 0.07),
   "deepseek-v4.1-flash": rate(0.3, 1.2, 0.006),
   "deepseek-v4.1-flash-free": rate(0, 0),
@@ -97,6 +105,10 @@ for (const id of [
   "big-pickle",
   "beam-free",
   "flint-40b-free",
+  "iceman-free",
+  "inkling-2-small-free",
+  "longcat-2.5-free",
+  "minimax-m3.1-flash-free",
   "mimo-v2.6-flash-free",
   "nemotron-3.5-lightning-free",
   "nemotron-3.5-super-vl-free",

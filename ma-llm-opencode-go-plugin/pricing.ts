@@ -6,7 +6,7 @@
  * limits. We record the Go list prices so cost estimates reflect real
  * quota burn.
  *
- * Source precedence (2026-11-01):
+ * Source precedence (2026-11-15):
  * 1. Docs pricing table at `opencode.ai/docs/go` (authoritative Go list rates)
  * 2. models.dev `opencode-go` cost block when docs omit a slug (new or
  *    catalog-only IDs on live `/v1/models`)
@@ -120,6 +120,26 @@ export const PRICING_LONGCAT_2_0: MTokRate = {
   outputUSD: 1.2,
   cacheWriteUSD: 0,
   cacheReadUSD: 0.006,
+  webSearchPerCallUSD: 0,
+}
+
+/** Source: models.dev opencode-go (2026-11-15). Same rate as Hy4 Preview. */
+export const PRICING_HY4: MTokRate = {
+  inputUSD: 0.834,
+  outputUSD: 2.501,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.042,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: models.dev opencode-go (2026-11-15). Free model has no Go list rate.
+ */
+export const PRICING_LONGCAT_2_5_FREE: MTokRate = {
+  inputUSD: 0,
+  outputUSD: 0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0,
   webSearchPerCallUSD: 0,
 }
 

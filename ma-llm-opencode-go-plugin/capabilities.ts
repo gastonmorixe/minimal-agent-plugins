@@ -11,7 +11,7 @@
  *
  * Each model gets its own `Capabilities` record. No bucket presets.
  *
- * Source precedence (2026-10-11):
+ * Source precedence (2026-11-15):
  * 1. Live IDs from `https://opencode.ai/zen/go/v1/models` (must stay in sync)
  * 2. Context / maxOutput / modalities from models.dev `opencode-go` provider
  * 3. Docs (`opencode.ai/docs/go`) for surface/endpoint mapping; no window sizes
@@ -293,6 +293,28 @@ export const CAPS_HY4_PREVIEW: Capabilities = {
 export const CAPS_LONGCAT_2_0: Capabilities = {
   ...chatBase(1_000_000, 131_072, M_TEXT),
   ...thinkExtended(["none", "medium"], "medium"),
+}
+
+/**
+ * Hy4: 1_048_576 ctx, 65_536 output, text+image.
+ * Caps: models.dev opencode-go (2026-11-04). Surface: Chat (provider api
+ * `.../openai/v1`). Efforts: none | high (models.dev reasoning_options).
+ */
+export const CAPS_HY4: Capabilities = {
+  ...chatBase(1_048_576, 65_536, M_TI),
+  ...thinkExtended(["none", "high"], "high"),
+}
+
+/**
+ * LongCat 2.5 Free: 1M ctx, 262_144 output, text+image.
+ * Caps: models.dev opencode-go (2026-11-02). Surface: Chat (provider api
+ * `.../openai/v1`). Reasoning toggle only, mapped to none | medium like
+ * LongCat-2.0. models.dev sets temperature false.
+ */
+export const CAPS_LONGCAT_2_5_FREE: Capabilities = {
+  ...chatBase(1_000_000, 262_144, M_TI),
+  ...thinkExtended(["none", "medium"], "medium"),
+  acceptsTemperature: false,
 }
 
 /**
