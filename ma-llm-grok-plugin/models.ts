@@ -17,6 +17,11 @@
  * - Wire quirk: requesting `grok-4.6` returns backend id `grok-4.6-build`
  *   in the response `model` field; keep sending `grok-4.6`.
  *
+ * - Snapshot 2026-11-15 (no grok credential, so no live probe): models.dev
+ *   `xai` + https://docs.x.ai/docs/models add `grok-4.7` (500k ctx, $2/$6).
+ *   models.dev ids `grok-build-0.1` and `grok-4.20-*-0309*` are already
+ *   aliases below. Imagine image/video SKUs stay omitted.
+ *
  * Special models:
  * - `grok-build` / `grok-build-0.1`: Dedicated agentic coding model (May 2026).
  *   Optimized for multi-step software engineering, tool calling, and coding
@@ -44,6 +49,8 @@ import {
   CAPS_GROK_45_RESPONSES,
   CAPS_GROK_46_CHAT,
   CAPS_GROK_46_RESPONSES,
+  CAPS_GROK_47_CHAT,
+  CAPS_GROK_47_RESPONSES,
   CAPS_GROK_420_MULTI_AGENT,
   CAPS_GROK_420_NON_REASONING,
   CAPS_GROK_BUILD_CHAT,
@@ -56,6 +63,7 @@ import {
   PRICING_GROK_43,
   PRICING_GROK_45,
   PRICING_GROK_46,
+  PRICING_GROK_47,
   PRICING_GROK_420,
   PRICING_GROK_BUILD,
   PRICING_GROK_GENERIC,
@@ -149,6 +157,32 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     tags: ["grok", "xai", "flagship", "reasoning", "vision", "tools", "chat"],
     capabilities: CAPS_GROK_46_CHAT,
     pricing: PRICING_GROK_46,
+  })
+
+  // --- grok-4.7: Responses preferred (models.dev `xai` + docs.x.ai, snapshot
+  // 2026-11-15). Not yet confirmed on the cli-chat-proxy subscription route,
+  // so it sits after grok-4.6 and grok-4.6 stays the default and the first
+  // flagship/deep tag match.
+  reg(registrar, {
+    id: "grok-4.7",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.7",
+    wireId: "grok-4.7",
+    aliases: ["grok-4.7-latest"],
+    tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_47_RESPONSES,
+    pricing: PRICING_GROK_47,
+    knowledgeCutoff: "2026-05-01", // docs.x.ai/developers/models: "May 2026"
+  })
+  reg(registrar, {
+    id: "grok-4.7-chat",
+    surfaceId: "openai-chat-completions",
+    displayName: "Grok 4.7 (Chat)",
+    wireId: "grok-4.7",
+    tags: ["grok", "xai", "flagship", "reasoning", "vision", "tools", "chat"],
+    capabilities: CAPS_GROK_47_CHAT,
+    pricing: PRICING_GROK_47,
+    knowledgeCutoff: "2026-05-01",
   })
 
   // --- grok-4.5: Responses preferred (cli-chat-proxy + api.x.ai)

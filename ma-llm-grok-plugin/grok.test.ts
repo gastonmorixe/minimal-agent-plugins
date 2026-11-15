@@ -206,6 +206,38 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(chat.capabilities).toEqual(CAPS_GROK_46_CHAT)
   })
 
+  it("registers grok-4.7 from models.dev + docs.x.ai (snapshot 2026-11-15)", () => {
+    setup()
+    const m = resolveModel("grok-4.7")
+    expect(m.surfaceId).toBe("openai-responses")
+    expect(m.vendorIds?.firstParty).toBe("grok-4.7")
+    expect(m.aliases).toEqual(["grok-4.7-latest"])
+    expect(m.capabilities.contextWindow).toBe(500_000)
+    expect(m.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+    expect(m.capabilities.effort.default).toBe("high")
+    expect(m.knowledgeCutoff).toBe("2026-05-01")
+    expect(m.pricing.inputUSD).toBe(2)
+    expect(m.pricing.cacheReadUSD).toBe(0.5)
+    expect(m.pricing.outputUSD).toBe(6)
+    expect(m.pricing.longContext).toEqual({
+      thresholdTokens: 200_000,
+      inputUSD: 4,
+      outputUSD: 12,
+      cacheWriteUSD: 4,
+      cacheReadUSD: 1,
+    })
+    const chat = resolveModel("grok-4.7-chat")
+    expect(chat.surfaceId).toBe("openai-chat-completions")
+    expect(chat.vendorIds?.firstParty).toBe("grok-4.7")
+    // models.dev ids grok-build-0.1 and grok-4.20-0309-* are aliases, not new entries
+    expect(resolveModel("grok-build").aliases).toContain("grok-build-0.1")
+    expect(resolveModel("grok-4.20-reasoning").aliases).toContain("grok-4.20-0309-reasoning")
+    expect(resolveModel("grok-4.20-non-reasoning").aliases).toContain(
+      "grok-4.20-0309-non-reasoning",
+    )
+    expect(resolveModel("grok-4.20-multi-agent").aliases).toContain("grok-4.20-multi-agent-0309")
+  })
+
   it("registers dual surfaces: Responses preferred for frontier, Chat available", () => {
     setup()
     const flagship = resolveModel("grok-4.5")
@@ -296,6 +328,8 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
   it("enables image modality on every catalog text model", () => {
     setup()
     for (const id of [
+      "grok-4.7",
+      "grok-4.7-chat",
       "grok-4.5",
       "grok-4.5-chat",
       "grok-build",

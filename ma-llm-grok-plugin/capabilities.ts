@@ -111,6 +111,18 @@ export const CAPS_GROK_46_RESPONSES: Capabilities = {
 }
 
 // ---------------------------------------------------------------------------
+// grok-4.7 (500k ctx). Snapshot 2026-11-15 from models.dev `xai` and
+// https://docs.x.ai/developers/models/grok-4.7: 500k context, text+image in,
+// efforts low/medium/high/xhigh (default high), function calling, structured
+// outputs. Same shape as grok-4.6, so reuse the 4.6 tables. serverTools
+// (web_search) is inherited from the 4.6 sibling, not probed live on 4.7.
+// ---------------------------------------------------------------------------
+
+export const CAPS_GROK_47_CHAT: Capabilities = { ...CAPS_GROK_46_CHAT }
+
+export const CAPS_GROK_47_RESPONSES: Capabilities = { ...CAPS_GROK_46_RESPONSES }
+
+// ---------------------------------------------------------------------------
 // Shared frontier base (grok-4.5 family)
 // ---------------------------------------------------------------------------
 
