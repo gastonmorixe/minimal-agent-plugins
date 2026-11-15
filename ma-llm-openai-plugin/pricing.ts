@@ -52,16 +52,6 @@ export const PRICING_O3: MTokRate = {
   reasoningUSD: 8,
 }
 
-/** o4-mini pricing. */
-export const PRICING_O4_MINI: MTokRate = {
-  inputUSD: 1.1,
-  outputUSD: 4.4,
-  cacheWriteUSD: 1.1,
-  cacheReadUSD: 0.275,
-  webSearchPerCallUSD: 0,
-  reasoningUSD: 4.4,
-}
-
 /**
  * gpt-5 (legacy) pricing. Source: developers.openai.com/api/docs/models/gpt-5
  * + pricing page (2026-07-30).
@@ -324,36 +314,6 @@ export const PRICING_CHAT_LATEST: MTokRate = {
   reasoningUSD: 30,
 }
 
-/** o1 pricing. */
-export const PRICING_O1: MTokRate = {
-  inputUSD: 15,
-  outputUSD: 60,
-  cacheWriteUSD: 15,
-  cacheReadUSD: 7.5,
-  webSearchPerCallUSD: 0,
-  reasoningUSD: 60,
-}
-
-/** o1-pro pricing. No cached input discount. */
-export const PRICING_O1_PRO: MTokRate = {
-  inputUSD: 150,
-  outputUSD: 600,
-  cacheWriteUSD: 150,
-  cacheReadUSD: 150,
-  webSearchPerCallUSD: 0,
-  reasoningUSD: 600,
-}
-
-/** o3-mini pricing. */
-export const PRICING_O3_MINI: MTokRate = {
-  inputUSD: 1.1,
-  outputUSD: 4.4,
-  cacheWriteUSD: 1.1,
-  cacheReadUSD: 0.55,
-  webSearchPerCallUSD: 0,
-  reasoningUSD: 4.4,
-}
-
 /** o3-pro pricing. No cached input discount. */
 export const PRICING_O3_PRO: MTokRate = {
   inputUSD: 20,
@@ -370,14 +330,5 @@ export const PRICING_GPT_41_MINI: MTokRate = {
   outputUSD: 1.6,
   cacheWriteUSD: 0.4,
   cacheReadUSD: 0.1,
-  webSearchPerCallUSD: 0,
-}
-
-/** gpt-4.1-nano pricing. */
-export const PRICING_GPT_41_NANO: MTokRate = {
-  inputUSD: 0.1,
-  outputUSD: 0.4,
-  cacheWriteUSD: 0.1,
-  cacheReadUSD: 0.025,
   webSearchPerCallUSD: 0,
 }

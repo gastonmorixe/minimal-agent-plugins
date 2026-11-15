@@ -603,12 +603,8 @@ describe("remaining API models (2026-09-29)", () => {
     "gpt-5-nano",
     "gpt-5-pro",
     "chat-latest",
-    "o1",
-    "o1-pro",
-    "o3-mini",
     "o3-pro",
     "gpt-4.1-mini",
-    "gpt-4.1-nano",
   ]
   const REMOVED = [
     "gpt-5.1-chat-latest",
@@ -626,10 +622,16 @@ describe("remaining API models (2026-09-29)", () => {
     "gpt-4",
     "gpt-4-turbo",
     "gpt-3.5-turbo",
+    // Gone from live /v1/models 2026-11-15 (shut down 2026-10-23).
+    "o1",
+    "o1-pro",
+    "o3-mini",
+    "o4-mini",
+    "gpt-4.1-nano",
   ]
-  const PRO = ["gpt-5.2-pro", "gpt-5-pro", "o1-pro", "o3-pro"]
+  const PRO = ["gpt-5.2-pro", "gpt-5-pro", "o3-pro"]
 
-  it("registers all 14 ids and none of the removed ids", () => {
+  it("registers all 10 ids and none of the removed ids", () => {
     const ids = registerOpenAIModels(makeTestRegistry().models)
     for (const id of NEW) expect(ids).toContain(id)
     for (const id of REMOVED) {
@@ -660,15 +662,15 @@ describe("remaining API models (2026-09-29)", () => {
     expect(eff("gpt-5.2")).toEqual(["none", "low", "medium", "high", "xhigh"])
     expect(eff("gpt-5.2-pro")).toEqual(["medium", "high", "xhigh"])
     expect(eff("gpt-5-mini")).toEqual(["minimal", "low", "medium", "high"])
-    expect(eff("o1")).toEqual(["low", "medium", "high"])
+    expect(eff("o3-pro")).toEqual(["low", "medium", "high"])
     expect(eff("gpt-4.1-mini")).toEqual([])
-    expect(reg.resolveModel("gpt-4.1-nano").capabilities.acceptsTemperature).toBe(true)
+    expect(reg.resolveModel("gpt-4.1-mini").capabilities.acceptsTemperature).toBe(true)
   })
 
   it("marks deprecated models in displayName", () => {
     const reg = makeTestRegistry()
     registerOpenAIModels(reg.models)
     expect(reg.resolveModel("gpt-5-pro").displayName).toContain("(deprecated 2026-12-11)")
-    expect(reg.resolveModel("o1").displayName).toContain("(deprecated 2026-10-23)")
+    expect(reg.resolveModel("o3-pro").displayName).toContain("(deprecated 2026-12-11)")
   })
 })

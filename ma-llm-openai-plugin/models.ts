@@ -1,8 +1,9 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the public OpenAI API catalog (refreshed 2026-11-01 via live
- * `GET /v1/models` + developers.openai.com model card; GPT-6.1 Terra added
+ * Mirrors the public OpenAI API catalog (refreshed 2026-11-15 via live
+ * `GET /v1/models`: o1, o1-pro, o3-mini, o4-mini and gpt-4.1-nano removed as
+ * no longer listed; no new chat/coding SKUs. 2026-11-01: GPT-6.1 Terra added
  * from the 2026-11-01 card, GPT-6.1 Sol / GPT-6 Sol / GPT-6 Luna added
  * 2026-09-29) for GPT-6 Astra, the GPT-5.6 family, plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
  * tables in `capabilities.ts` and `pricing.ts`.
@@ -43,8 +44,8 @@
  * | `o3` | `o3` |
  * | `chat-latest` | moving alias to the ChatGPT Instant model (effort `medium` only) |
  * | `gpt-5.1`, `gpt-5.2`, `gpt-5-mini`, `gpt-5-nano` | same ids, Responses + `-chat` (registered 2026-09-29) |
- * | `gpt-5.2-pro`, `gpt-5.3-codex`, `gpt-5-pro`, `o1-pro`, `o3-pro` | same ids, Responses only |
- * | `o1`, `o3-mini`, `gpt-4.1-mini`, `gpt-4.1-nano` | same ids, both surfaces |
+ * | `gpt-5.2-pro`, `gpt-5.3-codex`, `gpt-5-pro`, `o3-pro` | same ids, Responses only |
+ * | `gpt-4.1-mini` | same id, both surfaces |
  * | `research` | Deep Research product surface — **TODO:** not an API chat/completions model id |
  *
  * ChatGPT `max_tokens` is a **consumer UI budget**, not the API
@@ -112,16 +113,8 @@ import {
   CAPS_GPT_41_CHAT,
   CAPS_GPT_41_MINI_CHAT,
   CAPS_GPT_41_MINI_RESPONSES,
-  CAPS_GPT_41_NANO_CHAT,
-  CAPS_GPT_41_NANO_RESPONSES,
-  CAPS_O1_CHAT,
-  CAPS_O1_PRO_RESPONSES,
-  CAPS_O1_RESPONSES,
-  CAPS_O3_MINI_CHAT,
-  CAPS_O3_MINI_RESPONSES,
   CAPS_O3_PRO_RESPONSES,
   CAPS_O3_RESPONSES,
-  CAPS_O4_MINI_RESPONSES,
 } from "./capabilities.ts"
 import {
   PRICING_CHAT_LATEST,
@@ -151,13 +144,8 @@ import {
   PRICING_GPT_6_SOL,
   PRICING_GPT_41,
   PRICING_GPT_41_MINI,
-  PRICING_GPT_41_NANO,
-  PRICING_O1,
-  PRICING_O1_PRO,
   PRICING_O3,
-  PRICING_O3_MINI,
   PRICING_O3_PRO,
-  PRICING_O4_MINI,
 } from "./pricing.ts"
 
 /**
@@ -562,18 +550,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     pricing: PRICING_O3,
     vendorIds: { firstParty: "o3" },
   })
-  register({
-    id: "o4-mini",
-    providerId: "openai",
-    surfaceId: "openai-responses",
-    displayName: "OpenAI o4-mini",
-    knowledgeCutoff: "2024-06-01",
-    tags: ["o-series", "reasoning", "fast"],
-    capabilities: CAPS_O4_MINI_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_O4_MINI,
-    vendorIds: { firstParty: "o4-mini" },
-  })
 
   // gpt-4 family (Chat Completions surface).
   register({
@@ -622,7 +598,9 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   // gpt-5.1-codex-max, gpt-5.1-codex-mini, gpt-5.2-codex,
   // gpt-5.2-chat-latest, gpt-5.3-chat-latest, gpt-5-codex, gpt-5-chat-latest,
   // o3-deep-research, o4-mini-deep-research, gpt-5-search-api, gpt-4,
-  // gpt-4-turbo, gpt-3.5-turbo.
+  // gpt-4-turbo, gpt-3.5-turbo. Removed 2026-11-15 (shut down 2026-10-23,
+  // gone from live /v1/models): o1, o1-pro, o3-mini, o4-mini, gpt-4.1-nano.
+  // gpt-5-search-api is live but stays out of scope (search SKU).
 
   // GPT-5.1.
   register({
@@ -796,72 +774,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     vendorIds: { firstParty: "chat-latest" },
   })
 
-  // Deprecated, shutdown 2026-10-23.
-  register({
-    id: "o1",
-    providerId: "openai",
-    surfaceId: "openai-responses",
-    displayName: "OpenAI o1 (deprecated 2026-10-23)",
-    knowledgeCutoff: "2023-10-01",
-    tags: ["o-series", "reasoning", "legacy"],
-    capabilities: CAPS_O1_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_O1,
-    vendorIds: { firstParty: "o1" },
-  })
-  register({
-    id: "o1-chat",
-    providerId: "openai",
-    surfaceId: "openai-chat-completions",
-    displayName: "OpenAI o1 (Chat Completions) (deprecated 2026-10-23)",
-    knowledgeCutoff: "2023-10-01",
-    tags: ["o-series", "chat", "legacy"],
-    capabilities: CAPS_O1_CHAT,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_O1,
-    vendorIds: { firstParty: "o1" },
-  })
-
-  // Deprecated, shutdown 2026-10-23.
-  register({
-    id: "o1-pro",
-    providerId: "openai",
-    surfaceId: "openai-responses",
-    displayName: "OpenAI o1-pro (deprecated 2026-10-23)",
-    knowledgeCutoff: "2023-10-01",
-    tags: ["o-series", "pro", "reasoning", "legacy"],
-    capabilities: CAPS_O1_PRO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_O1_PRO,
-    vendorIds: { firstParty: "o1-pro" },
-  })
-
-  // Deprecated, shutdown 2026-10-23.
-  register({
-    id: "o3-mini",
-    providerId: "openai",
-    surfaceId: "openai-responses",
-    displayName: "OpenAI o3-mini (deprecated 2026-10-23)",
-    knowledgeCutoff: "2023-10-01",
-    tags: ["o-series", "reasoning", "legacy"],
-    capabilities: CAPS_O3_MINI_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_O3_MINI,
-    vendorIds: { firstParty: "o3-mini" },
-  })
-  register({
-    id: "o3-mini-chat",
-    providerId: "openai",
-    surfaceId: "openai-chat-completions",
-    displayName: "OpenAI o3-mini (Chat Completions) (deprecated 2026-10-23)",
-    knowledgeCutoff: "2023-10-01",
-    tags: ["o-series", "chat", "legacy"],
-    capabilities: CAPS_O3_MINI_CHAT,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_O3_MINI,
-    vendorIds: { firstParty: "o3-mini" },
-  })
-
   // Deprecated, shutdown 2026-12-11.
   register({
     id: "o3-pro",
@@ -900,32 +812,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_41_MINI,
     vendorIds: { firstParty: "gpt-4.1-mini" },
-  })
-
-  // Deprecated, shutdown 2026-10-23.
-  register({
-    id: "gpt-4.1-nano",
-    providerId: "openai",
-    surfaceId: "openai-responses",
-    displayName: "GPT-4.1 nano (deprecated 2026-10-23)",
-    knowledgeCutoff: "2024-06-01",
-    tags: ["gpt-4", "long-context", "legacy"],
-    capabilities: CAPS_GPT_41_NANO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_GPT_41_NANO,
-    vendorIds: { firstParty: "gpt-4.1-nano" },
-  })
-  register({
-    id: "gpt-4.1-nano-chat",
-    providerId: "openai",
-    surfaceId: "openai-chat-completions",
-    displayName: "GPT-4.1 nano (Chat Completions) (deprecated 2026-10-23)",
-    knowledgeCutoff: "2024-06-01",
-    tags: ["gpt-4", "chat", "long-context", "legacy"],
-    capabilities: CAPS_GPT_41_NANO_CHAT,
-    estimateTokens: estimateOpenAITokens,
-    pricing: PRICING_GPT_41_NANO,
-    vendorIds: { firstParty: "gpt-4.1-nano" },
   })
 
   return ids

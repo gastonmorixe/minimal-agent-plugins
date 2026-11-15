@@ -56,18 +56,9 @@ export {
   CAPS_GPT_41_CHAT,
   CAPS_GPT_41_MINI_CHAT,
   CAPS_GPT_41_MINI_RESPONSES,
-  CAPS_GPT_41_NANO_CHAT,
-  CAPS_GPT_41_NANO_RESPONSES,
-  CAPS_O1_CHAT,
-  CAPS_O1_PRO_RESPONSES,
-  CAPS_O1_RESPONSES,
   CAPS_O3_CHAT,
-  CAPS_O3_MINI_CHAT,
-  CAPS_O3_MINI_RESPONSES,
   CAPS_O3_PRO_RESPONSES,
   CAPS_O3_RESPONSES,
-  CAPS_O4_MINI_CHAT,
-  CAPS_O4_MINI_RESPONSES,
 } from "./capabilities.ts"
 export { buildOpenAIChatBody, type OpenAIChatRequestBody } from "./chat/request-body.ts"
 export { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
@@ -100,13 +91,8 @@ export {
   PRICING_GPT_6_SOL,
   PRICING_GPT_41,
   PRICING_GPT_41_MINI,
-  PRICING_GPT_41_NANO,
-  PRICING_O1,
-  PRICING_O1_PRO,
   PRICING_O3,
-  PRICING_O3_MINI,
   PRICING_O3_PRO,
-  PRICING_O4_MINI,
 } from "./pricing.ts"
 export {
   buildOpenAIResponsesBody,
