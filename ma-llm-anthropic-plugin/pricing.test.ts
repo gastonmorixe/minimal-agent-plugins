@@ -12,7 +12,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { calculateUsageCost } from "./lib/pricing-calc.ts"
-import { sonnet5RateForDate } from "./models.ts"
+import { haiku55PromptTokens, sonnet5RateForDate } from "./models.ts"
 import {
   ANTHROPIC_FABLE_5_2,
   ANTHROPIC_HAIKU_55,
@@ -90,5 +90,40 @@ describe("sonnet 5 introductory pricing", () => {
   it("switches to the standard rate at the 2026-09-01 boundary and after", () => {
     expect(sonnet5RateForDate(Date.UTC(2026, 8, 1, 0, 0, 0))).toBe(ANTHROPIC_SONNET_STANDARD)
     expect(sonnet5RateForDate(Date.UTC(2026, 11, 25))).toBe(ANTHROPIC_SONNET_STANDARD)
+  })
+})
+
+describe("haiku55PromptTokens", () => {
+  it("returns 0 for an empty request", () => {
+    expect(haiku55PromptTokens({ modelId: "claude-haiku-5-5", messages: [] })).toBe(0)
+  })
+
+  it("counts system and message text at 3.5 chars per token", () => {
+    // 35 system chars + 70 message chars = 105 chars = 30 tokens.
+    const tokens = haiku55PromptTokens({
+      modelId: "claude-haiku-5-5",
+      system: [{ type: "text", text: "s".repeat(35) }],
+      messages: [{ role: "user", content: [{ type: "text", text: "m".repeat(70) }] }],
+    })
+    expect(tokens).toBe(30)
+  })
+
+  it("counts tool_result text inside a message", () => {
+    const tokens = haiku55PromptTokens({
+      modelId: "claude-haiku-5-5",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              toolUseId: "t1",
+              content: [{ type: "text", text: "r".repeat(7) }],
+            },
+          ],
+        },
+      ],
+    })
+    expect(tokens).toBe(2)
   })
 })
