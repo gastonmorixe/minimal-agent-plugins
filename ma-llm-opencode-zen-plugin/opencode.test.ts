@@ -56,7 +56,7 @@ describe("llm-opencode-zen", () => {
 
   it("registers every live Zen model with the documented surface", () => {
     const reg = setup()
-    expect(LIVE_MODEL_IDS).toHaveLength(78)
+    expect(LIVE_MODEL_IDS).toHaveLength(86)
     for (const id of LIVE_MODEL_IDS) {
       const model = reg.resolveModel(id)
       expect(model.providerId).toBe("opencode-zen")
@@ -67,6 +67,32 @@ describe("llm-opencode-zen", () => {
       else expect(model.surfaceId).toBe("openai-chat-completions")
       expect(model.pricing).toBeDefined()
       expect(model.capabilities.contextWindow).toBeGreaterThan(0)
+    }
+  })
+
+  it("registers the 2026-11-15 live additions with models.dev pricing", () => {
+    const reg = setup()
+    const fable = reg.resolveModel("claude-fable-5-2")
+    expect(fable.surfaceId).toBe("anthropic-messages")
+    expect(fable.pricing?.inputUSD).toBe(8)
+    expect(fable.pricing?.outputUSD).toBe(40)
+    expect(fable.pricing?.cacheWriteUSD).toBe(10)
+    expect(reg.resolveModel("gemini-4-carbon").pricing?.inputUSD).toBe(2)
+    expect(reg.resolveModel("gemini-4-hydrogen").pricing?.inputUSD).toBe(1.5)
+    const ember = reg.resolveModel("muse-ember-1.0")
+    expect(ember.surfaceId).toBe("openai-responses")
+    expect(ember.pricing?.inputUSD).toBe(0.1)
+    expect(ember.pricing?.cacheReadUSD).toBe(0.004)
+    for (const id of [
+      "iceman-free",
+      "inkling-2-small-free",
+      "longcat-2.5-free",
+      "minimax-m3.1-flash-free",
+    ]) {
+      const m = reg.resolveModel(id)
+      expect(m.surfaceId).toBe("openai-chat-completions")
+      expect(m.tags).toContain("free")
+      expect(m.pricing?.inputUSD).toBe(0)
     }
   })
 

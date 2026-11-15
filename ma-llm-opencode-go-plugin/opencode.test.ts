@@ -133,7 +133,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-11-01 (authoritative ID list).
+    // Live /v1/models snapshot 2026-11-15 (authoritative ID list).
     const ids = [
       "beam-free",
       "claude-haiku-5-5",
@@ -147,12 +147,14 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "gpt-6-luna",
       "grok-4.7",
       "hy3",
+      "hy4",
       "hy4-preview",
       "iceman-contributor-free",
       "kimi-k2.7-code",
       "kimi-k3",
       "kimi-k3.1-pro",
       "longcat-2.0",
+      "longcat-2.5-free",
       "mimo-v2.6-flash",
       "mimo-v2.6-pro",
       "minimax-m3",
@@ -182,9 +184,6 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(resolveModel("deepseek-v4.1-flash").pricing?.inputUSD).toBe(0.15)
     expect(resolveModel("deepseek-v4.1-flash").pricing?.outputUSD).toBe(0.6)
     expect(resolveModel("deepseek-v4.1-flash").pricing?.cacheReadUSD).toBe(0.003)
-    expect(resolveModel("deepseek-v4-pro").pricing?.inputUSD).toBe(0.66)
-    expect(resolveModel("deepseek-v4-pro").pricing?.outputUSD).toBe(1.98)
-    expect(resolveModel("deepseek-v4-pro").pricing?.cacheReadUSD).toBe(0.022)
     expect(resolveModel("deepseek-v4-pro").pricing?.inputUSD).toBe(0.66)
     expect(resolveModel("deepseek-v4-pro").pricing?.outputUSD).toBe(1.98)
     expect(resolveModel("deepseek-v4-pro").pricing?.cacheReadUSD).toBe(0.022)
