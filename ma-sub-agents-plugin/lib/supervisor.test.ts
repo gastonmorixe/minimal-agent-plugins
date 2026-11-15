@@ -608,3 +608,76 @@ describe("supervisorTick — stream-json signals", () => {
     expect(out.records[0]?.status.kind).toBe("done")
   })
 })
+
+describe("supervisorTick — turn and token budgets", () => {
+  const withBudget = (budget: SubagentRecord["budget"]): SubagentRecord => ({
+    ...rec("A1", running()),
+    ...(budget ? { budget } : {}),
+  })
+
+  it("stops a worker that starts a turn past maxTurns", () => {
+    const out = tick([withBudget({ maxTurns: 3 })], {
+      A1: { alive: true, progress: { tools: 5, tokens: 10, turns: 4 } },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind === "failed" && st.error).toBe(
+      "budget exceeded: started turn 4 with maxTurns 3",
+    )
+    expect(out.effects[0]).toEqual({
+      type: "stop",
+      id: subagentId("A1"),
+      pid: 4242,
+      reason: "budget",
+    })
+  })
+
+  it("lets a worker finish its last allowed turn", () => {
+    const out = tick([withBudget({ maxTurns: 3 })], {
+      A1: { alive: true, progress: { tools: 5, tokens: 10, turns: 3 } },
+    })
+    expect(out.records[0]?.status.kind).toBe("running")
+  })
+
+  it("stops a worker past maxTokens of generated output", () => {
+    const out = tick([withBudget({ maxTokens: 1000 })], {
+      A1: { alive: true, progress: { tools: 1, tokens: 90_000, output: 1200 } },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind === "failed" && st.error).toBe(
+      "budget exceeded: 1200 output tokens with maxTokens 1000",
+    )
+  })
+
+  it("does not count context tokens toward maxTokens", () => {
+    const out = tick([withBudget({ maxTokens: 1000 })], {
+      A1: { alive: true, progress: { tools: 1, tokens: 90_000, output: 400 } },
+    })
+    expect(out.records[0]?.status.kind).toBe("running")
+  })
+
+  it("never kills a worker that already handed back a result", () => {
+    const out = tick([withBudget({ maxTurns: 1, maxTokens: 1 })], {
+      A1: { alive: true, result: RESULT, progress: { tools: 1, tokens: 1, turns: 9, output: 99 } },
+    })
+    expect(out.records[0]?.status.kind).toBe("done")
+  })
+
+  it("never kills a worker whose run already ended", () => {
+    const out = tick([withBudget({ maxTurns: 1 })], {
+      A1: {
+        alive: true,
+        runEnded: true,
+        distilled: "final",
+        progress: { tools: 1, tokens: 1, turns: 2 },
+      },
+    })
+    expect(out.records[0]?.status.kind).toBe("done")
+  })
+
+  it("ignores maxTurns for a worker with no turn count (no stream)", () => {
+    const out = tick([withBudget({ maxTurns: 1 })], {
+      A1: { alive: true, progress: { tools: 40, tokens: 1 } },
+    })
+    expect(out.records[0]?.status.kind).toBe("running")
+  })
+})

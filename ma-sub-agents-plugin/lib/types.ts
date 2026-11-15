@@ -77,13 +77,17 @@ export type Isolation = "fresh" | "fork"
  */
 export type Workspace = "inherit-cwd" | "scratch"
 
-/** A worker effort/runtime budget. All optional; the supervisor trips a stop when exceeded. */
+/**
+ * A worker effort/runtime budget. All optional. The supervisor stops a worker
+ * that exceeds any of them (checked once per 1 s tick, so a limit can overshoot
+ * by what the worker does in that second).
+ */
 export interface Budget {
-  /** Max agentic turns before the worker is stopped. */
+  /** Max model responses. The worker is stopped when turn `maxTurns + 1` starts. */
   readonly maxTurns?: number
   /** Wall-clock deadline in seconds from spawn. */
   readonly deadlineSec?: number
-  /** Soft token ceiling (advisory; surfaced, not hard-enforced mid-call). */
+  /** Max generated tokens (output, thinking included) summed over all turns. */
   readonly maxTokens?: number
 }
 
