@@ -326,7 +326,7 @@ describe("capabilities seed", () => {
     registerCursorModels(models as never)
     const namespaced = [...entries.keys()].filter((id) => id.startsWith("cursor-"))
     // Count tracks static catalog + sparse-variant fill + cursor-auto + kimi aliases.
-    expect(namespaced.length).toBe(446)
+    expect(namespaced.length).toBe(460)
     expect(entries.has("grok-4.6")).toBe(true)
     expect(entries.get("grok-4.6")?.vendorIds?.cursor).toBe("grok-4.6")
     const fast = entries.get("cursor-grok-4.6-high-fast")
