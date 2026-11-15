@@ -6,7 +6,7 @@
  * `adapter.ts`). Curated slugs each get their own `Capabilities` record
  * derived from live GET https://openrouter.ai/api/v1/models fields
  * (context_length, top_provider.max_completion_tokens,
- * architecture.input_modalities, supported_parameters) as of 2026-07-30.
+ * architecture.input_modalities, supported_parameters) as of 2026-11-15.
  * Ad-hoc / unknown slugs fall back to {@link CAPS_OPENROUTER_CHAT}.
  *
  * Convention: OpenRouter `file` input modality → `modalities.pdf` (documents),
@@ -48,21 +48,14 @@ const TOOLS_NONE = {
   strictSchema: false,
 } as const
 
-/** Text-only. */
-const M_TEXT = { image: false, audio: false, pdf: false, video: false } as const
-
 /** Text + image. */
 const M_TI = { image: true, audio: false, pdf: false, video: false } as const
 
+/** Text + image + video. */
+const M_TIV = { image: true, audio: false, pdf: false, video: true } as const
+
 /** Text + image + file (documents → pdf). */
 const M_TIP = { image: true, audio: false, pdf: true, video: false } as const
-
-/**
- * Fallback max output when OpenRouter omits
- * `top_provider.max_completion_tokens` (null). Matches the prior shared
- * gateway default — not an invented per-model figure.
- */
-const MAX_OUT_WHEN_OMITTED = 128_000
 
 /**
  * Common OpenRouter `reasoning_effort` values when the live row lists the
@@ -129,7 +122,7 @@ function orChatBase(
 
 /**
  * Permissive OpenRouter chat capability for ad-hoc / unlisted slugs.
- * Snapshot baseline as of 2026-07-30 (~1M context / 128k max out common
+ * Snapshot baseline as of 2026-11-15 (~1M context / 128k max out common
  * among frontier rows). Prefer a per-model CAPS_* when the slug is curated.
  */
 export const CAPS_OPENROUTER_CHAT: Capabilities = {
@@ -146,16 +139,16 @@ export const CAPS_OPENROUTER_CHAT: Capabilities = {
 }
 
 // ---------------------------------------------------------------------------
-// Curated per-model capabilities (live OpenRouter 2026-07-30)
+// Curated per-model capabilities (live OpenRouter 2026-11-15)
 // ---------------------------------------------------------------------------
 
 /**
- * moonshotai/kimi-k3 — ctx 1_048_576; max_completion_tokens omitted;
- * input text+image; tools + structured + reasoning (+ include_reasoning);
+ * moonshotai/kimi-k3.1-pro: ctx 1_048_576, max out 943_718,
+ * input text+image+video, tools + structured + reasoning (+ include_reasoning),
  * temperature/top_p/top_k/seed/stop.
  */
-export const CAPS_OR_KIMI_K3: Capabilities = {
-  ...orChatBase(1_048_576, MAX_OUT_WHEN_OMITTED, M_TI, {
+export const CAPS_OR_KIMI_K31_PRO: Capabilities = {
+  ...orChatBase(1_048_576, 943_718, M_TIV, {
     temperature: true,
     topP: true,
     topK: true,
@@ -168,12 +161,12 @@ export const CAPS_OR_KIMI_K3: Capabilities = {
 }
 
 /**
- * deepseek/deepseek-v4-flash — ctx 1_048_576; max out 393_216; text-only;
- * tools + structured + reasoning (+ include_reasoning);
+ * deepseek/deepseek-v4.1-flash: ctx 1_048_576, max out 393_216, text+image,
+ * tools + structured + reasoning (+ include_reasoning),
  * temperature/top_p/top_k/seed/stop.
  */
-export const CAPS_OR_DEEPSEEK_V4_FLASH: Capabilities = {
-  ...orChatBase(1_048_576, 393_216, M_TEXT, {
+export const CAPS_OR_DEEPSEEK_V41_FLASH: Capabilities = {
+  ...orChatBase(1_048_576, 393_216, M_TI, {
     temperature: true,
     topP: true,
     topK: true,
@@ -187,11 +180,11 @@ export const CAPS_OR_DEEPSEEK_V4_FLASH: Capabilities = {
 }
 
 /**
- * anthropic/claude-sonnet-5 — ctx 1_000_000; max out 128_000;
- * text+image+file; tools + structured + reasoning (+ include_reasoning);
+ * anthropic/claude-sonnet-5.5: ctx 1_000_000, max out 128_000,
+ * text+image+file, tools + structured + reasoning (+ include_reasoning),
  * stop only (no temperature/top_p/seed/top_k on the live row).
  */
-export const CAPS_OR_CLAUDE_SONNET_5: Capabilities = {
+export const CAPS_OR_CLAUDE_SONNET_55: Capabilities = {
   ...orChatBase(1_000_000, 128_000, M_TIP, {
     temperature: false,
     topP: false,
@@ -205,13 +198,13 @@ export const CAPS_OR_CLAUDE_SONNET_5: Capabilities = {
 }
 
 /**
- * anthropic/claude-opus-5 — ctx 1_000_000; max out 128_000;
- * text+image+file; tools + structured + reasoning (+ include_reasoning);
- * temperature + stop (no top_p/seed/top_k on the live row).
+ * anthropic/claude-opus-5.5: ctx 1_000_000, max out 128_000,
+ * text+image+file, tools + structured + reasoning (+ include_reasoning),
+ * stop only (no temperature/top_p/seed/top_k on the live row).
  */
-export const CAPS_OR_CLAUDE_OPUS_5: Capabilities = {
+export const CAPS_OR_CLAUDE_OPUS_55: Capabilities = {
   ...orChatBase(1_000_000, 128_000, M_TIP, {
-    temperature: true,
+    temperature: false,
     topP: false,
     topK: false,
     seed: false,
@@ -223,11 +216,11 @@ export const CAPS_OR_CLAUDE_OPUS_5: Capabilities = {
 }
 
 /**
- * openai/gpt-5.6-sol — ctx 1_050_000; max out 128_000; text+image+file;
- * tools + structured + reasoning (+ include_reasoning);
+ * openai/gpt-6.1-sol: ctx 1_050_000, max out 128_000, text+image+file,
+ * tools + structured + reasoning (+ include_reasoning),
  * seed only among sampling knobs (no temperature/top_p/stop/top_k).
  */
-export const CAPS_OR_GPT_56_SOL: Capabilities = {
+export const CAPS_OR_GPT_61_SOL: Capabilities = {
   ...orChatBase(1_050_000, 128_000, M_TIP, {
     temperature: false,
     topP: false,
@@ -241,15 +234,15 @@ export const CAPS_OR_GPT_56_SOL: Capabilities = {
 }
 
 /**
- * x-ai/grok-4.5 — ctx 500_000; max_completion_tokens omitted;
- * text+image+file; tools + structured + reasoning (+ include_reasoning);
- * temperature/top_p/seed/stop (no top_k).
+ * x-ai/grok-4.7: ctx 500_000, max out 450_000, text+image+file,
+ * tools + structured + reasoning (+ include_reasoning),
+ * temperature/top_p/top_k/seed/stop.
  */
-export const CAPS_OR_GROK_45: Capabilities = {
-  ...orChatBase(500_000, MAX_OUT_WHEN_OMITTED, M_TIP, {
+export const CAPS_OR_GROK_47: Capabilities = {
+  ...orChatBase(500_000, 450_000, M_TIP, {
     temperature: true,
     topP: true,
-    topK: false,
+    topK: true,
     seed: true,
     stop: true,
     tools: true,
@@ -259,8 +252,8 @@ export const CAPS_OR_GROK_45: Capabilities = {
 }
 
 /**
- * openai/gpt-4o-mini — ctx 128_000; max out 16_384; text+image+file;
- * tools + structured; no reasoning params on the live row;
+ * openai/gpt-4o-mini: ctx 128_000, max out 16_384, text+image+file,
+ * tools + structured, no reasoning params on the live row,
  * temperature/top_p/seed/stop.
  */
 export const CAPS_OR_GPT_4O_MINI: Capabilities = {

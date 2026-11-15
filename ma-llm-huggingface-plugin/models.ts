@@ -2,12 +2,12 @@
  * HuggingFace model registry entries.
  *
  * HuggingFace Inference Providers uses namespaced model ids
- * (`openai/gpt-oss-120b`, `deepseek-ai/DeepSeek-V4-Flash`, etc.) with an
+ * (`openai/gpt-oss-120b`, `deepseek-ai/DeepSeek-V4.1-Flash`, etc.) with an
  * optional `:provider` suffix for backend selection. All register on
  * the `openai-chat-completions` surface — HuggingFace normalizes every
  * upstream model to the OpenAI Chat Completions wire format.
  *
- * A curated representative set is registered (snapshot as of **2026-07-30**
+ * A curated representative set is registered (snapshot as of **2026-11-15**
  * from live `/v1/models`); pricing + capabilities are taken from that fetch
  * (provider pricing USD/1M, OR-ed tools/structured across live backends,
  * context = max live `context_length`, image from
@@ -28,14 +28,14 @@ import {
   type HuggingFaceModelCapabilityInfo,
 } from "./capabilities.ts"
 import {
-  PRICING_HF_DEEPSEEK_V4_FLASH,
+  PRICING_HF_DEEPSEEK_V4_1_FLASH,
   PRICING_HF_DEEPSEEK_V4_PRO,
   PRICING_HF_GENERIC,
-  PRICING_HF_GLM_5_2,
+  PRICING_HF_GLM_5_3,
   PRICING_HF_GPT_OSS_20B,
   PRICING_HF_GPT_OSS_120B,
   PRICING_HF_KIMI_K2_7_CODE,
-  PRICING_HF_KIMI_K3,
+  PRICING_HF_KIMI_K3_1_PRO,
   PRICING_HF_MINIMAX_M3,
 } from "./pricing.ts"
 
@@ -56,28 +56,13 @@ const estimateHuggingFaceTokens = makeCharRatioEstimator(3.8)
 const localCatalog = new Map<string, readonly string[]>()
 
 /**
- * Live `/v1/models` capability slices captured 2026-07-30 for the curated
+ * Live `/v1/models` capability slices captured 2026-11-15 for the curated
  * set. Only fields {@link deriveHuggingFaceCapabilities} reads are kept.
  */
-const LIVE_CAPS_2026_07_30 = {
-  "deepseek-ai/DeepSeek-V4-Flash": {
-    architecture: { input_modalities: ["text"], output_modalities: ["text"] },
+const LIVE_CAPS_2026_11_15 = {
+  "deepseek-ai/DeepSeek-V4.1-Flash": {
+    architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
     providers: [
-      {
-        provider: "novita",
-        status: "live",
-        context_length: 1_048_576,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
-        provider: "fireworks-ai",
-        status: "live",
-        context_length: 1_048_576,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
-      { provider: "featherless-ai", status: "live" },
       {
         provider: "deepinfra",
         status: "live",
@@ -85,98 +70,85 @@ const LIVE_CAPS_2026_07_30 = {
         supports_tools: true,
         supports_structured_output: true,
       },
+      {
+        provider: "novita",
+        status: "live",
+        context_length: 1_048_576,
+        supports_tools: true,
+        supports_structured_output: true,
+      },
+      {
+        provider: "baseten",
+        status: "live",
+        context_length: 1_048_576,
+        supports_tools: true,
+        supports_structured_output: true,
+      },
+      { provider: "featherless-ai", status: "live" },
     ],
   },
   "deepseek-ai/DeepSeek-V4-Pro": {
     architecture: { input_modalities: ["text"], output_modalities: ["text"] },
     providers: [
       {
-        provider: "novita",
-        status: "live",
-        context_length: 1_048_576,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
-        provider: "together",
-        status: "live",
-        context_length: 512_000,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "fireworks-ai",
-        status: "live",
-        context_length: 1_048_576,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
         provider: "deepinfra",
         status: "live",
         context_length: 1_048_576,
         supports_tools: true,
         supports_structured_output: true,
       },
+      {
+        provider: "novita",
+        status: "live",
+        context_length: 1_048_576,
+        supports_tools: true,
+        supports_structured_output: false,
+      },
+      { provider: "featherless-ai", status: "live" },
     ],
   },
   "moonshotai/Kimi-K2.7-Code": {
     architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
     providers: [
       {
-        provider: "novita",
-        status: "live",
-        context_length: 262_144,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "together",
-        status: "live",
-        context_length: 262_144,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "fireworks-ai",
-        status: "live",
-        context_length: 262_144,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
-      { provider: "featherless-ai", status: "live" },
-      {
         provider: "deepinfra",
         status: "live",
         context_length: 262_144,
         supports_tools: true,
         supports_structured_output: true,
       },
-    ],
-  },
-  "moonshotai/Kimi-K3": {
-    architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
-    providers: [
       {
-        provider: "together",
+        provider: "novita",
         status: "live",
-        context_length: 1_000_000,
+        context_length: 262_144,
         supports_tools: true,
         supports_structured_output: true,
       },
+      { provider: "featherless-ai", status: "live" },
+    ],
+  },
+  "moonshotai/Kimi-K3.1-Pro": {
+    architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
+    providers: [
       {
-        provider: "fireworks-ai",
+        provider: "deepinfra",
+        status: "live",
+        context_length: 1_048_576,
+        supports_tools: true,
+        supports_structured_output: true,
+      },
+    ],
+  },
+  "zai-org/GLM-5.3": {
+    architecture: { input_modalities: ["text"], output_modalities: ["text"] },
+    providers: [
+      {
+        provider: "deepinfra",
         status: "live",
         context_length: 1_048_576,
         supports_tools: true,
         supports_structured_output: false,
       },
-      { provider: "featherless-ai", status: "live" },
-    ],
-  },
-  "zai-org/GLM-5.2": {
-    architecture: { input_modalities: ["text"], output_modalities: ["text"] },
-    providers: [
       {
         provider: "novita",
         status: "live",
@@ -185,35 +157,21 @@ const LIVE_CAPS_2026_07_30 = {
         supports_structured_output: false,
       },
       {
-        provider: "together",
-        status: "live",
-        context_length: 512_000,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "fireworks-ai",
+        provider: "baseten",
         status: "live",
         context_length: 1_048_576,
         supports_tools: true,
-        supports_structured_output: false,
+        supports_structured_output: true,
       },
       { provider: "featherless-ai", status: "live" },
-      // Author backend: tools yes, but no context_length / pricing in live row.
       {
         provider: "zai-org",
         status: "live",
         supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
-        provider: "scaleway",
-        status: "live",
-        supports_tools: true,
         supports_structured_output: true,
       },
       {
-        provider: "deepinfra",
+        provider: "nscale",
         status: "live",
         context_length: 1_048_576,
         supports_tools: true,
@@ -225,14 +183,21 @@ const LIVE_CAPS_2026_07_30 = {
     architecture: { input_modalities: ["text"], output_modalities: ["text"] },
     providers: [
       {
-        provider: "groq",
+        provider: "deepinfra",
         status: "live",
         context_length: 131_072,
         supports_tools: true,
-        supports_structured_output: false,
+        supports_structured_output: true,
       },
       {
         provider: "novita",
+        status: "live",
+        context_length: 131_072,
+        supports_tools: true,
+        supports_structured_output: true,
+      },
+      {
+        provider: "groq",
         status: "live",
         context_length: 131_072,
         supports_tools: true,
@@ -243,45 +208,18 @@ const LIVE_CAPS_2026_07_30 = {
         status: "live",
         context_length: 131_072,
         supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
-        provider: "nscale",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
         supports_structured_output: true,
       },
       {
-        provider: "together",
+        provider: "baseten",
         status: "live",
-        context_length: 131_072,
+        context_length: 128_072,
         supports_tools: true,
         supports_structured_output: true,
-      },
-      {
-        provider: "fireworks-ai",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
-        supports_structured_output: false,
       },
       { provider: "featherless-ai", status: "live" },
       {
-        provider: "scaleway",
-        status: "live",
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
         provider: "ovhcloud",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "deepinfra",
         status: "live",
         context_length: 131_072,
         supports_tools: true,
@@ -293,50 +231,22 @@ const LIVE_CAPS_2026_07_30 = {
     architecture: { input_modalities: ["text"], output_modalities: ["text"] },
     providers: [
       {
+        provider: "deepinfra",
+        status: "live",
+        context_length: 131_072,
+        supports_tools: true,
+        supports_structured_output: true,
+      },
+      {
         provider: "groq",
         status: "live",
         context_length: 131_072,
         supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
-        provider: "novita",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: false,
         supports_structured_output: true,
-      },
-      {
-        provider: "nscale",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "together",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "fireworks-ai",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
-        supports_structured_output: false,
       },
       { provider: "featherless-ai", status: "live" },
       {
         provider: "ovhcloud",
-        status: "live",
-        context_length: 131_072,
-        supports_tools: true,
-        supports_structured_output: true,
-      },
-      {
-        provider: "deepinfra",
         status: "live",
         context_length: 131_072,
         supports_tools: true,
@@ -348,40 +258,26 @@ const LIVE_CAPS_2026_07_30 = {
     architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
     providers: [
       {
-        provider: "novita",
-        status: "live",
-        context_length: 1_000_000,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
-      {
-        provider: "together",
+        provider: "deepinfra",
         status: "live",
         context_length: 524_288,
         supports_tools: true,
         supports_structured_output: true,
       },
       {
-        provider: "fireworks-ai",
+        provider: "novita",
         status: "live",
-        context_length: 512_000,
+        context_length: 1_000_000,
         supports_tools: true,
         supports_structured_output: false,
       },
       { provider: "featherless-ai", status: "live" },
-      {
-        provider: "deepinfra",
-        status: "live",
-        context_length: 524_288,
-        supports_tools: true,
-        supports_structured_output: false,
-      },
     ],
   },
 } as const satisfies Record<string, HuggingFaceModelCapabilityInfo>
 
-function capsFor(id: keyof typeof LIVE_CAPS_2026_07_30): Capabilities {
-  return deriveHuggingFaceCapabilities(LIVE_CAPS_2026_07_30[id])
+function capsFor(id: keyof typeof LIVE_CAPS_2026_11_15): Capabilities {
+  return deriveHuggingFaceCapabilities(LIVE_CAPS_2026_11_15[id])
 }
 
 /**
@@ -395,13 +291,13 @@ function capsFor(id: keyof typeof LIVE_CAPS_2026_07_30): Capabilities {
  * @returns The registered model ids.
  */
 export function registerHuggingFaceModels(registrar: ModelRegistrar): string[] {
-  // deepseek-ai/DeepSeek-V4-Flash: cheap / scout tier
+  // deepseek-ai/DeepSeek-V4.1-Flash: cheap / scout tier (supersedes V4-Flash)
   registerHuggingFaceModelInto(registrar, {
-    id: "deepseek-ai/DeepSeek-V4-Flash",
-    displayName: "DeepSeek V4 Flash (HuggingFace)",
+    id: "deepseek-ai/DeepSeek-V4.1-Flash",
+    displayName: "DeepSeek V4.1 Flash (HuggingFace)",
     tags: ["huggingface", "openai-compatible", "cheap"],
-    pricing: PRICING_HF_DEEPSEEK_V4_FLASH,
-    capabilities: capsFor("deepseek-ai/DeepSeek-V4-Flash"),
+    pricing: PRICING_HF_DEEPSEEK_V4_1_FLASH,
+    capabilities: capsFor("deepseek-ai/DeepSeek-V4.1-Flash"),
   })
   // deepseek-ai/DeepSeek-V4-Pro: larger V4 tier
   registerHuggingFaceModelInto(registrar, {
@@ -419,21 +315,21 @@ export function registerHuggingFaceModels(registrar: ModelRegistrar): string[] {
     pricing: PRICING_HF_KIMI_K2_7_CODE,
     capabilities: capsFor("moonshotai/Kimi-K2.7-Code"),
   })
-  // moonshotai/Kimi-K3: flagship multimodal
+  // moonshotai/Kimi-K3.1-Pro: flagship multimodal (supersedes Kimi-K3)
   registerHuggingFaceModelInto(registrar, {
-    id: "moonshotai/Kimi-K3",
-    displayName: "Kimi K3 (HuggingFace)",
+    id: "moonshotai/Kimi-K3.1-Pro",
+    displayName: "Kimi K3.1 Pro (HuggingFace)",
     tags: ["huggingface", "openai-compatible", "flagship", "reasoning"],
-    pricing: PRICING_HF_KIMI_K3,
-    capabilities: capsFor("moonshotai/Kimi-K3"),
+    pricing: PRICING_HF_KIMI_K3_1_PRO,
+    capabilities: capsFor("moonshotai/Kimi-K3.1-Pro"),
   })
-  // zai-org/GLM-5.2: flagship / reasoning
+  // zai-org/GLM-5.3: flagship / reasoning (supersedes GLM-5.2)
   registerHuggingFaceModelInto(registrar, {
-    id: "zai-org/GLM-5.2",
-    displayName: "GLM 5.2 (HuggingFace)",
+    id: "zai-org/GLM-5.3",
+    displayName: "GLM 5.3 (HuggingFace)",
     tags: ["huggingface", "openai-compatible", "flagship", "reasoning"],
-    pricing: PRICING_HF_GLM_5_2,
-    capabilities: capsFor("zai-org/GLM-5.2"),
+    pricing: PRICING_HF_GLM_5_3,
+    capabilities: capsFor("zai-org/GLM-5.3"),
   })
   // openai/gpt-oss-120b: open-weights reference model
   registerHuggingFaceModelInto(registrar, {
@@ -461,11 +357,11 @@ export function registerHuggingFaceModels(registrar: ModelRegistrar): string[] {
   })
 
   return [
-    "deepseek-ai/DeepSeek-V4-Flash",
+    "deepseek-ai/DeepSeek-V4.1-Flash",
     "deepseek-ai/DeepSeek-V4-Pro",
     "moonshotai/Kimi-K2.7-Code",
-    "moonshotai/Kimi-K3",
-    "zai-org/GLM-5.2",
+    "moonshotai/Kimi-K3.1-Pro",
+    "zai-org/GLM-5.3",
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
     "MiniMaxAI/MiniMax-M3",

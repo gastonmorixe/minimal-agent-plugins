@@ -1,12 +1,12 @@
 /**
  * OpenRouter model registry entries.
  *
- * OpenRouter ids are namespaced slugs (`moonshotai/kimi-k3`,
- * `deepseek/deepseek-v4-flash`, …). All register on the SHARED
+ * OpenRouter ids are namespaced slugs (`moonshotai/kimi-k3.1-pro`,
+ * `deepseek/deepseek-v4.1-flash`, ...). All register on the SHARED
  * `openai-chat-completions` surface — OpenRouter normalizes every upstream model to
  * the OpenAI Chat Completions wire format, so the DeepSeek/OpenAI chat
  * translator handles them unchanged. Only a representative few are
- * registered (snapshot as of 2026-07-30); any other slug still works on
+ * registered (snapshot as of 2026-11-15); any other slug still works on
  * the wire (the CLI doesn't gate on the registry), just without a local
  * cost estimate.
  *
@@ -19,24 +19,24 @@ import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token
 
 import {
   CAPS_OPENROUTER_CHAT,
-  CAPS_OR_CLAUDE_OPUS_5,
-  CAPS_OR_CLAUDE_SONNET_5,
-  CAPS_OR_DEEPSEEK_V4_FLASH,
+  CAPS_OR_CLAUDE_OPUS_55,
+  CAPS_OR_CLAUDE_SONNET_55,
+  CAPS_OR_DEEPSEEK_V41_FLASH,
   CAPS_OR_GPT_4O_MINI,
-  CAPS_OR_GPT_56_SOL,
-  CAPS_OR_GROK_45,
-  CAPS_OR_KIMI_K3,
+  CAPS_OR_GPT_61_SOL,
+  CAPS_OR_GROK_47,
+  CAPS_OR_KIMI_K31_PRO,
 } from "./capabilities.ts"
 import type { MTokRate } from "./lib/host-types.ts"
 import {
-  PRICING_OR_CLAUDE_OPUS_5,
-  PRICING_OR_CLAUDE_SONNET_5,
-  PRICING_OR_DEEPSEEK_V4_FLASH,
+  PRICING_OR_CLAUDE_OPUS_55,
+  PRICING_OR_CLAUDE_SONNET_55,
+  PRICING_OR_DEEPSEEK_V41_FLASH,
   PRICING_OR_GENERIC,
   PRICING_OR_GPT_4O_MINI,
-  PRICING_OR_GPT_56_SOL,
-  PRICING_OR_GROK_45,
-  PRICING_OR_KIMI_K3,
+  PRICING_OR_GPT_61_SOL,
+  PRICING_OR_GROK_47,
+  PRICING_OR_KIMI_K31_PRO,
 } from "./pricing.ts"
 
 /**
@@ -68,53 +68,53 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     ids.push(registerOpenRouterModelInto(models, spec))
   }
 
-  // Flagship: large context, vision, reasoning, tools. (live 2026-07-30)
+  // Flagship: large context, vision, reasoning, tools. (live 2026-11-15)
   add({
-    id: "moonshotai/kimi-k3",
-    displayName: "Kimi K3 (OpenRouter)",
+    id: "moonshotai/kimi-k3.1-pro",
+    displayName: "Kimi K3.1 Pro (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
-    capabilities: CAPS_OR_KIMI_K3,
-    pricing: PRICING_OR_KIMI_K3,
+    capabilities: CAPS_OR_KIMI_K31_PRO,
+    pricing: PRICING_OR_KIMI_K31_PRO,
   })
   // Cheap scout / high-volume candidate.
   add({
-    id: "deepseek/deepseek-v4-flash",
-    displayName: "DeepSeek V4 Flash (OpenRouter)",
+    id: "deepseek/deepseek-v4.1-flash",
+    displayName: "DeepSeek V4.1 Flash (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "cheap"],
-    capabilities: CAPS_OR_DEEPSEEK_V4_FLASH,
-    pricing: PRICING_OR_DEEPSEEK_V4_FLASH,
+    capabilities: CAPS_OR_DEEPSEEK_V41_FLASH,
+    pricing: PRICING_OR_DEEPSEEK_V41_FLASH,
   })
   // Balanced modern Anthropic.
   add({
-    id: "anthropic/claude-sonnet-5",
-    displayName: "Claude Sonnet 5 (OpenRouter)",
+    id: "anthropic/claude-sonnet-5.5",
+    displayName: "Claude Sonnet 5.5 (OpenRouter)",
     tags: ["openrouter", "openai-compatible"],
-    capabilities: CAPS_OR_CLAUDE_SONNET_5,
-    pricing: PRICING_OR_CLAUDE_SONNET_5,
+    capabilities: CAPS_OR_CLAUDE_SONNET_55,
+    pricing: PRICING_OR_CLAUDE_SONNET_55,
   })
   // Anthropic frontier via OpenRouter.
   add({
-    id: "anthropic/claude-opus-5",
-    displayName: "Claude Opus 5 (OpenRouter)",
+    id: "anthropic/claude-opus-5.5",
+    displayName: "Claude Opus 5.5 (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
-    capabilities: CAPS_OR_CLAUDE_OPUS_5,
-    pricing: PRICING_OR_CLAUDE_OPUS_5,
+    capabilities: CAPS_OR_CLAUDE_OPUS_55,
+    pricing: PRICING_OR_CLAUDE_OPUS_55,
   })
   // OpenAI frontier via OpenRouter.
   add({
-    id: "openai/gpt-5.6-sol",
-    displayName: "GPT-5.6 Sol (OpenRouter)",
+    id: "openai/gpt-6.1-sol",
+    displayName: "GPT-6.1 Sol (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
-    capabilities: CAPS_OR_GPT_56_SOL,
-    pricing: PRICING_OR_GPT_56_SOL,
+    capabilities: CAPS_OR_GPT_61_SOL,
+    pricing: PRICING_OR_GPT_61_SOL,
   })
   // xAI frontier via OpenRouter.
   add({
-    id: "x-ai/grok-4.5",
-    displayName: "Grok 4.5 (OpenRouter)",
+    id: "x-ai/grok-4.7",
+    displayName: "Grok 4.7 (OpenRouter)",
     tags: ["openrouter", "openai-compatible"],
-    capabilities: CAPS_OR_GROK_45,
-    pricing: PRICING_OR_GROK_45,
+    capabilities: CAPS_OR_GROK_47,
+    pricing: PRICING_OR_GROK_47,
   })
   // Kept for live tests + a second cheap option.
   add({

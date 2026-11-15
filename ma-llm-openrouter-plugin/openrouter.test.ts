@@ -21,7 +21,7 @@ import {
 import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
-import { bootstrapOpenRouter, openrouterProviderPlugin } from "./adapter.ts"
+import { bootstrapOpenRouter, openrouterAdapter, openrouterProviderPlugin } from "./adapter.ts"
 import {
   buildOpenRouterApiKeyCredential,
   OPENROUTER_API_KEY_AUTH,
@@ -29,6 +29,7 @@ import {
   readOpenRouterApiKey,
 } from "./auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
+import { registerOpenRouterModels } from "./models.ts"
 
 // A repo-separated provider resolves from a local test registrar rather than
 // the host registry. `setup()` re-registers into a fresh one each call and
@@ -93,6 +94,33 @@ describe("llm-openrouter (OpenAI-compatible gateway, reuses llm-openai's wire la
     const adapter = resolveProvider("openrouter")
     expect(adapter.surfaces).toContain("openai-chat-completions")
     expect(adapter.displayName).toBe("OpenRouter")
+  })
+
+  it("pins the curated 2026-11-15 catalog (ids, caps, pricing, role picks)", () => {
+    const ids = registerOpenRouterModels(makeTestRegistry().models)
+    expect(ids).toEqual([
+      "moonshotai/kimi-k3.1-pro",
+      "deepseek/deepseek-v4.1-flash",
+      "anthropic/claude-sonnet-5.5",
+      "anthropic/claude-opus-5.5",
+      "openai/gpt-6.1-sol",
+      "x-ai/grok-4.7",
+      "openai/gpt-4o-mini",
+    ])
+    setup()
+    const kimi = resolveModel("moonshotai/kimi-k3.1-pro")
+    expect(kimi.capabilities.maxOutputTokens).toBe(943_718)
+    expect(kimi.capabilities.modalities.video).toBe(true)
+    expect(kimi.pricing?.inputUSD).toBe(2)
+    const flash = resolveModel("deepseek/deepseek-v4.1-flash")
+    expect(flash.capabilities.modalities.image).toBe(true)
+    expect(flash.pricing?.outputUSD).toBe(0.2028)
+    expect(resolveModel("anthropic/claude-opus-5.5").pricing?.inputUSD).toBe(4)
+    expect(resolveModel("openai/gpt-6.1-sol").pricing?.outputUSD).toBe(10)
+    expect(resolveModel("x-ai/grok-4.7").capabilities.maxOutputTokens).toBe(450_000)
+    const recs = openrouterAdapter.recommendSubagentModels?.() ?? []
+    expect(recs.find((r) => r.role === "scout")?.modelId).toBe("deepseek/deepseek-v4.1-flash")
+    expect(recs.find((r) => r.role === "balanced")?.modelId).toBe("moonshotai/kimi-k3.1-pro")
   })
 
   it("registers ad-hoc slugs on demand", () => {
