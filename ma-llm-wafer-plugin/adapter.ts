@@ -128,8 +128,8 @@ export const waferAdapter: ProviderAdapter = {
   /**
    * Recommend Wafer models per abstract sub-agent role, from THIS
    * provider's own catalog by tag. scout → a `cheap` + `scout` model
-   * (glm5.2-fast); balanced → a `balanced` model (GLM-5.1);
-   * deep → a `flagship` + `deep` reasoning model (GLM-5.2).
+   * (GLM-5.3-Flash); balanced → a `balanced` model (GLM-5.2);
+   * deep → a `flagship` + `deep` reasoning model (GLM-5.3).
    */
   recommendSubagentModels(): SubagentModelRecommendation[] {
     const byTier: Array<{ role: string; tags: string[] }> = [
@@ -221,11 +221,11 @@ export const waferProviderPlugin: ProviderPlugin = {
    * Version token for dense labels: extract the model family name
    * stripped of vendor prefixes and suffixes.
    *
-   * - `GLM-5.1` → `5.1`
-   * - `glm5.2-fast` → `5.2-fast`
+   * - `GLM-5.3` → `5.3`
+   * - `GLM-5.3-Flash` → `5.3-Flash`
    * - `Kimi-K3` → `K3`
-   * - `kimi-k3-fast` → `k3-fast`
-   * - `Kimi-K2.6` → `K2.6`
+   * - `Kimi-K3.1-Pro` → `K3.1-Pro`
+   * - `DeepSeek-V4-Pro` → `V4-Pro`
    */
   modelVersionToken(modelId: string): string | undefined {
     return waferModelVersionToken(modelId)

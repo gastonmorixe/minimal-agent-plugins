@@ -3,7 +3,7 @@
  *
  * Each model's capabilities are derived from the live `GET /v1/models`
  * response (the `wafer.capabilities` field) and mapped to the canonical
- * {@link Capabilities} shape. Snapshot date: 2026-07-30.
+ * {@link Capabilities} shape. Snapshot date: 2026-11-15.
  *
  * Mapping (live → Capabilities):
  * - `context_length` / `max_model_len` → `contextWindow`
@@ -12,7 +12,8 @@
  * - `capabilities.reasoning` / `messages.reasoning` → `thinking.adaptive` + `visible`
  * - `chat_completions.json_schema` / `responses.text_format` → `structuredOutputs`
  * - `pricing.cache_read_*` present → automatic caching + `reportsCacheHits`
- * - high-TPS `*-fast` SKUs → `speedFast`
+ * - high-TPS SKUs (`*-Fast`, or a description that says "served for high
+ *   TPS") → `speedFast`
  *
  * All models speak the OpenAI Chat Completions surface
  * (`"openai-chat-completions"`), so these capability records define the
@@ -93,16 +94,6 @@ function baseWaferCaps(
 }
 
 // ---------------------------------------------------------------------------
-// GLM-5.1 — context 202752, vision:false, tools+reasoning, ZDR yes
-// ---------------------------------------------------------------------------
-
-export const CAPS_GLM_5_1: Capabilities = baseWaferCaps({
-  contextWindow: 202_752,
-  speedFast: false,
-  modalities: { ...MODALITIES_TEXT },
-})
-
-// ---------------------------------------------------------------------------
 // GLM-5.2 — context 1048576, vision:false, tools+reasoning, ZDR yes
 // ---------------------------------------------------------------------------
 
@@ -113,51 +104,101 @@ export const CAPS_GLM_5_2: Capabilities = baseWaferCaps({
 })
 
 // ---------------------------------------------------------------------------
-// glm5.2-fast — same family, high-TPS SKU (live display_name GLM5.2-Fast)
+// GLM-5.3 — context 1048576, vision:false, tools+reasoning, ZDR yes
 // ---------------------------------------------------------------------------
 
-export const CAPS_GLM_5_2_FAST: Capabilities = baseWaferCaps({
+export const CAPS_GLM_5_3: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { ...MODALITIES_TEXT },
+})
+
+// ---------------------------------------------------------------------------
+// GLM-5.3-Flash — context 1048576, vision+tools+reasoning, ZDR yes
+// ---------------------------------------------------------------------------
+
+export const CAPS_GLM_5_3_FLASH: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})
+
+// ---------------------------------------------------------------------------
+// Kimi-K3 — context 1048576, vision+tools+reasoning, ZDR yes
+// ---------------------------------------------------------------------------
+
+export const CAPS_KIMI_K3: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})
+
+// ---------------------------------------------------------------------------
+// Kimi-K3.1-Pro (+ Kimi-K3.1-Pro-US) — context 1048576, vision+tools+reasoning, ZDR yes
+// ---------------------------------------------------------------------------
+
+export const CAPS_KIMI_K3_1_PRO: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})
+
+// ---------------------------------------------------------------------------
+// MiniMax-M3.1-Flash — context 1048576, vision+tools+reasoning, ZDR yes
+// ---------------------------------------------------------------------------
+
+export const CAPS_MINIMAX_M3_1_FLASH: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})
+
+// ---------------------------------------------------------------------------
+// DeepSeek-V4-Pro — context 1048576, vision:false, tools+reasoning, ZDR yes
+// ---------------------------------------------------------------------------
+
+export const CAPS_DEEPSEEK_V4_PRO: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { ...MODALITIES_TEXT },
+})
+
+// ---------------------------------------------------------------------------
+// DeepSeek-V4.1-Flash (+ DeepSeek-V4.1-Flash-1017) — context 1048576, vision+tools+reasoning, ZDR yes
+// ---------------------------------------------------------------------------
+
+export const CAPS_DEEPSEEK_V4_1_FLASH: Capabilities = baseWaferCaps({
+  contextWindow: 1_048_576,
+  speedFast: false,
+  modalities: { image: true, audio: false, pdf: false, video: false },
+})
+
+// ---------------------------------------------------------------------------
+// DeepSeek-V4-Flash-0423 — context 1048576, vision:false, tools+reasoning, "served for high TPS"
+// ---------------------------------------------------------------------------
+
+export const CAPS_DEEPSEEK_V4_FLASH_0423: Capabilities = baseWaferCaps({
   contextWindow: 1_048_576,
   speedFast: true,
   modalities: { ...MODALITIES_TEXT },
 })
 
 // ---------------------------------------------------------------------------
-// Kimi-K3 — context 912384, vision+tools+reasoning, ZDR yes
+// DeepSeek-V4-Flash-0731-Fast — context 1048576, vision:false, tools+reasoning, high-TPS SKU
 // ---------------------------------------------------------------------------
 
-export const CAPS_KIMI_K3: Capabilities = baseWaferCaps({
-  contextWindow: 912_384,
-  speedFast: false,
-  modalities: { image: true, audio: false, pdf: false, video: false },
-})
-
-// ---------------------------------------------------------------------------
-// kimi-k3-fast — context 1048576, vision+tools+reasoning, high-TPS SKU
-// ---------------------------------------------------------------------------
-
-export const CAPS_KIMI_K3_FAST: Capabilities = baseWaferCaps({
+export const CAPS_DEEPSEEK_V4_FLASH_0731_FAST: Capabilities = baseWaferCaps({
   contextWindow: 1_048_576,
   speedFast: true,
-  modalities: { image: true, audio: false, pdf: false, video: false },
+  modalities: { ...MODALITIES_TEXT },
 })
 
 // ---------------------------------------------------------------------------
-// Kimi-K2.6 — context 262144, vision+tools+reasoning, ZDR: false
+// Qwen3.8-27B — context 262144, vision+tools+reasoning, ZDR yes
 // ---------------------------------------------------------------------------
 
-export const CAPS_KIMI_K2_6: Capabilities = baseWaferCaps({
+export const CAPS_QWEN3_8_27B: Capabilities = baseWaferCaps({
   contextWindow: 262_144,
-  speedFast: false,
-  modalities: { image: true, audio: false, pdf: false, video: false },
-})
-
-// ---------------------------------------------------------------------------
-// MiniMax-M3 — context 1048576, vision+tools+reasoning, ZDR: false
-// ---------------------------------------------------------------------------
-
-export const CAPS_MINIMAX_M3: Capabilities = baseWaferCaps({
-  contextWindow: 1_048_576,
   speedFast: false,
   modalities: { image: true, audio: false, pdf: false, video: false },
 })

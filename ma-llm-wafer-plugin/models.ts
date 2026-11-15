@@ -7,13 +7,17 @@
  * pattern as `llm-openrouter`.
  *
  * Model IDs are the exact strings returned by `GET /v1/models` (e.g.
- * `"GLM-5.1"`, `"glm5.2-fast"`). The catalog is registered at plugin
+ * `"GLM-5.3"`, `"DeepSeek-V4-Flash-0731-Fast"`). The catalog is registered at plugin
  * activation time via `registerWaferModels()`.
  *
  * Catalog snapshot: live `GET https://pass.wafer.ai/v1/models` as of
- * 2026-07-30. Only entries with a `wafer` metadata block are registered
- * (e.g. `Qwen3.5-397B-A17B` is listed by the API but has no `wafer`
- * block, so it is omitted).
+ * 2026-11-15 (13 entries, all with a `wafer` metadata block, all
+ * registered). Only entries with a `wafer` metadata block are registered.
+ * Wafer serves dated checkpoints (`-0423`, `-1017`) as distinct SKUs with
+ * their own rates, so they register as separate models. Ids that left the
+ * live list (`GLM-5.1`, `Kimi-K2.6`, `MiniMax-M3`, `glm5.2-fast`,
+ * `kimi-k3-fast`) are removed: this plugin has no former-id mechanism, and an
+ * unknown id still works on the wire through {@link registerWaferModel}.
  *
  * @module llm/providers/wafer/models
  */
@@ -22,28 +26,37 @@ import type { ModelRegistrar } from "@minimal-agent/core/plugin-api/llm/provider
 import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
 
 import {
-  CAPS_GLM_5_1,
+  CAPS_DEEPSEEK_V4_1_FLASH,
+  CAPS_DEEPSEEK_V4_FLASH_0423,
+  CAPS_DEEPSEEK_V4_FLASH_0731_FAST,
+  CAPS_DEEPSEEK_V4_PRO,
   CAPS_GLM_5_2,
-  CAPS_GLM_5_2_FAST,
-  CAPS_KIMI_K2_6,
+  CAPS_GLM_5_3,
+  CAPS_GLM_5_3_FLASH,
   CAPS_KIMI_K3,
-  CAPS_KIMI_K3_FAST,
-  CAPS_MINIMAX_M3,
+  CAPS_KIMI_K3_1_PRO,
+  CAPS_MINIMAX_M3_1_FLASH,
+  CAPS_QWEN3_8_27B,
 } from "./capabilities.ts"
 import {
-  PRICING_GLM_5_1,
+  PRICING_DEEPSEEK_V4_1_FLASH,
+  PRICING_DEEPSEEK_V4_1_FLASH_1017,
+  PRICING_DEEPSEEK_V4_FLASH_0423,
+  PRICING_DEEPSEEK_V4_FLASH_0731_FAST,
+  PRICING_DEEPSEEK_V4_PRO,
   PRICING_GLM_5_2,
-  PRICING_GLM_5_2_FAST,
-  PRICING_KIMI_K2_6,
+  PRICING_GLM_5_3,
+  PRICING_GLM_5_3_FLASH,
   PRICING_KIMI_K3,
-  PRICING_KIMI_K3_FAST,
-  PRICING_MINIMAX_M3,
+  PRICING_KIMI_K3_1_PRO,
+  PRICING_MINIMAX_M3_1_FLASH,
+  PRICING_QWEN3_8_27B,
   PRICING_WAFER_GENERIC,
 } from "./pricing.ts"
 
 /**
  * Token estimator for Wafer models. Wafer proxies many upstream model
- * families (GLM, Kimi, MiniMax), each with their own tokenizer.
+ * families (GLM, Kimi, MiniMax, DeepSeek, Qwen), each with their own tokenizer.
  * ~3.8 chars/token splits the difference and gives a defensible estimate
  * for the status bar.
  */
@@ -68,57 +81,102 @@ export interface WaferPricing {
 
 /**
  * Built-in model catalog. Each entry is a model advertised by the live
- * `GET /v1/models` endpoint (with a `wafer` block) as of 2026-07-30.
+ * `GET /v1/models` endpoint (with a `wafer` block) as of 2026-11-15.
+ * The first entry is the default. Role tags: scout = `cheap` + `scout`
+ * (GLM-5.3-Flash), balanced = `balanced` (GLM-5.2), deep = `flagship` +
+ * `deep` (GLM-5.3).
  */
 const BUILTIN_MODELS = [
   {
-    id: "GLM-5.1",
-    displayName: "GLM-5.1 (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "balanced"],
-    capabilities: CAPS_GLM_5_1,
-    pricing: PRICING_GLM_5_1,
-  },
-  {
-    id: "Kimi-K3",
-    displayName: "Kimi-K3 (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "vision"],
-    capabilities: CAPS_KIMI_K3,
-    pricing: PRICING_KIMI_K3,
-  },
-  {
-    id: "Kimi-K2.6",
-    displayName: "Kimi-K2.6 (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "vision", "balanced"],
-    capabilities: CAPS_KIMI_K2_6,
-    pricing: PRICING_KIMI_K2_6,
-  },
-  {
-    id: "MiniMax-M3",
-    displayName: "MiniMax-M3 (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context"],
-    capabilities: CAPS_MINIMAX_M3,
-    pricing: PRICING_MINIMAX_M3,
-  },
-  {
     id: "GLM-5.2",
     displayName: "GLM-5.2 (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "1m-context", "flagship", "deep"],
+    tags: ["wafer", "openai-compatible", "reasoning", "1m-context", "balanced"],
     capabilities: CAPS_GLM_5_2,
     pricing: PRICING_GLM_5_2,
   },
   {
-    id: "kimi-k3-fast",
-    displayName: "Kimi-K3-Fast (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context", "fast"],
-    capabilities: CAPS_KIMI_K3_FAST,
-    pricing: PRICING_KIMI_K3_FAST,
+    id: "GLM-5.3",
+    displayName: "GLM-5.3 (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "1m-context", "flagship", "deep"],
+    capabilities: CAPS_GLM_5_3,
+    pricing: PRICING_GLM_5_3,
   },
   {
-    id: "glm5.2-fast",
-    displayName: "GLM5.2-Fast (Wafer)",
-    tags: ["wafer", "openai-compatible", "reasoning", "cheap", "scout", "fast"],
-    capabilities: CAPS_GLM_5_2_FAST,
-    pricing: PRICING_GLM_5_2_FAST,
+    id: "GLM-5.3-Flash",
+    displayName: "GLM-5.3-Flash (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context", "cheap", "scout"],
+    capabilities: CAPS_GLM_5_3_FLASH,
+    pricing: PRICING_GLM_5_3_FLASH,
+  },
+  {
+    id: "Kimi-K3",
+    displayName: "Kimi-K3 (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context"],
+    capabilities: CAPS_KIMI_K3,
+    pricing: PRICING_KIMI_K3,
+  },
+  {
+    id: "Kimi-K3.1-Pro",
+    displayName: "Kimi-K3.1-Pro (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context"],
+    capabilities: CAPS_KIMI_K3_1_PRO,
+    pricing: PRICING_KIMI_K3_1_PRO,
+  },
+  {
+    id: "Kimi-K3.1-Pro-US",
+    displayName: "Kimi-K3.1-Pro (US) (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context"],
+    capabilities: CAPS_KIMI_K3_1_PRO,
+    pricing: PRICING_KIMI_K3_1_PRO,
+  },
+  {
+    id: "MiniMax-M3.1-Flash",
+    displayName: "MiniMax-M3.1-Flash (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context", "cheap"],
+    capabilities: CAPS_MINIMAX_M3_1_FLASH,
+    pricing: PRICING_MINIMAX_M3_1_FLASH,
+  },
+  {
+    id: "DeepSeek-V4-Pro",
+    displayName: "DeepSeek-V4-Pro (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "1m-context"],
+    capabilities: CAPS_DEEPSEEK_V4_PRO,
+    pricing: PRICING_DEEPSEEK_V4_PRO,
+  },
+  {
+    id: "DeepSeek-V4.1-Flash",
+    displayName: "DeepSeek-V4.1-Flash (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context", "cheap"],
+    capabilities: CAPS_DEEPSEEK_V4_1_FLASH,
+    pricing: PRICING_DEEPSEEK_V4_1_FLASH,
+  },
+  {
+    id: "DeepSeek-V4.1-Flash-1017",
+    displayName: "DeepSeek-V4.1-Flash-1017 (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "1m-context", "cheap"],
+    capabilities: CAPS_DEEPSEEK_V4_1_FLASH,
+    pricing: PRICING_DEEPSEEK_V4_1_FLASH_1017,
+  },
+  {
+    id: "DeepSeek-V4-Flash-0423",
+    displayName: "DeepSeek-V4-Flash-0423 (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "1m-context", "cheap", "fast"],
+    capabilities: CAPS_DEEPSEEK_V4_FLASH_0423,
+    pricing: PRICING_DEEPSEEK_V4_FLASH_0423,
+  },
+  {
+    id: "DeepSeek-V4-Flash-0731-Fast",
+    displayName: "DeepSeek-V4-Flash-0731-Fast (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "1m-context", "cheap", "fast"],
+    capabilities: CAPS_DEEPSEEK_V4_FLASH_0731_FAST,
+    pricing: PRICING_DEEPSEEK_V4_FLASH_0731_FAST,
+  },
+  {
+    id: "Qwen3.8-27B",
+    displayName: "Qwen3.8-27B (Wafer)",
+    tags: ["wafer", "openai-compatible", "reasoning", "vision", "cheap"],
+    capabilities: CAPS_QWEN3_8_27B,
+    pricing: PRICING_QWEN3_8_27B,
   },
 ]
 
@@ -161,7 +219,7 @@ export function registerWaferModels(registrar: ModelRegistrar): string[] {
 export function registerWaferModel(spec: WaferModelSpec, registrar: ModelRegistrar): string {
   const builtin = BUILTIN_MODELS.find((m) => m.id === spec.id)
   const tags = spec.tags ?? ["wafer", "openai-compatible"]
-  const capabilities = builtin?.capabilities ?? CAPS_GLM_5_1
+  const capabilities = builtin?.capabilities ?? CAPS_GLM_5_2
   registrar.register({
     id: spec.id,
     providerId: "wafer",
@@ -203,11 +261,11 @@ const WAFER_SHORT_CODE = "wf"
 /**
  * Parse the version token out of a Wafer model id (the naming scheme Wafer
  * owns, mirroring the adapter's `modelVersionToken` hook): strip the leading
- * family prefix so `GLM-5.1` becomes `5.1`, `glm5.2-fast` becomes `5.2-fast`,
- * `kimi-k3-fast` becomes `k3-fast`.
+ * family prefix so `GLM-5.3` becomes `5.3`, `Kimi-K3.1-Pro` becomes `K3.1-Pro`,
+ * `DeepSeek-V4-Pro` becomes `V4-Pro`, `Qwen3.8-27B` becomes `3.8-27B`.
  */
 export function waferModelVersionToken(modelId: string): string {
-  return modelId.replace(/^(GLM|glm|Kimi|kimi|Qwen|qwen|deepseek|MiniMax)-?/, "")
+  return modelId.replace(/^(GLM|glm|Kimi|kimi|Qwen|qwen|DeepSeek|deepseek|MiniMax)-?/, "")
 }
 
 /**
