@@ -105,7 +105,7 @@ export const CAPS_GPT_41_CHAT: Capabilities = {
 }
 
 /**
- * o3 / o4-mini reasoning models on Chat Completions.
+ * o3 reasoning models on Chat Completions.
  * Accept `reasoning_effort` but no `temperature` / `top_p`.
  * Reasoning tokens billed but not streamed visibly.
  */
@@ -132,8 +132,6 @@ export const CAPS_O3_CHAT: Capabilities = {
   serverSideHistory: false,
   serverTools: [],
 }
-
-export const CAPS_O4_MINI_CHAT: Capabilities = { ...CAPS_O3_CHAT }
 
 // ---------------------------------------------------------------------------
 // Responses surface
@@ -181,9 +179,6 @@ export const CAPS_O3_RESPONSES: Capabilities = {
   serverSideHistory: true,
   serverTools: ["web_search", "file_search", "code_interpreter"],
 }
-
-/** o4-mini on Responses. */
-export const CAPS_O4_MINI_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
 
 // ---------------------------------------------------------------------------
 // GPT-6 Astra (current flagship; Responses preferred, Chat also works)
@@ -593,7 +588,7 @@ export const CAPS_GPT_5_5_CHAT: Capabilities = {
 // openai-api-key-2, plus developers.openai.com/api/docs/models/<id>).
 // speedFast is true only where a request with service_tier "priority" echoed
 // service_tier "priority" (re-probed 2026-09-29): gpt-5.1, gpt-5.2,
-// gpt-5.3-codex, gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano. A 200 that echoed
+// gpt-5.3-codex, gpt-5-mini, gpt-4.1-mini. A 200 that echoed
 // "default" (gpt-5.2-pro, gpt-5-nano, gpt-5-pro, chat-latest, o-series) means
 // not honored, so speedFast stays false.
 // ---------------------------------------------------------------------------
@@ -683,27 +678,6 @@ export const CAPS_CHAT_LATEST_RESPONSES: Capabilities = {
 /** chat-latest on Chat Completions. Tools work at the default effort. */
 export const CAPS_CHAT_LATEST_CHAT: Capabilities = chatSurface(CAPS_CHAT_LATEST_RESPONSES)
 
-/** o1. Deprecated, shutdown 2026-10-23. Effort low|medium|high. */
-export const CAPS_O1_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
-
-/** o1 on Chat Completions. */
-export const CAPS_O1_CHAT: Capabilities = { ...CAPS_O3_CHAT }
-
-/** o1-pro. Responses only. Deprecated, shutdown 2026-10-23. */
-export const CAPS_O1_PRO_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
-
-/** o3-mini. Deprecated, shutdown 2026-10-23. Text input only. */
-export const CAPS_O3_MINI_RESPONSES: Capabilities = {
-  ...CAPS_O3_RESPONSES,
-  modalities: { image: false, audio: false, pdf: false, video: false },
-}
-
-/** o3-mini on Chat Completions. */
-export const CAPS_O3_MINI_CHAT: Capabilities = {
-  ...CAPS_O3_CHAT,
-  modalities: { image: false, audio: false, pdf: false, video: false },
-}
-
 /** o3-pro. Responses only. Deprecated, shutdown 2026-12-11. */
 export const CAPS_O3_PRO_RESPONSES: Capabilities = { ...CAPS_O3_RESPONSES }
 
@@ -713,16 +687,6 @@ export const CAPS_GPT_41_MINI_CHAT: Capabilities = { ...CAPS_GPT_41_CHAT, speedF
 /** gpt-4.1-mini on Responses. */
 export const CAPS_GPT_41_MINI_RESPONSES: Capabilities = {
   ...CAPS_GPT_41_MINI_CHAT,
-  serverSideHistory: true,
-  serverTools: ["web_search", "file_search", "code_interpreter"],
-}
-
-/** gpt-4.1-nano on Chat Completions. Deprecated, shutdown 2026-10-23. Priority honored. */
-export const CAPS_GPT_41_NANO_CHAT: Capabilities = { ...CAPS_GPT_41_CHAT, speedFast: true }
-
-/** gpt-4.1-nano on Responses. */
-export const CAPS_GPT_41_NANO_RESPONSES: Capabilities = {
-  ...CAPS_GPT_41_NANO_CHAT,
   serverSideHistory: true,
   serverTools: ["web_search", "file_search", "code_interpreter"],
 }
