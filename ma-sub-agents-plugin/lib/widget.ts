@@ -12,7 +12,7 @@
  */
 
 import { ANSI, color, fmtElapsed, fmtSpend, GLYPHS, SPINNER } from "./style.ts"
-import { fleetStats, type SubagentRecord, type SubagentStatus } from "./types.ts"
+import { fleetStats, type Progress, type SubagentRecord, type SubagentStatus } from "./types.ts"
 
 /** Options for {@link renderWidget}. */
 export interface WidgetOptions {
@@ -33,18 +33,61 @@ function shortSid(sid: string): string {
   return sid.replace(/-/g, "").slice(0, 4)
 }
 
+/** Seconds without a stream event before a running row shows `idle`. */
+export const IDLE_HINT_SEC = 60
+
+/**
+ * What a running worker is doing at this instant. With stream telemetry this
+ * is exact: the tool in flight and for how long, `thinking…`, or the text
+ * being written. Without it (an old worker) it falls back to the last
+ * activity parsed from the transcript.
+ */
+function liveActivity(p: Progress, nowMs: number): string {
+  // No event and no transcript activity yet: the worker is still booting.
+  const fresh = p.tools === 0 && p.tokens === 0 && !p.lastActivity && !p.lastTool
+  if (fresh && (p.phase === undefined || p.phase === "starting")) return "starting…"
+  const base = (p.lastActivity ?? p.lastTool ?? "working").replace(/\s+/g, " ").trim()
+  switch (p.phase) {
+    case "starting":
+      return "starting…"
+    case "thinking":
+      return "thinking…"
+    case "writing":
+      return `✎ ${base}`
+    case "tool": {
+      const took = p.toolSince !== undefined ? fmtElapsed(nowMs - p.toolSince) : ""
+      return took ? `${base} (${took})` : base
+    }
+    default:
+      return base
+  }
+}
+
+/** `9 tools` or `9 tools ✘1`, the failed-call count in red. */
+function toolCount(p: { tools: number; toolErrors?: number }, ansi: boolean): string {
+  const tools = color(ansi, ANSI.DGRAY, `${p.tools} tools`)
+  return p.toolErrors
+    ? `${tools} ${color(ansi, ANSI.RED, `${GLYPHS.failed}${p.toolErrors}`)}`
+    : tools
+}
+
 /** The "what is it doing / what did it do" trailing column for one row. */
-function rowDetail(r: SubagentRecord, ansi: boolean): string {
+function rowDetail(r: SubagentRecord, ansi: boolean, nowMs: number): string {
   const s = r.status
   switch (s.kind) {
     case "running": {
-      const act = (s.progress.lastActivity ?? s.progress.lastTool ?? "working")
-        .replace(/\s+/g, " ")
-        .trim()
-      const tools = color(ansi, ANSI.DGRAY, `${s.progress.tools} tools`)
-      const tok = color(ansi, ANSI.DGRAY, fmtSpend(s.progress))
+      const p = s.progress
       const dot = color(ansi, ANSI.DGRAY, GLYPHS.bullet)
-      return `${clip(act, 40)} ${dot} ${tools} ${dot} ${tok}`
+      const idleMs = p.lastEventAt !== undefined ? nowMs - p.lastEventAt : 0
+      // A tool call can run long legitimately, so only flag a silent stream
+      // when no tool is in flight.
+      const idle =
+        p.phase !== "tool" && idleMs >= IDLE_HINT_SEC * 1000
+          ? ` ${color(ansi, ANSI.GOLD, `idle ${fmtElapsed(idleMs)}`)}`
+          : ""
+      const act = clip(liveActivity(p, nowMs), 40)
+      const tok = color(ansi, ANSI.DGRAY, fmtSpend(p))
+      return `${act}${idle} ${dot} ${toolCount(p, ansi)} ${dot} ${tok}`
     }
     case "done": {
       const arrow = color(ansi, ANSI.DGRAY, "→")
@@ -147,7 +190,7 @@ export function renderWidget(
     const id = color(ansi, ANSI.BOLD, r.id.padEnd(3))
     const label = color(ansi, ANSI.LGRAY, r.label.padEnd(9).slice(0, 9))
     const el = color(ansi, ANSI.DGRAY, elapsedFor(r, opts.nowMs).padStart(5))
-    const detail = rowDetail(r, ansi)
+    const detail = rowDetail(r, ansi, opts.nowMs)
     lines.push(`   ${spin} ${id} ${label} ${el}  ${detail}`)
   }
   if (ordered.length > shown.length) {

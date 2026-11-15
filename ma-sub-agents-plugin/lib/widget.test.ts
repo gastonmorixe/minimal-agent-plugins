@@ -155,3 +155,75 @@ describe("renderWidget", () => {
     expect(out).toContain("\x1b[38;5;214m") // GOLD applied to the over-budget total
   })
 })
+
+describe("renderWidget — stream telemetry", () => {
+  const run = (progress: Progress): SubagentStatus => ({
+    kind: "running",
+    pid: 1,
+    startedAt: "2026-05-30T11:59:00.000Z",
+    progress,
+  })
+
+  it("shows the in-flight tool with how long it has run, and failed calls", () => {
+    const out = renderWidget(
+      [
+        rec(
+          "A1",
+          "worker",
+          run({
+            tools: 5,
+            tokens: 100,
+            toolErrors: 2,
+            phase: "tool",
+            lastActivity: "Bash: bun test",
+            toolSince: NOW - 42_000,
+            lastEventAt: NOW - 42_000,
+          }),
+        ),
+      ],
+      { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD },
+    )
+    expect(out).toContain("Bash: bun test (0m42)")
+    expect(out).toContain("5 tools ✘2")
+    // a long tool call is not "idle"
+    expect(out).not.toContain("idle")
+  })
+
+  it("flags a silent stream as idle", () => {
+    const out = renderWidget(
+      [
+        rec(
+          "A1",
+          "worker",
+          run({
+            tools: 1,
+            tokens: 1,
+            phase: "waiting",
+            lastActivity: "Read: x",
+            lastEventAt: NOW - 90_000,
+          }),
+        ),
+      ],
+      { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD },
+    )
+    expect(out).toContain("idle 1m30")
+  })
+
+  it("shows thinking and writing phases", () => {
+    const thinking = renderWidget(
+      [rec("A1", "w", run({ tools: 0, tokens: 0, phase: "thinking" }))],
+      {
+        ansi: false,
+        tick: 0,
+        nowMs: NOW,
+        leadSid: LEAD,
+      },
+    )
+    expect(thinking).toContain("thinking…")
+    const writing = renderWidget(
+      [rec("A1", "w", run({ tools: 0, tokens: 0, phase: "writing", lastActivity: "The fix is" }))],
+      { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD },
+    )
+    expect(writing).toContain("✎ The fix is")
+  })
+})

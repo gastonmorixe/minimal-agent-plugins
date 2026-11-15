@@ -15,6 +15,7 @@
  * @module sub-agents/lib/supervisor
  */
 
+import { fmtElapsed } from "./style.ts"
 import {
   isTerminal,
   type Progress,
@@ -53,6 +54,17 @@ export interface WorkerProbe {
   readonly crash?: string
   /** Live progress (tools/tokens/last activity), when the worker is running. */
   readonly progress?: Progress
+  /** The worker's event stream reached `run_finished` / `result`. */
+  readonly runEnded?: boolean
+  /** Run wall time in ms, from the stream's final `result` line. */
+  readonly durationMs?: number
+  /**
+   * The cause of a failed run as the worker's event stream reported it
+   * (`error` + `run_finished: failed|aborted`). Structural, not mined, so it
+   * outranks a distilled final message: a run that died mid-way is `failed`,
+   * not `done` with half an answer. A result sentinel still wins.
+   */
+  readonly runFailed?: string
 }
 
 /** A side-effect the shell must execute after the tick. Discriminated union. */
@@ -89,8 +101,10 @@ export interface TickOutput {
 export function completionDigest(r: SubagentRecord): string {
   switch (r.status.kind) {
     case "done": {
-      const short = clip(r.status.result.short, 220)
-      return `Sub-agent ${r.id} (${r.label}) finished: ${short}. Pull the full result with AgentResult ${r.id}.`
+      // The sentence below adds its own period, so drop a trailing one.
+      const short = clip(r.status.result.short, 220).replace(/[.。]+$/, "")
+      const facts = runFacts(r.status.result)
+      return `Sub-agent ${r.id} (${r.label}) finished${facts}: ${short}. Pull the full result with AgentResult ${r.id}.`
     }
     case "incomplete": {
       const salvaged = r.status.salvage
@@ -109,6 +123,20 @@ export function completionDigest(r: SubagentRecord): string {
       throw new Error(`unhandled status kind: ${String(r.status satisfies never)}`)
     }
   }
+}
+
+/** ` (2m14 · 9 tools, 1 failed · 4 turns)`, or "" when nothing is known. */
+function runFacts(c: {
+  durationMs?: number
+  tools: number
+  toolErrors?: number
+  turns?: number
+}): string {
+  const parts: string[] = []
+  if (c.durationMs && c.durationMs >= 1000) parts.push(fmtElapsed(c.durationMs))
+  if (c.tools > 0) parts.push(`${c.tools} tools${c.toolErrors ? `, ${c.toolErrors} failed` : ""}`)
+  if (c.turns) parts.push(`${c.turns} turns`)
+  return parts.length > 0 ? ` (${parts.join(" · ")})` : ""
 }
 
 function clip(s: string, max: number): string {
@@ -234,6 +262,19 @@ function step(
     return { status, effects }
   }
 
+  // 1b. RUN ENDED WHILE ALIVE: the worker's event stream wrote its final line
+  //     (`result`, or a failed `run_finished`), so the run is over and only the
+  //     process lingers (an open child such as obscura-worker, a slow flush).
+  //     Finalize now and stop the pid, instead of holding a concurrency slot
+  //     until the deadline. Same rules as the exit path.
+  if (probe?.alive && probe.runEnded) {
+    const { status, effects: termFx } = finalizeRunning(r, s, probe, now)
+    return {
+      status,
+      effects: [{ type: "stop", id: r.id, pid: s.pid, reason: "run finished" }, ...termFx],
+    }
+  }
+
   // 2. Deadline tripped → ask the shell to kill, mark failed(timeout). This now
   //    fires for UNBUDGETED workers too, via the DEFAULT_DEADLINE_SEC fallback
   //    in `deadlineExceeded` (B-083): a worker wedged mid-finalize (e.g. stuck at
@@ -298,6 +339,18 @@ function finalizeRunning(
       endedAt: now,
       error,
       exitCode: probe.exitCode,
+    }
+    return { status, effects: terminalEffects(r, status, now) }
+  }
+  // a0. The worker's own event stream says the run failed and it handed back
+  //     no sentinel → failed with the reported cause (API error, bad model,
+  //     abort). Checked before the distilled-text path on purpose.
+  if (probe.runFailed && !probe.result) {
+    const status: SubagentStatus = {
+      kind: "failed",
+      endedAt: now,
+      error: probe.runFailed,
+      ...(probe.exitCode !== undefined ? { exitCode: probe.exitCode } : {}),
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
@@ -368,7 +421,7 @@ function finalizeRunning(
     const status: SubagentStatus = {
       kind: "done",
       endedAt: now,
-      result: withObservedCounts(probe.result, s.progress),
+      result: { ...withObservedCounts(probe.result, s.progress), ...durationOf(probe) },
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
@@ -384,6 +437,7 @@ function finalizeRunning(
       result: {
         short: probe.distilled.trim(),
         ...spendOf(s.progress),
+        ...durationOf(probe),
         distilled: true,
       },
     }
@@ -408,8 +462,22 @@ function finalizeRunning(
 function withObservedCounts(result: ResultDigest, progress: Progress): ResultDigest {
   const tokens = Math.max(result.tokens, progress.tokens)
   const tools = Math.max(result.tools, progress.tools)
-  // The worker never reports output or thinking, so these come from progress.
-  return { ...result, tokens, tools, ...outputOf(progress) }
+  // The worker never reports output, thinking, turns or tool errors, so these
+  // come from progress.
+  return { ...result, tokens, tools, ...outputOf(progress), ...streamCountsOf(progress) }
+}
+
+/** Turn and tool-error counts of a progress value (absent stays absent). */
+function streamCountsOf(p: Progress): Pick<Progress, "turns" | "toolErrors"> {
+  return {
+    ...(p.turns ? { turns: p.turns } : {}),
+    ...(p.toolErrors ? { toolErrors: p.toolErrors } : {}),
+  }
+}
+
+/** The run wall time a probe carries, as a result field. */
+function durationOf(probe: WorkerProbe): { durationMs?: number } {
+  return probe.durationMs ? { durationMs: probe.durationMs } : {}
 }
 
 /** The summed output and thinking of a progress value (absent stays absent). */
@@ -421,8 +489,10 @@ function outputOf(p: Progress): Pick<Progress, "output" | "thinking"> {
 }
 
 /** Every count a terminal status copies from progress. */
-function spendOf(p: Progress): Pick<Progress, "tokens" | "tools" | "output" | "thinking"> {
-  return { tokens: p.tokens, tools: p.tools, ...outputOf(p) }
+function spendOf(
+  p: Progress,
+): Pick<Progress, "tokens" | "tools" | "output" | "thinking" | "turns" | "toolErrors"> {
+  return { tokens: p.tokens, tools: p.tools, ...outputOf(p), ...streamCountsOf(p) }
 }
 
 /** Effects emitted on any active→terminal transition: a bus signal + a lead digest. */

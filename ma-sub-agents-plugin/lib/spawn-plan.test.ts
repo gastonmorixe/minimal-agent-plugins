@@ -139,6 +139,12 @@ describe("buildSpawnPlan — fresh", () => {
     expect(argv).toContain("--session-id")
     expect(argv[argv.indexOf("--session-id") + 1]).toBe("9c1a4f2e-0b3d-4a6c-8e1f-2d3c4b5a6978")
     expect(argv).toContain("--no-header")
+    // stream-json: typed events on stdout, and no markdown formatter child
+    const fmt = argv.indexOf("--output-format")
+    expect(fmt).toBeGreaterThan(-1)
+    expect(argv[fmt + 1]).toBe("stream-json")
+    // --prompt stays last
+    expect(argv[argv.length - 2]).toBe("--prompt")
     expect(argv[argv.indexOf("--mode") + 1]).toBe("none")
     expect(argv[argv.indexOf("--model") + 1]).toBe("claude-sonnet-4-6")
     expect(argv[argv.indexOf("--effort") + 1]).toBe("high")
