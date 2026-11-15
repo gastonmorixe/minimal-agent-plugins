@@ -196,10 +196,10 @@ export function bootstrapOpenRouter(ctx?: ProviderSetupContext): void {
   if (!ctx?.models || !ctx.providers) return
   capturedModels = ctx.models
   const ids = registerOpenRouterModels(ctx.models)
-  // scout → first `cheap` tag, else deepseek-v4-flash, else first id.
+  // scout → first `cheap` tag, else deepseek-v4.1-flash, else first id.
   catalogScoutId =
     findOpenRouterModelByTags(["cheap"]) ??
-    ids.find((id) => id === "deepseek/deepseek-v4-flash") ??
+    ids.find((id) => id === "deepseek/deepseek-v4.1-flash") ??
     ids[0]
   // balanced → first non-scout openai-compatible model (skip other cheap ones).
   catalogBalancedId =

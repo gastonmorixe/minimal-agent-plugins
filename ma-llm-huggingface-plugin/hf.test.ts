@@ -34,6 +34,7 @@ import {
   readHuggingfaceApiKey,
 } from "./auth.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
+import { registerHuggingFaceModels } from "./models.ts"
 
 // A repo-separated provider resolves from a local test registrar rather than
 // the host registry. `setup()` re-registers into a fresh one each call and
@@ -98,6 +99,35 @@ describe("llm-huggingface (OpenAI-compatible gateway, reuses llm-openai's wire l
     const adapter = resolveProvider("huggingface")
     expect(adapter.surfaces).toContain("openai-chat-completions")
     expect(adapter.displayName).toBe("HuggingFace")
+  })
+
+  it("pins the curated 2026-11-15 catalog (ids, caps, pricing)", () => {
+    const ids = registerHuggingFaceModels(makeTestRegistry().models)
+    expect(ids).toEqual([
+      "deepseek-ai/DeepSeek-V4.1-Flash",
+      "deepseek-ai/DeepSeek-V4-Pro",
+      "moonshotai/Kimi-K2.7-Code",
+      "moonshotai/Kimi-K3.1-Pro",
+      "zai-org/GLM-5.3",
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "MiniMaxAI/MiniMax-M3",
+    ])
+    setup()
+    const flash = resolveModel("deepseek-ai/DeepSeek-V4.1-Flash")
+    expect(flash.capabilities.contextWindow).toBe(1_048_576)
+    expect(flash.capabilities.modalities.image).toBe(true)
+    expect(flash.pricing?.inputUSD).toBe(0.2)
+    expect(flash.tags).toContain("cheap")
+    const kimi = resolveModel("moonshotai/Kimi-K3.1-Pro")
+    expect(kimi.pricing?.inputUSD).toBe(2)
+    expect(kimi.pricing?.outputUSD).toBe(10)
+    expect(kimi.tags).toContain("flagship")
+    const glm = resolveModel("zai-org/GLM-5.3")
+    expect(glm.capabilities.structuredOutputs).toBe(true)
+    expect(glm.capabilities.modalities.image).toBe(false)
+    expect(glm.pricing?.outputUSD).toBe(4)
+    expect(resolveModel("MiniMaxAI/MiniMax-M3").capabilities.contextWindow).toBe(1_000_000)
   })
 
   it("registers ad-hoc slugs on demand", () => {
