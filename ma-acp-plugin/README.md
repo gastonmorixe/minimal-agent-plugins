@@ -9,7 +9,7 @@ minimal-agent --host-mode acp
 ```
 
 Level 1 scope: `initialize`, `session/new`, `session/prompt`, `session/cancel`,
-`session/set_config_option` (model, effort), text and thought streaming,
+`session/set_config_option` (provider, model, effort), text and thought streaming,
 tool-call, usage and notice updates, and the ACP stop-reason map. One ACP
 session per process. Zero runtime dependencies.
 
@@ -106,7 +106,21 @@ stderr. Each `session/prompt` then fails with a JSON-RPC error (`-32603`) that
 says `the ACP approval gate failed to load`, before the model runs. So no tool
 runs without approval. The process and the session stay open.
 
-## Config options (model, effort)
+## Config options (provider, model, effort)
+
+The order is `provider`, `model`, `effort`. Clients match an option by
+`category`: `_provider`, `model`, and `thought_level`.
+
+The `provider` option lists one row per provider and credential pair that has
+a usable credential. It is sent only when the CLI has the target functions
+(`listTargets`, `getTarget`, `setTarget`) and lists at least one row. The value
+is the provider id, or `<providerId>:c-<10 hex>` when a credential is named.
+The hex is the start of a sha256 of the credential name. The credential name
+(often an email) is only in the label, because clients such as Zed save the
+value in their settings. A provider change keeps the model when the new
+provider has it, else it uses that provider's default model. The reply then
+lists the new provider's models and recomputes effort. A credential that does
+not resolve gives `-32602`, with nothing changed.
 
 `session/set_config_option` returns the complete option list, with the new
 value selected. The agent sends no `config_option_update` for this change. ACP
