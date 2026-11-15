@@ -14,13 +14,39 @@ import { describe, expect, it } from "bun:test"
 import { calculateUsageCost } from "./lib/pricing-calc.ts"
 import { sonnet5RateForDate } from "./models.ts"
 import {
+  ANTHROPIC_FABLE_5_2,
+  ANTHROPIC_HAIKU_55,
   ANTHROPIC_OPUS_4X_STANDARD,
   ANTHROPIC_OPUS_48_FAST,
+  ANTHROPIC_OPUS_55_STANDARD,
   ANTHROPIC_SONNET_5_INTRO,
+  ANTHROPIC_SONNET_55,
   ANTHROPIC_SONNET_STANDARD,
 } from "./pricing.ts"
 
 describe("anthropic pricing tables", () => {
+  // 1h write list rates: https://platform.claude.com/docs/en/about-claude/pricing
+  it("1h cache write rates match the pricing page", () => {
+    expect(ANTHROPIC_FABLE_5_2.cacheWrite1hUSD).toBe(16)
+    expect(ANTHROPIC_OPUS_55_STANDARD.cacheWrite1hUSD).toBe(8)
+    expect(ANTHROPIC_SONNET_55.cacheWrite1hUSD).toBe(4)
+    expect(ANTHROPIC_HAIKU_55.cacheWrite1hUSD).toBe(0.2)
+    expect(ANTHROPIC_OPUS_4X_STANDARD.cacheWrite1hUSD).toBe(10)
+  })
+
+  it("prices the 1h part of cache writes at the 1h rate", () => {
+    const cost = calculateUsageCost(
+      {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationTokens: 1_000_000,
+        cacheBreakdown: { fiveMinute: 500_000, oneHour: 500_000 },
+      },
+      ANTHROPIC_OPUS_55_STANDARD,
+    )
+    expect(cost.cacheCreationUSD).toBeCloseTo(0.5 * 5 + 0.5 * 8)
+  })
+
   it("calculateUsageCost matches the documented Fp standard rate", () => {
     const cost = calculateUsageCost(
       {

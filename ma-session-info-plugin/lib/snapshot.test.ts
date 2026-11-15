@@ -95,6 +95,15 @@ describe("formatSessionInfo", () => {
     expect(out).not.toContain("~$")
   })
 
+  it("shows thinking tokens inside the output figure when reported", () => {
+    const out = formatSessionInfo(
+      base({
+        usage: { input: 10, output: 753, cacheRead: 0, cacheCreate: 0, thinking: 315 },
+      }),
+    )
+    expect(out).toContain("out 753 (thinking 315), cache-read 0")
+  })
+
   it("omits the Uptime line when startedAtMs is undefined", () => {
     const out = formatSessionInfo(base({ startedAtMs: undefined }))
     expect(out).not.toContain("Uptime:")

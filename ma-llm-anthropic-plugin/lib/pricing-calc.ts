@@ -23,12 +23,23 @@ export interface UsageCost {
   totalUSD: number
 }
 
+/**
+ * Cache write cost. The 1 hour part uses `cacheWrite1hUSD` when the rate has
+ * it, clamped to the total. Mirrors core `src/llm/pricing.ts`.
+ */
+function cacheWriteCost(usage: CanonicalUsage, rate: MTokRate): number {
+  const total = usage.cacheCreationTokens ?? 0
+  if (rate.cacheWrite1hUSD === undefined) return (total / 1_000_000) * rate.cacheWriteUSD
+  const oneHour = Math.min(usage.cacheBreakdown?.oneHour ?? 0, total)
+  return ((total - oneHour) * rate.cacheWriteUSD + oneHour * rate.cacheWrite1hUSD) / 1_000_000
+}
+
 /** Compute USD cost of one usage snapshot at the given rate. Unreported fields are zero. */
 export function calculateUsageCost(usage: CanonicalUsage, rate: MTokRate): UsageCost {
   const inputUSD = (usage.inputTokens / 1_000_000) * rate.inputUSD
   const outputUSD = (usage.outputTokens / 1_000_000) * rate.outputUSD
   const cacheReadUSD = ((usage.cacheReadTokens ?? 0) / 1_000_000) * rate.cacheReadUSD
-  const cacheCreationUSD = ((usage.cacheCreationTokens ?? 0) / 1_000_000) * rate.cacheWriteUSD
+  const cacheCreationUSD = cacheWriteCost(usage, rate)
   const reasoningUSD =
     rate.reasoningUSD !== undefined
       ? ((usage.reasoningTokens ?? 0) / 1_000_000) * rate.reasoningUSD
