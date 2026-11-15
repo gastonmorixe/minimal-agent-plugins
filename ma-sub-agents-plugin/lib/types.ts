@@ -105,6 +105,19 @@ export interface Progress {
   readonly lastTool?: string
   /** A one-line digest of the worker's most recent activity. */
   readonly lastActivity?: string
+  // --- stream-json telemetry (absent on transcript-only progress / old records) ---
+  /** Model responses so far (`turn_started.turn`). */
+  readonly turns?: number
+  /** Tool calls that returned an error. */
+  readonly toolErrors?: number
+  /** What the worker is doing at this instant. */
+  readonly phase?: "starting" | "thinking" | "writing" | "tool" | "waiting" | "finished"
+  /** Epoch ms the in-flight tool started (only while `phase` is `tool`). */
+  readonly toolSince?: number
+  /** Epoch ms of the newest stream event (drives the "idle" hint). */
+  readonly lastEventAt?: number
+  /** The model the worker actually resolved (from `session_started`). */
+  readonly model?: string
 }
 
 /** The zero progress value a worker starts with. */
@@ -143,6 +156,12 @@ export interface ResultDigest {
    * work is unverified and any linked todo is canceled, not ticked green.
    */
   readonly incomplete?: boolean
+  /** Model responses the worker made (from its event stream). */
+  readonly turns?: number
+  /** Tool calls that returned an error. */
+  readonly toolErrors?: number
+  /** Run wall time in ms (the stream's `result.durationMs`). */
+  readonly durationMs?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +211,10 @@ export type SubagentStatus =
       readonly output?: number
       /** Thinking tokens summed over all turns. A part of `output`. */
       readonly thinking?: number
+      /** Model responses made before the worker exited. */
+      readonly turns?: number
+      /** Tool calls that returned an error. */
+      readonly toolErrors?: number
       /**
        * Best-effort synthesis SALVAGED from the worker even though the
        * deliverable contract was not met — the text of its result sentinel or,

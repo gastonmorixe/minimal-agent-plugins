@@ -12,7 +12,7 @@
  */
 
 import { buildPresenceRows, writeLeadPresence } from "./presence.ts"
-import { type ProbeDeps, probeWorker } from "./spawn.ts"
+import { type ProbeDeps, probeWorker, streamPathFor } from "./spawn.ts"
 import { type SubagentStore } from "./store.ts"
 import { type Effect, supervisorTick, type WorkerProbe } from "./supervisor.ts"
 import { isActive } from "./types.ts"
@@ -63,6 +63,7 @@ export function runSupervisor(deps: SupervisorDeps): string | null {
             resultPath: `${deps.sessionsDir}/${r.sid}.result.json`,
             transcriptPath: `${deps.sessionsDir}/${r.sid}.jsonl`,
             logPath: `${deps.sessionsDir}/${r.sid}.log`,
+            streamPath: streamPathFor(deps.sessionsDir, r.sid),
             ...(r.expectArtifacts && r.expectArtifacts.length > 0
               ? { expectArtifacts: r.expectArtifacts }
               : {}),

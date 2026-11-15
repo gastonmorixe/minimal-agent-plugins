@@ -24,9 +24,26 @@ import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
 import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 
 import { parseFinalText, parseProgress } from "./progress.ts"
+import {
+  type StreamState,
+  streamEnded,
+  streamFailure,
+  streamFinalText,
+  streamProgress,
+  streamReader,
+} from "./stream.ts"
 import type { SpawnPlan } from "./spawn-plan.ts"
 import type { WorkerProbe } from "./supervisor.ts"
 import { err, ok, type Progress, type Result, type ResultDigest } from "./types.ts"
+
+/**
+ * Where a worker's stdout (its stream-json event lines) is captured. Not
+ * `.jsonl`: session scanners treat every `*.jsonl` in the sessions dir as a
+ * session transcript.
+ */
+export function streamPathFor(sessionsDir: string, sid: string): string {
+  return `${sessionsDir}/${sid}.stream.ndjson`
+}
 
 /** Env key telling a worker where to write its result sentinel. */
 export const ENV_RESULT_PATH = "MINIMAL_AGENT_SUBAGENT_RESULT_PATH"
@@ -40,7 +57,14 @@ export interface SpawnDeps {
   /** Launch a worker process; return its pid. Throws on failure. */
   readonly launch: (
     argv: readonly string[],
-    opts: { cwd: string; env: Record<string, string>; logPath: string },
+    opts: {
+      cwd: string
+      env: Record<string, string>
+      /** stderr capture (and stdout too when `streamPath` is absent). */
+      logPath: string
+      /** stdout capture: the child's stream-json event lines. */
+      streamPath?: string
+    },
   ) => number
 }
 
@@ -74,6 +98,13 @@ export interface ProbeDeps {
    * limited to genuinely silent exits.
    */
   readonly readCrash?: (logPath: string) => string | undefined
+  /**
+   * Fold the worker's stream-json stdout into a {@link StreamState}, or
+   * `undefined` when there is no stream file (an old worker). When present it
+   * is the primary source: progress, final text, outcome and failure cause.
+   * The transcript and log readers stay as fallbacks.
+   */
+  readonly readStream?: (streamPath: string) => StreamState | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -86,9 +117,19 @@ export interface ProbeDeps {
  * agent's own resume path forks the lead's history into the child's pinned
  * sid.) Returns the pid in a {@link Result} (no throw).
  */
-export function launchWorker(plan: SpawnPlan, deps: SpawnDeps, logPath: string): Result<number> {
+export function launchWorker(
+  plan: SpawnPlan,
+  deps: SpawnDeps,
+  logPath: string,
+  streamPath?: string,
+): Result<number> {
   try {
-    const pid = deps.launch(plan.argv, { cwd: plan.cwd, env: plan.env, logPath })
+    const pid = deps.launch(plan.argv, {
+      cwd: plan.cwd,
+      env: plan.env,
+      logPath,
+      ...(streamPath ? { streamPath } : {}),
+    })
     return ok(pid)
   } catch (e) {
     return err(`spawn failed: ${e instanceof Error ? e.message : String(e)}`)
@@ -108,6 +149,8 @@ export interface ProbeTarget {
   readonly logPath?: string
   /** Paths the worker was contracted to produce (the `expectArtifacts` set). */
   readonly expectArtifacts?: readonly string[]
+  /** The worker's stream-json stdout capture. */
+  readonly streamPath?: string
 }
 
 /**
@@ -140,43 +183,65 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
       ? deps.missingArtifacts?.(target.expectArtifacts)
       : undefined
 
+  // The stream-json stdout is the primary telemetry source. It is read
+  // incrementally (only new bytes per tick). The transcript stays the fallback
+  // for an old worker launched without a stream file.
+  const stream = target.streamPath ? deps.readStream?.(target.streamPath) : undefined
   // Read progress alive AND dead: a fast worker can exit (or write its
   // sentinel) before any tick saw it running, and the final counts must
-  // still come from its transcript.
-  const progress = deps.readProgress?.(target.transcriptPath)
-  if (alive) {
+  // still come from its stream / transcript.
+  const progress =
+    (stream ? streamProgress(stream) : undefined) ?? deps.readProgress?.(target.transcriptPath)
+  const durationMs = stream?.result?.durationMs
+  // A failed run as the child itself reported it. Structural, so unlike a
+  // log-mined crash it is trusted even when the worker left partial text.
+  const runFailed = stream ? streamFailure(stream) : undefined
+  const streamFields = {
+    ...(stream && streamEnded(stream) ? { runEnded: true } : {}),
+    ...(durationMs ? { durationMs } : {}),
+    ...(runFailed ? { runFailed } : {}),
+  }
+  // While alive, distillation and crash mining are skipped (mid-turn text is
+  // not a final answer) — unless the stream already proved the run ended. Then
+  // the process is only lingering (open child, slow exit), and its answer is
+  // final.
+  if (alive && !streamFields.runEnded) {
     return {
       alive: true,
       ...(progress ? { progress } : {}),
       ...(result ? { result } : {}),
       ...(missingArtifacts && missingArtifacts.length > 0 ? { missingArtifacts } : {}),
+      ...streamFields,
     }
   }
 
-  const exitCode = deps.exitCode?.(target.pid)
+  const exitCode = alive ? undefined : deps.exitCode?.(target.pid)
   // Distillation fallback: only bother reading the final message when the worker
   // left NO structured sentinel — the sentinel always wins (see supervisorTick
-  // precedence). This keeps a sentinel-writing worker's probe cheap. Exit-only:
-  // while alive a "final" message may just be mid-turn chatter.
-  const distilled = result ? undefined : deps.readFinalText?.(target.transcriptPath)
-  // FIX A: a worker that exited producing NOTHING — no sentinel AND no
-  // distillable final message — is the case where a startup/runtime crash hides.
-  // ONLY then do we mine the log for a fatal signature, so a worker that simply
-  // forgot to summarize is never mislabeled `failed`. A found signature lets the
-  // reducer report `failed` with the real cause instead of a generic
-  // "incomplete · exited without a result".
+  // precedence). Exit-only: while alive a "final" message may just be mid-turn
+  // chatter. The stream's `result.text` is the exact final answer; the
+  // transcript parse is the fallback.
+  const distilled = result
+    ? undefined
+    : ((stream ? streamFinalText(stream) : undefined) ??
+      deps.readFinalText?.(target.transcriptPath))
+  // A worker that exited producing NOTHING — no sentinel AND no distillable
+  // final message — is where a crash hides. The stream already named the cause
+  // structurally above (`runFailed`: `error` + `run_finished: failed`, written
+  // even for a boot failure). Log mining (FIX A) is the fallback for an old
+  // worker or a death before the stream writer ran (the binary did not start).
+  const silent = !result && !(distilled && distilled.trim().length > 0)
   const crash =
-    !result && !(distilled && distilled.trim().length > 0) && target.logPath
-      ? deps.readCrash?.(target.logPath)
-      : undefined
+    silent && !runFailed && target.logPath ? deps.readCrash?.(target.logPath) : undefined
   return {
-    alive: false,
+    alive,
     ...(progress ? { progress } : {}),
     ...(result ? { result } : {}),
     ...(distilled ? { distilled } : {}),
     ...(missingArtifacts && missingArtifacts.length > 0 ? { missingArtifacts } : {}),
     ...(exitCode !== undefined ? { exitCode } : {}),
     ...(crash ? { crash } : {}),
+    ...streamFields,
   }
 }
 
@@ -282,12 +347,17 @@ export function workerEnv(
   return childEnv({ ...base, ...overlay })
 }
 
-/** Production spawn deps: `Bun.spawn` with stdout/stderr → a log file. */
+/**
+ * Production spawn deps: `Bun.spawn` with stdout → the stream file (the
+ * child's stream-json events) and stderr → the log file. Without a
+ * `streamPath` both go to the log (the old layout).
+ */
 export function realSpawnDeps(): SpawnDeps {
   return {
     launch: (argv, opts) => {
       mkdirSync(dirname(opts.logPath), { recursive: true })
       const fd = openSync(opts.logPath, "a")
+      const outFd = opts.streamPath ? openSync(opts.streamPath, "a") : fd
       // Not detached: the worker stays a real child of the lead so a forced
       // lead exit still closes its stdio. (Detached was previously claimed in
       // a comment but never set — and would make lead-exit reaping harder.)
@@ -301,7 +371,7 @@ export function realSpawnDeps(): SpawnDeps {
           cwd: opts.cwd,
           env: workerEnv(opts.env),
           stdin: "ignore",
-          stdout: fd,
+          stdout: outFd,
           stderr: fd,
         },
       )
@@ -352,7 +422,9 @@ export function realProbeDeps(): ProbeDeps {
     read: (p) => readFileSync(p, "utf-8"),
     parse: parseProgress,
   })
+  const readStream = streamReader()
   return {
+    readStream,
     pidAlive: (pid) => {
       try {
         process.kill(pid, 0)

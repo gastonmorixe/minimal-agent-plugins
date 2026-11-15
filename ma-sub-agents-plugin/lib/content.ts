@@ -7,7 +7,35 @@
  */
 
 import { fmtElapsed, fmtSpend } from "./style.ts"
-import { fleetStats, type SubagentRecord, type SubagentStatus } from "./types.ts"
+import { fleetStats, type Progress, type SubagentRecord, type SubagentStatus } from "./types.ts"
+
+/** `· 4 turns` / `· 2 failed` / `· 1m12`, the stream facts a status line adds. */
+function streamFacts(c: { turns?: number; toolErrors?: number; durationMs?: number }): string {
+  const parts: string[] = []
+  if (c.toolErrors) parts.push(`${c.toolErrors} failed`)
+  if (c.turns) parts.push(`${c.turns} turns`)
+  if (c.durationMs && c.durationMs >= 1000) parts.push(`took ${fmtElapsed(c.durationMs)}`)
+  return parts.length > 0 ? ` · ${parts.join(" · ")}` : ""
+}
+
+/** The live "doing now" phrase of a running worker (stream telemetry). */
+function nowDoing(p: Progress, nowMs: number): string {
+  switch (p.phase) {
+    case "starting":
+      return " · starting"
+    case "thinking":
+      return " · thinking"
+    case "writing":
+      return " · writing its answer"
+    case "tool": {
+      const took = p.toolSince !== undefined ? fmtElapsed(nowMs - p.toolSince) : ""
+      const what = p.lastActivity ?? p.lastTool ?? "a tool"
+      return ` · running ${what}${took ? ` for ${took}` : ""}`
+    }
+    default:
+      return p.lastTool ? ` · ${p.lastTool}` : ""
+  }
+}
 
 function statusText(s: SubagentStatus, nowMs: number): string {
   switch (s.kind) {
@@ -15,12 +43,16 @@ function statusText(s: SubagentStatus, nowMs: number): string {
       return "queued"
     case "running": {
       const el = fmtElapsed(nowMs - Date.parse(s.startedAt))
-      return `running ${el} · ${s.progress.tools} tools · ${fmtSpend(s.progress)}${s.progress.lastTool ? ` · ${s.progress.lastTool}` : ""}`
+      const p = s.progress
+      const idleMs = p.lastEventAt !== undefined ? nowMs - p.lastEventAt : 0
+      const idle =
+        p.phase !== "tool" && idleMs >= 60_000 ? ` · no event for ${fmtElapsed(idleMs)}` : ""
+      return `running ${el} · ${p.tools} tools · ${fmtSpend(p)}${streamFacts(p)}${nowDoing(p, nowMs)}${idle}`
     }
     case "done":
-      return `done · ${fmtSpend(s.result)} · ${s.result.tools} tools`
+      return `done · ${fmtSpend(s.result)} · ${s.result.tools} tools${streamFacts(s.result)}`
     case "incomplete":
-      return `incomplete · no deliverable (${s.reason}) · ${fmtSpend(s)} · ${s.tools} tools`
+      return `incomplete · no deliverable (${s.reason}) · ${fmtSpend(s)} · ${s.tools} tools${streamFacts(s)}`
     case "failed":
       return `failed · ${s.error}`
     case "stopped":
@@ -50,8 +82,10 @@ export function fleetText(records: readonly SubagentRecord[], nowMs: number): st
 
 /** One worker's detail (AgentStatus). */
 export function statusDetail(r: SubagentRecord, nowMs: number): string {
+  const resolved = r.status.kind === "running" ? r.status.progress.model : undefined
+  const model = resolved && resolved !== r.model ? resolved : r.model || resolved || "default"
   const lines = [
-    `${r.id} (${r.type}) · model ${r.model} · isolation ${r.isolation} · depth ${r.depth}`,
+    `${r.id} (${r.type}) · model ${model} · isolation ${r.isolation} · depth ${r.depth}`,
     `status: ${statusText(r.status, nowMs)}`,
     `session: ${r.sid}`,
     `task: ${r.task}`,
@@ -89,7 +123,7 @@ export function resultText(r: SubagentRecord): string {
       const note = res.distilled
         ? "\n\n(note: distilled from the worker's final message. It wrote no structured result sentinel, so this summary is best-effort and lists no artifacts)"
         : ""
-      return `Sub-agent ${r.id} (${r.type}) result:\n\n${res.short}${arts}\n\n(${fmtSpend(res)} · ${res.tools} tool calls)${note}`
+      return `Sub-agent ${r.id} (${r.type}) result:\n\n${res.short}${arts}\n\n(${fmtSpend(res)} · ${res.tools} tool calls${streamFacts(res)})${note}`
     }
     case "incomplete": {
       const spent = r.status.tokens

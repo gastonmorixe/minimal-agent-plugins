@@ -193,6 +193,11 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
     flags.push("--resume", input.leadSid)
   }
   flags.push("--session-id", input.childSid, "--no-header", "--mode", input.mode)
+  // stream-json: stdout becomes a typed JSONL event protocol (session_started …
+  // run_finished, result) that the supervisor reads for live telemetry and a
+  // definite end of run. It also puts the child in protocol stdio mode, so no
+  // markdown formatter is spawned and no human chrome is written.
+  flags.push("--output-format", "stream-json")
   // Omit `--model` when empty: the child self-resolves its own default model.
   // This keeps the plugin model-agnostic (see the empty-model note above).
   // When model IS set, also pass `--provider` if we know it, so the child can

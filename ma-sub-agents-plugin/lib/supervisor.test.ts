@@ -559,3 +559,52 @@ describe("supervisorTick — queued + terminal", () => {
     expect(out.effects).toEqual([])
   })
 })
+
+describe("supervisorTick — stream-json signals", () => {
+  it("finalizes a lingering pid once its stream ended, and stops it", () => {
+    const out = tick([rec("A1", running())], {
+      A1: {
+        alive: true,
+        runEnded: true,
+        distilled: "all done",
+        durationMs: 74_000,
+        progress: { tools: 9, tokens: 800, turns: 4, toolErrors: 1 },
+      },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind).toBe("done")
+    if (st?.kind === "done") {
+      expect(st.result).toMatchObject({
+        short: "all done",
+        durationMs: 74_000,
+        turns: 4,
+        toolErrors: 1,
+      })
+    }
+    expect(out.effects[0]).toEqual({
+      type: "stop",
+      id: subagentId("A1"),
+      pid: 4242,
+      reason: "run finished",
+    })
+    const inject = out.effects.find(
+      (e): e is Extract<Effect, { type: "inject" }> => e.type === "inject",
+    )
+    expect(inject?.text).toContain("finished (1m14 · 9 tools, 1 failed · 4 turns): all done")
+  })
+
+  it("keeps a stream-reported failure failed, even with partial text", () => {
+    const out = tick([rec("A1", running())], {
+      A1: { alive: false, runFailed: "API 529: overloaded", distilled: "half an answer" },
+    })
+    const st = out.records[0]?.status
+    expect(st?.kind === "failed" && st.error).toBe("API 529: overloaded")
+  })
+
+  it("lets a result sentinel win over a stream failure", () => {
+    const out = tick([rec("A1", running())], {
+      A1: { alive: false, runFailed: "aborted", result: RESULT },
+    })
+    expect(out.records[0]?.status.kind).toBe("done")
+  })
+})

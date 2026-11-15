@@ -13,7 +13,7 @@
 
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
 import { type PromptRender, renderResultProtocol } from "./prompts.ts"
-import { ENV_RESULT_PATH, launchWorker, type SpawnDeps } from "./spawn.ts"
+import { ENV_RESULT_PATH, launchWorker, type SpawnDeps, streamPathFor } from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { type SubagentStore } from "./store.ts"
 import {
@@ -329,6 +329,7 @@ export async function spawnAgent(
   const id = deps.store.nextId()
   const resultPath = `${deps.sessionsDir}/${childSid}.result.json`
   const logPath = `${deps.sessionsDir}/${childSid}.log`
+  const streamPath = streamPathFor(deps.sessionsDir, childSid)
 
   // Render the deliverable protocol from its markdown template (the prose lives
   // on disk, never in code — repo convention). The worker reads how to finish:
@@ -368,7 +369,7 @@ export async function spawnAgent(
   })
   if (!planResult.ok) return err(planResult.error)
 
-  const launched = launchWorker(planResult.value, deps.spawnDeps, logPath)
+  const launched = launchWorker(planResult.value, deps.spawnDeps, logPath, streamPath)
   if (!launched.ok) return err(launched.error)
 
   const nowIso = deps.now().toISOString()

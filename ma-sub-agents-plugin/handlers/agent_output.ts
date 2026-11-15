@@ -12,6 +12,8 @@ import { statusDetail } from "../lib/content.ts"
 import { sessionsDirFromCtx, storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { transcriptTail } from "../lib/output.ts"
+import { streamPathFor } from "../lib/spawn.ts"
+import { activityLines, parseStream } from "../lib/stream.ts"
 import { ANSI, color, GLYPHS } from "../lib/style.ts"
 import { parseIdArg } from "../lib/validate.ts"
 
@@ -42,8 +44,17 @@ export default async function agentOutput(ctx: TUIContext): Promise<TUIResult> {
       is_error: true,
     }
 
-  const path = `${sessionsDirFromCtx(ctx)}/${rec.sid}.jsonl`
-  const tail = existsSync(path) ? transcriptTail(readFileSync(path, "utf-8")) : []
+  // Prefer the worker's stream-json event file: it has failed tool calls,
+  // notices, errors and the text being written right now. The session
+  // transcript is the fallback for a worker launched before streams existed.
+  const dir = sessionsDirFromCtx(ctx)
+  const streamPath = streamPathFor(dir, rec.sid)
+  const path = `${dir}/${rec.sid}.jsonl`
+  const tail = existsSync(streamPath)
+    ? activityLines(parseStream(readFileSync(streamPath, "utf-8")))
+    : existsSync(path)
+      ? transcriptTail(readFileSync(path, "utf-8"))
+      : []
   const now = Date.now()
   const content =
     tail.length > 0
@@ -57,7 +68,15 @@ export default async function agentOutput(ctx: TUIContext): Promise<TUIResult> {
     displayHeader: header,
     display:
       tail.length > 0
-        ? tail.map((l) => color(true, ANSI.DGRAY, l)).join("\n")
+        ? tail.map((l) => color(true, lineColor(l), l)).join("\n")
         : color(true, ANSI.DIM, "(no activity yet)"),
   }
+}
+
+/** Failed calls and errors in red, notices gold, the live line sky, the rest dim. */
+function lineColor(line: string): string {
+  if (/^\S+ ✘ /.test(line)) return ANSI.RED
+  if (/^\S+ ! /.test(line)) return ANSI.GOLD
+  if (line.trimStart().startsWith("now ")) return ANSI.SKY
+  return ANSI.DGRAY
 }
