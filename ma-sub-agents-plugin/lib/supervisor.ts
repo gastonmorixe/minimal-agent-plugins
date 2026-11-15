@@ -205,6 +205,32 @@ function deadlineExceeded(r: SubagentRecord, startedAt: string, nowMs: number): 
 }
 
 /**
+ * The reason a running worker is past its turn or token budget, or
+ * `undefined`. Both counts come from the worker's event stream:
+ *
+ *  - `maxTurns`: model responses (`turn_started.turn`). The worker gets
+ *    `maxTurns` full turns and is stopped when turn `maxTurns + 1` starts.
+ *  - `maxTokens`: generated tokens (output, thinking included) summed over all
+ *    turns. That is the real spend. The context figure is not used, because it
+ *    re-counts the same prefix every turn.
+ *
+ * A worker without stream telemetry (launched before streams) has no turn
+ * count, so `maxTurns` cannot trip for it. A provider that reports no output
+ * tokens cannot trip `maxTokens`.
+ */
+export function budgetExceeded(r: SubagentRecord, p: Progress): string | undefined {
+  const b = r.budget
+  if (!b) return undefined
+  if (b.maxTurns !== undefined && b.maxTurns > 0 && (p.turns ?? 0) > b.maxTurns) {
+    return `budget exceeded: started turn ${p.turns} with maxTurns ${b.maxTurns}`
+  }
+  if (b.maxTokens !== undefined && b.maxTokens > 0 && (p.output ?? 0) > b.maxTokens) {
+    return `budget exceeded: ${p.output} output tokens with maxTokens ${b.maxTokens}`
+  }
+  return undefined
+}
+
+/**
  * Advance one record given its probe. Returns the next status (or the same
  * reference when unchanged) plus any effects the transition produced.
  */
@@ -272,6 +298,23 @@ function step(
     return {
       status,
       effects: [{ type: "stop", id: r.id, pid: s.pid, reason: "run finished" }, ...termFx],
+    }
+  }
+
+  // 1c. TURN / TOKEN BUDGET: stream telemetry gives live counts, so a worker
+  //     past `budget.maxTurns` or `budget.maxTokens` is stopped through the
+  //     same stop + terminal path as the deadline. Checked after the sentinel
+  //     and run-ended paths, so a worker that already handed its work back is
+  //     never killed for its budget.
+  const over = budgetExceeded(r, probe?.progress ?? s.progress)
+  if (over) {
+    const status: SubagentStatus = { kind: "failed", endedAt: now, error: over }
+    return {
+      status,
+      effects: [
+        { type: "stop", id: r.id, pid: s.pid, reason: "budget" },
+        ...terminalEffects(r, status, now),
+      ],
     }
   }
 

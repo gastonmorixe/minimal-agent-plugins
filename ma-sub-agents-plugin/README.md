@@ -47,7 +47,27 @@ lead puts in the worker's env).
 | `label`           | Display name in the widget. Default: the agent type.                                                                          |
 | `taskId`          | A Task-tool id. The supervisor ticks it done on success, or cancels it with a reason otherwise.                               |
 | `expectArtifacts` | Absolute paths the worker must produce. A missing or empty path makes the worker `incomplete`, never `done`.                  |
-| `budget`          | `{ deadlineSec, maxTurns, maxTokens }`. Only `deadlineSec` is enforced today. Without it, a hard 30-minute deadline applies.  |
+| `budget`          | `{ deadlineSec, maxTurns, maxTokens }`. See [Budgets](#budgets). Without `deadlineSec`, a hard 30-minute deadline applies.    |
+
+### Budgets
+
+The supervisor checks each limit once per tick (1 s) and stops a worker that
+is past one. The worker ends `failed` with the reason, for example
+`budget exceeded: started turn 4 with maxTurns 3`.
+
+| Field         | Counts                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| `deadlineSec` | Wall-clock seconds since spawn.                                               |
+| `maxTurns`    | Model responses. The worker gets `maxTurns` turns and is stopped on the next. |
+| `maxTokens`   | Generated tokens (output, thinking included) summed over the run.             |
+
+`maxTokens` counts output, not context size, because context re-counts the
+same prefix every turn. `maxTurns` and `maxTokens` read the worker's event
+stream, so they do not apply to a worker launched before streams existed, and
+`maxTokens` cannot trip on a provider that reports no output tokens. A limit
+can overshoot by what the worker does within one tick. A worker that already
+called `ReportResult`, or whose run already ended, is never stopped for its
+budget.
 
 ## Specialists
 

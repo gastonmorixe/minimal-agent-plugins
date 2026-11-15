@@ -64,7 +64,7 @@
                   "properties": {
                     "maxTurns": {
                       "type": "number",
-                      "description": "Max agentic turns."
+                      "description": "Max model responses. The worker is stopped when it starts one more."
                     },
                     "deadlineSec": {
                       "type": "number",
@@ -72,7 +72,7 @@
                     },
                     "maxTokens": {
                       "type": "number",
-                      "description": "Soft token ceiling (advisory)."
+                      "description": "Max generated tokens (output, thinking included) summed over the run. The worker is stopped past it."
                     }
                   },
                   "additionalProperties": false
