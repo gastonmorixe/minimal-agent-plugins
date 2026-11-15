@@ -547,25 +547,35 @@ describe("ollama registration seam", () => {
   it("registers the full catalog + adapter through the setup ctx", () => {
     const { ctx, models, adapters, defaultId } = fakeCtx()
     ollamaProviderPlugin.register(ctx)
-    // Models contributed only through ctx.models — live /api/tags snapshot (19).
-    expect(models.length).toBe(19)
+    // Models contributed only through ctx.models — live /api/tags snapshot
+    // 2026-11-15 (24 live, 22 registered: no clef:27b, no dated :1017 tag).
+    expect(models.length).toBe(22)
     expect(models.every((m) => m.providerId === "ollama")).toBe(true)
     expect(models.every((m) => m.surfaceId === "custom")).toBe(true)
     // A representative spread of families is present (ids match live tags).
     for (const id of [
-      "deepseek-v4-flash",
-      "glm-5.2",
-      "qwen3.5:397b",
-      "minimax-m3",
-      "kimi-k2.6",
+      "deepseek-v4.1-flash",
+      "deepseek-v4-pro:0813",
+      "glm-5.3",
+      "glm-5.3-flash",
+      "minimax-m3.1-flash",
+      "kimi-k3.1-pro",
       "kimi-k3",
+      "mimo-v2.6-pro",
+      "beam",
       "gpt-oss:120b",
       "gemma4:31b",
       "nemotron-3-ultra",
-      "mistral-large-3:675b",
+      "mistral-large-4",
     ]) {
       expect(models.some((m) => m.id === id)).toBe(true)
     }
+    // Ids that left the live cloud listing are gone.
+    for (const id of ["deepseek-v4-flash", "qwen3.5:397b", "mistral-large-3:675b", "glm-5.1"]) {
+      expect(models.some((m) => m.id === id)).toBe(false)
+    }
+    // The default model is the first catalog entry.
+    expect(defaultId()).toBe("deepseek-v4.1-flash")
     // Adapter contributed only through ctx.providers.
     expect(adapters).toHaveLength(1)
     expect(adapters[0]?.id).toBe("ollama")
@@ -577,25 +587,28 @@ describe("ollama registration seam", () => {
     const { ctx, models } = fakeCtx()
     ollamaProviderPlugin.register(ctx)
     const byId = new Map(models.map((m) => [m.id, m]))
-    // DeepSeek V4 Flash: 1M context, thinking (effort levels), text-only.
-    const ds = byId.get("deepseek-v4-flash")
-    expect(ds?.capabilities.contextWindow).toBe(1_000_000)
+    // DeepSeek V4.1 Flash: 1M context, thinking (effort levels), image input.
+    const ds = byId.get("deepseek-v4.1-flash")
+    expect(ds?.capabilities.contextWindow).toBe(1_048_576)
     expect(ds?.capabilities.effort.levels.length).toBeGreaterThan(0)
-    expect(ds?.capabilities.modalities.image).toBe(false)
-    // Qwen 3.5 397B (live slug): vision + thinking (prior /api/show caps).
-    const qwen = byId.get("qwen3.5:397b")
-    expect(qwen?.capabilities.modalities.image).toBe(true)
-    expect(qwen?.capabilities.thinking.adaptive).toBe(true)
-    // Mistral Large 3: tools + vision, no thinking (prior show caps).
-    const mistral = byId.get("mistral-large-3:675b")
-    expect(mistral?.capabilities.thinking.adaptive).toBe(false)
+    expect(ds?.capabilities.modalities.image).toBe(true)
+    expect(ds?.tags).toContain("cheap")
+    // DeepSeek V4 Pro 0813: text-only reasoning.
+    const dsPro = byId.get("deepseek-v4-pro:0813")
+    expect(dsPro?.capabilities.modalities.image).toBe(false)
+    expect(dsPro?.capabilities.thinking.adaptive).toBe(true)
+    // Mistral Large 4: reasoning + tools + vision (Large 3 had no thinking).
+    const mistral = byId.get("mistral-large-4")
+    expect(mistral?.capabilities.thinking.adaptive).toBe(true)
     expect(mistral?.capabilities.modalities.image).toBe(true)
-    // kimi-k3: live-only; tags lacked caps — conservative 256K, no thinking/vision.
+    // kimi-k3: models.dev caps now known (1M, thinking, vision).
     const kimi3 = byId.get("kimi-k3")
-    expect(kimi3?.capabilities.contextWindow).toBe(256_000)
-    expect(kimi3?.capabilities.thinking.adaptive).toBe(false)
-    expect(kimi3?.capabilities.modalities.image).toBe(false)
-    expect(kimi3?.tags).toContain("caps-unknown")
+    expect(kimi3?.capabilities.contextWindow).toBe(1_048_576)
+    expect(kimi3?.capabilities.thinking.adaptive).toBe(true)
+    expect(kimi3?.capabilities.modalities.image).toBe(true)
+    expect(kimi3?.tags).not.toContain("caps-unknown")
+    // Beam: text-only reasoning.
+    expect(byId.get("beam")?.capabilities.modalities.image).toBe(false)
     // gpt-oss carries discrete reasoning levels.
     const gptoss = byId.get("gpt-oss:120b")
     expect(gptoss?.capabilities.effort.levels.length).toBeGreaterThan(0)

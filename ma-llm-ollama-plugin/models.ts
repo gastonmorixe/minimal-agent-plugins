@@ -3,18 +3,17 @@
  *
  * Ollama Cloud (ollama.com) serves frontier open-weight models over its native
  * `/api/chat` protocol. The catalog below is a snapshot of the live cloud
- * `/api/tags` listing (https://ollama.com/api/tags) as of **2026-07-30** (19
- * slugs). The cloud API accepts the BARE model id (`deepseek-v4-flash`,
- * `qwen3.5:397b`, `gpt-oss:120b`); the `:cloud` tag is only needed for the local
- * `ollama run` path, not the direct ollama.com API.
+ * `/api/tags` listing (https://ollama.com/api/tags) as of **2026-11-15** (24
+ * live slugs, 22 registered). The cloud API accepts the BARE model id
+ * (`deepseek-v4.1-flash`, `gpt-oss:120b`); the `:cloud` tag is only needed for
+ * the local `ollama run` path, not the direct ollama.com API.
  *
- * **Gaps (2026-07-30 tags fetch):** every row’s `details` (family, parameter
- * size, quantization, format) was empty, and `/api/tags` does not include
- * context windows or capability flags. Context + caps below for models that
- * were already in this catalog are **retained from earlier `/api/show` /
- * library reads** for slugs that still appear live — they are NOT re-derived
- * from this tags fetch. Live-only additions (e.g. `kimi-k3`) use conservative
- * defaults (256K, no thinking/vision tags) until a show probe fills them in.
+ * **Sources (2026-11-15):** ids come from the live `/api/tags` listing. Context
+ * windows and capability flags (reasoning, tool_call, image input) come from
+ * the models.dev `ollama-cloud` provider (https://models.dev/api.json), because
+ * `/api/tags` carries neither. Not registered on purpose: `clef:27b` (a
+ * Cloudflare decision model served on `/v1/systemone`, not chat) and the dated
+ * `deepseek-v4.1-flash:1017` tag (the undated `deepseek-v4.1-flash` is kept).
  * Do not invent context windows from tags alone.
  *
  * Only these live cloud slugs are registered here; any other cloud slug still
@@ -86,86 +85,123 @@ interface OllamaModelSpec {
   caps?: ReadonlyArray<"thinking" | "tools" | "vision" | "audio">
   cheap?: boolean
   /**
-   * When true, ctx/caps were not available from the 2026-07-30 tags fetch and
+   * When true, ctx/caps were not available from the live tags fetch and
    * no prior show data exists for this exact slug — conservative defaults apply.
    */
   capsUnknown?: boolean
 }
 
 /**
- * The built-in Ollama Cloud catalog — ids from live `/api/tags` (2026-07-30).
+ * The built-in Ollama Cloud catalog — ids from live `/api/tags` (2026-11-15).
  * This is the OFFLINE fallback + the source of capability gating when prior
  * `/api/show` data exists; `ProviderPlugin.listLiveModels` supplements it with
  * whatever the server currently serves.
  */
 const CATALOG_SPECS: OllamaModelSpec[] = [
-  // DeepSeek V4 — MoE reasoning, tools, text. V4 exposes High/Max modes.
-  // (ctx/caps retained from prior /api/show; still live 2026-07-30.)
+  // DeepSeek V4.x — MoE reasoning, tools. V4.1 Flash adds image input
+  // (models.dev ollama-cloud, 2026-11-15). First entry = default model.
   {
-    id: "deepseek-v4-flash",
-    name: "DeepSeek V4 Flash",
-    ctx: 1 * M,
-    caps: ["thinking", "tools"],
+    id: "deepseek-v4.1-flash",
+    name: "DeepSeek V4.1 Flash",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools", "vision"],
     cheap: true,
   },
-  { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", ctx: 512 * K, caps: ["thinking", "tools"] },
-  // GLM (Z.ai) — thinking + tools, text.
-  { id: "glm-5.2", name: "GLM-5.2", ctx: 1 * M, caps: ["thinking", "tools"] },
-  { id: "glm-5.1", name: "GLM-5.1", ctx: 198 * K, caps: ["thinking", "tools"] },
-  // Qwen — live slug is the sized tag `qwen3.5:397b` (was bare `qwen3.5`).
+  // Live slug is the dated tag `deepseek-v4-pro:0813` (bare `deepseek-v4-pro`
+  // left /api/tags by 2026-11-15).
   {
-    id: "qwen3.5:397b",
-    name: "Qwen 3.5 397B",
-    ctx: 256 * K,
+    id: "deepseek-v4-pro:0813",
+    name: "DeepSeek V4 Pro 0813",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools"],
+  },
+  // GLM (Z.ai) — thinking + tools. GLM-5.3 Flash adds image input.
+  { id: "glm-5.3", name: "GLM-5.3", ctx: 1_048_576, caps: ["thinking", "tools"] },
+  {
+    id: "glm-5.3-flash",
+    name: "GLM-5.3 Flash",
+    ctx: 1 * M,
+    caps: ["thinking", "tools", "vision"],
+    cheap: true,
+  },
+  { id: "glm-5.2", name: "GLM-5.2", ctx: 976 * K, caps: ["thinking", "tools"] },
+  // MiniMax — multimodal reasoning + tools.
+  { id: "minimax-m3", name: "MiniMax M3", ctx: 512 * K, caps: ["thinking", "tools", "vision"] },
+  {
+    id: "minimax-m3.1-flash",
+    name: "MiniMax M3.1 Flash",
+    ctx: 1 * M,
+    caps: ["thinking", "tools", "vision"],
+    cheap: true,
+  },
+  // Kimi (Moonshot) — native multimodal agentic: vision + thinking + tools.
+  {
+    id: "kimi-k3.1-pro",
+    name: "Kimi K3.1 Pro",
+    ctx: 1_048_576,
     caps: ["thinking", "tools", "vision"],
   },
-  // MiniMax — M3 multimodal; M2.x text reasoning + tools.
-  { id: "minimax-m3", name: "MiniMax M3", ctx: 512 * K, caps: ["thinking", "tools", "vision"] },
-  { id: "minimax-m2.7", name: "MiniMax M2.7", ctx: 192 * K, caps: ["thinking", "tools"] },
-  { id: "minimax-m2.5", name: "MiniMax M2.5", ctx: 192 * K, caps: ["thinking", "tools"] },
-  // Kimi (Moonshot) — native multimodal agentic: vision + thinking + tools.
+  { id: "kimi-k3", name: "Kimi K3", ctx: 1_048_576, caps: ["thinking", "tools", "vision"] },
   {
     id: "kimi-k2.7-code",
     name: "Kimi K2.7 Code",
-    ctx: 256 * K,
+    ctx: 262_144,
     caps: ["thinking", "tools", "vision"],
   },
-  { id: "kimi-k2.6", name: "Kimi K2.6", ctx: 256 * K, caps: ["thinking", "tools", "vision"] },
-  { id: "kimi-k2.5", name: "Kimi K2.5", ctx: 256 * K, caps: ["thinking", "tools", "vision"] },
-  // Live 2026-07-30; tags had empty details — no show-derived ctx/caps yet.
-  { id: "kimi-k3", name: "Kimi K3", capsUnknown: true },
+  { id: "kimi-k2.6", name: "Kimi K2.6", ctx: 262_144, caps: ["thinking", "tools", "vision"] },
+  // Xiaomi MiMo V2.6 — reasoning + tools + image input.
+  {
+    id: "mimo-v2.6-pro",
+    name: "MiMo V2.6 Pro",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools", "vision"],
+  },
+  {
+    id: "mimo-v2.6-flash",
+    name: "MiMo V2.6 Flash",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools", "vision"],
+    cheap: true,
+  },
+  // Beam 1.0 (501B A23B MoE) — text reasoning + tools for coding/agentic work.
+  { id: "beam", name: "Beam 1.0", ctx: 1_048_576, caps: ["thinking", "tools"] },
+  {
+    id: "muse-spark-open",
+    name: "Muse Spark Open",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools", "vision"],
+  },
+  {
+    id: "inkling-2-small",
+    name: "Inkling 2 Small",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools", "vision"],
+  },
   // gpt-oss (OpenAI open-weight) — discrete reasoning levels + tools.
-  { id: "gpt-oss:120b", name: "gpt-oss 120B", ctx: 128 * K, caps: ["thinking", "tools"] },
+  { id: "gpt-oss:120b", name: "gpt-oss 120B", ctx: 131_072, caps: ["thinking", "tools"] },
   {
     id: "gpt-oss:20b",
     name: "gpt-oss 20B",
-    ctx: 128 * K,
+    ctx: 131_072,
     caps: ["thinking", "tools"],
     cheap: true,
   },
-  // Gemma (Google) — live slug is `gemma4:31b` (was bare `gemma4`).
+  // Gemma (Google) — live slug is `gemma4:31b`.
   {
     id: "gemma4:31b",
     name: "Gemma 4 31B",
-    ctx: 256 * K,
+    ctx: 262_144,
     caps: ["thinking", "tools", "vision"],
   },
   // NVIDIA Nemotron 3 — reasoning + tools, text.
-  { id: "nemotron-3-ultra", name: "Nemotron 3 Ultra", ctx: 256 * K, caps: ["thinking", "tools"] },
-  { id: "nemotron-3-super", name: "Nemotron 3 Super", ctx: 256 * K, caps: ["thinking", "tools"] },
+  { id: "nemotron-3-ultra", name: "Nemotron 3 Ultra", ctx: 262_144, caps: ["thinking", "tools"] },
+  { id: "nemotron-3-super", name: "Nemotron 3 Super", ctx: 262_144, caps: ["thinking", "tools"] },
+  // Mistral Large 4 — reasoning (new vs Large 3) + tools + vision.
   {
-    id: "nemotron-3-nano:30b",
-    name: "Nemotron 3 Nano 30B",
-    ctx: 256 * K,
-    caps: ["thinking", "tools"],
-    cheap: true,
-  },
-  // Mistral — live slug is `mistral-large-3:675b` (was bare `mistral-large-3`).
-  {
-    id: "mistral-large-3:675b",
-    name: "Mistral Large 3 675B",
-    ctx: 256 * K,
-    caps: ["tools", "vision"],
+    id: "mistral-large-4",
+    name: "Mistral Large 4",
+    ctx: 1_048_576,
+    caps: ["thinking", "tools", "vision"],
   },
 ]
 
