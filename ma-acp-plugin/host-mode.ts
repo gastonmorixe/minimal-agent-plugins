@@ -477,12 +477,12 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
           }
           return { sessionId: opened.sessionId, configOptions: buildConfigOptions(ctx.runtime) }
         },
-        "session/set_config_option": (rawParams) => {
+        "session/set_config_option": async (rawParams) => {
           const method = "session/set_config_option"
           const params = paramsObject(rawParams, method)
           requireSession(params.sessionId)
           const configId = optionalString(params, "configId", method)
-          return { configOptions: setConfigOption(ctx.runtime, configId, params.value) }
+          return { configOptions: await setConfigOption(ctx.runtime, configId, params.value) }
         },
         "session/prompt": async (rawParams) => {
           const params = paramsObject(rawParams, "session/prompt")
