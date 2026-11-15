@@ -140,8 +140,11 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
       ? deps.missingArtifacts?.(target.expectArtifacts)
       : undefined
 
+  // Read progress alive AND dead: a fast worker can exit (or write its
+  // sentinel) before any tick saw it running, and the final counts must
+  // still come from its transcript.
+  const progress = deps.readProgress?.(target.transcriptPath)
   if (alive) {
-    const progress = deps.readProgress?.(target.transcriptPath)
     return {
       alive: true,
       ...(progress ? { progress } : {}),
@@ -168,6 +171,7 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
       : undefined
   return {
     alive: false,
+    ...(progress ? { progress } : {}),
     ...(result ? { result } : {}),
     ...(distilled ? { distilled } : {}),
     ...(missingArtifacts && missingArtifacts.length > 0 ? { missingArtifacts } : {}),

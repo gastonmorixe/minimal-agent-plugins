@@ -6,7 +6,7 @@
  * @module sub-agents/lib/content
  */
 
-import { fmtElapsed, fmtTokens } from "./style.ts"
+import { fmtElapsed, fmtSpend } from "./style.ts"
 import { fleetStats, type SubagentRecord, type SubagentStatus } from "./types.ts"
 
 function statusText(s: SubagentStatus, nowMs: number): string {
@@ -15,12 +15,12 @@ function statusText(s: SubagentStatus, nowMs: number): string {
       return "queued"
     case "running": {
       const el = fmtElapsed(nowMs - Date.parse(s.startedAt))
-      return `running ${el} · ${s.progress.tools} tools · ${fmtTokens(s.progress.tokens)} tok${s.progress.lastTool ? ` · ${s.progress.lastTool}` : ""}`
+      return `running ${el} · ${s.progress.tools} tools · ${fmtSpend(s.progress)}${s.progress.lastTool ? ` · ${s.progress.lastTool}` : ""}`
     }
     case "done":
-      return `done · ${fmtTokens(s.result.tokens)} tok · ${s.result.tools} tools`
+      return `done · ${fmtSpend(s.result)} · ${s.result.tools} tools`
     case "incomplete":
-      return `incomplete · no deliverable (${s.reason}) · ${fmtTokens(s.tokens)} tok · ${s.tools} tools`
+      return `incomplete · no deliverable (${s.reason}) · ${fmtSpend(s)} · ${s.tools} tools`
     case "failed":
       return `failed · ${s.error}`
     case "stopped":
@@ -42,7 +42,7 @@ export function fleetText(records: readonly SubagentRecord[], nowMs: number): st
     return "No sub-agents in this session. Use SpawnAgent to delegate a unit of work."
   }
   const s = fleetStats(records)
-  const head = `Fleet: ${s.running} running · ${s.queued} queued · ${s.done} done · ${s.failed} failed · ${s.stopped} stopped · ${fmtTokens(s.tokens)} tok total`
+  const head = `Fleet: ${s.running} running · ${s.queued} queued · ${s.done} done · ${s.failed} failed · ${s.stopped} stopped · ${fmtSpend(s)} total`
   const rows = records.map((r) => recordLine(r, nowMs))
   const tail = s.done > 0 ? "\nPull a finished worker's deliverable with AgentResult <id>." : ""
   return `${head}\n\n${rows.join("\n")}${tail}`
@@ -89,11 +89,11 @@ export function resultText(r: SubagentRecord): string {
       const note = res.distilled
         ? "\n\n(note: distilled from the worker's final message. It wrote no structured result sentinel, so this summary is best-effort and lists no artifacts)"
         : ""
-      return `Sub-agent ${r.id} (${r.type}) result:\n\n${res.short}${arts}\n\n(${fmtTokens(res.tokens)} tokens · ${res.tools} tool calls)${note}`
+      return `Sub-agent ${r.id} (${r.type}) result:\n\n${res.short}${arts}\n\n(${fmtSpend(res)} · ${res.tools} tool calls)${note}`
     }
     case "incomplete": {
       const spent = r.status.tokens
-        ? ` (spent ${fmtTokens(r.status.tokens)} tokens · ${r.status.tools} tool calls)`
+        ? ` (spent ${fmtSpend(r.status)} · ${r.status.tools} tool calls)`
         : ""
       if (r.status.salvage) {
         // The contract was not met (a required file is missing/empty), but the

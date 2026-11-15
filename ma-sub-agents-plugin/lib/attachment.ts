@@ -14,7 +14,7 @@
  */
 
 import { type StoreDeps, SubagentStore } from "./store.ts"
-import { fmtElapsed, fmtTokens } from "./style.ts"
+import { fmtElapsed, fmtSpend, fmtTokens } from "./style.ts"
 import { fleetStats, isActive, type SubagentRecord } from "./types.ts"
 
 /**
@@ -39,7 +39,7 @@ function row(r: SubagentRecord, nowMs: number): string {
     case "running": {
       const el = fmtElapsed(nowMs - Date.parse(s.startedAt))
       const act = s.progress.lastActivity ?? s.progress.lastTool ?? ""
-      state = `running ${el} · ${s.progress.tools} tools · ${fmtTokens(s.progress.tokens)}${act ? ` · ${act}` : ""}`
+      state = `running ${el} · ${s.progress.tools} tools · ${fmtSpend(s.progress)}${act ? ` · ${act}` : ""}`
       break
     }
     case "queued":
@@ -92,7 +92,7 @@ export class SubagentsAttachment {
       records.length > shown.length ? `\n… +${records.length - shown.length} more (ListAgents)` : ""
     const incompleteAttr = s.incomplete > 0 ? ` incomplete="${s.incomplete}"` : ""
     const text =
-      `<ma::agent::subagents active="${s.running + s.queued}" done="${s.done}"${incompleteAttr} failed="${s.failed}" tokens="${fmtTokens(s.tokens)}">\n` +
+      `<ma::agent::subagents active="${s.running + s.queued}" done="${s.done}"${incompleteAttr} failed="${s.failed}" tokens="${fmtTokens(s.tokens)}" output="${fmtTokens(s.output)}">\n` +
       `${body}${overflow}\n</ma::agent::subagents>`
     return { type: "text", text }
   }

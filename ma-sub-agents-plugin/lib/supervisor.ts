@@ -278,10 +278,13 @@ function step(
  */
 function finalizeRunning(
   r: SubagentRecord,
-  s: Extract<SubagentStatus, { kind: "running" }>,
+  running: Extract<SubagentStatus, { kind: "running" }>,
   probe: WorkerProbe,
   now: string,
 ): { status: SubagentStatus; effects: Effect[] } {
+  // The final probe's progress is the newest. A fast worker can finish before
+  // any tick stored progress on `running`, so fall back only when it is absent.
+  const s = probe.progress ? { ...running, progress: probe.progress } : running
   // a. A non-zero exit → failed (it crashed), regardless of any artifacts.
   //    Prefer the log's crash signature (the REAL cause: bad model, missing
   //    beta, ENOENT) over the bare exit code, so the lead reads "why" not
@@ -332,8 +335,7 @@ function finalizeRunning(
       kind: "incomplete",
       endedAt: now,
       reason: `missing ${missing.length}/${total} required artifact(s): ${missing.join(", ")}`,
-      tokens: s.progress.tokens,
-      tools: s.progress.tools,
+      ...spendOf(s.progress),
       ...(salvage ? { salvage } : {}),
       ...(claimed && claimed.length > 0 ? { artifacts: claimed } : {}),
     }
@@ -352,8 +354,7 @@ function finalizeRunning(
       kind: "incomplete",
       endedAt: now,
       reason: "worker reported it could not finish",
-      tokens: s.progress.tokens,
-      tools: s.progress.tools,
+      ...spendOf(s.progress),
       ...(salvage ? { salvage } : {}),
       ...(claimed && claimed.length > 0 ? { artifacts: claimed } : {}),
     }
@@ -364,7 +365,11 @@ function finalizeRunning(
   //    prepended a "⚠ N/M artifacts missing" warning to `result.short`, so the
   //    lead is told without the reducer needing filesystem access.)
   if (probe.result) {
-    const status: SubagentStatus = { kind: "done", endedAt: now, result: probe.result }
+    const status: SubagentStatus = {
+      kind: "done",
+      endedAt: now,
+      result: withObservedCounts(probe.result, s.progress),
+    }
     return { status, effects: terminalEffects(r, status, now) }
   }
   // d. Clean exit, no sentinel, BUT a distillable final message → done. The
@@ -378,8 +383,7 @@ function finalizeRunning(
       endedAt: now,
       result: {
         short: probe.distilled.trim(),
-        tokens: s.progress.tokens,
-        tools: s.progress.tools,
+        ...spendOf(s.progress),
         distilled: true,
       },
     }
@@ -391,10 +395,34 @@ function finalizeRunning(
     kind: "incomplete",
     endedAt: now,
     reason: "exited without a result sentinel or any final message",
-    tokens: s.progress.tokens,
-    tools: s.progress.tools,
+    ...spendOf(s.progress),
   }
   return { status, effects: terminalEffects(r, status, now) }
+}
+
+/**
+ * Counts for a sentinel result. ReportResult writes 0 when the model passes
+ * no counts, so a zero there means "not reported". The transcript progress
+ * is measured, so it wins unless the worker reported a larger value.
+ */
+function withObservedCounts(result: ResultDigest, progress: Progress): ResultDigest {
+  const tokens = Math.max(result.tokens, progress.tokens)
+  const tools = Math.max(result.tools, progress.tools)
+  // The worker never reports output or thinking, so these come from progress.
+  return { ...result, tokens, tools, ...outputOf(progress) }
+}
+
+/** The summed output and thinking of a progress value (absent stays absent). */
+function outputOf(p: Progress): Pick<Progress, "output" | "thinking"> {
+  return {
+    ...(p.output !== undefined ? { output: p.output } : {}),
+    ...(p.thinking !== undefined ? { thinking: p.thinking } : {}),
+  }
+}
+
+/** Every count a terminal status copies from progress. */
+function spendOf(p: Progress): Pick<Progress, "tokens" | "tools" | "output" | "thinking"> {
+  return { tokens: p.tokens, tools: p.tools, ...outputOf(p) }
 }
 
 /** Effects emitted on any active→terminal transition: a bus signal + a lead digest. */

@@ -19,6 +19,7 @@ interface MaybeUsage {
   output_tokens?: number
   cache_read_input_tokens?: number
   cache_creation_input_tokens?: number
+  output_tokens_details?: { thinking_tokens?: number }
 }
 
 /** One parsed session record (only the fields we read; everything else ignored). */
@@ -79,12 +80,18 @@ function toolActivity(b: MaybeBlock): string {
  *    Replace-not-accumulate. Matches host `session-tokens.ts` contextSize.
  *    Summing input+output per turn inflated Cursor checkpoint `used_tokens`
  *    by turn count (Donna + Matthew 2026-10-04).
+ *  - `output` / `thinking` = SUMMED over turns. These are generated tokens, so
+ *    each turn adds new ones and the sum is real spend (unlike context, which
+ *    re-counts the same prefix). `thinking` is a part of `output`, and is
+ *    absent when no turn reports it.
  *  - `lastTool` / `lastActivity` = the most recent tool (or a text snippet),
  *    so the widget can show "what is it doing".
  */
 export function parseProgress(jsonlText: string): Progress {
   let tools = 0
   let tokens = 0
+  let output = 0
+  let thinking: number | undefined
   let lastTool: string | undefined
   let lastActivity: string | undefined
 
@@ -114,6 +121,9 @@ export function parseProgress(jsonlText: string): Progress {
     if (rec.usage) {
       const b = billedUsageOf(rec.usage)
       tokens = b.input + b.cacheRead + b.cacheCreate
+      output += b.output
+      const t = rec.usage.output_tokens_details?.thinking_tokens
+      if (typeof t === "number") thinking = (thinking ?? 0) + t
     }
   }
 
@@ -121,6 +131,8 @@ export function parseProgress(jsonlText: string): Progress {
   return {
     tools,
     tokens,
+    ...(output > 0 ? { output } : {}),
+    ...(thinking !== undefined ? { thinking } : {}),
     ...(lastTool ? { lastTool } : {}),
     ...(lastActivity ? { lastActivity } : {}),
   }

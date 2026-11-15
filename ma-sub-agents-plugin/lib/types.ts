@@ -97,6 +97,10 @@ export interface Progress {
   readonly tools: number
   /** Last-turn contextSize (input + cacheRead + cacheCreate). Not a billed integral. */
   readonly tokens: number
+  /** Output tokens summed over all turns (generated, so a sum is real spend). */
+  readonly output?: number
+  /** Thinking tokens summed over all turns. A part of {@link output}. */
+  readonly thinking?: number
   /** Name of the most recent tool, for the widget's "what's it doing" column. */
   readonly lastTool?: string
   /** A one-line digest of the worker's most recent activity. */
@@ -117,6 +121,10 @@ export interface ResultDigest {
   readonly tokens: number
   /** Total tool calls the worker made. */
   readonly tools: number
+  /** Output tokens summed over all turns, copied from live progress. */
+  readonly output?: number
+  /** Thinking tokens summed over all turns. A part of {@link output}. */
+  readonly thinking?: number
   /** Paths/refs to artifacts the worker wrote (passed by reference, not value). */
   readonly artifacts?: readonly string[]
   /**
@@ -176,10 +184,14 @@ export type SubagentStatus =
       readonly endedAt: string
       /** Why no deliverable was captured (e.g. "exited without result sentinel"). */
       readonly reason: string
-      /** Tokens spent before the worker exited (from live progress). */
+      /** Last-turn contextSize before the worker exited (from live progress). */
       readonly tokens: number
       /** Tool calls made before the worker exited. */
       readonly tools: number
+      /** Output tokens summed over all turns. */
+      readonly output?: number
+      /** Thinking tokens summed over all turns. A part of `output`. */
+      readonly thinking?: number
       /**
        * Best-effort synthesis SALVAGED from the worker even though the
        * deliverable contract was not met — the text of its result sentinel or,
@@ -295,6 +307,10 @@ export interface FleetStats {
   readonly stopped: number
   /** Sum of last-turn contextSize across workers (running + done + incomplete). */
   readonly tokens: number
+  /** Output tokens summed across workers. Real generated spend. */
+  readonly output: number
+  /** Thinking tokens summed across workers. A part of {@link output}. */
+  readonly thinking: number
 }
 
 /** Compute {@link FleetStats} over a set of records. Pure. */
@@ -306,6 +322,13 @@ export function fleetStats(records: readonly SubagentRecord[]): FleetStats {
   let failed = 0
   let stopped = 0
   let tokens = 0
+  let output = 0
+  let thinking = 0
+  const add = (c: { tokens: number; output?: number; thinking?: number }) => {
+    tokens += c.tokens
+    output += c.output ?? 0
+    thinking += c.thinking ?? 0
+  }
   for (const r of records) {
     switch (r.status.kind) {
       case "queued":
@@ -313,15 +336,15 @@ export function fleetStats(records: readonly SubagentRecord[]): FleetStats {
         break
       case "running":
         running++
-        tokens += r.status.progress.tokens
+        add(r.status.progress)
         break
       case "done":
         done++
-        tokens += r.status.result.tokens
+        add(r.status.result)
         break
       case "incomplete":
         incomplete++
-        tokens += r.status.tokens
+        add(r.status)
         break
       case "failed":
         failed++
@@ -334,5 +357,16 @@ export function fleetStats(records: readonly SubagentRecord[]): FleetStats {
       }
     }
   }
-  return { total: records.length, queued, running, done, incomplete, failed, stopped, tokens }
+  return {
+    total: records.length,
+    queued,
+    running,
+    done,
+    incomplete,
+    failed,
+    stopped,
+    tokens,
+    output,
+    thinking,
+  }
 }

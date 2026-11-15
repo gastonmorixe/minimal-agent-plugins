@@ -72,6 +72,8 @@ describe("fleetStats", () => {
       failed: 1,
       stopped: 1,
       tokens: 2000 + 500 + 3000 + 700,
+      output: 0,
+      thinking: 0,
     })
   })
 
@@ -85,6 +87,8 @@ describe("fleetStats", () => {
       failed: 0,
       stopped: 0,
       tokens: 0,
+      output: 0,
+      thinking: 0,
     })
   })
 })

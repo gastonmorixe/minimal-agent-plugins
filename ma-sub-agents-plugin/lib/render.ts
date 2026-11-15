@@ -9,7 +9,7 @@
  * @module sub-agents/lib/render
  */
 
-import { ANSI, color, fmtElapsed, fmtTokens, GLYPHS, statusGlyph, statusLabel } from "./style.ts"
+import { ANSI, color, fmtElapsed, fmtSpend, GLYPHS, statusGlyph, statusLabel } from "./style.ts"
 import { fleetStats, type SubagentRecord } from "./types.ts"
 
 /** The `{header, body, footer}` slots a tool result fills. */
@@ -110,7 +110,7 @@ function fleetRow(r: SubagentRecord, ansi: boolean, nowMs: number): string {
   const s = r.status
   if (s.kind === "running") {
     const el = fmtElapsed(nowMs - Date.parse(s.startedAt))
-    trail = `${el}  ${color(ansi, ANSI.DGRAY, `${s.progress.tools} tools ${GLYPHS.bullet} ${fmtTokens(s.progress.tokens)}`)}`
+    trail = `${el}  ${color(ansi, ANSI.DGRAY, `${s.progress.tools} tools ${GLYPHS.bullet} ${fmtSpend(s.progress)}`)}`
   } else if (s.kind === "done") {
     trail = `${color(ansi, ANSI.DIM, clip(s.result.short, 28))} ${color(ansi, ANSI.DGRAY, "→")} ${color(ansi, ANSI.LGRAY, `AgentResult ${r.id}`)}`
   } else if (s.kind === "incomplete") {
@@ -136,7 +136,7 @@ export function renderFleetFooter(records: readonly SubagentRecord[], ansi: bool
         ]
       : []),
     `${color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.failed)} ${color(ansi, ANSI.RED, `${s.failed} failed`)}`,
-    color(ansi, ANSI.DGRAY, `${fmtTokens(s.tokens)} tok`),
+    color(ansi, ANSI.DGRAY, fmtSpend(s)),
   ]
   return ` ${parts.join(` ${dot} `)}`
 }
@@ -158,7 +158,7 @@ export function renderFleetDisplay(
   }
   const incSeg =
     s.incomplete > 0 ? ` ${dot} ${color(ansi, ANSI.GOLD, `${s.incomplete} incomplete`)}` : ""
-  const header = `${color(ansi, ANSI.LGRAY, "fleet")} ${dot} ${color(ansi, ANSI.SKY, `${s.running} running`)} ${dot} ${color(ansi, ANSI.LIME, `${s.done} done`)}${incSeg} ${dot} ${color(ansi, ANSI.DGRAY, `${fmtTokens(s.tokens)} tok`)}`
+  const header = `${color(ansi, ANSI.LGRAY, "fleet")} ${dot} ${color(ansi, ANSI.SKY, `${s.running} running`)} ${dot} ${color(ansi, ANSI.LIME, `${s.done} done`)}${incSeg} ${dot} ${color(ansi, ANSI.DGRAY, fmtSpend(s))}`
   const rows = records.map((r) => fleetRow(r, ansi, nowMs))
   // Trailing blank row → the host renders a bare `│` spacer before the
   // `╰ <footer>` summary, mirroring the blank `│` line the header already
@@ -186,7 +186,7 @@ export function renderResultDisplay(r: SubagentRecord, ansi: boolean): DisplayPa
     return {
       header: `${arrow} ${id} ${dot} ${type} ${dot} ${statusLabel(r.status, ansi)}`,
       body: `${res.short}${artifacts}`,
-      footer: ` ${color(ansi, ANSI.LIME, "done")} ${dot} ${color(ansi, ANSI.DGRAY, `${fmtTokens(res.tokens)} tok ${GLYPHS.bullet} ${res.tools} tools`)}`,
+      footer: ` ${color(ansi, ANSI.LIME, "done")} ${dot} ${color(ansi, ANSI.DGRAY, `${fmtSpend(res)} ${GLYPHS.bullet} ${res.tools} tools`)}`,
     }
   }
   // Incomplete is TERMINAL (not "yet"): the worker finished with no deliverable.
@@ -209,7 +209,7 @@ export function renderResultDisplay(r: SubagentRecord, ansi: boolean): DisplayPa
     return {
       header: `${warnArrow} ${color(ansi, `${ANSI.GOLD}${ANSI.BOLD}`, r.id)} ${dot} ${type} ${dot} ${statusLabel(r.status, ansi)}`,
       body,
-      footer: ` ${color(ansi, ANSI.DGRAY, `${fmtTokens(r.status.tokens)} tok ${GLYPHS.bullet} ${r.status.tools} tools`)}`,
+      footer: ` ${color(ansi, ANSI.DGRAY, `${fmtSpend(r.status)} ${GLYPHS.bullet} ${r.status.tools} tools`)}`,
     }
   }
   // Not done yet (or failed): report state honestly.
