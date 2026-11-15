@@ -6,9 +6,12 @@
  * - `-chat` companions → `openai-chat-completions`
  * - `vendorIds.firstParty` is always the bare wire slug Meta expects
  *
- * Live catalog (Jonathan meta-harness + Anthony probe, 2026-10-04
- * `GET /v1/models`): muse-spark-1.3, 1.3-contributor, 1.2, 1.2-contributor,
- * 1.1 (+ non-text ids sam/image/voice not registered here).
+ * Live catalog (plugin `listLiveModels`, 2026-11-15 `GET /v1/models`):
+ * muse-wonder-1.0, muse-ember-1.0, muse-spark-1.3, 1.3-contributor, 1.2,
+ * 1.2-contributor, 1.1 (+ non-text ids sam-3.1, muse-image-1.0,
+ * muse-voice-transcribe-1.0 not registered here). The `-chat` ids are
+ * client-side companions on the same wire id, so they never appear live.
+ * Caps and pricing for wonder/ember come from models.dev (2026-11-15).
  *
  * @module llm/providers/meta/models
  */
@@ -17,6 +20,8 @@ import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabiliti
 import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
 
 import {
+  CAPS_MUSE_EMBER_1_0_CHAT,
+  CAPS_MUSE_EMBER_1_0_RESPONSES,
   CAPS_MUSE_SPARK_1_1_CHAT,
   CAPS_MUSE_SPARK_1_1_RESPONSES,
   CAPS_MUSE_SPARK_1_2_CHAT,
@@ -27,16 +32,20 @@ import {
   CAPS_MUSE_SPARK_1_3_CONTRIBUTOR_CHAT,
   CAPS_MUSE_SPARK_1_3_CONTRIBUTOR_RESPONSES,
   CAPS_MUSE_SPARK_1_3_RESPONSES,
+  CAPS_MUSE_WONDER_1_0_CHAT,
+  CAPS_MUSE_WONDER_1_0_RESPONSES,
 } from "./capabilities.ts"
 import type { MTokRate } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import {
   PRICING_META_GENERIC,
+  PRICING_MUSE_EMBER_1_0,
   PRICING_MUSE_SPARK_1_1,
   PRICING_MUSE_SPARK_1_2,
   PRICING_MUSE_SPARK_1_2_CONTRIBUTOR,
   PRICING_MUSE_SPARK_1_3,
   PRICING_MUSE_SPARK_1_3_CONTRIBUTOR,
+  PRICING_MUSE_WONDER_1_0,
 } from "./pricing.ts"
 
 const estimateMetaTokens = makeCharRatioEstimator(3.8)
@@ -70,6 +79,10 @@ const BUILTIN_IDS = [
   "muse-spark-1.1-chat",
   "muse-spark-1.2-contributor",
   "muse-spark-1.2-contributor-chat",
+  "muse-wonder-1.0",
+  "muse-wonder-1.0-chat",
+  "muse-ember-1.0",
+  "muse-ember-1.0-chat",
 ] as const
 
 function reg(
@@ -329,6 +342,99 @@ export function registerMetaModels(registrar: ModelRegistrar): string[] {
     ],
     capabilities: CAPS_MUSE_SPARK_1_2_CONTRIBUTOR_CHAT,
     pricing: PRICING_MUSE_SPARK_1_2_CONTRIBUTOR,
+  })
+
+  // --- muse-wonder-1.0 (frontier, live 2026-11-15). Registered after Spark
+  // 1.3 so the first-match `flagship`+`deep` pick stays muse-spark-1.3.
+  reg(registrar, {
+    id: "muse-wonder-1.0",
+    surfaceId: "openai-responses",
+    displayName: "Muse Wonder 1.0",
+    wireId: "muse-wonder-1.0",
+    aliases: ["muse-wonder", "wonder"],
+    tags: [
+      "meta",
+      "muse",
+      "openai-compatible",
+      "reasoning",
+      "1m-context",
+      "flagship",
+      "deep",
+      "code",
+      "vision",
+      "multimodal",
+      "video",
+      "responses",
+    ],
+    capabilities: CAPS_MUSE_WONDER_1_0_RESPONSES,
+    pricing: PRICING_MUSE_WONDER_1_0,
+  })
+  reg(registrar, {
+    id: "muse-wonder-1.0-chat",
+    surfaceId: "openai-chat-completions",
+    displayName: "Muse Wonder 1.0 (Chat)",
+    wireId: "muse-wonder-1.0",
+    tags: [
+      "meta",
+      "muse",
+      "openai-compatible",
+      "reasoning",
+      "1m-context",
+      "code",
+      "vision",
+      "multimodal",
+      "video",
+      "chat",
+    ],
+    capabilities: CAPS_MUSE_WONDER_1_0_CHAT,
+    pricing: PRICING_MUSE_WONDER_1_0,
+  })
+
+  // --- muse-ember-1.0 (small, fast, live 2026-11-15). Registered after the
+  // 1.3 Contributor so the first-match `cheap`+`scout` pick is unchanged.
+  reg(registrar, {
+    id: "muse-ember-1.0",
+    surfaceId: "openai-responses",
+    displayName: "Muse Ember 1.0",
+    wireId: "muse-ember-1.0",
+    aliases: ["muse-ember", "ember"],
+    tags: [
+      "meta",
+      "muse",
+      "openai-compatible",
+      "reasoning",
+      "1m-context",
+      "cheap",
+      "fast",
+      "scout",
+      "code",
+      "vision",
+      "multimodal",
+      "video",
+      "responses",
+    ],
+    capabilities: CAPS_MUSE_EMBER_1_0_RESPONSES,
+    pricing: PRICING_MUSE_EMBER_1_0,
+  })
+  reg(registrar, {
+    id: "muse-ember-1.0-chat",
+    surfaceId: "openai-chat-completions",
+    displayName: "Muse Ember 1.0 (Chat)",
+    wireId: "muse-ember-1.0",
+    tags: [
+      "meta",
+      "muse",
+      "openai-compatible",
+      "reasoning",
+      "1m-context",
+      "code",
+      "vision",
+      "multimodal",
+      "video",
+      "chat",
+    ],
+    capabilities: CAPS_MUSE_EMBER_1_0_CHAT,
+    pricing: PRICING_MUSE_EMBER_1_0,
   })
 
   registrar.setDefault(META_DEFAULT_MODEL_ID)

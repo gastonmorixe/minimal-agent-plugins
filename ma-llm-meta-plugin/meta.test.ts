@@ -125,7 +125,12 @@ describe("meta plugin shape", () => {
   it("registers Muse Spark Responses + Chat companions", () => {
     const r = makeTestRegistry()
     const ids = registerMetaModels(r.models)
-    expect(ids).toHaveLength(10)
+    expect(ids).toHaveLength(14)
+    expect(ids).toEqual(listMetaBuiltinModelIds())
+    expect(ids).toContain("muse-wonder-1.0")
+    expect(ids).toContain("muse-wonder-1.0-chat")
+    expect(ids).toContain("muse-ember-1.0")
+    expect(ids).toContain("muse-ember-1.0-chat")
     expect(ids).toContain("muse-spark-1.3")
     expect(ids).toContain("muse-spark-1.3-chat")
     expect(ids).toContain("muse-spark-1.3-contributor")
@@ -136,7 +141,7 @@ describe("meta plugin shape", () => {
     expect(ids).toContain("muse-spark-1.1-chat")
     expect(ids).toContain("muse-spark-1.2-contributor")
     expect(ids).toContain("muse-spark-1.2-contributor-chat")
-    expect(listMetaBuiltinModelIds()).toHaveLength(10)
+    expect(listMetaBuiltinModelIds()).toHaveLength(14)
     expect(META_DEFAULT_MODEL_ID).toBe("muse-spark-1.3")
   })
 
@@ -157,6 +162,16 @@ describe("meta plugin shape", () => {
     expect(r.resolveModel("muse-spark-1.3-chat").capabilities.thinking.visible).toBe(false)
     expect(r.resolveModel("muse-spark-1.3-chat").vendorIds?.firstParty).toBe("muse-spark-1.3")
     expect(r.resolveModel("muse-spark-1.2").surfaceId).toBe("openai-responses")
+    // models.dev 2026-11-15: Wonder $4/$20, Ember 524288 output, both effort `max`
+    const wonder = r.resolveModel("muse-wonder-1.0")
+    expect(wonder.surfaceId).toBe("openai-responses")
+    expect(wonder.pricing.inputUSD).toBe(4)
+    expect(wonder.pricing.outputUSD).toBe(20)
+    expect(wonder.capabilities.effort.levels).toContain("max")
+    const ember = r.resolveModel("muse-ember-1.0")
+    expect(ember.capabilities.maxOutputTokens).toBe(524_288)
+    expect(ember.pricing.inputUSD).toBe(0.1)
+    expect(r.resolveModel("muse-ember-1.0-chat").vendorIds?.firstParty).toBe("muse-ember-1.0")
   })
 
   it("ad-hoc model registers bare Meta slug", () => {
