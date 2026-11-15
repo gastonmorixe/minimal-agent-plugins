@@ -207,7 +207,7 @@ export function bootstrapOllama(ctx?: ProviderSetupContext): void {
   // Capture role picks for recommendSubagentModels: the two `cheap`-tagged
   // small models are scouts; the first 1M-context flagship is balanced.
   catalogScoutId = ids.find((id) => id === "gpt-oss:20b") ?? ids.find((id) => id.includes("flash"))
-  catalogBalancedId = ids.find((id) => id === "deepseek-v4-flash") ?? ids[0]
+  catalogBalancedId = ids.find((id) => id === "deepseek-v4.1-flash") ?? ids[0]
   ctx.providers.register(ollamaAdapter)
 }
 
