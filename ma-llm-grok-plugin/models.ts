@@ -137,32 +137,8 @@ function reg(
 export function registerGrokModels(registrar: ModelRegistrar): string[] {
   localCatalog.length = 0
 
-  // --- grok-4.6: Responses preferred (authenticated cli-models + xAI docs)
-  reg(registrar, {
-    id: "grok-4.6",
-    surfaceId: "openai-responses",
-    displayName: "Grok 4.6",
-    wireId: "grok-4.6",
-    aliases: ["grok-4.6-latest"],
-    tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
-    capabilities: CAPS_GROK_46_RESPONSES,
-    pricing: PRICING_GROK_46,
-    knowledgeCutoff: "2026-02-01",
-  })
-  reg(registrar, {
-    id: "grok-4.6-chat",
-    surfaceId: "openai-chat-completions",
-    displayName: "Grok 4.6 (Chat)",
-    wireId: "grok-4.6",
-    tags: ["grok", "xai", "flagship", "reasoning", "vision", "tools", "chat"],
-    capabilities: CAPS_GROK_46_CHAT,
-    pricing: PRICING_GROK_46,
-  })
-
-  // --- grok-4.7: Responses preferred (models.dev `xai` + docs.x.ai, snapshot
-  // 2026-11-15). Not yet confirmed on the cli-chat-proxy subscription route,
-  // so it sits after grok-4.6 and grok-4.6 stays the default and the first
-  // flagship/deep tag match.
+  // --- grok-4.7: Responses preferred, the default and first flagship/deep
+  // tag match (models.dev `xai` + docs.x.ai, snapshot 2026-11-15).
   reg(registrar, {
     id: "grok-4.7",
     surfaceId: "openai-responses",
@@ -183,6 +159,28 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     capabilities: CAPS_GROK_47_CHAT,
     pricing: PRICING_GROK_47,
     knowledgeCutoff: "2026-05-01",
+  })
+
+  // --- grok-4.6: Responses preferred (authenticated cli-models + xAI docs)
+  reg(registrar, {
+    id: "grok-4.6",
+    surfaceId: "openai-responses",
+    displayName: "Grok 4.6",
+    wireId: "grok-4.6",
+    aliases: ["grok-4.6-latest"],
+    tags: ["grok", "xai", "flagship", "deep", "reasoning", "vision", "tools", "responses"],
+    capabilities: CAPS_GROK_46_RESPONSES,
+    pricing: PRICING_GROK_46,
+    knowledgeCutoff: "2026-02-01",
+  })
+  reg(registrar, {
+    id: "grok-4.6-chat",
+    surfaceId: "openai-chat-completions",
+    displayName: "Grok 4.6 (Chat)",
+    wireId: "grok-4.6",
+    tags: ["grok", "xai", "flagship", "reasoning", "vision", "tools", "chat"],
+    capabilities: CAPS_GROK_46_CHAT,
+    pricing: PRICING_GROK_46,
   })
 
   // --- grok-4.5: Responses preferred (cli-chat-proxy + api.x.ai)
@@ -300,7 +298,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
     pricing: PRICING_GROK_420,
   })
 
-  registrar.setDefault("grok-4.6")
+  registrar.setDefault("grok-4.7")
   return localCatalog.map((m) => m.id)
 }
 
