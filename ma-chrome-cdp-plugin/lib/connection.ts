@@ -37,7 +37,7 @@ export interface ConnectionOpts {
   requestTimeoutMs?: number
   /** Max events retained in the ring buffer (default 5000). */
   eventBufferCapacity?: number
-  /** Called on unexpected close so the daemon can reconnect. */
+  /** Called on unexpected close (the daemon logs it, it does not reconnect). */
   onClose?: () => void
   log?: (msg: string) => void
 }
@@ -71,9 +71,12 @@ export class CdpConnection {
     this.events = new EventBuffer(opts.eventBufferCapacity ?? 5000)
   }
 
+  /** True once the WebSocket opened, until it closes. False while the upgrade is pending. */
   get connected(): boolean {
-    return this.ws !== null
+    return this.ws !== null && this.isOpen
   }
+
+  private isOpen = false
 
   getDownloads(): DownloadRecord[] {
     return this.downloads
@@ -84,19 +87,22 @@ export class CdpConnection {
       const ws = this.opts.socketFactory(this.opts.url)
       this.ws = ws
       ws.addEventListener("open", () => {
+        this.isOpen = true
         this.opts.log?.(`connected ${this.opts.url}`)
         resolve()
       })
       ws.addEventListener("error", (e) => reject(new Error(e.message ?? "ws error")))
+      // A close before open (refused, 403) must reject too, not hang.
+      ws.addEventListener("close", () => reject(new Error("ws closed before open")))
       ws.addEventListener("close", () => {
         this.opts.log?.("ws closed")
         this.ws = null
+        this.isOpen = false
         this.targetSessions.clear()
         this.frameSessions.clear()
         // Reject every in-flight request now. Without this, a send() whose
         // reply will never arrive (the socket is gone) hangs until its own
-        // 30s per-request timer fires, even though the daemon has already
-        // started reconnecting on a fresh connection.
+        // 30s per-request timer fires.
         this.rejectAllPending("ws closed")
         this.opts.onClose?.()
       })

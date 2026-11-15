@@ -114,8 +114,8 @@ widgets, setting React inputs, download verification, iframe/login caveats, the
 | `CDP_LEASE_DIR`        | `<CDP_SOCK>.leases`   | one file per client pid (lease)                              |
 | `CDP_IDLE_MS`          | `600000`              | exit after this idle time with no live lease (`0` = never)   |
 | `CDP_LEASE_CHECK_MS`   | `30000`               | interval of the lease sweep and idle check                   |
-| `CDP_MAX_RECONNECT`    | `30`                  | exit after this many failed Chrome reconnects (`0` = no cap) |
-| `CDP_READY_TIMEOUT_MS` | `15000`               | a request waits this long for the first Chrome connect       |
+| `CDP_DENY_COOLDOWN_MS` | `30000`               | after a denied connect (403), fail at once for this long     |
+| `CDP_READY_TIMEOUT_MS` | `15000`               | a request waits this long for the Chrome connect             |
 | `CDP_LEASE_MAX_AGE_MS` | `86400000`            | drop a lease not refreshed for this long (`0` = no limit)    |
 
 ### Daemon lifetime
@@ -130,12 +130,30 @@ widgets, setting React inputs, download verification, iframe/login caveats, the
    call and removes it when the process exits. The daemon removes the leases
    of dead pids and the leases not refreshed for `CDP_LEASE_MAX_AGE_MS`. It
    exits when no live lease is left and no request came for `CDP_IDLE_MS`.
-   The idle timer starts when the socket is bound, before the Chrome connect.
-   If the first connect does not settle in `CDP_READY_TIMEOUT_MS`, a request
-   gets 503 `{"error":"chrome connect timeout"}`.
-4. When Chrome goes away, the daemon tries `CDP_MAX_RECONNECT` reconnects,
-   one per second, then exits 0.
+4. The daemon connects to Chrome **on demand only**: on the first request that
+   needs Chrome, and again on the next request after the connection drops
+   (sleep/wake, Chrome restart). It never connects at start and never
+   reconnects in the background. At most one connect attempt is in flight.
+   Requests that come while it is pending share it. A request waits for it at
+   most `CDP_READY_TIMEOUT_MS`, then gets 503
+   `{"error":"chrome connect timeout"}`. The attempt keeps going. A 403
+   (the user cancelled the dialog) gives 403 `denied` to requests for
+   `CDP_DENY_COOLDOWN_MS`, with no new attempt.
 5. On exit the daemon removes the socket only if the file is the one it bound.
+
+### Why on demand: the "Allow remote debugging?" dialog
+
+Chrome/Chromium with remote debugging turned on in its settings
+(`chrome://inspect/#remote-debugging`, no launch flag) shows an "Allow remote
+debugging?" dialog for **every new browser WebSocket**. An Allow covers only
+that connection. Chromium **queues** these dialogs and keeps them after the
+client has gone away. A daemon that reconnected by itself after a sleep/wake
+drop raised one dialog per attempt while the Mac was locked: hundreds of
+dialogs at unlock, and a browser that hung. So every connect must come from a
+request.
+
+To get no dialog at all, launch the browser with
+`--remote-debugging-port=9222` (that mode does not prompt).
 
 ## Tests
 

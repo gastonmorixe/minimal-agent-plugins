@@ -18,8 +18,11 @@ import { join } from "node:path"
 export const DEFAULT_IDLE_MS = 600_000
 /** Default interval (ms) between lease sweeps. */
 export const DEFAULT_LEASE_CHECK_MS = 30_000
-/** Default count of failed Chrome reconnects before the daemon exits. */
-export const DEFAULT_MAX_RECONNECT = 30
+/**
+ * Default time (ms) after the user denied the connection (Chromium 403)
+ * during which requests fail at once, with no new connect (no new dialog).
+ */
+export const DEFAULT_DENY_COOLDOWN_MS = 30_000
 /** Default max age (ms) of a lease that its client did not refresh: 24 h. */
 export const DEFAULT_LEASE_MAX_AGE_MS = 86_400_000
 /** Default time (ms) a request waits for the first Chrome connect. */
