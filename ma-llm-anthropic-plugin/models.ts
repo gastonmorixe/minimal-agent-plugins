@@ -20,6 +20,7 @@
  * @module llm/providers/anthropic/models
  */
 
+import type { CanonicalBlock } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import type {
@@ -116,13 +117,57 @@ const fable52PricingFor = (req: CanonicalRequest): MTokRate =>
  * @returns The prompt token total the long-prompt gate compares against.
  */
 export function haiku55PromptTokens(req: CanonicalRequest): number {
-  // `estimatePromptTokens` is the neutral counter; it covers the message text
-  // and system blocks. Cache read/write totals are not known before the
-  // response (they are server-reported), so the pre-flight estimate uses the
-  // request's own token estimate, which already includes cached blocks as
-  // ordinary input. That is the right conservative reading: a cached long
-  // prompt is exactly the case that must not be billed at the base rate.
-  return estimateAnthropicTokens(req)
+  // `requestPromptChars` covers the system blocks, the message content, and
+  // the tool schemas. Cache read/write totals are not known before the
+  // response (they are server-reported), so the pre-flight estimate counts
+  // cached blocks as ordinary input. That is the right conservative reading:
+  // a cached long prompt is exactly the case that must not be billed at the
+  // base rate. A string of the measured length avoids building a large copy.
+  const chars = requestPromptChars(req)
+  return chars === 0 ? 0 : estimateAnthropicTokens(" ".repeat(chars))
+}
+
+/** Character length of one canonical block, for the prompt-length estimate. */
+function blockChars(block: CanonicalBlock): number {
+  switch (block.type) {
+    case "text":
+    case "thinking":
+      return block.text.length
+    case "redacted_thinking":
+      return block.data.length
+    case "tool_use":
+      return block.name.length + safeJsonLength(block.input)
+    case "tool_result": {
+      let chars = 0
+      for (const inner of block.content) chars += blockChars(inner)
+      return chars
+    }
+    default:
+      // image / audio / file: no text to measure here.
+      return 0
+  }
+}
+
+/** Length of `JSON.stringify(value)`, or 0 when it cannot be serialized. */
+function safeJsonLength(value: unknown): number {
+  try {
+    return JSON.stringify(value)?.length ?? 0
+  } catch {
+    return 0
+  }
+}
+
+/** Total characters of system blocks, message content, and tool schemas. */
+function requestPromptChars(req: CanonicalRequest): number {
+  let chars = 0
+  for (const block of req.system ?? []) chars += blockChars(block)
+  for (const msg of req.messages) {
+    for (const block of msg.content) chars += blockChars(block)
+  }
+  for (const tool of req.tools ?? []) {
+    chars += tool.name.length + tool.description.length + safeJsonLength(tool.inputSchema)
+  }
+  return chars
 }
 
 /**
