@@ -28,6 +28,20 @@ describe("parseAnthropicQuotaWindows", () => {
     expect(wins[0]?.resetAtMs).toBe(1777000000 * 1000)
   })
 
+  it("relabels 7d_oi (seven_day_overage_included) as fable, sorted after 5h/7d", () => {
+    const rl = new Map<string, string>([
+      ["anthropic-ratelimit-unified-7d_oi-utilization", "0.03"],
+      ["anthropic-ratelimit-unified-7d_oi-reset", "1795363200"],
+      ["anthropic-ratelimit-unified-7d_oi-status", "allowed"],
+      ["anthropic-ratelimit-unified-7d-utilization", "0.17"],
+      ["anthropic-ratelimit-unified-5h-utilization", "0.02"],
+    ])
+    const wins = parseAnthropicQuotaWindows(rl)
+    expect(wins.map((w) => w.id)).toEqual(["5h", "7d", "fable"])
+    expect(wins[2]?.utilization).toBeCloseTo(0.03)
+    expect(wins[2]?.resetAtMs).toBe(1795363200 * 1000)
+  })
+
   it("returns [] for an empty / non-quota header map", () => {
     expect(parseAnthropicQuotaWindows(new Map())).toEqual([])
   })
