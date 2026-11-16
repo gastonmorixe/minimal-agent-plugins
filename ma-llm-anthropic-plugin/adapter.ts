@@ -52,6 +52,12 @@ import type {
 import { findModelByTags } from "./lib/registry.ts"
 import { listAnthropicModels } from "./list-models.ts"
 import { anthropicMediaLimits } from "./media-limits.ts"
+import {
+  evictMissingFiles,
+  isMissingFileError,
+  prepareMediaUploads,
+  restoreInline,
+} from "./media-upload.ts"
 import { registerAnthropicAdHocModelInto, registerAnthropicModels } from "./models.ts"
 import { anthropicOAuthLogin } from "./oauth-login.ts"
 import { type AnthropicRequestBody, buildAnthropicRequestBody } from "./request-body.ts"
@@ -495,6 +501,11 @@ export const anthropicAdapter: ProviderAdapter = {
     // Derived from the history being sent, like CC's `Amt(e)` (./cache-diagnosis.ts).
     let previousMessageId = cacheDiagnosis ? previousMessageIdFor(req.messages) : null
 
+    // Large inline media goes up through the Files API first. Only the wire
+    // copy gets file ids; `req` (and the transcript) keeps the base64.
+    const uploads = await prepareMediaUploads(req, ctx, networkClient)
+    let baseReq = uploads.req
+
     /** Build + POST one attempt. Returns the response and the beta set sent. */
     const send = async () => {
       const processDropped = [
@@ -508,7 +519,7 @@ export const anthropicAdapter: ProviderAdapter = {
       const wireReq0: CanonicalRequest =
         (cacheDiagnosis && !req.vendor?.anthropic?.cacheDiagnostics) || processDropped.length > 0
           ? {
-              ...req,
+              ...baseReq,
               vendor: {
                 ...req.vendor,
                 anthropic: {
@@ -520,7 +531,7 @@ export const anthropicAdapter: ProviderAdapter = {
                 },
               },
             }
-          : req
+          : baseReq
       const wireReq = clearAtRejected ? withClearAtFallback(wireReq0, model, auth.kind) : wireReq0
       const { headers, betaFlags } = buildAnthropicHeaders({
         req: wireReq,
@@ -593,11 +604,23 @@ export const anthropicAdapter: ProviderAdapter = {
     // - a header-only beta (per-turn-control, mid-conversation-tool-changes,
     //   tool-provenance, thinking-binding-controls) named in an "invalid beta
     //   flag" 400 → drop it for the process and resend.
-    for (let heals = 0; heals < 3 + HEADER_ONLY_BETAS.length && !attempt.response.ok; heals++) {
-      if (attempt.response.status !== 400) break
+    // - a 404 for an uploaded file id the server no longer knows (deleted,
+    //   expired, other workspace) → evict it from the upload cache and resend
+    //   those items inline.
+    let fileRetried = false
+    for (let heals = 0; heals < 4 + HEADER_ONLY_BETAS.length && !attempt.response.ok; heals++) {
+      const status = attempt.response.status
+      if (status !== 400 && status !== 404) break
       const errText = attempt.errText ?? (await attempt.response.text().catch(() => ""))
       attempt.errText = errText
-      if (previousMessageId !== null && isPreviousMessageIdRejection(400, errText)) {
+      if (status === 404) {
+        if (fileRetried || !isMissingFileError(404, errText, uploads.used.keys())) break
+        if (uploads.used.size === 0) break
+        fileRetried = true
+        const evicted = evictMissingFiles(uploads.used, errText)
+        ctx.debug?.kv("files.retry", "inline after missing file id")
+        baseReq = restoreInline(req, uploads.req, evicted)
+      } else if (previousMessageId !== null && isPreviousMessageIdRejection(400, errText)) {
         // Evict the rejected id so a later withRetry re-run of run() (same
         // req.messages) does not recompute and resend it.
         forgetMessageId(previousMessageId)
