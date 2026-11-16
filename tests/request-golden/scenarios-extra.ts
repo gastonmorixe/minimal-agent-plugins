@@ -137,6 +137,82 @@ async function compactRecordingSummary(
   }
 }
 
+/** Known identity override for the preamble scenario (core applyPromptPartOverride). */
+const GOLDEN_COMPACT_IDENTITY = "GOLDEN-COMPACT-IDENTITY"
+
+/**
+ * Golden `resolveSystemPrompt` hook: the identity, a line with the other ctx
+ * fields, an empty block (core drops it), then the body. The body stays last,
+ * as with the real Anthropic hook.
+ */
+const goldenResolveSystemPrompt = (c: {
+  identity: string
+  body: Array<{ type: "text"; text: string }>
+  authKind: string
+  modelId: string
+}) => [
+  { type: "text" as const, text: `ID:${c.identity}` },
+  { type: "text" as const, text: `CTX:authKind=${c.authKind} modelId=${c.modelId}` },
+  { type: "text" as const, text: "" },
+  ...c.body,
+]
+
+/**
+ * Like compactRecordingSummary, but the fresh test provider plugin also has a
+ * `resolveSystemPrompt` hook, so core takes the preamble branch of
+ * buildCompactSummarySystem. `remote` also gives the fresh adapter a
+ * `compact()` that records its request (tryRemoteCompact) and returns one
+ * fixed replacement message. The finally restores the core overrides and
+ * re-registers a plain provider (no hook, no compact), even when compact throws.
+ */
+async function compactRecordingWithPreamble(
+  ctx: ScenarioCtx,
+  opts: {
+    /** Identity override for the compact call only (core applyPromptPartOverride). */
+    identity?: string
+    mode: "local" | "remote"
+    keepTail: number
+    focus: string
+    reason: "manual"
+  },
+): Promise<void> {
+  const { identity, ...compactOpts } = opts
+  // AgentCore.compact forwards its `systemPromptOverrides` field to runCompact
+  // (core sdk/agent-core.ts compact()). Set it for this call only, so the live
+  // turns keep the base identity (no-core-fallback checks system[0]).
+  const core = ctx.core as unknown as { systemPromptOverrides?: unknown }
+  const prevOverrides = core.systemPromptOverrides
+  if (identity !== undefined) {
+    core.systemPromptOverrides = { identity: { kind: "replace", text: identity } }
+  }
+  const reg = () =>
+    registerTestProvider({ id: "golden-compact-prov", models: [{ id: "golden-compact-model" }] })
+  const { adapter, plugin } = reg()
+  plugin.resolveSystemPrompt = goldenResolveSystemPrompt as never
+  const inner = adapter.run.bind(adapter)
+  adapter.run = (req, model, runCtx) => {
+    const { signal: _signal, ...rest } = req
+    ctx.record(rest as Record<string, unknown>)
+    return inner(req, model, runCtx)
+  }
+  if (opts.mode === "remote") {
+    adapter.compact = async ({ req }) => {
+      const { signal: _signal, ...rest } = req
+      ctx.record(rest as Record<string, unknown>)
+      return {
+        kind: "remote",
+        replacementMessages: [{ role: "user", content: "GOLDEN-REMOTE-CHECKPOINT" }],
+      }
+    }
+  }
+  try {
+    await ctx.core.compact(compactOpts)
+  } finally {
+    core.systemPromptOverrides = prevOverrides
+    reg()
+  }
+}
+
 const editA = {
   name: "Edit",
   input: { file_path: "a.txt", old_string: "hello", new_string: "bye" },
@@ -293,6 +369,48 @@ export const EXTRA_SCENARIOS: Scenario[] = [
       await ctx.turn("question two")
       await compactRecordingSummary(ctx, {
         mode: "local",
+        keepTail: 2,
+        focus: "keep the API stable",
+        reason: "manual",
+      })
+      await ctx.turn("question three")
+    },
+    keep: [2, -1],
+  },
+  {
+    // 15d0b: the summary system on the provider resolveSystemPrompt path
+    // (core run-compact.ts buildCompactSummarySystem). A known identity
+    // override for the compact call only, a multi-block system with an empty
+    // block dropped, body last.
+    name: "local-compaction-summary-request-preamble",
+    script: [{ text: "a1" }, { text: "a2" }, { text: "after compact" }],
+    coreDeps: () => compactDeps(),
+    run: async (ctx) => {
+      await ctx.turn("question one")
+      await ctx.turn("question two")
+      await compactRecordingWithPreamble(ctx, {
+        identity: GOLDEN_COMPACT_IDENTITY,
+        mode: "local",
+        keepTail: 2,
+        focus: "keep the API stable",
+        reason: "manual",
+      })
+      await ctx.turn("question three")
+    },
+    keep: [2, -1],
+  },
+  {
+    // 15d0b: the remote compact request (tryRemoteCompact) with the same
+    // preamble hook. No identity override: the identity comes from the base
+    // prompt holder the loader registered (ma-base-prompt-plugin).
+    name: "remote-compaction-request-preamble",
+    script: [{ text: "a1" }, { text: "a2" }, { text: "after compact" }],
+    coreDeps: () => compactDeps(),
+    run: async (ctx) => {
+      await ctx.turn("question one")
+      await ctx.turn("question two")
+      await compactRecordingWithPreamble(ctx, {
+        mode: "remote",
         keepTail: 2,
         focus: "keep the API stable",
         reason: "manual",

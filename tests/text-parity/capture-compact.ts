@@ -8,15 +8,20 @@
  * the bytes. It is kept only to show how the fixture was made. It will not run
  * once the core functions are gone.
  *
- * Run (from minimal-agent-plugins): bun run tests/text-parity/capture-compact.ts &&
+ * Run (from minimal-agent-plugins): bun run tests/text-parity/capture-compact.ts --force &&
  *   bunx biome format --write tests/text-parity/fixtures/compact.json
+ *
+ * The script refuses to overwrite an existing fixture unless `--force` is
+ * given (15d0b), so a re-run while the text is moving cannot silently move
+ * the baseline. The core path assumes this monorepo layout
+ * (`<repo>/minimal-agent-core` next to `<repo>/minimal-agent-plugins`).
  *
  * Each case stores the call args, the facts the proposed kind gets, the full
  * checkpoint text (marker line included) where one exists, and `text`: the
  * part after the marker line, which is what the plugin kind must return.
  */
 
-import { writeFileSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 const HERE = import.meta.dir
@@ -25,6 +30,13 @@ const FILE = "src/agent/context-compact.ts"
 
 // A computed path, so the typecheck does not need the core file to exist.
 const corePath = join(REPO_ROOT, "minimal-agent-core", FILE)
+const OUT = join(HERE, "fixtures", "compact.json")
+
+// Guard before the core import, so a refused run has no side effects.
+if (existsSync(OUT) && !process.argv.includes("--force")) {
+  console.error(`refusing to overwrite ${OUT}. Re-run with --force to replace the baseline.`)
+  process.exit(1)
+}
 
 interface Msg {
   role: "user" | "assistant"
@@ -131,6 +143,5 @@ const fixture = {
   ],
 }
 
-const out = join(HERE, "fixtures", "compact.json")
-writeFileSync(out, `${JSON.stringify(fixture, null, 2)}\n`)
-console.log(`wrote ${out}`)
+writeFileSync(OUT, `${JSON.stringify(fixture, null, 2)}\n`)
+console.log(`wrote ${OUT}`)
