@@ -44,20 +44,23 @@ interface Finding {
 const findings: Finding[] = []
 const resolvedKinds = new Set<string>()
 
-/** Wrap a resolver: record each kind, and any kind that reaches fallback(). */
+/**
+ * Wrap a resolver: record each kind. Core has no fallback text, so a kind
+ * that no plugin owns, or an owned kind that resolves to "", is a finding.
+ */
 function recording(
   inner: SyntheticTextResolver,
   owned: ReadonlySet<string>,
   scenario: string,
 ): SyntheticTextResolver {
   return {
-    resolve(kind: SyntheticKind, facts: SyntheticFacts, fallback: () => string): string {
+    resolve(kind: SyntheticKind, facts: SyntheticFacts): string {
       resolvedKinds.add(kind)
       if (!owned.has(kind)) findings.push({ scenario, seam: "synthetic", what: `unowned ${kind}` })
-      return inner.resolve(kind, facts, () => {
-        findings.push({ scenario, seam: "synthetic", what: `fallback() for ${kind}` })
-        return fallback()
-      })
+      const text = inner.resolve(kind, facts)
+      if (text === "")
+        findings.push({ scenario, seam: "synthetic", what: `empty text for ${kind}` })
+      return text
     },
   }
 }

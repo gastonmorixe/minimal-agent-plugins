@@ -93,14 +93,14 @@ const rows = entries.filter(owned)
 type Calls = Array<{ kind: SyntheticKind; facts: SyntheticFacts }>
 
 /**
- * A resolver that passes core's facts straight to the provider. An owned
- * kind never falls back (a provider throw fails the test). Another kind
- * (none expected on these paths) gets core's own text.
+ * A resolver that passes core's facts straight to the provider (a provider
+ * throw fails the test). Another kind (none expected on these paths) gets
+ * "", as in core, which has no fallback text.
  */
 function live(calls: Calls): SyntheticTextResolver {
   return {
-    resolve(kind, facts, fallback) {
-      if (!OWNED.has(kind)) return fallback()
+    resolve(kind, facts) {
+      if (!OWNED.has(kind)) return ""
       calls.push({ kind, facts })
       const out = provider.text(kind, facts)
       expect(out.length).toBeGreaterThan(0)
