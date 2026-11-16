@@ -16,7 +16,8 @@
     "hooks:instructions.didLoad",
     "hooks:notification.emit",
     "hooks:turn.willStop",
-    "hooks:session.willStart"
+    "hooks:session.willStart",
+    "hooks:startup.rows"
   ],
   "headless": {
     "commands": [
@@ -158,6 +159,16 @@
         "handler": {
           "type": "module",
           "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_startup_rows",
+        "channel": "startup.rows",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/startup-rows.ts",
           "export": "default"
         },
         "priority": 50
