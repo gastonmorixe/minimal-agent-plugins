@@ -14,7 +14,11 @@
 
 import { describe, expect, it } from "bun:test"
 
-import { CLAUDE_CODE_IDENTITY, resolveAnthropicSystemPrompt } from "./system-prompt.ts"
+import {
+  buildBillingHeaderText,
+  CLAUDE_CODE_IDENTITY,
+  resolveAnthropicSystemPrompt,
+} from "./system-prompt.ts"
 
 type Ctx = Parameters<typeof resolveAnthropicSystemPrompt>[0]
 
@@ -91,5 +95,17 @@ describe("resolveAnthropicSystemPrompt", () => {
       providerPreambleOverride: { kind: "replace", text: "CUSTOM PREAMBLE" },
     })
     expect(out.map((b) => b.text)).toEqual([NEUTRAL_IDENTITY_STAND_IN, "INSTRUCTIONS"])
+  })
+})
+
+describe("buildBillingHeaderText", () => {
+  it("hashes the first user prompt like claude-code 2.1.325", () => {
+    // Real CC capture: prompt "hello 2" → cc_version=2.1.325.f16
+    // (.node-net-dbg/1794801546609-…/…fetch-005-02-req-body.txt).
+    expect(buildBillingHeaderText("hello 2")).toContain("cc_version=2.1.325.f16;")
+  })
+
+  it("defaults to the empty-prompt hash", () => {
+    expect(buildBillingHeaderText()).toContain("cc_version=2.1.325.ff3;")
   })
 })

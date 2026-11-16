@@ -18,6 +18,7 @@ import {
   BUILD_TIME,
   buildHashFor,
   GIT_SHA,
+  MIN_SUPPORTED_VERSION,
   STAINLESS_SDK_VERSION,
   USER_AGENT,
   USER_AGENT_MCP,
@@ -27,15 +28,29 @@ import {
 
 describe("wire constants", () => {
   it("pins the claude-code version the server gates models on", () => {
-    // Source: build-info literal in the claude-code 2.1.280 binary.
-    // Opus 5.5 requires >= 2.1.280; older values get a 400.
-    expect(VERSION).toBe("2.1.280")
-    expect(BUILD_TIME).toBe("2026-09-21T20:40:17Z")
-    expect(GIT_SHA).toBe("80abbfe7d7232280011ff01a21ae3338f4c6e372")
+    // Source: build-info literal in the claude-code 2.1.325 binary
+    // (chunk-gpympest.mjs). Fable 5.2 requires >= 2.1.290; older values get a 400.
+    expect(VERSION).toBe("2.1.325")
+    expect(BUILD_TIME).toBe("2026-11-13T18:52:23Z")
+    expect(GIT_SHA).toBe("a360e7297ecfcddeae9ec99fb3c93153ed86aca4")
+  })
+
+  it("keeps VERSION at or above the highest catalog floor", () => {
+    expect(MIN_SUPPORTED_VERSION).toBe("2.1.290")
+    const parse = (v: string): number[] => v.split(".").map(Number)
+    const cmp = (a: number[], b: number[]): number => {
+      for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const d = (a[i] ?? 0) - (b[i] ?? 0)
+        if (d !== 0) return d
+      }
+      return 0
+    }
+    expect(cmp(parse(VERSION), parse(MIN_SUPPORTED_VERSION))).toBeGreaterThanOrEqual(0)
   })
 
   it("pins the Stainless SDK version bundled in that CLI", () => {
-    expect(STAINLESS_SDK_VERSION).toBe("0.112.1")
+    // cc-wire §1.1: `x-stainless-package-version: 0.128.0` (2.1.325 capture).
+    expect(STAINLESS_SDK_VERSION).toBe("0.128.0")
   })
 
   it("derives every User-Agent from VERSION", () => {
@@ -58,14 +73,19 @@ describe("buildHashFor", () => {
       .slice(0, 3)
 
   it("matches the reference implementation on the empty prompt", () => {
-    expect(buildHashFor("")).toBe(reference("", "2.1.280"))
-    expect(buildHashFor("")).toBe("d7b")
+    expect(buildHashFor("")).toBe(reference("", "2.1.325"))
+    expect(buildHashFor("")).toBe("ff3")
   })
 
   it("matches the reference implementation on a real prompt", () => {
     const prompt = "Analyze this codebase and tell me what it does"
-    expect(buildHashFor(prompt)).toBe(reference(prompt, "2.1.280"))
-    expect(buildHashFor(prompt)).toBe("e98")
+    expect(buildHashFor(prompt)).toBe(reference(prompt, "2.1.325"))
+    expect(buildHashFor(prompt)).toBe("d0b")
+  })
+
+  it('reproduces a real CC 2.1.325 capture (prompt "hello 2" → cc_version=2.1.325.f16)', () => {
+    // .node-net-dbg/1794801546609-…/…fetch-005-02-req-body.txt
+    expect(buildHashFor("hello 2", "2.1.325")).toBe("f16")
   })
 
   it("varies with the first user message", () => {
@@ -83,12 +103,12 @@ describe("buildHashFor", () => {
   })
 
   it("pads short prompts with '0' instead of throwing", () => {
-    expect(buildHashFor("hi")).toBe(reference("hi", "2.1.280"))
+    expect(buildHashFor("hi")).toBe(reference("hi", "2.1.325"))
     expect(buildHashFor("hi")).toMatch(/^[0-9a-f]{3}$/)
   })
 
   it("changes when the version changes", () => {
-    expect(buildHashFor("", "2.1.154")).not.toBe(buildHashFor("", "2.1.280"))
+    expect(buildHashFor("", "2.1.154")).not.toBe(buildHashFor("", "2.1.325"))
   })
 
   it("backs the default BUILD_HASH", () => {

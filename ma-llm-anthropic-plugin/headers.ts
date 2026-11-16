@@ -1,10 +1,10 @@
 /**
  * Per-request header builder for the Anthropic Messages API.
  *
- * Mirrors `cli.patched.cjs` v2.1.154 + the live 2026-05-28 capture
- * exactly. New code goes here; the legacy `src/headers.ts` retains
- * its `buildHeaders` for backward compatibility until Phase 7
- * removes it.
+ * Mirrors the claude-code 2.1.325 capture
+ * (research/2026-11-15-cc-2.1.325-oauth-diff/cc-wire.md). New code goes
+ * here; the legacy `src/headers.ts` retains its `buildHeaders` for backward
+ * compatibility until Phase 7 removes it.
  *
  * @module llm/providers/anthropic/headers
  */

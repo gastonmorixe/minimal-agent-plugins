@@ -8,7 +8,7 @@
  * in the provider plugin, never in core.
  *
  * Source of truth for VERSION / Stainless / billing-header format: the
- * claude-code 2.1.323 bundle. Since 2.1.2xx the npm root package is a thin
+ * claude-code 2.1.325 bundle. Since 2.1.2xx the npm root package is a thin
  * installer; the real code ships as a Bun single-file executable in the
  * platform package (`@anthropic-ai/claude-code-<platform>`), so the evidence
  * below comes from strings extracted out of that binary.
@@ -27,7 +27,8 @@ import { createHash } from "node:crypto"
  * version (that's `AGENT_VERSION` in `src/build-info.ts`).
  *
  * Per-model floors from the 2.1.323 catalog, live-verified 2026-11-13 against
- * `POST /v1/messages` with this plan credential:
+ * `POST /v1/messages` with this plan credential (values re-checked unchanged in
+ * the 2.1.325 catalog, chunk-e44qnbvj.mjs):
  *   - `claude-fable-5-2`  → 2.1.290
  *   - `claude-opus-5-5`   → 2.1.280
  *   - `claude-fable-5-1`  → 2.1.251
@@ -37,10 +38,11 @@ import { createHash } from "node:crypto"
  * nothing: the version is only an attribution/fingerprint claim, and every
  * modelled beta flag is independently gated by capability.
  *
- * Source: the inlined build-info literal in the 2.1.323 binary,
- * `{…,VERSION:"2.1.323",BUILD_TIME:"2026-11-12T18:26:07Z",GIT_SHA:"66b1ade1…"}`.
+ * Source: the inlined build-info literal in the 2.1.325 binary,
+ * `{…,VERSION:"2.1.325",BUILD_TIME:"2026-11-13T18:52:23Z",GIT_SHA:"a360e729…"}`
+ * (`chunk-gpympest.mjs`).
  */
-export const VERSION = "2.1.323"
+export const VERSION = "2.1.325"
 
 /**
  * Lowest `VERSION` the modern catalog accepts, i.e. the highest per-model
@@ -51,13 +53,13 @@ export const MIN_SUPPORTED_VERSION = "2.1.290"
 
 /**
  * Salt the CLI mixes into the billing-header hash suffix.
- * Source: `var j="59cf53e54c78"` in the 2.1.323 binary. Unchanged since
+ * Source: `var F="59cf53e54c78"` in the 2.1.325 bundle (chunk-gpympest.mjs). Unchanged since
  * 2.1.280, so a stale salt is not a thing that can drift silently here.
  */
 const BUILD_HASH_SALT = "59cf53e54c78"
 
 /**
- * Compute the billing-header hash suffix the way claude-code 2.1.323 does.
+ * Compute the billing-header hash suffix the way claude-code 2.1.325 does.
  *
  * The suffix is NOT a per-build constant (it was through 2.1.154). The CLI
  * derives it per conversation from the FIRST user message text:
@@ -67,7 +69,7 @@ const BUILD_HASH_SALT = "59cf53e54c78"
  * sha256(`${salt}${s}${version}`).slice(0, 3)
  * ```
  *
- * In 2.1.323 the first message is the first `role:"user"` entry that is not
+ * In 2.1.325 the first message is the first `role:"user"` entry that is not
  * `isMeta`, and if its content is an array the FIRST `type:"text"` block is
  * used. The server logs the suffix for attribution but does not validate it,
  * so a caller with no first-message text in hand can use {@link BUILD_HASH}.
@@ -95,14 +97,14 @@ export const BUILD_HASH: string = buildHashFor("")
 
 /**
  * Build timestamp + git sha. Not sent in requests, informational only.
- * Source: the build-info literal in the 2.1.323 binary.
+ * Source: the build-info literal in the 2.1.325 binary.
  */
-export const BUILD_TIME = "2026-11-12T18:26:07Z"
-export const GIT_SHA = "66b1ade1dce6269a9b608cea1920135b24a97a66"
+export const BUILD_TIME = "2026-11-13T18:52:23Z"
+export const GIT_SHA = "a360e7297ecfcddeae9ec99fb3c93153ed86aca4"
 
 /**
  * Anthropic API version header value. Constant "2023-06-01" across every
- * version tracked (2.1.12 through 2.1.323).
+ * version tracked (2.1.12 through 2.1.325).
  */
 export const ANTHROPIC_VERSION = "2023-06-01"
 
@@ -128,7 +130,7 @@ export const USER_AGENT_MCP = `claude-code/${VERSION} (cli)`
 
 /**
  * Stainless `@anthropic-ai/sdk` package version bundled into the CLI, sent as
- * `x-stainless-package-version`. 0.128.0 in v2.1.323 (was 0.112.1 in 2.1.280,
+ * `x-stainless-package-version`. 0.128.0 in v2.1.325 (was 0.112.1 in 2.1.280,
  * 0.94.0 in 2.1.154).
  */
 export const STAINLESS_SDK_VERSION = "0.128.0"
