@@ -45,6 +45,8 @@ export function noticeDescription(notice: TurnNotice): string {
     }
     case "model_adopt_failed":
       return `[model] Could not adopt model "${notice.requested}" (${notice.reason}); kept "${notice.model}".`
+    case "stop_hook_capped":
+      return `[stop hook] A turn.willStop hook blocked the stop more than ${notice.cap} times in a row; ended the turn.`
     default: {
       const _exhaustive: never = notice
       throw new Error(`unknown notice kind: ${JSON.stringify(_exhaustive)}`)

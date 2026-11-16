@@ -31,6 +31,7 @@ const SAMPLES: readonly TurnNotice[] = [
     effortFrom: null,
   },
   { kind: "model_adopt_failed", severity: "warn", model: "a", requested: "z", reason: "r" },
+  { kind: "stop_hook_capped", severity: "warn", cap: 3 },
 ]
 
 /**
@@ -232,6 +233,11 @@ const PINNED_TEXT: readonly { name: string; notice: TurnNotice; text: string }[]
     } as TurnNotice,
     text: '[model] Could not adopt model "z" (unknown model); kept "a".',
   },
+  {
+    name: "stop_hook_capped",
+    notice: { kind: "stop_hook_capped", severity: "warn", cap: 3 } as TurnNotice,
+    text: "[stop hook] A turn.willStop hook blocked the stop more than 3 times in a row; ended the turn.",
+  },
 ]
 
 describe("notice description text", () => {
@@ -290,6 +296,27 @@ describe("notice update", () => {
     expect(u.sessionUpdate).toBe("agent_message_chunk")
     expect(u.messageId).toBe("n1")
     expect((u.content as { text: string }).text).toContain(notice.description ?? "")
+  })
+})
+
+describe("stop_hook_capped", () => {
+  const capped = toAcpNotice({ kind: "stop_hook_capped", severity: "warn", cap: 3 })
+
+  it("maps to a warning notice with a clear title", () => {
+    const u = noticeUpdate(capped, { clientNotices: true, fallbackMessageId: "n1" })
+    expect(u).toEqual({
+      sessionUpdate: "notice",
+      severity: "warning",
+      title: "Stop hook limit reached",
+      description: capped.description,
+    })
+  })
+
+  it("falls back to an agent_message_chunk without the capability", () => {
+    const u = noticeUpdate(capped, { clientNotices: false, fallbackMessageId: "n2" })
+    expect(u.sessionUpdate).toBe("agent_message_chunk")
+    expect(u.messageId).toBe("n2")
+    expect((u.content as { text: string }).text).toContain(capped.description ?? "")
   })
 })
 
