@@ -31,6 +31,7 @@
 
 import { closeSync, openSync, readSync, statSync } from "node:fs"
 
+import { type ErrorFacts, errorEventText, readErrorFacts } from "./error-text.ts"
 import type { Progress } from "./types.ts"
 
 /** One line of the activity ring that `AgentOutput` renders. */
@@ -68,9 +69,12 @@ export interface StreamResult {
 
 /** A failure the stream reported. */
 export interface StreamError {
+  /** The text of the error. Never "" (a CoreError event gets its kind text). */
   readonly message: string
   readonly code?: string
   readonly hint?: string
+  /** The typed facts of a CoreError event (`error: {kind, fields}`), when present. */
+  readonly error?: ErrorFacts
 }
 
 /** Everything derived from a worker's event stream so far. Mutable accumulator. */
@@ -177,6 +181,8 @@ interface MaybeLine {
   message?: string
   code?: string
   hint?: string
+  /** A CoreError event: message "" and `{kind, fields}`. */
+  error?: unknown
   outcome?: string
 }
 
@@ -300,11 +306,13 @@ export function applyStreamLine(s: StreamState, e: MaybeLine): void {
       break
     }
     case "error": {
-      const message = typeof e.message === "string" && e.message ? e.message : "error"
+      const facts = readErrorFacts(e.error)
+      const message = errorEventText(e.message, facts)
       s.error = {
         message,
         ...(typeof e.code === "string" ? { code: e.code } : {}),
         ...(typeof e.hint === "string" ? { hint: e.hint } : {}),
+        ...(facts ? { error: facts } : {}),
       }
       pushActivity(s, { ts: at, kind: "error", text: oneLine(message, 200) })
       break

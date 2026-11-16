@@ -11,6 +11,7 @@
  * @module sub-agents/lib/service
  */
 
+import { approvalFailureText } from "./error-text.ts"
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
 import type { HostPolicySnapshot, StartupProfile } from "./host-types.ts"
 import { inheritSummary, needsProviderDerive, stripProviderSpecific } from "./inherit-summary.ts"
@@ -221,7 +222,27 @@ export interface ServiceDeps {
   readonly emitChain?: <T>(
     channel: string,
     payload: T,
-  ) => Promise<{ payload: T; halted: boolean; reason?: string }>
+  ) => Promise<{
+    payload: T
+    halted: boolean
+    reason?: string
+    failed?: boolean
+    failure?: { label?: string; detail: string }
+  }>
+}
+
+/**
+ * The SpawnAgent tool_result text of a `subagent.willSpawn` deny. The plugin
+ * reason wins. A failClosed listener failure (no reason) names the failed
+ * approval hook, so the model sees why the spawn was blocked.
+ */
+export function spawnBlockedText(reason: string | undefined, failure: unknown): string {
+  const trimmed = reason?.trim()
+  if (trimmed) return trimmed
+  const failed = approvalFailureText(failure)
+  return failed !== undefined
+    ? `Sub-agent spawn blocked by lifecycle policy hook (${failed}).`
+    : "Sub-agent spawn blocked by lifecycle policy hook."
 }
 
 /** Count active + total workers for the guard. */
@@ -355,7 +376,7 @@ export async function spawnAgent(
         type,
       })
       if (will.halted) {
-        return err(will.reason?.trim() || "Sub-agent spawn blocked by lifecycle policy hook.")
+        return err(spawnBlockedText(will.reason, will.failure))
       }
     } catch {
       /* chain failure must not brick spawn */

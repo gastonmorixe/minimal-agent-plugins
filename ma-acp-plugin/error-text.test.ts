@@ -65,4 +65,27 @@ describe("errorText", () => {
   it("returns empty for an empty-message error with no kind", () => {
     expect(errorText(new Error(""))).toBe("")
   })
+  it("renders a LifecycleDeniedError (typed and as a core error event)", () => {
+    expect(errorText(typed("LifecycleDeniedError", { hook: "compact.willRun", reason: "x" }))).toBe(
+      "compact.willRun hook denied: x",
+    )
+    expect(
+      errorText({
+        message: "",
+        error: { kind: "LifecycleDeniedError", fields: { hook: "tool.didBatch" } },
+      }),
+    ).toBe("tool.didBatch hook denied")
+    expect(
+      errorText(
+        typed("LifecycleDeniedError", {
+          hook: "message.willSend",
+          reason: "r",
+          failure: { detail: "boom" },
+        }),
+      ),
+    ).toBe("message.willSend hook denied: r (approval hook failed (boom))")
+  })
+  it("an unknown kind on a core error event gives the kind name", () => {
+    expect(errorText({ message: "", error: { kind: "NewKind", fields: {} } })).toBe("NewKind")
+  })
 })

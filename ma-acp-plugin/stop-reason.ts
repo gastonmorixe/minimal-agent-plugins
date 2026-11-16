@@ -52,8 +52,12 @@ export interface StopInputs {
   readonly lastStopReason?: ProviderStopReason | undefined
   /** The last notice of a stop-relevant kind (refusal, content_filter, *_capped). */
   readonly lastNotice?: TurnNotice | null
-  /** The last `error` event of the turn. */
-  readonly lastError?: { readonly message: string; readonly code?: string } | null
+  /** The last `error` event of the turn. A CoreError event has message "" and `error`. */
+  readonly lastError?: {
+    readonly message: string
+    readonly code?: string
+    readonly error?: { readonly kind: string; readonly fields: Readonly<Record<string, unknown>> }
+  } | null
 }
 
 /** The prompt reply, or a JSON-RPC error. `notice` is sent BEFORE the reply or error. */

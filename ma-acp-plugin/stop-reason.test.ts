@@ -196,4 +196,50 @@ describe("ACP stop reason with core errors (empty message)", () => {
       notice: { severity: "error", title: "Turn failed", description: "boom" },
     })
   })
+
+  const deniedEvent = (fields: Record<string, unknown>) => ({
+    message: "",
+    error: { kind: "LifecycleDeniedError", fields },
+  })
+
+  it("failed + LifecycleDeniedError event with a reason gives the hook and the reason", () => {
+    const d = decideStopReason({
+      outcome: "failed",
+      lastError: deniedEvent({ hook: "tool.didBatch", reason: "budget spent" }),
+    })
+    if (d.kind !== "error") throw new Error("expected error")
+    expect(d.message).toBe("tool.didBatch hook denied: budget spent")
+    expect(d.notice.description).toBe("tool.didBatch hook denied: budget spent")
+  })
+
+  it("failed + LifecycleDeniedError event with no reason is not blank", () => {
+    const d = decideStopReason({
+      outcome: "failed",
+      lastError: deniedEvent({ hook: "tool.didBatch", additionalContext: [] }),
+    })
+    if (d.kind !== "error") throw new Error("expected error")
+    expect(d.message).toBe("tool.didBatch hook denied")
+  })
+
+  it("failed + LifecycleDeniedError event with a failed approval hook gives the failure facts", () => {
+    const d = decideStopReason({
+      outcome: "failed",
+      lastError: deniedEvent({
+        hook: "tool.didBatch",
+        failure: { label: "guard", detail: "timed out" },
+      }),
+    })
+    if (d.kind !== "error") throw new Error("expected error")
+    expect(d.message).toBe('tool.didBatch hook denied (approval hook "guard" failed (timed out))')
+  })
+
+  it("failed + an unknown CoreError kind event gives the kind name", () => {
+    const d = decideStopReason({
+      outcome: "failed",
+      lastError: { message: "", error: { kind: "SomeFutureError", fields: { x: 1 } } },
+    })
+    if (d.kind !== "error") throw new Error("expected error")
+    expect(d.message).toBe("SomeFutureError")
+    expect(d.notice.description).toBe("SomeFutureError")
+  })
 })
