@@ -30,13 +30,48 @@ describe("turn recovery texts (bytes pinned)", () => {
       'Plugin tool "FixtureNonResult" returned a non-tool_result value',
     )
   })
-  test("invalid_input (15e.1a, byte-equal to the old core text)", () => {
+  test("invalid_input (15e.1b, indexed facts, byte-equal to the old core text)", () => {
     expect(
       p.text("tool_result.invalid_input", {
         tool: "Bash",
-        detail: "/command: expected type string, got integer",
+        count: 1,
+        "path.0": "/command",
+        "rule.0": "type",
+        "expected.0": "string",
+        "got.0": "integer",
       }),
     ).toBe("Bash error: /command: expected type string, got integer")
+    expect(
+      p.text("tool_result.invalid_input", {
+        tool: "Read",
+        count: 1,
+        "path.0": "",
+        "rule.0": "required",
+        "key.0": "file_path",
+      }),
+    ).toBe('Read error: (root): missing required property "file_path"')
+  })
+  test("invalid_input: every rule, a type union, and the `. ` join", () => {
+    expect(
+      p.text("tool_result.invalid_input", {
+        tool: "X",
+        count: 4,
+        "path.0": "",
+        "rule.0": "required",
+        "key.0": "a",
+        "path.1": "/b",
+        "rule.1": "type",
+        "expected.1": "string,null",
+        "got.1": "integer",
+        "path.2": "/c",
+        "rule.2": "enum",
+        "path.3": "",
+        "rule.3": "additional",
+        "key.3": "z",
+      }),
+    ).toBe(
+      'X error: (root): missing required property "a". /b: expected type string | null, got integer. /c: value does not match any enum constant. (root): additional property "z" is not allowed',
+    )
   })
   test("policy_denied", () => {
     expect(p.text("tool_result.policy_denied", { hook: "tool.willInvoke" })).toBe(
@@ -84,7 +119,23 @@ describe("turn recovery contract", () => {
     expect(() => p.text("user_media.unavailable", {})).toThrow()
     expect(() => p.text("tool_result.non_tool_result", {})).toThrow()
     expect(() => p.text("tool_result.invalid_input", { tool: "Read" })).toThrow()
-    expect(() => p.text("tool_result.invalid_input", { detail: "x" })).toThrow()
+    expect(() => p.text("tool_result.invalid_input", { tool: "Read", detail: "x" })).toThrow()
+    expect(() => p.text("tool_result.invalid_input", { tool: "Read", count: 0 })).toThrow()
+    expect(() => p.text("tool_result.invalid_input", { tool: "Read", count: 1 })).toThrow()
+    expect(() =>
+      p.text("tool_result.invalid_input", { tool: "R", count: 1, "path.0": "", "rule.0": "x" }),
+    ).toThrow()
+    expect(() =>
+      p.text("tool_result.invalid_input", {
+        tool: "R",
+        count: 1,
+        "path.0": "",
+        "rule.0": "required",
+      }),
+    ).toThrow()
+    expect(() =>
+      p.text("tool_result.invalid_input", { count: 1, "path.0": "", "rule.0": "enum" }),
+    ).toThrow()
     expect(() => p.text("user_media.rejected", { reason: "too-many", site: "check" })).toThrow()
     expect(() => p.text("user_media.rejected", { reason: "nope", site: "check" })).toThrow()
     expect(() => p.text("user_media.rejected", { reason: "too-many", maxItems: 1 })).toThrow()
