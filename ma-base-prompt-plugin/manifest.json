@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "required": true,
   "description": "Provides the base identity and the 3 base system slots (instructions, loop safety, tool output conventions) as data files.",
-  "systemPromptBase": { "id": "base", "entry": "./provider.ts" },
+  "systemPromptBase": {
+    "id": "base",
+    "entry": "./provider.ts",
+    "identity": true,
+    "slots": ["instructions", "loopSafety", "toolOutputConventions"]
+  },
   "capabilities": []
 }
