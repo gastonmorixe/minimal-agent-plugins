@@ -1319,6 +1319,245 @@
           "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
         }
       ]
+    },
+    {
+      "fn": "writeTrackedFileNotReadResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Write.not_read",
+      "cases": [
+        {
+          "args": ["Write", "/tmp/a.txt"],
+          "text": "Write error: /tmp/a.txt has not been read in this session. Read it first, then retry the write."
+        }
+      ]
+    },
+    {
+      "fn": "editTrackedFileNotReadResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Edit.not_read",
+      "cases": [
+        {
+          "args": ["Edit", "/tmp/a.txt"],
+          "text": "Edit error: /tmp/a.txt has not been read in this session. Read it first, then retry the edit."
+        }
+      ]
+    },
+    {
+      "fn": "writeTrackedFileStaleResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Write.stale",
+      "cases": [
+        {
+          "args": ["Write", "/tmp/a.txt", "missing"],
+          "text": "Write error: file no longer exists (it was present when last read): /tmp/a.txt. Read it again, then retry the write."
+        },
+        {
+          "args": ["Write", "/tmp/a.txt", "changed"],
+          "text": "Write error: file changed since it was last read: /tmp/a.txt. Read it again, then retry the write."
+        }
+      ]
+    },
+    {
+      "fn": "editTrackedFileStaleResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Edit.stale",
+      "cases": [
+        {
+          "args": ["Edit", "/tmp/a.txt", "missing"],
+          "text": "Edit error: file no longer exists (it was present when last read): /tmp/a.txt. Read it again, then retry the edit."
+        },
+        {
+          "args": ["Edit", "/tmp/a.txt", "changed"],
+          "text": "Edit error: file changed since it was last read: /tmp/a.txt. Read it again, then retry the edit."
+        }
+      ]
+    },
+    {
+      "fn": "bashAbortedMarker",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Bash.aborted",
+      "cases": [
+        {
+          "args": [],
+          "text": "[aborted by user]"
+        }
+      ]
+    },
+    {
+      "fn": "grepTimedOutResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Grep.timed_out",
+      "cases": [
+        {
+          "args": [30000, "js"],
+          "text": "Grep error: search timed out after 30000ms"
+        },
+        {
+          "args": [30000, "rg"],
+          "text": "Grep error: rg timed out after 30000ms"
+        }
+      ]
+    },
+    {
+      "fn": "grepExitCodeResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.Grep.exit_code",
+      "cases": [
+        {
+          "args": [3],
+          "text": "Grep error: rg exited with code 3"
+        },
+        {
+          "args": [101],
+          "text": "Grep error: rg exited with code 101"
+        }
+      ]
+    },
+    {
+      "fn": "filesStatsNotEnabledResult",
+      "file": "56fc856:src/tools/tools.ts",
+      "proposedKind": "tool_text.FilesStats.not_enabled",
+      "cases": [
+        {
+          "args": [],
+          "text": "FilesStats: file tracking is not enabled in this host. Read/Edit/Write observations and this report are unavailable here."
+        }
+      ]
+    },
+    {
+      "fn": "filesStatsEmptyReport",
+      "file": "56fc856:src/tools/files-stats.ts",
+      "proposedKind": "tool_text.FilesStats.empty",
+      "cases": [
+        {
+          "args": [true],
+          "text": "No tracked files matched the filter."
+        },
+        {
+          "args": [false],
+          "text": "No files have been read or modified yet this session.\nEvery successful Read, Edit, or Write records the file's size and modified-time.\nFilesStats reports each tracked file's live status:\n  present: unchanged since last read\n  changed: modified since last read (by you or another process)\n  missing: deleted since last read"
+        }
+      ]
+    },
+    {
+      "fn": "binaryWithheldProse",
+      "file": "56fc856:src/tools/binary-guard.ts",
+      "proposedKind": "tool_output.binary_withheld",
+      "cases": [
+        {
+          "args": [true, true],
+          "text": "Binary body is too large to inline as base64 under the tool-output budget. Use the path above (Read it, or ask the user to attach the file to their message)."
+        },
+        {
+          "args": [false, true],
+          "text": "Binary body withheld from model context (not valid text, and dumping it wastes tokens). Full bytes saved at the path above. Re-call with binary=true for base64 when small enough, Read the saved path, or ask the user to attach the file."
+        },
+        {
+          "args": [false, false],
+          "text": "Binary body withheld from model context (not valid text, and dumping it wastes tokens). Re-call with binary=true for base64 when small enough, Read the saved path, or ask the user to attach the file."
+        }
+      ]
+    },
+    {
+      "fn": "cliToolGateRefusal",
+      "file": "56fc856:src/modes/modes.ts",
+      "proposedKind": "mode.cli_refusal",
+      "cases": [
+        {
+          "args": ["Bash", "deny-all"],
+          "text": "Tool \"Bash\" is not permitted (--no-tools is active)."
+        },
+        {
+          "args": ["Bash", "allow-list"],
+          "text": "Tool \"Bash\" is not in the --tools allow-list."
+        }
+      ]
+    },
+    {
+      "fn": "pluginToolCanceledResult",
+      "file": "56fc856:src/plugins/loader/helpers.ts",
+      "proposedKind": "tool_result.canceled{site:subprocess}",
+      "cases": [
+        {
+          "args": [],
+          "text": "Plugin tool canceled."
+        }
+      ]
+    },
+    {
+      "fn": "noToolsExecutorResult",
+      "file": "56fc856:src/runtime/noop-tools.ts",
+      "proposedKind": "tool_result.no_executor{site:session}",
+      "cases": [
+        {
+          "args": ["Stub"],
+          "text": "no tool executor is configured for this session"
+        }
+      ]
+    },
+    {
+      "fn": "policyDeniedDefault",
+      "file": "56fc856:src/loops/tool-round.ts",
+      "proposedKind": "tool_result.policy_denied",
+      "cases": [
+        {
+          "args": ["tool.willInvoke"],
+          "text": "Tool blocked by lifecycle policy hook."
+        }
+      ]
+    },
+    {
+      "fn": "policyHookFailedResult",
+      "file": "56fc856:src/loops/tool-round.ts + 56fc856:src/plugins/hooks/hook-bus.ts",
+      "proposedKind": "tool_result.policy_hook_failed",
+      "cases": [
+        {
+          "args": ["tool.willInvoke", "boom"],
+          "text": "Tool blocked by lifecycle policy hook. The approval hook failed (boom)."
+        },
+        {
+          "args": ["tool.willInvoke", "plain"],
+          "text": "Tool blocked by lifecycle policy hook. The approval hook failed (plain)."
+        },
+        {
+          "args": ["tool.willInvoke", "gate down", "acme:gate"],
+          "text": "Denied: approval hook \"acme:gate\" failed (gate down)."
+        }
+      ]
+    },
+    {
+      "fn": "policyRewriteNote",
+      "file": "56fc856:src/loops/tool-round.ts",
+      "proposedKind": "tool_result.policy_rewrite_note",
+      "cases": [
+        {
+          "args": ["file_path", 0],
+          "text": "input rewritten by policy: file_path"
+        },
+        {
+          "args": ["a, b", 0],
+          "text": "input rewritten by policy: a, b"
+        },
+        {
+          "args": ["a", 2],
+          "text": "input rewritten by policy: a, +2 more"
+        },
+        {
+          "args": ["", 3],
+          "text": "input rewritten by policy: +3 more"
+        }
+      ]
+    },
+    {
+      "fn": "stopHookDefaultReason",
+      "file": "56fc856:src/sdk/turn-stop-hook.ts",
+      "proposedKind": "runtime.hook_denied",
+      "cases": [
+        {
+          "args": ["turn.willStop"],
+          "text": "Turn stop blocked by turn.willStop hook."
+        }
+      ]
     }
   ]
 }

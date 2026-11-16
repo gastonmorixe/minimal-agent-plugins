@@ -28,6 +28,10 @@
         "tool_result.lock_timeout",
         "tool_result.lock_failed",
         "tool_result.policy_denied",
+        "tool_result.canceled",
+        "tool_result.policy_hook_failed",
+        "tool_result.policy_rewrite_note",
+        "runtime.hook_denied",
         "user_media.rejected",
         "user_media.unavailable"
       ]

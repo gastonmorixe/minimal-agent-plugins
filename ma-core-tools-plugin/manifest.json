@@ -54,7 +54,18 @@
         "tool_text.Grep.no_matches",
         "mode.refusal",
         "mode.active_stamp",
-        "mode.change"
+        "mode.change",
+        "tool_output.binary_withheld",
+        "tool_text.Bash.aborted",
+        "tool_text.Write.not_read",
+        "tool_text.Write.stale",
+        "tool_text.Edit.not_read",
+        "tool_text.Edit.stale",
+        "tool_text.Grep.timed_out",
+        "tool_text.Grep.exit_code",
+        "tool_text.FilesStats.empty",
+        "tool_text.FilesStats.not_enabled",
+        "mode.cli_refusal"
       ]
     }
   ]

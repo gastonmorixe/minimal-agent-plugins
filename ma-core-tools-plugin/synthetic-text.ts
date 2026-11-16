@@ -56,6 +56,17 @@ export const KINDS: readonly SyntheticKind[] = [
   "mode.refusal",
   "mode.active_stamp",
   "mode.change",
+  "tool_output.binary_withheld",
+  "tool_text.Bash.aborted",
+  "tool_text.Write.not_read",
+  "tool_text.Write.stale",
+  "tool_text.Edit.not_read",
+  "tool_text.Edit.stale",
+  "tool_text.Grep.timed_out",
+  "tool_text.Grep.exit_code",
+  "tool_text.FilesStats.empty",
+  "tool_text.FilesStats.not_enabled",
+  "mode.cli_refusal",
 ]
 
 /**
@@ -192,6 +203,65 @@ function modeRefusal(facts: SyntheticFacts): string {
   return `Tool "${str(k, facts, "tool")}" is not permitted in ${str(k, facts, "label")} mode.${tail}`
 }
 
+// --- P3.7 kinds (old core inline text: tools.ts, files-stats.ts,
+// binary-guard.ts, modes.ts at 56fc856) ---
+
+/** `tool_text.<Tool>.not_read`. */
+function notRead(tool: "Edit" | "Write") {
+  return (f: SyntheticFacts): string =>
+    `${tool} error: ${str(`tool_text.${tool}.not_read`, f, "path")} has not been read in this session. Read it first, then retry the ${tool.toLowerCase()}.`
+}
+
+/** `tool_text.<Tool>.stale`. */
+function stale(tool: "Edit" | "Write") {
+  return (f: SyntheticFacts): string => {
+    const k = `tool_text.${tool}.stale`
+    const status = str(k, f, "status")
+    let reason: string
+    if (status === "missing") reason = "file no longer exists (it was present when last read)"
+    else if (status === "changed") reason = "file changed since it was last read"
+    else throw new Error(`${k}: unknown status ${status}`)
+    return `${tool} error: ${reason}: ${str(k, f, "path")}. Read it again, then retry the ${tool.toLowerCase()}.`
+  }
+}
+
+function grepTimedOut(f: SyntheticFacts): string {
+  const k = "tool_text.Grep.timed_out"
+  const engine = str(k, f, "engine")
+  const what = engine === "rg" ? "rg" : engine === "js" ? "search" : undefined
+  if (what === undefined) throw new Error(`${k}: unknown engine ${engine}`)
+  return `Grep error: ${what} timed out after ${str(k, f, "ms")}ms`
+}
+
+function filesStatsEmpty(f: SyntheticFacts): string {
+  if (f.filtered === true) return "No tracked files matched the filter."
+  return [
+    "No files have been read or modified yet this session.",
+    "Every successful Read, Edit, or Write records the file's size and modified-time.",
+    "FilesStats reports each tracked file's live status:",
+    "  present: unchanged since last read",
+    "  changed: modified since last read (by you or another process)",
+    "  missing: deleted since last read",
+  ].join("\n")
+}
+
+function binaryWithheld(f: SyntheticFacts): string {
+  if (f.optedIn === true) {
+    return "Binary body is too large to inline as base64 under the tool-output budget. Use the path above (Read it, or ask the user to attach the file to their message)."
+  }
+  const saved = f.hasPath === true ? " Full bytes saved at the path above." : ""
+  return `Binary body withheld from model context (not valid text, and dumping it wastes tokens).${saved} Re-call with binary=true for base64 when small enough, Read the saved path, or ask the user to attach the file.`
+}
+
+function modeCliRefusal(f: SyntheticFacts): string {
+  const k = "mode.cli_refusal"
+  const tool = str(k, f, "tool")
+  const reason = str(k, f, "reason")
+  if (reason === "deny-all") return `Tool "${tool}" is not permitted (--no-tools is active).`
+  if (reason === "allow-list") return `Tool "${tool}" is not in the --tools allow-list.`
+  throw new Error(`${k}: unknown reason ${reason}`)
+}
+
 /** One text builder per kind. */
 const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
   "tool_output.preview": preview,
@@ -264,6 +334,19 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
     `<ma::agent::mode-active id="${str("mode.active_stamp", f, "id")}" since="${str("mode.active_stamp", f, "since")}" />`,
   "mode.change": (f) =>
     `<ma::agent::mode-change from="${str("mode.change", f, "from")}" to="${str("mode.change", f, "to")}" at="${str("mode.change", f, "at")}" />`,
+  "tool_output.binary_withheld": binaryWithheld,
+  "tool_text.Bash.aborted": () => "[aborted by user]",
+  "tool_text.Write.not_read": notRead("Write"),
+  "tool_text.Write.stale": stale("Write"),
+  "tool_text.Edit.not_read": notRead("Edit"),
+  "tool_text.Edit.stale": stale("Edit"),
+  "tool_text.Grep.timed_out": grepTimedOut,
+  "tool_text.Grep.exit_code": (f) =>
+    `Grep error: rg exited with code ${str("tool_text.Grep.exit_code", f, "exitCode")}`,
+  "tool_text.FilesStats.empty": filesStatsEmpty,
+  "tool_text.FilesStats.not_enabled": () =>
+    "FilesStats: file tracking is not enabled in this host. Read/Edit/Write observations and this report are unavailable here.",
+  "mode.cli_refusal": modeCliRefusal,
 }
 
 /** Create the provider. It throws on a kind it does not own or a missing fact. */

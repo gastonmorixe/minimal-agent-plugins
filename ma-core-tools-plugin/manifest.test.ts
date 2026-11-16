@@ -42,16 +42,11 @@ describe("ma-core-tools-plugin manifest", () => {
     )
   })
 
-  test("kinds are every tool_text.*, tool_output.{preview,truncated,streak} and mode.* kind", () => {
+  test("kinds are every tool_text.*, tool_output.* and mode.* kind", () => {
     const want: string[] = SYNTHETIC_KINDS.filter(
-      (k) =>
-        k.startsWith("tool_text.") ||
-        k.startsWith("mode.") ||
-        k === "tool_output.preview" ||
-        k === "tool_output.truncated" ||
-        k === "tool_output.streak",
+      (k) => k.startsWith("tool_text.") || k.startsWith("mode.") || k.startsWith("tool_output."),
     )
-    expect(want.filter((k) => k.startsWith("tool_text."))).toHaveLength(30)
+    expect(want.filter((k) => k.startsWith("tool_text."))).toHaveLength(39)
     expect<string[]>([...createCoreToolsSyntheticProvider().kinds].sort()).toEqual(want.sort())
   })
 
