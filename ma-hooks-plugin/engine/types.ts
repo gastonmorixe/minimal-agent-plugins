@@ -17,11 +17,10 @@ export type HookDialectId = "native" | "claude" | (string & {})
 export type HookContextPosition = "before" | "after"
 
 /**
- * One additionalContext entry for the HookBus. A plain string means `after`.
- * Mirror of `@minimal-agent/core` plugin-api/sdk HookContextEntry. Switch to the
- * import when core lands.
+ * One additionalContext entry for the HookBus (core contract). A plain string
+ * means `after`. Re-exported so engine/adapters keep importing from here.
  */
-export type HookContextEntry = string | { text: string; position?: HookContextPosition }
+export type { HookContextEntry } from "@minimal-agent/core/plugin-api/types/plugin"
 
 /** True when `v` is a valid {@link HookContextPosition}. */
 export function isContextPosition(v: unknown): v is HookContextPosition {
