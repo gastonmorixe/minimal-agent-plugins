@@ -292,6 +292,8 @@ export async function runScenario(scenario: Scenario, hooks: RunHooks = {}): Pro
               maxTokens: 8192,
               toolRegistry: { list: () => [NO_EXECUTOR_TOOL] },
               toolExecutor: NO_TOOLS_EXECUTOR,
+              // The executor text is the tool_result.no_executor kind (P3.7).
+              syntheticTextProviders: loader.syntheticTextProviders(),
               sendFn: send as never,
               retry: { clock: { now: () => FIXED_NOW_MS, sleep: async () => {} } },
             } as never),

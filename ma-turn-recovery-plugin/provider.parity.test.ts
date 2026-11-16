@@ -25,11 +25,11 @@ import {
   repairOrphanedToolUse,
 } from "../../minimal-agent-core/src/agent/history-repair.ts"
 import { buildReflectionCheckpointBlock } from "../../minimal-agent-core/src/agent/reflection.ts"
+import type { SyntheticTextResolver } from "../../minimal-agent-core/src/agent/synthetic-text.ts"
 import {
   continueText,
   placeholderText,
-} from "../../minimal-agent-core/src/agent/synthetic-fallbacks.ts"
-import type { SyntheticTextResolver } from "../../minimal-agent-core/src/agent/synthetic-text.ts"
+} from "../../minimal-agent-core/src/agent/synthetic-texts.ts"
 import type { ModalitySupport } from "../../minimal-agent-core/src/llm/capabilities.ts"
 import type { Message } from "../../minimal-agent-core/src/llm/messages.ts"
 import {
@@ -45,10 +45,12 @@ import {
   type MediaKind,
 } from "../../minimal-agent-core/src/media/types.ts"
 import {
+  invokeSubprocess,
   pluginHandlerErrorText,
   subprocessOverflowText,
   unknownPluginToolText,
 } from "../../minimal-agent-core/src/plugins/loader/helpers.ts"
+import { NO_TOOLS_EXECUTOR } from "../../minimal-agent-core/src/runtime/noop-tools.ts"
 import {
   buildInitialUserContent,
   nextRoundContent,
@@ -259,7 +261,7 @@ const RUN: Record<string, Run> = {
     s(repairOrphanedToolUse(orphanHistory(), null, t)[0]?.content),
   toolCallInterruptedByStopResult: (t) =>
     s(closeInterruptedToolCalls(orphanHistory(), t)[0]?.content),
-  // src/agent/synthetic-fallbacks.ts
+  // src/agent/synthetic-texts.ts (fixture file: synthetic-fallbacks.ts)
   placeholderText: (t) => placeholderText(t),
   continueText: (t, a) => continueText(t, Boolean(a[0])),
   // src/plugins/loader/PROMPTS.ts
@@ -273,6 +275,25 @@ const RUN: Record<string, Run> = {
   reflectionAckToolResult: (t) => T.reflectionAckText(t),
   lockTimeoutResult: (t, a) => T.lockTimeoutText(t, s(a[0]), s(a[1])),
   lockAcquireFailedResult: (t, a) => T.lockFailedText(t, s(a[0]), s(a[1])),
+  // P3.7 kinds (old text: core 56fc856 inline strings), through the core call sites.
+  pluginToolCanceledResult: async (t) => {
+    const ctx = { abort: AbortSignal.abort(), trigger: { type: "tool" } }
+    const r = await invokeSubprocess("/bin/false", [], ctx as never, t)
+    return r.kind === "tool_result" ? s(r.content) : ""
+  },
+  noToolsExecutorResult: async (t, a) => {
+    const toolUse = { type: "tool_use" as const, id: "t1", name: s(a[0]), input: {} }
+    return s((await NO_TOOLS_EXECUTOR.execute(toolUse, undefined, { text: t })).content)
+  },
+  policyDeniedDefault: (t, a) => T.policyDeniedText(t, s(a[0])),
+  policyHookFailedResult: (t, a) =>
+    T.policyHookFailedText(t, {
+      hook: s(a[0]),
+      detail: s(a[1]),
+      ...(a[2] === undefined ? {} : { label: s(a[2]) }),
+    }),
+  policyRewriteNote: (t, a) => T.policyRewriteNoteText(t, s(a[0]), n(a[1])),
+  stopHookDefaultReason: (t, a) => T.hookDeniedText(t, s(a[0])),
   // src/media/PROMPTS.ts: the bare reason (site "check").
   unsupportedModalityMessage: (t, a) =>
     msg(

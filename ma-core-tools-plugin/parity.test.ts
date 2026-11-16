@@ -32,6 +32,7 @@ import { formatBytes as coreFormatBytes } from "../../minimal-agent-core/src/med
 import {
   modeActiveStampText,
   modeChangeText,
+  modeCliRefusalText,
   modeRefusalText,
 } from "../../minimal-agent-core/src/modes/mode-text.ts"
 import { ToolFeedbackTracker } from "../../minimal-agent-core/src/tools/feedback-tracker.ts"
@@ -135,6 +136,24 @@ const ROWS: Record<string, Row> = {
   writeErrorResult: { run: (t, a) => T.writeErrorText(t, s(a[0])) },
   writeMissingContentResult: { run: (t) => T.writeMissingContentText(t) },
   writeMissingPathResult: { run: (t) => T.writeMissingPathText(t) },
+  // P3.7 kinds (old text: core 56fc856 inline strings).
+  writeTrackedFileNotReadResult: { run: (t, a) => T.notReadText(t, "Write", s(a[1])) },
+  editTrackedFileNotReadResult: { run: (t, a) => T.notReadText(t, "Edit", s(a[1])) },
+  writeTrackedFileStaleResult: {
+    run: (t, a) => T.staleReadText(t, "Write", s(a[1]), a[2] as "missing" | "changed"),
+  },
+  editTrackedFileStaleResult: {
+    run: (t, a) => T.staleReadText(t, "Edit", s(a[1]), a[2] as "missing" | "changed"),
+  },
+  bashAbortedMarker: { run: (t) => T.bashAbortedText(t) },
+  grepTimedOutResult: { run: (t, a) => T.grepTimedOutText(t, n(a[0]), a[1] as "rg" | "js") },
+  grepExitCodeResult: { run: (t, a) => T.grepExitCodeText(t, n(a[0])) },
+  filesStatsNotEnabledResult: { run: (t) => T.filesStatsNotEnabledText(t) },
+  filesStatsEmptyReport: { run: (t, a) => T.filesStatsEmptyText(t, a[0] === true) },
+  binaryWithheldProse: { run: (t, a) => T.binaryWithheldText(t, a[0] === true, a[1] === true) },
+  cliToolGateRefusal: {
+    run: (t, a) => modeCliRefusalText(t, s(a[0]), a[1] as "deny-all" | "allow-list"),
+  },
   outputPreviewAnnotation: {
     run: (t, a) => {
       const o = a[0] as Obj

@@ -46,6 +46,10 @@ export const KINDS: readonly SyntheticKind[] = [
   "tool_result.lock_timeout",
   "tool_result.lock_failed",
   "tool_result.policy_denied",
+  "tool_result.canceled",
+  "tool_result.policy_hook_failed",
+  "tool_result.policy_rewrite_note",
+  "runtime.hook_denied",
   "user_media.rejected",
   "user_media.unavailable",
 ]
@@ -85,6 +89,9 @@ const INTERRUPTED_BY_STOP =
 const ABORTED_ORPHAN = "Tool execution aborted by user before completion."
 const ABORTED_RUNTIME = "tool aborted by user"
 const POLICY_DENIED_TOOL_WILL_INVOKE = "Tool blocked by lifecycle policy hook."
+const CANCELED_SUBPROCESS = "Plugin tool canceled."
+const SESSION_NO_EXECUTOR = "no tool executor is configured for this session"
+const HOOK_DENIED_TURN_WILL_STOP = "Turn stop blocked by turn.willStop hook."
 const REFLECTION_ACK_RESULT =
   "reflection-ack applied. Next time, write this tag as inline text in your response body, not as a tool call."
 const MODE_NO_EXECUTOR =
@@ -198,6 +205,7 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
       return `Handler error: ${str(kind, facts, "detail")}`
     case "tool_result.no_executor": {
       const name = str(kind, facts, "name")
+      if (facts.site === "session") return SESSION_NO_EXECUTOR
       if (name === "Mode") return MODE_NO_EXECUTOR
       throw new Error(`no_executor: unknown tool ${name}`)
     }
@@ -213,6 +221,32 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
     case "tool_result.policy_denied": {
       if (facts.hook === "tool.willInvoke") return POLICY_DENIED_TOOL_WILL_INVOKE
       throw new Error(`policy_denied: unknown hook ${String(facts.hook)}`)
+    }
+    case "tool_result.policy_hook_failed": {
+      if (facts.hook !== "tool.willInvoke") {
+        throw new Error(`policy_hook_failed: unknown hook ${String(facts.hook)}`)
+      }
+      const detail = str(kind, facts, "detail")
+      // A failing listener with a label (the HookBus result), else the emit threw.
+      if (typeof facts.label === "string") {
+        return `Denied: approval hook "${facts.label}" failed (${detail}).`
+      }
+      return `${POLICY_DENIED_TOOL_WILL_INVOKE} The approval hook failed (${detail}).`
+    }
+    case "tool_result.policy_rewrite_note": {
+      const keys = str(kind, facts, "keys")
+      const dropped = num(kind, facts, "dropped")
+      const shown = keys === "" ? [] : [keys]
+      const list = dropped > 0 ? [...shown, `+${dropped} more`].join(", ") : keys
+      return `input rewritten by policy: ${list}`
+    }
+    case "tool_result.canceled": {
+      if (facts.site === "subprocess") return CANCELED_SUBPROCESS
+      throw new Error(`canceled: unknown site ${String(facts.site)}`)
+    }
+    case "runtime.hook_denied": {
+      if (facts.hook === "turn.willStop") return HOOK_DENIED_TURN_WILL_STOP
+      throw new Error(`hook_denied: unknown hook ${String(facts.hook)}`)
     }
     case "user_media.rejected":
       return mediaRejected(facts)

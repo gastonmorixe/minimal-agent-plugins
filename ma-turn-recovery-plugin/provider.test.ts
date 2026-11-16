@@ -33,9 +33,9 @@ describe("turn recovery texts (bytes pinned)", () => {
 })
 
 describe("turn recovery contract", () => {
-  test("lists the 19 kinds", () => {
-    expect(p.kinds).toHaveLength(19)
-    expect(new Set(p.kinds).size).toBe(19)
+  test("lists the 23 kinds", () => {
+    expect(p.kinds).toHaveLength(23)
+    expect(new Set(p.kinds).size).toBe(23)
   })
   test("never returns empty", () => {
     const cases: Array<[SyntheticKind, Record<string, string>]> = [
