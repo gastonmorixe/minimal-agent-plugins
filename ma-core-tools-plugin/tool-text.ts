@@ -1,8 +1,9 @@
 /**
  * Tool text provider (`text.tools`) for the 8 built-in tools. The
- * descriptions are data files (byte copies of core `src/prompts/tools/*.md`),
- * trimmed as core trims them. The param descriptions are byte copies of core
- * `TOOL_PARAM_DESCRIPTIONS`, keyed by the schema property name.
+ * descriptions are data files in `prompts/tools/*.md`, trimmed as core trims
+ * them. The param descriptions are keyed by the schema property name. The
+ * texts are the STE rewrite (P4) of the old core texts
+ * (tests/text-parity/fixtures/tools.json). parity.test.ts pins the new texts.
  *
  * @module ma-core-tools-plugin/tool-text
  */
@@ -36,49 +37,53 @@ export const TOOLS: readonly string[] = [
 /** Param descriptions per tool, keyed by the schema property name. */
 const PARAMS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   Bash: {
-    command: "The command to execute",
-    timeout: "Optional timeout in milliseconds (max 600000)",
-    description: "Clear, concise description of what this command does",
+    command: "The command to run",
+    timeout: "Optional timeout in milliseconds (maximum 600000)",
+    description: "A clear, short description of what the command does",
   },
   Read: {
     file_path: "The absolute path to the file to read",
-    offset: "Line number to start reading from",
-    limit: "Number of lines to read",
+    offset: "The line number where the read starts",
+    limit: "The number of lines to read",
   },
   Write: {
     file_path: "The absolute path to the file to write",
-    content: "The content to write to the file. `contents` is accepted as an alias.",
-    contents: "Alias for `content`. Same meaning; ignored when `content` is also set.",
+    content: "The text to write to the file. You can also use the alias `contents`.",
+    contents:
+      "Alias for `content`, with the same meaning. If `content` is also set, the tool ignores this alias.",
   },
   Edit: {
-    file_path: "The absolute path to the file to modify",
+    file_path: "The absolute path to the file to change",
     old_string: "The text to replace",
-    new_string: "The text to replace it with",
+    new_string: "The replacement text",
     replace_all: "Replace all occurrences (default false)",
   },
   Glob: {
-    pattern: "The glob pattern to match files against. `glob_pattern` is accepted as an alias.",
-    glob_pattern: "Alias for `pattern`. Same meaning; ignored when `pattern` is also set.",
-    path: "Directory to search in. Defaults to cwd. `target_directory` is accepted as an alias.",
-    target_directory: "Alias for `path`. Same meaning; ignored when `path` is also set.",
+    pattern:
+      "The glob pattern that the file paths must match. You can also use the alias `glob_pattern`.",
+    glob_pattern:
+      "Alias for `pattern`, with the same meaning. If `pattern` is also set, the tool ignores this alias.",
+    path: "The directory to search. The default is cwd. You can also use the alias `target_directory`.",
+    target_directory:
+      "Alias for `path`, with the same meaning. If `path` is also set, the tool ignores this alias.",
   },
   Grep: {
-    pattern: "Regex pattern to search for",
-    path: "File or directory to search in. Defaults to cwd.",
-    glob: 'Glob pattern to filter files (e.g. "*.js")',
-    output_mode: "Output mode: content, files_with_matches, or count",
-    "-i": "Case insensitive search",
+    pattern: "The regex pattern to find",
+    path: "The file or directory to search. The default is cwd.",
+    glob: 'A glob pattern that selects the files to search (for example, "*.js")',
+    output_mode: "The output mode: content, files_with_matches or count",
+    "-i": "Ignore letter case in the search",
     "-n": "Show line numbers (default true)",
-    "-A": "Lines after match",
-    "-B": "Lines before match",
-    "-C": "Context lines",
-    context: "Context lines (alias for -C)",
-    head_limit: "Limit output lines (default 250)",
-    multiline: "Enable multiline mode",
+    "-A": "The number of lines to show after each match",
+    "-B": "The number of lines to show before each match",
+    "-C": "The number of context lines to show before and after each match",
+    context: "The number of context lines (alias for -C)",
+    head_limit: "The maximum number of output lines (default 250)",
+    multiline: "Set multiline mode",
   },
   FilesStats: {
-    status: "Optional status filter: all, present, missing, or changed",
-    path: "Optional absolute path or directory prefix filter",
+    status: "Optional filter by status: all, present, missing or changed",
+    path: "Optional filter by an absolute path or a directory prefix",
   },
   Mode: {},
 }

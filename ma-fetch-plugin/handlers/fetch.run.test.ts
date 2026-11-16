@@ -622,7 +622,7 @@ describe("runWithDeps - binary body guard", () => {
       expectToolResult(r)
       expect(r.content).toContain("<ma::agent::binary-result")
       expect(r.content).toContain("application/pdf")
-      expect(r.content).toContain("Binary body withheld")
+      expect(r.content).toContain("did not put the binary body")
       expect(r.content).not.toContain("%PDF-1.6\nx")
       expect(r.display ?? "").toMatch(/application\/pdf/)
     } finally {

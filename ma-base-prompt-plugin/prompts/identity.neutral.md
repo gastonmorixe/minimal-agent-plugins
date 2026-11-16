@@ -1,1 +1,1 @@
-You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.
+You are Minimal Agent, a minimal AI agent that runs as a CLI harness in the terminal.

@@ -1,7 +1,13 @@
 Reads a file from the local filesystem.
 
-For text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.
+For a text file, Read returns the contents with line numbers in `cat -n` style. You can use these line numbers in later Edit calls.
 
-For image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.
+For an image file (PNG, JPEG, GIF or WebP), Read returns the image itself to you, not text. You can see this image. This occurs only if the current model accepts image input. To examine an image, Read its path. Examples: a screenshot, a diagram, a photo, or any image that a tool wrote to disk. One example is a `Computer` screenshot path.
 
-Text output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.
+The harness automatically makes a very large image smaller before it sends the image. The smaller image fits the limit of the model. You do not need to resize the image. Do not try to decode image bytes as text.
+
+If the model has no vision support, Read returns a short message, not unreadable bytes. Read does the same for a binary document (PDF) that tool output cannot carry. The message tells you what to do instead.
+
+The text output that you receive has a limit of ~64KB / 1000 lines per call. The transcript of the user shows only the first ~15 lines and a summary of the remaining lines. For a larger file, read the file in pages with `offset` and `limit`. `offset` is the zero-based start line. `limit` is the maximum number of lines.
+
+The truncation notice gives the cut line and the total file size. Use these values to select the next `offset`. Read does not divide an image into line pages. `offset`/`limit` apply to text only.

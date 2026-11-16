@@ -1,2 +1,8 @@
 <ma::agent::session-resumed />
-This session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work.
+This session started again, and it has work that is not complete. Your previous conversation is in the transcript above. Continue exactly from the point where you stopped.
+
+- Do not explain your plan again.
+- Do not read a file again if you already read it.
+- Do not ask what to do next.
+
+Continue the work.

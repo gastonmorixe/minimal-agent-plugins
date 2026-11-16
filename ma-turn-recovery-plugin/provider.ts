@@ -4,7 +4,8 @@
  * failure, a stop, an abort or a denial, and the user media markers.
  *
  * Each text is built from its facts only (plugin-api types/synthetic-text.ts).
- * The bytes equal the old core texts (tests/text-parity/fixtures/synthetic.json).
+ * The texts are the STE rewrite (P4) of the old core texts
+ * (tests/text-parity/fixtures/synthetic.json). provider.parity.test.ts maps each old text to the new one.
  * Long texts live in `prompts/*.md`, loaded by text import and filled by
  * {@link fill}. An unknown kind or a missing required fact throws.
  *
@@ -85,17 +86,17 @@ export function formatBytes(n: number): string {
 const NO_MODEL_LABEL = "this model"
 
 const INTERRUPTED_BY_STOP =
-  "The process stopped while this tool call ran. It may have run fully, partly, or not at all. Check its effects before you run it again."
-const ABORTED_ORPHAN = "Tool execution aborted by user before completion."
+  "The process stopped while this tool call ran. The tool call possibly ran to the end, stopped before the end, or did not start. Examine its effects before you run it again."
+const ABORTED_ORPHAN = "The user stopped this tool call before it finished."
 const ABORTED_RUNTIME = "tool aborted by user"
-const POLICY_DENIED_TOOL_WILL_INVOKE = "Tool blocked by lifecycle policy hook."
-const CANCELED_SUBPROCESS = "Plugin tool canceled."
-const SESSION_NO_EXECUTOR = "no tool executor is configured for this session"
-const HOOK_DENIED_TURN_WILL_STOP = "Turn stop blocked by turn.willStop hook."
+const POLICY_DENIED_TOOL_WILL_INVOKE = "A lifecycle policy hook prevented this tool call."
+const CANCELED_SUBPROCESS = "The plugin tool call was stopped."
+const SESSION_NO_EXECUTOR = "this session has no tool executor"
+const HOOK_DENIED_TURN_WILL_STOP = "The turn.willStop hook did not let the turn stop."
 const REFLECTION_ACK_RESULT =
-  "reflection-ack applied. Next time, write this tag as inline text in your response body, not as a tool call."
+  "reflection-ack applied. Next time, write this tag as inline text in your response body. Do not write it as a tool call."
 const MODE_NO_EXECUTOR =
-  "Mode tool reached the dispatcher. The agent loop should have handled it. File a bug : see the `Mode` interceptor in `src/loops/tool-round.ts`."
+  "The Mode tool call reached the dispatcher. The agent loop must handle this tool call first. Report a bug. Refer to the `Mode` interceptor in `src/loops/tool-round.ts`."
 
 /** A required string fact. Throws when absent or not a string. */
 function str(kind: SyntheticKind, facts: SyntheticFacts, key: string): string {
@@ -134,24 +135,24 @@ function rejectionReason(facts: SyntheticFacts): string {
   const reason = str(k, facts, "reason")
   switch (reason) {
     case "unsupported-modality":
-      return `${model} doesn't accept ${str(k, facts, "kind")} input`
+      return `${model} does not accept ${str(k, facts, "kind")} input`
     case "unsupported-type":
-      return `${str(k, facts, "mimeType")} isn't a supported type for ${model}`
+      return `${str(k, facts, "mimeType")} is not a supported type for ${model}`
     case "too-large": {
       const raw = formatBytes(num(k, facts, "sizeBytes"))
       const enc = formatBytes(num(k, facts, "encodedBytes"))
       const lim = formatBytes(num(k, facts, "limitBytes"))
-      return `${raw} (${enc} encoded) exceeds the ${lim} limit for ${model}`
+      return `${raw} (${enc} encoded) is more than the ${lim} limit for ${model}`
     }
     case "dimensions": {
       const w = num(k, facts, "width")
       const h = num(k, facts, "height")
-      return `${w}x${h} exceeds the ${num(k, facts, "maxDimension")}px limit for ${model}`
+      return `${w}x${h} is more than the ${num(k, facts, "maxDimension")}px limit for ${model}`
     }
     case "too-many":
       return `more than ${num(k, facts, "maxItems")} attachments for ${model}`
     case "request-too-large":
-      return `attachments total exceeds the ${formatBytes(num(k, facts, "limitBytes"))} request limit for ${model}`
+      return `the total size of the attachments is more than the ${formatBytes(num(k, facts, "limitBytes"))} request limit for ${model}`
     default:
       throw new Error(`user_media.rejected: unknown reason ${reason}`)
   }
@@ -212,12 +213,12 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
     case "tool_result.subprocess_overflow": {
       const maxBytes = num(kind, facts, "maxBytes")
       const detail = str(kind, facts, "detail")
-      return `Error: Subprocess output exceeded maximum length of ${maxBytes} bytes. Details: ${detail}`
+      return `Error: The subprocess output was more than the maximum length of ${maxBytes} bytes. Details: ${detail}`
     }
     case "tool_result.lock_timeout":
       return `${str(kind, facts, "tool")} error: ${str(kind, facts, "detail")}`
     case "tool_result.lock_failed":
-      return `${str(kind, facts, "tool")} error: lock acquire failed: ${str(kind, facts, "detail")}`
+      return `${str(kind, facts, "tool")} error: cannot get the lock: ${str(kind, facts, "detail")}`
     case "tool_result.policy_denied": {
       if (facts.hook === "tool.willInvoke") return POLICY_DENIED_TOOL_WILL_INVOKE
       throw new Error(`policy_denied: unknown hook ${String(facts.hook)}`)
@@ -238,7 +239,7 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
       const dropped = num(kind, facts, "dropped")
       const shown = keys === "" ? [] : [keys]
       const list = dropped > 0 ? [...shown, `+${dropped} more`].join(", ") : keys
-      return `input rewritten by policy: ${list}`
+      return `the policy changed the input: ${list}`
     }
     case "tool_result.canceled": {
       if (facts.site === "subprocess") return CANCELED_SUBPROCESS
@@ -251,7 +252,7 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
     case "user_media.rejected":
       return mediaRejected(facts)
     case "user_media.unavailable":
-      return `[attachment #${str(kind, facts, "id")} unavailable]`
+      return `[attachment #${str(kind, facts, "id")} is not available]`
     default:
       throw new Error(`turn-recovery does not own kind ${kind}`)
   }

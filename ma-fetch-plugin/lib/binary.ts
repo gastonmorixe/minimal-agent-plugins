@@ -150,9 +150,9 @@ export function formatBinaryWithheld(opts: {
   if (opts.sha256) attrs.push(`sha256="${escapeAttr(opts.sha256)}"`)
   attrs.push(`tool="Fetch"`)
   const tag = `<ma::agent::binary-result ${attrs.join(" ")} />`
-  const prose = `Binary body withheld from model context (not valid text, and dumping it wastes tokens).${
-    opts.path ? " Full bytes saved at the path above." : ""
-  } Re-call with binary=true for base64 when small enough, Read the saved path, or ask the user to attach the file.`
+  const prose = `The harness did not put the binary body in the model context. The body is not valid text, and it uses tokens for no purpose.${
+    opts.path ? " The harness saved the full bytes at the path above." : ""
+  } Do one of these: call the tool again with binary=true to get base64 if the body is small enough, Read the saved path, or ask the user to attach the file.`
   return `${tag}\n\n${prose}`
 }
 
@@ -176,8 +176,8 @@ export function formatBinaryOptedIn(opts: {
     attrs.push(`tool="Fetch"`)
     return (
       `<ma::agent::binary-result ${attrs.join(" ")} />\n\n` +
-      "Binary body is too large to inline as base64 under the tool-output budget. " +
-      "Use the path above (Read it, or ask the user to attach the file to their message)."
+      "The binary body is too large to include as base64 in the tool output budget. " +
+      "Use the path above. Read that path, or ask the user to attach the file to their message."
     )
   }
   const b64 = Buffer.from(opts.bytes).toString("base64")

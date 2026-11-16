@@ -1,5 +1,11 @@
-Search file contents with regex, built on ripgrep.
+Searches file contents with a regex. The tool uses ripgrep.
 
-Use this tool for content searches, including counting matches with `output_mode: "count"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.
+Use this tool to search file contents. To count matches, use `output_mode: "count"`. Do not run `grep` or `rg` as a Bash command. This tool is faster, obeys .gitignore and returns cleaner, bounded output.
 
-Output you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: "files_with_matches"` (paths only, densest) or `"count"`. Narrow with `glob` (e.g. "*.ts"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.
+The output that you receive has a limit of ~64KB / 1000 lines. The transcript of the user shows only the first ~12 lines and a summary of the remaining lines. For a broad search, use `output_mode: "files_with_matches"` or `"count"` when possible. `"files_with_matches"` returns only paths and is the densest mode.
+
+Do not rely on the output limit to cut the output. Make the search narrower with these parameters:
+- `glob`, for example "*.ts"
+- `path`, for a subdirectory
+- `-A/-B/-C`, for context lines
+- `head_limit`

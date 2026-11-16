@@ -1,3 +1,3 @@
-Report the current status of files recorded by the session file tracker.
+Reports the current status of the files that the session file tracker recorded.
 
-Use `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.
+To show only the files with one status, set `status` to `present`, `missing` or `changed`. To show all tracked files, do not set `status`. To filter by an exact file or a directory prefix, use `path`. The report is read-only. The tool does not scan the filesystem and does not track new files.

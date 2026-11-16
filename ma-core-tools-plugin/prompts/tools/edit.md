@@ -1,1 +1,1 @@
-Performs exact string replacements in files.
+Replaces exact strings in files.

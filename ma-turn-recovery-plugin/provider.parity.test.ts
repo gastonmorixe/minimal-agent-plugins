@@ -1,13 +1,14 @@
 /**
  * Byte parity of the turn-recovery provider against the old core texts
- * (core-prompts decouple P2.2).
+ * (core-prompts decouple P2.2), after the P4 STE rewrite.
  *
  * One row per synthetic.json entry whose proposedKind this plugin owns. Each
  * row runs the REAL core call site (the same mapping of fixture args to a core
  * path as core's runtime-text and tool-result-text parity tables) through a
  * resolver that hands the facts core passes straight to this provider, with
- * no fallback for an owned kind. The provider output must equal the fixture
- * text byte for byte. Core is imported here, in the test only.
+ * no fallback for an owned kind. The provider output must equal the STE text
+ * of the fixture (`toSte` in `__fixtures__/ste-p4.ts` maps each old text to its
+ * new text) byte for byte. Core is imported here, in the test only.
  */
 
 import { readFileSync } from "node:fs"
@@ -57,6 +58,7 @@ import {
 } from "../../minimal-agent-core/src/sdk/agent-core-helpers.ts"
 import * as T from "../../minimal-agent-core/src/tools/tool-result-text.ts"
 
+import { RULE_HITS, RULE_NAMES, toSte } from "./__fixtures__/ste-p4.ts"
 import manifest from "./manifest.json"
 import { createTurnRecoveryProvider, formatBytes } from "./provider.ts"
 
@@ -368,7 +370,7 @@ const RUN: Record<string, Run> = {
         undefined,
         t,
       ),
-    ).replace(/ doesn't accept image input$/, ""),
+    ).replace(/ does not accept image input$/, ""),
   // src/media/resolve.ts: the whole marker (site "marker") and a stale id.
   mediaRejectedMarker: (t, a) => markerText(t, a[0] as MarkerScenario),
   mediaUnavailableMarker: (t, a) => unavailableText(t, s(a[0])),
@@ -405,16 +407,50 @@ describe("turn-recovery parity with the old core texts", () => {
           if (want.endsWith(".*")) expect(call.kind.startsWith(want.slice(0, -1))).toBe(true)
           else expect(call.kind).toBe(want as SyntheticKind)
         }
-        expect(out).toBe(c.text)
+        expect(out).toBe(toSte(c.text))
       }
     })
   }
+
+  it("the STE map changes every owned fixture text except the kept ones", () => {
+    // Kept on purpose: the core copy at core/src/sdk/tool-calls.ts:96, the
+    // core copy at core/src/plugins/hooks/hook-bus.ts:445, short markers that
+    // are already STE, and the model label.
+    const KEPT = new Set([
+      "tool aborted by user",
+      'Denied: approval hook "acme:gate" failed (gate down).',
+      "Handler error: boom",
+      "Unknown tool: Foo",
+      "Unknown plugin tool: FooTool",
+      "Write error: lock held by session abc for 30000ms",
+      "Edit error: lock held by session abc for 30000ms",
+      "this model",
+      "[image not sent: too large]",
+    ])
+    for (const e of rows) {
+      for (const c of e.cases) {
+        if (KEPT.has(c.text) || /^more than \d+ attachments for /.test(c.text)) continue
+        if (/^\[\w+ not sent: more than \d+ attachments for /.test(c.text)) continue
+        expect(toSte(c.text), `${e.fn}: ${c.text}`).not.toBe(c.text)
+      }
+    }
+  })
+
+  it("each STE mapping rule hits at least one fixture text", () => {
+    for (const e of rows) for (const c of e.cases) toSte(c.text)
+    const dead = [
+      ...RULE_NAMES.prompt.filter((_n, i) => (RULE_HITS.prompt[i] ?? 0) < 1),
+      ...RULE_NAMES.inline.filter((_n, i) => (RULE_HITS.inline[i] ?? 0) < 1),
+    ]
+    expect(dead).toEqual([])
+  })
 
   it("mediaNotSentMarker shape: the marker wraps the check text", () => {
     const e = rows.find((x) => x.fn === "mediaNotSentMarker")
     expect(e).toBeDefined()
     for (const c of e?.cases ?? []) {
-      expect(c.text).toBe(`[${s(c.args[0]).toLowerCase()} not sent: ${s(c.args[1])}]`)
+      const want = toSte(`[${s(c.args[0]).toLowerCase()} not sent: ${s(c.args[1])}]`)
+      expect(toSte(c.text)).toBe(want)
     }
     const base = { reason: "unsupported-modality", modelId: "model-x", mimeType: "x/y" }
     for (const [kind, word] of [
