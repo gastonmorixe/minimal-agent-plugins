@@ -1,0 +1,15 @@
+{
+  "name": "ma-template-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable %%name%% template engine for minimal-agent plugins: render, placeholder scan, lazy variables. Not a plugin. Imported by plugins via a relative path.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "check": "bun run ../scripts/check.ts"
+  }
+}

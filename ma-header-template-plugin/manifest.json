@@ -1,0 +1,22 @@
+{
+  "id": "header-template",
+  "name": "Header template",
+  "version": "0.1.0",
+  "description": "Prints a custom one-shot header from a %%name%% template (--header-format, MINIMAL_AGENT_HEADER_FORMAT, or config headerFormat). Variables: sid, sid.short, model, provider, effort, agent, cwd, branch, resume, and more. Off unless a template is set.",
+  "permissions": ["hooks:session.willStart"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "on_session_will_start",
+        "channel": "session.willStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_session_will_start.ts",
+          "export": "default"
+        },
+        "priority": 10,
+        "timeoutMs": 2000
+      }
+    ]
+  }
+}
