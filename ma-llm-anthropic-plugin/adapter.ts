@@ -30,8 +30,16 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { fetchAnthropicAccountPlan } from "./account-plan.ts"
+import { ANTHROPIC_BETA_FLAGS, classifyRequest } from "./beta-flags.ts"
 import { ANTHROPIC_BETA_FLAGS_CATALOG } from "./beta-flags-catalog.ts"
 import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
+import {
+  forgetMessageId,
+  isPreviousMessageIdRejection,
+  previousMessageIdFor,
+  ResponseChainRecorder,
+  _resetCacheDiagnosisForTest as resetChainForTest,
+} from "./cache-diagnosis.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
 import type {
   ModelEntry,
@@ -45,7 +53,7 @@ import { listAnthropicModels } from "./list-models.ts"
 import { anthropicMediaLimits } from "./media-limits.ts"
 import { registerAnthropicAdHocModelInto, registerAnthropicModels } from "./models.ts"
 import { anthropicOAuthLogin } from "./oauth-login.ts"
-import { buildAnthropicRequestBody } from "./request-body.ts"
+import { type AnthropicRequestBody, buildAnthropicRequestBody } from "./request-body.ts"
 import { type AnthropicStreamEvent, translateAnthropicStream } from "./response-stream.ts"
 import {
   fetchAnthropicSessionInfo,
@@ -54,6 +62,7 @@ import {
 } from "./session-info.ts"
 import { resolveAnthropicSystemPrompt } from "./system-prompt.ts"
 import { validateAnthropicRequest } from "./validate.ts"
+import { BUILD_HASH, buildHashFor, VERSION } from "./wire-constants.ts"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -90,6 +99,99 @@ function gzipRequestBody(serialized: string): Uint8Array | undefined {
   const bytes = new TextEncoder().encode(serialized)
   if (bytes.length < GZIP_MIN_BYTES) return undefined
   return Bun.gzipSync(bytes, { level: 6 })
+}
+
+/**
+ * Set once the server rejects `thinking-token-count-2026-05-13` (400 "invalid
+ * beta flag"). CC heals the same way: `x0o` drops zW "for this conversation
+ * and retrying" when `Jz(e)` (400 + "invalid beta flag") and the beta was on
+ * the wire (CC/chunk-wqb2b4v0.mjs). We latch it for the process.
+ */
+let thinkingTokenCountRejected = false
+
+/** Test seam: forget the cache-diagnosis chain and the beta-heal latch. */
+export function _resetCacheDiagnosisForTest(): void {
+  resetChainForTest()
+  thinkingTokenCountRejected = false
+}
+
+/** CC's `Jz`: a 400 whose message says "invalid beta flag". */
+const TTC = ANTHROPIC_BETA_FLAGS.THINKING_TOKEN_COUNT
+
+function isInvalidBetaRejection(status: number, body: string): boolean {
+  return status === 400 && body.toLowerCase().includes("invalid beta flag")
+}
+
+/**
+ * Only latch the process-wide TTC drop when the rejection names that beta;
+ * an "invalid beta flag" 400 about another beta must not disable TTC.
+ */
+function isThinkingTokenCountRejection(status: number, body: string): boolean {
+  return isInvalidBetaRejection(status, body) && body.toLowerCase().includes("thinking-token-count")
+}
+
+/**
+ * Whether this request carries `cache-diagnosis-2026-04-07` + the body
+ * `diagnostics` block. An explicit `req.vendor.anthropic.cacheDiagnostics`
+ * wins. Otherwise ON for OAuth conversation/subtask requests (CC 2.1.325 adds
+ * the beta on every agentic set: `if(wV()&&!Ea.includes(b3t))Ea.push(b3t)`,
+ * CC/chunk-wqb2b4v0.mjs), unless `MINIMAL_AGENT_NO_CACHE_DIAGNOSIS=1`.
+ */
+function wantsCacheDiagnosis(req: CanonicalRequest, authKind: ProviderAuth["kind"]): boolean {
+  const explicit = req.vendor?.anthropic?.cacheDiagnostics
+  if (explicit !== undefined) return explicit
+  if (authKind !== "oauth") return false
+  if (process.env.MINIMAL_AGENT_NO_CACHE_DIAGNOSIS === "1") return false
+  const kind = classifyRequest(req)
+  return kind === "conversation" || kind === "subtask"
+}
+
+/**
+ * Our sideband / reminder blocks: the equivalent of CC's `isMeta` messages.
+ * CC keeps reminders and attachments-as-context in separate meta user
+ * messages; we inline them as `<ma::…>` / `<system-reminder>` text blocks.
+ */
+function isMetaText(text: string): boolean {
+  const t = text.trimStart()
+  return t.startsWith("<ma::") || t.startsWith("<system-reminder>")
+}
+
+/**
+ * Text claude-code hashes into the billing `cc_version` suffix. Mirrors CC's
+ * `j()` (CC/chunk-gpympest.mjs): `e.find(o=>o.type==="user"&&!o.isMeta)`, then
+ * string content as-is or its FIRST `type==="text"` block, else "". A user
+ * message made only of meta text blocks counts as meta and is skipped; meta
+ * blocks before the prompt are skipped (on the wire CC's meta messages sit in
+ * messages[0] before the prompt: 6 D captures, e.g. fetch-005 "hello 2" → f16).
+ * A first real message with no text (image-only) yields "", like CC.
+ */
+export function firstUserPromptText(messages: AnthropicRequestBody["messages"]): string {
+  for (const msg of messages) {
+    if (msg.role !== "user") continue
+    if (typeof msg.content === "string") {
+      if (isMetaText(msg.content)) continue
+      return msg.content
+    }
+    const real = msg.content.filter((b) => !(b.type === "text" && isMetaText(b.text)))
+    if (real.length === 0) continue
+    const text = real.find((b) => b.type === "text")
+    return text?.type === "text" ? text.text : ""
+  }
+  return ""
+}
+
+/**
+ * Re-derive the billing header's `cc_version` hash from the real first user
+ * prompt (the system-prompt seam has no messages, so it renders the "" hash).
+ * Only touches system[0] when it is our billing header with the default hash.
+ */
+function applyBillingPromptHash(body: AnthropicRequestBody): void {
+  const block = body.system?.[0]
+  if (!block?.text.startsWith("x-anthropic-billing-header:")) return
+  const stale = `cc_version=${VERSION}.${BUILD_HASH};`
+  if (!block.text.includes(stale)) return
+  const fresh = `cc_version=${VERSION}.${buildHashFor(firstUserPromptText(body.messages))};`
+  body.system![0] = { ...block, text: block.text.replace(stale, fresh) }
 }
 
 /** Test seam: clear the process-wide "server rejected gzip" latch. */
@@ -200,60 +302,125 @@ export const anthropicAdapter: ProviderAdapter = {
       throw new Error("Anthropic adapter: missing oauth token")
     }
 
-    const { headers, betaFlags } = buildAnthropicHeaders({
-      req,
-      model,
-      auth,
-      sessionId: ctx.sessionId,
-    })
-    const body = buildAnthropicRequestBody(req, model)
-    const serialized = JSON.stringify(body)
-
-    ctx.debug?.header(`POST ${MESSAGES_URL}`)
-    ctx.debug?.kv("model", body.model)
-    ctx.debug?.kv("stream", String(body.stream ?? true))
-    ctx.debug?.kv("max_tokens", String(body.max_tokens))
-    ctx.debug?.kv("beta", betaFlags.join(","))
-    ctx.debug?.headers(headers)
-    ctx.debug?.body(body)
-
     const networkClient = ctx.networkClient as NetworkClient | undefined
     if (!networkClient) {
       throw new Error("Anthropic adapter: missing ctx.networkClient (host must provide the client)")
     }
-    const gzipped = gzipRequestBody(serialized)
-    let response = await networkClient.request({
-      label: "messages.send",
-      method: "POST",
-      url: MESSAGES_URL,
-      headers: gzipped ? { ...headers, "content-encoding": "gzip" } : headers,
-      body: gzipped ?? serialized,
-      signal: req.signal,
-      // net-dbg logs the readable JSON, not the gzipped bytes.
-      capture: { requestBody: serialized },
-    })
-    // Server rejected the compressed body shape: remember for this process
-    // and retry once uncompressed so a gateway quirk never breaks a turn.
-    if (gzipped && !response.ok && (response.status === 400 || response.status === 415)) {
-      const errText = await response.text().catch(() => "")
-      if (isContentEncodingRejection(response.status, errText)) {
-        gzipRejected = true
-        response = await networkClient.request({
-          label: "messages.send",
-          method: "POST",
-          url: MESSAGES_URL,
-          headers,
-          body: serialized,
-          signal: req.signal,
-        })
-      } else {
-        // A real 400 unrelated to compression: surface it as-is, keep gzip on.
-        throw taggedAnthropicHttpError(response.status, errText, response.headers)
+
+    const cacheDiagnosis = wantsCacheDiagnosis(req, auth.kind)
+    // Derived from the history being sent, like CC's `Amt(e)` (./cache-diagnosis.ts).
+    let previousMessageId = cacheDiagnosis ? previousMessageIdFor(req.messages) : null
+
+    /** Build + POST one attempt. Returns the response and the beta set sent. */
+    const send = async () => {
+      const removeBetas = thinkingTokenCountRejected
+        ? [...(req.vendor?.anthropic?.betaOverrides?.remove ?? []), TTC]
+        : req.vendor?.anthropic?.betaOverrides?.remove
+      const wireReq: CanonicalRequest =
+        (cacheDiagnosis && !req.vendor?.anthropic?.cacheDiagnostics) || thinkingTokenCountRejected
+          ? {
+              ...req,
+              vendor: {
+                ...req.vendor,
+                anthropic: {
+                  ...req.vendor?.anthropic,
+                  ...(cacheDiagnosis && { cacheDiagnostics: true }),
+                  ...(removeBetas && {
+                    betaOverrides: { ...req.vendor?.anthropic?.betaOverrides, remove: removeBetas },
+                  }),
+                },
+              },
+            }
+          : req
+      const { headers, betaFlags } = buildAnthropicHeaders({
+        req: wireReq,
+        model,
+        auth,
+        sessionId: ctx.sessionId,
+      })
+      const body = buildAnthropicRequestBody(wireReq, model)
+      // Only with the beta actually on the wire (betaOverrides.remove may drop
+      // it). The leaf body builder pre-fills `diagnostics` from
+      // vendor.cacheDiagnostics alone, so strip it when the beta is absent.
+      if (cacheDiagnosis && betaFlags.includes(ANTHROPIC_BETA_FLAGS.CACHE_DIAGNOSIS)) {
+        body.diagnostics = { previous_message_id: previousMessageId }
+      } else if (!betaFlags.includes(ANTHROPIC_BETA_FLAGS.CACHE_DIAGNOSIS)) {
+        delete body.diagnostics
       }
+      if (auth.kind === "oauth") applyBillingPromptHash(body)
+      const serialized = JSON.stringify(body)
+
+      ctx.debug?.header(`POST ${MESSAGES_URL}`)
+      ctx.debug?.kv("model", body.model)
+      ctx.debug?.kv("stream", String(body.stream ?? true))
+      ctx.debug?.kv("max_tokens", String(body.max_tokens))
+      ctx.debug?.kv("beta", betaFlags.join(","))
+      ctx.debug?.headers(headers)
+      ctx.debug?.body(body)
+
+      const gzipped = gzipRequestBody(serialized)
+      let response = await networkClient.request({
+        label: "messages.send",
+        method: "POST",
+        url: MESSAGES_URL,
+        headers: gzipped ? { ...headers, "content-encoding": "gzip" } : headers,
+        body: gzipped ?? serialized,
+        signal: req.signal,
+        // net-dbg logs the readable JSON, not the gzipped bytes.
+        capture: { requestBody: serialized },
+      })
+      // Server rejected the compressed body shape: remember for this process
+      // and retry once uncompressed so a gateway quirk never breaks a turn.
+      if (gzipped && !response.ok && (response.status === 400 || response.status === 415)) {
+        const errText = await response.text().catch(() => "")
+        if (isContentEncodingRejection(response.status, errText)) {
+          gzipRejected = true
+          response = await networkClient.request({
+            label: "messages.send",
+            method: "POST",
+            url: MESSAGES_URL,
+            headers,
+            body: serialized,
+            signal: req.signal,
+          })
+        } else {
+          // A real 400 unrelated to compression: hand the body to the heal step.
+          return { response, betaFlags, errText }
+        }
+      }
+      return { response, betaFlags, errText: undefined as string | undefined }
     }
 
+    let attempt = await send()
+    // One-shot 400 heals (each at most once per run):
+    // - `diagnostics.previous_message_id` rejected (CC: previous_message_id_invalid,
+    //   CC/chunk-wqb2b4v0.mjs) → resend with previous_message_id:null.
+    // - thinking-token-count rejected as an invalid beta (CC's x0o heal) →
+    //   drop it for the process and resend.
+    for (let heals = 0; heals < 2 && !attempt.response.ok; heals++) {
+      if (attempt.response.status !== 400) break
+      const errText = attempt.errText ?? (await attempt.response.text().catch(() => ""))
+      attempt.errText = errText
+      if (previousMessageId !== null && isPreviousMessageIdRejection(400, errText)) {
+        // Evict the rejected id so a later withRetry re-run of run() (same
+        // req.messages) does not recompute and resend it.
+        forgetMessageId(previousMessageId)
+        previousMessageId = null
+      } else if (
+        !thinkingTokenCountRejected &&
+        attempt.betaFlags.includes(TTC) &&
+        isThinkingTokenCountRejection(400, errText)
+      ) {
+        thinkingTokenCountRejected = true
+      } else {
+        break
+      }
+      attempt = await send()
+    }
+    const response = attempt.response
+
     if (!response.ok) {
-      const text = await response.text()
+      const text = attempt.errText ?? (await response.text())
       throw taggedAnthropicHttpError(response.status, text, response.headers)
     }
     // Cache + broadcast THIS response's rate-limit snapshot so the status-bar
@@ -271,7 +438,15 @@ export const anthropicAdapter: ProviderAdapter = {
       throw new Error("Anthropic API: empty response body for stream")
     }
 
-    yield* translateAnthropicStream(parseSse<AnthropicStreamEvent>(response.body))
+    // Per-request recorder: commits fingerprint → msg id only on a clean
+    // message_stop, so aborted / failed / interleaved attempts never leak.
+    const chain = cacheDiagnosis ? new ResponseChainRecorder() : undefined
+    for await (const ev of translateAnthropicStream(
+      parseSse<AnthropicStreamEvent>(response.body),
+    )) {
+      chain?.observe(ev)
+      yield ev
+    }
   },
 
   /**

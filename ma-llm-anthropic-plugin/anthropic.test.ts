@@ -350,16 +350,18 @@ describe("buildBetaFlags", () => {
     // live CLI capture DOES send it; we deviate deliberately, matching the
     // legacy builder. Probe kinds (quota/title) still carry it.
     expect(flags).not.toContain(ANTHROPIC_BETA_FLAGS.REDACT_THINKING)
+    // Wire order = claude-code 2.1.325 MAIN set order (cc-wire.md §1.2).
     expect(flags).toEqual([
       ANTHROPIC_BETA_FLAGS.CLAUDE_CODE,
       ANTHROPIC_BETA_FLAGS.OAUTH,
       ANTHROPIC_BETA_FLAGS.CONTEXT_1M,
       ANTHROPIC_BETA_FLAGS.CONTEXT_MANAGEMENT,
-      ANTHROPIC_BETA_FLAGS.ADVANCED_TOOL_USE,
-      ANTHROPIC_BETA_FLAGS.EFFORT,
       ANTHROPIC_BETA_FLAGS.PROMPT_CACHING_SCOPE,
-      ANTHROPIC_BETA_FLAGS.EXTENDED_CACHE_TTL,
+      ANTHROPIC_BETA_FLAGS.THINKING_TOKEN_COUNT,
+      ANTHROPIC_BETA_FLAGS.ADVANCED_TOOL_USE,
       ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM,
+      ANTHROPIC_BETA_FLAGS.EFFORT,
+      ANTHROPIC_BETA_FLAGS.EXTENDED_CACHE_TTL,
     ])
   })
 
@@ -372,12 +374,14 @@ describe("buildBetaFlags", () => {
       generation: { maxOutputTokens: 1 },
     }
     const flags = buildBetaFlags({ kind: "quota", req, model, authKind: "oauth" })
+    // Exactly the CC 2.1.325 QUOTA set, in order (cc-wire.md §1.2,
+    // D/…fetch-003-01-req-meta.json).
     expect(flags).toEqual([
       ANTHROPIC_BETA_FLAGS.OAUTH,
       ANTHROPIC_BETA_FLAGS.INTERLEAVED_THINKING,
+      ANTHROPIC_BETA_FLAGS.REDACT_THINKING,
       ANTHROPIC_BETA_FLAGS.CONTEXT_MANAGEMENT,
       ANTHROPIC_BETA_FLAGS.PROMPT_CACHING_SCOPE,
-      ANTHROPIC_BETA_FLAGS.REDACT_THINKING,
     ])
   })
 
@@ -620,13 +624,14 @@ describe("buildAnthropicHeaders", () => {
     expect(headers["x-app"]).toBe("cli")
     expect(headers["user-agent"]).toMatch(/^claude-cli\/\d+\.\d+\.\d+ \(external, cli\)$/)
     // Pinned literal, not the imported constant: this locks the wire value so
-    // a VERSION bump is a deliberate edit here too (0.94.0 → 0.112.1 in 2.1.280).
-    expect(headers["x-stainless-package-version"]).toBe("0.112.1")
-    // 9, not 11: interleaved-thinking is omitted for opus-4-8 (T-7c3f02)
-    // and redact-thinking is omitted for conversations (B3a, B-0 flip).
+    // a VERSION bump is a deliberate edit here too (0.112.1 → 0.128.0 in 2.1.323).
+    expect(headers["x-stainless-package-version"]).toBe("0.128.0")
+    // 10: interleaved-thinking is omitted for opus-4-8 (T-7c3f02) and
+    // redact-thinking is omitted for conversations (B3a, B-0 flip);
+    // thinking-token-count added for thinking models (CC 2.1.325 parity).
     expect(headers["anthropic-beta"]).not.toContain("interleaved-thinking-2025-05-14")
     expect(headers["anthropic-beta"]).not.toContain("redact-thinking-2026-02-12")
-    expect(betaFlags.length).toBe(9)
+    expect(betaFlags.length).toBe(10)
   })
 
   it("uses x-api-key auth when api-key provided", () => {

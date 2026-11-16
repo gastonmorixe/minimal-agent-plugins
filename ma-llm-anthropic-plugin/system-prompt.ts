@@ -34,7 +34,7 @@ import { renderTemplate } from "./lib/prompts.ts"
 // binary (where `import.meta.dir` is `/$bunfs/root` and the files are absent).
 import billingTemplate from "./prompts/billing.tmpl.md" with { type: "text" }
 import claudeCodeIdentity from "./prompts/identity.claude-code.md" with { type: "text" }
-import { BUILD_HASH, VERSION } from "./wire-constants.ts"
+import { buildHashFor, VERSION } from "./wire-constants.ts"
 
 /**
  * The exact Claude-Code identity line Anthropic's server validates on plan
@@ -53,11 +53,15 @@ export const CLAUDE_CODE_IDENTITY: string = renderTemplate(
  * Build the billing-attribution header text (system[0] on plan auth). Rendered
  * from `prompts/billing.tmpl.md` with the live CLI version + build hash. The
  * server parses this for billing/attribution.
+ *
+ * @param firstUserText - The conversation's first user prompt; claude-code
+ *   2.1.325 hashes it into the `cc_version` suffix. Defaults to "" (the
+ *   adapter re-derives the suffix once the messages are known).
  */
-export function buildBillingHeaderText(): string {
+export function buildBillingHeaderText(firstUserText = ""): string {
   return renderTemplate(
     billingTemplate,
-    { version: VERSION, buildHash: BUILD_HASH },
+    { version: VERSION, buildHash: buildHashFor(firstUserText) },
     { source: "prompts/billing.tmpl.md" },
   )
 }
