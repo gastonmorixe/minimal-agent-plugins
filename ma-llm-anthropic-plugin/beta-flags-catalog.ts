@@ -91,7 +91,10 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
     description:
       'Accepts {role:"system"} entries inside messages[] (mid-conversation operator nudges)',
     source: 'cli.patched.cjs L116093 v2.1.154: Yy = qf("mid_conversation_system", "...")',
-    condition: "Included for opus-4-6+/sonnet-4-6 conversation requests",
+    condition:
+      "Included for opus-4-6+/sonnet-4-6 conversation requests. Header retired in " +
+      'CC 2.1.325 (PS=Wc("mid_conversation_system") has a null header); still ' +
+      "sent by us pending research diff B2.",
   },
   {
     id: "extended-cache-ttl-2025-04-11",
@@ -99,14 +102,18 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
     source: 'cli.patched.cjs L116081 v2.1.154: NGH = qf("extended_cache_ttl", "...")',
     condition: "Included when any cache_control entry on the request requests 1h TTL",
   },
+  // Deliberate divergence (review MINOR-3): CC 2.1.325 also sends
+  // thinking-token-count on the TITLE side query (cc-wire.md §1.2 TITLE set,
+  // D/…fetch-008-01). We send it only on conversation/subtask requests, and not
+  // for claude-haiku-4-5 / claude-3-* (CC's first-party N7n gate).
   {
     id: "thinking-token-count-2026-05-13",
     description: "Server populates usage.output_tokens_details.thinking_tokens on message_delta",
     source: 'cli.patched.cjs L116084 v2.1.154: cr_ = qf("thinking_token_count", "...")',
     condition:
-      "Always-on in CC's captures, but NOT currently sent by either of our " +
-      "transports (declared here for the taxonomy/--list-flags only). Add it " +
-      "to buildBetaFlags when thinking-token accounting lands.",
+      "Sent on conversation/subtask requests for thinking-capable models except " +
+      "haiku-4-5 (CC 2.1.325 parity: zW gate in CC/chunk-wqb2b4v0.mjs). Dropped and " +
+      "retried once if the server rejects it. Opt out with MINIMAL_AGENT_NO_THINKING_TOKEN_COUNT=1.",
   },
   {
     id: "fast-mode-2026-02-01",
@@ -120,10 +127,60 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
     source: 'cli.patched.cjs L116079 v2.1.154: dr_ = qf("task_budgets", "...")',
     condition: "Included when output_config.task_budget is set (min 20_000 total)",
   },
+  // Deliberate divergence (review MINOR-3): CC 2.1.325 also sends
+  // cache-diagnosis on the TITLE, HAIKU-SIDE and WEBSEARCH side queries
+  // (cc-wire.md §1.2: D/…fetch-008-01, fetch-067-01, fetch-026-01). We keep it
+  // to conversation/subtask requests: side calls have no chain worth diagnosing.
   {
     id: "cache-diagnosis-2026-04-07",
     description: "Enables top-level diagnostics:{previous_message_id} for prompt-cache debugging",
     source: 'cli.patched.cjs L116087 v2.1.154: NKH = qf("cache_diagnosis", "...")',
-    condition: "Included for cache-diagnosis debugging sessions only",
+    condition:
+      "Sent on OAuth conversation/subtask requests; diagnostics.previous_message_id is the " +
+      "msg id of the last assistant message in the sent history (CC 2.1.325 Amt parity), " +
+      "reset to null on a server rejection. Opt out with MINIMAL_AGENT_NO_CACHE_DIAGNOSIS=1.",
+  },
+  {
+    id: "per-turn-control-2026-07-01",
+    description: "Per-message controls (e.g. output_config on a role:system message)",
+    source:
+      'CC/chunk-29cd2nzs.mjs 2.1.325: y3=M("per_message_effort","per-turn-control-2026-07-01")',
+    condition: "Declared; not sent (see research diff B3).",
+  },
+  {
+    id: "mid-conversation-tool-changes-2026-07-01",
+    description: "Allows the tools list to change mid-conversation",
+    source:
+      'CC/chunk-29cd2nzs.mjs 2.1.325: nE=M("mid_conv_tool_change","mid-conversation-tool-changes-2026-07-01")',
+    condition: "Declared; not sent (see research diff B3).",
+  },
+  {
+    id: "tool-provenance-2026-10-26",
+    description: 'Adds caller provenance ({type:"direct"}) on tool_use blocks',
+    source:
+      'CC/chunk-29cd2nzs.mjs 2.1.325: gH=M("ccr_tool_provenance","tool-provenance-2026-10-26")',
+    condition: "Declared; not sent (see research diff B3).",
+  },
+  {
+    id: "mid-conversation-system-clear-at-2026-08-21",
+    description:
+      "Successor of mid-conversation-system (role:system messages with clear_at support)",
+    source:
+      'CC/chunk-29cd2nzs.mjs 2.1.325: _9=M("mid_conversation_system_clear_at","mid-conversation-system-clear-at-2026-08-21")',
+    condition: "Declared; not sent (see research diff B2).",
+  },
+  {
+    id: "thinking-binding-controls-2026-08-01",
+    description: "thinking.block_binding controls (prefix-mismatch behavior)",
+    source:
+      'CC/chunk-29cd2nzs.mjs 2.1.325: w3=M("thinking_binding_controls","thinking-binding-controls-2026-08-01")',
+    condition: "Declared; not sent (see research diff B4).",
+  },
+  {
+    id: "thinking-display-updates-2026-08-18",
+    description: 'thinking.display:"updates" (empty thinking text plus estimated_tokens)',
+    source:
+      'CC/chunk-29cd2nzs.mjs 2.1.325: HTe=M("thinking_display_updates","thinking-display-updates-2026-08-18")',
+    condition: "Declared; not sent (see research diff B5).",
   },
 ]

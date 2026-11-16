@@ -55,6 +55,7 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.INTERLEAVED_THINKING,
         F.CONTEXT_1M,
         F.CONTEXT_MANAGEMENT,
+        F.THINKING_TOKEN_COUNT, // thinking-capable model (CC 2.1.325 zW gate)
         F.ADVANCED_TOOL_USE,
         F.EFFORT,
         F.PROMPT_CACHING_SCOPE,
@@ -73,6 +74,7 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         // as legacy; the gate is duplicated by id in both builders).
         F.CONTEXT_1M,
         F.CONTEXT_MANAGEMENT,
+        F.THINKING_TOKEN_COUNT, // thinking-capable model (CC 2.1.325 zW gate)
         F.ADVANCED_TOOL_USE,
         F.EFFORT,
         F.PROMPT_CACHING_SCOPE,
@@ -90,6 +92,7 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         // 1M-native → context-1m via the contextWindow >= 1M arm.
         F.CONTEXT_1M,
         F.CONTEXT_MANAGEMENT,
+        F.THINKING_TOKEN_COUNT, // thinking-capable model (CC 2.1.325 zW gate)
         F.ADVANCED_TOOL_USE,
         F.EFFORT,
         F.PROMPT_CACHING_SCOPE,
@@ -108,6 +111,7 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         // flag would be wrong: haiku HAS no effort levels, so the effort
         // arm is skipped even though req.effort is set.
         F.CONTEXT_MANAGEMENT,
+        // no THINKING_TOKEN_COUNT: CAPS_HAIKU_45 has no thinking support.
         F.ADVANCED_TOOL_USE,
         F.PROMPT_CACHING_SCOPE,
         F.EXTENDED_CACHE_TTL,
@@ -233,6 +237,153 @@ describe("characterization: beta-flag invariants per model/auth", () => {
         authKind: "oauth",
       }).includes(F.INTERLEAVED_THINKING)
       expect({ modelId, hasInterleaved }).toEqual({ modelId, hasInterleaved: expected[modelId] })
+    }
+  })
+})
+
+describe("characterization: claude-code 2.1.325 MAIN-set order (diff A8)", () => {
+  /**
+   * Exact MAIN `anthropic-beta` list from the claude-code 2.1.325 capture
+   * (research/2026-11-15-cc-2.1.325-oauth-diff/cc-wire.md §1.2,
+   * D/2026-11-16T03-59-10-571-fetch-005-01-req-meta.json).
+   */
+  const CC_MAIN_2_1_325 = [
+    "claude-code-20250219",
+    "oauth-2025-04-20",
+    "interleaved-thinking-2025-05-14",
+    "context-management-2025-06-27",
+    "prompt-caching-scope-2026-01-05",
+    "per-turn-control-2026-07-01",
+    "mid-conversation-tool-changes-2026-07-01",
+    "tool-provenance-2026-10-26",
+    "thinking-token-count-2026-05-13",
+    "advanced-tool-use-2025-11-20",
+    "mid-conversation-system-clear-at-2026-08-21",
+    "effort-2025-11-24",
+    "thinking-binding-controls-2026-08-01",
+    "thinking-display-updates-2026-08-18",
+    "extended-cache-ttl-2025-04-11",
+    "cache-diagnosis-2026-04-07",
+  ]
+
+  /** Flags we still send that CC 2.1.325 does not, pending a user decision. */
+  const PENDING_B1_B2: string[] = [F.CONTEXT_1M, F.MID_CONVERSATION_SYSTEM]
+
+  it("emits an ordered subsequence of the CC MAIN set for an opus-5-5 conversation", () => {
+    const modelId = "claude-opus-5-5"
+    const model = resolveModel(modelId)
+    // OAuth conversation: effort, 2 tools, 5m TTL (no 1h → no extended-cache-ttl).
+    // cacheDiagnostics mirrors what the adapter turns on for OAuth conversations.
+    const req = {
+      ...conversationReq(modelId),
+      messages: [{ role: "user", content: [{ type: "text", text: "hi" }], cache: { ttl: "5m" } }],
+      system: [{ type: "text", text: "sys", cache: { ttl: "5m" } }],
+      vendor: { anthropic: { cacheDiagnostics: true } },
+    } as CanonicalRequest
+    expect(classifyRequest(req)).toBe("conversation")
+    const flags = buildBetaFlags({ kind: "conversation", req, model, authKind: "oauth" })
+    const comparable = flags.filter((f) => !PENDING_B1_B2.includes(f))
+    // Every remaining flag is in the CC MAIN set, in CC order.
+    const positions = comparable.map((f) => CC_MAIN_2_1_325.indexOf(f))
+    expect(positions.every((p) => p >= 0)).toBe(true)
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+    // Membership pin for this request shape (catches silent drift).
+    expect(comparable).toEqual([
+      F.CLAUDE_CODE,
+      F.OAUTH,
+      F.INTERLEAVED_THINKING,
+      F.CONTEXT_MANAGEMENT,
+      F.PROMPT_CACHING_SCOPE,
+      F.THINKING_TOKEN_COUNT,
+      F.ADVANCED_TOOL_USE,
+      F.EFFORT,
+      F.CACHE_DIAGNOSIS,
+    ])
+  })
+
+  // B1 (drop context-1m for native-1M models) and B2 (mid-conversation-system →
+  // mid-conversation-system-clear-at) need a user decision; once done, remove
+  // PENDING_B1_B2 so the whole emitted set is checked against CC MAIN.
+  it.todo("drops the B1/B2 exemptions once those decisions land")
+})
+
+describe("characterization: thinking-token-count gate (diff A4)", () => {
+  it("is never sent on quota/title probes, even for thinking models", () => {
+    const model = resolveModel("claude-opus-4-8")
+    const req = { modelId: model.id, messages: [] } as unknown as CanonicalRequest
+    for (const kind of ["quota", "title"] as const) {
+      const flags = buildBetaFlags({ kind, req, model, authKind: "oauth" })
+      expect(flags).not.toContain(F.THINKING_TOKEN_COUNT)
+    }
+  })
+
+  // CC first-party gate: U1t(e)=!v3()&&N7n(e)&&(nye()||ZYs(e)). nye() is true
+  // for firstParty (CC/chunk-29cd2nzs.mjs), so the opus-4-7 age gate ZYs only
+  // bites on bedrock/vertex; N7n drops only claude-haiku-4-5 / claude-3-*
+  // (CC/chunk-e44qnbvj.mjs). Hence opus-4-6 / sonnet-4-6 keep the flag.
+  const ttcCases: ReadonlyArray<[string, boolean]> = [
+    ["claude-opus-4-5-20251101", true],
+    ["claude-opus-4-6", true],
+    ["claude-sonnet-4-6", true],
+    ["claude-opus-4-7", true],
+    ["claude-opus-4-8", true],
+    ["claude-opus-5-5", true],
+    ["claude-sonnet-5-5", true],
+    ["claude-fable-5", true],
+    ["claude-haiku-4-5-20251001", false],
+  ]
+  for (const [modelId, expected] of ttcCases) {
+    it(`first-party conversation gate: ${modelId} → ${expected}`, () => {
+      const model = resolveModel(modelId)
+      const flags = buildBetaFlags({
+        kind: "conversation",
+        req: conversationReq(modelId),
+        model,
+        authKind: "oauth",
+      })
+      expect(flags.includes(F.THINKING_TOKEN_COUNT)).toBe(expected)
+    })
+  }
+
+  // Off first party (authKind "custom") nye() is false, so CC's ZYs age gate
+  // applies: models older than claude-opus-4-7 in NC lose the flag.
+  const customCases: ReadonlyArray<[string, "oauth" | "api-key" | "custom", boolean]> = [
+    ["claude-opus-4-6", "custom", false],
+    ["claude-sonnet-4-6", "custom", false],
+    ["claude-opus-4-5-20251101", "custom", false],
+    ["claude-opus-4-7", "custom", true],
+    ["claude-opus-4-8", "custom", true],
+    ["claude-opus-4-6", "oauth", true],
+    ["claude-opus-4-6", "api-key", true],
+  ]
+  for (const [modelId, authKind, expected] of customCases) {
+    it(`${authKind} conversation gate: ${modelId} → ${expected}`, () => {
+      const model = resolveModel(modelId)
+      const flags = buildBetaFlags({
+        kind: "conversation",
+        req: conversationReq(modelId),
+        model,
+        authKind,
+      })
+      expect(flags.includes(F.THINKING_TOKEN_COUNT)).toBe(expected)
+    })
+  }
+
+  it("honors MINIMAL_AGENT_NO_THINKING_TOKEN_COUNT=1", () => {
+    const model = resolveModel("claude-opus-4-8")
+    const prev = process.env.MINIMAL_AGENT_NO_THINKING_TOKEN_COUNT
+    process.env.MINIMAL_AGENT_NO_THINKING_TOKEN_COUNT = "1"
+    try {
+      const flags = buildBetaFlags({
+        kind: "conversation",
+        req: conversationReq(model.id),
+        model,
+        authKind: "oauth",
+      })
+      expect(flags).not.toContain(F.THINKING_TOKEN_COUNT)
+    } finally {
+      if (prev === undefined) delete process.env.MINIMAL_AGENT_NO_THINKING_TOKEN_COUNT
+      else process.env.MINIMAL_AGENT_NO_THINKING_TOKEN_COUNT = prev
     }
   })
 })
