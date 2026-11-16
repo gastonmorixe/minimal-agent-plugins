@@ -57,6 +57,12 @@ export interface ScenarioCtx {
     text: string,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>
+  /**
+   * Append one request that did not go through the scripted send (e.g. the
+   * compaction summary request, sent by the provider adapter). It is stored
+   * as a JSON copy, in call order, and takes the next request index.
+   */
+  record: (request: Record<string, unknown>) => void
 }
 
 /** Extra deps for buildTestCore (store, model, providerId, networkClient ...). */
@@ -315,7 +321,10 @@ export async function runScenario(scenario: Scenario, hooks: RunHooks = {}): Pro
       }
     }
     const turn: ScenarioCtx["turn"] = (text, opts) => turnOn(core, text, opts)
-    await scenario.run({ cwd, turn, core, modes, root, newCore, turnOn })
+    const record: ScenarioCtx["record"] = (request) => {
+      captured.push(JSON.parse(JSON.stringify(request)))
+    }
+    await scenario.run({ cwd, turn, core, modes, root, newCore, turnOn, record })
     hooks.onRequests?.(captured, { root, cwd, home })
     const keep = scenario.keep
     const picked = keep

@@ -110,6 +110,33 @@ function compactDeps(): CoreExtra {
   }
 }
 
+/**
+ * Run a local compaction and record the summary request. The summary request
+ * goes through the provider adapter, not the scripted send, so the harness
+ * does not see it. Re-register the compact test provider with a wrapped run()
+ * that records the canonical request (signal dropped), then restore a plain
+ * provider so later scenarios see the normal one.
+ */
+async function compactRecordingSummary(
+  ctx: ScenarioCtx,
+  opts: { mode: "local"; keepTail: number; focus: string; reason: "manual" },
+): Promise<void> {
+  const reg = () =>
+    registerTestProvider({ id: "golden-compact-prov", models: [{ id: "golden-compact-model" }] })
+  const { adapter } = reg()
+  const inner = adapter.run.bind(adapter)
+  adapter.run = (req, model, runCtx) => {
+    const { signal: _signal, ...rest } = req
+    ctx.record(rest as Record<string, unknown>)
+    return inner(req, model, runCtx)
+  }
+  try {
+    await ctx.core.compact(opts)
+  } finally {
+    reg()
+  }
+}
+
 const editA = {
   name: "Edit",
   input: { file_path: "a.txt", old_string: "hello", new_string: "bye" },
@@ -254,6 +281,25 @@ export const EXTRA_SCENARIOS: Scenario[] = [
       await turn("question three")
     },
     keep: [-1],
+  },
+  {
+    // Keeps the compaction summary request (index 2: after two turns) with the
+    // summary system prompt and the focus line, plus the next turn (15d.0).
+    name: "local-compaction-summary-request",
+    script: [{ text: "a1" }, { text: "a2" }, { text: "after compact" }],
+    coreDeps: () => compactDeps(),
+    run: async (ctx) => {
+      await ctx.turn("question one")
+      await ctx.turn("question two")
+      await compactRecordingSummary(ctx, {
+        mode: "local",
+        keepTail: 2,
+        focus: "keep the API stable",
+        reason: "manual",
+      })
+      await ctx.turn("question three")
+    },
+    keep: [2, -1],
   },
   {
     name: "unknown-tool",
