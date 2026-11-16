@@ -1,13 +1,19 @@
 /**
  * Synthetic text provider for turn recovery: continue nudges, the assistant
  * placeholder, runtime turn markers, the tool results core makes on a
- * failure, a stop, an abort or a denial, and the user media markers.
+ * failure, a stop, an abort or a denial, the user media markers, and the
+ * context compaction text (the summary system prompt and the checkpoint prose
+ * after core's `<ma::context::compaction />` tag line).
  *
  * Each text is built from its facts only (plugin-api types/synthetic-text.ts).
  * The texts are the STE rewrite (P4) of the old core texts
  * (tests/text-parity/fixtures/synthetic.json). provider.parity.test.ts maps each old text to the new one.
  * Long texts live in `prompts/*.md`, loaded by text import and filled by
  * {@link fill}. An unknown kind or a missing required fact throws.
+ *
+ * The `compact.*` texts are a byte-equal move of the old core text
+ * (tests/text-parity/fixtures/compact.json, core context-compact.ts), not
+ * STE-rewritten yet. provider.compact.parity.test.ts pins the bytes.
  *
  * @module ma-turn-recovery-plugin/provider
  */
@@ -18,6 +24,11 @@ import type {
   SyntheticTextProvider,
 } from "@minimal-agent/core/plugin-api/types/synthetic-text"
 
+import compactLocalStubMd from "./prompts/compact-local-stub.md" with { type: "text" }
+import compactSummarySystemMd from "./prompts/compact-summary-system.md" with { type: "text" }
+import compactTailCheckpointMd from "./prompts/compact-tail-checkpoint.tmpl.md" with {
+  type: "text",
+}
 import outputTruncatedMd from "./prompts/output-truncated.md" with { type: "text" }
 import reflectionCheckpointMd from "./prompts/reflection-checkpoint.tmpl.md" with { type: "text" }
 import placeholderMd from "./prompts/response-truncated-placeholder.md" with { type: "text" }
@@ -53,6 +64,9 @@ export const KINDS: readonly SyntheticKind[] = [
   "runtime.hook_denied",
   "user_media.rejected",
   "user_media.unavailable",
+  "compact.summary_system",
+  "compact.tail_checkpoint",
+  "compact.local_checkpoint",
 ]
 
 /** Matches `%%name%%`, the placeholder of the `.tmpl.md` files. */
@@ -169,6 +183,30 @@ function mediaRejected(facts: SyntheticFacts): string {
   throw new Error(`user_media.rejected: unknown site ${String(site)}`)
 }
 
+/** An optional string fact: absent or "" gives undefined. A non-string throws. */
+function optStr(kind: SyntheticKind, facts: SyntheticFacts, key: string): string | undefined {
+  const v = facts[key]
+  if (v === undefined || v === "") return undefined
+  if (typeof v !== "string") throw new Error(`${kind}: ${key} must be a string`)
+  return v
+}
+
+/** `compact.summary_system`: the summary request system prompt, plus the focus line. */
+function compactSummarySystem(facts: SyntheticFacts): string {
+  const base = fill(compactSummarySystemMd)
+  const focus = optStr("compact.summary_system", facts, "focus")
+  return focus === undefined ? base : `${base}\n\nFocus for this compaction (verbatim): ${focus}`
+}
+
+/** `compact.local_checkpoint`: the checkpoint prose after the tag line. */
+function compactLocalCheckpoint(facts: SyntheticFacts): string {
+  const k: SyntheticKind = "compact.local_checkpoint"
+  const focus = optStr(k, facts, "focus")
+  const summary = optStr(k, facts, "summary") ?? fill(compactLocalStubMd)
+  const focusLine = focus === undefined ? "" : `\nFocus (verbatim): ${focus}\n`
+  return `## Context checkpoint\n${focusLine}\n${summary}`
+}
+
 /** The text of one owned kind. Throws on a kind it does not own. */
 function render(kind: SyntheticKind, facts: SyntheticFacts): string {
   switch (kind) {
@@ -253,6 +291,12 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
       return mediaRejected(facts)
     case "user_media.unavailable":
       return `[attachment #${str(kind, facts, "id")} is not available]`
+    case "compact.summary_system":
+      return compactSummarySystem(facts)
+    case "compact.tail_checkpoint":
+      return fill(compactTailCheckpointMd, { retained: num(kind, facts, "retained") })
+    case "compact.local_checkpoint":
+      return compactLocalCheckpoint(facts)
     default:
       throw new Error(`turn-recovery does not own kind ${kind}`)
   }

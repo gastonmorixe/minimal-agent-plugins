@@ -2,7 +2,7 @@
   "id": "turn-recovery",
   "name": "Turn recovery",
   "version": "0.1.0",
-  "description": "Owns the model-facing text core makes to recover a turn: continue nudges, the assistant placeholder, runtime turn markers, the tool results of a failed, stopped, aborted or denied call, and the user media markers.",
+  "description": "Owns the model-facing text core makes to recover a turn: continue nudges, the assistant placeholder, runtime turn markers, the tool results of a failed, stopped, aborted or denied call, the user media markers, and the context compaction text.",
   "required": true,
   "capabilities": [],
   "syntheticText": [
@@ -33,7 +33,10 @@
         "tool_result.policy_rewrite_note",
         "runtime.hook_denied",
         "user_media.rejected",
-        "user_media.unavailable"
+        "user_media.unavailable",
+        "compact.summary_system",
+        "compact.tail_checkpoint",
+        "compact.local_checkpoint"
       ]
     }
   ]
