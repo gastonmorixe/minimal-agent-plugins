@@ -1,0 +1,61 @@
+{
+  "id": "ma-core-tools-plugin",
+  "name": "Core tools text",
+  "version": "0.1.0",
+  "required": true,
+  "description": "Owns the model-facing text of the built-in tools: their descriptions, their results, the tool output notices and the mode texts.",
+  "capabilities": [],
+  "toolText": [
+    {
+      "id": "tools",
+      "entry": "./provider.ts",
+      "export": "createCoreToolTextProvider",
+      "tools": ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "FilesStats", "Mode"]
+    }
+  ],
+  "syntheticText": [
+    {
+      "id": "tool-results",
+      "entry": "./provider.ts",
+      "export": "createCoreToolsSyntheticProvider",
+      "kinds": [
+        "tool_output.preview",
+        "tool_output.truncated",
+        "tool_output.streak",
+        "tool_text.Bash.cd_no_dir",
+        "tool_text.Bash.output_cap",
+        "tool_text.Bash.timed_out",
+        "tool_text.Bash.exit_code",
+        "tool_text.Bash.error",
+        "tool_text.Read.whitespace_resolved",
+        "tool_text.Read.too_large",
+        "tool_text.Read.error",
+        "tool_text.Read.binary_rejected",
+        "tool_text.Read.unsupported_embedding",
+        "tool_text.Read.unsupported_image_modality",
+        "tool_text.Read.image_too_large",
+        "tool_text.Read.image_summary",
+        "tool_text.Write.written",
+        "tool_text.Write.error",
+        "tool_text.Write.missing_path",
+        "tool_text.Write.missing_content",
+        "tool_text.Write.arg_not_string",
+        "tool_text.Edit.not_found",
+        "tool_text.Edit.multiple",
+        "tool_text.Edit.edited",
+        "tool_text.Edit.error",
+        "tool_text.Glob.no_files",
+        "tool_text.Glob.missing_pattern",
+        "tool_text.Glob.arg_not_string",
+        "tool_text.Glob.error",
+        "tool_text.Glob.timeout",
+        "tool_text.Glob.skipped_dirs",
+        "tool_text.Grep.error",
+        "tool_text.Grep.no_matches",
+        "mode.refusal",
+        "mode.active_stamp",
+        "mode.change"
+      ]
+    }
+  ]
+}
