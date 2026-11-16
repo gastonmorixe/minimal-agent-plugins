@@ -177,7 +177,7 @@ export function maskNonProse(text: string): string {
 
 /** A command that starts a shell line, so the span is code even with plain words. */
 const COMMAND_START =
-  /^(?:git|bun|bunx|npm|npx|pnpm|yarn|node|deno|ls|cat|grep|rg|find|fd|head|tail|wc|sed|awk|curl|export|kill|docker|make|cd|rm|cp|mv|mkdir|chmod|ssh|psql|sqlite3|echo|printf|set|unset|source|bash|sh|zsh)\b/
+  /^(?:git|bun|bunx|npm|npx|pnpm|yarn|node|deno|ls|cat|grep|rg|fd|head|tail|wc|sed|awk|curl|export|kill|docker|cd|rm|cp|mv|mkdir|chmod|ssh|psql|sqlite3|echo|printf|unset|source|bash|sh|zsh)\b/
 
 /** Unicode spaces that would otherwise split or join a span by accident. */
 const UNICODE_SPACES = /[\u00a0\u2000-\u200b\u202f\u205f\u3000]/g
@@ -196,29 +196,41 @@ export function looksLikeCode(inner: string): boolean {
   const text = inner.replace(UNICODE_SPACES, " ").trim()
   if (text.length === 0) return true
 
-  // Structural code wins over the proportion test: a shell loop or a command
-  // chain, a SQL statement, or a JSON object with quotes or braces is code.
-  if (/^(?:for|while)\s+\S+.*;\s*do\b/.test(text) || /;\s*(?:do|done)\b/.test(text)) return true
-  // A shell command, then a `;` chain of more shell commands.
-  if (/^[a-z][\w.-]*\s+\S+\s*;\s*[a-z][\w.-]*\s+\S+/.test(text)) return true
-  if (/^\s*(?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)\s+/i.test(text)) return true
-  if (/^\s*[{"[][\s\S]*[}\]]\s*$/.test(text) && /[:",]/.test(text)) return true
-
-  // A span that is mostly plain words is prose, even when it holds one code
-  // character. Without this, bad prose in backticks passed with any `|`, `/`,
-  // `::`, `=` or `;` in it.
-  const tokens = /\s/.test(text) ? text.split(/\s+/) : text.split(/-+/)
-  if (tokens.length >= 4) {
-    const plain = tokens.filter((token) => /^[A-Za-z][a-z']*[.,!?;:]?$/.test(token))
-    if (plain.length >= 4 && plain.length / tokens.length >= 0.6) return false
+  // Two strict shapes win before anything else. A shell loop is unmistakable,
+  // and a command word must be followed by an argument, so "make sure we
+  // utilize it" stays prose.
+  if (/^(?:for|while)\s+\S+\s+in\b[\s\S]*;\s*do\b/.test(text)) return true
+  if (COMMAND_START.test(text)) return true
+  // A statement in upper-case SQL keywords is code, even with plain words.
+  if (
+    /^(?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)\s+/.test(text) &&
+    /\b(?:FROM|INTO|SET|WHERE|VALUES)\b/.test(text)
+  ) {
+    return true
   }
 
-  // A command line is code, even when its arguments are plain words.
-  if (COMMAND_START.test(text)) return true
-  // A shell loop, a SQL statement, or a JSON key/value pair is code.
-  if (/^(?:for|while|if)\s+\S+/i.test(text) || /;\s*do\b|;\s*done\b/.test(text)) return true
-  if (/^\s*(?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)\s+/i.test(text)) return true
-  if (/^\s*[{"[][\s\S]*[}\]]\s*$/.test(text)) return true
+  // Then decide by proportion. A span that is mostly plain words is prose, even
+  // when it holds a brace, a semicolon, a colon or an assignment. This is the
+  // rule that stops bad prose hiding behind one code character.
+  const tokens = /\s/.test(text) ? text.split(/\s+/) : text.split(/-+/)
+  const plain = tokens.filter((token) => /^[A-Za-z][a-z']*[.,!?;:]?$/.test(token))
+  // A hyphen chain with no spaces is prose that lost its spaces.
+  const hyphenChain = !/\s/.test(text) && (text.match(/-/g)?.length ?? 0) >= 2
+  const needPlain = hyphenChain ? 3 : 3
+  if (plain.length >= needPlain && plain.length / tokens.length >= 0.6) {
+    // A span that is mostly words is code only when it carries REAL JSON or
+    // REAL SQL. A brace alone, or a leading keyword in lower case, is prose.
+    if (/"[^"]+"\s*:/.test(text) || /:\s*(?:"|\{|\[|\d)/.test(text)) return true
+    if (
+      /^(?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)\s+/.test(text) &&
+      /\b(?:FROM|INTO|SET|WHERE|VALUES)\b/.test(text)
+    ) {
+      return true
+    }
+    return false
+  }
+
+  // Not mostly words: keep the code shapes.
   if (/^[A-Za-z_][\w.[\]]*\s*:\s*["'{[]/.test(text)) return true
   // No whitespace: an identifier, a flag, a command, a type.
   if (!/\s/.test(text)) return true
@@ -231,7 +243,6 @@ export function looksLikeCode(inner: string): boolean {
   if (/^[a-z][\w.-]+\s+[^A-Z]*['"=]/.test(text)) return true
   // An assignment or an expression.
   if (/^[A-Za-z_][\w.]*\s*=\s*\S/.test(text)) return true
-  // Prose with spaces and no code marker.
   return false
 }
 

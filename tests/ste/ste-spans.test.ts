@@ -32,6 +32,16 @@ const EVASIONS: readonly string[] = [
   "call name() first and then utilize the robust path; moreover ensure it",
   "cost is $5 so we utilize it; it is robust",
   "use the a\u00a0b form and utilize it; it is robust",
+  // Round 2: a structural check must not match ordinary English.
+  "{we utilize it, moreover it is robust}",
+  "[note: we utilize the robust tool, moreover]",
+  "please utilize; then ensure robust results",
+  "for best results; do utilize the robust path",
+  "Update the robust plan; moreover utilize it",
+  "With care we utilize it and moreover it is robust",
+  "Drop it and utilize the robust tool",
+  "utilize; robust; moreover",
+  "utilize-robust-moreover",
 ]
 
 /** Real code. The classifier must call each one code. */
@@ -85,7 +95,7 @@ describe("backtick span classifier", () => {
   })
 
   test("the tables are big enough to mean something", () => {
-    expect(EVASIONS.length).toBeGreaterThanOrEqual(10)
+    expect(EVASIONS.length).toBeGreaterThanOrEqual(20)
     expect(CODE.length).toBeGreaterThanOrEqual(15)
   })
 })

@@ -70,7 +70,7 @@ describe("Task tool description canceled-vs-done guidance", () => {
   test("notes that parents with all-done children are done, not canceled", () => {
     // Auto-promote is store-owned. The action text must say the store
     // promotes the parent when the last open child closes.
-    expect(ACTION_DESC).toMatch(/auto-promote\s+the\s+parent/i)
+    expect(ACTION_DESC).toMatch(/auto-promotes?\s+the\s+parent/i)
     expect(ACTION_DESC).toMatch(/last\s+open\s+child/i)
     expect(ACTION_DESC).not.toMatch(/does not auto-promote/i)
     // A finished phase header is `done`, never `canceled`.
@@ -78,7 +78,7 @@ describe("Task tool description canceled-vs-done guidance", () => {
   })
 
   test("documents parent auto-start", () => {
-    expect(ACTION_DESC).toMatch(/auto-start\s+the\s+parent/i)
+    expect(ACTION_DESC).toMatch(/auto-starts?\s+the\s+parent/i)
     // Partial-completion rollup: the parent stays doing while siblings are open.
     expect(ACTION_DESC).toMatch(/parent stays `doing` while siblings stay open/i)
   })
