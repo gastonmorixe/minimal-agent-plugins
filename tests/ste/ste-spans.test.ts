@@ -231,7 +231,11 @@ describe("backtick span classifier", () => {
       "\u2265 \u00bd \u2122",
     ]) {
       expect(
-        lintText(text).some((f) => f.rule === "ste-s12-hidden-char"),
+        // A file with no allowlist entries, so the result does not depend on
+        // the empty-file default.
+        lintText(text, 0, "ma-fetch-plugin/PROMPT.md").some(
+          (f) => f.rule === "ste-s12-hidden-char",
+        ),
         `${JSON.stringify(text)} must be reported`,
       ).toBe(true)
     }
@@ -269,6 +273,12 @@ describe("backtick span classifier", () => {
     ).toBe(true)
     expect(decodeJsEscapes("a\\u{1F600}b")).toBe("a\u{1F600}b".replace("\\u{1F600}", "\u{1F600}"))
     expect(decodeJsEscapes("x\\x41y")).toBe("xAy")
+    // An escaped backslash is one backslash and then plain text, at runtime.
+    // A sequential decoder would decode the text again into a real character.
+    const escaped = decodeJsEscapes("a\\\\u200bb")
+    expect(escaped.includes("\u200b")).toBe(false)
+    expect(escaped).toBe("a\\u200bb")
+    expect(decodeJsEscapes("a\\\\nb")).toBe("a\\nb")
   })
 
   test("a CRLF checkout is not all errors", () => {
