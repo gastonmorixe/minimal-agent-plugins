@@ -43,11 +43,55 @@ function providersHint(v: unknown): string {
   )
 }
 
-/** Read `{kind, fields}` from an error by shape. Undefined when not a typed error. */
+function optText(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined
+}
+
+/**
+ * Text of the `failure` facts of a failed approval hook:
+ * `approval hook "<label>" failed (<detail>)`. Undefined when there are no facts.
+ */
+export function approvalFailureText(failure: unknown): string | undefined {
+  if (failure === null || typeof failure !== "object" || Array.isArray(failure)) return undefined
+  const label = optText((failure as { label?: unknown }).label)
+  const detail = optText((failure as { detail?: unknown }).detail)
+  let text = label !== undefined ? `approval hook "${label}" failed` : "approval hook failed"
+  if (detail !== undefined) text += ` (${detail})`
+  return text
+}
+
+/**
+ * Text of a `LifecycleDeniedError` from its fields:
+ * `<hook> hook denied[: <reason>][ (approval hook "<label>" failed (<detail>))]`.
+ */
+export function lifecycleDeniedText(f: Record<string, unknown>): string {
+  let text = `${optText(f.hook) ?? "lifecycle"} hook denied`
+  const reason = optText(f.reason)
+  if (reason !== undefined) text += `: ${reason}`
+  const failure = approvalFailureText(f.failure)
+  if (failure !== undefined) text += ` (${failure})`
+  return text
+}
+
+/**
+ * Read `{kind, fields}` from an error by shape: a `CoreError` (`kind` +
+ * `toJSON`), a plain `{kind, ...fields}`, or a core `error` event
+ * (`error: {kind, fields}`). Undefined when not a typed error.
+ */
 function readKind(e: unknown): { kind: string; fields: Record<string, unknown> } | undefined {
   if (e === null || typeof e !== "object") return undefined
-  const o = e as { kind?: unknown; toJSON?: unknown }
-  if (typeof o.kind !== "string") return undefined
+  const o = e as { kind?: unknown; toJSON?: unknown; error?: unknown }
+  if (typeof o.kind !== "string") {
+    const inner = o.error as { kind?: unknown; fields?: unknown } | null | undefined
+    if (inner === null || typeof inner !== "object" || typeof inner.kind !== "string") {
+      return undefined
+    }
+    const fields =
+      typeof inner.fields === "object" && inner.fields !== null
+        ? (inner.fields as Record<string, unknown>)
+        : {}
+    return { kind: inner.kind, fields }
+  }
   let fields: Record<string, unknown> = {}
   if (typeof o.toJSON === "function") {
     const json = (o.toJSON as () => { fields?: unknown })()
@@ -61,8 +105,9 @@ function readKind(e: unknown): { kind: string; fields: Record<string, unknown> }
 }
 
 /**
- * Text of an error. A non-empty `message` wins. Else a known core kind gets
- * its text. Any other typed error shows the kind name.
+ * Text of an error or of a core `error` event. A non-empty `message` wins.
+ * Else a known core kind gets its text. Any other typed error shows the kind
+ * name, so a typed error never gives "".
  */
 export function errorText(e: unknown): string {
   const raw = e !== null && typeof e === "object" ? (e as { message?: unknown }).message : undefined
@@ -91,6 +136,8 @@ export function errorText(e: unknown): string {
       return `Token exchange failed (${str(f.status)}): ${str(f.body)}`
     case "NoOAuthLoginProviderError":
       return "No OAuth login provider is registered."
+    case "LifecycleDeniedError":
+      return lifecycleDeniedText(f)
     default:
       return typed.kind
   }

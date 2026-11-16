@@ -247,7 +247,11 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
   let noticeSeq = 0
   let lastStopReason: ProviderStopReason | undefined
   let lastNotice: TurnNotice | null = null
-  let lastError: { message: string; code?: string } | null = null
+  let lastError: {
+    message: string
+    code?: string
+    error?: { readonly kind: string; readonly fields: Readonly<Record<string, unknown>> }
+  } | null = null
   // Open tool calls in start order: id → tool name and "running" state.
   const openToolCalls = new Map<string, { readonly toolName: string; running: boolean }>()
   // Callers of `toolCallSent` that wait for a `tool_call` update, by id.
@@ -392,7 +396,12 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
         return
       }
       case "error":
-        lastError = { message: event.message, ...(event.code ? { code: event.code } : {}) }
+        // A CoreError event has message "" and carries `error` {kind, fields}.
+        lastError = {
+          message: event.message,
+          ...(event.code ? { code: event.code } : {}),
+          ...(event.error ? { error: event.error } : {}),
+        }
         return
       default:
         return

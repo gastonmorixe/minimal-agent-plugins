@@ -662,6 +662,29 @@ describe("structuredOutput (contract 5.e)", () => {
     expect(await h.exit).toBe(0)
   })
 
+  it("a retry run that ends on a CoreError error event names the deny, never blank", async () => {
+    const rt = createFakeRuntime()
+    rt.turns.push(textTurn("not json"), {
+      events: [
+        {
+          type: "error",
+          message: "",
+          error: {
+            kind: "LifecycleDeniedError",
+            fields: { hook: "tool.didBatch", reason: "budget spent" },
+          },
+        } as AgentEvent,
+      ],
+      outcome: "failed",
+    })
+    const h = await openExtSession(rt, ["usage", "structuredOutput"])
+    const r = await h.prompt({ "minimal-agent/outputSchema": SCHEMA })
+    const err = meta(r)?.["minimal-agent/outputError"] as { message: string }
+    expect(err.message).toBe("retry 1 failed: tool.didBatch hook denied: budget spent")
+    h.end()
+    expect(await h.exit).toBe(0)
+  })
+
   it("feature not effective: no schema to run, no output keys", async () => {
     const rt = createFakeRuntime()
     rt.turns.push(textTurn('{"n": 4}'))

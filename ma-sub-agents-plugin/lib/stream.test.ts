@@ -126,6 +126,49 @@ describe("stream parser", () => {
     expect(streamFailure(s)).toBe("API 400: bad request (hint: check the model id)")
   })
 
+  const coreErrorRun = (error: Record<string, unknown>) =>
+    parseStream(
+      [
+        `{"type":"error","message":"","error":${JSON.stringify(error)},${env(0, 1)}}`,
+        `{"type":"run_finished","outcome":"failed",${env(1, 2)}}`,
+      ].join("\n"),
+    )
+
+  it("a worker's tool.didBatch deny with a reason reaches the lead as the hook and the reason", () => {
+    const s = coreErrorRun({
+      kind: "LifecycleDeniedError",
+      fields: { hook: "tool.didBatch", reason: "budget spent", additionalContext: [] },
+    })
+    expect(streamFailure(s)).toBe("tool.didBatch hook denied: budget spent")
+    expect(s.error?.error).toEqual({
+      kind: "LifecycleDeniedError",
+      fields: { hook: "tool.didBatch", reason: "budget spent", additionalContext: [] },
+    })
+  })
+
+  it("a worker's tool.didBatch deny with no reason names the hook, never 'error'", () => {
+    const s = coreErrorRun({
+      kind: "LifecycleDeniedError",
+      fields: { hook: "tool.didBatch", additionalContext: [] },
+    })
+    expect(streamFailure(s)).toBe("tool.didBatch hook denied")
+  })
+
+  it("a deny from a failed approval hook names the hook label and detail", () => {
+    const s = coreErrorRun({
+      kind: "LifecycleDeniedError",
+      fields: { hook: "tool.didBatch", failure: { label: "guard", detail: "timed out" } },
+    })
+    expect(streamFailure(s)).toBe(
+      'tool.didBatch hook denied (approval hook "guard" failed (timed out))',
+    )
+  })
+
+  it("an unknown CoreError kind with an empty message gives the kind name", () => {
+    const s = coreErrorRun({ kind: "SomeFutureError", fields: { x: 1 } })
+    expect(streamFailure(s)).toBe("SomeFutureError")
+  })
+
   it("does not call a completed run_finished alone the end (schema retry may follow)", () => {
     const s = parseStream(`{"type":"run_finished","outcome":"completed",${env(0, 1)}}`)
     expect(streamEnded(s)).toBe(false)

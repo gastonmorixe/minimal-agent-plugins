@@ -191,7 +191,15 @@ export interface TUIContext {
   emitChain?: <T>(
     channel: string,
     payload: T,
-  ) => Promise<{ payload: T; halted: boolean; reason?: string }>
+  ) => Promise<{
+    payload: T
+    halted: boolean
+    reason?: string
+    /** True when a failClosed listener failed (threw, timed out, bad result). */
+    failed?: boolean
+    /** Set with `failed`: the listener label and the error text. */
+    failure?: { label?: string; detail: string }
+  }>
 }
 
 /**

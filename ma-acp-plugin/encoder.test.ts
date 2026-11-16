@@ -429,6 +429,19 @@ describe("finishTurn", () => {
     })
   })
 
+  it("a CoreError error event (message empty) keeps its kind and fields for the stop text", () => {
+    const { enc, feed } = setup({ clientNotices: false })
+    feed({
+      type: "error",
+      message: "",
+      error: { kind: "LifecycleDeniedError", fields: { hook: "tool.didBatch", reason: "no more" } },
+    })
+    expect(enc.finishTurn("failed")).toMatchObject({
+      kind: "error",
+      message: "tool.didBatch hook denied: no more",
+    })
+  })
+
   it("sends the error text before a failed turn's JSON-RPC error", () => {
     const { enc, sent, feed } = setup({ clientNotices: false })
     feed({ type: "error", message: "provider exploded" })

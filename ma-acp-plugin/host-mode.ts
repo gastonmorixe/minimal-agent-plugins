@@ -555,7 +555,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                       }
                       deltaText += ev.text
                     }
-                    if (ev.type === "error") runError = ev.message
+                    if (ev.type === "error") runError = errorText(ev)
                     enc.encode(ev)
                   } else if (
                     entry.ch === "diag" &&
@@ -603,7 +603,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
               ) {
                 structuredMeta = {
                   [OUTPUT_ERROR_META_KEY]: {
-                    message: `retry ${retriesUsed} failed: ${runError ?? `the run ended ${outcome}`}`,
+                    message: `retry ${retriesUsed} failed: ${runError || `the run ended ${outcome}`}`,
                   },
                 }
                 outcome = firstOutcome
