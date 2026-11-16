@@ -4,6 +4,9 @@ import { join } from "node:path"
 import { describe, expect, it } from "bun:test"
 
 import { buildMetadata, buildUserId, getDeviceId } from "./identity.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 /** Path to the real CLI config */
 const CLI_CONFIG = join(process.env.HOME ?? "", ".claude.json")

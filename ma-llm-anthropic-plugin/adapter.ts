@@ -255,6 +255,12 @@ export function _resetClearAtRejectedForTest(): void {
 const CLEAR_AT_FIELD_ERROR =
   /^messages\.\d+(?:\.content\.\d+)?(?:\.clear_at:|: .*(?:turn-scoped system message|\(clear_at: |clear_at is only permitted))/
 
+/**
+ * True when an HTTP response is the server rejecting the clear-at beta: a 400
+ * whose error message (JSON `error.message`, or the raw body when not JSON)
+ * is an "Unexpected value(s) " anthropic-beta complaint naming the clear-at
+ * header, or matches {@link CLEAR_AT_FIELD_ERROR}.
+ */
 export function isClearAtRejection(status: number, body: string): boolean {
   if (status !== 400) return false
   let message = body

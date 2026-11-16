@@ -31,7 +31,10 @@ import {
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { buildBillingHeaderText } from "./system-prompt.ts"
+import { useTempAgentHome } from "./test-home.ts"
 import { BUILD_HASH, VERSION } from "./wire-constants.ts"
+
+useTempAgentHome()
 
 const OAUTH: ProviderAuth = { kind: "oauth", token: "sk-ant-oat01-test" }
 const CACHE_DIAGNOSIS = "cache-diagnosis-2026-04-07"

@@ -39,6 +39,9 @@ import {
 } from "./headers.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 const OAUTH: ProviderAuth = { kind: "oauth", token: "sk-ant-oat01-test" }
 

@@ -42,6 +42,9 @@ import {
 } from "./oauth-login.ts"
 import { buildAnthropicRequestBody } from "./request-body.ts"
 import { translateAnthropicStream } from "./response-stream.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 // ---------------------------------------------------------------------------
 // Setup

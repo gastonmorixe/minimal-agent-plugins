@@ -48,6 +48,9 @@ import type { TurnNotice } from "@minimal-agent/core/sdk/turn-notice"
 import { buildTestCore } from "@minimal-agent/core/testing/test-core"
 
 import { anthropicAdapter } from "./adapter.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 const MODEL_A = "claude-opus-4-8"
 const MODEL_B = "claude-opus-4-7"

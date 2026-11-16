@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
 import { anthropicProviderPlugin } from "./adapter.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 describe("anthropic modelShortLabel", () => {
   const label = (id: string) => anthropicProviderPlugin.modelShortLabel?.(id)

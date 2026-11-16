@@ -31,8 +31,8 @@ import { findModel } from "./lib/registry.ts"
  * (CC/chunk-tbvds061.mjs, `context:{window:1e6,native_1m:!0,…}`): opus-4-7,
  * opus-4-8, opus-5, opus-5-5, sonnet-5, sonnet-5-5, haiku-5-5, fable-5,
  * fable-5-1, fable-5-2, mythos-5/5-1/5-2. CC never adds `context-1m` for them
- * unless the id carries `[1m]`: `T4r(e,n)=(Ug(e)||g6o(n)?.includes(nC.header)
- * &&X0e(e))&&!r`, `Ug` = `/\[1m\]/i` (CC/chunk-e44qnbvj.mjs), and the
+ * unless the id carries `[1m]`: `T4r(e,n)=(Ug(e)||g6o(n)?.includes(nC.header)`
+ * `&&X0e(e))&&!r`, `Ug` = `/\[1m\]/i` (CC/chunk-e44qnbvj.mjs), and the
  * 2.1.325 MAIN capture for opus-5-5 has no context-1m
  * (research/2026-11-15-cc-2.1.325-oauth-diff/cc-wire.md §1.2).
  * Substring match, so `claude-opus-5` also covers `claude-opus-5-5`.
@@ -55,7 +55,7 @@ const CC_NATIVE_1M_FAMILIES = [
  * long sessions were expected to 400 past ~200k while compaction (sized for
  * 1M) never fired. No wire capture proves fable past 200k without the beta,
  * and sending it is what works today, so dropping it for fable waits for one
- * live >200k probe (research diff B1). Remove `claude-fable-5` from here once
+ * live \>200k probe (research diff B1). Remove `claude-fable-5` from here once
  * that probe passes.
  */
 const FABLE_KEEPS_1M_BETA = ["claude-fable-5"] as const
@@ -121,8 +121,8 @@ function matchesFamily(modelId: string, family: string): boolean {
 
 /**
  * Model families whose claude-code 2.1.325 catalog entry lists the
- * `per_turn_effort` capability (CC/chunk-tbvds061.mjs `capabilities:[…,
- * "per_turn_effort",…]`): haiku-5-5, sonnet-5-5, opus-5-5, fable-5-1,
+ * `per_turn_effort` capability (CC/chunk-tbvds061.mjs `capabilities:[…,`
+ * `"per_turn_effort",…]`): haiku-5-5, sonnet-5-5, opus-5-5, fable-5-1,
  * fable-5-2, mythos-5-2. CC gates `per-turn-control-2026-07-01` on it:
  * `o4t(...)=OS()&&VY(..)&&yw(n,"per_turn_effort",…)===!0` (CC/chunk-e44qnbvj.mjs,
  * research/2026-11-15-cc-2.1.325-oauth-diff/betas-headers.md §2).

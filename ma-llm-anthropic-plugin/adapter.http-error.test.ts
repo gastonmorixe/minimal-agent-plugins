@@ -24,6 +24,9 @@ import type {
 import { anthropicAdapter, bootstrapAnthropic } from "./adapter.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 let resolveModel: (id: string) => ModelEntry
 function setup() {

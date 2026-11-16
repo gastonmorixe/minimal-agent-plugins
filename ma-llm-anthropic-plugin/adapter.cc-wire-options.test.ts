@@ -37,7 +37,10 @@ import { _resetIdentityForTest, getOwnDeviceId, rememberAccountUuid } from "./id
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { readAnthropicOAuthAuth } from "./oauth-login.ts"
+import { useTempAgentHome } from "./test-home.ts"
 import { _resetWireOptionsForTest, resolveWireOptions } from "./wire-options.ts"
+
+useTempAgentHome()
 
 const OAUTH: ProviderAuth = { kind: "oauth", token: "sk-ant-oat01-test" }
 const API_KEY: ProviderAuth = { kind: "api-key", key: "sk-ant-api-test" }

@@ -246,8 +246,8 @@ export const CAPS_FABLE_5_1: Capabilities = { ...CAPS_OPUS_48, speedFast: false 
  *
  * Live `GET /v1/models` agrees on every field it reports:
  * `max_input_tokens 1000000`, `max_tokens 128000`, all five effort levels
- * supported, `thinking.types {adaptive:true, enabled:false, disabled:false,
- * between_tools:false}`, image/pdf/structured-outputs/context-management all
+ * supported, `thinking.types {adaptive:true, enabled:false, disabled:false,`
+ * `between_tools:false}`, image/pdf/structured-outputs/context-management all
  * true, `lifecycle:"active"`.
  */
 export const CAPS_FABLE_5_2: Capabilities = {
