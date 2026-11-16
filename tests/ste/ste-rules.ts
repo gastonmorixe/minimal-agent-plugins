@@ -127,21 +127,52 @@ const WORD_RULES: readonly WordRule[] = [
  * fails until someone adds it here with a reason, which is the review the
  * change deserves.
  */
-const ALLOWED_NON_ASCII = new Set(["\u201c", "\u201d", "\u2018", "\u2019", "\u2191", "\u2193"])
+/**
+ * Per-file allowlist entries. A character is allowed only in the file that
+ * needs it, and each entry carries the reason, so the next addition copies the
+ * pattern instead of widening a global set.
+ */
+const ALLOWED_BY_FILE: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map([
+  [
+    "ma-agent-writing-style-plugin/PROMPT.md",
+    new Map([
+      ["\u201c", "the file quotes the em dash and curly-quote ban examples"],
+      ["\u201d", "same example list"],
+      ["\u2018", "same example list"],
+      ["\u2019", "same example list"],
+    ]),
+  ],
+  [
+    "ma-slash-menu-plugin/manifest.json",
+    new Map([
+      ["\u2191", "the command-menu key hints name the up arrow"],
+      ["\u2193", "the command-menu key hints name the down arrow"],
+    ]),
+  ],
+])
 
 /**
- * Report a character that is not on the allowlist.
+ * Characters allowed in every file. Keep this empty unless a character is
+ * genuinely universal; a per-file entry is the stronger form.
+ */
+const ALLOWED_EVERYWHERE: ReadonlyMap<string, string> = new Map()
+
+/**
+ * Report a character that is not allowed in this file.
  *
  * @param line - One line of raw text.
+ * @param file - Repo-relative file, for the per-file allowlist.
  * @returns Each disallowed character, with its code point.
  */
-function hiddenCharacters(line: string): string[] {
+function hiddenCharacters(line: string, file: string): string[] {
+  const perFile = ALLOWED_BY_FILE.get(file)
   const out: string[] = []
   for (const char of line) {
     const code = char.codePointAt(0) ?? 0
     if (code === 0x0a || code === 0x09) continue
     if (code >= 0x20 && code <= 0x7e) continue
-    if (ALLOWED_NON_ASCII.has(char)) continue
+    if (ALLOWED_EVERYWHERE.has(char)) continue
+    if (perFile?.has(char)) continue
     out.push(char)
   }
   return out
@@ -382,15 +413,20 @@ function isInstruction(sentence: string): boolean {
  *
  * @param text - Raw text, before masking.
  * @param lineOffset - Shifts line numbers, for text inside a larger file.
+ * @param file - Repo-relative path, for the per-file character allowlist.
  * @returns Every finding, in file order.
  */
-export function lintText(text: string, lineOffset = 0): SteFinding[] {
+export function lintText(text: string, lineOffset = 0, file = ""): SteFinding[] {
   const offset = lineOffset
   const masked = maskNonProse(text)
   // Vocabulary rules read the words inside a code span too: real code does not
   // contain "utilize" or "moreover", so this cannot misfire, and it makes
   // hiding a banned word in a code-looking span impossible.
   const wordLines = maskForWords(text).split("\n")
+  // The character allowlist is about bytes, not prose, so it reads the RAW
+  // line. Masking would blank the code spans, tags and URLs, which are the
+  // places a hidden character is most likely to do damage.
+  const rawLines = text.split("\n")
   const lines = masked.split("\n")
   const findings: SteFinding[] = []
 
@@ -421,7 +457,7 @@ export function lintText(text: string, lineOffset = 0): SteFinding[] {
         severity: "error",
       })
     }
-    const hidden = hiddenCharacters(line)
+    const hidden = hiddenCharacters(rawLines[index] ?? line, file)
     if (hidden.length > 0) {
       const points = hidden.map(
         (c) => `U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")}`,

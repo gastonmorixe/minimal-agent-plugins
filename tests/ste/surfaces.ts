@@ -89,6 +89,73 @@ function manifestDescriptions(
   }
 }
 
+/**
+ * Decode the escapes of a JS string literal body.
+ *
+ * The extractors used to decode only the newline, quote and apostrophe
+ * escapes. That left a `\u200b` escape as six
+ * ASCII characters, so a hidden character in a TS literal passed the character
+ * allowlist AND hid a banned word from the word rules. The model receives the
+ * real character at runtime, so the audit must see it too.
+ *
+ * @param body - The text between the quotes, with its backslashes.
+ * @returns The text a reader of the file would see at runtime.
+ */
+/**
+ * Normalize a checkout to the bytes the model receives.
+ *
+ * A Windows checkout with `core.autocrlf` has `\r` on every line, and `\r` is
+ * not on the character allowlist, so every line would fail. The model never
+ * receives that `\r`, so it is removed here, once, at the edge.
+ *
+ * @param text - Raw file content.
+ * @returns Content with CRLF and a lone CR normalized to LF.
+ */
+export function normalizeNewlines(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+}
+
+/**
+ * Decode the escapes of a JS string literal body.
+ *
+ * The extractors used to decode only the newline, quote and apostrophe
+ * escapes. That left a `\u200b` escape as six ASCII characters, so a hidden
+ * character in a TS literal passed the character allowlist AND hid a banned
+ * word from the word rules. The model receives the real character at runtime,
+ * so the audit must see it too.
+ *
+ * @param body - The text between the quotes, with its backslashes.
+ * @returns The text a reader of the file would see at runtime.
+ */
+export function decodeJsEscapes(body: string): string {
+  return body
+    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) =>
+      safeFromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) =>
+      safeFromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex: string) =>
+      safeFromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\b/g, "\b")
+    .replace(/\\f/g, "\f")
+    .replace(/\\v/g, "\v")
+    .replace(/\\0/g, "\0")
+    .replace(/\\'/g, "'")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\")
+}
+
+/** Code point to text, with a visible fallback for an out-of-range value. */
+function safeFromCodePoint(code: number): string {
+  if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return "\uFFFD"
+  return String.fromCodePoint(code)
+}
+
 /** Line of `needle` in `text`, 1-based. */
 function lineOf(text: string, needle: string): number {
   const index = text.indexOf(needle)
@@ -110,7 +177,7 @@ export function proseLiterals(source: string): Array<{ text: string; line: numbe
   const out: Array<{ text: string; line: number }> = []
   const re = /"((?:[^"\\\n]|\\.){20,})"|'((?:[^'\\\n]|\\.){20,})'/g
   for (const match of source.matchAll(re)) {
-    const value = (match[1] ?? match[2] ?? "").replace(/\\n/g, "\n").replace(/\\"/g, '"')
+    const value = decodeJsEscapes(match[1] ?? match[2] ?? "")
     if (!/[A-Za-z]/.test(value) || !/\s/.test(value)) continue
     // Skip import paths, module ids and regex source.
     if (/^[\w./@$-]+$/.test(value)) continue
@@ -160,7 +227,7 @@ export function pluginSurfaces(root: string, plugin: string): Surface[] {
       out.push({
         file: rel,
         locator: "(whole file)",
-        text: readFileSync(abs, "utf8"),
+        text: normalizeNewlines(readFileSync(abs, "utf8")),
         line: 1,
         kind: "prompt-md",
       })
@@ -170,14 +237,14 @@ export function pluginSurfaces(root: string, plugin: string): Surface[] {
       out.push({
         file: rel,
         locator: "(whole file)",
-        text: readFileSync(abs, "utf8"),
+        text: normalizeNewlines(readFileSync(abs, "utf8")),
         line: 1,
         kind: "prompts-md",
       })
       continue
     }
     if (base === "manifest.json" && rel === `${plugin}/manifest.json`) {
-      const text = readFileSync(abs, "utf8")
+      const text = normalizeNewlines(readFileSync(abs, "utf8"))
       const strings: Array<{ locator: string; text: string }> = []
       try {
         manifestDescriptions(JSON.parse(text), "", strings)
@@ -210,7 +277,7 @@ export function pluginSurfaces(root: string, plugin: string): Surface[] {
       !base.endsWith(".d.ts") &&
       !rel.includes("__fixtures__")
     ) {
-      const text = readFileSync(abs, "utf8")
+      const text = normalizeNewlines(readFileSync(abs, "utf8"))
       if (NOT_MODEL_FACING.has(rel)) continue
       for (const entry of collectInlineTsStrings(text)) {
         const line = Number(entry.locator.split("@L")[1] ?? "1")
@@ -254,7 +321,7 @@ export function paramMapStrings(
   // can be double-quoted or single-quoted (`glob: 'A glob pattern ...'`).
   const re = /^\s{2,}"?(-?[A-Za-z_][\w-]*)"?:\s*(["'])((?:(?!\2)[^\\\n]|\\.){10,})\2,?\s*$/gm
   for (const match of body.matchAll(re)) {
-    const value = (match[3] ?? "").replace(/\\"/g, '"').replace(/\\'/g, "'")
+    const value = decodeJsEscapes(match[3] ?? "")
     if (!/\s/.test(value)) continue
     const index = start + (match.index ?? 0)
     out.push({
@@ -314,7 +381,7 @@ export function coreSurfaces(coreRoot: string = CORE_ROOT): Surface[] {
     const abs = join(coreRoot, rel)
     let text: string
     try {
-      text = readFileSync(abs, "utf8")
+      text = normalizeNewlines(readFileSync(abs, "utf8"))
     } catch {
       // A file on the list that is gone is a real change, not a skip.
       out.push({

@@ -122,7 +122,7 @@ function applyExemptions(file: string, findings: readonly SteFinding[]): SteFind
 export function reportByFile(surfaces: readonly Surface[]): FileReport[] {
   const byFile = new Map<string, SteFinding[]>()
   for (const surface of surfaces) {
-    const raw = lintText(surface.text, surface.line - 1)
+    const raw = lintText(surface.text, surface.line - 1, surface.file)
     // An empty prompt file is a defect the gate must see, unless the file is
     // empty on purpose. Each exception names the commit and the reason.
     if (surface.text.trim().length === 0 && !INTENTIONALLY_EMPTY.has(surface.file)) {

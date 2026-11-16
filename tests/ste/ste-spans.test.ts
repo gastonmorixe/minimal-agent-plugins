@@ -18,6 +18,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { lintText, looksLikeCode, maskNonProse, wordCount } from "./ste-rules.ts"
+import { decodeJsEscapes, normalizeNewlines } from "./surfaces.ts"
 
 /** Bad prose in a code span. The classifier must call each one prose. */
 const EVASIONS: readonly string[] = [
@@ -98,11 +99,9 @@ const HIDDEN_WORDS: readonly string[] = [
 ]
 
 /**
- * Characters the prompt surface may contain. This is an allowlist, not a
- * blocklist: five review rounds found hidden and lookalike characters one at a
- * time, and a list of bad ones never finishes. The cost is deliberate and it is
- * in the test below: an accented letter or a CJK glyph in a prompt is an error
- * until someone adds it here with a reason. The prompt corpus is English STE.
+ * The six non-ASCII characters the corpus uses, now allowed per file. This is
+ * an allowlist, not a blocklist: five review rounds found hidden and lookalike
+ * characters one at a time, and a list of bad ones never finishes.
  */
 const ALLOWED_EXTRA = ["\u201c", "\u201d", "\u2018", "\u2019", "\u2191", "\u2193"]
 
@@ -175,27 +174,50 @@ describe("backtick span classifier", () => {
 
   test("every hidden or lookalike character is reported", () => {
     const missed = HIDDEN.filter(
-      ([, text]) => !lintText(text).some((f) => f.rule === "ste-s12-hidden-char"),
+      ([, text]) =>
+        !lintText(text, 0, "ma-fetch-plugin/PROMPT.md").some(
+          (f) => f.rule === "ste-s12-hidden-char",
+        ),
     ).map(([name]) => name)
     expect(missed).toEqual([])
   })
 
-  test("an allowed quote is flagged as punctuation, not as a hidden char", () => {
-    const findings = lintText("don\u2018t stop")
+  const WRITING_STYLE = "ma-agent-writing-style-plugin/PROMPT.md"
+  const SLASH_MENU = "ma-slash-menu-plugin/manifest.json"
+
+  test("an allowed quote in its own file is punctuation, not a hidden char", () => {
+    const findings = lintText("don\u2018t stop", 0, WRITING_STYLE)
     expect(findings.some((f) => f.rule === "ste-s3-typographic")).toBe(true)
     expect(findings.some((f) => f.rule === "ste-s12-hidden-char")).toBe(false)
   })
 
-  test("the allowed characters stay quiet", () => {
-    const noisy = ALLOWED_EXTRA.filter((char) =>
-      lintText(`a ${char} b`).some((f) => f.rule === "ste-s12-hidden-char"),
-    )
-    expect(noisy).toEqual([])
+  test("an allowlist entry only applies to its own file", () => {
+    // The quote is legal in the writing-style example and nowhere else.
+    for (const char of ["\u201c", "\u201d", "\u2018", "\u2019"]) {
+      expect(
+        lintText(`a ${char} b`, 0, WRITING_STYLE).some((f) => f.rule === "ste-s12-hidden-char"),
+      ).toBe(false)
+      expect(
+        lintText(`a ${char} b`, 0, "ma-fetch-plugin/PROMPT.md").some(
+          (f) => f.rule === "ste-s12-hidden-char",
+        ),
+      ).toBe(true)
+    }
+    for (const char of ["\u2191", "\u2193"]) {
+      expect(
+        lintText(`a ${char} b`, 0, SLASH_MENU).some((f) => f.rule === "ste-s12-hidden-char"),
+      ).toBe(false)
+      expect(
+        lintText(`a ${char} b`, 0, WRITING_STYLE).some((f) => f.rule === "ste-s12-hidden-char"),
+      ).toBe(true)
+    }
   })
 
   test("printable ASCII, tab and newline stay quiet", () => {
     const text = "Plain ASCII: a-z A-Z 0-9 !#$%&()*+,-./:;<=>?@[]^_{|}~ \t tab and a newline."
-    expect(lintText(text).some((f) => f.rule === "ste-s12-hidden-char")).toBe(false)
+    expect(
+      lintText(text, 0, "ma-fetch-plugin/PROMPT.md").some((f) => f.rule === "ste-s12-hidden-char"),
+    ).toBe(false)
   })
 
   test("the allowlist is deliberately strict: accents and CJK are errors", () => {
@@ -213,6 +235,57 @@ describe("backtick span classifier", () => {
         `${JSON.stringify(text)} must be reported`,
       ).toBe(true)
     }
+  })
+
+  test("a hidden character is found inside a code span, tag, URL or interpolation", () => {
+    // The allowlist is about bytes, not prose, so it must read the raw line.
+    // These were all MISSED while s12 read the masked line.
+    const REGIONS: ReadonlyArray<readonly [string, string]> = [
+      ["code span", "Run `git\u200b status`."],
+      ["tool name", "Call `R\u0435portResult`."],
+      ["bidi in a command", "Run `echo \u202eevil`."],
+      ["a tag attribute", '<ma::emit::output path="/tmp/x\u200b" />'],
+      ["a URL", "https://exa\u200bmple.com"],
+      ["an interpolation", "${fo\u200bo}"],
+    ]
+    const missed = REGIONS.filter(
+      ([, text]) =>
+        !lintText(text, 0, "ma-fetch-plugin/PROMPT.md").some(
+          (f) => f.rule === "ste-s12-hidden-char",
+        ),
+    ).map(([name]) => name)
+    expect(missed).toEqual([])
+  })
+
+  test("a JS escape cannot carry a hidden character past the allowlist", () => {
+    // A TS literal decodes to the real character at runtime, so the reader
+    // decodes it first. Without this, "util\u200bize" is six ASCII characters.
+    const decoded = decodeJsEscapes("We util\\u200bize the path")
+    expect(decoded.includes("\u200b")).toBe(true)
+    expect(
+      lintText(decoded, 0, "ma-fetch-plugin/PROMPT.md").some(
+        (f) => f.rule === "ste-s12-hidden-char",
+      ),
+    ).toBe(true)
+    expect(decodeJsEscapes("a\\u{1F600}b")).toBe("a\u{1F600}b".replace("\\u{1F600}", "\u{1F600}"))
+    expect(decodeJsEscapes("x\\x41y")).toBe("xAy")
+  })
+
+  test("a CRLF checkout is not all errors", () => {
+    // core.autocrlf adds \r, which the model never receives.
+    const crlf = "A plain line.\r\nAnother line.\r\n"
+    expect(normalizeNewlines(crlf)).toBe("A plain line.\nAnother line.\n")
+    expect(
+      lintText(normalizeNewlines(crlf), 0, "ma-fetch-plugin/PROMPT.md").some(
+        (f) => f.rule === "ste-s12-hidden-char",
+      ),
+    ).toBe(false)
+  })
+
+  test("every allowed character is needed by some file", () => {
+    // A stale entry is a hole nobody is using. The count is fixed at 6.
+    expect(ALLOWED_EXTRA.length).toBe(6)
+    expect(new Set(ALLOWED_EXTRA).size).toBe(6)
   })
 
   test("the tables are big enough to mean something", () => {
