@@ -4,7 +4,8 @@
  * Results merge in source order. Deny wins over ask, ask over allow. Only a
  * rewrite from a result with the winning decision applies, and the first such
  * rewrite in source order is kept, so native wins ties. A deny never
- * rewrites. Context is concatenated in source order.
+ * rewrites. Context is concatenated in source order inside each position
+ * (`before`, `after`), so native still comes first in each group.
  *
  * @module engine/merge
  */
@@ -16,7 +17,10 @@ export interface MergedResult {
   decision: CanonicalResult["decision"]
   reasons: string[]
   payload?: unknown
+  /** Context with position `after` (the default), in source order. */
   context: string[]
+  /** Context with position `before`, in source order. */
+  contextBefore: string[]
   stopTurn?: { reason?: string }
   userMessages: string[]
 }
@@ -25,10 +29,17 @@ const RANK: Record<CanonicalResult["decision"], number> = { none: 0, allow: 1, a
 
 /** Merge decoded results that are already in source order. */
 export function mergeResults(results: readonly CanonicalResult[]): MergedResult {
-  const out: MergedResult = { decision: "none", reasons: [], context: [], userMessages: [] }
+  const out: MergedResult = {
+    decision: "none",
+    reasons: [],
+    context: [],
+    contextBefore: [],
+    userMessages: [],
+  }
   for (const r of results) {
     if (RANK[r.decision] > RANK[out.decision]) out.decision = r.decision
-    out.context.push(...r.context)
+    if (r.position === "before") out.contextBefore.push(...r.context)
+    else out.context.push(...r.context)
     if (r.userMessage) out.userMessages.push(r.userMessage)
     if (r.stopTurn && !out.stopTurn) out.stopTurn = r.stopTurn
   }

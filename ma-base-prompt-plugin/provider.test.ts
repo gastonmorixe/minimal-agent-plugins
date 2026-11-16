@@ -81,11 +81,14 @@ describe("base prompt provider", () => {
     expect(p.instructionParts?.()[0]?.text).toBe(first ?? "")
   })
 
-  test("neither data file holds a percent placeholder marker", () => {
-    for (const name of ["identity.neutral.md", "instructions.md"]) {
-      expect(readFileSync(join(import.meta.dir, "prompts", name), "utf-8").includes("%%")).toBe(
-        false,
-      )
-    }
+  // Core fills the instructions placeholders (renderInstructions in core). Only the
+  // agent home placeholder is allowed, so an unknown name cannot reach core.
+  test("the identity has no placeholder, and the instructions use only %%agentHome%%", () => {
+    const read = (name: string) => readFileSync(join(import.meta.dir, "prompts", name), "utf-8")
+    expect(read("identity.neutral.md").includes("%%")).toBe(false)
+    const names = [...read("instructions.md").matchAll(/%%([A-Za-z0-9_.-]+\??)%%/g)].map(
+      (m) => m[1],
+    )
+    expect(new Set(names)).toEqual(new Set(["agentHome"]))
   })
 })

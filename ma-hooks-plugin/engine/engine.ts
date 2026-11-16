@@ -28,6 +28,7 @@ import { type TrustState, TrustStore, type TrustVerdict, trustStatePath } from "
 import type {
   CanonicalHook,
   CanonicalResult,
+  HookContextEntry,
   HookDialectAdapter,
   InvocationContext,
   ParseResult,
@@ -48,6 +49,8 @@ export interface EngineOptions {
   plugins?: PluginRef[]
   /** Diagnostic sink. */
   log?: (msg: string) => void
+  /** Debug sink (ignored fields and other low-value notes). */
+  debug?: (msg: string) => void
   /** Shared async queue (keyed by session), so a rebuilt engine keeps queued output. */
   asyncQueue?: AsyncHookQueue
 }
@@ -74,8 +77,28 @@ export interface LoadedSource {
 /** Values the HookBus listener returns (core chain contract plus additionalContext). */
 export type EngineChainResult =
   | undefined
-  | { payload: unknown; additionalContext?: string[] }
-  | { halt: true; reason: string; payload?: unknown; additionalContext?: string[] }
+  | { payload: unknown; additionalContext?: HookContextEntry[] }
+  | { halt: true; reason: string; payload?: unknown; additionalContext?: HookContextEntry[] }
+
+/** Channels where a context position matters (core HookContextEntry contract). */
+const POSITION_CHANNELS: ReadonlySet<string> = new Set(["turn.willStart", "session.willStart"])
+
+/**
+ * The additionalContext list for one channel. On a position channel every
+ * entry is a `{ text, position }` object, `before` entries first. On every
+ * other channel the entries are plain strings, as before.
+ */
+export function contextEntries(
+  channel: string,
+  before: readonly string[],
+  after: readonly string[],
+): HookContextEntry[] {
+  if (!POSITION_CHANNELS.has(channel)) return [...before, ...after]
+  return [
+    ...before.map((text): HookContextEntry => ({ text, position: "before" })),
+    ...after.map((text): HookContextEntry => ({ text, position: "after" })),
+  ]
+}
 
 /** Extra per-call values from the hook handler context. */
 export interface DispatchContext {
@@ -174,6 +197,7 @@ export class HooksEngine {
   /** Last result per trust key (bounded, in memory only). */
   readonly lastResults = new Map<string, LastResult>()
   private readonly log: (msg: string) => void
+  private readonly debug: (msg: string) => void
   private readonly plugins: PluginRef[]
   private signature = ""
   private readonly noticed = new Set<string>()
@@ -193,6 +217,7 @@ export class HooksEngine {
     this.adapters = opts.adapters ?? selectAdapters(this.config)
     this.plugins = opts.plugins ?? []
     this.log = opts.log ?? (() => {})
+    this.debug = opts.debug ?? (() => {})
     this.trust = new TrustStore(trustStatePath(this.agentHome), this.env.MA_TRUST_HOOKS === "1")
     this.asyncQueue = opts.asyncQueue ?? new AsyncHookQueue(this.config.maxAsync)
     this.load()
@@ -253,6 +278,7 @@ export class HooksEngine {
       try {
         const r = adapter.parse(source, text)
         loaded.warnings.push(...r.warnings)
+        for (const d of r.debug ?? []) this.debug(`[hooks] ${adapter.id}:${source.id}: ${d}`)
         all.push(...r.hooks)
         this.applySwitches(sw, adapter, source, r, loaded)
       } catch (e) {
@@ -507,6 +533,7 @@ export class HooksEngine {
     }
     if (this.runs.length > 200) this.runs.splice(0, this.runs.length - 200)
     if (result.error) this.log(`[hooks] ${hook.trustKey}: ${result.error}`)
+    if (result.debug) this.debug(`[hooks] ${hook.trustKey}: ${result.debug}`)
     return result
   }
 
@@ -522,7 +549,11 @@ export class HooksEngine {
     const budget = channelInfo(channel).budgetMs
     for (const h of hooks.filter((x) => x.async)) {
       this.asyncQueue.push(
-        async (signal) => (await this.runOne(h, channel, payload, inv, signal)).context,
+        async (signal) => {
+          const r = await this.runOne(h, channel, payload, inv, signal)
+          if (r.position !== "before") return r.context
+          return r.context.map((text): HookContextEntry => ({ text, position: "before" }))
+        },
         inv.sid,
       )
     }
@@ -575,7 +606,18 @@ export class HooksEngine {
     const sid = this.invocation(payload, dc).sid
     const queued = info.injectsQueued ? this.asyncQueue.drain(sid) : []
     const m = await this.evaluate(channel, payload, dc)
-    const context = [...queued, ...m.context]
+    const qBefore: string[] = []
+    const qAfter: string[] = []
+    for (const e of queued) {
+      if (typeof e === "string") qAfter.push(e)
+      else if (e.position === "before") qBefore.push(e.text)
+      else qAfter.push(e.text)
+    }
+    const context = contextEntries(
+      channel,
+      [...qBefore, ...m.contextBefore],
+      [...qAfter, ...m.context],
+    )
     const ctxPart = context.length > 0 ? { additionalContext: context } : {}
     const next = m.payload === undefined ? payload : this.rewrite(channel, payload, m.payload, sid)
     if (info.blocking) {

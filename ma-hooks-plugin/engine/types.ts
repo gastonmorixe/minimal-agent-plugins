@@ -13,6 +13,21 @@
 /** Dialect id. `native` is minimal-agent's own format and is pinned first. */
 export type HookDialectId = "native" | "claude" | (string & {})
 
+/** Where hook context goes relative to the user's text. Default `after`. */
+export type HookContextPosition = "before" | "after"
+
+/**
+ * One additionalContext entry for the HookBus. A plain string means `after`.
+ * Mirror of @minimal-agent/core plugin-api/sdk HookContextEntry. Switch to the
+ * import when core lands.
+ */
+export type HookContextEntry = string | { text: string; position?: HookContextPosition }
+
+/** True when `v` is a valid {@link HookContextPosition}. */
+export function isContextPosition(v: unknown): v is HookContextPosition {
+  return v === "before" || v === "after"
+}
+
 /** Where a source file lives. `user` is trusted implicitly. */
 export type HookScope = "user" | "project" | "plugin"
 
@@ -108,6 +123,11 @@ export interface CanonicalHook {
   async: boolean
   failClosed: boolean
   statusMessage?: string
+  /**
+   * Where this hook's context goes on `turn.willStart` and `session.willStart`.
+   * Missing means `after`. Only native hooks set `before`.
+   */
+  position?: HookContextPosition
   support: HookSupport
   /** Hash of the normalized dialect, channel, matcher and handler. */
   contentHash: string
@@ -121,12 +141,19 @@ export interface CanonicalResult {
   payload?: unknown
   /** additionalContext. */
   context: string[]
+  /**
+   * Position of every entry in `context` (one hook run has one position).
+   * Missing means `after`.
+   */
+  position?: HookContextPosition
   /** `continue: false`. */
   stopTurn?: { reason?: string }
   /** A message for the user (not the model). */
   userMessage?: string
   /** Set when the run failed (timeout, spawn error, bad exit). Diagnostics only. */
   error?: string
+  /** A note for the debug log (not an error), e.g. an ignored output field. */
+  debug?: string
 }
 
 /** Values the engine knows about one invocation. */
@@ -158,6 +185,8 @@ export interface RunOutcome {
 export interface ParseResult {
   hooks: CanonicalHook[]
   warnings: string[]
+  /** Notes for the debug log only (an ignored key that is not a config error). */
+  debug?: string[]
   /** The source asks to turn off hooks (this dialect, or all when the adapter is authoritative). */
   disableAll?: boolean
   /** Trust keys to turn off (only honored from an authoritative adapter). */
