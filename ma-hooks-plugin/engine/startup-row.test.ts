@@ -151,6 +151,15 @@ describe("commandBasename", () => {
     ["python3 tools/lint.py --fix", "lint.py"],
     ["FOO=1 bun run.ts", "run.ts"],
     ["echo hi", "echo"],
+    ["/usr/bin/env bash ./x.sh", "x.sh"],
+    ["env FOO=1 -i python3 tools/a.py", "a.py"],
+    ["env -u HOME -S ./run.sh", "run.sh"],
+    ["/usr/bin/env node", "node"],
+    ["env", "env"],
+    ["bash -c 'echo hi && ./x.sh'", "echo"],
+    ['sh -c "/opt/bin/guard.sh --strict"', "guard.sh"],
+    ["bash -e -c 'FOO=1 ./y.sh arg'", "y.sh"],
+    ["bash -c ''", "bash"],
   ])("%s -> %s", (cmd, want) => {
     expect(commandBasename(cmd)).toBe(want)
   })
@@ -158,6 +167,7 @@ describe("commandBasename", () => {
   test("exec form uses the command as one word", () => {
     expect(commandBasename("/opt/my tools/run", ["x"])).toBe("run")
     expect(commandBasename("node", ["--x", "/a/hook.js"])).toBe("hook.js")
+    expect(commandBasename("/bin/bash", ["-c", "/a/b/c.sh && echo"])).toBe("c.sh")
   })
 })
 

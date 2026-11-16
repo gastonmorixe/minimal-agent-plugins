@@ -64,6 +64,9 @@ const INTERPRETERS: ReadonlySet<string> = new Set([
   "bun",
 ])
 
+/** Shells whose `-c` argument is an inline script. */
+const SHELLS: ReadonlySet<string> = new Set(["sh", "bash", "zsh"])
+
 /** `NAME=value` at the start of a shell command. */
 const ENV_ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*=/
 
@@ -82,23 +85,58 @@ function lastSegment(path: string): string {
   return basename(path.replace(/\/+$/, "")) || path
 }
 
+/** `env` flags that take a separate argument (`-u NAME`, `-C DIR`). */
+const ENV_ARG_FLAGS: ReadonlySet<string> = new Set(["-u", "--unset", "-C", "--chdir"])
+
+/** Index of the real program after an `env` prefix: skips flags and `NAME=value`. */
+function skipEnv(list: readonly string[], i: number): number {
+  let j = i + 1
+  while (j < list.length - 1) {
+    const w = list[j] ?? ""
+    if (ENV_ASSIGN.test(w)) j++
+    else if (ENV_ARG_FLAGS.has(w)) j += 2
+    else if (w.startsWith("-")) j++
+    else break
+  }
+  return j
+}
+
+/** Display name from a word list (see {@link commandBasename}). */
+function nameOf(list: readonly string[], fallback: string): string {
+  let i = 0
+  while (i < list.length - 1 && ENV_ASSIGN.test(list[i] ?? "")) i++
+  let first = list[i]
+  if (first !== undefined && lastSegment(first) === "env" && i < list.length - 1) {
+    i = skipEnv(list, i)
+    first = list[i]
+  }
+  if (first === undefined || first === "") return fallback
+  const prog = lastSegment(first)
+  if (!INTERPRETERS.has(prog)) return prog
+  const rest = list.slice(i + 1)
+  const c = rest.indexOf("-c")
+  if (c >= 0 && SHELLS.has(prog)) {
+    // `bash -c '<script>'`: the first word inside the script.
+    const script = rest[c + 1]
+    const inner = script === undefined ? [] : words(script)
+    return inner.length > 0 ? nameOf(inner, prog) : prog
+  }
+  const script = rest.find((w) => w !== "" && !w.startsWith("-"))
+  return script ? lastSegment(script) : prog
+}
+
 /**
  * The display name of a command: the basename of its first word after any
- * `NAME=value` prefix. When that word is an interpreter (sh, bash, zsh,
- * python, python3, node, bun), the first argument that is not a flag is used
- * instead, else the interpreter name. Exec form (`args`) uses the command as
- * one word.
+ * `NAME=value` prefix. An `env` prefix (`/usr/bin/env X`, `env -i A=1 X`)
+ * is skipped with its flags and assignments. When the word is an
+ * interpreter (sh, bash, zsh, python, python3, node, bun), the first
+ * argument that is not a flag is used instead, else the interpreter name.
+ * For a shell with `-c '<script>'` the basename of the first word inside
+ * the script is used. Exec form (`args`) uses the command as one word.
  */
 export function commandBasename(command: string, args?: readonly string[]): string {
   const list = args && args.length > 0 ? [command, ...args] : words(command)
-  let i = 0
-  while (i < list.length - 1 && ENV_ASSIGN.test(list[i] ?? "")) i++
-  const first = list[i]
-  if (first === undefined || first === "") return command.trim()
-  const prog = lastSegment(first)
-  if (!INTERPRETERS.has(prog)) return prog
-  const script = list.slice(i + 1).find((w) => w !== "" && !w.startsWith("-"))
-  return script ? lastSegment(script) : prog
+  return nameOf(list, command.trim())
 }
 
 /** The host of an HTTP hook URL, or the URL text when it does not parse. */
