@@ -57,9 +57,9 @@ import { socketAnswers } from "../lib/client.ts"
 import { CdpConnection } from "../lib/connection.ts"
 import { dispatch } from "../lib/dispatch.ts"
 import {
+  DEFAULT_DENY_COOLDOWN_MS,
   DEFAULT_IDLE_MS,
   DEFAULT_LEASE_CHECK_MS,
-  DEFAULT_DENY_COOLDOWN_MS,
   DEFAULT_LEASE_MAX_AGE_MS,
   DEFAULT_READY_TIMEOUT_MS,
   envInt,
