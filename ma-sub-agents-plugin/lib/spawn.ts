@@ -24,6 +24,8 @@ import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
 import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 
 import { parseFinalText, parseProgress } from "./progress.ts"
+import { isContractedFilePresent } from "./report.ts"
+import type { SpawnPlan } from "./spawn-plan.ts"
 import {
   type StreamState,
   streamEnded,
@@ -32,7 +34,6 @@ import {
   streamProgress,
   streamReader,
 } from "./stream.ts"
-import type { SpawnPlan } from "./spawn-plan.ts"
 import type { WorkerProbe } from "./supervisor.ts"
 import { err, ok, type Progress, type Result, type ResultDigest } from "./types.ts"
 
@@ -47,6 +48,13 @@ export function streamPathFor(sessionsDir: string, sid: string): string {
 
 /** Env key telling a worker where to write its result sentinel. */
 export const ENV_RESULT_PATH = "MINIMAL_AGENT_SUBAGENT_RESULT_PATH"
+
+/**
+ * Env key carrying the worker's `expectArtifacts` contract: a JSON array of
+ * absolute paths. Set only when the lead contracted files. The `ReportResult`
+ * handler reads it to write `deliverables` and to enforce the contract.
+ */
+export const ENV_EXPECT_ARTIFACTS = "MINIMAL_AGENT_SUBAGENT_EXPECT_ARTIFACTS"
 
 // ---------------------------------------------------------------------------
 // Injected dependencies (DIP — fakes in tests, real OS calls in prod)
@@ -449,15 +457,8 @@ export function realProbeDeps(): ProbeDeps {
         return undefined
       }
     },
-    missingArtifacts: (paths) =>
-      paths.filter((p) => {
-        try {
-          // missing if it doesn't exist OR exists but is empty (0 bytes)
-          return statSync(p).size === 0
-        } catch {
-          return true
-        }
-      }),
+    // Missing: absent, empty, or not a regular file (same check as ReportResult).
+    missingArtifacts: (paths) => paths.filter((p) => !isContractedFilePresent(p)),
     readCrash: (logPath) => {
       try {
         if (!existsSync(logPath)) return undefined

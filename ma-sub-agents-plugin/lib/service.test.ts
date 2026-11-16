@@ -13,7 +13,7 @@ import {
   stopAllAgents,
   type WorkerDefinition,
 } from "./service.ts"
-import { type SpawnDeps } from "./spawn.ts"
+import { ENV_EXPECT_ARTIFACTS, type SpawnDeps } from "./spawn.ts"
 import { SubagentStore } from "./store.ts"
 import { sessionId, subagentId } from "./types.ts"
 
@@ -56,6 +56,47 @@ describe("spawnAgent", () => {
     dir = mkdtempSync(join(tmpdir(), "subagents-svc-"))
   })
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it("passes expectArtifacts to the worker env as a resolved, deduped JSON array", async () => {
+    const envs: Record<string, string>[] = []
+    const deps = makeDeps(dir, {
+      spawnDeps: {
+        launch: (_argv, opts) => {
+          envs.push(opts.env)
+          return 7001
+        },
+      },
+    })
+    const r = await spawnAgent(
+      { task: "write findings", expectArtifacts: ["/abs/x/../f.md", "/abs/f.md"] },
+      deps,
+    )
+    expect(r.ok).toBe(true)
+    expect(JSON.parse(envs[0]?.[ENV_EXPECT_ARTIFACTS] ?? "null")).toEqual(["/abs/f.md"])
+    if (r.ok) expect(r.value.expectArtifacts).toEqual(["/abs/f.md"])
+  })
+
+  it("does not set the contract env when there is no expectArtifacts", async () => {
+    const envs: Record<string, string>[] = []
+    const deps = makeDeps(dir, {
+      spawnDeps: {
+        launch: (_argv, opts) => {
+          envs.push(opts.env)
+          return 7002
+        },
+      },
+    })
+    await spawnAgent({ task: "no files" }, deps)
+    expect(ENV_EXPECT_ARTIFACTS in (envs[0] ?? {})).toBe(false)
+  })
+
+  it("rejects a relative expectArtifacts path with a teaching error, and launches nothing", async () => {
+    const deps = makeDeps(dir)
+    const r = await spawnAgent({ task: "x", expectArtifacts: ["research/f.md"] }, deps)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/absolute/)
+    expect(deps.launched.length).toBe(0)
+  })
 
   it("launches a worker, persists a running handle, returns it", async () => {
     const deps = makeDeps(dir)

@@ -13,7 +13,13 @@
 
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
 import { type PromptRender, renderResultProtocol } from "./prompts.ts"
-import { ENV_RESULT_PATH, launchWorker, type SpawnDeps, streamPathFor } from "./spawn.ts"
+import {
+  ENV_EXPECT_ARTIFACTS,
+  ENV_RESULT_PATH,
+  launchWorker,
+  type SpawnDeps,
+  streamPathFor,
+} from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { type SubagentStore } from "./store.ts"
 import {
@@ -27,6 +33,7 @@ import {
   sessionId,
   ZERO_PROGRESS,
 } from "./types.ts"
+import { normalizeExpectArtifacts } from "./validate.ts"
 
 /** A resolved worker definition (from the library) the service folds into a spawn. */
 export interface WorkerDefinition {
@@ -293,8 +300,11 @@ export async function spawnAgent(
   const isolation: Isolation = req.isolation ?? def?.isolation ?? "fresh"
   const systemPreamble = req.system ?? def?.systemPrompt
   const budget = req.budget ?? def?.budget
-  const expectArtifacts =
-    req.expectArtifacts && req.expectArtifacts.length > 0 ? req.expectArtifacts : undefined
+  // Validate here too (a direct caller can skip the tool parser): absolute
+  // paths only, resolved and deduped, so worker and supervisor check one file.
+  const expectNorm = normalizeExpectArtifacts(req.expectArtifacts)
+  if (!expectNorm.ok) return err(expectNorm.error)
+  const expectArtifacts = expectNorm.value
 
   // Guard (self-enforced). External veto rides `subagent.willSpawn` below.
   const records = deps.store.all()
@@ -334,7 +344,7 @@ export async function spawnAgent(
   // Render the deliverable protocol from its markdown template (the prose lives
   // on disk, never in code — repo convention). The worker reads how to finish:
   // write any required file itself, then call `ReportResult`.
-  const resultProtocol = renderResultProtocol(deps.renderPrompt, resultPath)
+  const resultProtocol = renderResultProtocol(deps.renderPrompt, resultPath, expectArtifacts)
   const planResult = buildSpawnPlan({
     agentBin: deps.agentBin,
     childSid,
@@ -360,7 +370,12 @@ export async function spawnAgent(
     resultProtocol,
     depth: childDepth,
     cwd: deps.cwd,
-    extraEnv: { [ENV_RESULT_PATH]: resultPath },
+    // The contract rides to the worker so its `ReportResult` handler can write
+    // the files (`deliverables`) and refuse to finish while one is missing.
+    extraEnv: {
+      [ENV_RESULT_PATH]: resultPath,
+      ...(expectArtifacts ? { [ENV_EXPECT_ARTIFACTS]: JSON.stringify(expectArtifacts) } : {}),
+    },
     // Carry the lead's own plugin-disable list so the plan can UNION it with the
     // worker-only disables (intercom) instead of dropping it. Read from the live
     // process env: whatever disabled the lead's plugins should still apply to

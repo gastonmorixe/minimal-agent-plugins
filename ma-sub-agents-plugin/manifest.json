@@ -56,7 +56,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "Absolute paths this worker must produce to count as done. When set, the supervisor refuses to mark the worker done unless every path exists and is non-empty, and a missing one flips it to 'incomplete' with a warning. Use for delegations whose whole point is to produce a file (e.g. ['/abs/findings.md']) so the system enforces the deliverable instead of you having to check."
+                  "description": "Absolute paths this worker must produce to count as done. When set, the supervisor refuses to mark the worker done unless every path exists and is non-empty, and a missing one flips it to 'incomplete' with a warning. Use for delegations whose whole point is to produce a file (e.g. ['/abs/findings.md']) so the system enforces the deliverable instead of you having to check. The worker receives the list. Read-only types (explorer, planner, reviewer, log-miner) deliver the files through ReportResult `deliverables`."
                 },
                 "budget": {
                   "type": "object",
@@ -96,7 +96,7 @@
           "type": "tool",
           "tool": {
             "name": "ReportResult",
-            "description": "Record a sub-agent result for the lead as the final action of a worker session. Use it when the unit is complete and you must hand the finding back. Do not use it as the lead: the lead reads the record with SubAgentsAgentResult. Returns the stored result, the artifact list and the incomplete flag.",
+            "description": "Record a sub-agent result for the lead as the final action of a worker session. Use it when the unit is complete and you must hand the finding back. Do not use it as the lead: the lead reads the record with SubAgentsAgentResult. Pass required files in `deliverables` and the tool writes them. Returns the stored result, the artifact list and the incomplete flag. It refuses to finish while a required file is missing, unless incomplete is true.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -114,6 +114,25 @@
                 "incomplete": {
                   "type": "boolean",
                   "description": "Set true if you could not finish the task. The lead will treat the work as unverified and may re-spawn. Default false."
+                },
+                "deliverables": {
+                  "type": "array",
+                  "description": "Files the lead required (expectArtifacts). The tool writes each one for you, also in read-only mode. Only the required paths are allowed.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "description": "Absolute path of one required file."
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "The full file text. Must not be empty."
+                      }
+                    },
+                    "required": ["path", "content"],
+                    "additionalProperties": false
+                  }
                 }
               },
               "required": ["summary"],

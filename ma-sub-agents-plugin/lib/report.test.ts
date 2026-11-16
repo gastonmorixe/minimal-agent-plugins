@@ -5,9 +5,20 @@
  * @module sub-agents/lib/report.test
  */
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { describe, expect, it } from "bun:test"
 
-import { buildDigest, parseReportRequest, serializeDigest } from "./report.ts"
+import {
+  buildDigest,
+  checkDeliverables,
+  isContractedFilePresent,
+  parseContract,
+  parseReportRequest,
+  serializeDigest,
+} from "./report.ts"
 import { parseResultDigest } from "./spawn.ts"
 
 describe("parseReportRequest", () => {
@@ -79,5 +90,137 @@ describe("buildDigest", () => {
     const d = buildDigest({ summary: "blocked on auth", incomplete: true })
     const reparsed = parseResultDigest(JSON.parse(serializeDigest(d)))
     expect(reparsed?.incomplete).toBe(true)
+  })
+})
+
+describe("parseReportRequest: deliverables", () => {
+  it("parses deliverables and trims the path", () => {
+    const r = parseReportRequest({
+      summary: "s",
+      deliverables: [
+        { path: "/a.md", content: "A" },
+        { path: " /b.md ", content: "B" },
+      ],
+    })
+    expect(r.ok).toBe(true)
+    if (r.ok)
+      expect(r.value.deliverables).toEqual([
+        { path: "/a.md", content: "A" },
+        { path: "/b.md", content: "B" },
+      ])
+  })
+
+  it("does not accept file_path: the schema has only path (S1)", () => {
+    const r = parseReportRequest({
+      summary: "s",
+      deliverables: [{ file_path: "/b.md", content: "B" }],
+    })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/path/)
+  })
+
+  it("rejects empty content", () => {
+    const r = parseReportRequest({ summary: "s", deliverables: [{ path: "/a.md", content: "  " }] })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/content/)
+  })
+
+  it("rejects a missing path", () => {
+    const r = parseReportRequest({ summary: "s", deliverables: [{ content: "x" }] })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/path/)
+  })
+
+  it("rejects a non-array", () => {
+    const r = parseReportRequest({ summary: "s", deliverables: { path: "/a.md", content: "x" } })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/array/)
+  })
+
+  it("rejects a total over the size cap", () => {
+    const big = "a".repeat(2 * 1024 * 1024 + 1)
+    const r = parseReportRequest({ summary: "s", deliverables: [{ path: "/a.md", content: big }] })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/limit/)
+  })
+
+  it("omits deliverables when absent or empty", () => {
+    const r = parseReportRequest({ summary: "s", deliverables: [] })
+    expect(r.ok && "deliverables" in r.value).toBe(false)
+  })
+})
+
+describe("parseContract / checkDeliverables", () => {
+  it("parses a JSON array, resolves, dedupes, drops relative and junk", () => {
+    expect(parseContract(JSON.stringify(["/x/a.md", "/x/./a.md", "rel.md", 3, "/y.md"]))).toEqual([
+      "/x/a.md",
+      "/y.md",
+    ])
+    expect(parseContract(undefined)).toEqual([])
+    expect(parseContract("not json")).toEqual([])
+  })
+
+  it("allows contracted paths and refuses others with the allowed list", () => {
+    expect(checkDeliverables([{ path: "/x/../a.md", content: "c" }], ["/a.md"]).ok).toBe(true)
+    const bad = checkDeliverables([{ path: "/b.md", content: "c" }], ["/a.md"])
+    expect(bad.ok).toBe(false)
+    if (!bad.ok) expect(bad.error).toContain("/a.md")
+    expect(checkDeliverables([{ path: "/a.md", content: "c" }], []).ok).toBe(false)
+  })
+  it("the no-contract error names an older plugin and the incomplete fallback (H)", () => {
+    const r = checkDeliverables([{ path: "/a.md", content: "c" }], [])
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toContain("the lead may run an older sub-agents plugin")
+      expect(r.error).toContain("set incomplete:true and put the content in summary")
+    }
+  })
+
+  it("allows a `..` path only when it resolves to a contracted path (S4)", () => {
+    expect(checkDeliverables([{ path: "/x/../a.md", content: "c" }], ["/a.md"]).ok).toBe(true)
+    const r = checkDeliverables([{ path: "/x/a/../b.md", content: "c" }], ["/x/a/b.md"])
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain("/x/a/b.md")
+  })
+
+  it("refuses a path with a trailing slash: it names a directory, not a file (S4)", () => {
+    const r = checkDeliverables([{ path: "/x/a.md/", content: "c" }], ["/x/a.md"])
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/trailing slash/)
+  })
+
+  it("refuses duplicate deliverable paths with a teaching error (S4)", () => {
+    const r = checkDeliverables(
+      [
+        { path: "/x/a.md", content: "one" },
+        { path: "/x/./a.md", content: "two" },
+      ],
+      ["/x/a.md"],
+    )
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toMatch(/more than once/)
+      expect(r.error).toContain("/x/a.md")
+    }
+  })
+})
+
+describe("isContractedFilePresent (S2)", () => {
+  it("is true only for a regular file with size > 0", () => {
+    const d = mkdtempSync(join(tmpdir(), "present-"))
+    try {
+      const full = join(d, "full.md")
+      const empty = join(d, "empty.md")
+      const sub = join(d, "sub")
+      writeFileSync(full, "x")
+      writeFileSync(empty, "")
+      mkdirSync(sub)
+      expect(isContractedFilePresent(full)).toBe(true)
+      expect(isContractedFilePresent(empty)).toBe(false)
+      expect(isContractedFilePresent(sub)).toBe(false)
+      expect(isContractedFilePresent(join(d, "none.md"))).toBe(false)
+    } finally {
+      rmSync(d, { recursive: true, force: true })
+    }
   })
 })

@@ -1475,7 +1475,7 @@
                 "type": "string"
               },
               "expectArtifacts": {
-                "description": "Absolute paths this worker must produce to count as done. When set, the supervisor refuses to mark the worker done unless every path exists and is non-empty, and a missing one flips it to 'incomplete' with a warning. Use for delegations whose whole point is to produce a file (e.g. ['/abs/findings.md']) so the system enforces the deliverable instead of you having to check.",
+                "description": "Absolute paths this worker must produce to count as done. When set, the supervisor refuses to mark the worker done unless every path exists and is non-empty, and a missing one flips it to 'incomplete' with a warning. Use for delegations whose whole point is to produce a file (e.g. ['/abs/findings.md']) so the system enforces the deliverable instead of you having to check. The worker receives the list. Read-only types (explorer, planner, reviewer, log-miner) deliver the files through ReportResult `deliverables`.",
                 "items": {
                   "type": "string"
                 },
