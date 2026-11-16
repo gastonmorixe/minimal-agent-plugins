@@ -106,7 +106,7 @@ describe("base prompt provider", () => {
     for (const f of ["heading.md", "intro.md", "ack.md"]) {
       expect(names(`loop-safety/${f}`)).toEqual(new Set())
     }
-    expect(names("tool-output-conventions.md")).toEqual(new Set())
+    expect(names("tool-output-conventions.md")).toEqual(new Set(["agentHome"]))
   })
 
   test("the provider declares the 3 system slots as data", () => {
@@ -211,5 +211,15 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
     const parts = createProvider().instructionParts?.({ ...base, agentHome: "/x/home" }) ?? []
     const text = parts.find((p) => p.slot === "instructions")?.text ?? ""
     expect(text).toBe(system.instructionsTemplate.replaceAll("%%agentHome%%", "/x/home"))
+  })
+
+  test("the conventions slot gets agentHome from the ctx", () => {
+    const base = system.grid.find((g) => g.ctx.blobStoreEnabled)
+    if (base === undefined) throw new Error("no grid entry with blobStoreEnabled")
+    const parts = createProvider().instructionParts?.({ ...base.ctx, agentHome: "/x/home" }) ?? []
+    const text = parts.find((p) => p.slot === "toolOutputConventions")?.text ?? ""
+    expect(text).toContain("`/x/home/sessions/<sid>.blobs/<tool_use_id>.raw`")
+    expect(text).not.toContain("%%")
+    expect(text).not.toContain("~/.minimal-agent")
   })
 })

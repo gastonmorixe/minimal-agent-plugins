@@ -109,7 +109,10 @@ export function createBaseProvider(readText: BaseTextReader): SystemPromptBasePr
       const loop = loopSafety(ctx.reflectionInterval, ctx.reflectionCooldownMs)
       if (loop.length > 0) parts.push({ slot: "loopSafety", text: loop })
       if (ctx.blobStoreEnabled) {
-        parts.push({ slot: "toolOutputConventions", text: read("tool-output-conventions.md") })
+        parts.push({
+          slot: "toolOutputConventions",
+          text: fill(read("tool-output-conventions.md"), { agentHome: ctx.agentHome }),
+        })
       }
       return parts
     },
