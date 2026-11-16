@@ -30,6 +30,8 @@
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { basename, join, relative, resolve } from "node:path"
 
+import { decodeJsEscapes } from "../tests/ste/surfaces.ts"
+
 import { sanitize } from "./sanitize-prompts.ts"
 
 const ROOT = resolve(import.meta.dir, "..")
@@ -159,7 +161,7 @@ export function collectInlineTsStrings(text: string): Array<{ locator: string; t
     }
     if (parts.length > 0) {
       const line = text.slice(0, m.index).split("\n").length
-      const joined = parts.join("").replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\'/g, "'")
+      const joined = decodeJsEscapes(parts.join(""))
       // Only keep prose-ish literals (skip trivial identifiers / short flags).
       if (joined.trim().length >= 25) {
         out.push({ locator: `${field}@L${line}`, text: joined })
