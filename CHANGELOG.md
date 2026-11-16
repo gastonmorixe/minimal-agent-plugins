@@ -8,6 +8,16 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-15: **`ma-llm-openai-plugin` removes citation markers from the
+  answer text.** OpenAI models write a marker made of the private-use
+  characters U+E200, U+E202 and U+E201 around `cite` and references like
+  `turn0search0`. With a custom search tool nothing resolves it, so the user
+  saw unprintable glyphs and `citeturn0search0`. The Responses path of the
+  adapter now runs `stripCitationMarkers` on the canonical events. It drops
+  only a well-formed marker, also when the marker is split across deltas, and
+  it leaves thinking and tool input unchanged. The strip runs after the
+  network client, so the net-dbg capture keeps the raw bytes.
+
 - 2026-11-01 `c19b4ad`: **Responses usage counts cached tokens once.** Core
   now treats canonical `inputTokens` as uncached input only. The Responses
   `input_tokens` field includes `input_tokens_details.cached_tokens`. So the

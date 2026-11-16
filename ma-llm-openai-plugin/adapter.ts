@@ -8,6 +8,8 @@
  *                          `translateOpenAIChatStream`.
  * - `"openai-responses"`→ POST `/v1/responses`, translated by
  *                          `translateOpenAIResponsesStream`.
+ *                          `stripCitationMarkers` then removes the
+ *                          citation markers the model writes into its text.
  *
  * Like the Anthropic adapter, retry / watchdog / observer live one layer
  * up (provider-neutral); this file only knows the wire format. The
@@ -45,6 +47,7 @@ import type {
   ValidationResult,
 } from "./lib/host-types.ts"
 import { findOpenAIModelByTags, registerOpenAIModels } from "./models.ts"
+import { stripCitationMarkers } from "./responses/citation-markers.ts"
 import { callOpenAIResponsesCompact, compactOutputToMessages } from "./responses/compact.ts"
 import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
 import {
@@ -176,7 +179,11 @@ export const openaiAdapter: ProviderAdapter = {
       if (!response.body) {
         throw new Error("OpenAI Responses API: empty response body for stream")
       }
-      yield* translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body))
+      // The strip runs on canonical events, after the network client handed
+      // the raw bytes to its observers. The net-dbg capture keeps the markers.
+      yield* stripCitationMarkers(
+        translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body)),
+      )
       return
     }
 

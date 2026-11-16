@@ -1,0 +1,84 @@
+event: response.created
+data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_fixture_citation","object":"response","model":"gpt-fixture","status":"in_progress"}}
+
+event: response.in_progress
+data: {"type":"response.in_progress","sequence_number":1,"response":{"id":"resp_fixture_citation","object":"response","model":"gpt-fixture","status":"in_progress"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":2,"output_index":0,"item":{"type":"message","id":"msg_fixture_citation","role":"assistant","status":"in_progress","content":[]}}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","sequence_number":3,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"part":{"type":"output_text","text":"","annotations":[],"logprobs":[]}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":4,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"The","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":5,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":" project","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":6,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":" has","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":7,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":" a","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":8,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":" public","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":9,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":" site","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":10,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":".","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":11,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":" ","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":12,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"cite","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":13,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":14,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"turn","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":15,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"0","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":16,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"search","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":17,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"0","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":18,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":19,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"turn","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":20,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"0","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":21,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"search","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":22,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"1","logprobs":[]}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":23,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"delta":"","logprobs":[]}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","sequence_number":24,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"text":"The project has a public site. citeturn0search0turn0search1","logprobs":[]}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","sequence_number":25,"item_id":"msg_fixture_citation","output_index":0,"content_index":0,"part":{"type":"output_text","text":"The project has a public site. citeturn0search0turn0search1","annotations":[],"logprobs":[]}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":26,"output_index":0,"item":{"type":"message","id":"msg_fixture_citation","role":"assistant","status":"completed","content":[{"type":"output_text","text":"The project has a public site. citeturn0search0turn0search1","annotations":[],"logprobs":[]}]}}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":27,"response":{"id":"resp_fixture_citation","object":"response","model":"gpt-fixture","status":"completed","usage":{"input_tokens":20,"output_tokens":19,"total_tokens":39}}}
+
