@@ -31,7 +31,7 @@ describe("turn-recovery manifest", () => {
     expect(providers).toHaveLength(1)
     const kinds: string[] = [...(providers[0]?.kinds ?? [])].sort()
     expect(kinds).toEqual([...createTurnRecoveryProvider().kinds].sort())
-    expect(kinds).toHaveLength(26)
+    expect(kinds).toHaveLength(28)
     expect(providers[0]?.text("tool_result.handler_error", { detail: "boom" })).toBe(
       "Handler error: boom",
     )
