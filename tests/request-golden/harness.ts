@@ -214,8 +214,19 @@ export function assertRgAvailable(
   if (scenario.needsRg && !which("rg")) throw new RgMissingError(scenario.name)
 }
 
+/** Test-only observers of one run. The golden output does not change. */
+export interface RunHooks {
+  /** Called with the loader before the first core is built. */
+  onLoader?: (loader: PluginLoader) => void
+  /** Called after the run with every raw captured request (before keep and normalize). */
+  onRequests?: (
+    requests: ReadonlyArray<Record<string, unknown>>,
+    paths: { root: string; cwd: string; home: string },
+  ) => void
+}
+
 /** Run one scenario and return its canonical golden text. */
-export async function runScenario(scenario: Scenario): Promise<string> {
+export async function runScenario(scenario: Scenario, hooks: RunHooks = {}): Promise<string> {
   assertRgAvailable(scenario)
   mkdirSync(TMP_BASE, { recursive: true })
   const root = realpathSync(mkdtempSync(join(TMP_BASE, `${scenario.name}-`)))
@@ -264,6 +275,7 @@ export async function runScenario(scenario: Scenario): Promise<string> {
       // their tools and prompt fragments and every golden differs.
       effectivePlatform: GOLDEN_PLATFORM,
     })
+    hooks.onLoader?.(loader)
     const modes = new ModeManager(loader.getModes(), null, "dark", () => new Date(FIXED_NOW_MS))
     const captured: Array<Record<string, unknown>> = []
     const send = scriptedSend(scenario, captured)
@@ -302,6 +314,7 @@ export async function runScenario(scenario: Scenario): Promise<string> {
     }
     const turn: ScenarioCtx["turn"] = (text, opts) => turnOn(core, text, opts)
     await scenario.run({ cwd, turn, core, modes, root, newCore, turnOn })
+    hooks.onRequests?.(captured, { root, cwd, home })
     const keep = scenario.keep
     const picked = keep
       ? keep.map((i) => captured.at(i)).filter((r): r is Record<string, unknown> => !!r)
