@@ -7,6 +7,13 @@
  * discovery is sync and reads a few small files. It never throws: an error
  * goes to the debug log and the payload stays as it is.
  *
+ * Cost: the CLI's 250 ms budget bounds only async work, and this listener
+ * is sync. It is usually the first `engineFor` call at boot, so a cold
+ * cache pays discovery, file reads, parsing and hashing here (later calls
+ * for the same cwd hit the cache). Keep this path sync-cheap: no network,
+ * no subprocess. Measured first call: see `startup-rows.test.ts`
+ * ("first-call cost").
+ *
  * @module handlers/startup-rows
  */
 

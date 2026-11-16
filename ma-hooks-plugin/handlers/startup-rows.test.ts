@@ -109,6 +109,26 @@ describe("startup.rows handler", () => {
     expect(eng.all).toHaveLength(1)
   })
 
+  test("first-call cost with 3 hooks (cold engine cache)", () => {
+    sb = homeSandbox()
+    sb.write(
+      join(sb.agentHome, "hooks.json"),
+      nativeConfig("tool.willInvoke", ["/bin/guard.sh", "/bin/audit.sh"], {}, "Bash"),
+    )
+    sb.write(
+      join(sb.home, ".claude", "settings.json"),
+      JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "x.sh" }] }] } }),
+    )
+    resetEngine()
+    const t0 = performance.now()
+    const r = startupRows({ cwd: sb.project, cols: 80, rows: [] }, ctx(sb.project))
+    const ms = performance.now() - t0
+    console.log(`startup.rows first call: ${ms.toFixed(2)} ms`)
+    expect(r?.payload.rows[0]?.summary[0]?.text).toBe("3 active")
+    // Loose guard only: a sync listener blocks boot, so it must stay cheap.
+    expect(ms).toBeLessThan(200)
+  })
+
   test("no hooks returns undefined", () => {
     sb = homeSandbox()
     expect(startupRows({ cwd: sb.project, cols: 80, rows: [TOOLS] }, ctx(sb.project))).toBe(
