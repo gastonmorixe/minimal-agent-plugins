@@ -2,7 +2,8 @@
   "id": "ma-base-prompt-plugin",
   "name": "Base prompt",
   "version": "0.1.0",
-  "description": "Provides the base identity and the base instructions of the system prompt as data files.",
+  "required": true,
+  "description": "Provides the base identity and the 3 base system slots (instructions, loop safety, tool output conventions) as data files.",
   "systemPromptBase": { "id": "base", "entry": "./provider.ts" },
   "capabilities": []
 }

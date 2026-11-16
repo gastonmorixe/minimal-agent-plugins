@@ -3,9 +3,17 @@ import { join } from "node:path"
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import createProvider, { createBaseProvider } from "./provider.ts"
+import createProvider, { createBaseProvider, fill } from "./provider.ts"
 
 const FIX = join(import.meta.dir, "__fixtures__")
+const SYSTEM_FIXTURE = join(
+  import.meta.dir,
+  "..",
+  "tests",
+  "text-parity",
+  "fixtures",
+  "system.json",
+)
 const TMP = join(import.meta.dir, "tmp-provider-test")
 const ctx = { authKind: "k", modelId: "m" }
 const bytes = (s: string) => Buffer.from(s, "utf-8")
@@ -81,14 +89,97 @@ describe("base prompt provider", () => {
     expect(p.instructionParts?.()[0]?.text).toBe(first ?? "")
   })
 
-  // Core fills the instructions placeholders (renderInstructions in core). Only the
-  // agent home placeholder is allowed, so an unknown name cannot reach core.
-  test("the identity has no placeholder, and the instructions use only %%agentHome%%", () => {
+  // The provider fills each template with a fixed set of names, so an unknown
+  // name cannot reach the model.
+  test("each data file uses only the placeholders the provider fills", () => {
     const read = (name: string) => readFileSync(join(import.meta.dir, "prompts", name), "utf-8")
-    expect(read("identity.neutral.md").includes("%%")).toBe(false)
-    const names = [...read("instructions.md").matchAll(/%%([A-Za-z0-9_.-]+\??)%%/g)].map(
-      (m) => m[1],
+    const names = (name: string) =>
+      new Set([...read(name).matchAll(/%%([A-Za-z0-9_.-]+\??)%%/g)].map((m) => m[1]))
+    expect(names("identity.neutral.md")).toEqual(new Set())
+    expect(names("instructions.md")).toEqual(new Set(["agentHome"]))
+    expect(names("loop-safety/checkpoint-cooldown.tmpl.md")).toEqual(
+      new Set(["interval", "cooldownSec"]),
     )
-    expect(new Set(names)).toEqual(new Set(["agentHome"]))
+    expect(names("loop-safety/checkpoint-plain.tmpl.md")).toEqual(new Set(["interval"]))
+    for (const f of ["heading.md", "intro.md", "ack.md"]) {
+      expect(names(`loop-safety/${f}`)).toEqual(new Set())
+    }
+    expect(names("tool-output-conventions.md")).toEqual(new Set())
+  })
+
+  test("the provider declares the 3 system slots as data", () => {
+    expect(createProvider().slots).toEqual(["instructions", "loopSafety", "toolOutputConventions"])
+  })
+
+  test("fill replaces each name and throws on a name with no value", () => {
+    expect(fill("a %%x%% b %%x%%", { x: 1 })).toBe("a 1 b 1")
+    expect(() => fill("%%y%%", {})).toThrow()
+  })
+})
+
+interface GridEntry {
+  ctx: {
+    reflectionInterval: number
+    reflectionCooldownMs: number
+    blobStoreEnabled: boolean
+    agentHome: string
+  }
+  instructions: string | null
+  loopSafety: string | null
+  toolOutputConventions: string | null
+}
+interface SystemFixture {
+  identity: string
+  instructionsTemplate: string
+  grid: GridEntry[]
+}
+const system = JSON.parse(readFileSync(SYSTEM_FIXTURE, "utf-8")) as SystemFixture
+
+describe("byte parity with the core system fixture", () => {
+  test("the grid has 8 entries", () => expect(system.grid).toHaveLength(8))
+
+  test("identity equals the fixture", () => {
+    expect(createProvider().identity?.(ctx)).toBe(system.identity)
+  })
+
+  test("instructionParts with no ctx gives the instructions template", () => {
+    expect(createProvider().instructionParts?.()).toEqual([
+      { slot: "instructions", text: system.instructionsTemplate },
+    ])
+  })
+
+  for (const entry of system.grid) {
+    const c = entry.ctx
+    const name = `interval=${c.reflectionInterval} cooldownMs=${c.reflectionCooldownMs} blob=${c.blobStoreEnabled}`
+    test(`each slot equals the fixture (${name})`, () => {
+      const parts = createProvider().instructionParts?.(c) ?? []
+      const bySlot = new Map(parts.map((p) => [p.slot, p.text]))
+      expect(parts.length).toBe(bySlot.size)
+      for (const slot of ["instructions", "loopSafety", "toolOutputConventions"] as const) {
+        const want = entry[slot]
+        if (want === null) {
+          expect(bySlot.has(slot)).toBe(false)
+        } else {
+          expect(bytes(bySlot.get(slot) ?? "").equals(bytes(want))).toBe(true)
+        }
+      }
+    })
+  }
+
+  test("the same provider renders each ctx on its own (no state across calls)", () => {
+    const p = createProvider()
+    for (const entry of [...system.grid, ...system.grid.toReversed()]) {
+      const got = new Map((p.instructionParts?.(entry.ctx) ?? []).map((x) => [x.slot, x.text]))
+      expect(got.get("loopSafety") ?? null).toBe(entry.loopSafety)
+      expect(got.get("toolOutputConventions") ?? null).toBe(entry.toolOutputConventions)
+    }
+  })
+
+  test("agentHome comes from the ctx", () => {
+    const base = system.grid[0]?.ctx
+    if (base === undefined) throw new Error("empty grid")
+    const parts = createProvider().instructionParts?.({ ...base, agentHome: "/x/home" }) ?? []
+    const text = parts.find((p) => p.slot === "instructions")?.text ?? ""
+    expect(text).toBe(system.instructionsTemplate.replaceAll("%%agentHome%%", "/x/home"))
   })
 })
