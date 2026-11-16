@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import { renderFor } from "../../tests/support/prompt-render.ts"
 
+import type { StartupProfile } from "./host-types.ts"
 import {
   type ServiceDeps,
   spawnAgent,
@@ -594,5 +595,270 @@ describe("stopAllAgents", () => {
     expect(killed).toEqual([4242])
     // Work already finished. Reap the pid, do not rewrite the status.
     expect(deps.store.get("A1")?.status.kind).toBe("done")
+  })
+})
+
+describe("spawnAgent permission clamp (SPEC R6, R7, R13, T2, T3, T8)", () => {
+  let dir: string
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "subagents-clamp-"))
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  const ASK = { id: "ask", permissions: { allow: ["*"], deny: ["Edit", "Write"] } }
+  const argAfter = (argv: string[] | undefined, flag: string): string | undefined =>
+    argv ? argv[argv.indexOf(flag) + 1] : undefined
+
+  it("lead in ask lowers a writable worker to ask and reports it", async () => {
+    const deps = makeDeps(dir, {
+      queryHostPolicy: () => ({ activeModeId: "ask", modes: [ASK], tools: { kind: "all" } }),
+    })
+    const r = await spawnAgent({ task: "edit things" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(argAfter(deps.launched[0], "--mode")).toBe("ask")
+    expect(r.value.modeLowered).toEqual({ from: "none", to: "ask" })
+    expect(deps.launched[0]).not.toContain("--tools")
+  })
+
+  it("lead in no mode keeps a read-only role in ask, not lowered", async () => {
+    const def: WorkerDefinition = { name: "explorer", mode: "ask" }
+    const deps = makeDeps(dir, {
+      resolveDefinition: () => def,
+      queryHostPolicy: () => ({ activeModeId: null, modes: [ASK], tools: { kind: "all" } }),
+    })
+    const r = await spawnAgent({ task: "look", agent: "explorer" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(argAfter(deps.launched[0], "--mode")).toBe("ask")
+    expect(r.value.modeLowered).toBeUndefined()
+  })
+
+  it("lead --tools Read,Grep: worker gets Read,Grep and the report tool (T3)", async () => {
+    const deps = makeDeps(dir, {
+      queryHostPolicy: () => ({
+        activeModeId: null,
+        modes: [],
+        tools: { kind: "list", names: ["Read", "Grep"] },
+      }),
+    })
+    await spawnAgent({ task: "read" }, deps)
+    expect(argAfter(deps.launched[0], "--tools")).toBe(
+      "Read,Grep,SubAgentsReportResult,ReportResult",
+    )
+  })
+
+  it("lead --no-tools: worker gets only the report tool, never --no-tools (T3)", async () => {
+    const deps = makeDeps(dir, {
+      queryHostPolicy: () => ({ activeModeId: null, modes: [], tools: { kind: "none" } }),
+    })
+    await spawnAgent({ task: "read" }, deps)
+    expect(argAfter(deps.launched[0], "--tools")).toBe("SubAgentsReportResult,ReportResult")
+    expect(deps.launched[0]).not.toContain("--no-tools")
+  })
+
+  it("no snapshot, no lead env mode (older core): role mode kept, no --tools (T8)", async () => {
+    const warnings: string[] = []
+    const deps = makeDeps(dir, { warn: (m: string) => warnings.push(m) })
+    const r = await spawnAgent({ task: "edit" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(argAfter(deps.launched[0], "--mode")).toBe("none")
+    expect(deps.launched[0]).not.toContain("--tools")
+    expect(r.value.modeLowered).toBeUndefined()
+    expect(warnings.length).toBe(1)
+  })
+
+  it("no snapshot, lead env mode ask: a writable worker is lowered to ask (T8, R7)", async () => {
+    const deps = makeDeps(dir, { leadModeEnv: "ask" })
+    const r = await spawnAgent({ task: "edit" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(argAfter(deps.launched[0], "--mode")).toBe("ask")
+    expect(r.value.modeLowered).toEqual({ from: "none", to: "ask" })
+  })
+
+  it("persists modeLowered and the inherit summary on the record (R12, R13)", async () => {
+    const deps = makeDeps(dir, {
+      queryHostPolicy: () => ({ activeModeId: "ask", modes: [ASK], tools: { kind: "all" } }),
+    })
+    await spawnAgent({ task: "edit" }, deps)
+    const stored = new SubagentStore(LEAD, { dir }).get("A1")
+    expect(stored?.modeLowered).toEqual({ from: "none", to: "ask" })
+    expect(stored?.inherit).toBe("inherit: profile:none tools:all mode:ask")
+  })
+})
+
+describe("spawnAgent startup profile (SPEC 4.4, 4.5, 6.4, R11, R12, T1, T8)", () => {
+  let dir: string
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "subagents-profile-"))
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  const argAfter = (argv: string[] | undefined, flag: string): string | undefined =>
+    argv?.includes(flag) ? argv[argv.indexOf(flag) + 1] : undefined
+  const PROFILE: StartupProfile = {
+    version: 1,
+    systemPrompt: {
+      providerPreamble: { kind: "replace", text: "PRE" },
+      instructions: { kind: "omit" },
+      unsafeProviderOverrides: true,
+    },
+    noAgentsMd: true,
+    pluginPrompts: { all: true, suppress: [], keep: [] },
+    plugins: { disable: ["foo"], enable: [] },
+    bare: false,
+    tools: { kind: "list", names: ["Read", "Grep"] },
+  }
+  const leadPath = (d: string): string => `${d}/${LEAD}.profile.json`
+
+  it("passes the lead profile path and records the summary (T1, R12)", async () => {
+    const deps = makeDeps(dir, {
+      startupProfile: () => ({ path: leadPath(dir), profile: PROFILE }),
+    })
+    const r = await spawnAgent({ task: "go" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(argAfter(deps.launched[0], "--startup-profile")).toBe(leadPath(dir))
+    expect(argAfter(deps.launched[0], "--disable-plugin")).toBe("intercom")
+    expect(r.value.inherit).toBe(
+      "inherit: sys(~pre,-instr,!unsafe) agents-md:off plugin-prompts:off plugins(-foo) tools:lead mode:none",
+    )
+  })
+
+  it("falls back to profile.tools for the clamp when no snapshot exists", async () => {
+    const deps = makeDeps(dir, {
+      startupProfile: () => ({ path: leadPath(dir), profile: PROFILE }),
+    })
+    await spawnAgent({ task: "go" }, deps)
+    expect(argAfter(deps.launched[0], "--tools")).toBe(
+      "Read,Grep,SubAgentsReportResult,ReportResult",
+    )
+  })
+
+  it("R11 off: no --startup-profile, clamps still apply, env channel back (T1)", async () => {
+    const envs: Record<string, string>[] = []
+    const deps = makeDeps(dir, {
+      inherit: false,
+      disabledPlugins: "memory",
+      startupProfile: () => ({ path: leadPath(dir), profile: PROFILE }),
+      queryHostPolicy: () => ({
+        activeModeId: "ask",
+        modes: [{ id: "ask", permissions: { allow: ["*"], deny: ["Edit"] } }],
+        tools: { kind: "none" },
+      }),
+    })
+    const launched: string[][] = []
+    const d2 = {
+      ...deps,
+      spawnDeps: {
+        launch: (argv: readonly string[], opts: { env: Record<string, string> }) => {
+          launched.push([...argv])
+          envs.push(opts.env)
+          return 9001
+        },
+      },
+    }
+    const r = await spawnAgent({ task: "go" }, d2)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(launched[0]).not.toContain("--startup-profile")
+    expect(argAfter(launched[0], "--tools")).toBe("SubAgentsReportResult,ReportResult")
+    expect(argAfter(launched[0], "--mode")).toBe("ask")
+    expect(envs[0]?.MINIMAL_AGENT_DISABLE_PLUGINS).toBe("memory,intercom")
+    expect(r.value.inherit).toBe("inherit: profile:off tools:none mode:ask")
+  })
+
+  it("T8: no ctx.startupProfile and no snapshot, spawn works as before", async () => {
+    const envs: Record<string, string>[] = []
+    const deps = makeDeps(dir, {
+      disabledPlugins: "memory",
+      spawnDeps: {
+        launch: (_argv, opts) => {
+          envs.push(opts.env)
+          return 9002
+        },
+      },
+    })
+    const r = await spawnAgent({ task: "go" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(envs[0]?.MINIMAL_AGENT_DISABLE_PLUGINS).toBe("memory,intercom")
+    expect(r.value.inherit).toBe("inherit: profile:none tools:all mode:none")
+  })
+
+  it("SPEC 6.4: other provider gets a derived profile without provider parts", async () => {
+    const written: { path: string; profile: StartupProfile }[] = []
+    const warns: string[] = []
+    const deps = makeDeps(dir, {
+      leadProvider: "anthropic",
+      resolveProvider: () => "openai",
+      startupProfile: () => ({ path: leadPath(dir), profile: PROFILE }),
+      writeProfile: (path, profile) => written.push({ path, profile }),
+      warn: (m) => warns.push(m),
+    })
+    const r = await spawnAgent({ task: "go", model: "gpt-x" }, deps)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const childPath = `${dir}/${FIXED_SID}.profile.json`
+    expect(written).toHaveLength(1)
+    expect(written[0]?.path).toBe(childPath)
+    expect(written[0]?.profile.systemPrompt).toEqual({ instructions: { kind: "omit" } })
+    expect(argAfter(deps.launched[0], "--startup-profile")).toBe(childPath)
+    // No snapshot here, so the best-effort clamp warning (T8) comes first.
+    const providerWarns = warns.filter((w) => w.includes("openai"))
+    expect(providerWarns).toHaveLength(1)
+    expect(r.value.profileProvider).toEqual({ lead: "anthropic", worker: "openai" })
+    expect(r.value.inherit).toBe(
+      "inherit: sys(-instr) agents-md:off plugin-prompts:off plugins(-foo) tools:lead mode:none",
+    )
+  })
+
+  it("SPEC 6.4: the real writer puts valid JSON on disk", async () => {
+    const deps = makeDeps(dir, {
+      leadProvider: "anthropic",
+      resolveProvider: () => "openai",
+      startupProfile: () => ({ path: leadPath(dir), profile: PROFILE }),
+    })
+    const r = await spawnAgent({ task: "go", model: "gpt-x" }, deps)
+    expect(r.ok).toBe(true)
+    const onDisk = JSON.parse(readFileSync(`${dir}/${FIXED_SID}.profile.json`, "utf8"))
+    expect(onDisk.systemPrompt.providerPreamble).toBeUndefined()
+    expect(onDisk.systemPrompt.unsafeProviderOverrides).toBeUndefined()
+    expect(onDisk.plugins.disable).toEqual(["foo"])
+  })
+
+  it("same provider keeps the lead profile file, writes nothing", async () => {
+    const written: string[] = []
+    const deps = makeDeps(dir, {
+      leadProvider: "anthropic",
+      resolveProvider: () => "anthropic",
+      startupProfile: () => ({ path: leadPath(dir), profile: PROFILE }),
+      writeProfile: (path) => written.push(path),
+    })
+    await spawnAgent({ task: "go", model: "claude-x" }, deps)
+    expect(written).toHaveLength(0)
+    expect(argAfter(deps.launched[0], "--startup-profile")).toBe(leadPath(dir))
+  })
+})
+
+describe("provider-profile template (SPEC 6.4)", () => {
+  it("renders one line that names both providers", () => {
+    const out = testRender("provider-profile.tmpl.md", { lead: "a", worker: "b" }).trim()
+    expect(out.split("\n")).toHaveLength(1)
+    expect(out).toContain("`a`")
+    expect(out).toContain("`b`")
+    expect(out).not.toContain("%%")
+  })
+})
+
+describe("mode-lowered template (SPEC R13)", () => {
+  it("renders one line that names both modes", () => {
+    const out = testRender("mode-lowered.tmpl.md", { from: "none", to: "ask" }).trim()
+    expect(out.split("\n")).toHaveLength(1)
+    expect(out).toContain("`ask`")
+    expect(out).toContain("`none`")
+    expect(out).not.toContain("%%")
   })
 })

@@ -22,6 +22,74 @@ export interface PluginPrompts {
   expand(text: string): string
 }
 
+/** Lead tool name policy. Mirror of core `StartupProfileTools` (plugin-api/types/startup-profile). */
+export type StartupProfileTools =
+  | { readonly kind: "all" }
+  | { readonly kind: "none" }
+  | { readonly kind: "list"; readonly names: readonly string[] }
+
+/** One system-prompt part override. Mirror of core `StartupProfilePromptPart`. */
+export type StartupProfilePromptPart =
+  | { readonly kind: "default" }
+  | { readonly kind: "replace"; readonly text: string }
+  | { readonly kind: "omit" }
+
+/** System-prompt part names. Mirror of core `StartupProfilePartName`. */
+export type StartupProfilePartName =
+  | "full"
+  | "identity"
+  | "providerPreamble"
+  | "instructions"
+  | "loopSafety"
+  | "toolOutputConventions"
+  | "sessionContext"
+
+/** Final system-prompt overrides. Mirror of core `StartupProfileSystemPrompt`. */
+export type StartupProfileSystemPrompt = Readonly<
+  Partial<Record<StartupProfilePartName, StartupProfilePromptPart>>
+> & { readonly unsafeProviderOverrides?: boolean }
+
+/** The lead's final startup settings. Mirror of core `StartupProfile`. */
+export interface StartupProfile {
+  readonly version: 1
+  readonly systemPrompt: StartupProfileSystemPrompt
+  readonly noAgentsMd: boolean
+  readonly pluginPrompts: {
+    readonly all: boolean
+    readonly suppress: readonly string[]
+    readonly keep: readonly string[]
+  }
+  readonly plugins: { readonly disable: readonly string[]; readonly enable: readonly string[] }
+  readonly bare: boolean
+  readonly tools: StartupProfileTools
+}
+
+/** One mode and its tool permissions. Mirror of core `ModePolicyEntry`. */
+export interface ModePolicyEntry {
+  readonly id: string
+  readonly label?: string
+  /**
+   * Derived from effective rules, first rule per tool wins. `allow` / `deny`:
+   * tools whose first rule is allow:true / allow:false. `match`: tools whose
+   * first rule is a predicate ("match") rule. The lists are disjoint. "*" allowed.
+   * `match` is absent on an older core: treat it as empty.
+   */
+  readonly permissions: {
+    readonly allow: readonly string[]
+    readonly deny: readonly string[]
+    readonly match?: readonly string[]
+  }
+}
+
+/** Live mode + tool policy of the lead. Mirror of core `HostPolicySnapshot`. */
+export interface HostPolicySnapshot {
+  /** Live mode id at call time, null = no mode (unrestricted). */
+  readonly activeModeId: string | null
+  readonly modes: readonly ModePolicyEntry[]
+  /** Lead tool name policy (--tools/--no-tools). */
+  readonly tools: StartupProfileTools
+}
+
 /** Boot-time agent identity. Mirror of the host's `AgentContext`. */
 export interface AgentContext {
   readonly sessionId: string
@@ -116,6 +184,10 @@ export interface TUIContext {
   queryModelInfo?: () => ModelInfoSnapshot | undefined
   recommendSubagentModels?: () => SubagentModelRecommendation[]
   host?: PluginHost
+  /** Live mode + tool policy snapshot. Absent on older cores (SPEC T8). */
+  queryHostPolicy?: () => HostPolicySnapshot | undefined
+  /** The lead's startup profile and its file path. Absent on older cores. */
+  startupProfile?: () => { path: string; profile: StartupProfile } | undefined
   emitChain?: <T>(
     channel: string,
     payload: T,

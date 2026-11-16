@@ -344,3 +344,53 @@ describe("serviceDepsFromCtx lead credential + effort", () => {
     expect(deps?.defaultCredentialName).toBe("openai-chatgpt-oauth-2")
   })
 })
+
+describe("serviceDepsFromCtx host policy (SPEC R6, R7, T8)", () => {
+  it("reads ctx.queryHostPolicy live on each call", () => {
+    let active: string | null = "ask"
+    const ctx = {
+      ...makeCtx({}),
+      queryHostPolicy: () => ({ activeModeId: active, modes: [], tools: { kind: "all" as const } }),
+    } as TUIContext
+    const deps = serviceDepsFromCtx(ctx)
+    expect(deps?.queryHostPolicy?.()?.activeModeId).toBe("ask")
+    active = null
+    expect(deps?.queryHostPolicy?.()?.activeModeId).toBeNull()
+  })
+
+  it("leaves queryHostPolicy unset on an older core (T8)", () => {
+    const deps = serviceDepsFromCtx(makeCtx({}))
+    expect(deps?.queryHostPolicy).toBeUndefined()
+  })
+})
+
+describe("serviceDepsFromCtx startup profile (SPEC 4.5, R11, T8)", () => {
+  const profile = {
+    version: 1 as const,
+    systemPrompt: {},
+    noAgentsMd: true,
+    pluginPrompts: { all: false, suppress: [], keep: [] },
+    plugins: { disable: [], enable: [] },
+    bare: false,
+    tools: { kind: "all" as const },
+  }
+
+  it("forwards ctx.startupProfile", () => {
+    const ctx = {
+      ...makeCtx({}),
+      startupProfile: () => ({ path: "/s/lead.profile.json", profile }),
+    } as TUIContext
+    expect(serviceDepsFromCtx(ctx)?.startupProfile?.()?.path).toBe("/s/lead.profile.json")
+  })
+
+  it("leaves startupProfile unset on an older core (T8)", () => {
+    expect(serviceDepsFromCtx(makeCtx({}))?.startupProfile).toBeUndefined()
+  })
+
+  it("reads MINIMAL_AGENT_SUBAGENT_INHERIT=0 as inherit off (R11)", () => {
+    expect(serviceDepsFromCtx(makeCtx({}))?.inherit).toBe(true)
+    expect(serviceDepsFromCtx(makeCtx({ MINIMAL_AGENT_SUBAGENT_INHERIT: "0" }))?.inherit).toBe(
+      false,
+    )
+  })
+})

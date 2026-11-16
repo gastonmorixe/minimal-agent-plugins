@@ -321,6 +321,12 @@ export interface SubagentRecord {
   readonly depth: number
   /** The lead session that spawned this worker (lineage). */
   readonly leadSid: SessionId
+  /** Short form of the settings the worker inherited (SPEC R12), e.g. `inherit: agents-md:off tools:lead mode:ask`. */
+  readonly inherit?: string
+  /** Set only when the mode clamp lowered the role mode to the lead mode (SPEC R13). */
+  readonly modeLowered?: { readonly from: string; readonly to: string }
+  /** Set when the worker got a provider-derived profile (SPEC 6.4): the two provider ids. */
+  readonly profileProvider?: { readonly lead: string; readonly worker: string }
 }
 
 /** Per-status counts across a fleet. */
