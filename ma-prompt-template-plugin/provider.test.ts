@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test"
 import createProvider from "./provider.ts"
 import { PromptTemplateError } from "./template.ts"
 
-const pluginDir = join(import.meta.dir, "fixtures")
+const pluginDir = join(import.meta.dir, "__fixtures__")
 
 describe("provider", () => {
   const p = createProvider()

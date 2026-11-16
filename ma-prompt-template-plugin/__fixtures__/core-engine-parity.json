@@ -1121,9 +1121,9 @@
       }
     },
     {
-      "name": "A:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+      "name": "A:minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md",
       "input": {
-        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md",
         "text": "Hello %%name%%\n%%opt?%%\nEnd\n"
       },
       "vars": {
@@ -1133,9 +1133,9 @@
       "output": "Hello v:name\nv:opt\nEnd"
     },
     {
-      "name": "B:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+      "name": "B:minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md",
       "input": {
-        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md",
         "text": "Hello %%name%%\n%%opt?%%\nEnd\n"
       },
       "vars": {
@@ -1144,9 +1144,9 @@
       "output": "Hello v:name\n\nEnd"
     },
     {
-      "name": "C:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+      "name": "C:minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md",
       "input": {
-        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md",
         "text": "Hello %%name%%\n%%opt?%%\nEnd\n"
       },
       "vars": {
@@ -1154,13 +1154,13 @@
       },
       "error": {
         "missing": ["name"],
-        "message": "prompt template in minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md is missing required variable(s): name"
+        "message": "prompt template in minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/hello.md is missing required variable(s): name"
       }
     },
     {
-      "name": "A:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+      "name": "A:minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md",
       "input": {
-        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md",
         "text": "Title %%a%%\n\n%%o1?%%\n\nMid %%o2?%% end\n\n%%o3?%%\n\nTail %%a%%\nThree\n\n%%o4?%%\nEnd\n"
       },
       "vars": {
@@ -1173,9 +1173,9 @@
       "output": "Title v:a\n\nv:o1\n\nMid v:o2 end\n\nv:o3\n\nTail v:a\nThree\n\nv:o4\nEnd"
     },
     {
-      "name": "B:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+      "name": "B:minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md",
       "input": {
-        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md",
         "text": "Title %%a%%\n\n%%o1?%%\n\nMid %%o2?%% end\n\n%%o3?%%\n\nTail %%a%%\nThree\n\n%%o4?%%\nEnd\n"
       },
       "vars": {
@@ -1184,9 +1184,9 @@
       "output": "Title v:a\n\nMid  end\n\nTail v:a\nThree\n\nEnd"
     },
     {
-      "name": "C:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+      "name": "C:minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md",
       "input": {
-        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md",
         "text": "Title %%a%%\n\n%%o1?%%\n\nMid %%o2?%% end\n\n%%o3?%%\n\nTail %%a%%\nThree\n\n%%o4?%%\nEnd\n"
       },
       "vars": {
@@ -1197,7 +1197,7 @@
       },
       "error": {
         "missing": ["a"],
-        "message": "prompt template in minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md is missing required variable(s): a"
+        "message": "prompt template in minimal-agent-plugins/ma-prompt-template-plugin/__fixtures__/prompts/optional.md is missing required variable(s): a"
       }
     },
     {
