@@ -16,12 +16,24 @@ export type PromptRender = (
 
 /**
  * The REQUIRED deliverable protocol appended to a worker's prompt: how it
- * finishes (write the file itself, then call `ReportResult`), with the manual
- * sentinel path as the documented fallback. `%%resultPath%%` is the exact path
- * the fallback writes to.
+ * finishes (call `ReportResult`), with the manual sentinel path as the
+ * documented fallback. `%%resultPath%%` is the exact path the fallback writes
+ * to. When the lead set `expectArtifacts`, the optional `%%contract?%%` slot
+ * gets the rendered `result-contract.tmpl.md`: the required paths, and how to
+ * deliver them through `ReportResult.deliverables` (works in read-only mode).
  */
-export function renderResultProtocol(render: PromptRender, resultPath: string): string {
-  return render("result-protocol.tmpl.md", { resultPath })
+export function renderResultProtocol(
+  render: PromptRender,
+  resultPath: string,
+  expectArtifacts?: readonly string[],
+): string {
+  const contract =
+    expectArtifacts && expectArtifacts.length > 0
+      ? render("result-contract.tmpl.md", {
+          paths: expectArtifacts.map((p) => `- ${p}`).join("\n"),
+        })
+      : undefined
+  return render("result-protocol.tmpl.md", { resultPath, ...(contract ? { contract } : {}) })
 }
 
 /**

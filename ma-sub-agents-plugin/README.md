@@ -29,10 +29,25 @@ The host adds the plugin prefix, so the model sees the tools as
 | `AgentResult`  | lead         | The distilled deliverable of a finished worker. The only worker content that enters lead context. |
 | `StopAgent`    | lead         | Cancels a worker and kills its process.                                                           |
 | `Mailbox`      | both         | Opt-in notes between the lead and its workers (claim a file, flag a blocker, hand off a finding). |
-| `ReportResult` | worker       | The worker's last act: hands back `summary`, `artifacts`, and `incomplete`.                       |
+| `ReportResult` | worker       | The worker's last act: hands back `summary`, `artifacts`, `incomplete`, and `deliverables`.       |
 
 `ReportResult` is available only inside a worker (it needs the result path the
 lead puts in the worker's env).
+
+When the lead sets `expectArtifacts`, the spawn puts the list in the worker env
+(`MINIMAL_AGENT_SUBAGENT_EXPECT_ARTIFACTS`, a JSON array) and in the prompt. The
+worker passes each file in `ReportResult.deliverables` (`{ path, content }`) and
+the handler writes it. This works in every mode, also read-only `ask`. A path
+outside the list is refused. While a listed file is missing or empty,
+`ReportResult` returns an error and records nothing, unless `incomplete` is true.
+
+A read-only worker can write exactly the paths the lead lists in
+`expectArtifacts`, anywhere on disk. There is no cwd limit: the lead owns that
+list. The handler writes all files as temp files first and renames them only
+when every temp write succeeds. It refuses a path that is a symlink, a path
+with a trailing slash, and a path given twice. A required file counts as
+present only when it is a regular file with at least one byte, in the handler
+and in the supervisor probe.
 
 ### `SpawnAgent` parameters
 
@@ -46,7 +61,7 @@ lead puts in the worker's env).
 | `isolation`       | `fresh` (default): a clean context. `fork`: the worker resumes a fork of the lead's conversation and shares its prompt cache. |
 | `label`           | Display name in the widget. Default: the agent type.                                                                          |
 | `taskId`          | A Task-tool id. The supervisor ticks it done on success, or cancels it with a reason otherwise.                               |
-| `expectArtifacts` | Absolute paths the worker must produce. A missing or empty path makes the worker `incomplete`, never `done`.                  |
+| `expectArtifacts` | Absolute paths the worker must produce. A relative path is refused. A missing or empty path makes the worker `incomplete`.    |
 | `budget`          | `{ deadlineSec, maxTurns, maxTokens }`. See [Budgets](#budgets). Without `deadlineSec`, a hard 30-minute deadline applies.    |
 
 ### Budgets

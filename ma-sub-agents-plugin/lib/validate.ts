@@ -6,6 +6,8 @@
  * @module sub-agents/lib/validate
  */
 
+import { isAbsolute, resolve } from "node:path"
+
 import { type SpawnRequest } from "./service.ts"
 import { type Budget, err, type Isolation, ok, type Result } from "./types.ts"
 
@@ -37,6 +39,29 @@ function parseBudget(v: unknown): Budget | undefined {
   return Object.keys(b).length > 0 ? b : undefined
 }
 
+/**
+ * Validate the `expectArtifacts` contract: every entry must be an absolute
+ * path. Entries are resolved and deduped. A relative path is a teaching error,
+ * because the worker and the supervisor must agree on one exact file.
+ */
+export function normalizeExpectArtifacts(
+  paths: readonly string[] | undefined,
+): Result<string[] | undefined> {
+  if (!paths || paths.length === 0) return ok(undefined)
+  const out: string[] = []
+  for (const p of paths) {
+    if (!isAbsolute(p)) {
+      return err(
+        `\`expectArtifacts\` entries must be absolute paths, got "${p}". ` +
+          "Give the full path, for example /abs/project/research/findings.md.",
+      )
+    }
+    const abs = resolve(p)
+    if (!out.includes(abs)) out.push(abs)
+  }
+  return ok(out)
+}
+
 /** Parse + validate a `SpawnAgent` tool input. */
 export function parseSpawnRequest(input: Record<string, unknown>): Result<SpawnRequest> {
   const task = str(input.task)
@@ -52,6 +77,8 @@ export function parseSpawnRequest(input: Record<string, unknown>): Result<SpawnR
   const isolation = isoRaw as Isolation | undefined
 
   const budget = parseBudget(input.budget)
+  const expect = normalizeExpectArtifacts(strArray(input.expectArtifacts))
+  if (!expect.ok) return expect
   const req: SpawnRequest = {
     task,
     ...(str(input.agent) ? { agent: str(input.agent) } : {}),
@@ -62,9 +89,7 @@ export function parseSpawnRequest(input: Record<string, unknown>): Result<SpawnR
     ...(str(input.label) ? { label: str(input.label) } : {}),
     ...(budget ? { budget } : {}),
     ...(str(input.taskId) ? { taskId: str(input.taskId) } : {}),
-    ...(strArray(input.expectArtifacts)
-      ? { expectArtifacts: strArray(input.expectArtifacts) }
-      : {}),
+    ...(expect.value ? { expectArtifacts: expect.value } : {}),
   }
   return ok(req)
 }

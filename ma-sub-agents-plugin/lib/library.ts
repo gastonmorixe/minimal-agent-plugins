@@ -126,7 +126,7 @@ const BASE_LIBRARY: readonly WorkerDefinition[] = [
  * The shipped specialists, keyed by name. Each one's `systemPrompt` gets the
  * shared leaf-discipline clause (loaded from `../prompts/leaf-discipline.md`)
  * appended, so every worker regardless of role is told it cannot delegate and
- * must write its own output file then call `ReportResult`. The concrete
+ * must hand back its work (and any required files) through `ReportResult`. The concrete
  * result-protocol is appended per-spawn by `composePrompt`; this is the
  * behavioral reminder that rides the role itself.
  */

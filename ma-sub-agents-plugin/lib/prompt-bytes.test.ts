@@ -30,6 +30,12 @@ describe("prompt bytes", () => {
     expect(actual.equals(fixture("result-protocol.txt"))).toBe(true)
   })
 
+  it("result protocol with a contract is byte identical", () => {
+    const contract = ["/work/findings.md", "/work/report.md"]
+    const actual = Buffer.from(renderResultProtocol(testRender, RESULT_PATH, contract), "utf-8")
+    expect(actual.equals(fixture("result-protocol-contract.txt"))).toBe(true)
+  })
+
   it("leaf discipline is byte identical", () => {
     const actual = Buffer.from(leafDiscipline(testRender), "utf-8")
     expect(actual.equals(fixture("leaf-discipline.txt"))).toBe(true)

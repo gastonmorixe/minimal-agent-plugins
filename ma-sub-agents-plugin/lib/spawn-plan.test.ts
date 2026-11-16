@@ -116,16 +116,31 @@ describe("buildSpawnPlan disables intercom for every worker", () => {
 })
 
 describe("renderResultProtocol (the markdown template)", () => {
-  it("teaches: leaf worker, no delegation, write the file, then call ReportResult; with the fallback path", () => {
+  it("teaches: leaf worker, no delegation, call ReportResult; with the fallback path", () => {
     const out = renderResultProtocol(testRender, "/sessions/abc.result.json")
     expect(out).toMatch(/leaf worker/i)
     expect(out).toMatch(/cannot delegate/i)
     expect(out).toMatch(/SpawnAgent/)
     expect(out).toMatch(/ReportResult/)
-    expect(out).toMatch(/write it yourself/i)
+    // no contract: no deliverables section, and no order to use the Write tool
+    expect(out).not.toMatch(/deliverables/)
+    expect(out).not.toMatch(/with the Write tool/)
     // the manual-sentinel fallback carries the exact path
     expect(out).toContain("/sessions/abc.result.json")
     expect(out).toContain('"short"')
+  })
+
+  it("renders the required paths and the deliverables route when a contract is set", () => {
+    const out = renderResultProtocol(testRender, "/sessions/abc.result.json", [
+      "/abs/a.md",
+      "/abs/b.md",
+    ])
+    expect(out).toContain("- /abs/a.md\n- /abs/b.md")
+    expect(out).toMatch(/ReportResult\.deliverables/)
+    expect(out).toMatch(/read-only/)
+    expect(out).not.toMatch(/with the Write tool/)
+    expect(out).not.toContain("%%")
+    expect(out).toContain("/sessions/abc.result.json")
   })
 })
 

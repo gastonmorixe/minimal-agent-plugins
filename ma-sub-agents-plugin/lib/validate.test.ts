@@ -41,6 +41,21 @@ describe("parseSpawnRequest — expectArtifacts (FIX 4 contract)", () => {
     expect(r3.ok && "expectArtifacts" in r3.value).toBe(false)
   })
 
+  it("rejects a relative path with a teaching error", () => {
+    const r = parseSpawnRequest({ task: "x", expectArtifacts: ["/ok.md", "rel/f.md"] })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/absolute/)
+  })
+
+  it("resolves and dedupes paths", () => {
+    const r = parseSpawnRequest({
+      task: "x",
+      expectArtifacts: ["/a/./b.md", "/a/b.md", "/a/c/../d.md"],
+    })
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.expectArtifacts).toEqual(["/a/b.md", "/a/d.md"])
+  })
+
   it("caps the list length (bounded)", () => {
     const many = Array.from({ length: 100 }, (_, i) => `/p/${i}.md`)
     const r = parseSpawnRequest({ task: "x", expectArtifacts: many })

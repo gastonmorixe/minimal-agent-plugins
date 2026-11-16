@@ -1,3 +1,7 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { describe, expect, it } from "bun:test"
 
 import {
@@ -6,6 +10,7 @@ import {
   launchWorker,
   parseResultDigest,
   probeWorker,
+  realProbeDeps,
   type SpawnDeps,
   workerEnv,
 } from "./spawn.ts"
@@ -388,5 +393,27 @@ describe("workerEnv", () => {
   })
   it("strips BUN_BE_BUN even when the overlay sets it", () => {
     expect("BUN_BE_BUN" in workerEnv({ BUN_BE_BUN: "1" }, {})).toBe(false)
+  })
+})
+
+describe("realProbeDeps.missingArtifacts (S2)", () => {
+  it("counts a directory, an empty file, and an absent path as missing", () => {
+    const d = mkdtempSync(join(tmpdir(), "probe-missing-"))
+    try {
+      const full = join(d, "full.md")
+      const empty = join(d, "empty.md")
+      const sub = join(d, "sub")
+      writeFileSync(full, "x")
+      writeFileSync(empty, "")
+      mkdirSync(sub)
+      const none = join(d, "none.md")
+      expect(realProbeDeps().missingArtifacts?.([full, empty, sub, none])).toEqual([
+        empty,
+        sub,
+        none,
+      ])
+    } finally {
+      rmSync(d, { recursive: true, force: true })
+    }
   })
 })

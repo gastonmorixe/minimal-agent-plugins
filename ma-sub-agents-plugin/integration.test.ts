@@ -10,7 +10,7 @@
  * @module sub-agents/integration.test
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import { renderFor } from "../tests/support/prompt-render.ts"
 
+import { resolveDefinition } from "./lib/library.ts"
 import { type ServiceDeps, spawnAgent } from "./lib/service.ts"
 import { ENV_RESULT_PATH, realProbeDeps, realSpawnDeps } from "./lib/spawn.ts"
 import { SubagentStore } from "./lib/store.ts"
@@ -273,7 +274,8 @@ describe("sub-agents end-to-end (real process, no network)", () => {
 
   it("salvages a ReportResult summary onto incomplete when a required file is missing", async () => {
     // The worker reports real findings via ReportResult but never writes the
-    // contracted file. The supervisor marks it incomplete (the file gate), yet
+    // contracted file. The handler bounces the plain call, so it reports
+    // `incomplete: true`. The supervisor marks it incomplete (the file gate), yet
     // the findings survive as `salvage` so the lead need not mine the transcript.
     const handlerPath = join(import.meta.dir, "handlers", "report_result.ts")
     const partialWorker = join(dir, "partial-worker.ts")
@@ -281,12 +283,16 @@ describe("sub-agents end-to-end (real process, no network)", () => {
       partialWorker,
       [
         `import reportResult from ${JSON.stringify(handlerPath)}`,
-        "await reportResult({",
-        "  trigger: { type: 'tool', name: 'ReportResult', input: { summary: 'the codec ceiling is 4K60 on this chip' }, tool_use_id: 't' },",
+        "const call = (input) => reportResult({",
+        "  trigger: { type: 'tool', name: 'ReportResult', input, tool_use_id: 't' },",
         "  packageDir: '.', cwd: '.', env: process.env,",
         "  abort: new AbortController().signal,",
         "  stdout: process.stdout, stdin: process.stdin, stderr: process.stderr,",
         "} as never)",
+        "// A plain call bounces while the required file is missing (handler gate).",
+        "const first = await call({ summary: 'the codec ceiling is 4K60 on this chip' })",
+        "if (!first.is_error) process.exit(5)",
+        "await call({ summary: 'the codec ceiling is 4K60 on this chip', incomplete: true })",
         "process.exit(0)",
       ].join("\n"),
     )
@@ -310,5 +316,55 @@ describe("sub-agents end-to-end (real process, no network)", () => {
       // the findings the worker reported survive the contract miss
       expect(rec.status.salvage).toMatch(/codec ceiling/i)
     }
+  })
+
+  it("a read-only (ask mode) explorer delivers its contracted file ONLY through ReportResult deliverables", async () => {
+    // The child refuses any direct file write when it runs in `ask` mode (as the
+    // real harness denies Edit/Write). It reads the contract from its env and
+    // hands the file to the REAL ReportResult handler, which writes it. The
+    // first call has no deliverables and must bounce (no sentinel), proving the
+    // handler gate lets the worker retry in the same run.
+    const handlerPath = join(import.meta.dir, "handlers", "report_result.ts")
+    const askWorker = join(dir, "ask-worker.ts")
+    writeFileSync(
+      askWorker,
+      [
+        `import reportResult from ${JSON.stringify(handlerPath)}`,
+        "import { existsSync } from 'node:fs'",
+        "const argv = process.argv.slice(2)",
+        "if (argv[argv.indexOf('--mode') + 1] !== 'ask') process.exit(3)",
+        "const contract = JSON.parse(process.env.MINIMAL_AGENT_SUBAGENT_EXPECT_ARTIFACTS ?? '[]')",
+        "const call = (input) => reportResult({",
+        "  trigger: { type: 'tool', name: 'ReportResult', input, tool_use_id: 't' },",
+        "  packageDir: '.', cwd: '.', env: process.env,",
+        "  abort: new AbortController().signal,",
+        "  stdout: process.stdout, stdin: process.stdin, stderr: process.stderr,",
+        "} as never)",
+        "const first = await call({ summary: 'conventions found' })",
+        "if (!first.is_error || existsSync(process.env." + ENV_RESULT_PATH + ")) process.exit(4)",
+        "const res = await call({ summary: 'conventions found', deliverables: contract.map((path) => ({ path, content: '# Conventions\\n' })) })",
+        "process.exit(res && res.is_error ? 1 : 0)",
+      ].join("\n"),
+    )
+    const store = new SubagentStore(LEAD, { dir })
+    const deps: ServiceDeps = {
+      ...svcDeps(store),
+      agentBin: [process.execPath, askWorker],
+      resolveDefinition: (n) => resolveDefinition(n, testRender),
+    }
+    const out = join(dir, "research", "conventions.md")
+    const sp = await spawnAgent(
+      { task: "find conventions", agent: "explorer", expectArtifacts: [out] },
+      deps,
+    )
+    expect(sp.ok).toBe(true)
+    if (!sp.ok) return
+    await waitForExit(sp.value.status.kind === "running" ? sp.value.status.pid : 0)
+
+    runSupervisor(supDeps(store, []))
+    const rec = store.get(sp.value.id)
+    expect(rec?.status.kind).toBe("done")
+    expect(readFileSync(out, "utf-8")).toBe("# Conventions\n")
+    if (rec?.status.kind === "done") expect(rec.status.result.artifacts).toContain(out)
   })
 })
