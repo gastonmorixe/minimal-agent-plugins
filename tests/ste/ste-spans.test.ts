@@ -65,6 +65,28 @@ const CODE: readonly string[] = [
   "<ma::agent::mode-active />",
 ]
 
+/**
+ * Banned words hidden in a code-shaped span. The classifier may not judge
+ * these as prose, but the vocabulary rules read inside every span, so each
+ * one must still produce a finding. This is the design that replaces three
+ * rounds of regex patches, each of which moved the hole somewhere else.
+ */
+const HIDDEN_WORDS: readonly string[] = [
+  "cat lovers utilize it",
+  "head of team will utilize it",
+  "kill the robust job; moreover stop",
+  "echo the robust answer",
+  "export the robust report",
+  "source the robust data",
+  "SELECT the robust option FROM the menu; moreover utilize it",
+  "WITH care, SET the robust value",
+  'note: "we utilize it"',
+  "step: 1 utilize the robust path",
+  "utilize; robust",
+  "echo a; echo don't",
+  "minimal-agent-cli utilize it",
+]
+
 describe("backtick span classifier", () => {
   test("each evasion is classified as prose", () => {
     const wrong = EVASIONS.filter((span) => looksLikeCode(span))
@@ -92,6 +114,17 @@ describe("backtick span classifier", () => {
     // A sanity check on the mask itself: a span with four or more plain words
     // and no code shape is prose. This is the case that used to hide.
     expect(looksLikeCode("the tool does not stop at once")).toBe(false)
+  })
+
+  test("a banned word is caught even inside a code-shaped span", () => {
+    // The vocabulary rules do not depend on the classifier.
+    const clean = HIDDEN_WORDS.filter((span) => lintText(`Run \`${span}\`.`).length === 0)
+    expect(clean).toEqual([])
+  })
+
+  test("real code carries no vocabulary finding", () => {
+    const noisy = CODE.filter((span) => lintText(`Run \`${span}\`.`).length > 0)
+    expect(noisy).toEqual([])
   })
 
   test("the tables are big enough to mean something", () => {

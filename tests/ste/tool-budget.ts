@@ -26,7 +26,7 @@ const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-handler-t
  * Lower it by hand after a real cut. The lower tolerance stops it sitting
  * loose.
  */
-export const TOOL_BLOCK_WORDS = 8162
+export const TOOL_BLOCK_WORDS = 8163
 
 /**
  * The largest a single tool may be, measured 2026-11-16.

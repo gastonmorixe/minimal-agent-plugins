@@ -113,6 +113,12 @@ const WORD_RULES: readonly WordRule[] = [
   },
 ]
 
+/**
+ * Rules that judge a word, not a sentence shape. They run on text that keeps
+ * the inside of a backtick span, because these words never appear in code.
+ */
+const VOCABULARY_RULES = new Set(["ste-s4-banned-word", "ste-s6-contraction", "ste-s9-sycophancy"])
+
 /** Pairs that must not both appear in one file, because STE keeps one word per meaning. */
 const TERM_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["begin", "start"],
@@ -183,6 +189,31 @@ const COMMAND_START =
 const UNICODE_SPACES = /[\u00a0\u2000-\u200b\u202f\u205f\u3000]/g
 
 /**
+ * Mask for the vocabulary rules only.
+ *
+ * A banned word, a contraction or a filler phrase does not appear in real code,
+ * so these rules read the text inside a backtick span too. That closes the one
+ * hole the classifier cannot close: hiding "utilize" or "moreover" in a span
+ * that looks like code. Fences, tags, URLs, paths and placeholders stay masked,
+ * because those really are identifiers.
+ *
+ * @param text - Raw file or string content.
+ * @returns Text of the same length, with only the non-word parts blanked.
+ */
+export function maskForWords(text: string): string {
+  const blank = (s: string): string => s.replace(/[^\n]/g, " ")
+  const oneWord = (s: string): string => (s.length <= 1 ? "W" : `W${" ".repeat(s.length - 1)}`)
+  return text
+    .replace(/^[a-z][\w-]*:[ \t]*\S+=\S+(?:;[ \t]*\S+=\S*)+;?[ \t]*$/gm, blank)
+    .replace(/^[ \t]*(```|~~~)[^\n]*\n[\s\S]*?^[ \t]*\1[^\n]*$/gm, blank)
+    .replace(/\$\{[^}\n]*\}/g, oneWord)
+    .replace(/%%[A-Za-z0-9_]+%%/g, oneWord)
+    .replace(/<ma::[\s\S]*?\/?>/g, oneWord)
+    .replace(/\bhttps?:\/\/\S+/g, oneWord)
+    .replace(/\b[\w.-]+\/[\w./-]+\b/g, oneWord)
+}
+
+/**
  * True when a backtick span is code, not quoted prose.
  *
  * A span that is mostly plain words is prose, even with one code character.
@@ -214,9 +245,9 @@ export function looksLikeCode(inner: string): boolean {
   // rule that stops bad prose hiding behind one code character.
   const tokens = /\s/.test(text) ? text.split(/\s+/) : text.split(/-+/)
   const plain = tokens.filter((token) => /^[A-Za-z][a-z']*[.,!?;:]?$/.test(token))
-  // A hyphen chain with no spaces is prose that lost its spaces.
-  const hyphenChain = !/\s/.test(text) && (text.match(/-/g)?.length ?? 0) >= 2
-  const needPlain = hyphenChain ? 3 : 3
+  // Three plain words are enough to read a span as prose. A hyphen chain was
+  // split into words above, so it needs no separate threshold.
+  const needPlain = 3
   if (plain.length >= needPlain && plain.length / tokens.length >= 0.6) {
     // A span that is mostly words is code only when it carries REAL JSON or
     // REAL SQL. A brace alone, or a leading keyword in lower case, is prose.
@@ -316,14 +347,21 @@ function isInstruction(sentence: string): boolean {
 export function lintText(text: string, lineOffset = 0): SteFinding[] {
   const offset = lineOffset
   const masked = maskNonProse(text)
+  // Vocabulary rules read the words inside a code span too: real code does not
+  // contain "utilize" or "moreover", so this cannot misfire, and it makes
+  // hiding a banned word in a code-looking span impossible.
+  const wordLines = maskForWords(text).split("\n")
   const lines = masked.split("\n")
   const findings: SteFinding[] = []
 
   lines.forEach((line, index) => {
     const lineNo = index + 1 + offset
+    const wordLine = wordLines[index] ?? line
     for (const rule of WORD_RULES) {
+      const vocabulary = VOCABULARY_RULES.has(rule.rule)
+      const target = vocabulary ? wordLine : line
       rule.pattern.lastIndex = 0
-      for (const match of line.matchAll(rule.pattern)) {
+      for (const match of target.matchAll(rule.pattern)) {
         if (rule.rule === "ste-s8-shout-case" && RULE_KEYWORD_LINE.test(line.trim())) continue
         findings.push({
           rule: rule.rule,

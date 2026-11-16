@@ -1787,7 +1787,7 @@
                 "type": "string"
               },
               "titles": {
-                "description": "Flat list of task titles. Send exactly one of `tasks`, `items` or `titles`. Use `titles` for a flat plan or a batch under `parent`.",
+                "description": "Flat list of task titles. Send exactly one of `tasks`, `items` or `titles`. Use `titles` only for a flat plan or a batch under `parent`.",
                 "items": {
                   "type": "string"
                 },
