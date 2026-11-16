@@ -569,7 +569,7 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                         {
                           severity: "warning",
                           title: "Temperature not applied",
-                          description: `The model does not accept temperature. ${String(extOpts.temperature)} did not go on the wire.`,
+                          description: `The model does not accept temperature. The harness did not send ${String(extOpts.temperature)}.`,
                         },
                         { clientNotices, fallbackMessageId: `notice-sampling-${turnSeq}` },
                       ),

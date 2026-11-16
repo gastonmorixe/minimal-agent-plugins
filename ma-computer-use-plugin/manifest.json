@@ -38,7 +38,7 @@
                     "keypress",
                     "screenshot"
                   ],
-                  "description": "What to do. Each enum value names its own operation. The fields above say what each one reads. First use `ping`, `perms` or `apps` to check the state. Then use `windows` or `snapshot` to get an element handle. Then act with `perform`, `setValue`, `mouse`, `type`, `key` or `keypress`. Use `screenshot` to capture the screen or an area."
+                  "description": "What to do. Start with `ping` for daemon liveness and the permission status, or `perms` to report the Accessibility, Screen and Input permissions. `prompt:true` also requests them. Use `apps` to list the running GUI apps. Use `activate` to bring an app to the front so that input lands in it. Use `windows` to list the windows of an app. Use `snapshot` to read the accessibility tree and to get element handles. Use `find` to search that tree by role, title, identifier or value. Use `elementAtPoint` to hit-test the element at x and y. Use `focused` for the element with focus, and `describe` for the full attribute and action dump of a handle. Use `getValue` and `setValue` to read and write the value of a handle. Use `perform` to run an AX action on a handle. Use `mouse` to move, click, drag or scroll. Use `type` to inject text. Use `key` or `keypress` to press a key or a combo. Use `screenshot` to capture the screen or an area. The other fields name the action that they apply to."
                 },
                 "pid": {
                   "type": "number",

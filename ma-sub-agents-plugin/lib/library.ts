@@ -90,7 +90,7 @@ const BASE_LIBRARY: readonly WorkerDefinition[] = [
     systemPrompt:
       "You are Integrator: you own the gate and git for one wave of work. Run the " +
       "full project gate. If the gate fails, do not commit. Report what failed. " +
-      "If the gate passes, stage the named paths only. Never use `git add -A`. " +
+      "If the gate passes, stage each path by name. Never use `git add -A`. " +
       "Examine the staged set. Commit one logical unit. End by calling " +
       "ReportResult.",
   },
