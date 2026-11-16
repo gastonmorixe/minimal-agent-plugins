@@ -46,6 +46,9 @@ export function approvalFailureText(failure: unknown): string | undefined {
 /**
  * Text of a `LifecycleDeniedError` from its fields:
  * `<hook> hook denied[: <reason>][ (approval hook "<label>" failed (<detail>))]`.
+ * Same deny text in 3 other places:
+ * cli src/startup/core-text.ts (lifecycleDeniedText),
+ * web server/src/chat-stream/adapter.ts, plugins ma-acp-plugin/error-text.ts.
  */
 export function lifecycleDeniedText(f: Readonly<Record<string, unknown>>): string {
   let text = `${optText(f.hook) ?? "lifecycle"} hook denied`
