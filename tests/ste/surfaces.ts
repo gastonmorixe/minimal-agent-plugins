@@ -128,26 +128,38 @@ export function normalizeNewlines(text: string): string {
  * @returns The text a reader of the file would see at runtime.
  */
 export function decodeJsEscapes(body: string): string {
-  return body
-    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) =>
-      safeFromCodePoint(Number.parseInt(hex, 16)),
-    )
-    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) =>
-      safeFromCodePoint(Number.parseInt(hex, 16)),
-    )
-    .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex: string) =>
-      safeFromCodePoint(Number.parseInt(hex, 16)),
-    )
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
-    .replace(/\\b/g, "\b")
-    .replace(/\\f/g, "\f")
-    .replace(/\\v/g, "\v")
-    .replace(/\\0/g, "\0")
-    .replace(/\\'/g, "'")
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, "\\")
+  // One pass, so each escape is consumed exactly once. Sequential replaces
+  // double-decode: "a\\u200bb" is a backslash then the text u200b at runtime,
+  // and a later \u pass would turn it into a real zero-width space.
+  return body.replace(
+    /\\(u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[nrtbfv0'"\\])/g,
+    (_, esc: string) => {
+      switch (esc[0]) {
+        case "u":
+          return safeFromCodePoint(
+            Number.parseInt(esc[1] === "{" ? esc.slice(2, -1) : esc.slice(1), 16),
+          )
+        case "x":
+          return safeFromCodePoint(Number.parseInt(esc.slice(1), 16))
+        case "n":
+          return "\n"
+        case "r":
+          return "\r"
+        case "t":
+          return "\t"
+        case "b":
+          return "\b"
+        case "f":
+          return "\f"
+        case "v":
+          return "\v"
+        case "0":
+          return "\0"
+        default:
+          return esc
+      }
+    },
+  )
 }
 
 /** Code point to text, with a visible fallback for an out-of-range value. */
