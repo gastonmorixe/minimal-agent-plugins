@@ -85,6 +85,8 @@ export function dedupKey(h: CanonicalHook): string {
     x: h.dedupScope ?? "",
     fc: h.failClosed,
     as: h.async,
+    // Copies that differ only in position are not the same hook.
+    p: h.position ?? "after",
   })
 }
 

@@ -54,7 +54,11 @@ function dropAll(): void {
 }
 
 /** Get (or build) the engine for `cwd`, from a bounded cache. */
-export function engineFor(cwd: string, log?: (msg: string) => void): HooksEngine {
+export function engineFor(
+  cwd: string,
+  log?: (msg: string) => void,
+  debug?: (msg: string) => void,
+): HooksEngine {
   const sig = configSignature()
   if (sig !== configSig) {
     dropAll()
@@ -68,7 +72,13 @@ export function engineFor(cwd: string, log?: (msg: string) => void): HooksEngine
   }
   const config = loadHooksConfig(process.env)
   queue ??= new AsyncHookQueue(config.maxAsync)
-  const eng = new HooksEngine({ cwd, config, asyncQueue: queue, ...(log ? { log } : {}) })
+  const eng = new HooksEngine({
+    cwd,
+    config,
+    asyncQueue: queue,
+    ...(log ? { log } : {}),
+    ...(debug ? { debug } : {}),
+  })
   engines.set(cwd, eng)
   while (engines.size > MAX_ENGINES) {
     const oldest = engines.keys().next().value
@@ -126,7 +136,14 @@ export default async function dispatch(
       // a logger failure never breaks a hook
     }
   }
-  const eng = engineFor(ctx.cwd, log)
+  const debug = (msg: string) => {
+    try {
+      ctx.log.debug("hooks", msg)
+    } catch {
+      // a logger failure never breaks a hook
+    }
+  }
+  const eng = engineFor(ctx.cwd, log, debug)
   const sid = ctx.agent?.sessionId ?? ""
   noticeUntrusted(eng, sid, ctx)
   // Session end: kill the async runs of this session (process group) now,

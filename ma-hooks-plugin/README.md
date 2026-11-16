@@ -47,6 +47,37 @@ Exit 0 with text: context on `turn.willStart` and `session.willStart`.
 Exit 2: deny with stderr as the reason (context on feedback-only channels).
 Any other exit: a non-blocking error, unless `failClosed: true`.
 
+## Context position
+
+A native hook can put its context before or after the user's text. Set
+`"position": "before"` or `"position": "after"` on the handler. The default
+is `after`. Any other value logs a config warning and uses `after`.
+
+```json
+{
+  "hooks": {
+    "turn.willStart": [{ "hooks": [{ "command": "cat ~/notes/rules.md", "position": "before" }] }]
+  }
+}
+```
+
+A top-level `position` in the JSON output overrides the config for that
+result. Plain-text stdout uses the config position. A bad output value is
+ignored (debug log), and the config position applies.
+
+```json
+{ "context": ["Branch main is frozen."], "position": "before" }
+```
+
+Position matters on `turn.willStart` and `session.willStart` only. There the
+plugin returns `{ text, position }` entries, `before` entries first. Inside
+each position the order stays: native first, then source order. Other
+channels get plain strings. Claude hooks are always `after`: a `position` key
+in Claude config is ignored and logged at debug. A `before` position is part
+of the trust hash, so a change to `before` needs a new trust. An explicit
+`after` hashes the same as no position. `/hooks list` shows
+`position before` in the matcher line, and shows nothing for `after`.
+
 ## Trust
 
 User hooks run. Project and plugin hooks (native and Claude
@@ -64,7 +95,8 @@ hash is trusted in `~/.minimal-agent/hooks-state.json`.
 3. The trust hash (`engine/hash.ts`) covers the normalized dialect, channel,
    dialect event, matcher, the Claude `if` filter, and the handler: type,
    command and args (or url, headers and allowed env vars), shell, env,
-   timeout, `async`, and `failClosed` (Claude `onFailure`). Key order and
+   timeout, `async`, `failClosed` (Claude `onFailure`), and a `before`
+   context position. Key order and
    default values do not change it. A change to any of these makes a trusted
    hook untrusted again. The hash does not cover the script file: an edit to
    a script that a trusted command names runs with no new review.

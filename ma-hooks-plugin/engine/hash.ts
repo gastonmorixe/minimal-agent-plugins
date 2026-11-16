@@ -6,7 +6,7 @@
  * {@link hookContentHash}. The function normalizes the input, so key order
  * and default values never change the hash. A change to anything that
  * changes behavior (matcher, filter, command, args, url, timeout, async,
- * failClosed, shell, env, headers) gives a new hash, and a trusted hook
+ * failClosed, shell, env, headers, a `before` context position) gives a new hash, and a trusted hook
  * becomes untrusted again (review MAJOR 3).
  *
  * Pure: no state, no I/O except the hash.
@@ -33,6 +33,8 @@ export interface HashableHook {
   timeoutMs: number
   async: boolean
   failClosed: boolean
+  /** Context position. Missing and `after` hash the same. */
+  position?: "before" | "after"
 }
 
 /** A map with its keys sorted, or undefined when it is empty. */
@@ -88,6 +90,9 @@ export function normalHook(h: HashableHook): unknown {
     timeoutMs: h.timeoutMs,
     async: h.async,
     failClosed: h.failClosed,
+    // Only `before` adds a key, so every hook without a position (or with
+    // `after`) keeps the hash it had before positions existed.
+    ...(h.position === "before" ? { position: "before" } : {}),
   }
 }
 

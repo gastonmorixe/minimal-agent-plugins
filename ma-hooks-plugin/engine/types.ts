@@ -18,7 +18,7 @@ export type HookContextPosition = "before" | "after"
 
 /**
  * One additionalContext entry for the HookBus. A plain string means `after`.
- * Mirror of @minimal-agent/core plugin-api/sdk HookContextEntry. Switch to the
+ * Mirror of `@minimal-agent/core` plugin-api/sdk HookContextEntry. Switch to the
  * import when core lands.
  */
 export type HookContextEntry = string | { text: string; position?: HookContextPosition }

@@ -18,18 +18,20 @@ import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 import { channelInfo, isHookChannel } from "../engine/channels.ts"
 import { hookContentHash, TrustKeyAllocator } from "../engine/hash.ts"
-import type {
-  CanonicalHook,
-  CanonicalResult,
-  DiscoverEnv,
-  HookDialectAdapter,
-  HookHandlerSpec,
-  HookSupport,
-  InvocationContext,
-  MatchContext,
-  ParseResult,
-  RunOutcome,
-  SourceRef,
+import {
+  type CanonicalHook,
+  type CanonicalResult,
+  type DiscoverEnv,
+  type HookContextPosition,
+  type HookDialectAdapter,
+  type HookHandlerSpec,
+  type HookSupport,
+  type InvocationContext,
+  isContextPosition,
+  type MatchContext,
+  type ParseResult,
+  type RunOutcome,
+  type SourceRef,
 } from "../engine/types.ts"
 
 /** Default per-hook timeout: 600 s (SPEC.md "Engine execution"). */
@@ -184,6 +186,13 @@ export function parseNative(source: SourceRef, text: string, dialect = "native")
             : DEFAULT_TIMEOUT_MS
         const isAsync = rawHook.async === true
         const failClosed = rawHook.failClosed === true
+        let position: HookContextPosition = "after"
+        if (isContextPosition(rawHook.position)) position = rawHook.position
+        else if (rawHook.position !== undefined) {
+          warnings.push(
+            `${source.path}: hooks.${channel}[${gi}].hooks[${hi}]: bad position ${JSON.stringify(rawHook.position)} (use "before" or "after"), using "after"`,
+          )
+        }
         const contentHash = hookContentHash({
           dialect,
           channel: known ? channel : "",
@@ -193,6 +202,7 @@ export function parseNative(source: SourceRef, text: string, dialect = "native")
           timeoutMs,
           async: isAsync,
           failClosed,
+          position,
         })
         hooks.push({
           trustKey: keys.next(`${dialect}:${source.id}:${channel}`, {
@@ -212,6 +222,7 @@ export function parseNative(source: SourceRef, text: string, dialect = "native")
           ...(typeof rawHook.statusMessage === "string"
             ? { statusMessage: rawHook.statusMessage }
             : {}),
+          position,
           support: known ? support : "unsupported-event",
           contentHash,
         })
@@ -254,11 +265,31 @@ function strList(v: unknown): string[] {
   return v.filter((s): s is string => typeof s === "string" && s.trim().length > 0)
 }
 
-function decodeJson(obj: Obj): CanonicalResult {
+/** The result `position` field: set only for `before` (missing means `after`). */
+function posPart(p: HookContextPosition): { position?: HookContextPosition } {
+  return p === "before" ? { position: "before" } : {}
+}
+
+/** Max characters of a hook output value in a debug note. */
+const DEBUG_VALUE_MAX = 80
+
+/** JSON of an arbitrary hook output value, capped for the debug log. */
+export function debugValue(v: unknown): string {
+  const s = JSON.stringify(v) ?? String(v)
+  return s.length > DEBUG_VALUE_MAX ? `${s.slice(0, DEBUG_VALUE_MAX)}...` : s
+}
+
+function decodeJson(obj: Obj, configPosition: HookContextPosition): CanonicalResult {
   const d = obj.decision
   const decision: CanonicalResult["decision"] =
     d === "allow" || d === "deny" || d === "ask" || d === "none" ? d : "none"
-  const r: CanonicalResult = { decision, context: strList(obj.context) }
+  // A valid output `position` beats the config. A bad one is ignored (debug log).
+  const p = obj.position
+  const position = isContextPosition(p) ? p : configPosition
+  const r: CanonicalResult = { decision, context: strList(obj.context), ...posPart(position) }
+  if (p !== undefined && !isContextPosition(p)) {
+    r.debug = `ignored output position ${debugValue(p)}, using "${configPosition}"`
+  }
   if (typeof obj.reason === "string") r.reason = obj.reason
   if (obj.payload !== undefined) r.payload = obj.payload
   if (obj.continue === false) {
@@ -273,17 +304,19 @@ function decodeJson(obj: Obj): CanonicalResult {
 
 /** Map a native run outcome to a canonical result. Never throws. */
 export function decodeNative(
-  _hook: CanonicalHook,
+  hook: CanonicalHook,
   channel: string,
   run: RunOutcome,
 ): CanonicalResult {
+  const position = hook.position ?? "after"
+  const pos = posPart(position)
   if (run.timedOut || run.exitCode === null) {
     return { decision: "none", context: [], error: run.error ?? "hook did not exit" }
   }
   const info = channelInfo(channel)
   if (run.exitCode === 2) {
     const text = run.stderr.trim()
-    if (!info.blocking) return { decision: "none", context: text ? [text] : [] }
+    if (!info.blocking) return { decision: "none", context: text ? [text] : [], ...pos }
     return { decision: "deny", reason: text || "Blocked by hook.", context: [] }
   }
   if (run.exitCode !== 0) {
@@ -299,12 +332,12 @@ export function decodeNative(
   if (out.startsWith("{")) {
     try {
       const parsed: unknown = JSON.parse(out)
-      if (isObj(parsed)) return decodeJson(parsed)
+      if (isObj(parsed)) return decodeJson(parsed, position)
     } catch {
       // not JSON: plain text below
     }
   }
-  return { decision: "none", context: info.plainTextContext ? [out] : [] }
+  return { decision: "none", context: info.plainTextContext ? [out] : [], ...pos }
 }
 
 /** Native source files for this home and project. */
