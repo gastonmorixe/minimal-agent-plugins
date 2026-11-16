@@ -57,20 +57,57 @@ describe("text-parity fixtures", () => {
         if (c.fullText !== undefined) expect(c.fullText.endsWith(c.text)).toBe(true)
       }
     }
-    // The summary request golden (15d.0) carries the same bytes as the fixture.
-    const golden = JSON.parse(
-      readFileSync(
-        join(
-          import.meta.dir,
-          "..",
-          "request-golden",
-          "goldens",
-          "local-compaction-summary-request.json",
+    // The summary request goldens (15d.0, 15d0b) carry the same bytes as the fixture.
+    type Golden = {
+      requests: Array<{
+        system: Array<{ type: string; text: string }>
+        messages: Array<{ role: string; content: Array<{ type: string; text: string }> }>
+      }>
+    }
+    const loadGolden = (name: string): Golden =>
+      JSON.parse(
+        readFileSync(
+          join(import.meta.dir, "..", "request-golden", "goldens", `${name}.json`),
+          "utf8",
         ),
-        "utf8",
-      ),
-    ) as { requests: Array<{ system: Array<{ text: string }> }> }
+      ) as Golden
     const withFocus = entries[0]?.cases.find((c) => c.facts.focus === "keep the API stable")
-    expect(golden.requests[0]?.system.at(-1)?.text).toBe(withFocus?.text)
+    const local = entries[2]?.cases as Array<{ name?: string; fullText?: string }> | undefined
+    const summaryFocus = local?.find((c) => c.name === "summary+focus")
+    const body = withFocus?.text
+    const fullText = summaryFocus?.fullText
+    if (body === undefined || fullText === undefined) throw new Error("compact.json lacks a case")
+    expect(body.length).toBeGreaterThan(0)
+    expect(fullText).toContain("SUMMARY-BODY")
+    // The checkpoint the golden expects: the fixture text with the golden summary.
+    const checkpoint = fullText.replace("SUMMARY-BODY", "GOLDEN-SUMMARY-TEXT")
+
+    const plain = loadGolden("local-compaction-summary-request")
+    expect(plain.requests).toHaveLength(2)
+    // No resolveSystemPrompt hook: the body is the only block.
+    expect(plain.requests[0]?.system).toHaveLength(1)
+    expect(plain.requests[0]?.system[0]?.text.length).toBe(body.length)
+    expect(plain.requests[0]?.system.at(-1)?.text).toBe(body)
+
+    // With the hook (15d0b): identity, ctx line, empty block dropped, body last.
+    const pre = loadGolden("local-compaction-summary-request-preamble")
+    expect(pre.requests).toHaveLength(2)
+    expect(pre.requests[0]?.system.map((b) => b.text)).toEqual([
+      "ID:GOLDEN-COMPACT-IDENTITY",
+      "CTX:authKind=api-key modelId=golden-compact-model",
+      body,
+    ])
+
+    // requests[1] of both: the checkpoint user message, then the kept tail.
+    for (const g of [plain, pre]) {
+      const msgs = g.requests[1]?.messages ?? []
+      expect(msgs.length).toBeGreaterThanOrEqual(2)
+      expect(msgs[0]?.role).toBe("user")
+      expect(msgs[0]?.content).toHaveLength(1)
+      expect(msgs[0]?.content[0]?.type).toBe("text")
+      expect(msgs[0]?.content[0]?.text).toBe(checkpoint)
+      expect(msgs[1]?.role).toBe("user")
+      expect(msgs[1]?.content[0]?.text).toBe("question two")
+    }
   })
 })
