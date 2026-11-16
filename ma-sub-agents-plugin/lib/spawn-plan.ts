@@ -25,11 +25,16 @@ export const ENV_ID = "MINIMAL_AGENT_SUBAGENT_ID"
 export { ENV_LEAD_PID }
 
 /**
- * The plugin-disable env var the agent boot consumes
- * (`resolvePluginEnabledOverrides`). The spawn plan injects a worker-scoped
- * value into it so a child boots with these plugins off.
+ * The plugin-disable env var the agent boot consumes. Used only as the
+ * fallback channel when no `--startup-profile` is passed (SPEC R11 off, or an
+ * older core): then the plan sets it to the lead's value plus the worker-only
+ * set, exactly as before. With a profile the child ignores this env, so the
+ * plan leaves it alone.
  */
 export const ENV_DISABLE_PLUGINS = "MINIMAL_AGENT_DISABLE_PLUGINS"
+
+/** Hidden CLI flag that hands the lead's startup profile to a child (SPEC 4.3). */
+export const STARTUP_PROFILE_FLAG = "--startup-profile"
 
 /**
  * Plugins force-disabled for EVERY worker, regardless of role. `intercom` is a
@@ -115,14 +120,32 @@ export interface SpawnInput {
   /** Extra env to merge (e.g. tool allow/deny markers a future gate reads). */
   readonly extraEnv?: Record<string, string>
   /**
-   * The lead's own `MINIMAL_AGENT_DISABLE_PLUGINS` value (raw, comma-separated),
-   * if any. The plan UNIONS it with {@link SUBAGENT_DISABLED_PLUGINS} so a
-   * worker inherits whatever the user already disabled AND the worker-only
-   * disables, instead of the spawn env silently clobbering the inherited list
-   * (the child's env overlay wins over the inherited process env, so the merge
-   * must happen here). Omit when the lead disabled nothing.
+   * Path of the startup profile the child boots with (SPEC 4.4). Emitted as
+   * `--startup-profile <path>` for both isolation tiers (SPEC 4.6), unless
+   * {@link SpawnInput.inherit} is false. The lead's plugin disables (SPEC R4)
+   * ride inside the profile. Omit when the host exposes no profile (SPEC T8).
+   */
+  readonly startupProfilePath?: string
+  /**
+   * SPEC R11 switch. False (env `MINIMAL_AGENT_SUBAGENT_INHERIT=0`) drops
+   * `--startup-profile`. The tool and mode clamps still apply. Default true.
+   */
+  readonly inherit?: boolean
+  /**
+   * The lead's own `MINIMAL_AGENT_DISABLE_PLUGINS` value (raw, comma-separated).
+   * Read ONLY when no `--startup-profile` is emitted: the plan then unions it
+   * with {@link SUBAGENT_DISABLED_PLUGINS} into the env overlay (old
+   * behavior). With a profile, the lead's disables come from the profile
+   * (SPEC R4) and this field is ignored.
    */
   readonly inheritedDisabledPlugins?: string
+  /**
+   * The clamped worker tool allow-list (SPEC R6, R9), from `clampTools`. When
+   * set and non-empty, the plan emits `--tools <a,b,...>`. Undefined or empty
+   * emits nothing (the child sees all tools). The plan never emits
+   * `--no-tools`, because deny-all also blocks `ReportResult`.
+   */
+  readonly toolArgs?: readonly string[]
 }
 
 /** The result of {@link buildSpawnPlan}: everything the shell needs to launch a worker. */
@@ -216,6 +239,17 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
   if (credentialName.length > 0) {
     flags.push("--credential-name", credentialName)
   }
+  const tools = (input.toolArgs ?? []).map((t) => t.trim()).filter((t) => t.length > 0)
+  if (tools.length > 0) {
+    flags.push("--tools", tools.join(","))
+  }
+  const profilePath = input.startupProfilePath?.trim() ?? ""
+  const withProfile = input.inherit !== false && profilePath.length > 0
+  if (withProfile) {
+    flags.push(STARTUP_PROFILE_FLAG, profilePath)
+  }
+  // Worker-only disables at the CLI tier: they win over the profile (SPEC 5).
+  for (const id of SUBAGENT_DISABLED_PLUGINS) flags.push("--disable-plugin", id)
   // `--prompt` last so the text can't be mistaken for a flag value.
   flags.push("--prompt", prompt)
 
@@ -231,11 +265,11 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
     [ENV_LEAD]: input.leadSid,
     [ENV_ID]: input.id,
     ...input.extraEnv,
-    // Union the lead's inherited disables with the worker-only set, deduped and
-    // order-stable, so the child boots with intercom (and anything the user
-    // already disabled) off. Spread LAST so the worker-disable contract can't be
-    // accidentally clobbered by an extraEnv entry for the same key.
-    [ENV_DISABLE_PLUGINS]: mergeDisabledPlugins(input.inheritedDisabledPlugins),
+    // No profile: keep the old env channel (lead disables + worker-only set).
+    // Spread after extraEnv so an extraEnv entry cannot clobber it.
+    ...(withProfile
+      ? {}
+      : { [ENV_DISABLE_PLUGINS]: mergeDisabledPlugins(input.inheritedDisabledPlugins) }),
     // The lead's pid for the worker's lead watch. Spread after extraEnv so a
     // caller cannot point the watch at a wrong process.
     [ENV_LEAD_PID]: String(input.leadPid ?? process.pid),
@@ -266,9 +300,8 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
 /**
  * Union an inherited comma-separated `MINIMAL_AGENT_DISABLE_PLUGINS` value with
  * {@link SUBAGENT_DISABLED_PLUGINS}, deduped and order-stable (inherited ids
- * first, then the worker-only ids). Pure: string in, string out. The result is
- * always non-empty (it always contains the worker-only set), so a worker can
- * never end up with intercom enabled.
+ * first, then the worker-only ids). Pure. The result always contains the
+ * worker-only set. Used only on the no-profile path.
  */
 export function mergeDisabledPlugins(inherited?: string): string {
   const ids: string[] = []

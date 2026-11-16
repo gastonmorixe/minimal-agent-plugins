@@ -31,8 +31,29 @@ const LEAD = "11111111-1111-4111-8111-111111111111"
 
 let dir: string
 let childScript: string
+/** Inherited worker env saved while a test runs (see {@link isolateEnv}). */
+let savedEnv: Record<string, string> = {}
+
+/**
+ * Drop `MINIMAL_AGENT_SUBAGENT_*` and `MINIMAL_AGENT_MODE` from `process.env`.
+ * When this suite runs inside a sub-agent, those vars leak into the fake
+ * workers (the launcher overlays the plan env on `process.env`) and change
+ * their result contract. Returns the removed values for restore.
+ */
+function isolateEnv(): Record<string, string> {
+  const saved: Record<string, string> = {}
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v === undefined) continue
+    if (k.startsWith("MINIMAL_AGENT_SUBAGENT_") || k === "MINIMAL_AGENT_MODE") {
+      saved[k] = v
+      delete process.env[k]
+    }
+  }
+  return saved
+}
 
 beforeEach(() => {
+  savedEnv = isolateEnv()
   dir = mkdtempSync(join(tmpdir(), "subagents-e2e-"))
   // A fake "worker": write its declared artifact, THEN write a ResultDigest
   // sentinel pointing at it (an honest worker — the artifact really exists), exit 0.
@@ -49,7 +70,10 @@ beforeEach(() => {
     ].join("\n"),
   )
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true })
+  for (const [k, v] of Object.entries(savedEnv)) process.env[k] = v
+})
 
 function svcDeps(store: SubagentStore): ServiceDeps {
   return {

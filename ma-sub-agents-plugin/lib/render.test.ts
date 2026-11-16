@@ -9,6 +9,7 @@ import {
   renderFleetDisplay,
   renderResultDisplay,
   renderSpawnDisplay,
+  renderStatusDisplay,
   renderStopDisplay,
   shortModel,
 } from "./render.ts"
@@ -288,5 +289,25 @@ describe("ansi rendering", () => {
       progress: { tools: 0, tokens: 0 },
     })
     expect(renderSpawnDisplay(r, true).header).toContain("\x1b[")
+  })
+})
+
+describe("renderStatusDisplay (SPEC R12)", () => {
+  const running: SubagentStatus = { kind: "stopped", endedAt: "2026-05-30T11:59:00.000Z" }
+
+  it("adds the inherit line under the fleet row", () => {
+    const r = {
+      ...rec("A1", "worker", running),
+      inherit: "inherit: agents-md:off tools:lead mode:ask",
+    }
+    const out = renderStatusDisplay(r, false, NOW)
+    const lines = out.body.split("\n")
+    expect(lines[1]).toContain("inherit: agents-md:off tools:lead mode:ask")
+    expect(lines[0]).toContain("A1")
+  })
+
+  it("equals the fleet display when the record has no inherit", () => {
+    const r = rec("A1", "worker", running)
+    expect(renderStatusDisplay(r, false, NOW)).toEqual(renderFleetDisplay([r], false, NOW))
   })
 })

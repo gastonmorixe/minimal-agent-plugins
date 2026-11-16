@@ -167,6 +167,17 @@ export function renderFleetDisplay(
   return { header, body, footer: renderFleetFooter(records, ansi) }
 }
 
+/**
+ * AgentStatus display for one worker: the fleet row, then the SPEC R12
+ * `inherit: ...` line (dim) when the record has one.
+ */
+export function renderStatusDisplay(r: SubagentRecord, ansi: boolean, nowMs: number): DisplayParts {
+  const base = renderFleetDisplay([r], ansi, nowMs)
+  if (!r.inherit) return base
+  const line = `      ${color(ansi, ANSI.DIM, r.inherit)}`
+  return { ...base, body: [fleetRow(r, ansi, nowMs), line, ""].join("\n") }
+}
+
 // ---------------------------------------------------------------------------
 // AgentResult
 // ---------------------------------------------------------------------------

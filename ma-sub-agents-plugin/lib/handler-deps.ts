@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto"
 
 import type { LiveAreaHandlerContext, TUIContext } from "../lib/host-types.ts"
 
+import { inheritEnabled } from "./inherit-summary.ts"
 import { resolveDefinition } from "./library.ts"
 import { presenceDir } from "./presence.ts"
 import { type PromptRender } from "./prompts.ts"
@@ -246,6 +247,16 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
       ? { disabledPlugins: ctx.env.MINIMAL_AGENT_DISABLE_PLUGINS }
       : {}),
     ...(ctx.emitChain ? { emitChain: ctx.emitChain.bind(ctx) } : {}),
+    // Live lead mode + tool policy for the permission clamp (SPEC R6, R7).
+    // Older cores lack the member: the service falls back to the env mode (SPEC T8).
+    ...(ctx.queryHostPolicy ? { queryHostPolicy: () => ctx.queryHostPolicy?.() } : {}),
+    // Fallback lead mode for the clamp when the host has no policy snapshot.
+    ...(ctx.env.MINIMAL_AGENT_MODE ? { leadModeEnv: ctx.env.MINIMAL_AGENT_MODE } : {}),
+    // The lead startup profile (SPEC 4.5). Older cores lack it (SPEC T8).
+    ...(ctx.startupProfile ? { startupProfile: () => ctx.startupProfile?.() } : {}),
+    // SPEC R11: "0" drops --startup-profile only. The clamps still apply.
+    inherit: inheritEnabled(ctx.env),
+    warn: (msg: string) => ctx.log.warn(msg),
   }
 }
 

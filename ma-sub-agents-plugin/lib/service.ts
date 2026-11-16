@@ -12,6 +12,10 @@
  */
 
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
+import type { HostPolicySnapshot, StartupProfile } from "./host-types.ts"
+import { inheritSummary, needsProviderDerive, stripProviderSpecific } from "./inherit-summary.ts"
+import { clampMode } from "./mode-clamp.ts"
+import { profilePathFor, writeStartupProfile } from "./profile-io.ts"
 import { type PromptRender, renderResultProtocol } from "./prompts.ts"
 import {
   ENV_EXPECT_ARTIFACTS,
@@ -22,6 +26,7 @@ import {
 } from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { type SubagentStore } from "./store.ts"
+import { clampTools } from "./tool-clamp.ts"
 import {
   err,
   type Isolation,
@@ -122,10 +127,9 @@ export interface ServiceDeps {
   readonly defaultModel: string
   /**
    * The lead's own `MINIMAL_AGENT_DISABLE_PLUGINS` value (raw, comma-separated),
-   * if set. Threaded into the spawn plan so a worker inherits the lead's
-   * disables AND the worker-only ones (intercom). Injected (read from the host's
-   * process env) so the plugin stays testable without touching globals. Omit
-   * when the lead disabled nothing.
+   * if set. Used ONLY when no startup profile is passed (SPEC R11 off, or an
+   * older core): the plan then unions it with the worker-only disables in the
+   * env, as before. With a profile the lead's disables ride in the profile.
    */
   readonly disabledPlugins?: string
   /** Mint a fresh child session id (uuid). Injected for determinism in tests. */
@@ -187,6 +191,29 @@ export interface ServiceDeps {
    */
   readonly leadProvider?: string
   readonly policy?: GuardPolicy
+  /**
+   * The lead's live mode + tool policy (host `ctx.queryHostPolicy`). Read at
+   * spawn time for the mode clamp (SPEC R7) and the tool clamp (SPEC R6).
+   * Absent or returning undefined (older core, SPEC T8): best effort, see
+   * {@link leadModeEnv}; tools come from the startup profile when present.
+   */
+  readonly queryHostPolicy?: () => HostPolicySnapshot | undefined
+  /**
+   * The lead's `MINIMAL_AGENT_MODE` env value. Used only when there is no
+   * policy snapshot (older core): a restricted lead never spawns a wider worker.
+   */
+  readonly leadModeEnv?: string
+  /**
+   * The lead's startup profile and its file (host `ctx.startupProfile`, SPEC
+   * 4.5). Absent or undefined (older core, SPEC T8): no `--startup-profile`.
+   */
+  readonly startupProfile?: () => { path: string; profile: StartupProfile } | undefined
+  /** SPEC R11 switch (env `MINIMAL_AGENT_SUBAGENT_INHERIT`). False drops the profile only. Default true. */
+  readonly inherit?: boolean
+  /** Write a derived profile (SPEC 6.4). Injected for tests. Default {@link writeStartupProfile}. */
+  readonly writeProfile?: (path: string, profile: StartupProfile) => void
+  /** Diagnostic warning sink (host `ctx.log.warn`). Optional. */
+  readonly warn?: (msg: string) => void
   /**
    * Optional HookBus chain emit (host `ctx.emitChain`). Used for
    * `subagent.willSpawn` external veto/rewrite after the in-plugin guard.
@@ -345,6 +372,30 @@ export async function spawnAgent(
   // on disk, never in code — repo convention). The worker reads how to finish:
   // write any required file itself, then call `ReportResult`.
   const resultProtocol = renderResultProtocol(deps.renderPrompt, resultPath, expectArtifacts)
+  // Permission clamp (SPEC R6-R9). One live snapshot per spawn: the lead mode
+  // at spawn time wins (SPEC 6.1). No snapshot (older core): best effort from
+  // the lead env mode and the startup profile tools.
+  const snap = deps.queryHostPolicy?.()
+  // A read-only specialist (explorer/planner/reviewer/log-miner) carries
+  // mode:"ask" so the harness denies Edit/Write at dispatch; an implementer
+  // leaves it unset and defaults to "none" (writable). The clamp then lowers
+  // it to the lead's live mode when the role mode would allow more (SPEC R7).
+  const roleMode = def?.mode ?? "none"
+  const clamp = clampMode(roleMode, snap, deps.leadModeEnv)
+  const mode = clamp.mode ?? roleMode
+  if (!snap) {
+    deps.warn?.(
+      deps.renderPrompt("no-host-policy.tmpl.md", { mode, lead: deps.leadModeEnv ?? "" }).trim(),
+    )
+  }
+  // Lead tools: live snapshot, else the startup profile (CONTRACT 3), else none.
+  const lead = deps.startupProfile?.()
+  const leadTools = snap?.tools ?? lead?.profile.tools
+  const toolArgs = leadTools ? clampTools(leadTools) : undefined
+  // Startup profile (SPEC 4.4, R11). Off: old behavior, clamps still apply.
+  const inherit = deps.inherit !== false
+  const profileChoice = inherit && lead ? chooseProfile(lead, provider, childSid, deps) : undefined
+  if (profileChoice && "error" in profileChoice) return err(profileChoice.error)
   const planResult = buildSpawnPlan({
     agentBin: deps.agentBin,
     childSid,
@@ -359,12 +410,10 @@ export async function spawnAgent(
     // the child and fail boot on models that reject that level (Nathan xhigh→grok).
     scrubInheritedEffort: !effort,
     ...(credentialName ? { credentialName } : {}),
-    // A read-only specialist (explorer/planner/reviewer/log-miner) carries
-    // mode:"ask" so the harness denies Edit/Write at dispatch; an implementer
-    // leaves it unset and defaults to "none" (writable). This is the enforcement
-    // layer behind each role's "read-only" prompt — a drifting worker that tries
-    // to edit is refused by the mode gate, not just discouraged by its prompt.
-    mode: def?.mode ?? "none",
+    // The mode gate is the enforcement layer behind each role's "read-only"
+    // prompt: a drifting worker that tries to edit is refused at dispatch.
+    mode,
+    ...(toolArgs ? { toolArgs } : {}),
     isolation,
     ...(systemPreamble ? { systemPreamble } : {}),
     resultProtocol,
@@ -376,11 +425,10 @@ export async function spawnAgent(
       [ENV_RESULT_PATH]: resultPath,
       ...(expectArtifacts ? { [ENV_EXPECT_ARTIFACTS]: JSON.stringify(expectArtifacts) } : {}),
     },
-    // Carry the lead's own plugin-disable list so the plan can UNION it with the
-    // worker-only disables (intercom) instead of dropping it. Read from the live
-    // process env: whatever disabled the lead's plugins should still apply to
-    // its workers.
+    // Used by the plan only when no profile is passed (old env channel).
     ...(deps.disabledPlugins ? { inheritedDisabledPlugins: deps.disabledPlugins } : {}),
+    ...(profileChoice ? { startupProfilePath: profileChoice.path } : {}),
+    inherit,
   })
   if (!planResult.ok) return err(planResult.error)
 
@@ -405,9 +453,54 @@ export async function spawnAgent(
     ...(expectArtifacts ? { expectArtifacts } : {}),
     depth: childDepth,
     leadSid: deps.leadSid,
+    inherit: inheritSummary({
+      state: profileChoice ? "on" : inherit ? "absent" : "off",
+      ...(profileChoice ? { profile: profileChoice.profile } : {}),
+      ...(leadTools ? { leadTools } : {}),
+      mode,
+    }),
+    ...(clamp.lowered ? { modeLowered: { from: roleMode, to: mode } } : {}),
+    ...(profileChoice?.derivedFrom ? { profileProvider: profileChoice.derivedFrom } : {}),
   }
   deps.store.upsert(record)
   return ok(record)
+}
+
+/** The profile a worker boots with. `derivedFrom` is set for SPEC 6.4. */
+type ProfileChoice =
+  | {
+      readonly path: string
+      readonly profile: StartupProfile
+      readonly derivedFrom?: { readonly lead: string; readonly worker: string }
+    }
+  | { readonly error: string }
+
+/**
+ * Pick the profile file for one worker. Same provider (or unknown): the lead
+ * file. Other provider with provider-specific parts (SPEC 6.4): a derived
+ * `<childSid>.profile.json` without them.
+ */
+function chooseProfile(
+  lead: { path: string; profile: StartupProfile },
+  provider: string | undefined,
+  childSid: string,
+  deps: ServiceDeps,
+): ProfileChoice {
+  const leadProv = deps.leadProvider?.trim()
+  if (!leadProv || !provider || !needsProviderDerive(lead.profile, leadProv, provider)) {
+    return { path: lead.path, profile: lead.profile }
+  }
+  const profile = stripProviderSpecific(lead.profile)
+  const path = profilePathFor(deps.sessionsDir, childSid)
+  try {
+    ;(deps.writeProfile ?? writeStartupProfile)(path, profile)
+  } catch (e) {
+    return { error: `cannot write worker startup profile ${path}: ${(e as Error).message}` }
+  }
+  deps.warn?.(
+    deps.renderPrompt("provider-profile.tmpl.md", { lead: leadProv, worker: provider }).trim(),
+  )
+  return { path, profile, derivedFrom: { lead: leadProv, worker: provider } }
 }
 
 /** Mark a worker stopped + signal its pid (idempotent on an already-terminal worker). */

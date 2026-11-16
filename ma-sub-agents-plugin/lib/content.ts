@@ -88,6 +88,7 @@ export function statusDetail(r: SubagentRecord, nowMs: number): string {
     `${r.id} (${r.type}) · model ${model} · isolation ${r.isolation} · depth ${r.depth}`,
     `status: ${statusText(r.status, nowMs)}`,
     `session: ${r.sid}`,
+    ...(r.inherit ? [r.inherit] : []),
     `task: ${r.task}`,
   ]
   if (r.status.kind === "done") lines.push(`result: ${r.status.result.short}`)

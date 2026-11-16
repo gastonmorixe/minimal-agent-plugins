@@ -8,7 +8,7 @@
 import { fleetText, statusDetail } from "../lib/content.ts"
 import { storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
-import { renderFleetDisplay } from "../lib/render.ts"
+import { renderFleetDisplay, renderStatusDisplay } from "../lib/render.ts"
 import { parseIdArg } from "../lib/validate.ts"
 
 /**
@@ -50,7 +50,7 @@ export default async function agentStatus(ctx: TUIContext): Promise<TUIResult> {
       content: `AgentStatus: unknown sub-agent "${id}".`,
       is_error: true,
     }
-  const disp = renderFleetDisplay([rec], true, now)
+  const disp = renderStatusDisplay(rec, true, now)
   return {
     kind: "tool_result",
     content: statusDetail(rec, now),

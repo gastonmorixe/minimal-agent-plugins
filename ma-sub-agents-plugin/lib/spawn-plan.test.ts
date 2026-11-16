@@ -13,6 +13,7 @@ import {
   ENV_LEAD_PID,
   mergeDisabledPlugins,
   type SpawnInput,
+  STARTUP_PROFILE_FLAG,
   SUBAGENT_DISABLED_PLUGINS,
 } from "./spawn-plan.ts"
 import { sessionId, subagentId } from "./types.ts"
@@ -112,6 +113,73 @@ describe("buildSpawnPlan disables intercom for every worker", () => {
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.env[ENV_DISABLE_PLUGINS]).toContain("intercom")
+  })
+})
+
+describe("buildSpawnPlan startup profile (SPEC 4.4, R11, T1, T5, T6)", () => {
+  const PROFILE = "/sessions/11111111-1111-4111-8111-111111111111.profile.json"
+  const after = (argv: readonly string[], flag: string): string | undefined =>
+    argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : undefined
+
+  it("T1: emits --startup-profile <path> when a path is given", () => {
+    const r = buildSpawnPlan(input({ startupProfilePath: PROFILE }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(after(r.value.argv, STARTUP_PROFILE_FLAG)).toBe(PROFILE)
+  })
+
+  it("T1: inherit off drops --startup-profile but keeps --tools and --mode", () => {
+    const r = buildSpawnPlan(
+      input({
+        startupProfilePath: PROFILE,
+        inherit: false,
+        toolArgs: ["Read", "SubAgentsReportResult"],
+        mode: "ask",
+      }),
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.argv).not.toContain(STARTUP_PROFILE_FLAG)
+    expect(after(r.value.argv, "--tools")).toBe("Read,SubAgentsReportResult")
+    expect(after(r.value.argv, "--mode")).toBe("ask")
+    // Old env channel is back when no profile is passed.
+    expect(r.value.env[ENV_DISABLE_PLUGINS]).toBe("intercom")
+  })
+
+  it("T6: fork isolation still passes --startup-profile", () => {
+    const r = buildSpawnPlan(input({ startupProfilePath: PROFILE, isolation: "fork" }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(after(r.value.argv, "--resume")).toBe("11111111-1111-4111-8111-111111111111")
+    expect(after(r.value.argv, STARTUP_PROFILE_FLAG)).toBe(PROFILE)
+  })
+
+  it("T5: --disable-plugin intercom is always on argv, with or without a profile", () => {
+    for (const extra of [{}, { startupProfilePath: PROFILE }]) {
+      const r = buildSpawnPlan(input(extra))
+      expect(r.ok).toBe(true)
+      if (!r.ok) return
+      expect(after(r.value.argv, "--disable-plugin")).toBe("intercom")
+    }
+  })
+
+  it("T5: with a profile, lead disables come from the profile, not the env", () => {
+    const r = buildSpawnPlan(
+      input({ startupProfilePath: PROFILE, inheritedDisabledPlugins: "memory" }),
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_DISABLE_PLUGINS]).toBeUndefined()
+    expect(r.value.argv.join(" ")).not.toContain("memory")
+  })
+
+  it("flags stay before --prompt", () => {
+    const r = buildSpawnPlan(input({ startupProfilePath: PROFILE }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const argv = r.value.argv
+    expect(argv.indexOf(STARTUP_PROFILE_FLAG)).toBeLessThan(argv.indexOf("--prompt"))
+    expect(argv.indexOf("--disable-plugin")).toBeLessThan(argv.indexOf("--prompt"))
   })
 })
 
@@ -298,5 +366,32 @@ describe("buildSpawnPlan: lead pid for the worker lead watch (fix-3d)", () => {
     expect(r.value.env[ENV_LEAD]).toBe("11111111-1111-4111-8111-111111111111")
     expect(r.value.env[ENV_DEPTH]).toBe("1")
     expect(r.value.env[ENV_ID]).toBe("A2")
+  })
+})
+
+describe("buildSpawnPlan tool clamp (SPEC R6, R9)", () => {
+  it("emits --tools as a comma list before --prompt", () => {
+    const r = buildSpawnPlan(input({ toolArgs: ["Read", "Grep", "SubAgentsReportResult"] }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const { argv } = r.value
+    expect(argv[argv.indexOf("--tools") + 1]).toBe("Read,Grep,SubAgentsReportResult")
+    expect(argv[argv.length - 2]).toBe("--prompt")
+  })
+
+  it("emits nothing when toolArgs is unset or empty", () => {
+    for (const toolArgs of [undefined, [] as string[]]) {
+      const r = buildSpawnPlan(input(toolArgs ? { toolArgs } : {}))
+      expect(r.ok).toBe(true)
+      if (!r.ok) return
+      expect(r.value.argv).not.toContain("--tools")
+    }
+  })
+
+  it("never emits --no-tools", () => {
+    const r = buildSpawnPlan(input({ toolArgs: ["SubAgentsReportResult", "ReportResult"] }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.argv).not.toContain("--no-tools")
   })
 })
