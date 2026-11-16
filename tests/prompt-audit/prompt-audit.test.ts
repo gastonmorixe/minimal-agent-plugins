@@ -140,22 +140,12 @@ function isWritingStyleQuoteExample(file: PromptFile): boolean {
 }
 
 /**
- * Hits that exist on the moved text today. Do not fix them here: the later
- * STE rewrite step rewrites this text. Format: `rel:line label: match`.
+ * Hits that exist on the moved text today. Format: `rel:line label: match`.
+ *
+ * The STE rewrite removed the old `ma-agent-cloud/PROMPT.md` hits, so those
+ * entries are gone. The list only shrinks.
  */
 const KNOWN_HITS = new Set<string>([
-  // ma-agent-cloud is not `-plugin` suffixed, so the repo's own
-  // scripts/prompt-audit.test.ts never scanned its PROMPT.md. It ships em
-  // dashes and semicolons today.
-  "ma-agent-cloud/PROMPT.md:9 typographic punctuation: \u2014",
-  "ma-agent-cloud/PROMPT.md:10 typographic punctuation: \u2014",
-  "ma-agent-cloud/PROMPT.md:14 typographic punctuation: \u2014",
-  "ma-agent-cloud/PROMPT.md:15 typographic punctuation: \u2014",
-  "ma-agent-cloud/PROMPT.md:16 typographic punctuation: \u2014",
-  "ma-agent-cloud/PROMPT.md:17 typographic punctuation: \u2014",
-  "ma-agent-cloud/PROMPT.md:5 semicolon in prose: ;",
-  "ma-agent-cloud/PROMPT.md:9 semicolon in prose: ;",
-  "ma-agent-cloud/PROMPT.md:23 semicolon in prose: ;",
   // A wire header value (`k=v; k=v;`), not prose. The 3 semicolons on line 1
   // produce the same hit string, so one entry covers them.
   "ma-llm-anthropic-plugin/prompts/billing.tmpl.md:1 semicolon in prose: ;",

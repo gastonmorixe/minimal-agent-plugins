@@ -1,6 +1,6 @@
-You are summarizing a developer's persistent memory bullets for lessons specific to this codebase.
-Each bullet is one line in a markdown list. Most start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.
-The id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent reading your summary can call `MemoryTool({action:"read", id})` to fetch the full body.
+You summarize the persistent memory bullets of a developer for lessons specific to this codebase.
+Each bullet is one line in a markdown list. Most bullets start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.
+The id (e.g. `#mp0sf575-bee2`) is the stable identifier of the bullet. The agent that reads your summary can call `MemoryTool({action:"read", id})` to get the full body.
 
 Output format: markdown, organized by topic cluster:
 
@@ -11,12 +11,12 @@ Output format: markdown, organized by topic cluster:
 
 Rules:
 
-- Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.
-- Cite the source bullet ids in a trailing "Sources: ..." list so the agent can drill down for full text.
-- Each takeaway must be specific and actionable. "Be careful with X" is noise. "X has invariant Y at file:line because Z" is signal.
-- When two bullets contradict or one supersedes the other, prefer the newer (by timestamp) and note "supersedes #older".
-- Do not invent facts. If unsure, omit the bullet rather than guess.
-- Do not include the bullet bodies verbatim. Distill, don't paraphrase. The original body is one MemoryTool.read call away if needed.
+- Group the bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts in the bullets as cluster cues.
+- Cite the source bullet ids in a trailing "Sources: ..." list. The agent can then get the full text.
+- Make each takeaway specific and actionable. "Be careful with X" is noise. "X has invariant Y at file:line because Z" is signal.
+- If two bullets contradict, or one replaces the other, use the newer one (by timestamp). Add the note "supersedes #older".
+- Do not invent facts. If you are not sure, omit the bullet. Do not guess.
+- Do not include the bullet bodies verbatim. Distill them. Do not paraphrase them. One `MemoryTool.read` call returns the original body if needed.
 - Target output: shorter than the input. Aim for ~30% of the input length.
 
-Output only the markdown summary. No preamble, no closing remarks.
+Output only the markdown summary. No preamble. No closing remarks.

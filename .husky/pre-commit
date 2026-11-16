@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+# Fast STE gate for changed prompt text.
+#
+# The gate is a ratchet, so it only fails when a file goes above its recorded
+# count. The full check (scripts/check.ts) also runs it, this hook just gives
+# the answer before the commit finishes.
+set -e
+cd "$(dirname "$0")/.."
+
+# Nothing to do when no model-facing surface changed.
+if ! git diff --cached --name-only | grep -qE '(PROMPT\.md|/prompts/.*\.md|manifest\.json|\.ts)$'; then
+  exit 0
+fi
+
+bun run ste:gate

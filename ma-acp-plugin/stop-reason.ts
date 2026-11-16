@@ -146,8 +146,8 @@ function fromProviderStopReason(reason: ProviderStopReason): StopDecision {
           severity: "warning",
           title: "Context window full",
           description:
-            "The conversation no longer fits in the model's context window. " +
-            "ACP has no stop reason for this, so it is reported as max_tokens.",
+            "The conversation no longer fits in the context window of the model. " +
+            "ACP has no stop reason for this case. The harness reports max_tokens.",
         },
       }
     case "error":

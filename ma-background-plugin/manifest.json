@@ -2,7 +2,7 @@
   "id": "ma-bg",
   "name": "Background Jobs",
   "version": "0.1.0",
-  "description": "Run bash-like commands in the background, check status, read logs, and cancel. Each job runs under a detached supervised runner whose lifetime is bound to the harness: when minimal-agent exits (cleanly or not), every job is torn down too. Logs are durable and colocated with session history at ~/.minimal-agent/sessions/<sid>.bgjobs/. Tools: BackgroundRun, BackgroundStatus, BackgroundLogs, BackgroundStop. Disable with MINIMAL_AGENT_DISABLE_BGJOBS=1.",
+  "description": "Run shell commands in the background, check the status, read the logs and cancel a job. Each job runs under a detached supervised runner. The runner belongs to the harness, so when minimal-agent exits, with or without a clean shutdown, it stops every job. The logs are durable and stay with the session history at ~/.minimal-agent/sessions/<sid>.bgjobs/. Tools: BackgroundRun, BackgroundStatus, BackgroundLogs, BackgroundStop. To disable it, set MINIMAL_AGENT_DISABLE_BGJOBS=1.",
   "prompt": "./PROMPT.md",
   "scripts": {
     "runner": "./bin/runner.ts"
@@ -15,7 +15,7 @@
           "type": "tool",
           "tool": {
             "name": "BackgroundRun",
-            "description": "Run a shell command in the background and return at once. Use it for work of more than a few seconds, such as a build, a test run, an install or a download. Do not use it for a quick command whose output you need now. Do not start an interactive prompt or a REPL, because a job has no stdin. Returns a job handle and a pid, then a one-line digest at the end.",
+            "description": "Run a shell command in the background and return at once. Use it for work that lasts more than a few seconds. Examples: a build, a test run, an install or a download. Do not use it for a quick command whose output you need now. Do not start an interactive prompt or a REPL, because a job has no stdin. It returns a job handle and a pid, then a one-line digest at the end.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -33,7 +33,7 @@
                 },
                 "timeout": {
                   "type": "string",
-                  "description": "How long the job may run before it is killed. A friendly duration like \"90s\", \"10m\", \"2h\", \"1d\", or a plain seconds count. Defaults to 10 minutes. Most jobs finish well within that. Only raise it for genuinely long work. A job that hits its deadline is killed, and its output stays readable."
+                  "description": "How long the job can run before the harness stops it. A friendly duration like \"90s\", \"10m\", \"2h\", \"1d\", or a plain seconds count. Defaults to 10 minutes. Most jobs finish well within that. Only raise it for genuinely long work. The harness stops a job that reaches its deadline, and the output of that job stays readable."
                 }
               },
               "required": ["command"],
@@ -152,7 +152,7 @@
                 },
                 "reason": {
                   "type": "string",
-                  "description": "A short note recorded on the job for why it was stopped."
+                  "description": "A short note on the job that gives the reason for the stop."
                 }
               },
               "additionalProperties": false

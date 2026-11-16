@@ -2,7 +2,7 @@
   "id": "minimal-agent-cloud",
   "name": "Cloud",
   "version": "0.1.0",
-  "description": "The minimal-agent cloud connector. Owns the network transport to the cloud backend and registers it into the host transport registry, so Intercom's peers and teams transparently span machines without Intercom importing this plugin. Skeleton: the remote transport is a stub (no live connection) until the backend auth contract lands. Tool: CloudStatus.",
+  "description": "The minimal-agent cloud connector. It owns the network transport to the cloud backend and registers that transport in the host transport registry. Thus the Intercom peers and teams span machines, and Intercom does not import this plugin. Skeleton: the remote transport is a stub (no live connection) until the backend auth contract lands. Tool: CloudStatus.",
   "enabled": false,
   "prompt": "./PROMPT.md",
   "capabilities": ["transport:registry"],
@@ -14,7 +14,7 @@
           "type": "tool",
           "tool": {
             "name": "CloudStatus",
-            "description": "Report the minimal-agent cloud connector status: whether cloud features are enabled, the current feature flags, and whether the remote transport is registered into the host transport registry. Calling it also ensures the (stub) remote transport is registered (idempotent). Read-mostly. Example: CloudStatus({}).",
+            "description": "Report the status of the minimal-agent cloud connector. It shows if the cloud features are on, the current feature flags, and if the remote transport is in the host transport registry. A call also registers the (stub) remote transport, and that operation is idempotent. The tool mostly reads state. Example: CloudStatus({}).",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -41,7 +41,7 @@
           "type": "tool",
           "tool": {
             "name": "CloudLogin",
-            "description": "Log this CLI into the minimal-agent cloud backend using the device-authorization grant (RFC 8628). Prints a short user code + a verification URL to approve in your browser, then completes the login and saves the access token locally so cloud features (teleport, remote peers, teams) turn on. Configure the backend with MINIMAL_AGENT_CLOUD_URL (default http://localhost:4000/api/auth). Example: CloudLogin({}).",
+            "description": "Log this CLI into the minimal-agent cloud backend with the device-authorization grant (RFC 8628). The tool prints a short user code and a verification URL to approve in your browser. Then it completes the login and saves the access token on this machine. After the login, the cloud features start: teleport, remote peers and teams. Set the backend with MINIMAL_AGENT_CLOUD_URL (default http://localhost:4000/api/auth). Example: CloudLogin({}).",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -62,7 +62,7 @@
           "type": "tool",
           "tool": {
             "name": "CloudPush",
-            "description": "Manually upload this session's new records to the cloud teleport store so it can be viewed live from web or mobile. Idempotent and resumable: only records the cloud hasn't seen are sent. Requires being logged in (CloudLogin) with cloud features enabled; otherwise it's a no-op. Uploads also happen automatically in the background between turns. Example: CloudPush({}).",
+            "description": "Upload the new records of this session to the cloud teleport store by hand. Then the user can view the session live from web or mobile. The tool is idempotent and resumable: it sends only the records that the cloud did not get. It needs a login (CloudLogin) and the cloud features on. Without them, the tool does nothing. The upload also starts automatically in the background between turns. Example: CloudPush({}).",
             "input_schema": {
               "type": "object",
               "properties": {},

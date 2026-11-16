@@ -17,7 +17,7 @@
               "properties": {
                 "prompt": {
                   "type": "string",
-                  "description": "The prompt to run each time the task fires. Required. The text is injected as a user turn between turns, never mid-response."
+                  "description": "The prompt to run each time the task fires. Required. The harness injects the text as a user turn between turns, never in the middle of a response."
                 },
                 "cron": {
                   "type": "string",
@@ -25,7 +25,7 @@
                 },
                 "every": {
                   "type": "string",
-                  "description": "A human interval, converted to a clean cron cadence. Examples: '5m', '30m', '2h', '1d', 'every 2 hours'. Intervals that don't map to a clean cron step are rounded. Provide this OR `cron`."
+                  "description": "A human interval that the harness converts to a clean cron cadence. Examples: '5m', '30m', '2h', '1d', 'every 2 hours'. The harness rounds an interval that does not map to a clean cron step. Provide this OR `cron`."
                 },
                 "recurs": {
                   "type": "boolean",
@@ -71,7 +71,7 @@
           "type": "tool",
           "tool": {
             "name": "CronDelete",
-            "description": "Cancel a scheduled task by its 8 character id. Use it when a task is done, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. Returns the removed id and the count of tasks that remain.",
+            "description": "Cancel a scheduled task by its 8 character id. Use it when a task is complete, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. It returns the removed id and the count of the tasks that remain.",
             "input_schema": {
               "type": "object",
               "properties": {

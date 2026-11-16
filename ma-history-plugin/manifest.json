@@ -2,7 +2,7 @@
   "id": "history",
   "name": "Prompt History",
   "version": "0.1.0",
-  "description": "Persistent ↑/↓ recall for the prompt editor. Submitted prompts are appended to ~/.minimal-agent/projects/<cwd>/history.jsonl AND a global mirror at ~/.minimal-agent/history.jsonl. ↑ on the top visual row of an empty-or-recalled buffer walks backward through history. ↓ walks forward and restores the user's draft on overshoot. The buffer is preserved as a draft snapshot the first time the user starts browsing so an unintended recall is reversible. Disable via plugins.history.enabled=false in ~/.minimal-agent/config.jsonc, or one-off with MINIMAL_AGENT_NO_HISTORY=1.",
+  "description": "Persistent up and down arrow recall for the prompt editor. The plugin appends each submitted prompt to ~/.minimal-agent/projects/<cwd>/history.jsonl and to a global mirror at ~/.minimal-agent/history.jsonl. The up arrow on the top visual row of an empty or recalled buffer walks back through the history. The down arrow walks forward and puts the user draft back if it goes past the end. The plugin keeps the buffer as a draft snapshot when the user starts to browse, so the user can undo an unwanted recall. To disable it, set plugins.history.enabled=false in ~/.minimal-agent/config.jsonc. For one run, set MINIMAL_AGENT_NO_HISTORY=1.",
   "permissions": ["hooks:editor.key", "hooks:editor.buffer.set", "hooks:prompt.submitted"],
   "headless": {
     "events": [

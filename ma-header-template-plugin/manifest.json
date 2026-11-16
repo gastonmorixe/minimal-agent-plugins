@@ -2,7 +2,7 @@
   "id": "header-template",
   "name": "Header template",
   "version": "0.1.0",
-  "description": "Prints a custom one-shot header from a %%name%% template (--header-format, MINIMAL_AGENT_HEADER_FORMAT, or config headerFormat). Variables: sid, sid.short, model, provider, effort, agent, cwd, branch, resume, and more. Off unless a template is set.",
+  "description": "Prints a custom one-shot header from a %%name%% template (--header-format, MINIMAL_AGENT_HEADER_FORMAT, or config headerFormat). Variables: sid, sid.short, model, provider, effort, agent, cwd, branch, resume, and more. It is off when no template exists.",
   "permissions": ["hooks:session.willStart"],
   "headless": {
     "hooks": [

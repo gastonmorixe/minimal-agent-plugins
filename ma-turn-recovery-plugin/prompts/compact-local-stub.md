@@ -1,1 +1,1 @@
-Prior conversation was compacted locally. Continue from the retained recent turns below.
+The harness compacted the prior conversation locally. Continue from the retained recent turns below.

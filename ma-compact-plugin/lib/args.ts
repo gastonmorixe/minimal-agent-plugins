@@ -4,7 +4,7 @@
  * Reuses core `parseCompactArgs` (agent/context-compact) semantics,
  * adapted from `/compact` argv strings to tool JSON input:
  *
- * - `mode`: one of tail|local|remote|fork (case-insensitive, like the
+ * - `mode`: one of tail|local|remote (case-insensitive, like the
  *   positional `mode=<engine>` argv form). Absent: the handler sends
  *   `local` (handlers/compact-context.ts).
  * - `tail`: trailing messages kept verbatim. Must be an integer \>= 0
@@ -22,7 +22,7 @@
 import type { CompactMode, CompactTriggerReason } from "./host-types.ts"
 
 /** Engines core `parseCompactArgs` accepts (positional or `mode=`). */
-export const COMPACT_MODES: readonly CompactMode[] = ["remote", "tail", "local", "fork"]
+export const COMPACT_MODES: readonly CompactMode[] = ["remote", "tail", "local"]
 
 /** Trigger reasons the tool accepts (subset of core `CompactReason`). */
 export const COMPACT_REASONS: readonly CompactTriggerReason[] = ["manual", "auto"]
@@ -45,7 +45,7 @@ export function validateCompactInput(raw: Record<string, unknown>): ArgsValidati
   let mode: CompactMode | undefined
   if (raw.mode !== undefined) {
     if (typeof raw.mode !== "string" || !isCompactMode(raw.mode)) {
-      return { ok: false, error: "`mode` must be one of: remote, tail, local, fork" }
+      return { ok: false, error: "`mode` must be one of: remote, tail, local" }
     }
     mode = raw.mode.toLowerCase() as CompactMode
   }

@@ -1,23 +1,23 @@
 # Cloud Connector
 
-This plugin connects this session to the minimal-agent cloud backend. It owns the network transport and registers it into the host transport registry, so Intercom's peers and teams can transparently span machines. Local-vs-remote is a transport detail the rest of the system never sees.
+This plugin connects this session to the minimal-agent cloud backend. The plugin owns the network transport. It registers the transport in the host transport registry. Peers and teams of Intercom can then span machines without a change. The rest of the system never sees if a transport is local or remote.
 
-Login is real: the CLI authenticates to the backend with the OAuth device grant (RFC 8628) and stores a bearer token locally. `cloudEnabled` is `false` until you log in, then the feature flags come from the backend (`me { flags }`). The remote transport's network methods are still a stub until the WebSocket layer lands; the auth + flags path is live.
+Login is real. The CLI authenticates to the backend with the OAuth device grant (RFC 8628). The CLI stores a bearer token locally. `cloudEnabled` is `false` until you log in. After login, the feature flags come from the backend (`me { flags }`). The network methods of the remote transport are still a stub until the WebSocket layer lands. The auth and the flags path is live.
 
 ## Tools
 
-- `CloudLogin` — log in via the device grant. Prints a short user code + a verification URL to approve in your browser, then completes login and saves the token. Backend defaults to `http://localhost:4000/api/auth`; override with `MINIMAL_AGENT_CLOUD_URL`.
-- `CloudStatus` — report login state, feature flags, the backend URL, and whether the remote transport is registered. Calling it ensures the transport is registered (idempotent).
+- `CloudLogin` - log in with the device grant. The tool prints a short user code and a verification URL. Approve the code in your browser. The tool completes the login and saves the token. The backend defaults to `http://localhost:4000/api/auth`. To change it, set `MINIMAL_AGENT_CLOUD_URL`.
+- `CloudStatus` - show the login state, the feature flags, the backend URL, and the state of the remote transport. The call also registers the transport when it is not present. The call is idempotent.
 
 ## Config (env)
 
-- `MINIMAL_AGENT_CLOUD_URL` — auth base URL (default `http://localhost:4000/api/auth`).
-- `MINIMAL_AGENT_CLOUD_GRAPHQL_URL` — GraphQL endpoint (default: derived as the origin root `/graphql`).
-- `MINIMAL_AGENT_CLOUD_CLIENT_ID` — device-grant client id (default `minimal-agent-cli`).
-- `MINIMAL_AGENT_CLOUD_SCOPE` — requested scope (default `teleport remote-peers`).
+- `MINIMAL_AGENT_CLOUD_URL` - auth base URL (default `http://localhost:4000/api/auth`).
+- `MINIMAL_AGENT_CLOUD_GRAPHQL_URL` - GraphQL endpoint (default: derived as the origin root `/graphql`).
+- `MINIMAL_AGENT_CLOUD_CLIENT_ID` - device-grant client id (default `minimal-agent-cli`).
+- `MINIMAL_AGENT_CLOUD_SCOPE` - requested scope (default `teleport remote-peers`).
 
-The token is stored at `~/.minimal-agent/cloud-auth.json` (owner-only, outside any repo).
+The CLI stores the token at `~/.minimal-agent/cloud-auth.json`. Only the owner can read the file. The file is outside any repo.
 
 ## Architecture (why this plugin never imports Intercom or core)
 
-The plugin hands its remote transport to Intercom through the host-brokered `transport:registry` capability: it calls `host.transportRegistry.register(...)`, Intercom calls `list()`. Neither plugin imports the other; the host is a neutral broker that treats a transport as opaque. This is the same dependency-inversion shape the provider plugins use to register models.
+The plugin hands its remote transport to Intercom through the host-brokered `transport:registry` capability. The plugin calls `host.transportRegistry.register(...)`. Intercom calls `list()`. Neither plugin imports the other. The host is a neutral broker. The host treats a transport as opaque. The provider plugins use the same dependency-inversion shape to register models.

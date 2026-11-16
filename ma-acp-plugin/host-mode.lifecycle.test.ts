@@ -735,7 +735,7 @@ describe("sampling (contract 5.f)", () => {
         sessionUpdate: "notice",
         severity: "warning",
         title: "Temperature not applied",
-        description: "The model does not accept temperature. 0.9 was not sent.",
+        description: "The model does not accept temperature. 0.9 did not go on the wire.",
       },
     ])
     h.end()

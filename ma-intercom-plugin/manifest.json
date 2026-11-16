@@ -2,7 +2,7 @@
   "id": "intercom",
   "name": "Intercom",
   "version": "0.1.0",
-  "description": "Inter-session communication and presence. Lets any session see what other sessions are doing (live roster with derived liveness, plus deep inspection of a peer's tasks, background jobs, and sub-agent fleet) and message them (note, ping, interrupt, or broadcast). Messages are durable, pull-delivered as a per-turn <ma::agent::intercom-inbox> block, and crash/resume safe. Ping/interrupt wake an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. Disable presence with MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
+  "description": "Inter-session communication and presence. The plugin lets a session see what the other sessions do. It shows a live roster with derived liveness. It also gives a deep inspection of the tasks, the background jobs and the sub-agent fleet of a peer. A session can send a message to a peer: a note, a ping, an interrupt or a broadcast. The messages are durable, they arrive as a per-turn <ma::agent::intercom-inbox> block, and they survive a crash and a resume. A ping or an interrupt wakes an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. To disable presence, set MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
   "capabilities": ["sessions:read"],
   "permissions": [
     "hooks:editor.key",
@@ -31,7 +31,7 @@
                 },
                 "peer": {
                   "type": "string",
-                  "description": "inspect: which peer to look at. A short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect."
+                  "description": "inspect: the target peer. Give a short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect."
                 },
                 "include": {
                   "type": "array",
@@ -74,7 +74,7 @@
               "properties": {
                 "to": {
                   "type": "string",
-                  "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory. Any prefix of a session id resolves. You cannot message yourself."
+                  "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id. Use \"all\" to broadcast to every reachable peer. Use \"project\" for the peers in your project directory. Any prefix of a session id finds its session. You cannot send a message to yourself."
                 },
                 "body": {
                   "type": "string",
@@ -83,7 +83,7 @@
                 "kind": {
                   "type": "string",
                   "enum": ["message", "interrupt"],
-                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook is not built."
+                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook has no build."
                 },
                 "replyTo": {
                   "type": "string",

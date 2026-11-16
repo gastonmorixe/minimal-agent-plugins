@@ -2,7 +2,7 @@
   "id": "usage",
   "name": "Usage",
   "version": "0.1.0",
-  "description": "Token-usage stats overlay. The /usage command opens an interactive footer overlay showing total tokens + cost across all saved sessions, broken down by provider and model, as ASCII bar charts. Left/Right switch the time window (Today, Last 24h, Last 30d, YTD, Last year, All time). Keys 1-6 jump, Esc closes. Real billed usage is marked [R], transcript-estimated [E]. Same data + renderer as the `usage` CLI command. Headless: /usage <period> prints once to scrollback.",
+  "description": "Token-usage stats overlay. The /usage command opens an interactive footer overlay. The overlay shows total tokens and cost across all saved sessions, as ASCII bar charts. It breaks the totals down by provider and model. Left/Right switch the time window (Today, Last 24h, Last 30d, YTD, Last year, All time). Keys 1-6 jump to a window. Esc closes the overlay. The overlay marks real billed usage [R], and transcript-estimated usage [E]. It uses the same data and renderer as the `usage` CLI command. Headless: /usage <period> prints once to scrollback.",
   "capabilities": ["usage:read"],
   "permissions": [
     "hooks:editor.key",

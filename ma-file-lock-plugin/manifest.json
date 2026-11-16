@@ -2,7 +2,7 @@
   "id": "file-lock",
   "name": "File Lock",
   "version": "0.1.0",
-  "description": "Cooperative locking for concurrent agents in a shared worktree. Edit/Write acquire a sibling .locked file before mutating. Stale locks (dead PID, time threshold) are auto-broken. The LockStatus tool inspects locks under cwd, and a CLI is shipped for human use. Disable via `plugins[\"file-lock\"].enabled = false` in `~/.minimal-agent/config.jsonc` or the env var `MINIMAL_AGENT_FILE_LOCK_DISABLED=1`.",
+  "description": "Cooperative locking for concurrent agents in a shared worktree. Edit and Write get a sibling .locked file before they change a file. The plugin breaks a stale lock automatically (dead PID or a time threshold). The LockStatus tool examines the locks under the cwd, and the plugin gives a CLI for human use. To disable it, set `plugins[\"file-lock\"].enabled = false` in `~/.minimal-agent/config.jsonc`, or set the env var `MINIMAL_AGENT_FILE_LOCK_DISABLED=1`.",
   "headless": {
     "tools": [
       {
@@ -11,14 +11,14 @@
           "type": "tool",
           "tool": {
             "name": "LockStatus",
-            "description": "Inspect or clear cooperative file locks under the working directory. Use it when an Edit or Write call fails because a file is locked. Use it when you must know which peer agent holds a file. Do not use it to change file content. Prefer Edit or Write instead for any content change. Returns the lock list with holder session, pid, host and age for an action of list. Returns one holder record for inspect and a removed count for clear-stale.",
+            "description": "Inspect or clear the cooperative file locks under the working directory. Use it when an Edit or Write call fails on a locked file. Use it when you must know which peer agent holds a file. Do not use it to change file content. Use Edit or Write for a content change. For an action of list, it gives the lock list with the holder session, pid, host and age. It gives one holder record for inspect, and a removed count for clear-stale.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect", "clear-stale", "clear"],
-                  "description": "Operation to run. list walks the directory and shows every lock with holder details. inspect shows one lock's metadata. clear-stale removes locks whose holder pid is dead or older than 5 minutes. clear removes one named lock and is unsafe on a live peer."
+                  "description": "Operation to run. The list action reads the directory and shows each lock with its holder details. The inspect action shows the metadata of one lock. The clear-stale action removes the locks whose holder pid is dead or older than 5 minutes. The clear action removes one named lock and is unsafe on a live peer."
                 },
                 "path": {
                   "type": "string",

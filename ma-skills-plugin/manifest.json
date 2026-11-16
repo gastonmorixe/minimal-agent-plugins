@@ -2,7 +2,7 @@
   "id": "ma-skills",
   "name": "Skills",
   "version": "0.1.0",
-  "description": "Agent Skills support: discovers SKILL.md packs from project, home-shared, and user-agent roots and exposes them via progressive disclosure (Level 1 catalog in the system prompt + Skill tool for Level 2/3 on-demand load).",
+  "description": "Agent Skills support. The plugin finds SKILL.md packs in the project, home-shared, and user-agent roots. It exposes them with progressive disclosure. The Level 1 catalog is in the system prompt. The Skill tool loads Level 2/3 on demand.",
   "headless": {
     "tools": [
       {
@@ -18,7 +18,7 @@
                 "action": {
                   "type": "string",
                   "enum": ["list", "info", "read"],
-                  "description": "What to do. list: every discovered skill, with broken and shadowed entries, and no maxSkills cap. info: the frontmatter of one skill, with no body load. read: the full SKILL.md body, a trailer of bundled sibling files, and the allowed-tools field when declared."
+                  "description": "What to do. Use list to show every discovered skill, with broken and shadowed entries, and no maxSkills cap. Use info to show the frontmatter of one skill, with no body load. Use read to show the full SKILL.md body, a trailer of bundled sibling files, and the declared allowed-tools field."
                 },
                 "name": {
                   "type": "string",
