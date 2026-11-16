@@ -97,6 +97,42 @@ const HIDDEN_WORDS: readonly string[] = [
   "don\uff07t stop",
 ]
 
+/**
+ * Characters the prompt surface may contain. This is an allowlist, not a
+ * blocklist: five review rounds found hidden and lookalike characters one at a
+ * time, and a list of bad ones never finishes. The cost is deliberate and it is
+ * in the test below: an accented letter or a CJK glyph in a prompt is an error
+ * until someone adds it here with a reason. The prompt corpus is English STE.
+ */
+const ALLOWED_EXTRA = ["\u201c", "\u201d", "\u2018", "\u2019", "\u2191", "\u2193"]
+
+/** Characters and shapes that must be reported. One per class a reviewer found. */
+const HIDDEN: ReadonlyArray<readonly [string, string]> = [
+  // U+2018 is deliberately allowed: the writing-style file quotes with it, so
+  // the typographic rule reports an apostrophe use, not the hidden-char rule.
+  ["modifier apostrophe U+02BC", "don\u02bct"],
+  ["fullwidth apostrophe U+FF07", "don\uff07t"],
+  ["prime U+2032", "don\u2032t"],
+  ["acute accent U+00B4", "don\u00b4t"],
+  ["soft hyphen", "util\u00adize"],
+  ["zero-width space", "util\u200bize"],
+  ["word joiner", "util\u2060ize"],
+  ["combining grapheme joiner", "util\u034fize"],
+  ["left-to-right mark", "util\u200eize"],
+  ["right-to-left override", "util\u202eize"],
+  ["variation selector", "util\ufe0fize"],
+  ["combining acute on ASCII", "ut\u0301ilize"],
+  ["Cyrillic e", "util\u0435ze"],
+  ["Greek omicron", "util\u03bfze"],
+  ["fullwidth letters", "util\uff49ze"],
+  ["dotless i", "ut\u0131lize"],
+  ["Hangul filler", "prior\u3164to"],
+  ["braille blank", "prior\u2800to"],
+  ["no-break space", "prior\u00a0to"],
+  ["line separator", "prior\u2028to"],
+  ["BOM", "util\ufeffize"],
+]
+
 describe("backtick span classifier", () => {
   test("each evasion is classified as prose", () => {
     const wrong = EVASIONS.filter((span) => looksLikeCode(span))
@@ -135,6 +171,48 @@ describe("backtick span classifier", () => {
   test("real code carries no vocabulary finding", () => {
     const noisy = CODE.filter((span) => lintText(`Run \`${span}\`.`).length > 0)
     expect(noisy).toEqual([])
+  })
+
+  test("every hidden or lookalike character is reported", () => {
+    const missed = HIDDEN.filter(
+      ([, text]) => !lintText(text).some((f) => f.rule === "ste-s12-hidden-char"),
+    ).map(([name]) => name)
+    expect(missed).toEqual([])
+  })
+
+  test("an allowed quote is flagged as punctuation, not as a hidden char", () => {
+    const findings = lintText("don\u2018t stop")
+    expect(findings.some((f) => f.rule === "ste-s3-typographic")).toBe(true)
+    expect(findings.some((f) => f.rule === "ste-s12-hidden-char")).toBe(false)
+  })
+
+  test("the allowed characters stay quiet", () => {
+    const noisy = ALLOWED_EXTRA.filter((char) =>
+      lintText(`a ${char} b`).some((f) => f.rule === "ste-s12-hidden-char"),
+    )
+    expect(noisy).toEqual([])
+  })
+
+  test("printable ASCII, tab and newline stay quiet", () => {
+    const text = "Plain ASCII: a-z A-Z 0-9 !#$%&()*+,-./:;<=>?@[]^_{|}~ \t tab and a newline."
+    expect(lintText(text).some((f) => f.rule === "ste-s12-hidden-char")).toBe(false)
+  })
+
+  test("the allowlist is deliberately strict: accents and CJK are errors", () => {
+    // This is the documented cost of an allowlist. If a prompt really needs an
+    // accented letter, add it to ALLOWED_NON_ASCII with a reason.
+    for (const text of [
+      "caf\u00e9",
+      "r\u00e9sum\u00e9",
+      "\u65e5\u672c\u8a9e",
+      "\u2192",
+      "\u2265 \u00bd \u2122",
+    ]) {
+      expect(
+        lintText(text).some((f) => f.rule === "ste-s12-hidden-char"),
+        `${JSON.stringify(text)} must be reported`,
+      ).toBe(true)
+    }
   })
 
   test("the tables are big enough to mean something", () => {
