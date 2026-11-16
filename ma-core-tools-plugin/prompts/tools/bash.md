@@ -6,7 +6,7 @@ The output has a limit of ~64KB / 1000 lines, which keeps the start. A failed bu
 
 When the limit cuts the output, the harness adds a `[truncated: ...]` notice and saves the full text to a `<ma::agent::raw-output ... />` blob path. Read the tail of that blob for errors.
 
-The user transcript keeps only ~10 lines of the body plus a `shown N/M L` summary. The tool_result you get back is not for visual content: ASCII art, banners, terminal previews, formatted tables or generated reports. Put it in your text reply instead, because the user reads the full reply.
+The user transcript keeps only ~10 lines of the body plus a `shown N/M L` summary. Do not use Bash to show visual content to the user through a tool_result. That covers ASCII art, banners, terminal previews, formatted tables and generated reports. Put it in your text reply instead, because the user reads the full reply.
 
 The TUI preview can cut more than the API limit. The `<ma::agent::output-preview shown=N total=M>` annotation then carries a `path="..."` attribute when a blob exists. Read that path for the full output.
 

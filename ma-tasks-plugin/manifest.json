@@ -42,7 +42,7 @@
                     "list",
                     "clear"
                   ],
-                  "description": "What to do. `add` adds one task, and `add_many` adds a task tree. `replace_plan` replaces the board with a new plan. `update` changes a title or a status, and `status` sets a new status. `start` will auto-start the parent. `done` will auto-promote the parent when the last open child closes. A parent whose children are all `done` takes the status `done`, not `canceled`. A parent stays `doing` while siblings stay open. `remove` drops only a task that never started. `reorder` changes the top-level order. `list` shows the board, and `clear` empties it. After a validation failure, retry once. Do not add duplicates one by one."
+                  "description": "What to do. `add` adds one task, and `add_many` adds a task tree. `replace_plan` replaces the board with a new plan. `update` changes a title or a status, and `status` sets a new status. `start` moves the task to `doing` and auto-starts the parent. `done` finishes a task and auto-promotes the parent when the last open child closes. A parent stays `doing` while siblings stay open. `remove` deletes a task and its subtasks. Use it for a task that never started. `reorder` changes the top-level order. `list` shows the board, and `clear` empties it. After a validation failure, retry once. Do not add duplicates one by one."
                 },
                 "id": {
                   "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."
@@ -53,7 +53,7 @@
                 },
                 "tasks": {
                   "type": "array",
-                  "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. A child promotes the parent task, so do not also call `done` on the parent. Do not convert the array to a string.",
+                  "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}`, where `children` is an array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. A child promotes the parent task, so do not also call `done` on the parent. Do not convert the array to a string.",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -78,11 +78,11 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "Flat list of task titles. Send exactly one of `tasks`, `items` or `titles`. Use `titles` only for a flat plan or a batch under `parent`."
+                  "description": "Flat list of task titles. Send exactly one of `tasks`, `items` or `titles`. Use `titles` for a flat plan or a batch under `parent`."
                 },
                 "items": {
                   "type": "array",
-                  "description": "Alias of `tasks`, in the tree form `{title, children?}[]`. Prefer `tasks`. Cannot combine with `titles` or `parent`.",
+                  "description": "Alias of `tasks`, in the tree form `{title, children?}[]`. Prefer `tasks`. Cannot combine with `tasks`, `titles` or `parent`.",
                   "items": {
                     "type": "object",
                     "properties": {
