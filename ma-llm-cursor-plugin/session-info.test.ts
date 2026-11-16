@@ -5,10 +5,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import { authUsageUrl, currentPeriodUsageUrl } from "./connect/hosts.ts"
-import {
-  applyCursorUsageEvent,
-  clearCursorLastMaxTokens,
-} from "./cursor-usage.ts"
+import { applyCursorUsageEvent, clearCursorLastMaxTokens } from "./cursor-usage.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import {
   _resetCursorPrimeInFlight,

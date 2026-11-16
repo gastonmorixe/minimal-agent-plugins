@@ -63,7 +63,7 @@ export function getCursorLastUsedTokens(): number | undefined {
 /**
  * Context-window denominator for the status bar: prefer server max_tokens,
  * but never report a window smaller than the latest used_tokens (Auto can
- * report used > catalog 128k, which made `128k … 143k` unreadable).
+ * report `used > catalog 128k`, which made `128k … 143k` unreadable).
  */
 export function getCursorContextWindowForStatus(): number | undefined {
   const max = lastSeenMaxTokens

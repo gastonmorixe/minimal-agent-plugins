@@ -16,9 +16,12 @@
       "tsdoc.json",
       "!**/node_modules/**",
       "!**/.net-dbg/**",
+      "!**/tmp/**",
+      "!**/.tmp/**",
       "!**/bun.lock",
       "!**/native/build/**",
       "!**/PROMPT.md",
+      "!**/prompts/*.tmpl.md",
       "!ma-fetch-plugin/docs/persistent-sessions-and-x.md"
     ]
   }

@@ -36,10 +36,10 @@ Server-side automatic prompt cache. No client `cache_control`.
 
 `DashboardService/GetFilteredUsageEvents` for `conversationId = f68e3706-f10b-4658-9d60-ec3638943023`:
 
-| ts (approx) | input | output | cacheRead |
-|---|---:|---:|---:|
-| latest | 192728 | 7147 | 1678336 |
-| prior | 142866 | 355 | 286208 |
+| ts (approx) |  input | output | cacheRead |
+| ----------- | -----: | -----: | --------: |
+| latest      | 192728 |   7147 |   1678336 |
+| prior       | 142866 |    355 |    286208 |
 
 Local SessionInfo before fix: `cache-read 0`, `189k / 128k` (148%). Cursor billing
 proves cache is live; the provider simply was not decoding it.
