@@ -300,6 +300,14 @@ export function cursorCaps(options: CursorCapsOptions = {}): Capabilities {
       pdf: false,
       video: false,
     },
+    // Server-side prompt cache (no client cache_control). TurnEnded /
+    // ModelCallCompleted report cache_read / cache_write (2026.11.13+).
+    caching: {
+      ...base.caching,
+      explicit: false,
+      automatic: true,
+      reportsCacheHits: true,
+    },
     serverSideHistory: false,
     serverTools: [],
   }

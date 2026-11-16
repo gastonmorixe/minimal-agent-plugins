@@ -173,6 +173,7 @@ export async function* translateCursorStream(
         ev.kind === "heartbeat" ||
         ev.kind === "token_delta" ||
         ev.kind === "conversation_checkpoint_update" ||
+        ev.kind === "model_call_completed" ||
         ev.kind === "summary" ||
         ev.kind === "summary_started" ||
         ev.kind === "summary_completed" ||

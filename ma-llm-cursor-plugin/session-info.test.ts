@@ -5,6 +5,10 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import { authUsageUrl, currentPeriodUsageUrl } from "./connect/hosts.ts"
+import {
+  applyCursorUsageEvent,
+  clearCursorLastMaxTokens,
+} from "./cursor-usage.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
 import {
   _resetCursorPrimeInFlight,
@@ -33,6 +37,7 @@ const LIVE_SHAPED = {
 
 afterEach(() => {
   clearCursorQuotaCache()
+  clearCursorLastMaxTokens()
   _resetCursorPrimeInFlight()
 })
 
@@ -124,6 +129,24 @@ describe("fetchCursorSessionInfo", () => {
     const info = await fetchCursorSessionInfo({ modelId: "cursor-auto" })
     expect(info?.quota?.windows?.map((w) => w.id)).toEqual(["month", "ondemand"])
     expect(getCursorQuotaCache()?.snapshot.overage).toEqual({ active: true })
+  })
+
+  test("surfaces checkpoint max_tokens as contextWindow", async () => {
+    applyCursorUsageEvent(
+      {},
+      { kind: "conversation_checkpoint_update", usedTokens: 50_000, maxTokens: 200_000 },
+    )
+    const info = await fetchCursorSessionInfo({ modelId: "cursor-auto" })
+    expect(info).toEqual({ contextWindow: 200_000 })
+  })
+
+  test("when used_tokens exceeds max_tokens, contextWindow follows used", async () => {
+    applyCursorUsageEvent(
+      {},
+      { kind: "conversation_checkpoint_update", usedTokens: 189_274, maxTokens: 128_000 },
+    )
+    const info = await fetchCursorSessionInfo({ modelId: "cursor-auto" })
+    expect(info).toEqual({ contextWindow: 189_274 })
   })
 
   test("falls back to GET /auth/usage when planUsage.limit is missing", async () => {

@@ -21,6 +21,7 @@ import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 import { CURSOR_API_KEY_AUTH, exchangeCursorApiKey } from "./auth.ts"
 import { authUsageUrl, currentPeriodUsageUrl } from "./connect/hosts.ts"
+import { getCursorContextWindowForStatus } from "./cursor-usage.ts"
 import { buildCursorHeaders } from "./headers.ts"
 import { loadClientIds } from "./ids.ts"
 import type { NetworkClient } from "./lib/net-types.ts"
@@ -404,8 +405,13 @@ export async function fetchCursorSessionInfo(
   if (cache && !cacheIsFresh()) {
     void primeCursorSessionInfo(ctx).catch(() => undefined)
   }
-  if (!cache) return {}
-  return { quota: cache.snapshot }
+  const info: ProviderSessionInfo = {}
+  if (cache) info.quota = cache.snapshot
+  // Prefer server ConversationTokenDetails over static catalog 128k when
+  // Auto's live used/max disagree with the seed (avoids "128k / 143k").
+  const contextWindow = getCursorContextWindowForStatus()
+  if (contextWindow != null) info.contextWindow = contextWindow
+  return Object.keys(info).length > 0 ? info : {}
 }
 
 /**
