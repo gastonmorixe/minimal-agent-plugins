@@ -2,9 +2,9 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, test } from "bun:test"
 
+import type { StartupRow, StartupRowsPayload } from "@minimal-agent/core/plugin-api"
 import type { HookHandlerContext } from "@minimal-agent/core/plugin-api/types/plugin"
 
-import type { StartupRow, StartupRowsPayload } from "../engine/startup-row.ts"
 import { makeSandbox, nativeConfig, type Sandbox } from "../engine/test-support.ts"
 import manifest from "../manifest.json"
 
@@ -131,7 +131,14 @@ describe("startup.rows handler", () => {
     expect(startupRows(null as unknown as StartupRowsPayload, ctx(sb.project))).toBeUndefined()
   })
 
-  test("manifest does not register startup.rows yet", () => {
-    expect(JSON.stringify(manifest)).not.toContain("startup.rows")
+  test("manifest registers startup.rows with its permission", () => {
+    expect(manifest.permissions).toContain("hooks:startup.rows")
+    const entry = manifest.headless.hooks.find((h) => h.channel === "startup.rows")
+    expect(entry).toEqual({
+      id: "hooks_startup_rows",
+      channel: "startup.rows",
+      handler: { type: "module", path: "./handlers/startup-rows.ts", export: "default" },
+      priority: 50,
+    })
   })
 })

@@ -76,9 +76,11 @@ describe("manifest", () => {
   test("id hooks, on by default, every channel with a matching permission", () => {
     expect(manifest.id).toBe("hooks")
     expect("enabled" in manifest).toBe(false)
-    expect(manifest.headless.hooks.map((h) => h.channel)).toEqual(phase1)
-    expect(manifest.permissions).toEqual(phase1.map((c) => `hooks:${c}`))
-    for (const h of manifest.headless.hooks) {
+    // startup.rows uses its own handler (handlers/startup-rows.test.ts).
+    const all = [...phase1, "startup.rows"]
+    expect(manifest.headless.hooks.map((h) => h.channel)).toEqual(all)
+    expect(manifest.permissions).toEqual(all.map((c) => `hooks:${c}`))
+    for (const h of manifest.headless.hooks.filter((x) => x.channel !== "startup.rows")) {
       expect(h.handler).toEqual({
         type: "module",
         path: "./handlers/dispatch.ts",

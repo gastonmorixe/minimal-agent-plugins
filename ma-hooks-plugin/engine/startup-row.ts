@@ -19,24 +19,15 @@
 
 import { basename } from "node:path"
 
+import type { StartupRow, StartupRowPart, StartupRowsPayload } from "@minimal-agent/core/plugin-api"
+
 import type { HookStatus } from "./engine.ts"
 import type { CanonicalHook } from "./types.ts"
 
-// mirror of plugin-api StartupRow/Part; switch to the import when core lands
+/** One styled text part (core `StartupRowPart`). */
+type Part = StartupRowPart
 
-/** One styled text part. Plugins send semantic tones, never ANSI. */
-export type Part = { text: string; tone?: "default" | "dim" | "accent" | "warn" | "ok" }
-
-/** One startup header row, with an optional sub-tree. */
-export type StartupRow = {
-  label: string
-  summary: Part[]
-  children?: { label: string; value: Part[] }[]
-  order?: number
-}
-
-/** The `startup.rows` chain payload. */
-export type StartupRowsPayload = { cwd: string; cols: number; rows: StartupRow[] }
+export type { StartupRow, StartupRowsPayload }
 
 /** Row label. No `order`: the CLI keeps the chain order. */
 export const HOOKS_ROW_LABEL = "hooks"

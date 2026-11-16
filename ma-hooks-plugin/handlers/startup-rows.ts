@@ -1,7 +1,7 @@
 /**
- * Listener for the future core chain channel `startup.rows` (design H1).
- * It appends the `hooks` row to the CLI startup header. Not registered in
- * `manifest.json` yet: core does not have the channel.
+ * Listener for the core chain channel `startup.rows` (design H1), registered
+ * in `manifest.json` as `hooks_startup_rows`. It appends the `hooks` row to
+ * the CLI startup header.
  *
  * It uses the engine cache of `handlers/dispatch.ts` (`engineFor`). Engine
  * discovery is sync and reads a few small files. It never throws: an error
@@ -10,9 +10,10 @@
  * @module handlers/startup-rows
  */
 
+import type { StartupRowsPayload } from "@minimal-agent/core/plugin-api"
 import type { HookHandlerContext } from "@minimal-agent/core/plugin-api/types/plugin"
 
-import { buildHooksStartupRow, type StartupRowsPayload } from "../engine/startup-row.ts"
+import { buildHooksStartupRow } from "../engine/startup-row.ts"
 
 import { engineFor } from "./dispatch.ts"
 
