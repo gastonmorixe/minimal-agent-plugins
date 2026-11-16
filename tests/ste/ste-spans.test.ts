@@ -90,6 +90,11 @@ const HIDDEN_WORDS: readonly string[] = [
   "util\u00adize it",
   "utili\u200bze it",
   "Let\u2019s dive in",
+  // Other apostrophe forms that a typist or a paste can produce.
+  "don\u02bct utilize it",
+  "it\u02bcs robust",
+  "Let\u02bcs dive in",
+  "don\uff07t stop",
 ]
 
 describe("backtick span classifier", () => {
