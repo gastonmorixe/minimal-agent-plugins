@@ -2,7 +2,7 @@
  * C50: byte parity between this plugin and the core engine.
  *
  * The core engine outputs were captured once into
- * `fixtures/core-engine-parity.json` (see `fixtures/capture-core-parity.ts`).
+ * `__fixtures__/core-engine-parity.json` (see `__fixtures__/capture-core-parity.ts`).
  * Each case holds the template text, so this test reads no prompt asset from
  * disk and imports nothing from core.
  */
@@ -26,7 +26,7 @@ interface Case {
 }
 
 const fixture = (await Bun.file(
-  join(import.meta.dir, "fixtures", "core-engine-parity.json"),
+  join(import.meta.dir, "__fixtures__", "core-engine-parity.json"),
 ).json()) as {
   assets: number
   cases: Case[]

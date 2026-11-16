@@ -7,7 +7,7 @@
  * `core-engine-parity.json`. It is kept only to show how the fixture was made.
  * It will not run once the core engine is gone.
  *
- * Run (from minimal-agent-plugins): bun run ma-prompt-template-plugin/fixtures/capture-core-parity.ts
+ * Run (from minimal-agent-plugins): bun run ma-prompt-template-plugin/__fixtures__/capture-core-parity.ts
  *
  * Cases, per prompt asset (same as the old live parity test):
  * - A: every placeholder set to `v:<name>`.
@@ -54,7 +54,7 @@ function scan(cwd: string, pattern: string): string[] {
 const assets = [
   ...scan(CORE_PROMPTS, "**/*.md"),
   ...scan(PLUGINS_ROOT, "ma-*/prompts/**/*.md"),
-  ...scan(join(PLUGIN_DIR, "fixtures"), "prompts/**/*.md"),
+  ...scan(join(PLUGIN_DIR, "__fixtures__"), "prompts/**/*.md"),
 ].sort()
 
 function names(text: string): { required: string[]; optional: string[] } {
