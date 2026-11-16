@@ -1,0 +1,1012 @@
+{
+  "paramDescriptions": {
+    "Bash": {
+      "command": "The command to execute",
+      "timeout": "Optional timeout in milliseconds (max 600000)",
+      "description": "Clear, concise description of what this command does"
+    },
+    "Read": {
+      "file_path": "The absolute path to the file to read",
+      "offset": "Line number to start reading from",
+      "limit": "Number of lines to read"
+    },
+    "Write": {
+      "file_path": "The absolute path to the file to write",
+      "content": "The content to write to the file. `contents` is accepted as an alias.",
+      "contents": "Alias for `content`. Same meaning; ignored when `content` is also set."
+    },
+    "Edit": {
+      "file_path": "The absolute path to the file to modify",
+      "old_string": "The text to replace",
+      "new_string": "The text to replace it with",
+      "replace_all": "Replace all occurrences (default false)"
+    },
+    "Glob": {
+      "pattern": "The glob pattern to match files against. `glob_pattern` is accepted as an alias.",
+      "glob_pattern": "Alias for `pattern`. Same meaning; ignored when `pattern` is also set.",
+      "path": "Directory to search in. Defaults to cwd. `target_directory` is accepted as an alias.",
+      "target_directory": "Alias for `path`. Same meaning; ignored when `path` is also set."
+    },
+    "FilesStats": {
+      "status": "Optional status filter: all, present, missing, or changed",
+      "path": "Optional absolute path or directory prefix filter"
+    },
+    "Grep": {
+      "pattern": "Regex pattern to search for",
+      "path": "File or directory to search in. Defaults to cwd.",
+      "glob": "Glob pattern to filter files (e.g. \"*.js\")",
+      "output_mode": "Output mode: content, files_with_matches, or count",
+      "caseInsensitive": "Case insensitive search",
+      "showLineNumbers": "Show line numbers (default true)",
+      "after": "Lines after match",
+      "before": "Lines before match",
+      "context": "Context lines",
+      "contextAlias": "Context lines (alias for -C)",
+      "headLimit": "Limit output lines (default 250)",
+      "multiline": "Enable multiline mode"
+    }
+  },
+  "entries": [
+    {
+      "fn": "bashErrorResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Bash.error",
+      "cases": [
+        {
+          "args": ["spawn ENOENT"],
+          "text": "Bash error: spawn ENOENT"
+        }
+      ]
+    },
+    {
+      "fn": "bashExitCodeResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Bash.exit_code",
+      "cases": [
+        {
+          "args": [1],
+          "text": "Exit code 1"
+        },
+        {
+          "args": [0],
+          "text": "Exit code 0"
+        },
+        {
+          "args": [null],
+          "text": "Exit code null"
+        }
+      ]
+    },
+    {
+      "fn": "bashOutputCapMarker",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Bash.output_cap",
+      "cases": [
+        {
+          "args": [1048576],
+          "text": "[output exceeded 1048576 bytes: command terminated and output truncated]"
+        }
+      ]
+    },
+    {
+      "fn": "bashTimedOutMarker",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Bash.timed_out",
+      "cases": [
+        {
+          "args": [120000],
+          "text": "[timed out after 120000ms]"
+        }
+      ]
+    },
+    {
+      "fn": "cdNoSuchDirectoryResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Bash.cd_no_dir",
+      "cases": [
+        {
+          "args": ["/no/such"],
+          "text": "cd: no such directory: /no/such"
+        }
+      ]
+    },
+    {
+      "fn": "editErrorResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Edit.error",
+      "cases": [
+        {
+          "args": ["EACCES"],
+          "text": "Edit error: EACCES"
+        }
+      ]
+    },
+    {
+      "fn": "editOldStringMultipleMatchesResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Edit.multiple",
+      "cases": [
+        {
+          "args": [3, "/a/b.ts"],
+          "text": "Edit error: old_string matches 3 locations in /a/b.ts. Use replace_all or provide more context."
+        }
+      ]
+    },
+    {
+      "fn": "editOldStringNotFoundResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Edit.not_found",
+      "cases": [
+        {
+          "args": ["/a/b.ts"],
+          "text": "Edit error: old_string not found in /a/b.ts"
+        }
+      ]
+    },
+    {
+      "fn": "fileEditedResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Edit.edited",
+      "cases": [
+        {
+          "args": ["/a/b.ts", 1],
+          "text": "File edited: /a/b.ts (1 replacement(s))"
+        },
+        {
+          "args": ["/a/b.ts", 4],
+          "text": "File edited: /a/b.ts (4 replacement(s))"
+        }
+      ]
+    },
+    {
+      "fn": "fileWrittenResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Write.written",
+      "cases": [
+        {
+          "args": ["/a/b.ts"],
+          "text": "File written: /a/b.ts"
+        }
+      ]
+    },
+    {
+      "fn": "globArgNotStringResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Glob.arg_not_string",
+      "cases": [
+        {
+          "args": ["pattern", "number"],
+          "text": "Glob `pattern` must be a string, got number."
+        },
+        {
+          "args": ["glob_pattern", "array"],
+          "text": "Glob `glob_pattern` must be a string, got array."
+        }
+      ]
+    },
+    {
+      "fn": "globErrorResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Glob.error",
+      "cases": [
+        {
+          "args": ["EPERM"],
+          "text": "Glob error: EPERM"
+        }
+      ]
+    },
+    {
+      "fn": "globMissingPatternResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Glob.missing_pattern",
+      "cases": [
+        {
+          "args": [],
+          "text": "Glob requires `pattern` (or alias `glob_pattern`)."
+        }
+      ]
+    },
+    {
+      "fn": "globSkippedDirsNotice",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Glob.skipped_dirs",
+      "cases": [
+        {
+          "args": [1],
+          "text": "[glob skipped 1 unreadable directory: partial results.]"
+        },
+        {
+          "args": [2],
+          "text": "[glob skipped 2 unreadable directories: partial results.]"
+        }
+      ]
+    },
+    {
+      "fn": "globTimeoutNotice",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Glob.timeout",
+      "cases": [
+        {
+          "args": [5000, 0],
+          "text": "[glob stopped after 5000ms: partial results, the tree was too large to walk in full. Narrow the pattern or search a subdirectory.]"
+        },
+        {
+          "args": [5000, 1],
+          "text": "[glob stopped after 5000ms: partial results, the tree was too large to walk in full. 1 unreadable directory was skipped. Narrow the pattern or search a subdirectory.]"
+        },
+        {
+          "args": [5000, 3],
+          "text": "[glob stopped after 5000ms: partial results, the tree was too large to walk in full. 3 unreadable directories were skipped. Narrow the pattern or search a subdirectory.]"
+        }
+      ]
+    },
+    {
+      "fn": "grepErrorResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Grep.error",
+      "cases": [
+        {
+          "args": ["rg exited 2"],
+          "text": "Grep error: rg exited 2"
+        }
+      ]
+    },
+    {
+      "fn": "lockAcquireFailedResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_result.lock_failed",
+      "cases": [
+        {
+          "args": ["Write", "EACCES: permission denied"],
+          "text": "Write error: lock acquire failed: EACCES: permission denied"
+        }
+      ]
+    },
+    {
+      "fn": "lockTimeoutResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_result.lock_timeout",
+      "cases": [
+        {
+          "args": ["Edit", "lock held by session abc for 30000ms"],
+          "text": "Edit error: lock held by session abc for 30000ms"
+        }
+      ]
+    },
+    {
+      "fn": "modeToolDispatcherBugResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_result.no_executor{name:Mode}",
+      "cases": [
+        {
+          "args": [],
+          "text": "Mode tool reached the dispatcher. The agent loop should have handled it. File a bug : see the `Mode` interceptor in `src/loops/tool-round.ts`."
+        }
+      ]
+    },
+    {
+      "fn": "noFilesMatchedResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Glob.no_files",
+      "cases": [
+        {
+          "args": [],
+          "text": "No files matched the pattern."
+        }
+      ]
+    },
+    {
+      "fn": "noMatchesFoundResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Grep.no_matches",
+      "cases": [
+        {
+          "args": [],
+          "text": "No matches found."
+        }
+      ]
+    },
+    {
+      "fn": "outputPreviewAnnotation",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_output.preview",
+      "cases": [
+        {
+          "args": [
+            {
+              "content": "line1\nline2",
+              "shown": 10,
+              "total": 49,
+              "tool": "Read",
+              "path": "/s/abc.blobs/toolu_1.raw",
+              "hint": "HINT"
+            }
+          ],
+          "text": "line1\nline2\n\n<ma::agent::output-preview shown=\"10\" total=\"49\" tool=\"Read\" path=\"/s/abc.blobs/toolu_1.raw\">HINT</ma::agent::output-preview>"
+        },
+        {
+          "args": [
+            {
+              "content": "out",
+              "shown": 10,
+              "total": 1000,
+              "tool": "Bash",
+              "hint": "HINT"
+            }
+          ],
+          "text": "out\n\n<ma::agent::output-preview shown=\"10\" total=\"1000\" tool=\"Bash\">HINT</ma::agent::output-preview>"
+        },
+        {
+          "args": [
+            {
+              "content": "x",
+              "shown": 5,
+              "total": 7,
+              "tool": "Grep",
+              "path": "",
+              "hint": ""
+            }
+          ],
+          "text": "x\n\n<ma::agent::output-preview shown=\"5\" total=\"7\" tool=\"Grep\"></ma::agent::output-preview>"
+        }
+      ]
+    },
+    {
+      "fn": "readErrorResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.error",
+      "cases": [
+        {
+          "args": ["ENOENT: no such file"],
+          "text": "Read error: ENOENT: no such file"
+        }
+      ]
+    },
+    {
+      "fn": "readTooLargeResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.too_large",
+      "cases": [
+        {
+          "args": ["12.5", 10],
+          "text": "File is 12.5 MB, exceeds the 10 MB read limit. Use offset/limit to read a portion, or Grep to search it."
+        }
+      ]
+    },
+    {
+      "fn": "reflectionAckToolResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "runtime.reflection_ack_result",
+      "cases": [
+        {
+          "args": [],
+          "text": "reflection-ack applied. Next time, write this tag as inline text in your response body, not as a tool call."
+        }
+      ]
+    },
+    {
+      "fn": "streakNote",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_output.streak",
+      "cases": [
+        {
+          "args": ["Read", 3],
+          "text": "[note: you've truncated 3 Read calls in a row. Use the totals from the last [truncated: ...] notice to compute a single offset+limit that lands where you need to read, instead of paging from byte 0.]"
+        },
+        {
+          "args": ["Grep", 3],
+          "text": "[note: you've truncated 3 Grep calls in a row. Try `output_mode: \"files_with_matches\"` (densest), tighten the pattern, add a `glob`/`path` filter, or set `head_limit` explicitly rather than letting the cap fire.]"
+        },
+        {
+          "args": ["Bash", 3],
+          "text": "[note: you've truncated 3 Bash calls in a row. Bound output at the source: `head -c`, `head -n`, `tail`, `sed -n '1,Np'`, or pipe through a filter. The post-hoc cap is lossy. Pre-bounding gives usable signal.]"
+        },
+        {
+          "args": ["Glob", 3],
+          "text": "[note: you've truncated 3 Glob calls in a row. Narrow the pattern (e.g. add a subdirectory prefix or restrict the file extension) instead of matching the world.]"
+        },
+        {
+          "args": ["Fetch", 3],
+          "text": "[note: you've truncated 3 calls of this tool in a row. Re-think the parameters. See the [truncated: ...] notice on each prior call for resume hints.]"
+        }
+      ]
+    },
+    {
+      "fn": "toolAbortedByUserResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_result.aborted{site:runtime}",
+      "cases": [
+        {
+          "args": [],
+          "text": "tool aborted by user"
+        }
+      ]
+    },
+    {
+      "fn": "truncatedOutputNotice",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_output.truncated",
+      "cases": [
+        {
+          "args": [
+            {
+              "kept": "kept body",
+              "shownBytes": 65536,
+              "totalBytes": "200000",
+              "shownLines": 1000,
+              "totalLines": "3000",
+              "cutLine": 1001,
+              "hint": "to continue, call Read with offset=1001 (and limit as needed)."
+            }
+          ],
+          "text": "kept body\n\n[truncated: shown 65536 of 200000 bytes, 1000/3000 lines, cut at byte 65536, line 1001. to continue, call Read with offset=1001 (and limit as needed).]"
+        },
+        {
+          "args": [
+            {
+              "kept": "",
+              "shownBytes": 10,
+              "totalBytes": "unknown",
+              "shownLines": 1,
+              "totalLines": "unknown",
+              "cutLine": 2,
+              "hint": ""
+            }
+          ],
+          "text": "\n\n[truncated: shown 10 of unknown bytes, 1/unknown lines, cut at byte 10, line 2. ]"
+        }
+      ]
+    },
+    {
+      "fn": "truncationHint",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_output.truncated",
+      "cases": [
+        {
+          "args": ["Read", 1001, 65536],
+          "text": "to continue, call Read with offset=1001 (and limit as needed)."
+        },
+        {
+          "args": ["Grep", 1, 65536],
+          "text": "narrow with a more specific pattern, glob, or smaller -A/-B/-C. Or raise head_limit explicitly."
+        },
+        {
+          "args": ["Bash", 1, 65536],
+          "text": "output exceeded 65536 bytes and the FRONT was kept, so trailing errors/build failures may be cut. Re-run scoped to the tail (e.g. `... 2>&1 | tail -n 100`) or filtered (`grep -nE 'error:|FAIL'`). Or Read the tail of the raw-output blob whose path is appended below, which holds the full output."
+        },
+        {
+          "args": ["Glob", 1, 65536],
+          "text": "narrow the pattern or search a subdirectory."
+        },
+        {
+          "args": ["Fetch", 1, 65536],
+          "text": "the full body is preserved at the `<ma::agent::raw-output ... />` path below. Use Read on that path, or re-call Fetch with a CSS `selector` to scope to a specific element."
+        },
+        {
+          "args": ["WebSearch", 1, 65536],
+          "text": "lower `count`, narrow the query, or use the result's `url` to Fetch a specific page."
+        },
+        {
+          "args": ["Other", 1, 65536],
+          "text": "re-run with narrower parameters. The full body is preserved at the `<ma::agent::raw-output ... />` path below."
+        },
+        {
+          "args": [null, 1, 65536],
+          "text": "re-run with narrower parameters. The full body is preserved at the `<ma::agent::raw-output ... />` path below."
+        }
+      ]
+    },
+    {
+      "fn": "tuiPreviewHint",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_output.preview",
+      "cases": [
+        {
+          "args": ["Read"],
+          "text": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full)."
+        },
+        {
+          "args": ["Read", "/s/abc.blobs/toolu_1.raw"],
+          "text": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full). The full untruncated output is saved at /s/abc.blobs/toolu_1.raw : Read that path (its tail for build/test errors) when this preview isn't enough."
+        },
+        {
+          "args": ["Bash"],
+          "text": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full."
+        },
+        {
+          "args": ["Bash", "/s/abc.blobs/toolu_1.raw"],
+          "text": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full. The full untruncated output is saved at /s/abc.blobs/toolu_1.raw : Read that path (its tail for build/test errors) when this preview isn't enough."
+        },
+        {
+          "args": ["Read", ""],
+          "text": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full)."
+        }
+      ]
+    },
+    {
+      "fn": "unknownToolResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_result.unknown_tool",
+      "cases": [
+        {
+          "args": ["Foo"],
+          "text": "Unknown tool: Foo"
+        }
+      ]
+    },
+    {
+      "fn": "whitespaceResolvedNote",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.whitespace_resolved",
+      "cases": [
+        {
+          "args": ["/a/My File.txt"],
+          "text": "Note: resolved to \"/a/My File.txt\" (whitespace mismatch).\n"
+        }
+      ]
+    },
+    {
+      "fn": "writeArgNotStringResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Write.arg_not_string",
+      "cases": [
+        {
+          "args": ["file_path", "number"],
+          "text": "Write `file_path` must be a string, got number."
+        },
+        {
+          "args": ["content", "object"],
+          "text": "Write `content` must be a string, got object."
+        }
+      ]
+    },
+    {
+      "fn": "writeErrorResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Write.error",
+      "cases": [
+        {
+          "args": ["EISDIR"],
+          "text": "Write error: EISDIR"
+        }
+      ]
+    },
+    {
+      "fn": "writeMissingContentResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Write.missing_content",
+      "cases": [
+        {
+          "args": [],
+          "text": "Write requires `content` (or alias `contents`)."
+        }
+      ]
+    },
+    {
+      "fn": "writeMissingPathResult",
+      "file": "src/tools/PROMPTS.ts",
+      "proposedKind": "tool_text.Write.missing_path",
+      "cases": [
+        {
+          "args": [],
+          "text": "Write requires `file_path`."
+        }
+      ]
+    },
+    {
+      "fn": "outputTruncatedAttachmentText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "continue.max_tokens",
+      "cases": [
+        {
+          "args": [],
+          "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+        }
+      ]
+    },
+    {
+      "fn": "reflectionCheckpointAttachmentText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "runtime.reflection_checkpoint",
+      "cases": [
+        {
+          "args": [50, 60],
+          "text": "<ma::agent::reflection-checkpoint round=\"50\" cooldown-applied-seconds=\"60\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
+        },
+        {
+          "args": [100, 0],
+          "text": "<ma::agent::reflection-checkpoint round=\"100\" cooldown-applied-seconds=\"0\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
+        }
+      ]
+    },
+    {
+      "fn": "responseTruncatedPlaceholderText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "assistant.placeholder",
+      "cases": [
+        {
+          "args": [],
+          "text": "[response truncated at the output-token limit before any content was produced]"
+        }
+      ]
+    },
+    {
+      "fn": "sessionResumedAttachmentText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "runtime.session_resumed",
+      "cases": [
+        {
+          "args": [],
+          "text": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work."
+        }
+      ]
+    },
+    {
+      "fn": "streamInterruptedAttachmentText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "runtime.stream_interrupted",
+      "cases": [
+        {
+          "args": [],
+          "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only."
+        }
+      ]
+    },
+    {
+      "fn": "streamInterruptedContinueAttachmentText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "continue.stream_interrupted",
+      "cases": [
+        {
+          "args": [],
+          "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+        }
+      ]
+    },
+    {
+      "fn": "toolCallInterruptedByStopResult",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "tool_result.interrupted_by_stop",
+      "cases": [
+        {
+          "args": [],
+          "text": "The process stopped while this tool call ran. It may have run fully, partly, or not at all. Check its effects before you run it again."
+        }
+      ]
+    },
+    {
+      "fn": "toolExecutionAbortedBeforeCompletionResult",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "tool_result.aborted{site:orphan}",
+      "cases": [
+        {
+          "args": [],
+          "text": "Tool execution aborted by user before completion."
+        }
+      ]
+    },
+    {
+      "fn": "turnAbortedAttachmentText",
+      "file": "src/agent/PROMPTS.ts",
+      "proposedKind": "runtime.turn_aborted",
+      "cases": [
+        {
+          "args": [],
+          "text": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it."
+        }
+      ]
+    },
+    {
+      "fn": "activeModeStamp",
+      "file": "src/modes/PROMPTS.ts",
+      "proposedKind": "mode.active_stamp",
+      "cases": [
+        {
+          "args": ["ask", "2026-11-15T10:00:00Z"],
+          "text": "<ma::agent::mode-active id=\"ask\" since=\"2026-11-15T10:00:00Z\" />"
+        }
+      ]
+    },
+    {
+      "fn": "modeChangeAttachment",
+      "file": "src/modes/PROMPTS.ts",
+      "proposedKind": "mode.change",
+      "cases": [
+        {
+          "args": [
+            {
+              "from": "default",
+              "to": "ask",
+              "at": "2026-11-15T10:00:00Z"
+            }
+          ],
+          "text": "<ma::agent::mode-change from=\"default\" to=\"ask\" at=\"2026-11-15T10:00:00Z\" />"
+        }
+      ]
+    },
+    {
+      "fn": "modeToolRefusalMessage",
+      "file": "src/modes/PROMPTS.ts",
+      "proposedKind": "mode.refusal",
+      "cases": [
+        {
+          "args": [
+            {
+              "toolName": "Edit",
+              "label": "Ask",
+              "refusalHint": "Present changes as a diff."
+            }
+          ],
+          "text": "Tool \"Edit\" is not permitted in Ask mode. Present changes as a diff."
+        },
+        {
+          "args": [
+            {
+              "toolName": "Write",
+              "label": "Plan"
+            }
+          ],
+          "text": "Tool \"Write\" is not permitted in Plan mode."
+        },
+        {
+          "args": [
+            {
+              "toolName": "Bash",
+              "label": "Ask",
+              "refusalHint": ""
+            }
+          ],
+          "text": "Tool \"Bash\" is not permitted in Ask mode."
+        }
+      ]
+    },
+    {
+      "fn": "pluginHandlerErrorResult",
+      "file": "src/plugins/loader/PROMPTS.ts",
+      "proposedKind": "tool_result.handler_error",
+      "cases": [
+        {
+          "args": ["boom"],
+          "text": "Handler error: boom"
+        }
+      ]
+    },
+    {
+      "fn": "subprocessOutputExceededResult",
+      "file": "src/plugins/loader/PROMPTS.ts",
+      "proposedKind": "tool_result.subprocess_overflow",
+      "cases": [
+        {
+          "args": [10485760, "maxBuffer length exceeded"],
+          "text": "Error: Subprocess output exceeded maximum length of 10485760 bytes. Details: maxBuffer length exceeded"
+        }
+      ]
+    },
+    {
+      "fn": "unknownPluginToolResult",
+      "file": "src/plugins/loader/PROMPTS.ts",
+      "proposedKind": "tool_result.unknown_tool{plugin:true}",
+      "cases": [
+        {
+          "args": ["FooTool"],
+          "text": "Unknown plugin tool: FooTool"
+        }
+      ]
+    },
+    {
+      "fn": "binaryDocumentRejectedMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.binary_rejected",
+      "cases": [
+        {
+          "args": [
+            {
+              "mimeType": "application/pdf",
+              "sizeBytes": 123456
+            }
+          ],
+          "text": "application/pdf (121KB) is a binary document. Tool output can include text and images but not documents, so it can't be embedded here. Ask the user to attach it to their message, or convert it to text/images first."
+        }
+      ]
+    },
+    {
+      "fn": "fittedImageTooLargeMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.image_too_large",
+      "cases": [
+        {
+          "args": [
+            {
+              "sizeBytes": 7000000,
+              "limitBytes": 5242880,
+              "modelId": "model-x"
+            }
+          ],
+          "text": "6.7MB image is too large to embed even after resizing (per-item cap 5.0MB encoded for model-x)."
+        }
+      ]
+    },
+    {
+      "fn": "imageSummaryMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.image_summary",
+      "cases": [
+        {
+          "args": [
+            {
+              "subtype": "png",
+              "sizeBytes": 204800,
+              "dimensions": {
+                "width": 800,
+                "height": 600
+              },
+              "fittedStrategy": null
+            }
+          ],
+          "text": "[png image 800x600 200KB shown to the model below]"
+        },
+        {
+          "args": [
+            {
+              "subtype": "jpeg",
+              "sizeBytes": 50,
+              "dimensions": null,
+              "fittedStrategy": null
+            }
+          ],
+          "text": "[jpeg image 50B shown to the model below]"
+        },
+        {
+          "args": [
+            {
+              "subtype": "png",
+              "sizeBytes": 3000000,
+              "dimensions": {
+                "width": 1568,
+                "height": 1176
+              },
+              "fittedStrategy": "downscale"
+            }
+          ],
+          "text": "[png image 1568x1176 2.9MB shown to the model below, resized to fit (downscale)]"
+        }
+      ]
+    },
+    {
+      "fn": "mediaDimensionsTooLargeMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": [
+            {
+              "width": 9000,
+              "height": 4000,
+              "maxDimension": 8000,
+              "modelId": "model-x"
+            }
+          ],
+          "text": "9000x4000 exceeds the 8000px limit for model-x"
+        }
+      ]
+    },
+    {
+      "fn": "mediaTooLargeMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": [
+            {
+              "rawBytes": 6000000,
+              "encodedBytes": 8000000,
+              "limitBytes": 5242880,
+              "modelId": "model-x"
+            }
+          ],
+          "text": "5.7MB (7.6MB encoded) exceeds the 5.0MB limit for model-x"
+        },
+        {
+          "args": [
+            {
+              "rawBytes": 900,
+              "encodedBytes": 1200,
+              "limitBytes": 1024,
+              "modelId": "model-x"
+            }
+          ],
+          "text": "900B (1KB encoded) exceeds the 1KB limit for model-x"
+        }
+      ]
+    },
+    {
+      "fn": "requestTooLargeMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": [33554432, "model-x"],
+          "text": "attachments total exceeds the 32.0MB request limit for model-x"
+        }
+      ]
+    },
+    {
+      "fn": "tooManyAttachmentsMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": [20, "model-x"],
+          "text": "more than 20 attachments for model-x"
+        }
+      ]
+    },
+    {
+      "fn": "unsupportedEmbeddingMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.unsupported_embedding",
+      "cases": [
+        {
+          "args": [
+            {
+              "mimeType": "audio/mpeg",
+              "sizeBytes": 2048
+            }
+          ],
+          "text": "audio/mpeg (2KB) can't be embedded in tool output. Ask the user to attach it to their message instead."
+        }
+      ]
+    },
+    {
+      "fn": "unsupportedImageModalityMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "tool_text.Read.unsupported_image_modality",
+      "cases": [
+        {
+          "args": [
+            {
+              "modelId": "model-x",
+              "mimeType": "image/png",
+              "sizeBytes": 512
+            }
+          ],
+          "text": "model-x doesn't accept image input, so this image/png (512B) can't be shown to the model. Describe it for the user from context, or switch to a vision-capable model."
+        }
+      ]
+    },
+    {
+      "fn": "unsupportedModalityMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": ["model-x", "image"],
+          "text": "model-x doesn't accept image input"
+        },
+        {
+          "args": ["model-x", "audio"],
+          "text": "model-x doesn't accept audio input"
+        },
+        {
+          "args": ["model-x", "video"],
+          "text": "model-x doesn't accept video input"
+        },
+        {
+          "args": ["model-x", "document"],
+          "text": "model-x doesn't accept document input"
+        }
+      ]
+    },
+    {
+      "fn": "unsupportedTypeMessage",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": ["image/tiff", "model-x"],
+          "text": "image/tiff isn't a supported type for model-x"
+        }
+      ]
+    }
+  ]
+}
