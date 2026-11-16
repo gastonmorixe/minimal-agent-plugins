@@ -8,9 +8,11 @@
  * NOT RUN BY DEFAULT. Bun only auto-discovers `*.test.*` / `*.spec.*`, so the
  * `.e2e.ts` suffix keeps this out of `bun test`. Opt in:
  *
- *   # from minimal-agent-plugins/ma-llm-opencode-go-plugin
- *   MA_E2E_LIVE=1 MA_E2E_CREDENTIAL_NAME="opencode-console-oauth-2" \
- *     bun test ./e2e/*.e2e.ts --timeout 120000
+ * ```sh
+ * # from minimal-agent-plugins/ma-llm-opencode-go-plugin
+ * MA_E2E_LIVE=1 MA_E2E_CREDENTIAL_NAME="opencode-console-oauth-2" \
+ *   bun test ./e2e/*.e2e.ts --timeout 120000
+ * ```
  *
  * Or via the umbrella script: `bun run test:e2e:opencode-go`.
  *
@@ -256,7 +258,7 @@ describe.skipIf(SKIP_REASON !== null)("opencode-go live gateway e2e", () => {
     console.log(
       `[OCP-03] control(identity) -> HTTP ${control.status} ${control.contentType}\n` +
         `[OCP-03] gzip             -> HTTP ${gz.status} ${gz.contentType} ` +
-        `${gz.status < 300 ? "ACCEPTED" : "REJECTED"}`,
+        (gz.status < 300 ? "ACCEPTED" : "REJECTED"),
     )
     if (gz.status >= 300) {
       console.log(`[OCP-03] rejection body (first 300 chars): ${gz.text.slice(0, 300)}`)

@@ -67,10 +67,7 @@ function encTurnEndedUsage(opts: {
   cacheWrite?: number
   reasoning?: number
 }): Uint8Array {
-  const parts = [
-    encVarintField(1, opts.input),
-    encVarintField(2, opts.output),
-  ]
+  const parts = [encVarintField(1, opts.input), encVarintField(2, opts.output)]
   if (opts.cacheRead != null) parts.push(encVarintField(3, opts.cacheRead))
   if (opts.cacheWrite != null) parts.push(encVarintField(4, opts.cacheWrite))
   if (opts.reasoning != null) parts.push(encVarintField(5, opts.reasoning))

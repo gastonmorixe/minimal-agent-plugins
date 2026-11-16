@@ -239,6 +239,7 @@ export function toOpencodeToolNames(req: CanonicalRequest): {
   const rename = (name: string) => (name === HOST_READ_TOOL ? WIRE_READ_TOOL : name)
   const request: CanonicalRequest = {
     ...req,
+    // oxlint-disable-next-line oxc/no-map-spread -- copy-on-write: caller-owned tool defs must not be mutated
     tools: tools.map((t) => (t.name === HOST_READ_TOOL ? { ...t, name: WIRE_READ_TOOL } : t)),
     messages: req.messages.map((m) =>
       m.content.some((b) => b.type === "tool_use" && b.name === HOST_READ_TOOL)

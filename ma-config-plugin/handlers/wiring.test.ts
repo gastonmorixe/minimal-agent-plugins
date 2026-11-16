@@ -48,7 +48,6 @@ async function withEmbeddedPackages(
       ]),
     ),
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerEmbeddedPlugins(table as any, { cacheRoot: EMBEDDED_CACHE_ROOT })
   try {
     fn(embeddedAwareDiscoverDeps(["/proj/.agents/minimal-agent/plugins"]))

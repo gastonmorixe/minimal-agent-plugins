@@ -105,18 +105,18 @@ widgets, setting React inputs, download verification, iframe/login caveats, the
 
 ## Config (env)
 
-| Var                    | Default               | Meaning                                                      |
-| ---------------------- | --------------------- | ------------------------------------------------------------ |
-| `CDP_PORT`             | `9222`                | Chrome remote-debugging port                                 |
-| `CDP_SOCK`             | `/tmp/cdp.sock`       | unix socket the daemon listens on                            |
-| `CDP_DTAP`             | auto-detected         | path to `DevToolsActivePort` (override)                      |
-| `CDP_LOG`              | `/tmp/cdp-server.log` | daemon log file                                              |
-| `CDP_LEASE_DIR`        | `<CDP_SOCK>.leases`   | one file per client pid (lease)                              |
-| `CDP_IDLE_MS`          | `600000`              | exit after this idle time with no live lease (`0` = never)   |
-| `CDP_LEASE_CHECK_MS`   | `30000`               | interval of the lease sweep and idle check                   |
-| `CDP_DENY_COOLDOWN_MS` | `30000`               | after a denied connect (403), fail at once for this long     |
-| `CDP_READY_TIMEOUT_MS` | `15000`               | a request waits this long for the Chrome connect             |
-| `CDP_LEASE_MAX_AGE_MS` | `86400000`            | drop a lease not refreshed for this long (`0` = no limit)    |
+| Var                    | Default               | Meaning                                                    |
+| ---------------------- | --------------------- | ---------------------------------------------------------- |
+| `CDP_PORT`             | `9222`                | Chrome remote-debugging port                               |
+| `CDP_SOCK`             | `/tmp/cdp.sock`       | unix socket the daemon listens on                          |
+| `CDP_DTAP`             | auto-detected         | path to `DevToolsActivePort` (override)                    |
+| `CDP_LOG`              | `/tmp/cdp-server.log` | daemon log file                                            |
+| `CDP_LEASE_DIR`        | `<CDP_SOCK>.leases`   | one file per client pid (lease)                            |
+| `CDP_IDLE_MS`          | `600000`              | exit after this idle time with no live lease (`0` = never) |
+| `CDP_LEASE_CHECK_MS`   | `30000`               | interval of the lease sweep and idle check                 |
+| `CDP_DENY_COOLDOWN_MS` | `30000`               | after a denied connect (403), fail at once for this long   |
+| `CDP_READY_TIMEOUT_MS` | `15000`               | a request waits this long for the Chrome connect           |
+| `CDP_LEASE_MAX_AGE_MS` | `86400000`            | drop a lease not refreshed for this long (`0` = no limit)  |
 
 ### Daemon lifetime
 
