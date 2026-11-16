@@ -114,6 +114,40 @@ const WORD_RULES: readonly WordRule[] = [
 ]
 
 /**
+ * Rules that the surface may contain only these characters.
+ *
+ * Every prompt byte reaches the model, and a hidden or lookalike character can
+ * change what a reader (or a lint rule) sees without changing the words. Five
+ * review rounds found them one at a time: a soft hyphen, a zero-width space, a
+ * modifier apostrophe, a fullwidth apostrophe, and then 49 more that a list
+ * would never finish.
+ *
+ * So this is an allowlist, not a blocklist: printable ASCII, newline, tab, and
+ * the six non-ASCII characters that the corpus really uses. A new character
+ * fails until someone adds it here with a reason, which is the review the
+ * change deserves.
+ */
+const ALLOWED_NON_ASCII = new Set(["\u201c", "\u201d", "\u2018", "\u2019", "\u2191", "\u2193"])
+
+/**
+ * Report a character that is not on the allowlist.
+ *
+ * @param line - One line of raw text.
+ * @returns Each disallowed character, with its code point.
+ */
+function hiddenCharacters(line: string): string[] {
+  const out: string[] = []
+  for (const char of line) {
+    const code = char.codePointAt(0) ?? 0
+    if (code === 0x0a || code === 0x09) continue
+    if (code >= 0x20 && code <= 0x7e) continue
+    if (ALLOWED_NON_ASCII.has(char)) continue
+    out.push(char)
+  }
+  return out
+}
+
+/**
  * Rules that judge a word, not a sentence shape. They run on text that keeps
  * the inside of a backtick span, because these words never appear in code.
  */
@@ -143,6 +177,7 @@ export const RULE_IDS: readonly string[] = [
     "ste-s3-typographic",
     "ste-s10-inconsistent-term",
     "ste-s11-empty-surface",
+    "ste-s12-hidden-char",
   ]),
 ].sort()
 
@@ -382,6 +417,20 @@ export function lintText(text: string, lineOffset = 0): SteFinding[] {
         rule: "ste-s2-semicolon",
         message: "write two sentences instead of a semicolon",
         snippet: line.trim().slice(0, 80),
+        line: lineNo,
+        severity: "error",
+      })
+    }
+    const hidden = hiddenCharacters(line)
+    if (hidden.length > 0) {
+      const points = hidden.map(
+        (c) => `U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")}`,
+      )
+      findings.push({
+        rule: "ste-s12-hidden-char",
+        message:
+          "character is not on the allowlist: add it here with a reason if it is intentional",
+        snippet: `${points.join(" ")} ${hidden.join("")}`,
         line: lineNo,
         severity: "error",
       })
