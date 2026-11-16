@@ -21,9 +21,10 @@
  * ## Parent ↔ child lifecycle rollup
  *
  * Starting or partially completing a child starts its parent. Finishing
- * the last open child completes the parent, and completing a parent
- * cascades to its open children. Canceled rows are never rewritten as
- * done, and a canceled parent is never revived. See
+ * the last open child completes the parent, and completing or canceling a
+ * parent cascades that status to its open children. Canceled rows are never
+ * rewritten as done, done rows are never rewritten as canceled, and a
+ * canceled parent is never revived. See
  * {@link TaskStore.setStatus}.
  *
  * ## Position numbering
@@ -59,6 +60,12 @@ import {
   type TaskStatus,
   type TasksMeta,
 } from "./parse.ts"
+
+/**
+ * Reason stamped on open children canceled by a parent cancel when the
+ * parent itself was canceled without a reason.
+ */
+export const PARENT_CANCELED_REASON = "parent canceled"
 
 // ---------------------------------------------------------------------------
 // Duration transitions (schema v2+)
@@ -543,6 +550,11 @@ export class TaskStore {
    *    `done`. Children already `done` are left alone; `canceled`
    *    children stay `canceled` (abandoned work is not rewritten as
    *    finished).
+   *  - **Parent → canceled** cascades open children (`todo` / `doing`) to
+   *    `canceled`, inheriting the parent's reason (or
+   *    {@link PARENT_CANCELED_REASON}). `done` children stay `done`
+   *    (finished work is not rewritten as abandoned); already-`canceled`
+   *    children keep their own reason.
    *  - **Child → doing** auto-starts a `todo` / `done` parent.
    *  - **Child → done or canceled** auto-promotes the parent to `done` when
    *    no sibling remains open (`todo` / `doing`). A canceled child remains
@@ -566,6 +578,8 @@ export class TaskStore {
 
     if (status === "done") {
       this.applyDoneCascade(tasks, next, nowIso, nowMs, gaps)
+    } else if (status === "canceled" && next.parent === null) {
+      this.applyCancelCascade(tasks, next, nowIso, nowMs, gaps)
     } else if (status === "canceled" && next.parent !== null) {
       this.applyChildTerminalRollup(tasks, next.parent, nowIso, nowMs, gaps)
     } else if (status === "doing" && next.parent !== null) {
@@ -602,6 +616,32 @@ export class TaskStore {
     }
 
     this.applyChildTerminalRollup(tasks, target.parent, nowIso, nowMs, gaps)
+  }
+
+  /**
+   * In-place cascade for a just-canceled top-level task: its open
+   * children (`todo` / `doing`) are canceled too, so an abandoned phase
+   * never shows live work beneath it and a `doing` child stops accruing
+   * `active_ms`. Children inherit the parent's reason (or
+   * {@link PARENT_CANCELED_REASON} when none was given). `done` children
+   * stay done (finished work is not rewritten as abandoned) and children
+   * already `canceled` keep their own reason. Mutates `tasks`; caller owns
+   * the write.
+   */
+  private applyCancelCascade(
+    tasks: Task[],
+    target: Task,
+    nowIso: string,
+    nowMs: number,
+    gaps: readonly IdleGap[],
+  ): void {
+    const reason = target.reason ?? PARENT_CANCELED_REASON
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i]
+      if (t.parent !== target.id) continue
+      if (t.status !== "todo" && t.status !== "doing") continue
+      tasks[i] = applyStatusTransition(t, "canceled", nowIso, nowMs, reason, gaps)
+    }
   }
 
   /**

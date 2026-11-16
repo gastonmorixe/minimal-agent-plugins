@@ -6,7 +6,12 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import type { Task } from "./parse.ts"
-import { applyStatusTransition, TaskStore, TaskStoreError } from "./store.ts"
+import {
+  applyStatusTransition,
+  PARENT_CANCELED_REASON,
+  TaskStore,
+  TaskStoreError,
+} from "./store.ts"
 
 // ---------------------------------------------------------------------------
 // Test scaffolding
@@ -499,6 +504,172 @@ describe("done cascade + rollup", () => {
     const childB = s.list().find((t) => t.id === `${p.id}b`)!
     expect(parent.status).toBe("done")
     expect(parent.done_at).toBe(childB.done_at)
+  })
+})
+
+describe("cancel cascade", () => {
+  /** Parent with children a (todo), b (doing), c (done), d (canceled w/ own reason). */
+  function mixedPhase(s: TaskStore): string {
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b", "c", "d"], { parent: p.id })
+    s.start(`${p.id}b`)
+    s.done(`${p.id}c`)
+    s.setStatus(`${p.id}d`, "canceled", "own reason")
+    return p.id
+  }
+
+  const find = (s: TaskStore, id: string) => s.list().find((t) => t.id === id)!
+
+  test("parent canceled cascades open children (todo + doing) to canceled", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled", "user redirected")
+    expect(find(s, p).status).toBe("canceled")
+    expect(find(s, `${p}a`).status).toBe("canceled")
+    expect(find(s, `${p}b`).status).toBe("canceled")
+  })
+
+  test("cascaded children inherit the parent's reason", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled", "  user redirected  ")
+    // Parent reason is trimmed by applyStatusTransition; children get the trimmed form.
+    expect(find(s, p).reason).toBe("user redirected")
+    expect(find(s, `${p}a`).reason).toBe("user redirected")
+    expect(find(s, `${p}b`).reason).toBe("user redirected")
+  })
+
+  test("reason-less parent cancel stamps PARENT_CANCELED_REASON on children", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled")
+    expect(find(s, p).reason).toBeNull()
+    expect(find(s, `${p}a`).reason).toBe(PARENT_CANCELED_REASON)
+    expect(find(s, `${p}b`).reason).toBe(PARENT_CANCELED_REASON)
+  })
+
+  test("done children stay done (finished work is not rewritten as abandoned)", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    const before = find(s, `${p}c`)
+    s.setStatus(p, "canceled", "user redirected")
+    const after = find(s, `${p}c`)
+    expect(after.status).toBe("done")
+    expect(after.done_at).toBe(before.done_at)
+    expect(after.reason).toBeNull()
+  })
+
+  test("already-canceled children keep their own reason", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled", "user redirected")
+    expect(find(s, `${p}d`).status).toBe("canceled")
+    expect(find(s, `${p}d`).reason).toBe("own reason")
+  })
+
+  test("a doing child stops accruing: active_ms banked, last_resumed_at cleared, one now() sample", () => {
+    const ticks = [
+      new Date(2026, 4, 20, 18, 0, 0), // add parent
+      new Date(2026, 4, 20, 18, 0, 0), // addMany
+      new Date(2026, 4, 20, 18, 0, 10), // start a
+      new Date(2026, 4, 20, 18, 1, 10), // cancel parent (+ cascade) — 60s later
+    ]
+    let i = 0
+    let calls = 0
+    const s = new TaskStore(sid, {
+      home: tmpHome,
+      now: () => {
+        calls++
+        return ticks[Math.min(i++, ticks.length - 1)]
+      },
+    })
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.start(`${p.id}a`)
+    const before = calls
+    s.setStatus(p.id, "canceled", "stop")
+    expect(calls - before).toBe(1)
+    const a = find(s, `${p.id}a`)
+    expect(a.status).toBe("canceled")
+    expect(a.last_resumed_at).toBeNull()
+    expect(a.active_ms).toBe(60_000)
+    expect(a.started_at).not.toBeNull()
+    expect(a.done_at).toBeNull()
+  })
+
+  test("only the canceled parent's children are touched", () => {
+    const s = withRand(["1"])
+    const p1 = s.add({ title: "Phase 1" })
+    const p2 = s.add({ title: "Phase 2" })
+    s.addMany(["a", "b"], { parent: p1.id })
+    s.addMany(["a", "b"], { parent: p2.id })
+    s.start(`${p2.id}a`)
+    s.setStatus(p1.id, "canceled", "dropped")
+    expect(find(s, p2.id).status).toBe("doing")
+    expect(find(s, `${p2.id}a`).status).toBe("doing")
+    expect(find(s, `${p2.id}b`).status).toBe("todo")
+    expect(find(s, `${p2.id}b`).reason).toBeNull()
+  })
+
+  test("cancel cascade is persisted (survives a fresh store read)", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled", "user redirected")
+    const reloaded = new TaskStore(sid, { home: tmpHome })
+    expect(reloaded.resolve(`${p}a`)!.status).toBe("canceled")
+    expect(reloaded.resolve(`${p}b`)!.status).toBe("canceled")
+    expect(reloaded.resolve(`${p}b`)!.reason).toBe("user redirected")
+    expect(reloaded.resolve(`${p}c`)!.status).toBe("done")
+  })
+
+  test("returned task is the canceled parent", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    const r = s.setStatus(p, "canceled", "x")
+    expect(r!.id).toBe(p)
+    expect(r!.status).toBe("canceled")
+  })
+
+  test("canceling a childless top-level task is unaffected", () => {
+    const s = withRand(["1"])
+    const t = s.add({ title: "solo" })
+    const other = s.add({ title: "other" })
+    s.setStatus(t.id, "canceled", "nope")
+    expect(find(s, t.id).status).toBe("canceled")
+    expect(find(s, other.id).status).toBe("todo")
+  })
+
+  test("re-opening a cascaded child does not revive the canceled parent", () => {
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled", "user redirected")
+    s.start(`${p}a`)
+    expect(find(s, `${p}a`).status).toBe("doing")
+    expect(find(s, `${p}a`).reason).toBeNull()
+    s.done(`${p}a`)
+    s.done(`${p}b`)
+    expect(find(s, p).status).toBe("canceled")
+  })
+
+  test("un-canceling the parent does not resurrect cascaded children", () => {
+    // Reverse cascade is deliberately not implemented: which children were
+    // open before the cancel is not recorded, so re-opening is explicit.
+    const s = withRand(["1"])
+    const p = mixedPhase(s)
+    s.setStatus(p, "canceled", "oops")
+    s.setStatus(p, "todo")
+    expect(find(s, p).status).toBe("todo")
+    expect(find(s, `${p}a`).status).toBe("canceled")
+    expect(find(s, `${p}b`).status).toBe("canceled")
+  })
+
+  test("canceling a child (not a parent) does not cascade sideways", () => {
+    const s = withRand(["1"])
+    const p = s.add({ title: "Phase" })
+    s.addMany(["a", "b"], { parent: p.id })
+    s.setStatus(`${p.id}a`, "canceled", "dropped")
+    expect(find(s, `${p.id}b`).status).toBe("todo")
+    expect(find(s, p.id).status).toBe("doing")
   })
 })
 

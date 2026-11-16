@@ -393,6 +393,37 @@ describe("status / start / done", () => {
     expect(kids.every((t) => t.status === "done")).toBe(true)
   })
 
+  test("parent canceled cascades open children, keeps done ones, and reports counts", async () => {
+    await call({
+      action: "add_many",
+      items: [{ title: "Phase", children: ["finished", "in flight", "not started"] }],
+    })
+    await call({ action: "add", title: "other" })
+    const store = new TaskStore(sid, { home: tmpHome })
+    const parent = store.list().find((t) => t.title === "Phase")!
+    await call({ action: "done", id: `#${parent.id}a` })
+    await call({ action: "start", id: `#${parent.id}b` })
+
+    const r = await call({
+      action: "status",
+      id: `#${parent.id}`,
+      status: "canceled",
+      reason: "user redirected",
+    })
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain("canceled=3")
+    expect(r.content).toContain("done=1")
+    expect(r.content).toContain("doing=0")
+    expect(r.content).not.toContain("parent_auto_done")
+
+    const reloaded = new TaskStore(sid, { home: tmpHome })
+    expect(reloaded.resolve(`${parent.id}a`)!.status).toBe("done")
+    expect(reloaded.resolve(`${parent.id}b`)!.status).toBe("canceled")
+    expect(reloaded.resolve(`${parent.id}b`)!.reason).toBe("user redirected")
+    expect(reloaded.resolve(`${parent.id}c`)!.status).toBe("canceled")
+    expect(reloaded.resolve(`${parent.id}b`)!.last_resumed_at).toBeNull()
+  })
+
   test("re-done of already-done id is a hard error", async () => {
     await call({ action: "add", title: "solo" })
     const first = await call({ action: "done", id: 1 })
