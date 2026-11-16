@@ -107,6 +107,19 @@ export function clearAnthropicRateLimits(): void {
 }
 
 /**
+ * Friendlier display ids for wire window names. `QuotaWindow.id` doubles as the
+ * TUI label, so cryptic header abbreviations are renamed here.
+ *
+ * - `7d_oi` = `seven_day_overage_included`: the weekly per-model allowance for
+ *   Fable that's included in the plan, separate from the general `7d` window.
+ *   Claude Code labels it the "Fable limit". Once it's used up, Fable requests
+ *   fall back to usage credits and other models keep working.
+ */
+const WINDOW_LABELS: Readonly<Record<string, string>> = {
+  "7d_oi": "fable",
+}
+
+/**
  * Parse Anthropic's `anthropic-ratelimit-unified-<window>-<field>` headers into
  * neutral {@link QuotaWindow}s. Drops the synthetic `fallback`/`representative`
  * entries and `overage` (a power-user-only readout). The windowless AGGREGATE
@@ -133,6 +146,7 @@ export function parseAnthropicQuotaWindows(rl: ReadonlyMap<string, string>): Quo
       field = ma[1]!
     }
     if (name === "fallback" || name === "representative" || name === "overage") continue
+    name = WINDOW_LABELS[name] ?? name
     if (!wins.has(name)) wins.set(name, { id: name })
     const w = wins.get(name)!
     if (field === "utilization") w.utilization = Number(v)
