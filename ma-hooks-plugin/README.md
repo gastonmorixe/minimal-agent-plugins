@@ -70,12 +70,16 @@ ignored (debug log), and the config position applies.
 ```
 
 Position matters on `turn.willStart` and `session.willStart` only. There the
-plugin returns `{ text, position }` entries, `before` entries first. Inside
-each position the order stays: native first, then source order. Other
-channels get plain strings. Claude hooks are always `after`: a `position` key
-in Claude config is ignored and logged at debug. A `before` position is part
-of the trust hash, so a change to `before` needs a new trust. An explicit
-`after` hashes the same as no position. `/hooks list` shows
+plugin sends each `before` entry to the HookBus as an object
+`{ text, position: "before" }`, first, and each `after` entry as a plain
+string (a plain string means `after` on every channel). Inside each position
+the order stays: native first, then source order. Other channels get plain
+strings only. Claude hooks are always `after`: a `position` key in Claude
+config is ignored and logged at debug. The trust hash covers only the config
+position: a config `before` is part of the hash, so a change to `before`
+needs a new trust, and an explicit `after` hashes the same as no position. A
+hook's JSON output may still choose `before` at run time; the spec allows
+this, and it does not change the hash. `/hooks list` shows
 `position before` in the matcher line, and shows nothing for `after`.
 
 ## Trust
