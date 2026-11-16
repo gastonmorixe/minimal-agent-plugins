@@ -1,151 +1,116 @@
 /**
- * C50: byte parity between this plugin and the core engine over every
- * prompt asset found at test time.
+ * C50: byte parity between this plugin and the core engine.
+ *
+ * The core engine outputs were captured once into
+ * `fixtures/core-engine-parity.json` (see `fixtures/capture-core-parity.ts`).
+ * Each case holds the template text, so this test reads no prompt asset from
+ * disk and imports nothing from core.
  */
 
-import { readFileSync } from "node:fs"
-import { basename, dirname, join } from "node:path"
+import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
-import { clearPromptCache, renderPrompt } from "../../minimal-agent-core/src/prompts/prompts.ts"
+import createProvider, { clearProviderCache } from "./provider.ts"
+import { renderTemplate } from "./template.ts"
 
-import createProvider, { clearProviderCache, renderFile } from "./provider.ts"
-import { PLACEHOLDER_RE } from "./template.ts"
-
-const PLUGINS_ROOT = join(import.meta.dir, "..")
-const CORE_PROMPTS = join(PLUGINS_ROOT, "..", "minimal-agent-core", "src", "prompts")
-
-/** Floor so an empty glob fails the test. */
+/** Floor so an empty fixture fails the test. */
 const ASSET_FLOOR = 30
 
-const SKIP = new Set(["README.md", "PROMPT.md"])
-
-function scan(cwd: string, pattern: string): string[] {
-  const out: string[] = []
-  for (const rel of new Bun.Glob(pattern).scanSync({ cwd, onlyFiles: true })) {
-    if (rel.split("/").includes("node_modules")) continue
-    if (SKIP.has(basename(rel))) continue
-    out.push(join(cwd, rel))
-  }
-  return out
+interface Case {
+  name: string
+  input: { path: string; text: string }
+  vars: Record<string, string>
+  output?: string
+  error?: { missing: string[]; message: string }
 }
 
-const assets = [
-  ...scan(CORE_PROMPTS, "**/*.md"),
-  ...scan(PLUGINS_ROOT, "ma-*/prompts/**/*.md"),
-  ...scan(join(import.meta.dir, "fixtures"), "prompts/**/*.md"),
-].sort()
-
-interface Names {
-  required: string[]
-  optional: string[]
+const fixture = (await Bun.file(
+  join(import.meta.dir, "fixtures", "core-engine-parity.json"),
+).json()) as {
+  assets: number
+  cases: Case[]
 }
 
-function names(text: string): Names {
-  const required = new Set<string>()
-  const optionalSeen = new Set<string>()
-  for (const m of text.matchAll(new RegExp(PLACEHOLDER_RE.source, "g"))) {
-    const name = m[1] ?? ""
-    if (m[2]) optionalSeen.add(name)
-    else required.add(name)
-  }
-  return {
-    required: [...required],
-    optional: [...optionalSeen].filter((n) => !required.has(n)),
-  }
-}
+type Outcome =
+  | { ok: true; text: string }
+  | { ok: false; err: { missing: string[]; message: string } }
 
-type Vars = Record<string, string>
-
-function fixed(list: string[]): Vars {
-  return Object.fromEntries(list.map((n) => [n, `v:${n}`]))
-}
-
-function outcome(fn: () => string): { ok: true; text: string } | { ok: false; err: unknown } {
+function plugin(c: Case, vars: Record<string, string> = c.vars): Outcome {
   try {
-    return { ok: true, text: fn() }
+    return { ok: true, text: renderTemplate(c.input.text, vars, { source: c.input.path }) }
   } catch (err) {
-    return { ok: false, err }
+    return { ok: false, err: err as { missing: string[]; message: string } }
   }
 }
 
-function runBoth(abs: string, vars: Vars) {
-  clearPromptCache()
-  clearProviderCache()
-  const core = outcome(() => renderPrompt(abs, vars))
-  const plug = outcome(() => renderFile(abs, vars))
-  return { core, plug }
-}
-
-function expectSame(abs: string, vars: Vars): void {
-  const { core, plug } = runBoth(abs, vars)
-  if (core.ok && plug.ok) {
-    expect(Buffer.from(plug.text).equals(Buffer.from(core.text))).toBe(true)
+function expectSame(c: Case): void {
+  const got = plugin(c)
+  if (c.error === undefined) {
+    expect(got.ok).toBe(true)
+    if (got.ok) expect(Buffer.from(got.text).equals(Buffer.from(c.output ?? ""))).toBe(true)
     return
   }
-  expect(core.ok).toBe(false)
-  expect(plug.ok).toBe(false)
-  if (!core.ok && !plug.ok) {
-    const c = core.err as { missing: string[]; message: string }
-    const p = plug.err as { missing: string[]; message: string }
-    expect(p.missing).toEqual(c.missing)
-    expect(p.message).toBe(c.message)
+  expect(got.ok).toBe(false)
+  if (!got.ok) {
+    expect(got.err.missing).toEqual(c.error.missing)
+    expect(got.err.message).toBe(c.error.message)
   }
 }
 
-describe("C50 parity with the core engine", () => {
+describe("C50 parity with the core engine (captured fixture)", () => {
   test("asset count is above the floor", () => {
-    expect(assets.length).toBeGreaterThanOrEqual(ASSET_FLOOR)
+    expect(fixture.assets).toBeGreaterThanOrEqual(ASSET_FLOOR)
+    const paths = new Set(fixture.cases.map((c) => c.input.path))
+    expect(paths.size).toBe(fixture.assets)
   })
 
-  for (const abs of assets) {
-    const label = abs.slice(join(PLUGINS_ROOT, "..").length + 1)
-    const { required, optional } = names(readFileSync(abs, "utf-8"))
+  for (const c of fixture.cases) {
+    const [variant] = c.name.split(":")
+    const label = c.input.path
 
-    test(`A all vars set: ${label}`, () => {
-      expectSame(abs, fixed([...required, ...optional]))
-    })
-
-    test(`B optional absent: ${label}`, () => {
-      expectSame(abs, fixed(required))
-    })
-
-    test(`C one required absent: ${label}`, () => {
-      if (required.length === 0) return
-      const absent = required[0] ?? ""
-      const vars = fixed([...required, ...optional].filter((n) => n !== absent))
-      const { core, plug } = runBoth(abs, vars)
-      expect(core.ok).toBe(false)
-      expect(plug.ok).toBe(false)
-      expectSame(abs, vars)
-    })
-
-    test(`twice is stable (R-TPL-6): ${label}`, () => {
-      const vars = fixed(required)
-      const a = runBoth(abs, vars).plug
-      const b = runBoth(abs, vars).plug
-      expect(a.ok && b.ok).toBe(true)
-      if (a.ok && b.ok) expect(Buffer.from(a.text).equals(Buffer.from(b.text))).toBe(true)
-    })
+    if (variant === "A") {
+      test(`A all vars set: ${label}`, () => expectSame(c))
+    } else if (variant === "B") {
+      test(`B optional absent: ${label}`, () => expectSame(c))
+      test(`twice is stable (R-TPL-6): ${label}`, () => {
+        const a = plugin(c)
+        const b = plugin(c)
+        expect(a.ok && b.ok).toBe(true)
+        if (a.ok && b.ok) expect(Buffer.from(a.text).equals(Buffer.from(b.text))).toBe(true)
+      })
+    } else if (variant === "C") {
+      test(`C one required absent: ${label}`, () => {
+        expect(c.error).toBeDefined()
+        expectSame(c)
+      })
+    } else {
+      test(`unknown case kind: ${c.name}`, () => {
+        throw new Error(`unknown case kind in fixture: ${c.name}`)
+      })
+    }
   }
 
   test("provider.render matches core for every plugin asset", () => {
     const provider = createProvider()
+    const marker = "/prompts/"
     let n = 0
-    for (const abs of assets) {
-      const marker = "/prompts/"
-      const at = abs.indexOf(marker)
-      if (at < 0 || abs.startsWith(CORE_PROMPTS)) continue
-      const pluginDir = abs.slice(0, at)
-      const name = abs.slice(at + marker.length)
-      const { required } = names(readFileSync(abs, "utf-8"))
-      const vars = fixed(required)
-      clearPromptCache()
-      const want = renderPrompt(abs, vars)
-      const got = provider.render({ pluginId: basename(pluginDir), pluginDir, name, vars })
-      expect(Buffer.from(got).equals(Buffer.from(want))).toBe(true)
-      expect(dirname(abs)).toContain("prompts")
+    for (const c of fixture.cases) {
+      if (!c.name.startsWith("B:") || c.input.path.startsWith("minimal-agent-core/")) continue
+      const at = c.input.path.indexOf(marker)
+      if (at < 0) continue
+      const pluginDir = c.input.path.slice(0, at)
+      const name = c.input.path.slice(at + marker.length)
+      clearProviderCache()
+      const got = provider.render({
+        pluginId: pluginDir.split("/").pop() ?? pluginDir,
+        pluginDir: join("/parity-fixture", pluginDir),
+        name,
+        vars: c.vars,
+        readText: () => c.input.text,
+      })
+      expect(c.error).toBeUndefined()
+      expect(Buffer.from(got).equals(Buffer.from(c.output ?? ""))).toBe(true)
       n++
     }
     expect(n).toBeGreaterThan(0)

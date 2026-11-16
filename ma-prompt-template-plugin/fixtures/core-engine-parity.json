@@ -1,0 +1,1456 @@
+{
+  "assets": 63,
+  "cases": [
+    {
+      "name": "A:minimal-agent-core/src/prompts/identity.neutral.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/identity.neutral.md",
+        "text": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.\n"
+      },
+      "vars": {},
+      "output": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/identity.neutral.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/identity.neutral.md",
+        "text": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.\n"
+      },
+      "vars": {},
+      "output": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/instructions.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/instructions.md",
+        "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `%%agentHome%%/`.\nMA-02 DEF The transcript of this session is `%%agentHome%%/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `%%agentHome%%/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n"
+      },
+      "vars": {
+        "agentHome": "v:agentHome"
+      },
+      "output": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `v:agentHome/`.\nMA-02 DEF The transcript of this session is `v:agentHome/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `v:agentHome/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/instructions.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/instructions.md",
+        "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `%%agentHome%%/`.\nMA-02 DEF The transcript of this session is `%%agentHome%%/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `%%agentHome%%/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n"
+      },
+      "vars": {
+        "agentHome": "v:agentHome"
+      },
+      "output": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `v:agentHome/`.\nMA-02 DEF The transcript of this session is `v:agentHome/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `v:agentHome/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`."
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/instructions.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/instructions.md",
+        "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `%%agentHome%%/`.\nMA-02 DEF The transcript of this session is `%%agentHome%%/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `%%agentHome%%/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["agentHome"],
+        "message": "prompt template in minimal-agent-core/src/prompts/instructions.md is missing required variable(s): agentHome"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/loop-safety/ack.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/ack.md",
+        "text": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out.\n"
+      },
+      "vars": {},
+      "output": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/loop-safety/ack.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/ack.md",
+        "text": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out.\n"
+      },
+      "vars": {},
+      "output": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"%%cooldownSec%%\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness applies a v:cooldownSec-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"v:cooldownSec\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"%%cooldownSec%%\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness applies a v:cooldownSec-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"v:cooldownSec\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"%%cooldownSec%%\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "cooldownSec": "v:cooldownSec"
+      },
+      "error": {
+        "missing": ["interval"],
+        "message": "prompt template in minimal-agent-core/src/prompts/loop-safety/checkpoint-cooldown.tmpl.md is missing required variable(s): interval"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["interval"],
+        "message": "prompt template in minimal-agent-core/src/prompts/loop-safety/checkpoint-plain.tmpl.md is missing required variable(s): interval"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/loop-safety/heading.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/heading.md",
+        "text": "# Tool-use loop safety\n"
+      },
+      "vars": {},
+      "output": "# Tool-use loop safety"
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/loop-safety/heading.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/heading.md",
+        "text": "# Tool-use loop safety\n"
+      },
+      "vars": {},
+      "output": "# Tool-use loop safety"
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/loop-safety/intro.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/intro.md",
+        "text": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.\n"
+      },
+      "vars": {},
+      "output": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/loop-safety/intro.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/loop-safety/intro.md",
+        "text": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.\n"
+      },
+      "vars": {},
+      "output": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md",
+        "text": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full.%%recover%%\n"
+      },
+      "vars": {
+        "recover": "v:recover"
+      },
+      "output": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full.v:recover"
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md",
+        "text": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full.%%recover%%\n"
+      },
+      "vars": {
+        "recover": "v:recover"
+      },
+      "output": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full.v:recover"
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md",
+        "text": "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full.%%recover%%\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["recover"],
+        "message": "prompt template in minimal-agent-core/src/prompts/runtime/output-preview-hint-bash.tmpl.md is missing required variable(s): recover"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md",
+        "text": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).%%recover%%\n"
+      },
+      "vars": {
+        "recover": "v:recover"
+      },
+      "output": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).v:recover"
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md",
+        "text": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).%%recover%%\n"
+      },
+      "vars": {
+        "recover": "v:recover"
+      },
+      "output": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).v:recover"
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md",
+        "text": "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full).%%recover%%\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["recover"],
+        "message": "prompt template in minimal-agent-core/src/prompts/runtime/output-preview-hint.tmpl.md is missing required variable(s): recover"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md",
+        "text": "The full untruncated output is saved at %%rawPath%% : Read that path (its tail for build/test errors) when this preview isn't enough.\n"
+      },
+      "vars": {
+        "rawPath": "v:rawPath"
+      },
+      "output": "The full untruncated output is saved at v:rawPath : Read that path (its tail for build/test errors) when this preview isn't enough."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md",
+        "text": "The full untruncated output is saved at %%rawPath%% : Read that path (its tail for build/test errors) when this preview isn't enough.\n"
+      },
+      "vars": {
+        "rawPath": "v:rawPath"
+      },
+      "output": "The full untruncated output is saved at v:rawPath : Read that path (its tail for build/test errors) when this preview isn't enough."
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md",
+        "text": "The full untruncated output is saved at %%rawPath%% : Read that path (its tail for build/test errors) when this preview isn't enough.\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["rawPath"],
+        "message": "prompt template in minimal-agent-core/src/prompts/runtime/output-preview-recover.tmpl.md is missing required variable(s): rawPath"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md",
+        "text": "<ma::agent::output-preview shown=\"%%shown%%\" total=\"%%total%%\" tool=\"%%tool%%\"%%pathAttr%%>%%hint%%</ma::agent::output-preview>\n"
+      },
+      "vars": {
+        "shown": "v:shown",
+        "total": "v:total",
+        "tool": "v:tool",
+        "pathAttr": "v:pathAttr",
+        "hint": "v:hint"
+      },
+      "output": "<ma::agent::output-preview shown=\"v:shown\" total=\"v:total\" tool=\"v:tool\"v:pathAttr>v:hint</ma::agent::output-preview>"
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md",
+        "text": "<ma::agent::output-preview shown=\"%%shown%%\" total=\"%%total%%\" tool=\"%%tool%%\"%%pathAttr%%>%%hint%%</ma::agent::output-preview>\n"
+      },
+      "vars": {
+        "shown": "v:shown",
+        "total": "v:total",
+        "tool": "v:tool",
+        "pathAttr": "v:pathAttr",
+        "hint": "v:hint"
+      },
+      "output": "<ma::agent::output-preview shown=\"v:shown\" total=\"v:total\" tool=\"v:tool\"v:pathAttr>v:hint</ma::agent::output-preview>"
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md",
+        "text": "<ma::agent::output-preview shown=\"%%shown%%\" total=\"%%total%%\" tool=\"%%tool%%\"%%pathAttr%%>%%hint%%</ma::agent::output-preview>\n"
+      },
+      "vars": {
+        "total": "v:total",
+        "tool": "v:tool",
+        "pathAttr": "v:pathAttr",
+        "hint": "v:hint"
+      },
+      "error": {
+        "missing": ["shown"],
+        "message": "prompt template in minimal-agent-core/src/prompts/runtime/output-preview.tmpl.md is missing required variable(s): shown"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/output-truncated.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-truncated.md",
+        "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/output-truncated.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/output-truncated.md",
+        "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md",
+        "text": "<ma::agent::reflection-checkpoint round=\"%%round%%\" cooldown-applied-seconds=\"%%cooldownSec%%\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).\n"
+      },
+      "vars": {
+        "round": "v:round",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "<ma::agent::reflection-checkpoint round=\"v:round\" cooldown-applied-seconds=\"v:cooldownSec\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md",
+        "text": "<ma::agent::reflection-checkpoint round=\"%%round%%\" cooldown-applied-seconds=\"%%cooldownSec%%\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).\n"
+      },
+      "vars": {
+        "round": "v:round",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "<ma::agent::reflection-checkpoint round=\"v:round\" cooldown-applied-seconds=\"v:cooldownSec\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
+    },
+    {
+      "name": "C:minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md",
+        "text": "<ma::agent::reflection-checkpoint round=\"%%round%%\" cooldown-applied-seconds=\"%%cooldownSec%%\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).\n"
+      },
+      "vars": {
+        "cooldownSec": "v:cooldownSec"
+      },
+      "error": {
+        "missing": ["round"],
+        "message": "prompt template in minimal-agent-core/src/prompts/runtime/reflection-checkpoint.tmpl.md is missing required variable(s): round"
+      }
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/response-truncated-placeholder.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/response-truncated-placeholder.md",
+        "text": "[response truncated at the output-token limit before any content was produced]\n"
+      },
+      "vars": {},
+      "output": "[response truncated at the output-token limit before any content was produced]"
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/response-truncated-placeholder.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/response-truncated-placeholder.md",
+        "text": "[response truncated at the output-token limit before any content was produced]\n"
+      },
+      "vars": {},
+      "output": "[response truncated at the output-token limit before any content was produced]"
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/session-resumed.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/session-resumed.md",
+        "text": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/session-resumed.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/session-resumed.md",
+        "text": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/stream-interrupted-continue.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/stream-interrupted-continue.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/stream-interrupted-continue.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/stream-interrupted-continue.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/stream-interrupted.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/stream-interrupted.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/stream-interrupted.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/stream-interrupted.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/runtime/turn-aborted.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/turn-aborted.md",
+        "text": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/runtime/turn-aborted.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/runtime/turn-aborted.md",
+        "text": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tool-output-conventions.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tool-output-conventions.md",
+        "text": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives.\n"
+      },
+      "vars": {},
+      "output": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tool-output-conventions.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tool-output-conventions.md",
+        "text": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives.\n"
+      },
+      "vars": {},
+      "output": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/bash.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/bash.md",
+        "text": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not.\n"
+      },
+      "vars": {},
+      "output": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/bash.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/bash.md",
+        "text": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not.\n"
+      },
+      "vars": {},
+      "output": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/edit.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/edit.md",
+        "text": "Performs exact string replacements in files.\n"
+      },
+      "vars": {},
+      "output": "Performs exact string replacements in files."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/edit.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/edit.md",
+        "text": "Performs exact string replacements in files.\n"
+      },
+      "vars": {},
+      "output": "Performs exact string replacements in files."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/files-stats.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/files-stats.md",
+        "text": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.\n"
+      },
+      "vars": {},
+      "output": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/files-stats.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/files-stats.md",
+        "text": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.\n"
+      },
+      "vars": {},
+      "output": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/glob.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/glob.md",
+        "text": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins.\n"
+      },
+      "vars": {},
+      "output": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/glob.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/glob.md",
+        "text": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins.\n"
+      },
+      "vars": {},
+      "output": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/grep.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/grep.md",
+        "text": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.\n"
+      },
+      "vars": {},
+      "output": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/grep.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/grep.md",
+        "text": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.\n"
+      },
+      "vars": {},
+      "output": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/mode.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/mode.md",
+        "text": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm.\n"
+      },
+      "vars": {},
+      "output": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/mode.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/mode.md",
+        "text": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm.\n"
+      },
+      "vars": {},
+      "output": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/read.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/read.md",
+        "text": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.\n"
+      },
+      "vars": {},
+      "output": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/read.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/read.md",
+        "text": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.\n"
+      },
+      "vars": {},
+      "output": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only."
+    },
+    {
+      "name": "A:minimal-agent-core/src/prompts/tools/write.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/write.md",
+        "text": "Writes a file to the local filesystem. Overwrites existing files.\n"
+      },
+      "vars": {},
+      "output": "Writes a file to the local filesystem. Overwrites existing files."
+    },
+    {
+      "name": "B:minimal-agent-core/src/prompts/tools/write.md",
+      "input": {
+        "path": "minimal-agent-core/src/prompts/tools/write.md",
+        "text": "Writes a file to the local filesystem. Overwrites existing files.\n"
+      },
+      "vars": {},
+      "output": "Writes a file to the local filesystem. Overwrites existing files."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/identity.neutral.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/identity.neutral.md",
+        "text": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.\n"
+      },
+      "vars": {},
+      "output": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/identity.neutral.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/identity.neutral.md",
+        "text": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.\n"
+      },
+      "vars": {},
+      "output": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md",
+        "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `%%agentHome%%/`.\nMA-02 DEF The transcript of this session is `%%agentHome%%/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `%%agentHome%%/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n"
+      },
+      "vars": {
+        "agentHome": "v:agentHome"
+      },
+      "output": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `v:agentHome/`.\nMA-02 DEF The transcript of this session is `v:agentHome/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `v:agentHome/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md",
+        "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `%%agentHome%%/`.\nMA-02 DEF The transcript of this session is `%%agentHome%%/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `%%agentHome%%/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n"
+      },
+      "vars": {
+        "agentHome": "v:agentHome"
+      },
+      "output": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `v:agentHome/`.\nMA-02 DEF The transcript of this session is `v:agentHome/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `v:agentHome/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`."
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md",
+        "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `%%agentHome%%/`.\nMA-02 DEF The transcript of this session is `%%agentHome%%/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `%%agentHome%%/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["agentHome"],
+        "message": "prompt template in minimal-agent-plugins/ma-base-prompt-plugin/prompts/instructions.md is missing required variable(s): agentHome"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/ack.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/ack.md",
+        "text": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out.\n"
+      },
+      "vars": {},
+      "output": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/ack.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/ack.md",
+        "text": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out.\n"
+      },
+      "vars": {},
+      "output": "To suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"%%cooldownSec%%\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness applies a v:cooldownSec-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"v:cooldownSec\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"%%cooldownSec%%\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness applies a v:cooldownSec-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"v:cooldownSec\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"%%cooldownSec%%\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "cooldownSec": "v:cooldownSec"
+      },
+      "error": {
+        "missing": ["interval"],
+        "message": "prompt template in minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md is missing required variable(s): interval"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {
+        "interval": "v:interval"
+      },
+      "output": "A reflection checkpoint fires every v:interval tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call)."
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
+        "text": "A reflection checkpoint fires every %%interval%% tool rounds. The harness injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"0\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["interval"],
+        "message": "prompt template in minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md is missing required variable(s): interval"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/heading.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/heading.md",
+        "text": "# Tool-use loop safety\n"
+      },
+      "vars": {},
+      "output": "# Tool-use loop safety"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/heading.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/heading.md",
+        "text": "# Tool-use loop safety\n"
+      },
+      "vars": {},
+      "output": "# Tool-use loop safety"
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/intro.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/intro.md",
+        "text": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.\n"
+      },
+      "vars": {},
+      "output": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/intro.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/loop-safety/intro.md",
+        "text": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.\n"
+      },
+      "vars": {},
+      "output": "The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-base-prompt-plugin/prompts/tool-output-conventions.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/tool-output-conventions.md",
+        "text": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives.\n"
+      },
+      "vars": {},
+      "output": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-base-prompt-plugin/prompts/tool-output-conventions.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-base-prompt-plugin/prompts/tool-output-conventions.md",
+        "text": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives.\n"
+      },
+      "vars": {},
+      "output": "# Tool output conventions\n\nEvery tool result whose body is large or got clamped by the universal 64KB / 1000-line cap also lands intact at `~/.minimal-agent/sessions/<sid>.blobs/<tool_use_id>.raw`. The agent appends a single line `<ma::agent::raw-output path=\"<abs-path>\" size=\"<size>\" sha256=\"<hex>\" />` to `tool_result.content` whenever that file was written. Use `Read({file_path: \"...\"})` or `Bash({command: \"wc -l '...'\"})` on that path when the inline body is not enough: the file is the full pre-clamp, pre-annotation output. The clamp keeps the FRONT of the body, so when a command fails its trailing diagnostics are what got cut: Read the blob's tail to recover them. The blob also survives session resume, so a later turn can analyze the original bytes without re-running the tool. Small bodies under `minBytesToPersist` (default 4096 B) are not persisted and emit no footer. Their `content` is already complete.\n\nWhen the user's transcript previewed fewer lines than you received, the agent appends a `<ma::agent::output-preview shown=\"N\" total=\"M\" tool=\"X\">` annotation. If a raw-output blob was also written for that result, the annotation carries a `path=\"<abs-path>\"` attribute that points at the full output. The hint names that path too. So an elided preview always tells you where the rest lives."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/bash.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/bash.md",
+        "text": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not.\n"
+      },
+      "vars": {},
+      "output": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/bash.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/bash.md",
+        "text": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not.\n"
+      },
+      "vars": {},
+      "output": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/edit.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/edit.md",
+        "text": "Performs exact string replacements in files.\n"
+      },
+      "vars": {},
+      "output": "Performs exact string replacements in files."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/edit.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/edit.md",
+        "text": "Performs exact string replacements in files.\n"
+      },
+      "vars": {},
+      "output": "Performs exact string replacements in files."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/files-stats.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/files-stats.md",
+        "text": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.\n"
+      },
+      "vars": {},
+      "output": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/files-stats.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/files-stats.md",
+        "text": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.\n"
+      },
+      "vars": {},
+      "output": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/glob.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/glob.md",
+        "text": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins.\n"
+      },
+      "vars": {},
+      "output": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/glob.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/glob.md",
+        "text": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins.\n"
+      },
+      "vars": {},
+      "output": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/grep.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/grep.md",
+        "text": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.\n"
+      },
+      "vars": {},
+      "output": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/grep.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/grep.md",
+        "text": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.\n"
+      },
+      "vars": {},
+      "output": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/mode.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/mode.md",
+        "text": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm.\n"
+      },
+      "vars": {},
+      "output": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/mode.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/mode.md",
+        "text": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm.\n"
+      },
+      "vars": {},
+      "output": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/read.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/read.md",
+        "text": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.\n"
+      },
+      "vars": {},
+      "output": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/read.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/read.md",
+        "text": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.\n"
+      },
+      "vars": {},
+      "output": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/write.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/write.md",
+        "text": "Writes a file to the local filesystem. Overwrites existing files.\n"
+      },
+      "vars": {},
+      "output": "Writes a file to the local filesystem. Overwrites existing files."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/write.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-core-tools-plugin/prompts/tools/write.md",
+        "text": "Writes a file to the local filesystem. Overwrites existing files.\n"
+      },
+      "vars": {},
+      "output": "Writes a file to the local filesystem. Overwrites existing files."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md",
+        "text": "x-anthropic-billing-header: cc_version=%%version%%.%%buildHash%%; cc_entrypoint=cli; cch=00000;\n"
+      },
+      "vars": {
+        "version": "v:version",
+        "buildHash": "v:buildHash"
+      },
+      "output": "x-anthropic-billing-header: cc_version=v:version.v:buildHash; cc_entrypoint=cli; cch=00000;"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md",
+        "text": "x-anthropic-billing-header: cc_version=%%version%%.%%buildHash%%; cc_entrypoint=cli; cch=00000;\n"
+      },
+      "vars": {
+        "version": "v:version",
+        "buildHash": "v:buildHash"
+      },
+      "output": "x-anthropic-billing-header: cc_version=v:version.v:buildHash; cc_entrypoint=cli; cch=00000;"
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md",
+        "text": "x-anthropic-billing-header: cc_version=%%version%%.%%buildHash%%; cc_entrypoint=cli; cch=00000;\n"
+      },
+      "vars": {
+        "buildHash": "v:buildHash"
+      },
+      "error": {
+        "missing": ["version"],
+        "message": "prompt template in minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/billing.tmpl.md is missing required variable(s): version"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/identity.claude-code.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/identity.claude-code.md",
+        "text": "You are Claude Code, Anthropic's official CLI for Claude.\n"
+      },
+      "vars": {},
+      "output": "You are Claude Code, Anthropic's official CLI for Claude."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/identity.claude-code.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-anthropic-plugin/prompts/identity.claude-code.md",
+        "text": "You are Claude Code, Anthropic's official CLI for Claude.\n"
+      },
+      "vars": {},
+      "output": "You are Claude Code, Anthropic's official CLI for Claude."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-llm-cursor-plugin/prompts/tool-catalog.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-cursor-plugin/prompts/tool-catalog.md",
+        "text": "Available tools with their complete descriptions and input schemas follow.\n\nCursor also exposes a server-side MCP bridge: GetDynamicTools (list/filter)\nand CallDynamicTool (invoke a tool in a namespace with arguments). Prefer\ncalling each minimal-agent tool directly by its exact name below. Use the\nparameter names, required fields, enum values and nested structures in its\ninput_schema when constructing arguments. These schemas describe the tools\navailable in this session.\n"
+      },
+      "vars": {},
+      "output": "Available tools with their complete descriptions and input schemas follow.\n\nCursor also exposes a server-side MCP bridge: GetDynamicTools (list/filter)\nand CallDynamicTool (invoke a tool in a namespace with arguments). Prefer\ncalling each minimal-agent tool directly by its exact name below. Use the\nparameter names, required fields, enum values and nested structures in its\ninput_schema when constructing arguments. These schemas describe the tools\navailable in this session."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-llm-cursor-plugin/prompts/tool-catalog.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-llm-cursor-plugin/prompts/tool-catalog.md",
+        "text": "Available tools with their complete descriptions and input schemas follow.\n\nCursor also exposes a server-side MCP bridge: GetDynamicTools (list/filter)\nand CallDynamicTool (invoke a tool in a namespace with arguments). Prefer\ncalling each minimal-agent tool directly by its exact name below. Use the\nparameter names, required fields, enum values and nested structures in its\ninput_schema when constructing arguments. These schemas describe the tools\navailable in this session.\n"
+      },
+      "vars": {},
+      "output": "Available tools with their complete descriptions and input schemas follow.\n\nCursor also exposes a server-side MCP bridge: GetDynamicTools (list/filter)\nand CallDynamicTool (invoke a tool in a namespace with arguments). Prefer\ncalling each minimal-agent tool directly by its exact name below. Use the\nparameter names, required fields, enum values and nested structures in its\ninput_schema when constructing arguments. These schemas describe the tools\navailable in this session."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-memory-plugin/prompts/framing.global.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/framing.global.md",
+        "text": "lessons that apply across any project this user works on\n"
+      },
+      "vars": {},
+      "output": "lessons that apply across any project this user works on"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-memory-plugin/prompts/framing.global.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/framing.global.md",
+        "text": "lessons that apply across any project this user works on\n"
+      },
+      "vars": {},
+      "output": "lessons that apply across any project this user works on"
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-memory-plugin/prompts/framing.project.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/framing.project.md",
+        "text": "lessons specific to this codebase\n"
+      },
+      "vars": {},
+      "output": "lessons specific to this codebase"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-memory-plugin/prompts/framing.project.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/framing.project.md",
+        "text": "lessons specific to this codebase\n"
+      },
+      "vars": {},
+      "output": "lessons specific to this codebase"
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md",
+        "text": "You are summarizing a developer's persistent memory bullets for %%scopeFraming%%.\nEach bullet is one line in a markdown list. Most start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.\nThe id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent reading your summary can call `MemoryTool({action:\"read\", id})` to fetch the full body.\n\nOutput format: markdown, organized by topic cluster:\n\n## <Cluster name>\n\n- <one-sentence takeaway>. Sources: #id1, #id2, #id3\n- <one-sentence takeaway>. Sources: #id4\n\nRules:\n\n- Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.\n- Cite the source bullet ids in a trailing \"Sources: ...\" list so the agent can drill down for full text.\n- Each takeaway must be specific and actionable. \"Be careful with X\" is noise. \"X has invariant Y at file:line because Z\" is signal.\n- When two bullets contradict or one supersedes the other, prefer the newer (by timestamp) and note \"supersedes #older\".\n- Do not invent facts. If unsure, omit the bullet rather than guess.\n- Do not include the bullet bodies verbatim. Distill, don't paraphrase. The original body is one MemoryTool.read call away if needed.\n- Target output: shorter than the input. Aim for ~30% of the input length.\n\nOutput only the markdown summary. No preamble, no closing remarks.\n"
+      },
+      "vars": {
+        "scopeFraming": "v:scopeFraming"
+      },
+      "output": "You are summarizing a developer's persistent memory bullets for v:scopeFraming.\nEach bullet is one line in a markdown list. Most start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.\nThe id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent reading your summary can call `MemoryTool({action:\"read\", id})` to fetch the full body.\n\nOutput format: markdown, organized by topic cluster:\n\n## <Cluster name>\n\n- <one-sentence takeaway>. Sources: #id1, #id2, #id3\n- <one-sentence takeaway>. Sources: #id4\n\nRules:\n\n- Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.\n- Cite the source bullet ids in a trailing \"Sources: ...\" list so the agent can drill down for full text.\n- Each takeaway must be specific and actionable. \"Be careful with X\" is noise. \"X has invariant Y at file:line because Z\" is signal.\n- When two bullets contradict or one supersedes the other, prefer the newer (by timestamp) and note \"supersedes #older\".\n- Do not invent facts. If unsure, omit the bullet rather than guess.\n- Do not include the bullet bodies verbatim. Distill, don't paraphrase. The original body is one MemoryTool.read call away if needed.\n- Target output: shorter than the input. Aim for ~30% of the input length.\n\nOutput only the markdown summary. No preamble, no closing remarks."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md",
+        "text": "You are summarizing a developer's persistent memory bullets for %%scopeFraming%%.\nEach bullet is one line in a markdown list. Most start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.\nThe id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent reading your summary can call `MemoryTool({action:\"read\", id})` to fetch the full body.\n\nOutput format: markdown, organized by topic cluster:\n\n## <Cluster name>\n\n- <one-sentence takeaway>. Sources: #id1, #id2, #id3\n- <one-sentence takeaway>. Sources: #id4\n\nRules:\n\n- Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.\n- Cite the source bullet ids in a trailing \"Sources: ...\" list so the agent can drill down for full text.\n- Each takeaway must be specific and actionable. \"Be careful with X\" is noise. \"X has invariant Y at file:line because Z\" is signal.\n- When two bullets contradict or one supersedes the other, prefer the newer (by timestamp) and note \"supersedes #older\".\n- Do not invent facts. If unsure, omit the bullet rather than guess.\n- Do not include the bullet bodies verbatim. Distill, don't paraphrase. The original body is one MemoryTool.read call away if needed.\n- Target output: shorter than the input. Aim for ~30% of the input length.\n\nOutput only the markdown summary. No preamble, no closing remarks.\n"
+      },
+      "vars": {
+        "scopeFraming": "v:scopeFraming"
+      },
+      "output": "You are summarizing a developer's persistent memory bullets for v:scopeFraming.\nEach bullet is one line in a markdown list. Most start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.\nThe id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent reading your summary can call `MemoryTool({action:\"read\", id})` to fetch the full body.\n\nOutput format: markdown, organized by topic cluster:\n\n## <Cluster name>\n\n- <one-sentence takeaway>. Sources: #id1, #id2, #id3\n- <one-sentence takeaway>. Sources: #id4\n\nRules:\n\n- Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.\n- Cite the source bullet ids in a trailing \"Sources: ...\" list so the agent can drill down for full text.\n- Each takeaway must be specific and actionable. \"Be careful with X\" is noise. \"X has invariant Y at file:line because Z\" is signal.\n- When two bullets contradict or one supersedes the other, prefer the newer (by timestamp) and note \"supersedes #older\".\n- Do not invent facts. If unsure, omit the bullet rather than guess.\n- Do not include the bullet bodies verbatim. Distill, don't paraphrase. The original body is one MemoryTool.read call away if needed.\n- Target output: shorter than the input. Aim for ~30% of the input length.\n\nOutput only the markdown summary. No preamble, no closing remarks."
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md",
+        "text": "You are summarizing a developer's persistent memory bullets for %%scopeFraming%%.\nEach bullet is one line in a markdown list. Most start with `- [#<id>] [<timestamp>] [session:<uuid>] <body>`.\nThe id (e.g. `#mp0sf575-bee2`) is the bullet's stable identifier, and the agent reading your summary can call `MemoryTool({action:\"read\", id})` to fetch the full body.\n\nOutput format: markdown, organized by topic cluster:\n\n## <Cluster name>\n\n- <one-sentence takeaway>. Sources: #id1, #id2, #id3\n- <one-sentence takeaway>. Sources: #id4\n\nRules:\n\n- Group bullets by subsystem or topic, not by date. Use the file paths, function names, and concepts mentioned in the bullets as cluster cues.\n- Cite the source bullet ids in a trailing \"Sources: ...\" list so the agent can drill down for full text.\n- Each takeaway must be specific and actionable. \"Be careful with X\" is noise. \"X has invariant Y at file:line because Z\" is signal.\n- When two bullets contradict or one supersedes the other, prefer the newer (by timestamp) and note \"supersedes #older\".\n- Do not invent facts. If unsure, omit the bullet rather than guess.\n- Do not include the bullet bodies verbatim. Distill, don't paraphrase. The original body is one MemoryTool.read call away if needed.\n- Target output: shorter than the input. Aim for ~30% of the input length.\n\nOutput only the markdown summary. No preamble, no closing remarks.\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["scopeFraming"],
+        "message": "prompt template in minimal-agent-plugins/ma-memory-plugin/prompts/summarize.tmpl.md is missing required variable(s): scopeFraming"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+        "text": "Hello %%name%%\n%%opt?%%\nEnd\n"
+      },
+      "vars": {
+        "name": "v:name",
+        "opt": "v:opt"
+      },
+      "output": "Hello v:name\nv:opt\nEnd"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+        "text": "Hello %%name%%\n%%opt?%%\nEnd\n"
+      },
+      "vars": {
+        "name": "v:name"
+      },
+      "output": "Hello v:name\n\nEnd"
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md",
+        "text": "Hello %%name%%\n%%opt?%%\nEnd\n"
+      },
+      "vars": {
+        "opt": "v:opt"
+      },
+      "error": {
+        "missing": ["name"],
+        "message": "prompt template in minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/hello.md is missing required variable(s): name"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+        "text": "Title %%a%%\n\n%%o1?%%\n\nMid %%o2?%% end\n\n%%o3?%%\n\nTail %%a%%\nThree\n\n%%o4?%%\nEnd\n"
+      },
+      "vars": {
+        "a": "v:a",
+        "o1": "v:o1",
+        "o2": "v:o2",
+        "o3": "v:o3",
+        "o4": "v:o4"
+      },
+      "output": "Title v:a\n\nv:o1\n\nMid v:o2 end\n\nv:o3\n\nTail v:a\nThree\n\nv:o4\nEnd"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+        "text": "Title %%a%%\n\n%%o1?%%\n\nMid %%o2?%% end\n\n%%o3?%%\n\nTail %%a%%\nThree\n\n%%o4?%%\nEnd\n"
+      },
+      "vars": {
+        "a": "v:a"
+      },
+      "output": "Title v:a\n\nMid  end\n\nTail v:a\nThree\n\nEnd"
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md",
+        "text": "Title %%a%%\n\n%%o1?%%\n\nMid %%o2?%% end\n\n%%o3?%%\n\nTail %%a%%\nThree\n\n%%o4?%%\nEnd\n"
+      },
+      "vars": {
+        "o1": "v:o1",
+        "o2": "v:o2",
+        "o3": "v:o3",
+        "o4": "v:o4"
+      },
+      "error": {
+        "missing": ["a"],
+        "message": "prompt template in minimal-agent-plugins/ma-prompt-template-plugin/fixtures/prompts/optional.md is missing required variable(s): a"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-sub-agents-plugin/prompts/leaf-discipline.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-sub-agents-plugin/prompts/leaf-discipline.md",
+        "text": "You are a leaf worker: you cannot spawn sub-agents or delegate. SpawnAgent and the Task hand-off are denied to you and will bounce. Do every step yourself in this session and write any required output file yourself before you finish, then call ReportResult to hand back your work. A bounced delegation that leaves no file is the failure mode to avoid.\n"
+      },
+      "vars": {},
+      "output": "You are a leaf worker: you cannot spawn sub-agents or delegate. SpawnAgent and the Task hand-off are denied to you and will bounce. Do every step yourself in this session and write any required output file yourself before you finish, then call ReportResult to hand back your work. A bounced delegation that leaves no file is the failure mode to avoid."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-sub-agents-plugin/prompts/leaf-discipline.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-sub-agents-plugin/prompts/leaf-discipline.md",
+        "text": "You are a leaf worker: you cannot spawn sub-agents or delegate. SpawnAgent and the Task hand-off are denied to you and will bounce. Do every step yourself in this session and write any required output file yourself before you finish, then call ReportResult to hand back your work. A bounced delegation that leaves no file is the failure mode to avoid.\n"
+      },
+      "vars": {},
+      "output": "You are a leaf worker: you cannot spawn sub-agents or delegate. SpawnAgent and the Task hand-off are denied to you and will bounce. Do every step yourself in this session and write any required output file yourself before you finish, then call ReportResult to hand back your work. A bounced delegation that leaves no file is the failure mode to avoid."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
+        "text": "## How you finish (required)\n\nYou are a leaf worker. You cannot delegate. SpawnAgent and the Task tool are denied to you and will bounce, so do every step yourself in this session with your own tools (Read, Write, Edit, Bash).\n\nFinish in two steps, in order:\n\n1. If the task asked for a file, write it yourself now with the Write tool, at the exact path you were given, and check it is not empty. That file is the real deliverable.\n\n2. As your final action, call the `ReportResult` tool to hand your work back:\n\n   ReportResult({\n   \"summary\": \"<your findings: a dense, self-contained paragraph or two>\",\n   \"artifacts\": [\"<absolute path of each file you created or changed>\"],\n   \"incomplete\": false\n   })\n\n`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.\n\nIf you could not finish, still call `ReportResult` with `\"incomplete\": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.\n\nFallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:\n\n%%resultPath%%\n\n{\"short\": \"<your findings>\", \"tokens\": 0, \"tools\": 0,\n\"artifacts\": [\"<absolute path of each file you wrote>\"]}\n"
+      },
+      "vars": {
+        "resultPath": "v:resultPath"
+      },
+      "output": "## How you finish (required)\n\nYou are a leaf worker. You cannot delegate. SpawnAgent and the Task tool are denied to you and will bounce, so do every step yourself in this session with your own tools (Read, Write, Edit, Bash).\n\nFinish in two steps, in order:\n\n1. If the task asked for a file, write it yourself now with the Write tool, at the exact path you were given, and check it is not empty. That file is the real deliverable.\n\n2. As your final action, call the `ReportResult` tool to hand your work back:\n\n   ReportResult({\n   \"summary\": \"<your findings: a dense, self-contained paragraph or two>\",\n   \"artifacts\": [\"<absolute path of each file you created or changed>\"],\n   \"incomplete\": false\n   })\n\n`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.\n\nIf you could not finish, still call `ReportResult` with `\"incomplete\": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.\n\nFallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:\n\nv:resultPath\n\n{\"short\": \"<your findings>\", \"tokens\": 0, \"tools\": 0,\n\"artifacts\": [\"<absolute path of each file you wrote>\"]}"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
+        "text": "## How you finish (required)\n\nYou are a leaf worker. You cannot delegate. SpawnAgent and the Task tool are denied to you and will bounce, so do every step yourself in this session with your own tools (Read, Write, Edit, Bash).\n\nFinish in two steps, in order:\n\n1. If the task asked for a file, write it yourself now with the Write tool, at the exact path you were given, and check it is not empty. That file is the real deliverable.\n\n2. As your final action, call the `ReportResult` tool to hand your work back:\n\n   ReportResult({\n   \"summary\": \"<your findings: a dense, self-contained paragraph or two>\",\n   \"artifacts\": [\"<absolute path of each file you created or changed>\"],\n   \"incomplete\": false\n   })\n\n`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.\n\nIf you could not finish, still call `ReportResult` with `\"incomplete\": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.\n\nFallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:\n\n%%resultPath%%\n\n{\"short\": \"<your findings>\", \"tokens\": 0, \"tools\": 0,\n\"artifacts\": [\"<absolute path of each file you wrote>\"]}\n"
+      },
+      "vars": {
+        "resultPath": "v:resultPath"
+      },
+      "output": "## How you finish (required)\n\nYou are a leaf worker. You cannot delegate. SpawnAgent and the Task tool are denied to you and will bounce, so do every step yourself in this session with your own tools (Read, Write, Edit, Bash).\n\nFinish in two steps, in order:\n\n1. If the task asked for a file, write it yourself now with the Write tool, at the exact path you were given, and check it is not empty. That file is the real deliverable.\n\n2. As your final action, call the `ReportResult` tool to hand your work back:\n\n   ReportResult({\n   \"summary\": \"<your findings: a dense, self-contained paragraph or two>\",\n   \"artifacts\": [\"<absolute path of each file you created or changed>\"],\n   \"incomplete\": false\n   })\n\n`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.\n\nIf you could not finish, still call `ReportResult` with `\"incomplete\": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.\n\nFallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:\n\nv:resultPath\n\n{\"short\": \"<your findings>\", \"tokens\": 0, \"tools\": 0,\n\"artifacts\": [\"<absolute path of each file you wrote>\"]}"
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
+        "text": "## How you finish (required)\n\nYou are a leaf worker. You cannot delegate. SpawnAgent and the Task tool are denied to you and will bounce, so do every step yourself in this session with your own tools (Read, Write, Edit, Bash).\n\nFinish in two steps, in order:\n\n1. If the task asked for a file, write it yourself now with the Write tool, at the exact path you were given, and check it is not empty. That file is the real deliverable.\n\n2. As your final action, call the `ReportResult` tool to hand your work back:\n\n   ReportResult({\n   \"summary\": \"<your findings: a dense, self-contained paragraph or two>\",\n   \"artifacts\": [\"<absolute path of each file you created or changed>\"],\n   \"incomplete\": false\n   })\n\n`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.\n\nIf you could not finish, still call `ReportResult` with `\"incomplete\": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.\n\nFallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:\n\n%%resultPath%%\n\n{\"short\": \"<your findings>\", \"tokens\": 0, \"tools\": 0,\n\"artifacts\": [\"<absolute path of each file you wrote>\"]}\n"
+      },
+      "vars": {},
+      "error": {
+        "missing": ["resultPath"],
+        "message": "prompt template in minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md is missing required variable(s): resultPath"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
+        "text": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n"
+      },
+      "vars": {},
+      "output": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
+        "text": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n"
+      },
+      "vars": {},
+      "output": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
+        "text": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n"
+      },
+      "vars": {},
+      "output": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
+        "text": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n"
+      },
+      "vars": {},
+      "output": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
+        "text": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it.\n"
+      },
+      "vars": {},
+      "output": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
+        "text": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it.\n"
+      },
+      "vars": {},
+      "output": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/output-truncated.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/output-truncated.md",
+        "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/output-truncated.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/output-truncated.md",
+        "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
+        "text": "<ma::agent::reflection-checkpoint round=\"%%round%%\" cooldown-applied-seconds=\"%%cooldownSec%%\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).\n"
+      },
+      "vars": {
+        "round": "v:round",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "<ma::agent::reflection-checkpoint round=\"v:round\" cooldown-applied-seconds=\"v:cooldownSec\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
+        "text": "<ma::agent::reflection-checkpoint round=\"%%round%%\" cooldown-applied-seconds=\"%%cooldownSec%%\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).\n"
+      },
+      "vars": {
+        "round": "v:round",
+        "cooldownSec": "v:cooldownSec"
+      },
+      "output": "<ma::agent::reflection-checkpoint round=\"v:round\" cooldown-applied-seconds=\"v:cooldownSec\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
+    },
+    {
+      "name": "C:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
+        "text": "<ma::agent::reflection-checkpoint round=\"%%round%%\" cooldown-applied-seconds=\"%%cooldownSec%%\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).\n"
+      },
+      "vars": {
+        "cooldownSec": "v:cooldownSec"
+      },
+      "error": {
+        "missing": ["round"],
+        "message": "prompt template in minimal-agent-plugins/ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md is missing required variable(s): round"
+      }
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/response-truncated-placeholder.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/response-truncated-placeholder.md",
+        "text": "[response truncated at the output-token limit before any content was produced]\n"
+      },
+      "vars": {},
+      "output": "[response truncated at the output-token limit before any content was produced]"
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/response-truncated-placeholder.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/response-truncated-placeholder.md",
+        "text": "[response truncated at the output-token limit before any content was produced]\n"
+      },
+      "vars": {},
+      "output": "[response truncated at the output-token limit before any content was produced]"
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/session-resumed.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/session-resumed.md",
+        "text": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/session-resumed.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/session-resumed.md",
+        "text": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::session-resumed />\nThis session was restarted and has incomplete work. Your previous conversation is preserved in the transcript above. Continue exactly from where you left off. Do not re-explain your plan, re-read files you already read, or ask what to do next. Resume the work."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/stream-interrupted.md",
+        "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only."
+    },
+    {
+      "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/turn-aborted.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/turn-aborted.md",
+        "text": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it."
+    },
+    {
+      "name": "B:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/turn-aborted.md",
+      "input": {
+        "path": "minimal-agent-plugins/ma-turn-recovery-plugin/prompts/turn-aborted.md",
+        "text": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it.\n"
+      },
+      "vars": {},
+      "output": "<ma::agent::turn-aborted />\nThe previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it."
+    }
+  ]
+}
