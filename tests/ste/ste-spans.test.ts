@@ -85,6 +85,11 @@ const HIDDEN_WORDS: readonly string[] = [
   "utilize; robust",
   "echo a; echo don't",
   "minimal-agent-cli utilize it",
+  // Invisible or curly characters must not hide a word. Heather's fourth pass.
+  "don\u2019t utilize it",
+  "util\u00adize it",
+  "utili\u200bze it",
+  "Let\u2019s dive in",
 ]
 
 describe("backtick span classifier", () => {

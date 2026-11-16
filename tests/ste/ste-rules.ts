@@ -203,7 +203,10 @@ const UNICODE_SPACES = /[\u00a0\u2000-\u200b\u202f\u205f\u3000]/g
 export function maskForWords(text: string): string {
   const blank = (s: string): string => s.replace(/[^\n]/g, " ")
   const oneWord = (s: string): string => (s.length <= 1 ? "W" : `W${" ".repeat(s.length - 1)}`)
-  return text
+  // A curly apostrophe is a contraction, and an invisible character inside a
+  // word hides a banned word: "util\u00adize" must read as "utilize".
+  const normalized = text.replace(/\u2019/g, "'").replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
+  return normalized
     .replace(/^[a-z][\w-]*:[ \t]*\S+=\S+(?:;[ \t]*\S+=\S*)+;?[ \t]*$/gm, blank)
     .replace(/^[ \t]*(```|~~~)[^\n]*\n[\s\S]*?^[ \t]*\1[^\n]*$/gm, blank)
     .replace(/\$\{[^}\n]*\}/g, oneWord)
