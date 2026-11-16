@@ -88,9 +88,9 @@ function checkSystem(
       agentHome: home,
       reflectionInterval: DEFAULT_REFLECTION_INTERVAL,
       reflectionCooldownMs: DEFAULT_REFLECTION_COOLDOWN_MS,
-      // Core builds the request system prompt with blobStoreEnabled: false
-      // (sdk/agent-core-helpers.ts), also with a blob store. Same ctx here.
-      blobStoreEnabled: false,
+      // Core sends the tool-output-conventions slot when the executor has an
+      // enabled blob store (follow-up 15b). The harness gives one per scenario.
+      blobStoreEnabled: scenario.blobStore === true,
     } as never) ?? []
   const block = textOf(system?.[1]) ?? ""
   for (const p of parts) {
