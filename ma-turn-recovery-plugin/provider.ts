@@ -209,6 +209,34 @@ function compactLocalCheckpoint(facts: SyntheticFacts): string {
   return `## Context checkpoint\n${focusLine}\n${summary}`
 }
 
+/** One schema error `i` of the flat indexed facts (`path.i`, `rule.i`, ...). */
+function schemaError(kind: SyntheticKind, facts: SyntheticFacts, i: number): string {
+  const path = str(kind, facts, `path.${i}`)
+  const at = path === "" ? "(root)" : path
+  const rule = str(kind, facts, `rule.${i}`)
+  switch (rule) {
+    case "enum":
+      return `${at}: value does not match any enum constant`
+    case "type": {
+      const expected = str(kind, facts, `expected.${i}`).split(",").join(" | ")
+      return `${at}: expected type ${expected}, got ${str(kind, facts, `got.${i}`)}`
+    }
+    case "required":
+      return `${at}: missing required property "${str(kind, facts, `key.${i}`)}"`
+    case "additional":
+      return `${at}: additional property "${str(kind, facts, `key.${i}`)}" is not allowed`
+    default:
+      throw new Error(`${kind}: unknown rule ${rule}`)
+  }
+}
+
+/** The schema error list of `tool_result.invalid_input`: `count` errors joined with `. `. */
+function schemaErrors(kind: SyntheticKind, facts: SyntheticFacts): string {
+  const count = num(kind, facts, "count")
+  if (!Number.isInteger(count) || count < 1) throw new Error(`${kind}: count must be >= 1`)
+  return Array.from({ length: count }, (_, i) => schemaError(kind, facts, i)).join(". ")
+}
+
 /** The text of one owned kind. Throws on a kind it does not own. */
 function render(kind: SyntheticKind, facts: SyntheticFacts): string {
   switch (kind) {
@@ -284,7 +312,7 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
     case "tool_result.non_tool_result":
       return `Plugin tool "${str(kind, facts, "tool")}" returned a non-tool_result value`
     case "tool_result.invalid_input":
-      return `${str(kind, facts, "tool")} error: ${str(kind, facts, "detail")}`
+      return `${str(kind, facts, "tool")} error: ${schemaErrors(kind, facts)}`
     case "tool_result.canceled": {
       if (facts.site === "subprocess") return CANCELED_SUBPROCESS
       throw new Error(`canceled: unknown site ${String(facts.site)}`)
