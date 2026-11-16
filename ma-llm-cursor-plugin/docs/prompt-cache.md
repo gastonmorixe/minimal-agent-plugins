@@ -1,53 +1,53 @@
 # Prompt cache behavior
 
-Date: 2026-10-04
+Date: 2026-11-15 (update)
 Plugin: `ma-llm-cursor-plugin`
-Authors: Matthew (`881e40c3`), Donna (`1c36f86d`)
-Status: mapper N/A locked 2026-10-04 (Donna `1c36f86d`). Count fix landed separately.
+Status: wire cache decode landed (TurnEnded / ModelCallCompleted).
 
 ## Model
 
-No cache counters reported. Caps inherit defaults with no override: explicit false, automatic false, reports false, disjoint.
+Server-side automatic prompt cache. No client `cache_control`.
 
-- Code: `capabilities.ts` inherits `lib/capabilities.ts:235-242`.
+- Caps: `caching.automatic = true`, `reportsCacheHits = true`, `explicit = false`.
+- Code: `capabilities.ts` → `cursorCaps()`.
 
-Blind display, not proof of no cache. Proto ConversationTokenDetails only decodes used_tokens#1 and max_tokens#2. Unknown fields are dropped. Do not invent cacheRead.
+## Wire (cursor-agent 2026.11.13-eacade1)
 
-## Wire
+- `InteractionUpdate.turn_ended` (#14) `TurnEndedUpdate`:
+  `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `reasoning_tokens`.
+- `InteractionUpdate.model_call_completed` (#31) `ModelCallCompletedUpdate`:
+  `model_call_id` + same token fields.
+- Official CLI `$()`: `inputTokens = max(wireInput - cacheRead - cacheWrite, 0)` then maps
+  cache write → creation, cache read → read. **Wire input includes cache.**
+- Latest `model_call_completed` **replaces** prior call totals (not summed) so
+  `contextSize` stays one-prompt footprint.
+- `ConversationTokenDetails.max_tokens` is surfaced as `ProviderSessionInfo.contextWindow`
+  so the status bar denominator matches the server window. When `used_tokens > max_tokens`
+  (Auto can grow past catalog 128k), the denominator follows `used_tokens` so the bar
+  never reads `128k … 143k`.
 
-- Sends no `cache_control`. None is ever encoded.
-- Tries to keep server cache by not rewriting system.
-  - Code: `request-body.ts:9` never rewrite system or bust cache.
-  - Lines 338-339 do not send MA system as customSystemPrompt.
-  - Lines 343-354 fold system text into single user text via blockText. Drops hints.
-  - Line 367 wire mode only, never fold mode policy for cache stability.
-  - Lines 348-349 with carried checkpoint send only new user text.
+## Usage mapping
 
-## Usage fields
+- Prefer TurnEnded / ModelCallCompleted → CanonicalUsage with disjoint cache fields.
+- Fallback: checkpoint `used_tokens` as absolute occupancy, `outputTokens` 0, no invented cache.
+- Code: `cursor-usage.ts`, decode in `proto/agent-run.ts`.
 
-- Maps only `used_tokens` and `max_tokens` plus token deltas. No cache fields.
-  - Code: `cursor-usage.ts:5-8,59-62`.
-  - Returns inputTokens and outputTokens 0. No cacheRead or cacheCreate.
-- Canonical cache fields exist but cursor never fills them.
-  - Code: `lib/canonical-events.ts:41-44`.
-- Core legacy mapper exists for Anthropic wire fields only.
-  - Code: `minimal-agent-core/src/llm/adapter-legacy-stream.ts:421-422`.
+## Live evidence 2026-11-15 (this MA session `c0cc6863…`)
 
-## Token count interaction
+`DashboardService/GetFilteredUsageEvents` for `conversationId = c0cc6863-0000-4000-8000-e73f0371c5f0`:
 
-- `input_tokens` on cursor is conversation checkpoint `used_tokens`: absolute size, not per turn prefill. Output always 0.
-- Old fleet sum showed 248k for 7 tools while window was 37k. Fixed to last turn contextSize.
-- See `ma-sub-agents-plugin/docs/fleet-token-count.md`.
-- Extra Runs after bidi drop are real spend. Three bodies 236k, 477k, 496k on a 48 tool explorer. Count fix does not remove that cost.
+| ts (approx) | input | output | cacheRead |
+|---|---:|---:|---:|
+| latest | 192728 | 7147 | 1678336 |
+| prior | 142866 | 355 | 286208 |
 
-## Live evidence 2026-10-04
+Local SessionInfo before fix: `cache-read 0`, `189k / 128k` (148%). Cursor billing
+proves cache is live; the provider simply was not decoding it.
 
-- `cursor-auto` rejects all effort flags, even low. Levels are empty. Run without effort.
-- Session `7759fa49` is a fork (`parentSid` `5a9eeea2`, `createdAt` 2026-10-04T17:18Z). Turns 1-15 are inherited (ts 16:37, `output_tokens` greater than 0 plus `cache_read_input_tokens`). Those rows are not from `cursorUsageToCanonical` (that mapper always sets `outputTokens` 0). Turns 16+ match the live mapper: output 0, no cache keys. Do not cite this session as Cursor wire cache_read.
-- Probe sessions show input 30k to 51k with output 0 and no cache fields.
-- Mapper this wave: N/A. Extra-Run folds remain a later spend issue, not a count-map issue.
+`GetTokenUsage` by `usageUuid` returns only input/output (drops cache) — prefer
+`GetFilteredUsageEvents.tokenUsage` for post-hoc cache debug.
 
 ## Cross refs
 
-- This investigation: `research/2026-10-04-subagent-bugs/findings.md`
-- Donna count doc: `ma-sub-agents-plugin/docs/fleet-token-count.md`
+- RE extract: `~/Projects/vendor-research/2026.11.13-eacade1/`
+- Research scripts: `.../scripts/dashboard-self-apis/`

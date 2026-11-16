@@ -8,13 +8,17 @@ import { describe, expect, test } from "bun:test"
 import { connectFrameProto } from "./connect/stream.ts"
 import {
   applyCursorUsageEvent,
+  clearCursorLastMaxTokens,
   type CursorUsageState,
   cursorUsageReceipts,
   cursorUsageToCanonical,
+  getCursorContextWindowForStatus,
+  getCursorLastMaxTokens,
 } from "./cursor-usage.ts"
 import {
   decodeCheckpointTokenDetails,
   decodeConversationTokenDetails,
+  decodeWireTokenUsage,
   extractServerTextEvents,
 } from "./proto/agent-run.ts"
 import { concat, encMsg, encString, encVarintField } from "./proto/wire.ts"
@@ -53,6 +57,42 @@ function encCheckpointTokenDetails(used: number, max: number): Uint8Array {
 
 function encTextAndTurn(text: string): Uint8Array {
   return concat(encInteractionUpdate(1, encString(1, text)), encInteractionUpdate(14))
+}
+
+/** TurnEndedUpdate with CLI-style wire totals (input INCLUDES cache). */
+function encTurnEndedUsage(opts: {
+  input: number
+  output: number
+  cacheRead?: number
+  cacheWrite?: number
+  reasoning?: number
+}): Uint8Array {
+  const parts = [
+    encVarintField(1, opts.input),
+    encVarintField(2, opts.output),
+  ]
+  if (opts.cacheRead != null) parts.push(encVarintField(3, opts.cacheRead))
+  if (opts.cacheWrite != null) parts.push(encVarintField(4, opts.cacheWrite))
+  if (opts.reasoning != null) parts.push(encVarintField(5, opts.reasoning))
+  return encInteractionUpdate(14, concat(...parts))
+}
+
+/** ModelCallCompletedUpdate (#31): model_call_id#1 + tokens #2–#6. */
+function encModelCallCompleted(opts: {
+  modelCallId: string
+  input: number
+  output: number
+  cacheRead?: number
+  cacheWrite?: number
+}): Uint8Array {
+  const parts = [
+    encString(1, opts.modelCallId),
+    encVarintField(2, opts.input),
+    encVarintField(3, opts.output),
+  ]
+  if (opts.cacheRead != null) parts.push(encVarintField(4, opts.cacheRead))
+  if (opts.cacheWrite != null) parts.push(encVarintField(5, opts.cacheWrite))
+  return encInteractionUpdate(31, concat(...parts))
 }
 
 describe("ConversationTokenDetails decode", () => {
@@ -205,5 +245,192 @@ describe("bidi translator usage", () => {
     if (delta?.type !== "message_delta") throw new Error("missing message_delta")
     expect(delta.usage).toEqual({ inputTokens: 99, outputTokens: 0 })
     expect(delta.receipts?.cursorMaxTokens).toBe(1000)
+  })
+})
+
+describe("getCursorContextWindowForStatus", () => {
+  test("returns max_tokens when used is below max", () => {
+    clearCursorLastMaxTokens()
+    applyCursorUsageEvent(
+      {},
+      { kind: "conversation_checkpoint_update", usedTokens: 50_000, maxTokens: 200_000 },
+    )
+    expect(getCursorContextWindowForStatus()).toBe(200_000)
+  })
+
+  test("returns used_tokens when used exceeds max", () => {
+    clearCursorLastMaxTokens()
+    applyCursorUsageEvent(
+      {},
+      { kind: "conversation_checkpoint_update", usedTokens: 143_400, maxTokens: 128_000 },
+    )
+    expect(getCursorContextWindowForStatus()).toBe(143_400)
+  })
+})
+
+describe("TurnEnded / ModelCallCompleted wire usage", () => {
+  test("decodeWireTokenUsage TurnEnded fields", () => {
+    const body = concat(
+      encVarintField(1, 1000),
+      encVarintField(2, 40),
+      encVarintField(3, 700),
+      encVarintField(4, 50),
+      encVarintField(5, 12),
+    )
+    expect(decodeWireTokenUsage(body)).toEqual({
+      inputTokens: 1000,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+      cacheWriteTokens: 50,
+      reasoningTokens: 12,
+      modelCallId: undefined,
+    })
+  })
+
+  test("extractServerTextEvents decodes turn_ended token body", () => {
+    const events = extractServerTextEvents(
+      encTurnEndedUsage({ input: 1000, output: 40, cacheRead: 700, cacheWrite: 50 }),
+    )
+    expect(events).toEqual([
+      {
+        kind: "turn_ended",
+        rawField: 14,
+        inputTokens: 1000,
+        outputTokens: 40,
+        cacheReadTokens: 700,
+        cacheWriteTokens: 50,
+        reasoningTokens: undefined,
+        modelCallId: undefined,
+      },
+    ])
+  })
+
+  test("extractServerTextEvents decodes model_call_completed", () => {
+    const events = extractServerTextEvents(
+      encModelCallCompleted({
+        modelCallId: "mc-1",
+        input: 500,
+        output: 10,
+        cacheRead: 400,
+      }),
+    )
+    expect(events[0]).toMatchObject({
+      kind: "model_call_completed",
+      rawField: 31,
+      modelCallId: "mc-1",
+      inputTokens: 500,
+      outputTokens: 10,
+      cacheReadTokens: 400,
+    })
+  })
+
+  test("CLI $() mapping: uncached = input - cacheRead - cacheWrite", () => {
+    clearCursorLastMaxTokens()
+    const state: CursorUsageState = {}
+    applyCursorUsageEvent(state, {
+      kind: "turn_ended",
+      inputTokens: 1000,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+      cacheWriteTokens: 50,
+    })
+    expect(cursorUsageToCanonical(state)).toEqual({
+      inputTokens: 250,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+      cacheCreationTokens: 50,
+    })
+  })
+
+  test("latest model_call_completed replaces prior call (no sum)", () => {
+    const state: CursorUsageState = {}
+    applyCursorUsageEvent(state, {
+      kind: "model_call_completed",
+      inputTokens: 100,
+      outputTokens: 1,
+      cacheReadTokens: 80,
+    })
+    applyCursorUsageEvent(state, {
+      kind: "model_call_completed",
+      inputTokens: 1000,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+      cacheWriteTokens: 50,
+    })
+    expect(cursorUsageToCanonical(state)).toEqual({
+      inputTokens: 250,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+      cacheCreationTokens: 50,
+    })
+  })
+
+  test("turn_ended with tokens wins over checkpoint for CanonicalUsage", () => {
+    clearCursorLastMaxTokens()
+    const state: CursorUsageState = {}
+    applyCursorUsageEvent(state, {
+      kind: "conversation_checkpoint_update",
+      usedTokens: 9000,
+      maxTokens: 200_000,
+    })
+    applyCursorUsageEvent(state, {
+      kind: "turn_ended",
+      inputTokens: 1000,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+    })
+    expect(cursorUsageToCanonical(state)).toEqual({
+      inputTokens: 300,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+    })
+    expect(getCursorLastMaxTokens()).toBe(200_000)
+    expect(cursorUsageReceipts(state)).toMatchObject({
+      cursorUsedTokens: 9000,
+      cursorMaxTokens: 200_000,
+      cursorWireInputTokens: 1000,
+      cursorWireCacheReadTokens: 700,
+    })
+  })
+
+  test("empty turn_ended keeps checkpoint fallback", () => {
+    const state: CursorUsageState = {}
+    applyCursorUsageEvent(state, {
+      kind: "conversation_checkpoint_update",
+      usedTokens: 42,
+      maxTokens: 128_000,
+    })
+    applyCursorUsageEvent(state, { kind: "turn_ended" })
+    expect(cursorUsageToCanonical(state)).toEqual({ inputTokens: 42, outputTokens: 0 })
+  })
+})
+
+describe("translateCursorStream turn-ended usage with cache", () => {
+  test("message_delta reports disjoint cache fields", async () => {
+    clearCursorLastMaxTokens()
+    const payload = concat(
+      encCheckpointTokenDetails(900, 200_000),
+      encInteractionUpdate(1, encString(1, "hi")),
+      encTurnEndedUsage({ input: 1000, output: 40, cacheRead: 700, cacheWrite: 50 }),
+    )
+    const framed = connectFrameProto(payload)
+    const events = []
+    for await (const ev of translateCursorStreamBuffer(framed, { modelId: "cursor-auto" })) {
+      events.push(ev)
+    }
+    const delta = events.find((e) => e.type === "message_delta")
+    if (delta?.type !== "message_delta") throw new Error("missing message_delta")
+    expect(delta.usage).toEqual({
+      inputTokens: 250,
+      outputTokens: 40,
+      cacheReadTokens: 700,
+      cacheCreationTokens: 50,
+    })
+    expect(delta.receipts).toMatchObject({
+      cursorUsedTokens: 900,
+      cursorMaxTokens: 200_000,
+      cursorWireCacheReadTokens: 700,
+    })
+    expect(getCursorLastMaxTokens()).toBe(200_000)
   })
 })

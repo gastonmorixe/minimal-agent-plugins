@@ -214,6 +214,68 @@ export type CursorServerEvent = {
   maxTokens?: number
   /** SummaryCompletedUpdate.hook_message (optional). */
   hookMessage?: string
+  /**
+   * TurnEndedUpdate / ModelCallCompletedUpdate token counters.
+   * Wire `inputTokens` INCLUDES cache read/write (cursor-agent `$()` subtracts).
+   */
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+  reasoningTokens?: number
+  /** ModelCallCompletedUpdate.model_call_id. */
+  modelCallId?: string
+}
+
+/**
+ * Decode TurnEndedUpdate (#14) or the token fields of ModelCallCompletedUpdate (#31).
+ * Schemas (cursor-agent 2026.11.13):
+ * - TurnEndedUpdate: input#1 out#2 cache_read#3 cache_write#4 reasoning#5 (int64)
+ * - ModelCallCompletedUpdate: model_call_id#1 + same token fields #2–#6
+ */
+export function decodeWireTokenUsage(
+  body: Uint8Array,
+  opts: { modelCallIdField?: boolean } = {},
+): {
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+  reasoningTokens?: number
+  modelCallId?: string
+} {
+  let inputTokens: number | undefined
+  let outputTokens: number | undefined
+  let cacheReadTokens: number | undefined
+  let cacheWriteTokens: number | undefined
+  let reasoningTokens: number | undefined
+  let modelCallId: string | undefined
+  const inField = opts.modelCallIdField ? 2 : 1
+  const outField = opts.modelCallIdField ? 3 : 2
+  const readField = opts.modelCallIdField ? 4 : 3
+  const writeField = opts.modelCallIdField ? 5 : 4
+  const reasonField = opts.modelCallIdField ? 6 : 5
+  for (const f of decodeFields(body)) {
+    if (opts.modelCallIdField && f.no === 1) {
+      modelCallId = fieldString(f) ?? undefined
+      continue
+    }
+    const v = fieldVarint(f)
+    if (v == null) continue
+    if (f.no === inField) inputTokens = v
+    else if (f.no === outField) outputTokens = v
+    else if (f.no === readField) cacheReadTokens = v
+    else if (f.no === writeField) cacheWriteTokens = v
+    else if (f.no === reasonField) reasoningTokens = v
+  }
+  return {
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    reasoningTokens,
+    modelCallId,
+  }
 }
 
 /** Decode agent.v1.ConversationTokenDetails (used_tokens#1, max_tokens#2). */
@@ -252,8 +314,9 @@ export function decodeCheckpointTokenDetails(checkpointBody: Uint8Array): {
  * Extract events from AgentServerMessage payloads.
  * Path: field1 interaction_update → field1 text_delta → field1 text
  *
- * InteractionUpdate oneof (cursor-agent 2026.07.23): #8 token_delta,
- * #9 summary, #10 summary_started, #11 summary_completed.
+ * InteractionUpdate oneof (cursor-agent 2026.11.13): #8 token_delta,
+ * #9 summary, #10 summary_started, #11 summary_completed, #14 turn_ended,
+ * #31 model_call_completed.
  * AgentServerMessage #3 conversation_checkpoint_update carries
  * ConversationStateStructure.token_details (#5).
  */
@@ -286,7 +349,13 @@ export function extractServerTextEvents(payload: Uint8Array): CursorServerEvent[
           const hookMessage = body ? msgTextField1(body) : undefined
           events.push({ kind: "summary_completed", rawField: 11, hookMessage })
         } else if (u.no === 14) {
-          events.push({ kind: "turn_ended", rawField: 14 })
+          // TurnEndedUpdate — may be empty (older builds) or carry token fields.
+          const usage = body ? decodeWireTokenUsage(body) : {}
+          events.push({ kind: "turn_ended", rawField: 14, ...usage })
+        } else if (u.no === 31 && body) {
+          // ModelCallCompletedUpdate (cursor-agent 2026.11.13+)
+          const usage = decodeWireTokenUsage(body, { modelCallIdField: true })
+          events.push({ kind: "model_call_completed", rawField: 31, ...usage })
         } else if (u.no === 13) {
           events.push({ kind: "heartbeat", rawField: 13 })
         } else if (u.no === 2 && body) {
