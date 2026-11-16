@@ -28,7 +28,10 @@ export default async function compactContext(ctx: TUIContext): Promise<TUIResult
   if (!v.ok) {
     return { kind: "tool_result", content: `CompactContext: ${v.error}`, is_error: true }
   }
-  const { mode, keepTail, focus, reason } = v.value
+  const { keepTail, focus, reason } = v.value
+  // An absent mode is `local` (lib/args.ts docs, decisions N2). Set here, not
+  // in core, so core's legacy default stays for SDK callers and overflow.
+  const mode = v.value.mode ?? "local"
 
   const compact = ctx.host?.compact
   if (!compact) {
@@ -43,7 +46,7 @@ export default async function compactContext(ctx: TUIContext): Promise<TUIResult
   try {
     const result = await compact.requestCompact({
       reason,
-      ...(mode !== undefined ? { mode } : {}),
+      mode,
       ...(keepTail !== undefined ? { keepTail } : {}),
       ...(focus !== undefined ? { focus } : {}),
     })
@@ -57,7 +60,7 @@ export default async function compactContext(ctx: TUIContext): Promise<TUIResult
     return {
       kind: "tool_result",
       content: formatQueued({ mode, keepTail, focus, reason }),
-      displayHeader: `compact queued (${mode ?? "local"})`,
+      displayHeader: `compact queued (${mode})`,
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -67,12 +70,12 @@ export default async function compactContext(ctx: TUIContext): Promise<TUIResult
 
 /** Human message confirming the queued compaction and its parameters. */
 function formatQueued(opts: {
-  mode?: string
+  mode: string
   keepTail?: number
   focus?: string
   reason: string
 }): string {
-  const mode = opts.mode ?? "local"
+  const mode = opts.mode
   const keepTail = opts.keepTail ?? DEFAULT_KEEP_TAIL
   const parts = [`Compact queued (mode: ${mode}, tail: ${keepTail}, reason: ${opts.reason}).`]
   if (opts.focus) parts.push(`Focus: ${opts.focus}`)

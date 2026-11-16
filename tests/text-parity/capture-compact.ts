@@ -1,5 +1,6 @@
 /**
  * One-off capture of the core compaction text for fixtures/compact.json (15d.0).
+ * Core functions deleted in 640f05d.
  *
  * HISTORY ONLY. This script imports
  * `minimal-agent-core/src/agent/context-compact.ts`. Core removes

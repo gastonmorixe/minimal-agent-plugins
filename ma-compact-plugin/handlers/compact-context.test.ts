@@ -54,11 +54,12 @@ describe("compactContext", () => {
     }
     const r = await compactContext(toolCtx({}, host))
     expect(r.is_error).toBeUndefined()
-    expect(seen).toEqual([{ reason: "auto" }])
+    // N2: an absent mode is sent as `local`, matching the text the model sees.
+    expect(seen).toEqual([{ reason: "auto", mode: "local" }])
     expect(r.content).toContain("Compact queued")
     expect(r.content).toContain("mode: local")
     expect(r.content).toContain("tail: 6")
-    expect(r.displayHeader).toContain("compact queued")
+    expect(r.displayHeader).toBe("compact queued (local)")
   })
 
   it("passes explicit mode/tail/focus/reason through", async () => {
