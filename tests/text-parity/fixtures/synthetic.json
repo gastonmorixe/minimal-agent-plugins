@@ -891,6 +891,21 @@
       ]
     },
     {
+      "fn": "mediaNotSentMarker",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected{site:marker}",
+      "cases": [
+        {
+          "args": ["Image", "too large"],
+          "text": "[image not sent: too large]"
+        },
+        {
+          "args": ["PDF", "model-x doesn't accept document input"],
+          "text": "[pdf not sent: model-x doesn't accept document input]"
+        }
+      ]
+    },
+    {
       "fn": "mediaTooLargeMessage",
       "file": "src/media/PROMPTS.ts",
       "proposedKind": "user_media.rejected",
@@ -916,6 +931,28 @@
             }
           ],
           "text": "900B (1KB encoded) exceeds the 1KB limit for model-x"
+        }
+      ]
+    },
+    {
+      "fn": "mediaUnavailableMarker",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.unavailable",
+      "cases": [
+        {
+          "args": ["deadbeef"],
+          "text": "[attachment #deadbeef unavailable]"
+        }
+      ]
+    },
+    {
+      "fn": "noModelLabel",
+      "file": "src/media/PROMPTS.ts",
+      "proposedKind": "user_media.rejected",
+      "cases": [
+        {
+          "args": [],
+          "text": "this model"
         }
       ]
     },
