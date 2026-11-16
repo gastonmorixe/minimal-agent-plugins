@@ -21,7 +21,7 @@
       "!**/bun.lock",
       "!**/native/build/**",
       "!**/PROMPT.md",
-      "!**/prompts/*.tmpl.md",
+      "!**/prompts/**/*.md",
       "!ma-fetch-plugin/docs/persistent-sessions-and-x.md"
     ]
   }

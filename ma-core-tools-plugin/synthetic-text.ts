@@ -2,9 +2,9 @@
  * Synthetic text provider for the built-in tool results (`tool_text.*`),
  * the tool output notices (`tool_output.preview`, `tool_output.truncated`,
  * `tool_output.streak`) and the mode texts (`mode.*`). Each text is built
- * from its facts only. The bytes equal the old core texts (core
- * `src/tools/PROMPTS.ts`, the read-file part of `src/media/PROMPTS.ts`,
- * `src/modes/PROMPTS.ts` and `src/prompts/runtime/output-preview*.md`).
+ * from its facts only. The texts are the STE rewrite (P4) of the old core
+ * texts (tests/text-parity/fixtures/synthetic.json). parity.test.ts maps each
+ * old text to the new one.
  *
  * A missing fact or a kind this plugin does not own throws. The core
  * resolver catches it, uses its own text and records a diagnostic.
@@ -96,12 +96,12 @@ function num(kind: string, facts: SyntheticFacts, key: string): number {
 // --- tool_output.preview (core src/prompts/runtime/output-preview*.md) ---
 
 const PREVIEW_HINT =
-  "the user only saw a fraction of this output. If you intended this for the user, summarize the key parts in your text reply (the user reads it in full)."
+  "the user saw only a part of this output. If this output is for the user, give a summary of the important parts in your text reply. The user reads the full text reply."
 const PREVIEW_HINT_BASH =
-  "the user only saw a fraction of this output. If you used Bash to render visual content (ASCII art, ANSI TUI preview, formatted tables) for the user, put it in your text reply instead : the user reads that in full."
+  "the user saw only a part of this output. If you used Bash to show visual content to the user (ASCII art, ANSI TUI preview, formatted tables), put that content in your text reply. The user reads the full text reply."
 
 function previewRecover(rawPath: string): string {
-  return `The full untruncated output is saved at ${rawPath} : Read that path (its tail for build/test errors) when this preview isn't enough.`
+  return `The harness saved the full output at ${rawPath}. If this preview is not sufficient, Read that path. For build or test errors, Read the tail of that path.`
 }
 
 function preview(facts: SyntheticFacts): string {
@@ -118,19 +118,19 @@ function preview(facts: SyntheticFacts): string {
 function truncationHint(tool: string, cutLine: number, maxToolOutputBytes: number): string {
   switch (tool) {
     case "Read":
-      return `to continue, call Read with offset=${cutLine} (and limit as needed).`
+      return `to continue, call Read with offset=${cutLine}. Set limit if necessary.`
     case "Grep":
-      return "narrow with a more specific pattern, glob, or smaller -A/-B/-C. Or raise head_limit explicitly."
+      return "make the search narrower with a more specific pattern, a glob or a smaller -A/-B/-C. Or set a higher head_limit explicitly."
     case "Bash":
-      return `output exceeded ${maxToolOutputBytes} bytes and the FRONT was kept, so trailing errors/build failures may be cut. Re-run scoped to the tail (e.g. \`... 2>&1 | tail -n 100\`) or filtered (\`grep -nE 'error:|FAIL'\`). Or Read the tail of the raw-output blob whose path is appended below, which holds the full output.`
+      return `output exceeded ${maxToolOutputBytes} bytes. The harness kept the start of the output, so errors or build failures at the end can be missing. Run the command again and send only the tail to the output (for example, \`... 2>&1 | tail -n 100\`). Or filter the output (\`grep -nE 'error:|FAIL'\`). Or Read the tail of the raw-output blob. The path of that blob is below, and the blob holds the full output.`
     case "Glob":
-      return "narrow the pattern or search a subdirectory."
+      return "make the pattern narrower or search a subdirectory."
     case "Fetch":
-      return "the full body is preserved at the `<ma::agent::raw-output ... />` path below. Use Read on that path, or re-call Fetch with a CSS `selector` to scope to a specific element."
+      return "the harness saved the full body at the `<ma::agent::raw-output ... />` path below. Read that path. Or call Fetch again with a CSS `selector` to get only a specific element."
     case "WebSearch":
-      return "lower `count`, narrow the query, or use the result's `url` to Fetch a specific page."
+      return "set a lower `count` or make the query narrower. Or use the `url` of a result to Fetch a specific page."
     default:
-      return "re-run with narrower parameters. The full body is preserved at the `<ma::agent::raw-output ... />` path below."
+      return "run the tool again with narrower parameters. The harness saved the full body at the `<ma::agent::raw-output ... />` path below."
   }
 }
 
@@ -147,15 +147,15 @@ function truncated(facts: SyntheticFacts): string {
 function streakBody(tool: string, threshold: number): string {
   switch (tool) {
     case "Read":
-      return `you've truncated ${threshold} Read calls in a row. Use the totals from the last [truncated: ...] notice to compute a single offset+limit that lands where you need to read, instead of paging from byte 0.`
+      return `the harness truncated the output of ${threshold} Read calls in a row. Use the totals in the last [truncated: ...] notice to calculate one offset+limit for the part that you need. Do not read page by page from byte 0.`
     case "Grep":
-      return `you've truncated ${threshold} Grep calls in a row. Try \`output_mode: "files_with_matches"\` (densest), tighten the pattern, add a \`glob\`/\`path\` filter, or set \`head_limit\` explicitly rather than letting the cap fire.`
+      return `the harness truncated the output of ${threshold} Grep calls in a row. Do one or more of these: use \`output_mode: "files_with_matches"\` (densest), make the pattern more specific, add a \`glob\`/\`path\` filter, set \`head_limit\` explicitly. Do not let the output limit cut the output.`
     case "Bash":
-      return `you've truncated ${threshold} Bash calls in a row. Bound output at the source: \`head -c\`, \`head -n\`, \`tail\`, \`sed -n '1,Np'\`, or pipe through a filter. The post-hoc cap is lossy. Pre-bounding gives usable signal.`
+      return `the harness truncated the output of ${threshold} Bash calls in a row. Limit the output in the command itself: \`head -c\`, \`head -n\`, \`tail\`, \`sed -n '1,Np'\`, or a pipe to a filter. The output limit after the run loses data. A limit in the command gives useful output.`
     case "Glob":
-      return `you've truncated ${threshold} Glob calls in a row. Narrow the pattern (e.g. add a subdirectory prefix or restrict the file extension) instead of matching the world.`
+      return `the harness truncated the output of ${threshold} Glob calls in a row. Make the pattern narrower, so that it does not match all files. For example, add a subdirectory prefix or specify the file extension.`
     default:
-      return `you've truncated ${threshold} calls of this tool in a row. Re-think the parameters. See the [truncated: ...] notice on each prior call for resume hints.`
+      return `the harness truncated the output of ${threshold} calls of this tool in a row. Change the parameters. The [truncated: ...] notice of each earlier call tells you how to continue.`
   }
 }
 
@@ -171,9 +171,9 @@ function globTimeout(facts: SyntheticFacts): string {
   const skippedDirs = num(k, facts, "skippedDirs")
   const skipped =
     skippedDirs > 0
-      ? ` ${skippedDirs} unreadable director${skippedDirs === 1 ? "y was" : "ies were"} skipped.`
+      ? ` Glob skipped ${skippedDirs} unreadable director${skippedDirs === 1 ? "y" : "ies"}.`
       : ""
-  return `[glob stopped after ${str(k, facts, "ms")}ms: partial results, the tree was too large to walk in full.${skipped} Narrow the pattern or search a subdirectory.]`
+  return `[glob stopped after ${str(k, facts, "ms")}ms: partial results. The directory tree was too large to search in full.${skipped} Make the pattern narrower or search a subdirectory.]`
 }
 
 function globSkippedDirs(facts: SyntheticFacts): string {
@@ -209,7 +209,7 @@ function modeRefusal(facts: SyntheticFacts): string {
 /** `tool_text.<Tool>.not_read`. */
 function notRead(tool: "Edit" | "Write") {
   return (f: SyntheticFacts): string =>
-    `${tool} error: ${str(`tool_text.${tool}.not_read`, f, "path")} has not been read in this session. Read it first, then retry the ${tool.toLowerCase()}.`
+    `${tool} error: you did not read ${str(`tool_text.${tool}.not_read`, f, "path")} in this session. Read the file first. Then call ${tool} again.`
 }
 
 /** `tool_text.<Tool>.stale`. */
@@ -218,10 +218,10 @@ function stale(tool: "Edit" | "Write") {
     const k = `tool_text.${tool}.stale`
     const status = str(k, f, "status")
     let reason: string
-    if (status === "missing") reason = "file no longer exists (it was present when last read)"
-    else if (status === "changed") reason = "file changed since it was last read"
+    if (status === "missing") reason = "the file does not exist now (it existed at the last read)"
+    else if (status === "changed") reason = "the file changed after the last read"
     else throw new Error(`${k}: unknown status ${status}`)
-    return `${tool} error: ${reason}: ${str(k, f, "path")}. Read it again, then retry the ${tool.toLowerCase()}.`
+    return `${tool} error: ${reason}: ${str(k, f, "path")}. Read the file again. Then call ${tool} again.`
   }
 }
 
@@ -236,28 +236,28 @@ function grepTimedOut(f: SyntheticFacts): string {
 function filesStatsEmpty(f: SyntheticFacts): string {
   if (f.filtered === true) return "No tracked files matched the filter."
   return [
-    "No files have been read or modified yet this session.",
-    "Every successful Read, Edit, or Write records the file's size and modified-time.",
-    "FilesStats reports each tracked file's live status:",
-    "  present: unchanged since last read",
-    "  changed: modified since last read (by you or another process)",
-    "  missing: deleted since last read",
+    "This session has no read or changed files yet.",
+    "Each successful Read, Edit or Write call records the size and modified time of the file.",
+    "FilesStats reports the live status of each tracked file:",
+    "  present: not changed after the last read",
+    "  changed: changed after the last read (by you or by a different process)",
+    "  missing: deleted after the last read",
   ].join("\n")
 }
 
 function binaryWithheld(f: SyntheticFacts): string {
   if (f.optedIn === true) {
-    return "Binary body is too large to inline as base64 under the tool-output budget. Use the path above (Read it, or ask the user to attach the file to their message)."
+    return "The binary body is too large to include as base64 in the tool output budget. Use the path above. Read that path, or ask the user to attach the file to their message."
   }
-  const saved = f.hasPath === true ? " Full bytes saved at the path above." : ""
-  return `Binary body withheld from model context (not valid text, and dumping it wastes tokens).${saved} Re-call with binary=true for base64 when small enough, Read the saved path, or ask the user to attach the file.`
+  const saved = f.hasPath === true ? " The harness saved the full bytes at the path above." : ""
+  return `The harness did not put the binary body in the model context. The body is not valid text, and it uses tokens for no purpose.${saved} Do one of these: call the tool again with binary=true to get base64 if the body is small enough, Read the saved path, or ask the user to attach the file.`
 }
 
 function modeCliRefusal(f: SyntheticFacts): string {
   const k = "mode.cli_refusal"
   const tool = str(k, f, "tool")
   const reason = str(k, f, "reason")
-  if (reason === "deny-all") return `Tool "${tool}" is not permitted (--no-tools is active).`
+  if (reason === "deny-all") return `Tool "${tool}" is not permitted because --no-tools is active.`
   if (reason === "allow-list") return `Tool "${tool}" is not in the --tools allow-list.`
   throw new Error(`${k}: unknown reason ${reason}`)
 }
@@ -270,7 +270,7 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
   "tool_text.Bash.cd_no_dir": (f) =>
     `cd: no such directory: ${str("tool_text.Bash.cd_no_dir", f, "path")}`,
   "tool_text.Bash.output_cap": (f) =>
-    `[output exceeded ${str("tool_text.Bash.output_cap", f, "maxBytes")} bytes: command terminated and output truncated]`,
+    `[output exceeded ${str("tool_text.Bash.output_cap", f, "maxBytes")} bytes: the harness stopped the command and truncated the output]`,
   "tool_text.Bash.timed_out": (f) =>
     `[timed out after ${str("tool_text.Bash.timed_out", f, "timeoutMs")}ms]`,
   // A null exit code has no `exitCode` fact. The old text printed "null".
@@ -278,25 +278,25 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
     `Exit code ${f.exitCode === undefined ? "null" : String(f.exitCode)}`,
   "tool_text.Bash.error": (f) => `Bash error: ${str("tool_text.Bash.error", f, "detail")}`,
   "tool_text.Read.whitespace_resolved": (f) =>
-    `Note: resolved to "${str("tool_text.Read.whitespace_resolved", f, "path")}" (whitespace mismatch).\n`,
+    `Note: resolved to "${str("tool_text.Read.whitespace_resolved", f, "path")}" (the whitespace did not match).\n`,
   "tool_text.Read.too_large": (f) =>
-    `File is ${str("tool_text.Read.too_large", f, "sizeMb")} MB, exceeds the ${str("tool_text.Read.too_large", f, "limitMb")} MB read limit. Use offset/limit to read a portion, or Grep to search it.`,
+    `File is ${str("tool_text.Read.too_large", f, "sizeMb")} MB. The read limit is ${str("tool_text.Read.too_large", f, "limitMb")} MB. Use offset/limit to read a part of the file, or use Grep to search the file.`,
   "tool_text.Read.error": (f) => `Read error: ${str("tool_text.Read.error", f, "detail")}`,
   "tool_text.Read.binary_rejected": (f) => {
     const k = "tool_text.Read.binary_rejected"
-    return `${str(k, f, "mimeType")} (${formatBytes(num(k, f, "sizeBytes"))}) is a binary document. Tool output can include text and images but not documents, so it can't be embedded here. Ask the user to attach it to their message, or convert it to text/images first.`
+    return `${str(k, f, "mimeType")} (${formatBytes(num(k, f, "sizeBytes"))}) is a binary document. Tool output can contain text and images, but not documents. Thus the harness cannot put this document in the tool output. Ask the user to attach the document to their message. Or convert the document to text or images first.`
   },
   "tool_text.Read.unsupported_embedding": (f) => {
     const k = "tool_text.Read.unsupported_embedding"
-    return `${str(k, f, "mimeType")} (${formatBytes(num(k, f, "sizeBytes"))}) can't be embedded in tool output. Ask the user to attach it to their message instead.`
+    return `${str(k, f, "mimeType")} (${formatBytes(num(k, f, "sizeBytes"))}): tool output cannot contain this file. Ask the user to attach the file to their message instead.`
   },
   "tool_text.Read.unsupported_image_modality": (f) => {
     const k = "tool_text.Read.unsupported_image_modality"
-    return `${str(k, f, "modelId")} doesn't accept image input, so this ${str(k, f, "mimeType")} (${formatBytes(num(k, f, "sizeBytes"))}) can't be shown to the model. Describe it for the user from context, or switch to a vision-capable model.`
+    return `${str(k, f, "modelId")} does not accept image input. Thus the harness cannot show this ${str(k, f, "mimeType")} (${formatBytes(num(k, f, "sizeBytes"))}) to the model. Describe the image for the user from the context. Or change to a model with vision support.`
   },
   "tool_text.Read.image_too_large": (f) => {
     const k = "tool_text.Read.image_too_large"
-    return `${formatBytes(num(k, f, "sizeBytes"))} image is too large to embed even after resizing (per-item cap ${formatBytes(num(k, f, "limitBytes"))} encoded for ${str(k, f, "modelId")}).`
+    return `${formatBytes(num(k, f, "sizeBytes"))} image is too large to embed, also after resizing (limit per item: ${formatBytes(num(k, f, "limitBytes"))} encoded for ${str(k, f, "modelId")}).`
   },
   "tool_text.Read.image_summary": imageSummary,
   "tool_text.Write.written": (f) => `File written: ${str("tool_text.Write.written", f, "path")}`,
@@ -305,13 +305,13 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
   "tool_text.Write.missing_content": () => "Write requires `content` (or alias `contents`).",
   "tool_text.Write.arg_not_string": (f) => {
     const k = "tool_text.Write.arg_not_string"
-    return `Write \`${str(k, f, "key")}\` must be a string, got ${str(k, f, "got")}.`
+    return `Write \`${str(k, f, "key")}\` must be a string. Received type: ${str(k, f, "got")}.`
   },
   "tool_text.Edit.not_found": (f) =>
-    `Edit error: old_string not found in ${str("tool_text.Edit.not_found", f, "path")}`,
+    `Edit error: old_string does not occur in ${str("tool_text.Edit.not_found", f, "path")}`,
   "tool_text.Edit.multiple": (f) => {
     const k = "tool_text.Edit.multiple"
-    return `Edit error: old_string matches ${str(k, f, "count")} locations in ${str(k, f, "path")}. Use replace_all or provide more context.`
+    return `Edit error: old_string matches ${str(k, f, "count")} locations in ${str(k, f, "path")}. Use replace_all, or add more context to old_string.`
   },
   "tool_text.Edit.edited": (f) => {
     const k = "tool_text.Edit.edited"
@@ -322,7 +322,7 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
   "tool_text.Glob.missing_pattern": () => "Glob requires `pattern` (or alias `glob_pattern`).",
   "tool_text.Glob.arg_not_string": (f) => {
     const k = "tool_text.Glob.arg_not_string"
-    return `Glob \`${str(k, f, "key")}\` must be a string, got ${str(k, f, "got")}.`
+    return `Glob \`${str(k, f, "key")}\` must be a string. Received type: ${str(k, f, "got")}.`
   },
   "tool_text.Glob.error": (f) => `Glob error: ${str("tool_text.Glob.error", f, "detail")}`,
   "tool_text.Glob.timeout": globTimeout,
@@ -345,7 +345,7 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
     `Grep error: rg exited with code ${str("tool_text.Grep.exit_code", f, "exitCode")}`,
   "tool_text.FilesStats.empty": filesStatsEmpty,
   "tool_text.FilesStats.not_enabled": () =>
-    "FilesStats: file tracking is not enabled in this host. Read/Edit/Write observations and this report are unavailable here.",
+    "FilesStats: file tracking is not enabled in this host. Thus the host does not record Read/Edit/Write calls, and this report is not available.",
   "mode.cli_refusal": modeCliRefusal,
 }
 

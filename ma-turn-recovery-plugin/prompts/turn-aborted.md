@@ -1,2 +1,2 @@
 <ma::agent::turn-aborted />
-The previous turn was interrupted by the user before it finished. Everything already completed above is preserved (this is not an error). Treat the earlier plan as paused: address the new instruction below, and do not silently resume the prior plan unless the user asks you to continue it.
+The user stopped the previous turn before it finished. This is not an error. The completed work above stays in the transcript. Pause the earlier plan. Do the new instruction below. Do not continue the earlier plan unless the user tells you to continue it.

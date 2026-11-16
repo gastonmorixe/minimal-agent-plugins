@@ -14,12 +14,12 @@ describe("turn recovery texts (bytes pinned)", () => {
   })
   test("interrupted_by_stop", () => {
     expect(p.text("tool_result.interrupted_by_stop", {})).toBe(
-      "The process stopped while this tool call ran. It may have run fully, partly, or not at all. Check its effects before you run it again.",
+      "The process stopped while this tool call ran. The tool call possibly ran to the end, stopped before the end, or did not start. Examine its effects before you run it again.",
     )
   })
   test("aborted orphan", () => {
     expect(p.text("tool_result.aborted", { site: "orphan" })).toBe(
-      "Tool execution aborted by user before completion.",
+      "The user stopped this tool call before it finished.",
     )
   })
   test("aborted runtime", () => {
@@ -27,7 +27,7 @@ describe("turn recovery texts (bytes pinned)", () => {
   })
   test("policy_denied", () => {
     expect(p.text("tool_result.policy_denied", { hook: "tool.willInvoke" })).toBe(
-      "Tool blocked by lifecycle policy hook.",
+      "A lifecycle policy hook prevented this tool call.",
     )
   })
 })

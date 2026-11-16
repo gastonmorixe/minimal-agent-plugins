@@ -3,6 +3,7 @@ import { join } from "node:path"
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
+import { STE_REWRITES, toSte } from "./__fixtures__/ste-p4.ts"
 import createProvider, { createBaseProvider, fill } from "./provider.ts"
 
 const FIX = join(import.meta.dir, "__fixtures__")
@@ -17,7 +18,8 @@ const SYSTEM_FIXTURE = join(
 const TMP = join(import.meta.dir, "tmp-provider-test")
 const ctx = { authKind: "k", modelId: "m" }
 const bytes = (s: string) => Buffer.from(s, "utf-8")
-const fixture = (name: string) => readFileSync(join(FIX, name))
+/** An old core fixture, mapped to the P4 STE text (see `__fixtures__/ste-p4.ts`). */
+const fixture = (name: string) => bytes(toSte(readFileSync(join(FIX, name), "utf-8")).text)
 
 function stage(name: string): string {
   const dir = join(TMP, name)
@@ -34,12 +36,12 @@ describe("base prompt provider", () => {
   beforeAll(() => rmSync(TMP, { recursive: true, force: true }))
   afterAll(() => rmSync(TMP, { recursive: true, force: true }))
 
-  test("identity equals the old core identity bytes", () => {
+  test("identity equals the STE text of the old core identity", () => {
     const id = createProvider().identity?.(ctx) ?? ""
     expect(bytes(id).equals(fixture("old-identity.txt"))).toBe(true)
   })
 
-  test("instruction parts hold one instructions part equal to the old core bytes", () => {
+  test("instruction parts hold one instructions part equal to the STE text of the old core bytes", () => {
     const parts = createProvider().instructionParts?.() ?? []
     expect(parts).toHaveLength(1)
     expect(parts[0]?.slot).toBe("instructions")
@@ -133,10 +135,38 @@ interface SystemFixture {
   instructionsTemplate: string
   grid: GridEntry[]
 }
-const system = JSON.parse(readFileSync(SYSTEM_FIXTURE, "utf-8")) as SystemFixture
+const oldSystem = JSON.parse(readFileSync(SYSTEM_FIXTURE, "utf-8")) as SystemFixture
+const ste = (t: string): string => toSte(t).text
+const steOrNull = (t: string | null): string | null => (t === null ? null : ste(t))
+/** The core fixture with each old text mapped to its P4 STE text. */
+const system: SystemFixture = {
+  identity: ste(oldSystem.identity),
+  instructionsTemplate: ste(oldSystem.instructionsTemplate),
+  grid: oldSystem.grid.map((g) => ({
+    ...g,
+    instructions: steOrNull(g.instructions),
+    loopSafety: steOrNull(g.loopSafety),
+    toolOutputConventions: steOrNull(g.toolOutputConventions),
+  })),
+}
 
-describe("byte parity with the core system fixture", () => {
+describe("byte parity with the core system fixture (P4 STE text)", () => {
   test("the grid has 8 entries", () => expect(system.grid).toHaveLength(8))
+
+  test("each STE rewrite hits the fixture, and no old text is left", () => {
+    const all = [
+      oldSystem.identity,
+      oldSystem.instructionsTemplate,
+      ...oldSystem.grid.flatMap((g) => [g.instructions, g.loopSafety, g.toolOutputConventions]),
+    ].filter((t): t is string => t !== null)
+    for (const [i, rule] of STE_REWRITES.entries()) {
+      expect(
+        all.some((t) => toSte(t, [rule]).hits === 1),
+        `rewrite ${i}`,
+      ).toBe(true)
+    }
+    for (const t of all) expect(toSte(t).text).not.toBe(t)
+  })
 
   test("identity equals the fixture", () => {
     expect(createProvider().identity?.(ctx)).toBe(system.identity)

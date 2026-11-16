@@ -9,8 +9,13 @@ import {
   resolveBaseIdentity,
 } from "../../minimal-agent-core/src/plugins/system-prompt-base.ts"
 
+import { toSte } from "./__fixtures__/ste-p4.ts"
+
 const TMP = join(import.meta.dir, "tmp-loader-test")
 const FIX = join(import.meta.dir, "__fixtures__")
+/** An old core fixture, mapped to the P4 STE text (see `__fixtures__/ste-p4.ts`). */
+const steFixture = (name: string) =>
+  Buffer.from(toSte(readFileSync(join(FIX, name), "utf-8")).text, "utf-8")
 
 beforeAll(() => {
   rmSync(TMP, { recursive: true, force: true })
@@ -21,7 +26,7 @@ beforeAll(() => {
 })
 afterAll(() => rmSync(TMP, { recursive: true, force: true }))
 
-test("the core loader registers the plugin and serves the old bytes with no load failure", async () => {
+test("the core loader registers the plugin and serves the STE text with no load failure", async () => {
   const events: { source: string }[] = []
   const loader = await PluginLoader.load({
     embeddedDir: join(TMP, "embedded"),
@@ -33,8 +38,8 @@ test("the core loader registers the plugin and serves the old bytes with no load
   const holder = loader.systemPromptBase()
   expect(holder.entries.map((e) => e.pluginId)).toEqual(["ma-base-prompt-plugin"])
   const id = resolveBaseIdentity(holder, { authKind: "k", modelId: "m" }) ?? ""
-  expect(Buffer.from(id).equals(readFileSync(join(FIX, "old-identity.txt")))).toBe(true)
+  expect(Buffer.from(id).equals(steFixture("old-identity.txt"))).toBe(true)
   const ins = collectSystemPromptParts(holder).get("instructions") ?? ""
-  expect(Buffer.from(ins).equals(readFileSync(join(FIX, "old-instructions.txt")))).toBe(true)
+  expect(Buffer.from(ins).equals(steFixture("old-instructions.txt"))).toBe(true)
   expect(events.filter((e) => e.source === "prompt.system_base_load_failed")).toHaveLength(0)
 })

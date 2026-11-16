@@ -1,1 +1,1 @@
-The agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.
+By default, the tool loop has no fixed limit on the number of rounds. A long autonomous task can run for many rounds without a stop. Examples: a refactor of many files, an audit, or long research.

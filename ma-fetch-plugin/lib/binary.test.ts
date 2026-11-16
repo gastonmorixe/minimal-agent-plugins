@@ -56,7 +56,7 @@ describe("formatBinaryWithheld / formatBinaryOptedIn", () => {
     })
     expect(msg).toContain("<ma::agent::binary-result")
     expect(msg).toContain('mime="application/pdf"')
-    expect(msg).toContain("Binary body withheld")
+    expect(msg).toContain("did not put the binary body")
     expect(msg).not.toContain("%PDF")
   })
 
@@ -71,7 +71,7 @@ describe("formatBinaryWithheld / formatBinaryOptedIn", () => {
     const bytes = new Uint8Array(MAX_INLINE_BINARY_BYTES + 10)
     bytes.set(new TextEncoder().encode("%PDF-1.4"), 0)
     const msg = formatBinaryOptedIn({ bytes, mime: "application/pdf", path: "/tmp/big.bin" })
-    expect(msg).toContain("too large to inline")
+    expect(msg).toContain("too large to include as base64")
     expect(msg).toContain("/tmp/big.bin")
   })
 })

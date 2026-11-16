@@ -1,1 +1,9 @@
-A reflection checkpoint fires every %%interval%% tool rounds. The harness applies a %%cooldownSec%%-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="%%cooldownSec%%" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for="K" reason="..." />` as inline text in your response body (not a tool call).
+A reflection checkpoint occurs every %%interval%% tool rounds. First, the harness waits %%cooldownSec%% seconds of wall-clock time. During this wait, a user who watches can push Esc to stop the wait. Then the harness adds a `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="%%cooldownSec%%" />` attachment to the next user content. The checkpoint is soft. It is not a stop signal.
+
+Briefly examine if your work still moves toward the goal. Then do one of these steps:
+
+- Continue.
+- Change your strategy.
+- Pause and ask the user.
+
+To prevent checkpoints, write `<ma::agent::reflection-ack silence-for="K" reason="..." />` as inline text in your response body. Do not write it as a tool call.
