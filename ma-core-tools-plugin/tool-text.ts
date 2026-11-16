@@ -50,7 +50,7 @@ const PARAMS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     file_path: "The absolute path to the file to write",
     content: "The text to write to the file. You can also use the alias `contents`.",
     contents:
-      "Alias for `content`, with the same meaning. If `content` is present, the tool ignores this alias.",
+      "Alias for `content`, with the same meaning. If `content` has a value, the tool ignores this alias.",
   },
   Edit: {
     file_path: "The absolute path to the file to change",
@@ -62,10 +62,10 @@ const PARAMS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     pattern:
       "The glob pattern that the file paths must match. You can also use the alias `glob_pattern`.",
     glob_pattern:
-      "Alias for `pattern`, with the same meaning. If `pattern` is present, the tool ignores this alias.",
+      "Alias for `pattern`, with the same meaning. If `pattern` has a value, the tool ignores this alias.",
     path: "The directory to search. The default is cwd. You can also use the alias `target_directory`.",
     target_directory:
-      "Alias for `path`, with the same meaning. If `path` is present, the tool ignores this alias.",
+      "Alias for `path`, with the same meaning. If `path` has a value, the tool ignores this alias.",
   },
   Grep: {
     pattern: "The regex pattern to find",

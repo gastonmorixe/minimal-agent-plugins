@@ -25,7 +25,7 @@ Exact paths touched plus one line per change.
 Keep exact commands, IDs, error text still needed. Drop full logs.
 
 ## 5. Errors and fixes
-What broke, what fixed it, and what the fix did not repair.
+What broke, what fixed it, and what remains broken.
 
 ## 6. Pending tasks
 What remains, next action first. Preserve any unanswered

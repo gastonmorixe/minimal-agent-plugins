@@ -83,7 +83,7 @@
                 "kind": {
                   "type": "string",
                   "enum": ["message", "interrupt"],
-                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook has no build."
+                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook does not exist yet."
                 },
                 "replyTo": {
                   "type": "string",

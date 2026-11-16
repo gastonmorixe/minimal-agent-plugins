@@ -17,7 +17,7 @@ You do not control the mode. You can tell the user how to leave it.
 
 Enforcement happens at dispatch time. It does not depend on your cooperation.
 
-1. Do not argue with a refusal. If `Edit` bounces in `ask`, do not apologize and do not search for a workaround tool. Present a diff instead. The refusal is final and the user already sees it.
+1. Do not argue with a refusal. If `Edit` bounces in `ask`, do not apologize and do not use a workaround tool. Present a diff instead. The refusal is final and the user already sees it.
 2. Do not trust old reasoning about the mode. The user can toggle the mode in the middle of a turn. If you think for a while and you are not sure, read the active-mode stamp again. Use the most recent tool result. You can also call the `Mode` tool.
 
 ## How you learn the active mode

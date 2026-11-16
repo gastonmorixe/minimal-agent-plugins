@@ -19,21 +19,24 @@ const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-handler-t
 /**
  * Total words for the whole tool block, measured 2026-11-16.
  *
- * HEAD (before the STE pass) was 7910. The pass grew it to 8314. This budget
- * holds the pre-pass value, so the growth must come back out before merge.
- * Lower it by hand after a cut. The lower tolerance below stops it sitting
+ * HEAD (before the STE pass) was 7910, and the pass grew it to 8314. It was cut
+ * to 7900 by removing repetition, but that cut dropped facts the reviewer
+ * caught. Amanda's decision: facts beat the budget. The facts are restored and
+ * the budget is set to the measured 8135. The ratchet blocks growth from here.
+ * Lower it by hand after a real cut. The lower tolerance stops it sitting
  * loose.
  */
-export const TOOL_BLOCK_WORDS = 7910
+export const TOOL_BLOCK_WORDS = 8135
 
 /**
  * The largest a single tool may be, measured 2026-11-16.
  *
- * `Computer` is the worst at 610 words after the first hand cut (it was 764).
- * This is a ceiling, not a target: cut the biggest tools by hand and lower
- * this number with each cut. The long-run target is 250.
+ * `Computer` is the worst at 731 words, after the reviewer restored the
+ * meanings of 8 of its enum values. This is a ceiling, not a target: cut the
+ * biggest tools by hand and lower this number with each cut. The long-run
+ * target is 250, but never at the cost of a rule or a fact.
  */
-export const PER_TOOL_MAX = 610
+export const PER_TOOL_MAX = 731
 
 /** How far below a budget the tree may drift before the budget must be lowered. */
 export const LOOSE_WORDS = 200

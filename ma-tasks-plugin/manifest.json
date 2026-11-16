@@ -42,7 +42,7 @@
                     "list",
                     "clear"
                   ],
-                  "description": "What to do. `start` will auto-start the parent. `done` will auto-promote the parent when the last open child closes. A parent whose children are all `done` takes the status `done`, not `canceled`. A parent stays `doing` while siblings stay open. After a validation failure, try one time. Do not add the same task again one at a time."
+                  "description": "What to do. `add` adds one task, and `add_many` adds a task tree. `replace_plan` replaces the board with a new plan. `update` changes a title or a status, and `status` sets a new status. `start` will auto-start the parent. `done` will auto-promote the parent when the last open child closes. A parent whose children are all `done` takes the status `done`, not `canceled`. A parent stays `doing` while siblings stay open. `remove` drops only a task that never started. `reorder` changes the top-level order. `list` shows the board, and `clear` empties it. After a validation failure, retry once. Do not add duplicates one by one."
                 },
                 "id": {
                   "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."

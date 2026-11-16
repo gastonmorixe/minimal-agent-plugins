@@ -117,7 +117,7 @@
                 },
                 "deliverables": {
                   "type": "array",
-                  "description": "The files that the lead requires (expectArtifacts). The tool writes each one for you, also in read-only mode. You can give only the required paths.",
+                  "description": "The files that the lead requires (expectArtifacts). The tool writes each one for you, also in read-only mode. Give only the required paths. The tool rejects any other path.",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -254,7 +254,7 @@
           "type": "tool",
           "tool": {
             "name": "Mailbox",
-            "description": "Post and read short notes on a shared board between sibling sub-agents and the lead. Use it only when your task tells you to coordinate. Also use it to claim a file, flag a blocker or give a finding to a peer. Do not use it for general talk. It gives the posted note, or the notes for you after a `since` cursor.",
+            "description": "Post and read short notes on a shared board between sibling sub-agents and the lead. Use it only when your task tells you to coordinate. Also use it to claim a file, flag a blocker or give a finding to a peer or the lead. Do not use it for general talk. It gives the posted note, or the notes for you after a `since` cursor.",
             "input_schema": {
               "type": "object",
               "properties": {
