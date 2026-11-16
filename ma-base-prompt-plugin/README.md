@@ -5,5 +5,5 @@ Provides the base system prompt (`systemPromptBase`, required): the neutral iden
 - `prompts/`: the text, as data (`identity.neutral.md`, `instructions.md`, `loop-safety/*.md`, `tool-output-conventions.md`).
 - `provider.ts`: default export makes a provider. It reads each file lazily, trims and keeps it, and fills `%%name%%` with a local `fill()`.
 - `__fixtures__/`: the exact old core strings. Tests compare bytes against them.
-- `core-parity.test.ts`: the files equal the core assets. Drop it when the core assets leave.
+- This plugin is the only owner of this text. Core holds no copy. `provider.test.ts` checks the bytes against `tests/text-parity/fixtures/system.json`.
 - Run: `bun run check` in this folder.
