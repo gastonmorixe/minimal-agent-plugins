@@ -89,6 +89,7 @@ The store keeps trees consistent in one write:
 - **Child → done** keeps/marks the parent `doing` while siblings remain open.
 - **Last open child → done or canceled** auto-promotes the parent. A canceled child remains visibly canceled, preserving the abandoned-work audit trail without leaving the phase stuck in `doing`.
 - **Parent → done** cascades open children (`todo` / `doing`) to `done`. `canceled` children stay canceled.
+- **Parent → canceled** cascades open children (`todo` / `doing`) to `canceled`, inheriting the parent's reason (or `"parent canceled"` when none was given). `done` children stay done, and already-canceled children keep their own reason. A `doing` child stops accruing time.
 - A canceled parent is never revived automatically.
 
 ## Canonical ids
