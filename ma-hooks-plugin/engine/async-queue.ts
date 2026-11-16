@@ -10,8 +10,18 @@
  * @module engine/async-queue
  */
 
-/** One async task. It gets the abort signal of its session lane. */
-export type AsyncTask = (signal: AbortSignal) => Promise<string[]>
+import type { HookContextEntry } from "./types.ts"
+
+/**
+ * One async task. It gets the abort signal of its session lane. A plain
+ * string entry means position `after`.
+ */
+export type AsyncTask = (signal: AbortSignal) => Promise<HookContextEntry[]>
+
+/** The text of one context entry. */
+function entryText(e: HookContextEntry): string {
+  return typeof e === "string" ? e : e.text
+}
 
 interface Lane {
   running: number
@@ -24,7 +34,7 @@ export class AsyncHookQueue {
   /** Lanes per session key (bounded, oldest idle lane dropped first). */
   private readonly lanes = new Map<string, Lane>()
   /** Buffered context per session key (bounded, oldest key dropped first). */
-  private readonly output = new Map<string, string[]>()
+  private readonly output = new Map<string, HookContextEntry[]>()
   private readonly idleWaiters: Array<() => void> = []
   /** Highest number of tasks seen running at once in one lane (diagnostics, tests). */
   peak = 0
@@ -80,7 +90,7 @@ export class AsyncHookQueue {
     const signal = lane.ctl.signal
     lane.waiting.push(async () => {
       try {
-        const ctx = (await task(signal)).filter((s) => s.trim().length > 0)
+        const ctx = (await task(signal)).filter((e) => entryText(e).trim().length > 0)
         if (ctx.length === 0 || signal.aborted) return
         const buf = this.output.get(key) ?? []
         this.output.delete(key)
@@ -140,7 +150,7 @@ export class AsyncHookQueue {
   }
 
   /** Take and clear the buffered context of one session key. */
-  drain(key = ""): string[] {
+  drain(key = ""): HookContextEntry[] {
     const buf = this.output.get(key) ?? []
     this.output.delete(key)
     return buf
