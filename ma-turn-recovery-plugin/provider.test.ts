@@ -25,6 +25,19 @@ describe("turn recovery texts (bytes pinned)", () => {
   test("aborted runtime", () => {
     expect(p.text("tool_result.aborted", { site: "runtime" })).toBe("tool aborted by user")
   })
+  test("non_tool_result (15e.1a, byte-equal to the old core text)", () => {
+    expect(p.text("tool_result.non_tool_result", { tool: "FixtureNonResult" })).toBe(
+      'Plugin tool "FixtureNonResult" returned a non-tool_result value',
+    )
+  })
+  test("invalid_input (15e.1a, byte-equal to the old core text)", () => {
+    expect(
+      p.text("tool_result.invalid_input", {
+        tool: "Bash",
+        detail: "/command: expected type string, got integer",
+      }),
+    ).toBe("Bash error: /command: expected type string, got integer")
+  })
   test("policy_denied", () => {
     expect(p.text("tool_result.policy_denied", { hook: "tool.willInvoke" })).toBe(
       "A lifecycle policy hook prevented this tool call.",
@@ -33,9 +46,9 @@ describe("turn recovery texts (bytes pinned)", () => {
 })
 
 describe("turn recovery contract", () => {
-  test("lists the 26 kinds", () => {
-    expect(p.kinds).toHaveLength(26)
-    expect(new Set(p.kinds).size).toBe(26)
+  test("lists the 28 kinds", () => {
+    expect(p.kinds).toHaveLength(28)
+    expect(new Set(p.kinds).size).toBe(28)
   })
   test("never returns empty", () => {
     const cases: Array<[SyntheticKind, Record<string, string>]> = [
@@ -69,6 +82,9 @@ describe("turn recovery contract", () => {
     expect(() => p.text("tool_result.lock_timeout", { tool: "Edit" })).toThrow()
     expect(() => p.text("tool_result.lock_failed", { detail: "x" })).toThrow()
     expect(() => p.text("user_media.unavailable", {})).toThrow()
+    expect(() => p.text("tool_result.non_tool_result", {})).toThrow()
+    expect(() => p.text("tool_result.invalid_input", { tool: "Read" })).toThrow()
+    expect(() => p.text("tool_result.invalid_input", { detail: "x" })).toThrow()
     expect(() => p.text("user_media.rejected", { reason: "too-many", site: "check" })).toThrow()
     expect(() => p.text("user_media.rejected", { reason: "nope", site: "check" })).toThrow()
     expect(() => p.text("user_media.rejected", { reason: "too-many", maxItems: 1 })).toThrow()

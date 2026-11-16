@@ -9,6 +9,9 @@ through the manifest key `syntheticText`.
 - `tool_result.interrupted_by_stop`: facts `{}`.
 - `tool_result.aborted`: facts `{site: "orphan" | "runtime"}`. Two sites, two texts.
 - `tool_result.policy_denied`: facts `{hook: string}`. Only `tool.willInvoke` has text today.
+- `tool_result.non_tool_result`: facts `{tool: string}`. Text: `Plugin tool "<tool>" returned a non-tool_result value`.
+- `tool_result.invalid_input`: facts `{tool: string, detail: string}`. Text: `<tool> error: <detail>`. `detail` is
+  the schema validator errors of core, joined with `. ` (15e.1a: a byte-equal move of the core text).
 
 An unknown `site`, an unknown `hook`, a missing `detail` or a kind this plugin
 does not own throws an Error. The core resolver catches it, uses its own text

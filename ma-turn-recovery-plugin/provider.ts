@@ -61,6 +61,8 @@ export const KINDS: readonly SyntheticKind[] = [
   "tool_result.canceled",
   "tool_result.policy_hook_failed",
   "tool_result.policy_rewrite_note",
+  "tool_result.non_tool_result",
+  "tool_result.invalid_input",
   "runtime.hook_denied",
   "user_media.rejected",
   "user_media.unavailable",
@@ -279,6 +281,10 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
       const list = dropped > 0 ? [...shown, `+${dropped} more`].join(", ") : keys
       return `the policy changed the input: ${list}`
     }
+    case "tool_result.non_tool_result":
+      return `Plugin tool "${str(kind, facts, "tool")}" returned a non-tool_result value`
+    case "tool_result.invalid_input":
+      return `${str(kind, facts, "tool")} error: ${str(kind, facts, "detail")}`
     case "tool_result.canceled": {
       if (facts.site === "subprocess") return CANCELED_SUBPROCESS
       throw new Error(`canceled: unknown site ${String(facts.site)}`)

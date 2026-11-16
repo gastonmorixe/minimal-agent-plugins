@@ -31,6 +31,8 @@
         "tool_result.canceled",
         "tool_result.policy_hook_failed",
         "tool_result.policy_rewrite_note",
+        "tool_result.non_tool_result",
+        "tool_result.invalid_input",
         "runtime.hook_denied",
         "user_media.rejected",
         "user_media.unavailable",
