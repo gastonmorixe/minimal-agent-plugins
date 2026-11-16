@@ -84,9 +84,11 @@ export type EngineChainResult =
 const POSITION_CHANNELS: ReadonlySet<string> = new Set(["turn.willStart", "session.willStart"])
 
 /**
- * The additionalContext list for one channel. On a position channel every
- * entry is a `{ text, position }` object, `before` entries first. On every
- * other channel the entries are plain strings, as before.
+ * The additionalContext list for one channel. On a position channel a
+ * `before` entry is a `{ text, position: "before" }` object, and comes first.
+ * An `after` entry is always a plain string (the contract: a string means
+ * after), so with no `before` hooks the shape is the same as before P2 and
+ * a core that keeps only string items loses nothing.
  */
 export function contextEntries(
   channel: string,
@@ -94,10 +96,7 @@ export function contextEntries(
   after: readonly string[],
 ): HookContextEntry[] {
   if (!POSITION_CHANNELS.has(channel)) return [...before, ...after]
-  return [
-    ...before.map((text): HookContextEntry => ({ text, position: "before" })),
-    ...after.map((text): HookContextEntry => ({ text, position: "after" })),
-  ]
+  return [...before.map((text): HookContextEntry => ({ text, position: "before" })), ...after]
 }
 
 /** Extra per-call values from the hook handler context. */
@@ -548,14 +547,11 @@ export class HooksEngine {
     const hooks = this.selectHooks(channel, payload, inv.sid)
     const budget = channelInfo(channel).budgetMs
     for (const h of hooks.filter((x) => x.async)) {
-      this.asyncQueue.push(
-        async (signal) => {
-          const r = await this.runOne(h, channel, payload, inv, signal)
-          if (r.position !== "before") return r.context
-          return r.context.map((text): HookContextEntry => ({ text, position: "before" }))
-        },
-        inv.sid,
-      )
+      this.asyncQueue.push(async (signal) => {
+        const r = await this.runOne(h, channel, payload, inv, signal)
+        if (r.position !== "before") return r.context
+        return r.context.map((text): HookContextEntry => ({ text, position: "before" }))
+      }, inv.sid)
     }
     const sync = hooks.filter((h) => !h.async)
     const results = await Promise.all(

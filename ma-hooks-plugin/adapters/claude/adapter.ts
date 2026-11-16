@@ -154,6 +154,13 @@ export function parseClaude(source: SourceRef, text: string): ParseResult {
           warnings.push(`${source.path}: hooks.${event}[${gi}].hooks[${hi}] is not an object`)
           return
         }
+        // Claude has no context position: always after. Ignore the key (debug only).
+        if (rawHook.position !== undefined) {
+          out.debug ??= []
+          out.debug.push(
+            `${source.path}: hooks.${event}[${gi}].hooks[${hi}]: ignored "position" (Claude hooks always add context after)`,
+          )
+        }
         hooks.push(buildHook(source, event, info, matcher, keys, rawHook, warnings))
       })
     })

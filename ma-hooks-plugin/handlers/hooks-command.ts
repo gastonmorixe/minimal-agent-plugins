@@ -68,6 +68,8 @@ export function listLines(eng: HooksEngine, max = LIST_MAX_HOOKS): string[] {
       const match = [
         `matcher ${h.matcher === undefined || h.matcher === "" ? "*" : h.matcher}`,
         ...(h.filter !== undefined ? [`if ${h.filter}`] : []),
+        // `after` is the default, so only `before` is shown.
+        ...(h.position === "before" ? ["position before"] : []),
       ].join(", ")
       out.push(`  ${h.trustKey}`)
       out.push(`    ${h.dialect} ${h.dialectEvent}, ${match}: ${handlerPreview(h)}`)
