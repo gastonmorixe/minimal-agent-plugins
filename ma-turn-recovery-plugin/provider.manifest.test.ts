@@ -5,6 +5,8 @@ import { describe, expect, test } from "bun:test"
 import { getDiagnosticBus, type LogEvent } from "@minimal-agent/core/host/diagnostics"
 import { PluginLoader } from "@minimal-agent/core/host-kit/plugin-loader"
 
+import { createTurnRecoveryProvider } from "./provider.ts"
+
 const PLUGINS_ROOT = join(import.meta.dir, "..")
 const PLUGIN_ID = "turn-recovery"
 
@@ -22,14 +24,14 @@ describe("turn-recovery manifest", () => {
     )
     expect(own).toEqual([])
     expect(events.filter((e) => e.source.startsWith("synthetic_text."))).toEqual([])
-    const providers = loader.syntheticTextProviders()
+    // Other required plugins (with their own providers) load too: pick ours by kind.
+    const providers = loader
+      .syntheticTextProviders()
+      .filter((p) => p.kinds.includes("continue.max_tokens"))
     expect(providers).toHaveLength(1)
-    expect([...(providers[0]?.kinds ?? [])].sort()).toEqual([
-      "tool_result.aborted",
-      "tool_result.handler_error",
-      "tool_result.interrupted_by_stop",
-      "tool_result.policy_denied",
-    ])
+    const kinds: string[] = [...(providers[0]?.kinds ?? [])].sort()
+    expect(kinds).toEqual([...createTurnRecoveryProvider().kinds].sort())
+    expect(kinds).toHaveLength(19)
     expect(providers[0]?.text("tool_result.handler_error", { detail: "boom" })).toBe(
       "Handler error: boom",
     )

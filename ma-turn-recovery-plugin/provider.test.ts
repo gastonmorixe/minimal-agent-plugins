@@ -33,13 +33,9 @@ describe("turn recovery texts (bytes pinned)", () => {
 })
 
 describe("turn recovery contract", () => {
-  test("lists the 4 kinds", () => {
-    expect([...p.kinds].sort()).toEqual([
-      "tool_result.aborted",
-      "tool_result.handler_error",
-      "tool_result.interrupted_by_stop",
-      "tool_result.policy_denied",
-    ])
+  test("lists the 19 kinds", () => {
+    expect(p.kinds).toHaveLength(19)
+    expect(new Set(p.kinds).size).toBe(19)
   })
   test("never returns empty", () => {
     const cases: Array<[SyntheticKind, Record<string, string>]> = [
@@ -61,7 +57,29 @@ describe("turn recovery contract", () => {
     expect(() => p.text("tool_result.policy_denied", {})).toThrow()
   })
   test("a kind not owned throws", () => {
-    expect(() => p.text("continue.max_tokens", {})).toThrow()
+    expect(() => p.text("mode.change", {})).toThrow()
+    expect(() => p.text("tool_text.Bash.error", { detail: "x" })).toThrow()
+  })
+  test("a missing required fact throws", () => {
+    expect(() => p.text("runtime.reflection_checkpoint", { round: 1 })).toThrow()
+    expect(() => p.text("tool_result.unknown_tool", {})).toThrow()
+    expect(() => p.text("tool_result.no_executor", {})).toThrow()
+    expect(() => p.text("tool_result.no_executor", { name: "Bash" })).toThrow()
+    expect(() => p.text("tool_result.subprocess_overflow", { detail: "x" })).toThrow()
+    expect(() => p.text("tool_result.lock_timeout", { tool: "Edit" })).toThrow()
+    expect(() => p.text("tool_result.lock_failed", { detail: "x" })).toThrow()
+    expect(() => p.text("user_media.unavailable", {})).toThrow()
+    expect(() => p.text("user_media.rejected", { reason: "too-many", site: "check" })).toThrow()
+    expect(() => p.text("user_media.rejected", { reason: "nope", site: "check" })).toThrow()
+    expect(() => p.text("user_media.rejected", { reason: "too-many", maxItems: 1 })).toThrow()
+    expect(() =>
+      p.text("user_media.rejected", { reason: "too-many", maxItems: 1, site: "marker" }),
+    ).toThrow()
+  })
+  test("no modelId gives the plugin label", () => {
+    expect(p.text("user_media.rejected", { reason: "too-many", maxItems: 3, site: "check" })).toBe(
+      "more than 3 attachments for this model",
+    )
   })
   test("handler_error without detail throws", () => {
     expect(() => p.text("tool_result.handler_error", {})).toThrow()
