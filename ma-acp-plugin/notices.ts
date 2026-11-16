@@ -73,6 +73,8 @@ export function noticeTitle(notice: TurnNotice): string {
       return "Model changed"
     case "model_adopt_failed":
       return "Model not changed"
+    case "stop_hook_capped":
+      return "Stop hook limit reached"
     default: {
       const _exhaustive: never = notice
       throw new Error(`unknown notice kind: ${JSON.stringify(_exhaustive)}`)

@@ -1,0 +1,167 @@
+{
+  "id": "hooks",
+  "name": "Config-driven hooks",
+  "version": "0.1.0",
+  "description": "Runs shell and HTTP hooks from ~/.minimal-agent/hooks.json and <project>/.minimal-agent/hooks.json (native format, always first), plus other agents' hook configs through dialect adapters. On by default. Opt out with --disable-plugin hooks or plugins.hooks.enabled=false.",
+  "permissions": [
+    "hooks:turn.willStart",
+    "hooks:tool.willInvoke",
+    "hooks:tool.didInvoke",
+    "hooks:tool.didBatch",
+    "hooks:compact.willRun",
+    "hooks:compact.didRun",
+    "hooks:subagent.willSpawn",
+    "hooks:agent.willStop",
+    "hooks:cwd.didChange",
+    "hooks:instructions.didLoad",
+    "hooks:notification.emit",
+    "hooks:turn.willStop",
+    "hooks:session.willStart"
+  ],
+  "headless": {
+    "commands": [
+      {
+        "name": "hooks",
+        "summary": "List config hooks, trust, untrust, enable or disable them",
+        "argHint": "[list | trust <key> | untrust <key> | enable <key> | disable <key> | trust-all <file>]",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/hooks-command.ts",
+          "export": "default"
+        }
+      }
+    ],
+    "hooks": [
+      {
+        "id": "hooks_turn_willstart",
+        "channel": "turn.willStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_tool_willinvoke",
+        "channel": "tool.willInvoke",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_tool_didinvoke",
+        "channel": "tool.didInvoke",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_tool_didbatch",
+        "channel": "tool.didBatch",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_compact_willrun",
+        "channel": "compact.willRun",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_compact_didrun",
+        "channel": "compact.didRun",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_subagent_willspawn",
+        "channel": "subagent.willSpawn",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_agent_willstop",
+        "channel": "agent.willStop",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_cwd_didchange",
+        "channel": "cwd.didChange",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_instructions_didload",
+        "channel": "instructions.didLoad",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_notification_emit",
+        "channel": "notification.emit",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_turn_willstop",
+        "channel": "turn.willStop",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      },
+      {
+        "id": "hooks_session_willstart",
+        "channel": "session.willStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/dispatch.ts",
+          "export": "default"
+        },
+        "priority": 50
+      }
+    ]
+  }
+}
