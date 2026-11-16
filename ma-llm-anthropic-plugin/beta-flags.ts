@@ -17,8 +17,14 @@
 import type { AnthropicRequestKind } from "@minimal-agent/core/plugin-api/llm/anthropic-request"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 
-import { omitsInterleavedThinking, wants1mContext } from "./beta-gates.ts"
+import {
+  omitsInterleavedThinking,
+  wants1mContext,
+  wantsMidConversationToolChanges,
+  wantsPerTurnControl,
+} from "./beta-gates.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
+import { thinkingDisplayUpdatesEnabled } from "./wire-options.ts"
 
 /**
  * Every known beta header value. Declaration order IS wire order (the
@@ -37,24 +43,27 @@ export const ANTHROPIC_BETA_FLAGS = {
   CONTEXT_1M: "context-1m-2025-08-07",
   CONTEXT_MANAGEMENT: "context-management-2025-06-27",
   PROMPT_CACHING_SCOPE: "prompt-caching-scope-2026-01-05",
-  // y3=M("per_message_effort",…) in 2.1.325. Declared only (diff B3).
+  // y3=M("per_message_effort",…) in 2.1.325. OAuth, per_turn_effort models.
   PER_TURN_CONTROL: "per-turn-control-2026-07-01",
-  // nE=M("mid_conv_tool_change",…) in 2.1.325. Declared only (diff B3).
+  // nE=M("mid_conv_tool_change",…) in 2.1.325. OAuth, mid_conv_tool_change models.
   MID_CONVERSATION_TOOL_CHANGES: "mid-conversation-tool-changes-2026-07-01",
-  // gH=M("ccr_tool_provenance",…) in 2.1.325. Declared only (diff B3).
+  // gH=M("ccr_tool_provenance",…) in 2.1.325. OAuth conversation/subtask.
   TOOL_PROVENANCE: "tool-provenance-2026-10-26",
   THINKING_TOKEN_COUNT: "thinking-token-count-2026-05-13",
   ADVANCED_TOOL_USE: "advanced-tool-use-2025-11-20",
-  // _9=M("mid_conversation_system_clear_at",…) in 2.1.325. Declared only (diff B2).
+  // _9=M("mid_conversation_system_clear_at",…) in 2.1.325. Sent for
+  // mid-conversation-system-capable models (diff B2).
   MID_CONVERSATION_SYSTEM_CLEAR_AT: "mid-conversation-system-clear-at-2026-08-21",
   // Retired upstream: PS=Wc("mid_conversation_system") has a null header in
-  // 2.1.325. Still sent by us pending diff B2; same slot as its successor.
+  // 2.1.325. Only sent as the fallback after the server rejects clear-at.
   MID_CONVERSATION_SYSTEM: "mid-conversation-system-2026-04-07",
   EFFORT: "effort-2025-11-24",
   STRUCTURED_OUTPUTS: "structured-outputs-2025-12-15",
-  // w3=M("thinking_binding_controls",…) in 2.1.325. Declared only (diff B4).
+  // w3=M("thinking_binding_controls",…) in 2.1.325. OAuth, header only when
+  // the body carries thinking (no block_binding field).
   THINKING_BINDING_CONTROLS: "thinking-binding-controls-2026-08-01",
-  // HTe=M("thinking_display_updates",…) in 2.1.325. Declared only (diff B5).
+  // HTe=M("thinking_display_updates",…) in 2.1.325. Opt-in only (diff B5,
+  // see wantsThinkingDisplayUpdates).
   THINKING_DISPLAY_UPDATES: "thinking-display-updates-2026-08-18",
   EXTENDED_CACHE_TTL: "extended-cache-ttl-2025-04-11",
   CACHE_DIAGNOSIS: "cache-diagnosis-2026-04-07",
@@ -94,6 +103,37 @@ export {
   type AnthropicRequestKind,
   classifyRequest,
 } from "@minimal-agent/core/plugin-api/llm/anthropic-request"
+
+/**
+ * Opt-in thinking.display "updates" (diff B5, default OFF so thinking text
+ * stays visible). CC 2.1.325 sets `O_={...O_,display:"updates"}` and pushes
+ * `HTe` when thinking is adaptive/enabled (CC/chunk-wqb2b4v0.mjs,
+ * `case"connector_text"`); the D capture bodies carry
+ * `"thinking":{"type":"adaptive","display":"updates"}`
+ * (.node-net-dbg/1794801546609-…/2026-11-16T03-59-10-571-fetch-005-02-req-body.txt).
+ * We only do it for adaptive thinking (the model must support it and the
+ * request must not turn thinking off, pick extended, or set its own display).
+ * Enable with `MINIMAL_AGENT_THINKING_DISPLAY=updates` or
+ * `plugins.anthropic.thinkingDisplay: "updates"` (./wire-options.ts).
+ */
+export function wantsThinkingDisplayUpdates(req: CanonicalRequest, model: ModelEntry): boolean {
+  if (!model.capabilities.thinking.adaptive) return false
+  const t = req.thinking
+  if (t && (t.mode !== "adaptive" || t.display !== undefined)) return false
+  return thinkingDisplayUpdatesEnabled()
+}
+
+/**
+ * Does the wire body carry a `thinking` object (adaptive/enabled)? Mirrors the
+ * leaf body builder's `mapThinking` (plugin-api anthropic-request.ts): no
+ * config → adaptive on adaptive-capable models; `off` → none; adaptive /
+ * extended → present.
+ */
+export function bodyCarriesThinking(req: CanonicalRequest, model: ModelEntry): boolean {
+  const t = req.thinking
+  if (!t) return model.capabilities.thinking.adaptive
+  return t.mode !== "off"
+}
 
 function hasAny1hTtl(req: CanonicalRequest): boolean {
   const checkBlocks = (blocks?: { cache?: { ttl?: string } }[]) =>
@@ -236,8 +276,15 @@ export function buildBetaFlags(opts: {
       ) {
         flags.add(ANTHROPIC_BETA_FLAGS.THINKING_TOKEN_COUNT)
       }
+      // Mid-conversation role:"system" messages. CC 2.1.325 retired the old
+      // header (PS=Wc("mid_conversation_system") has a null header,
+      // CC/chunk-29cd2nzs.mjs) and pushes its successor instead:
+      // `Nr=!pP(querySource)&&!Ec&&vn.includes(PS)&&H$e(model);
+      // if(Nr&&!vn.includes(_9))vn.push(_9)` (CC/chunk-wqb2b4v0.mjs). On a 400
+      // rejecting the clear-at beta the adapter falls back to the old header
+      // for the process (see adapter.ts `isClearAtRejection`).
       if (model.capabilities.midConversationSystem) {
-        flags.add(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM)
+        flags.add(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM_CLEAR_AT)
       }
       if (req.effort && model.capabilities.effort.levels.length > 0) {
         flags.add(ANTHROPIC_BETA_FLAGS.EFFORT)
@@ -258,6 +305,40 @@ export function buildBetaFlags(opts: {
       }
       if (req.vendor?.anthropic?.cacheDiagnostics) {
         flags.add(ANTHROPIC_BETA_FLAGS.CACHE_DIAGNOSIS)
+      }
+      if (wantsThinkingDisplayUpdates(req, model)) {
+        flags.add(ANTHROPIC_BETA_FLAGS.THINKING_DISPLAY_UPDATES)
+      }
+      // Four header-only CC 2.1.325 betas, OAuth first party only (CC's `OS()`
+      // = first party and experimental betas allowed). Evidence and gates:
+      // research/2026-11-15-cc-2.1.325-oauth-diff/betas-headers.md §1-§4. No
+      // body field goes with any of them; the adapter drops each one for the
+      // process if the server answers "invalid beta flag" naming it.
+      if (isOAuth) {
+        // §2 y3: CC `G1` entry `{beta:y3,when:(e)=>e.perTurnTiming||o4t(e)}`,
+        // o4t = catalog capability per_turn_effort (CC/chunk-e44qnbvj.mjs).
+        if (wantsPerTurnControl(model.id)) {
+          flags.add(ANTHROPIC_BETA_FLAGS.PER_TURN_CONTROL)
+        }
+        // §3 nE: `{beta:nE,when:(e)=>UVr()&&F_e(e)}`; F_e needs mid-conv system
+        // support plus the mid_conv_tool_change capability. Same model gate as
+        // clear-at above, narrowed to CC's catalog list (not Sonnet 5).
+        if (model.capabilities.midConversationSystem && wantsMidConversationToolChanges(model.id)) {
+          flags.add(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_TOOL_CHANGES)
+        }
+        // §4 gH: `{beta:gH,when:()=>H1()}`, H1 = first party, default base URL,
+        // OAuth (njo, CC/chunk-e44qnbvj.mjs). Every agentic OAuth request.
+        // CC's njo also checks CCR_SESSION_PROFILE, CLAUDE_CODE_REMOTE and the
+        // tengu_snappy_noodle flag; those only matter for remote (CCR) sessions
+        // or a custom base URL. OAuth here always uses the fixed
+        // api.anthropic.com, so none of them applies.
+        flags.add(ANTHROPIC_BETA_FLAGS.TOOL_PROVENANCE)
+        // §1 w3: on 1P whenever thinking is not disabled (`nGn(ax)` with
+        // `Ss()`, CC/chunk-wqb2b4v0.mjs). D capture: 106/106 thinking requests
+        // carry it, none carries block_binding; requests without thinking don't.
+        if (bodyCarriesThinking(req, model)) {
+          flags.add(ANTHROPIC_BETA_FLAGS.THINKING_BINDING_CONTROLS)
+        }
       }
       break
   }

@@ -7,7 +7,8 @@
  *  - redact-thinking: omitted from conversations (thinking stays visible — a
  *    product feature), included in the quota/title probe sets.
  *  - api-key auth: drops the oauth-coupled flags, keeps the rest.
- *  - context-1m: attached for every registered 1M model (the fable-5 P0 guard).
+ *  - context-1m: attached for beta-gated 1M models and fable (the fable-5 P0
+ *    guard), omitted for CC native_1m models (diff B1).
  *  - interleaved-thinking: omitted on opus-4-8 (parallel-tool-batch pathology),
  *    kept elsewhere.
  */
@@ -62,7 +63,10 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.EXTENDED_CACHE_TTL,
         // redact-thinking omitted for conversations since B3a (B-0 flip):
         // visible thinking is a product feature; matches the legacy builder.
-        F.MID_CONVERSATION_SYSTEM,
+        F.MID_CONVERSATION_SYSTEM_CLEAR_AT,
+        F.MID_CONVERSATION_TOOL_CHANGES, // CC catalog mid_conv_tool_change
+        F.TOOL_PROVENANCE, // every OAuth agentic request (CC H1)
+        F.THINKING_BINDING_CONTROLS, // body carries adaptive thinking
       ],
     ],
     [
@@ -72,7 +76,7 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.OAUTH,
         // interleaved-thinking omitted for opus-4-8 (same pathology gate
         // as legacy; the gate is duplicated by id in both builders).
-        F.CONTEXT_1M,
+        // no CONTEXT_1M: native_1m in the CC 2.1.325 catalog (diff B1).
         F.CONTEXT_MANAGEMENT,
         F.THINKING_TOKEN_COUNT, // thinking-capable model (CC 2.1.325 zW gate)
         F.ADVANCED_TOOL_USE,
@@ -80,7 +84,10 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.PROMPT_CACHING_SCOPE,
         F.EXTENDED_CACHE_TTL,
         // redact-thinking omitted (B3a).
-        F.MID_CONVERSATION_SYSTEM,
+        F.MID_CONVERSATION_SYSTEM_CLEAR_AT,
+        F.MID_CONVERSATION_TOOL_CHANGES, // CC catalog mid_conv_tool_change
+        F.TOOL_PROVENANCE,
+        F.THINKING_BINDING_CONTROLS,
       ],
     ],
     [
@@ -89,7 +96,8 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.CLAUDE_CODE,
         F.OAUTH,
         F.INTERLEAVED_THINKING,
-        // 1M-native → context-1m via the contextWindow >= 1M arm.
+        // Beta-gated 1M (CC: window 200000, maximum_window 1e6,
+        // supports_1m_beta) → context-1m via the contextWindow >= 1M arm.
         F.CONTEXT_1M,
         F.CONTEXT_MANAGEMENT,
         F.THINKING_TOKEN_COUNT, // thinking-capable model (CC 2.1.325 zW gate)
@@ -98,7 +106,10 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.PROMPT_CACHING_SCOPE,
         F.EXTENDED_CACHE_TTL,
         // redact-thinking omitted (B3a).
-        F.MID_CONVERSATION_SYSTEM,
+        F.MID_CONVERSATION_SYSTEM_CLEAR_AT,
+        // no MID_CONVERSATION_TOOL_CHANGES: sonnet-4-6 lacks mid_conv_tool_change in CC.
+        F.TOOL_PROVENANCE,
+        F.THINKING_BINDING_CONTROLS, // adaptive thinking by default
       ],
     ],
     [
@@ -116,6 +127,8 @@ describe("characterization: canonical buildBetaFlags (conversation, oauth)", () 
         F.PROMPT_CACHING_SCOPE,
         F.EXTENDED_CACHE_TTL,
         // redact-thinking omitted (B3a).
+        F.TOOL_PROVENANCE,
+        // no THINKING_BINDING_CONTROLS: no thinking on the body.
       ],
     ],
   ]
@@ -191,18 +204,24 @@ describe("characterization: beta-flag invariants per model/auth", () => {
     expect(canonical).toContain(F.CONTEXT_1M)
   })
 
-  it("context-1m membership tracks each model's context window (the fable-5 P0 guard)", () => {
-    // The fable-5 P0 was exactly this matrix cell drifting. context-1m is
-    // attached iff the registered model is 1M-capable (live 2026-11-15):
-    // opus-5/4.8/4.7/4.6, fable-5/5.1/5.2, sonnet-5/4.6 are 1M;
-    // opus-4-5 and haiku-4-5 are 200K and must NOT carry the flag.
+  it("context-1m membership: CC native_1m models omit it, fable keeps it (the fable-5 P0 guard)", () => {
+    // The fable-5 P0 was exactly this matrix cell drifting (plain fable-5
+    // missed context-1m). CC 2.1.325 marks opus-4-7/4-8/5/5-5, sonnet-5/5-5,
+    // haiku-5-5 and fable-5/5-1/5-2 `native_1m:!0` (CC/chunk-tbvds061.mjs) and
+    // sends context-1m only for `[1m]` ids. We follow that except for fable,
+    // which keeps the beta until a live >200k probe (beta-gates.ts). opus-4-6
+    // and sonnet-4-6 are beta-gated 1M; opus-4-5 / haiku-4-5 are 200K.
     const expected: Record<string, boolean> = {
-      "claude-opus-5": true,
+      "claude-opus-5-5": false,
+      "claude-opus-5": false,
+      "claude-sonnet-5-5": false,
+      "claude-sonnet-5": false,
+      "claude-haiku-5-5": false,
       "claude-fable-5-2": true,
       "claude-fable-5-1": true,
       "claude-fable-5": true,
-      "claude-opus-4-8": true,
-      "claude-opus-4-7": true,
+      "claude-opus-4-8": false,
+      "claude-opus-4-7": false,
       "claude-opus-4-6": true,
       "claude-opus-4-5-20251101": false,
       "claude-sonnet-4-6": true,
@@ -218,6 +237,17 @@ describe("characterization: beta-flag invariants per model/auth", () => {
       }).includes(F.CONTEXT_1M)
       expect({ modelId, hasContext1m }).toEqual({ modelId, hasContext1m: expected[modelId] })
     }
+  })
+
+  it("context-1m: an explicit [1m] id still opts a native-1M model in (CC Ug(e))", () => {
+    const model = resolveModel("claude-opus-4-8")
+    const flags = buildBetaFlags({
+      kind: "conversation",
+      req: conversationReq("claude-opus-4-8[1m]"),
+      model,
+      authKind: "oauth",
+    })
+    expect(flags).toContain(F.CONTEXT_1M)
   })
 
   it("interleaved-thinking: the opus-4-8 omission gate holds", () => {
@@ -266,9 +296,6 @@ describe("characterization: claude-code 2.1.325 MAIN-set order (diff A8)", () =>
     "cache-diagnosis-2026-04-07",
   ]
 
-  /** Flags we still send that CC 2.1.325 does not, pending a user decision. */
-  const PENDING_B1_B2: string[] = [F.CONTEXT_1M, F.MID_CONVERSATION_SYSTEM]
-
   it("emits an ordered subsequence of the CC MAIN set for an opus-5-5 conversation", () => {
     const modelId = "claude-opus-5-5"
     const model = resolveModel(modelId)
@@ -282,29 +309,66 @@ describe("characterization: claude-code 2.1.325 MAIN-set order (diff A8)", () =>
     } as CanonicalRequest
     expect(classifyRequest(req)).toBe("conversation")
     const flags = buildBetaFlags({ kind: "conversation", req, model, authKind: "oauth" })
-    const comparable = flags.filter((f) => !PENDING_B1_B2.includes(f))
-    // Every remaining flag is in the CC MAIN set, in CC order.
+    // B1/B2 landed: no exemptions, every emitted flag is in the CC MAIN set, in CC order.
+    const comparable = flags
     const positions = comparable.map((f) => CC_MAIN_2_1_325.indexOf(f))
     expect(positions.every((p) => p >= 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
-    // Membership pin for this request shape (catches silent drift).
-    expect(comparable).toEqual([
-      F.CLAUDE_CODE,
-      F.OAUTH,
-      F.INTERLEAVED_THINKING,
-      F.CONTEXT_MANAGEMENT,
-      F.PROMPT_CACHING_SCOPE,
-      F.THINKING_TOKEN_COUNT,
-      F.ADVANCED_TOOL_USE,
-      F.EFFORT,
-      F.CACHE_DIAGNOSIS,
-    ])
+    // Membership pin: the FULL CC MAIN set minus the intentional skips.
+    expect([...comparable] as string[]).toEqual(
+      CC_MAIN_2_1_325.filter((f) => !(f in SKIPPED_CC_MAIN)),
+    )
   })
 
-  // B1 (drop context-1m for native-1M models) and B2 (mid-conversation-system →
-  // mid-conversation-system-clear-at) need a user decision; once done, remove
-  // PENDING_B1_B2 so the whole emitted set is checked against CC MAIN.
-  it.todo("drops the B1/B2 exemptions once those decisions land")
+  /**
+   * CC MAIN betas we intentionally do not send by default, with the reason.
+   * Everything else in {@link CC_MAIN_2_1_325} must be on the wire for an
+   * OAuth opus-5-5 conversation.
+   */
+  const SKIPPED_CC_MAIN: Record<string, string> = {
+    "extended-cache-ttl-2025-04-11":
+      "1h cache TTL rejected by the user; only sent when a request asks for ttl:1h",
+    "thinking-display-updates-2026-08-18":
+      "opt-in only (diff B5): display:updates hides thinking text, which we keep visible",
+  }
+
+  it("skips only the listed CC MAIN betas, and each skip is a CC MAIN member", () => {
+    for (const f of Object.keys(SKIPPED_CC_MAIN)) expect(CC_MAIN_2_1_325).toContain(f)
+  })
+
+  it("the four header-only betas (betas-headers.md §1-§4) are absent where CC's gate says so", () => {
+    const header = [
+      F.PER_TURN_CONTROL,
+      F.MID_CONVERSATION_TOOL_CHANGES,
+      F.TOOL_PROVENANCE,
+      F.THINKING_BINDING_CONTROLS,
+    ]
+    const model = resolveModel("claude-opus-5-5")
+    const req = conversationReq("claude-opus-5-5")
+    // quota/title (CC: haiku-4-5 quota probe 0 0 0 0; we keep title lean too),
+    // api-key and custom base URL (CC: OS()/H1() need first party + OAuth).
+    for (const kind of ["quota", "title"] as const) {
+      const flags = buildBetaFlags({ kind, req, model, authKind: "oauth" })
+      for (const b of header)
+        expect({ kind, b, on: flags.includes(b) }).toEqual({ kind, b, on: false })
+    }
+    for (const authKind of ["api-key", "custom"] as const) {
+      for (const kind of ["conversation", "subtask"] as const) {
+        const flags = buildBetaFlags({ kind, req, model, authKind })
+        for (const b of header) {
+          expect({ authKind, kind, b, on: flags.includes(b) }).toEqual({
+            authKind,
+            kind,
+            b,
+            on: false,
+          })
+        }
+      }
+    }
+    // OAuth subtask carries all four on opus-5-5.
+    const sub = buildBetaFlags({ kind: "subtask", req, model, authKind: "oauth" })
+    for (const b of header) expect(sub).toContain(b)
+  })
 })
 
 describe("characterization: thinking-token-count gate (diff A4)", () => {

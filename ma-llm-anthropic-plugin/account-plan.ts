@@ -30,6 +30,7 @@
 
 import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 
+import { rememberAccountUuid } from "./identity.ts"
 import { USER_AGENT_OAUTH } from "./wire-constants.ts"
 
 const API_BASE = "https://api.anthropic.com"
@@ -173,6 +174,8 @@ export function buildAccountPlan(
   const org = profile.organization ?? {}
   const plan: AnthropicAccountPlan = {}
   if (acct.uuid) plan.accountId = acct.uuid
+  // Also feeds the OAuth metadata.user_id account_uuid (./identity.ts).
+  rememberAccountUuid(acct.uuid)
   if (acct.email) plan.email = acct.email
   if (org.uuid) plan.organizationId = org.uuid
   if (org.name) plan.organizationName = org.name

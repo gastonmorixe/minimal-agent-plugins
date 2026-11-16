@@ -34,8 +34,13 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
   {
     id: "context-1m-2025-08-07",
     description: "Enables 1M token context window for supported models",
-    source: "Observed in v2.1.91 capture for opus conversation requests",
-    condition: "Included for full conversation requests with large-context models",
+    source:
+      'Observed in v2.1.91 capture; CC/chunk-29cd2nzs.mjs 2.1.325: nC=M("long_context","context-1m-2025-08-07")',
+    condition:
+      "Conversation/subtask requests for a [1m] model id or a beta-gated 1M model " +
+      "(opus-4-6, sonnet-4-6, sonnet-4-5). Omitted for models CC 2.1.325 marks " +
+      "native_1m (opus-4-7/4-8/5/5-5, sonnet-5/5-5, haiku-5-5; CC/chunk-tbvds061.mjs). " +
+      "Fable-5/5.1/5.2 keep it (fable-5 P0 guard, see beta-gates.ts).",
   },
   {
     id: "interleaved-thinking-2025-05-14",
@@ -92,9 +97,9 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
       'Accepts {role:"system"} entries inside messages[] (mid-conversation operator nudges)',
     source: 'cli.patched.cjs L116093 v2.1.154: Yy = qf("mid_conversation_system", "...")',
     condition:
-      "Included for opus-4-6+/sonnet-4-6 conversation requests. Header retired in " +
-      'CC 2.1.325 (PS=Wc("mid_conversation_system") has a null header); still ' +
-      "sent by us pending research diff B2.",
+      'Header retired in CC 2.1.325 (PS=Wc("mid_conversation_system") has a null ' +
+      "header). Sent only as the fallback after the server rejects " +
+      "mid-conversation-system-clear-at-2026-08-21 (process-wide latch).",
   },
   {
     id: "extended-cache-ttl-2025-04-11",
@@ -145,21 +150,37 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
     description: "Per-message controls (e.g. output_config on a role:system message)",
     source:
       'CC/chunk-29cd2nzs.mjs 2.1.325: y3=M("per_message_effort","per-turn-control-2026-07-01")',
-    condition: "Declared; not sent (see research diff B3).",
+    condition:
+      "OAuth conversation/subtask requests for models whose CC 2.1.325 catalog lists " +
+      "per_turn_effort (haiku-5-5, sonnet-5-5, opus-5-5, fable-5-1, fable-5-2, mythos-5-2; " +
+      "CC/chunk-tbvds061.mjs, gate o4t in CC/chunk-e44qnbvj.mjs). Header only, no " +
+      "message-level output_config. Dropped for the process and retried once on a 400 " +
+      '"invalid beta flag" naming it. Evidence: research/2026-11-15-cc-2.1.325-oauth-diff/betas-headers.md §2.',
   },
   {
     id: "mid-conversation-tool-changes-2026-07-01",
-    description: "Allows the tools list to change mid-conversation",
+    description:
+      "tool_addition / tool_removal blocks in role:system messages (cache-preserving tool changes)",
     source:
       'CC/chunk-29cd2nzs.mjs 2.1.325: nE=M("mid_conv_tool_change","mid-conversation-tool-changes-2026-07-01")',
-    condition: "Declared; not sent (see research diff B3).",
+    condition:
+      "OAuth conversation/subtask requests, same model gate as mid-conversation-system-clear-at " +
+      "narrowed to CC's mid_conv_tool_change catalog list (haiku-5-5, sonnet-5-5, opus-4-8, " +
+      "opus-5, opus-5-5, fable-5/5-1/5-2, mythos-5/5-1/5-2; CC F_e gate). Header only, no " +
+      "tool_addition blocks. Dropped for the process and retried once on a 400 " +
+      '"invalid beta flag" naming it. Evidence: betas-headers.md §3.',
   },
   {
     id: "tool-provenance-2026-10-26",
-    description: 'Adds caller provenance ({type:"direct"}) on tool_use blocks',
+    description:
+      "Enables ownership_metadata on tool definitions (MCP tool provenance); not tied to tool_use caller",
     source:
       'CC/chunk-29cd2nzs.mjs 2.1.325: gH=M("ccr_tool_provenance","tool-provenance-2026-10-26")',
-    condition: "Declared; not sent (see research diff B3).",
+    condition:
+      "Every OAuth (first party, default base URL) conversation/subtask request; never api-key, " +
+      "custom base URL, quota or title (CC H1/njo gate, CC/chunk-e44qnbvj.mjs). Header only, " +
+      "no ownership_metadata. Dropped for the process and retried once on a 400 " +
+      '"invalid beta flag" naming it. Evidence: betas-headers.md §4.',
   },
   {
     id: "mid-conversation-system-clear-at-2026-08-21",
@@ -167,20 +188,30 @@ export const ANTHROPIC_BETA_FLAGS_CATALOG: readonly BetaFlagInfo[] = [
       "Successor of mid-conversation-system (role:system messages with clear_at support)",
     source:
       'CC/chunk-29cd2nzs.mjs 2.1.325: _9=M("mid_conversation_system_clear_at","mid-conversation-system-clear-at-2026-08-21")',
-    condition: "Declared; not sent (see research diff B2).",
+    condition:
+      "Conversation/subtask requests for models with mid-conversation system " +
+      "messages (CC 2.1.325 pushes _9 when PS is active, CC/chunk-wqb2b4v0.mjs). " +
+      "On a 400 rejecting it (CC mCn) we retry once with mid-conversation-system-2026-04-07.",
   },
   {
     id: "thinking-binding-controls-2026-08-01",
     description: "thinking.block_binding controls (prefix-mismatch behavior)",
     source:
       'CC/chunk-29cd2nzs.mjs 2.1.325: w3=M("thinking_binding_controls","thinking-binding-controls-2026-08-01")',
-    condition: "Declared; not sent (see research diff B4).",
+    condition:
+      "OAuth conversation/subtask requests whose body carries thinking (adaptive/enabled), " +
+      "as CC on first party (nGn/Ss gate, CC/chunk-wqb2b4v0.mjs; 106/106 thinking requests " +
+      "in the 2.1.325 capture). Header only: no thinking.block_binding. Dropped for the " +
+      'process and retried once on a 400 "invalid beta flag" naming it. Evidence: betas-headers.md §1.',
   },
   {
     id: "thinking-display-updates-2026-08-18",
     description: 'thinking.display:"updates" (empty thinking text plus estimated_tokens)',
     source:
       'CC/chunk-29cd2nzs.mjs 2.1.325: HTe=M("thinking_display_updates","thinking-display-updates-2026-08-18")',
-    condition: "Declared; not sent (see research diff B5).",
+    condition:
+      "Opt-in only, adaptive-thinking models: MINIMAL_AGENT_THINKING_DISPLAY=updates " +
+      'or config plugins.anthropic.thinkingDisplay:"updates". Body then sends ' +
+      'thinking {type:"adaptive",display:"updates"} (CC/chunk-wqb2b4v0.mjs).',
   },
 ]

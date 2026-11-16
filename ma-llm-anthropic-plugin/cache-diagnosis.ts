@@ -9,13 +9,20 @@
  * research/2026-11-15-cc-2.1.325-oauth-diff/cc-wire.md §2.1 (D/…fetch-005-02 →
  * null, D/…fetch-028-02 → the previous response's msg_ id).
  *
- * Our canonical assistant messages carry no provider message id
- * (`CanonicalMessage` = role/content/toolCallId/cache in plugin-api
- * canonical-messages.ts). So we keep a bounded map from a content fingerprint
+ * Primary source: core's `CanonicalMessage.providerMessageId` (plugin-api
+ * canonical-messages.ts), set by the host on a clean `message_stop`, persisted
+ * in the session jsonl and restored on resume. When the LAST assistant message
+ * of the outgoing history has a `msg_…` value there, it is sent as-is (CC
+ * `Amt`/`ice` parity, works after resume with no in-process state).
+ *
+ * Fallback for histories without the field (older sessions, other providers,
+ * callers that don't round-trip it): a bounded map from a content fingerprint
  * of each SUCCESSFULLY finished response (recorded at `message_stop`) to its
- * `msg_…` id, and look up the last assistant message of the outgoing history.
- * Compaction, rewind, side calls and parallel requests then resolve by
- * content; aborted / failed attempts are never recorded.
+ * `msg_…` id. Compaction, rewind, side calls and parallel requests then
+ * resolve by content; aborted / failed attempts are never recorded.
+ *
+ * Ids the server rejected (`previous_message_id_invalid` heal) go into a small
+ * set and are never sent again, whatever their source.
  *
  * @module llm/providers/anthropic/cache-diagnosis
  */
@@ -28,11 +35,18 @@ import type { CanonicalMessage } from "@minimal-agent/core/plugin-api/llm/canoni
 /** Max remembered responses (LRU). */
 const MAX_ENTRIES = 256
 
+/** Max remembered rejected ids (FIFO). */
+const MAX_REJECTED = 64
+
 const idByFingerprint = new Map<string, string>()
 
-/** Test seam: forget every recorded response. */
+/** Ids the server rejected as `diagnostics.previous_message_id`; never resent. */
+const rejectedIds = new Set<string>()
+
+/** Test seam: forget every recorded response and rejected id. */
 export function _resetCacheDiagnosisForTest(): void {
   idByFingerprint.clear()
+  rejectedIds.clear()
 }
 
 /** Raw parts a response is identified by. */
@@ -68,18 +82,23 @@ function partsOfMessage(msg: CanonicalMessage): FingerprintParts {
 }
 
 /**
- * The `previous_message_id` for this history: the recorded id of the LAST
- * assistant message, or `null` when there is none or it is unknown (e.g. a
- * response from another process, provider or a resumed session).
+ * The `previous_message_id` for this history, from the LAST assistant message:
+ * its `providerMessageId` when that is a `msg_…` id, else the fingerprint map
+ * entry. `null` when there is no assistant message, the id is unknown, or the
+ * server already rejected it.
  */
 export function previousMessageIdFor(messages: readonly CanonicalMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]!
     if (msg.role !== "assistant") continue
+    const own = msg.providerMessageId
+    if (own !== undefined && own.startsWith("msg_")) {
+      return rejectedIds.has(own) ? null : own
+    }
     const key = fingerprint(partsOfMessage(msg))
     if (!key) return null
     const id = idByFingerprint.get(key)
-    if (id === undefined) return null
+    if (id === undefined || rejectedIds.has(id)) return null
     // LRU touch.
     idByFingerprint.delete(key)
     idByFingerprint.set(key, id)
@@ -89,12 +108,20 @@ export function previousMessageIdFor(messages: readonly CanonicalMessage[]): str
 }
 
 /**
- * Drop every fingerprint that maps to `id`, so a history ending in that
- * response resolves to `null` afterwards. Called when the server rejected
+ * Mark `id` rejected and drop every fingerprint that maps to it, so a history
+ * ending in that response resolves to `null` afterwards (also when the id
+ * comes from `providerMessageId`). Called when the server rejected
  * `diagnostics.previous_message_id`, so a later retry of the same request
  * does not resend the rejected id.
  */
 export function forgetMessageId(id: string): void {
+  rejectedIds.delete(id)
+  rejectedIds.add(id)
+  while (rejectedIds.size > MAX_REJECTED) {
+    const oldest = rejectedIds.values().next().value
+    if (oldest === undefined) break
+    rejectedIds.delete(oldest)
+  }
   for (const [key, value] of idByFingerprint) {
     if (value === id) idByFingerprint.delete(key)
   }

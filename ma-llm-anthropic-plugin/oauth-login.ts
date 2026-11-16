@@ -19,6 +19,8 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
+import { rememberCredentialAccount } from "./identity.ts"
+
 /**
  * Manual-flow redirect URL. Matches the prod config in Claude Code:
  * `https://platform.claude.com/oauth/code/callback`.
@@ -206,6 +208,9 @@ export function buildAnthropicOAuthCredential(raw: Record<string, unknown>): OAu
 export function readAnthropicOAuthAuth(secrets: AuthSecretBag): ProviderAuth | null {
   const accessToken = str(secrets.accessToken)
   if (!accessToken) return null
+  // Seed metadata.user_id account_uuid from the stored credential, so the
+  // first request of a process does not wait for the bootstrap probe.
+  rememberCredentialAccount(accessToken, str(secrets.accountUuid))
   return { kind: "oauth", token: accessToken }
 }
 
