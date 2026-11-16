@@ -8,8 +8,8 @@ import { describe, expect, test } from "bun:test"
 import { connectFrameProto } from "./connect/stream.ts"
 import {
   applyCursorUsageEvent,
-  clearCursorLastMaxTokens,
   type CursorUsageState,
+  clearCursorLastMaxTokens,
   cursorUsageReceipts,
   cursorUsageToCanonical,
   getCursorContextWindowForStatus,

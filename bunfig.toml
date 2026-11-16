@@ -1,0 +1,5 @@
+# Root `bun test` (the `test` step of scripts/check.ts): skip tmp/, a
+# gitignored scratch area that may hold stale checkouts with their own tests.
+# https://bun.com/docs/runtime/bunfig#test-pathignorepatterns
+[test]
+pathIgnorePatterns = ["tmp/**"]
