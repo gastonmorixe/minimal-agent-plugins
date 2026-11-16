@@ -192,7 +192,7 @@ describe("Opus 4.8 — mid-conversation system message", () => {
       model,
       authKind: "oauth",
     })
-    expect(flags).toContain(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM)
+    expect(flags).toContain(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM_CLEAR_AT)
   })
 })
 
@@ -380,7 +380,7 @@ describe("Opus 4.8 — combined 4.8 wire snapshot", () => {
     })
     expect(flags).toContain(ANTHROPIC_BETA_FLAGS.FAST_MODE)
     expect(flags).toContain(ANTHROPIC_BETA_FLAGS.TASK_BUDGETS)
-    expect(flags).toContain(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM)
+    expect(flags).toContain(ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM_CLEAR_AT)
     expect(flags).toContain(ANTHROPIC_BETA_FLAGS.EFFORT)
   })
 })

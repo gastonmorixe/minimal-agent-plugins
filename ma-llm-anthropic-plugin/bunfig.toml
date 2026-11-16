@@ -1,0 +1,3 @@
+# Test runs for this plugin only: isolate the agent home (see test-setup.ts).
+[test]
+preload = ["./test-setup.ts"]

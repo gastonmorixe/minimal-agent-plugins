@@ -47,7 +47,9 @@
 
 import { randomBytes } from "node:crypto"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+
+import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
 
 // ---------------------------------------------------------------------------
 // Device id (persistent, read from CLI config)
@@ -243,6 +245,151 @@ export function buildMetadata(
       accountUuid: auth.type === "oauth" && auth.accountUuid ? auth.accountUuid : "",
       sessionId,
       extra: loadExtraMetadata(),
+    }),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OAuth wire metadata.user_id (claude-code 2.1.325 parity)
+// ---------------------------------------------------------------------------
+
+/**
+ * Where our own device id lives: `<agent home>/state/anthropic/device.json`
+ * (`MINIMAL_AGENT_HOME` honored, like every other plugin's state under the
+ * agent home). We deliberately do NOT read `~/.claude.json`: the id is ours,
+ * so our traffic is not tied to the user's Claude Code install.
+ */
+export function ownDeviceIdPath(): string {
+  return join(resolveAgentHome(), "state", "anthropic", "device.json")
+}
+
+let ownDeviceIdCache: { path: string; id: string } | undefined
+
+/**
+ * Stable 64-hex device id we own. Same format as CC's `hD()`
+ * (CC/chunk-e44qnbvj.mjs 2.1.325: `co=/^[0-9a-f]{64}$/` … `pp(32).toString("hex")`,
+ * persisted once as `userID`): 32 random bytes as hex, generated on first use
+ * and persisted (mode 0600). If persistence fails the id still stays stable
+ * for this process.
+ */
+export function getOwnDeviceId(pathArg?: string): string {
+  // Under a test runner with no explicit path, keep the id in memory so test
+  // runs never write the agent home. Same check as core canonical-send.ts
+  // (bun sets BUN_ENV / NODE_ENV to "test"). The plugin's test preload also
+  // points MINIMAL_AGENT_HOME at a temp dir (./test-setup.ts).
+  const isTest = process.env.BUN_ENV === "test" || process.env.NODE_ENV === "test"
+  const ephemeral = pathArg === undefined && isTest
+  const path = pathArg ?? ownDeviceIdPath()
+  if (ownDeviceIdCache?.path === path) return ownDeviceIdCache.id
+  if (ephemeral) {
+    ownDeviceIdCache = { path, id: randomBytes(32).toString("hex") }
+    return ownDeviceIdCache.id
+  }
+  let id = readDeviceIdFile(path)
+  if (!id) {
+    const fresh = randomBytes(32).toString("hex")
+    id = fresh
+    try {
+      mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
+      // Exclusive create ("wx"): two processes racing on first use cannot both
+      // write. The loser gets EEXIST and adopts the winner's id.
+      writeFileSync(path, `${JSON.stringify({ deviceId: fresh }, null, 2)}\n`, {
+        mode: 0o600,
+        flag: "wx",
+      })
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code === "EEXIST") {
+        id = readDeviceIdFile(path) ?? fresh
+      }
+      // Any other error: best effort persistence; the id stays stable for
+      // this process through the cache below.
+    }
+  }
+  ownDeviceIdCache = { path, id }
+  return id
+}
+
+/** The valid 64-hex `deviceId` in `path`, or undefined (missing / malformed). */
+function readDeviceIdFile(path: string): string | undefined {
+  try {
+    const state = JSON.parse(readFileSync(path, "utf-8")) as { deviceId?: unknown }
+    if (typeof state.deviceId === "string" && /^[0-9a-f]{64}$/.test(state.deviceId)) {
+      return state.deviceId
+    }
+  } catch {
+    // missing or malformed
+  }
+  return undefined
+}
+
+let knownAccountUuid: string | undefined
+
+/**
+ * Account uuid per OAuth access token, seeded from the stored credential
+ * (`secrets.accountUuid`, the same value `auth-status` shows as `account:`)
+ * when core reads it through `readAnthropicOAuthAuth`. Keyed by token so a
+ * process that lists several credentials still maps each request to its own
+ * account. Bounded: tokens rotate on refresh.
+ */
+const accountByToken = new Map<string, string>()
+const ACCOUNT_BY_TOKEN_MAX = 32
+
+/** Record the stored credential's account uuid for its access token. */
+export function rememberCredentialAccount(token: string, uuid: string | undefined): void {
+  if (!token || typeof uuid !== "string" || uuid.length === 0) return
+  if (accountByToken.size >= ACCOUNT_BY_TOKEN_MAX && !accountByToken.has(token)) {
+    accountByToken.clear()
+  }
+  accountByToken.set(token, uuid)
+}
+
+/**
+ * Account uuid for an OAuth request: the probe-learned uuid (bootstrap /
+ * profile) wins, else the stored credential's uuid for this token.
+ */
+export function accountUuidFor(token?: string): string | undefined {
+  return knownAccountUuid ?? (token ? accountByToken.get(token) : undefined)
+}
+
+/**
+ * Remember the OAuth account uuid once a startup probe learns it
+ * (`/api/claude_cli/bootstrap` `oauth_account.account_uuid`, or the OAuth
+ * profile `account.uuid`). The auth seam (`ProviderAuth`) carries no account id.
+ */
+export function rememberAccountUuid(uuid: string | undefined | null): void {
+  if (typeof uuid === "string" && uuid.length > 0) knownAccountUuid = uuid
+}
+
+/** Test seam: forget the account uuid and the device-id cache. */
+export function _resetIdentityForTest(): void {
+  knownAccountUuid = undefined
+  ownDeviceIdCache = undefined
+  accountByToken.clear()
+}
+
+/**
+ * CC 2.1.325 `metadata.user_id` for an OAuth request. CC's `Cqe()`
+ * (CC/chunk-gpympest.mjs) builds
+ * `x={device_id:hD(),account_uuid:…||dT()?.accountUuid||hn()?.accountUuid||"",session_id:G()}`
+ * and returns `{user_id:_(h)}` (`_` = JSON.stringify): key order device_id,
+ * account_uuid, session_id; an unknown account is `""` (key kept). The D
+ * capture body shows the same shape:
+ * `"metadata":{"user_id":"{\"device_id\":\"<64hex>\",\"account_uuid\":\"<uuid>\",\"session_id\":\"<uuid>\"}"}`
+ * (.node-net-dbg/1794801546609-…/2026-11-16T03-59-10-571-fetch-005-02-req-body.txt).
+ * `session_id` is the same id we send as `x-claude-code-session-id`.
+ * CLAUDE_CODE_EXTRA_METADATA and CC's sub-agent `parent_session_id` are not
+ * mirrored.
+ */
+export function buildOAuthMetadata(
+  sessionId: string,
+  deviceIdPath?: string,
+  token?: string,
+): { user_id: string } {
+  return {
+    user_id: buildUserId({
+      deviceId: getOwnDeviceId(deviceIdPath),
+      accountUuid: accountUuidFor(token) ?? "",
+      sessionId,
     }),
   }
 }

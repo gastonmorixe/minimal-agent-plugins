@@ -354,13 +354,19 @@ describe("buildBetaFlags", () => {
     expect(flags).toEqual([
       ANTHROPIC_BETA_FLAGS.CLAUDE_CODE,
       ANTHROPIC_BETA_FLAGS.OAUTH,
-      ANTHROPIC_BETA_FLAGS.CONTEXT_1M,
+      // no CONTEXT_1M: opus-4-8 is native_1m in the CC 2.1.325 catalog (diff B1).
       ANTHROPIC_BETA_FLAGS.CONTEXT_MANAGEMENT,
       ANTHROPIC_BETA_FLAGS.PROMPT_CACHING_SCOPE,
+      // opus-4-8: mid_conv_tool_change in the CC catalog, no per_turn_effort
+      // (betas-headers.md §2/§3); tool-provenance on every OAuth agentic request.
+      ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_TOOL_CHANGES,
+      ANTHROPIC_BETA_FLAGS.TOOL_PROVENANCE,
       ANTHROPIC_BETA_FLAGS.THINKING_TOKEN_COUNT,
       ANTHROPIC_BETA_FLAGS.ADVANCED_TOOL_USE,
-      ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM,
+      ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM_CLEAR_AT,
       ANTHROPIC_BETA_FLAGS.EFFORT,
+      // default adaptive thinking on the body → header-only binding beta (§1).
+      ANTHROPIC_BETA_FLAGS.THINKING_BINDING_CONTROLS,
       ANTHROPIC_BETA_FLAGS.EXTENDED_CACHE_TTL,
     ])
   })
@@ -619,7 +625,8 @@ describe("buildAnthropicHeaders", () => {
       clientRequestId: "00000000-0000-0000-0000-000000000000",
     })
     expect(headers.authorization).toBe("Bearer sk-ant-oat01-…")
-    expect(headers["anthropic-beta"]).toContain("mid-conversation-system-2026-04-07")
+    expect(headers["anthropic-beta"]).toContain("mid-conversation-system-clear-at-2026-08-21")
+    expect(headers["anthropic-beta"]).not.toContain("mid-conversation-system-2026-04-07")
     expect(headers["anthropic-beta"]).toContain("extended-cache-ttl-2025-04-11")
     expect(headers["x-app"]).toBe("cli")
     expect(headers["user-agent"]).toMatch(/^claude-cli\/\d+\.\d+\.\d+ \(external, cli\)$/)
@@ -628,10 +635,13 @@ describe("buildAnthropicHeaders", () => {
     expect(headers["x-stainless-package-version"]).toBe("0.128.0")
     // 10: interleaved-thinking is omitted for opus-4-8 (T-7c3f02) and
     // redact-thinking is omitted for conversations (B3a, B-0 flip);
-    // thinking-token-count added for thinking models (CC 2.1.325 parity).
+    // thinking-token-count added for thinking models (CC 2.1.325 parity);
+    // context-1m dropped for native-1M opus-4-8 (diff B1): 10 → 9;
+    // + mid-conversation-tool-changes, tool-provenance, thinking-binding-controls
+    // (betas-headers.md §1/§3/§4): 9 → 12.
     expect(headers["anthropic-beta"]).not.toContain("interleaved-thinking-2025-05-14")
     expect(headers["anthropic-beta"]).not.toContain("redact-thinking-2026-02-12")
-    expect(betaFlags.length).toBe(10)
+    expect(betaFlags.length).toBe(12)
   })
 
   it("uses x-api-key auth when api-key provided", () => {

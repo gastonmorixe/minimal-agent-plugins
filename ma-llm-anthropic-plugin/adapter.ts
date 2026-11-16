@@ -30,7 +30,7 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { fetchAnthropicAccountPlan } from "./account-plan.ts"
-import { ANTHROPIC_BETA_FLAGS, classifyRequest } from "./beta-flags.ts"
+import { ANTHROPIC_BETA_FLAGS, buildBetaFlags, classifyRequest } from "./beta-flags.ts"
 import { ANTHROPIC_BETA_FLAGS_CATALOG } from "./beta-flags-catalog.ts"
 import { applyBootstrapOverrides, fetchBootstrap } from "./bootstrap.ts"
 import {
@@ -41,6 +41,7 @@ import {
   _resetCacheDiagnosisForTest as resetChainForTest,
 } from "./cache-diagnosis.ts"
 import { buildAnthropicHeaders } from "./headers.ts"
+import { accountUuidFor, buildOAuthMetadata, rememberAccountUuid } from "./identity.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -63,6 +64,7 @@ import {
 import { resolveAnthropicSystemPrompt } from "./system-prompt.ts"
 import { validateAnthropicRequest } from "./validate.ts"
 import { BUILD_HASH, buildHashFor, VERSION } from "./wire-constants.ts"
+import { metadataUserIdEnabled } from "./wire-options.ts"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -109,10 +111,43 @@ function gzipRequestBody(serialized: string): Uint8Array | undefined {
  */
 let thinkingTokenCountRejected = false
 
-/** Test seam: forget the cache-diagnosis chain and the beta-heal latch. */
+/**
+ * The four header-only CC 2.1.325 betas (research/2026-11-15-cc-2.1.325-oauth-
+ * diff/betas-headers.md §1-§4). None carries a body field, so a server that
+ * does not know one can only answer 400 "invalid beta flag" naming it. Same
+ * heal as CC's x0o for zW: drop that beta for the process and retry once.
+ */
+const HEADER_ONLY_BETAS = [
+  ANTHROPIC_BETA_FLAGS.PER_TURN_CONTROL,
+  ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_TOOL_CHANGES,
+  ANTHROPIC_BETA_FLAGS.TOOL_PROVENANCE,
+  ANTHROPIC_BETA_FLAGS.THINKING_BINDING_CONTROLS,
+] as const
+
+/** Header-only betas the server rejected in this process (never resent). */
+const rejectedHeaderOnlyBetas = new Set<string>()
+
+/** Test seam: forget the cache-diagnosis chain and the beta-heal latches. */
 export function _resetCacheDiagnosisForTest(): void {
   resetChainForTest()
   thinkingTokenCountRejected = false
+  rejectedHeaderOnlyBetas.clear()
+}
+
+/**
+ * The header-only beta a 400 "invalid beta flag" names, when it was on the
+ * wire and is not dropped yet; otherwise undefined.
+ */
+function rejectedHeaderOnlyBeta(
+  status: number,
+  body: string,
+  sent: readonly string[],
+): string | undefined {
+  if (!isInvalidBetaRejection(status, body)) return undefined
+  const lower = body.toLowerCase()
+  return HEADER_ONLY_BETAS.find(
+    (b) => sent.includes(b) && !rejectedHeaderOnlyBetas.has(b) && lower.includes(b),
+  )
 }
 
 /** CC's `Jz`: a 400 whose message says "invalid beta flag". */
@@ -194,6 +229,49 @@ function applyBillingPromptHash(body: AnthropicRequestBody): void {
   body.system![0] = { ...block, text: block.text.replace(stale, fresh) }
 }
 
+/**
+ * Set once the server rejects `mid-conversation-system-clear-at-2026-08-21`.
+ * CC 2.1.325 heals the same way: `lee` drops `_9` and retries when `mCn(e)`
+ * (CC/chunk-wqb2b4v0.mjs: "the server rejected the clear_at beta header or
+ * field (HTTP 400); retrying without them"). We then send the pre-2.1.325
+ * `mid-conversation-system-2026-04-07` header instead (the one our role:system
+ * messages were proven with), latched for the process.
+ */
+let clearAtRejected = false
+
+const CLEAR_AT = ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM_CLEAR_AT
+
+/** Test seam: forget the clear-at heal latch. */
+export function _resetClearAtRejectedForTest(): void {
+  clearAtRejected = false
+}
+
+/**
+ * CC's `mCn(e)` (CC/chunk-wqb2b4v0.mjs): a 400 whose message starts with
+ * "Unexpected value(s) " and names the clear-at header in an anthropic-beta
+ * context (`YBn`, CC/chunk-zhvxfbcg.mjs), or matches the clear_at field
+ * errors (`Fjr`).
+ */
+const CLEAR_AT_FIELD_ERROR =
+  /^messages\.\d+(?:\.content\.\d+)?(?:\.clear_at:|: .*(?:turn-scoped system message|\(clear_at: |clear_at is only permitted))/
+
+export function isClearAtRejection(status: number, body: string): boolean {
+  if (status !== 400) return false
+  let message = body
+  try {
+    const m = (JSON.parse(body) as { error?: { message?: unknown } })?.error?.message
+    if (typeof m === "string") message = m
+  } catch {
+    // non-JSON body: match the raw text
+  }
+  return (
+    (message.startsWith("Unexpected value(s) ") &&
+      message.includes(CLEAR_AT) &&
+      /anthropic[-_]beta/.test(message)) ||
+    CLEAR_AT_FIELD_ERROR.test(message)
+  )
+}
+
 /** Test seam: clear the process-wide "server rejected gzip" latch. */
 export function _resetGzipRejectedForTest(): void {
   gzipRejected = false
@@ -257,6 +335,104 @@ function taggedAnthropicHttpError(
   return err
 }
 
+/**
+ * After a clear-at rejection: swap the clear-at beta for the pre-2.1.325
+ * mid-conversation-system header, only on a request that would actually have
+ * sent clear-at (same kind/model/auth gates; title and quota probes never
+ * carry it, so they get neither header).
+ */
+function withClearAtFallback(
+  req: CanonicalRequest,
+  model: ModelEntry,
+  authKind: ProviderAuth["kind"],
+): CanonicalRequest {
+  const o = req.vendor?.anthropic?.betaOverrides
+  const wouldSendClearAt = buildBetaFlags({
+    kind: classifyRequest(req),
+    req,
+    model,
+    authKind,
+  }).includes(CLEAR_AT)
+  if (!wouldSendClearAt) return req
+  const add = [...(o?.add ?? []), ANTHROPIC_BETA_FLAGS.MID_CONVERSATION_SYSTEM]
+  return {
+    ...req,
+    vendor: {
+      ...req.vendor,
+      anthropic: {
+        ...req.vendor?.anthropic,
+        betaOverrides: { ...o, add, remove: [...(o?.remove ?? []), CLEAR_AT] },
+      },
+    },
+  }
+}
+
+/**
+ * The in-flight startup bootstrap probe (it learns `oauth_account.account_uuid`).
+ * Cleared once it settles.
+ */
+let pendingAccountProbe: Promise<void> | undefined
+
+/** Longest wait for the bootstrap probe before the first OAuth send. */
+export const ACCOUNT_PROBE_WAIT_MS = 1500
+
+/** Test seam: set (or clear) the in-flight account probe. */
+export function _setPendingAccountProbeForTest(p: Promise<void> | undefined): void {
+  pendingAccountProbe = p
+}
+
+/**
+ * E2E FAIL-1: `metadata.user_id` must carry the account uuid from the first
+ * request. The stored credential seeds it (oauth-login.ts `readAnthropicOAuthAuth`).
+ * When the credential has none (an old login), wait for the in-flight
+ * bootstrap probe, at most {@link ACCOUNT_PROBE_WAIT_MS}, before an OAuth
+ * conversation send. No wait when the uuid is known, no probe is running, or
+ * metadata is off.
+ */
+async function awaitAccountUuid(req: CanonicalRequest, auth: ProviderAuth): Promise<void> {
+  if (auth.kind !== "oauth" || !pendingAccountProbe) return
+  if (accountUuidFor(auth.token) !== undefined || !metadataUserIdEnabled()) return
+  const kind = classifyRequest(req)
+  if (kind === "title" || kind === "quota") return
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ACCOUNT_PROBE_WAIT_MS)
+  })
+  try {
+    await Promise.race([pendingAccountProbe.catch(() => {}), timeout])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Body fields that follow the claude-code 2.1.325 wire (research diff B5, B7):
+ * - `thinking.display:"updates"` exactly when the opt-in beta
+ *   thinking-display-updates-2026-08-18 is on the wire (gate:
+ *   `wantsThinkingDisplayUpdates` in ./beta-flags.ts).
+ * - OAuth `metadata.user_id` (`buildOAuthMetadata`, ./identity.ts). CC's
+ *   `Cqe()` sends it on every request, api-key included; we keep it OAuth-only.
+ *   Opt-out: `MINIMAL_AGENT_NO_METADATA_USER_ID=1` or
+ *   `plugins.anthropic.metadataUserId: false` (./wire-options.ts). Appended
+ *   last (CC puts it after `tools`; key order is cosmetic and left alone).
+ */
+function applyWireExtras(
+  body: AnthropicRequestBody,
+  betaFlags: readonly string[],
+  auth: ProviderAuth,
+  sessionId: string,
+): void {
+  if (
+    betaFlags.includes(ANTHROPIC_BETA_FLAGS.THINKING_DISPLAY_UPDATES) &&
+    body.thinking?.type === "adaptive"
+  ) {
+    body.thinking = { type: "adaptive", display: "updates" }
+  }
+  if (auth.kind === "oauth" && metadataUserIdEnabled()) {
+    body.metadata = buildOAuthMetadata(sessionId, undefined, auth.token)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Adapter
 // ---------------------------------------------------------------------------
@@ -307,17 +483,24 @@ export const anthropicAdapter: ProviderAdapter = {
       throw new Error("Anthropic adapter: missing ctx.networkClient (host must provide the client)")
     }
 
+    await awaitAccountUuid(req, auth)
+
     const cacheDiagnosis = wantsCacheDiagnosis(req, auth.kind)
     // Derived from the history being sent, like CC's `Amt(e)` (./cache-diagnosis.ts).
     let previousMessageId = cacheDiagnosis ? previousMessageIdFor(req.messages) : null
 
     /** Build + POST one attempt. Returns the response and the beta set sent. */
     const send = async () => {
-      const removeBetas = thinkingTokenCountRejected
-        ? [...(req.vendor?.anthropic?.betaOverrides?.remove ?? []), TTC]
-        : req.vendor?.anthropic?.betaOverrides?.remove
-      const wireReq: CanonicalRequest =
-        (cacheDiagnosis && !req.vendor?.anthropic?.cacheDiagnostics) || thinkingTokenCountRejected
+      const processDropped = [
+        ...(thinkingTokenCountRejected ? [TTC] : []),
+        ...rejectedHeaderOnlyBetas,
+      ]
+      const removeBetas =
+        processDropped.length > 0
+          ? [...(req.vendor?.anthropic?.betaOverrides?.remove ?? []), ...processDropped]
+          : req.vendor?.anthropic?.betaOverrides?.remove
+      const wireReq0: CanonicalRequest =
+        (cacheDiagnosis && !req.vendor?.anthropic?.cacheDiagnostics) || processDropped.length > 0
           ? {
               ...req,
               vendor: {
@@ -332,6 +515,7 @@ export const anthropicAdapter: ProviderAdapter = {
               },
             }
           : req
+      const wireReq = clearAtRejected ? withClearAtFallback(wireReq0, model, auth.kind) : wireReq0
       const { headers, betaFlags } = buildAnthropicHeaders({
         req: wireReq,
         model,
@@ -348,6 +532,7 @@ export const anthropicAdapter: ProviderAdapter = {
         delete body.diagnostics
       }
       if (auth.kind === "oauth") applyBillingPromptHash(body)
+      applyWireExtras(body, betaFlags, auth, ctx.sessionId)
       const serialized = JSON.stringify(body)
 
       ctx.debug?.header(`POST ${MESSAGES_URL}`)
@@ -397,7 +582,12 @@ export const anthropicAdapter: ProviderAdapter = {
     //   CC/chunk-wqb2b4v0.mjs) → resend with previous_message_id:null.
     // - thinking-token-count rejected as an invalid beta (CC's x0o heal) →
     //   drop it for the process and resend.
-    for (let heals = 0; heals < 2 && !attempt.response.ok; heals++) {
+    // - mid-conversation-system-clear-at rejected (CC's `lee`/`mCn` heal) →
+    //   fall back to the old mid-conversation-system header for the process.
+    // - a header-only beta (per-turn-control, mid-conversation-tool-changes,
+    //   tool-provenance, thinking-binding-controls) named in an "invalid beta
+    //   flag" 400 → drop it for the process and resend.
+    for (let heals = 0; heals < 3 + HEADER_ONLY_BETAS.length && !attempt.response.ok; heals++) {
       if (attempt.response.status !== 400) break
       const errText = attempt.errText ?? (await attempt.response.text().catch(() => ""))
       attempt.errText = errText
@@ -412,8 +602,16 @@ export const anthropicAdapter: ProviderAdapter = {
         isThinkingTokenCountRejection(400, errText)
       ) {
         thinkingTokenCountRejected = true
+      } else if (
+        !clearAtRejected &&
+        attempt.betaFlags.includes(CLEAR_AT) &&
+        isClearAtRejection(400, errText)
+      ) {
+        clearAtRejected = true
       } else {
-        break
+        const beta = rejectedHeaderOnlyBeta(400, errText, attempt.betaFlags)
+        if (beta === undefined) break
+        rejectedHeaderOnlyBetas.add(beta)
       }
       attempt = await send()
     }
@@ -617,13 +815,21 @@ export const anthropicProviderPlugin: AnthropicProviderPlugin = {
   onStartupProbe(ctx: ProviderStartupContext): void {
     const registrar = capturedModels
     if (!registrar) return
-    void (async () => {
+    const probe = (async () => {
       const resp = await fetchBootstrap({ auth: ctx.auth, modelId: ctx.modelId })
+      // account_uuid for the OAuth metadata.user_id (./identity.ts).
+      rememberAccountUuid(resp?.oauth_account?.account_uuid)
       applyBootstrapOverrides(resp, registrar)
-    })().catch(() => {
-      // Tolerated: bootstrap is a UX improvement, not a correctness
-      // requirement. Local pricing tables remain authoritative.
-    })
+    })()
+      .catch(() => {
+        // Tolerated: bootstrap is a UX improvement, not a correctness
+        // requirement. Local pricing tables remain authoritative.
+      })
+      .finally(() => {
+        if (pendingAccountProbe === probe) pendingAccountProbe = undefined
+      })
+    // The first OAuth send may briefly await it for account_uuid (awaitAccountUuid).
+    pendingAccountProbe = probe
   },
   /**
    * Plan, seat, role, and usage windows for one OAuth credential, read from

@@ -88,6 +88,7 @@ export async function listAnthropicModels(auth: AuthResult): Promise<AnthropicMo
         ? { kind: "oauth", token: auth.token }
         : { kind: "api-key", key: auth.token },
     sessionId: process.env.MINIMAL_AGENT_SESSION_ID ?? "list-models",
+    omitRequestClass: true,
   })
 
   // Cold, off-the-hot-path read: use global fetch (like the ollama/openrouter
