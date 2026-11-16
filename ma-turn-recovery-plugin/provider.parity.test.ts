@@ -223,15 +223,15 @@ const RUN: Record<string, Run> = {
   turnAbortedAttachmentText: async (t) =>
     firstText(
       await buildInitialUserContent(
-        { promptContributors: [] },
-        { userText: "", orphanRepair: [], turnMarker: "aborted", text: t },
+        { promptContributors: [], text: t },
+        { userText: "", orphanRepair: [], turnMarker: "aborted" },
       ),
     ),
   sessionResumedAttachmentText: async (t) =>
     firstText(
       await buildInitialUserContent(
-        { promptContributors: [] },
-        { userText: "", orphanRepair: [], turnMarker: "resumed", text: t },
+        { promptContributors: [], text: t },
+        { userText: "", orphanRepair: [], turnMarker: "resumed" },
       ),
     ),
   streamInterruptedAttachmentText: async (t) => {
