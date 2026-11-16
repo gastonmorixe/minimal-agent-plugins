@@ -17,6 +17,11 @@ const steps: Step[] = [
   // check fires. Both gates passing means the tree is biome-clean.
   { label: "format:check", command: ["bun", "run", "format:check"] },
   { label: "biome:check", command: ["bun", "run", "biome:check"] },
+  // STE ratchet over every model-facing text surface. A file or rule above
+  // its recorded count fails here, so prompt style cannot drift back. The
+  // tests/ste suite runs the same engine; this step prints the summary and
+  // fails before the slower full test run.
+  { label: "ste", command: ["bun", "run", "ste:gate"] },
   // `bun run test` (not raw `bun test`) so per-plugin `test` overrides in
   // their package.json apply: pure-prompt plugins with no `.test.ts` files
   // override this to a no-op, while everyone else falls through to `bun test`.

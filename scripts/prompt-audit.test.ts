@@ -18,6 +18,10 @@ function walk(dir: string): string[] {
     // (the host dependency) -- its handler-shaped files are core's own, not
     // this plugin's, and must not feed the prompt-inlining audit below.
     if (entry === "node_modules") continue
+    // `tmp/` and `.tmp/` are gitignored scratch copies of other checkouts.
+    // Their text is not shipped, and reading 500 MB of it made this audit
+    // slow enough to time out under the parallel test run.
+    if (entry === "tmp" || entry === ".tmp") continue
     const abs = join(dir, entry)
     const stat = statSync(abs)
     if (stat.isDirectory()) {
@@ -121,6 +125,11 @@ function proseFiles(): PromptFile[] {
 }
 
 describe("external plugin prompt audit", () => {
+  // The slowest rule reads every prompt file twice (blank-line runs and
+  // trailing whitespace), about 3-4 s alone, and it crossed the default 5 s
+  // limit under the parallel run. Only that test needs the larger budget.
+  const SLOW_MS = 30_000
+
   test("does not reference stale tag namespaces", () => {
     const bad = violations(modelFacingFiles(), /<tui::|<ma::tui|<ma::plugin::/g, "stale namespace")
     expect(bad).toEqual([])
@@ -222,11 +231,15 @@ describe("external plugin prompt audit", () => {
     expect(bad).toEqual([])
   })
 
-  test("does not carry avoidable whitespace in prompt markdown", () => {
-    const repeatedBlankLines = violations(promptFiles(), /\n{3,}/g, "3+ blank lines")
-    const trailingWhitespace = violations(promptFiles(), /[ \t]+$/gm, "trailing whitespace")
-    expect([...repeatedBlankLines, ...trailingWhitespace]).toEqual([])
-  })
+  test(
+    "does not carry avoidable whitespace in prompt markdown",
+    () => {
+      const repeatedBlankLines = violations(promptFiles(), /\n{3,}/g, "3+ blank lines")
+      const trailingWhitespace = violations(promptFiles(), /[ \t]+$/gm, "trailing whitespace")
+      expect([...repeatedBlankLines, ...trailingWhitespace]).toEqual([])
+    },
+    SLOW_MS,
+  )
 
   // Model-facing prose belongs in external markdown (PROMPT.md / prompts/*.md),
   // not inlined as TS string literals in handlers (Gaston's prompt-hygiene

@@ -23,7 +23,7 @@
           "type": "tool",
           "tool": {
             "name": "Task",
-            "description": "Plan and track a per-session task list that the user sees as a live board. Use it for work of 3 or more steps, or when the user asks for a plan. Use `add_many` with `tasks` to plan once, then `start` and `done` with a canonical id from the board. Do not use it for trivial work of 1 or 2 steps. Do not record lessons here, because memory owns those. Do not echo the board as prose. `canceled` means abandoned and `done` means finished. A finished phase header is `done`, not `canceled`. Returns an `OK` acknowledgement, then the updated board or a compact note, per the configured result verbosity.",
+            "description": "Plan and track a per-session task list that the user sees as a live board. Use it for work of 3 or more steps, or when the user asks for a plan. Use `add_many` with `tasks` to plan once, then `start` and `done` with a canonical id from the board. Do not use it for trivial work of 1 or 2 steps. Do not record lessons here, because memory owns those. Do not echo the board as prose. `canceled` means abandoned and `done` means finished, so pick the verb that matches the intent. A finished phase header is `done`, not `canceled`. Returns an `OK` acknowledgement, then the updated board or a compact note, per the configured result verbosity.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -42,18 +42,18 @@
                     "list",
                     "clear"
                   ],
-                  "description": "What to do. add: one task. add_many: a task tree. replace_plan: a new plan that replaces the board. update: a title or a status. status: a new status. start: move to doing, and auto-start the parent. done: finish, and auto-promote the parent when the last open child closes. A parent stays `doing` while siblings stay open. remove: drop a task that never started. reorder: change top-level order. list: show the board. clear: empty the board. On a validation failure, retry once and do not drip add duplicates."
+                  "description": "What to do. `start` will auto-start the parent. `done` will auto-promote the parent when the last open child closes. A parent whose children are all `done` takes the status `done`, not `canceled`. A parent stays `doing` while siblings stay open. After a validation failure, try one time. Do not add the same task again one at a time."
                 },
                 "id": {
                   "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."
                 },
                 "title": {
                   "type": "string",
-                  "description": "Task title (single line). Required for: add. Optional for: update (at least one of title or status must be provided)."
+                  "description": "Task title (single line). Required for: add. Optional for: update (give at least one of title or status)."
                 },
                 "tasks": {
                   "type": "array",
-                  "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. Children promote the parent, so do not also call `done` on the parent. Do not stringify the array.",
+                  "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. A child promotes the parent task, so do not also call `done` on the parent. Do not convert the array to a string.",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -78,11 +78,11 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "Flat list of task titles (alias). For add_many: send exactly one of `tasks` (preferred), `items` (same as tasks), or `titles`. Use `titles` only for a flat plan or a flat batch under `parent`."
+                  "description": "Flat list of task titles. Send exactly one of `tasks`, `items` or `titles`. Use `titles` only for a flat plan or a batch under `parent`."
                 },
                 "items": {
                   "type": "array",
-                  "description": "Alias of `tasks`. Prefer `tasks`. Tree form: `{title, children?}[]`. Mutually exclusive with `tasks` and `titles`. Cannot combine with `parent`.",
+                  "description": "Alias of `tasks`, in the tree form `{title, children?}[]`. Prefer `tasks`. Cannot combine with `titles` or `parent`.",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -111,7 +111,7 @@
                 "status": {
                   "type": "string",
                   "enum": ["todo", "doing", "done", "canceled"],
-                  "description": "New status. Required for: status. Optional for: update. `canceled` means abandoned and `done` means finished, and the board paints them with opposite marks, so pick the verb that matches the intent."
+                  "description": "New status. Required for: status. Optional for: update. `canceled` means abandoned and `done` means finished, so pick the verb that matches the intent."
                 },
                 "reason": {
                   "type": "string",
@@ -134,7 +134,7 @@
                   "type": "string",
                   "enum": ["text", "json"],
                   "default": "text",
-                  "description": "Result content format. `text` returns a plain acknowledgement and, when applicable under the configured verbosity, a canonical-id task board. `json` returns the equivalent parseable shape. Human TUI display is always ANSI."
+                  "description": "Result content format. `text` returns an acknowledgement plus the board when the verbosity allows it. `json` returns the same data as a parseable shape."
                 },
                 "parallel": {
                   "type": "boolean",

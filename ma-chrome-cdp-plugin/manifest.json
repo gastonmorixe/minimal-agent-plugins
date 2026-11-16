@@ -16,7 +16,7 @@
           "type": "tool",
           "tool": {
             "name": "ChromeCDP",
-            "description": "Drive a running Chrome over the DevTools Protocol through named actions or a raw `send` passthrough. Use it when you need the user's logged-in session, a click inside a live page, or the network and performance event stream. Do not use it for a plain public page read: use Fetch instead. Never close the last open tab while the connection must survive, because that can quit Chrome. Returns a JSON result per action, and the buffered event list for `events`.",
+            "description": "Drive a running Chrome over the DevTools Protocol. Use named actions or a raw `send` passthrough. Use it when you need the logged-in session of the user, or a click inside a live page. Use it when you need the network and performance event stream. Do not use it for a plain public page read. Use Fetch instead. Do not close the last open tab while the connection must survive, because that action can quit Chrome. Returns a JSON result per action, and the buffered event list for `events`.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -39,7 +39,7 @@
                     "activatetarget",
                     "getinfo"
                   ],
-                  "description": "Start here with targets to get a tab id. ping: daemon and browser liveness. targets: open page tabs as {id,title,url}. alltargets: every target including iframes and workers. eval: run JS in a tab. frameeval: run JS in a cross-origin child frame. nav: navigate a tab. newtab: open a tab. setdownload: set the tab download dir. downloads: list downloads, poll until completed. send: raw CDP method passthrough. events: drain the buffered event list. record: toggle event buffering. closetarget: close a tab. activatetarget: focus a tab. getinfo: TargetInfo for one tab."
+                  "description": "Start with `targets` to get a tab id. Use `ping` to show daemon and browser liveness. Use `targets` to show open page tabs as {id,title,url}. Use `alltargets` to show every target, including iframes and workers. Use `eval` to run JS in a tab. Use `frameeval` to run JS in a cross-origin child frame. Use `nav` to navigate a tab. Use `newtab` to open a tab. Use `setdownload` to set the tab download dir. Use `downloads` to list downloads and to poll until completed. Use `send` for the raw CDP method passthrough. Use `events` to drain the buffered event list. Use `record` to toggle event buffering. Use `closetarget` to close a tab. Use `activatetarget` to focus a tab. Use `getinfo` to show TargetInfo for one tab."
                 },
                 "target": {
                   "type": "string",

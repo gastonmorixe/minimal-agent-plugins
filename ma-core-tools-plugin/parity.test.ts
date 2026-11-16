@@ -469,7 +469,7 @@ const STE_PARAMS: Record<string, Record<string, string>> = {
     file_path: "The absolute path to the file to write",
     content: "The text to write to the file. You can also use the alias `contents`.",
     contents:
-      "Alias for `content`, with the same meaning. If `content` is also set, the tool ignores this alias.",
+      "Alias for `content`, with the same meaning. If `content` is present, the tool ignores this alias.",
   },
   Edit: {
     file_path: "The absolute path to the file to change",
@@ -481,10 +481,10 @@ const STE_PARAMS: Record<string, Record<string, string>> = {
     pattern:
       "The glob pattern that the file paths must match. You can also use the alias `glob_pattern`.",
     glob_pattern:
-      "Alias for `pattern`, with the same meaning. If `pattern` is also set, the tool ignores this alias.",
+      "Alias for `pattern`, with the same meaning. If `pattern` is present, the tool ignores this alias.",
     path: "The directory to search. The default is cwd. You can also use the alias `target_directory`.",
     target_directory:
-      "Alias for `path`, with the same meaning. If `path` is also set, the tool ignores this alias.",
+      "Alias for `path`, with the same meaning. If `path` is present, the tool ignores this alias.",
   },
   Grep: {
     pattern: "The regex pattern to find",
@@ -504,7 +504,6 @@ const STE_PARAMS: Record<string, Record<string, string>> = {
     status: "Optional filter by status: all, present, missing or changed",
     path: "Optional filter by an absolute path or a directory prefix",
   },
-  Mode: {},
 }
 
 /** P4 STE: the verbatim tokens each rewritten tool description must keep. */
@@ -587,21 +586,19 @@ const STE_TOOL_DESCRIPTIONS: Record<string, string> = {
   Bash: [
     "Runs a bash command and returns its output.",
     "",
-    "Do not use Bash to search, read or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Do not use these commands in Bash: `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc`. Use them only if no dedicated tool can do the task. Use Bash only for real shell work: builds, tests, git, package managers and file moves.",
+    "Do not use Bash to search, read or count code. Use Grep for file contents and Glob for file names. Do not run `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc` in Bash. Use Bash for real shell work: builds, tests, git, package managers and file moves.",
     "",
-    "The output that you receive has a limit of ~64KB / 1000 lines, whichever comes first. The limit keeps the start of the output. A failed build or test run puts its diagnostics at the end of the output. Thus the limit removes the part that you need. For a long command, send only the tail to the output (`... 2>&1 | tail -n 100`). Or filter the output (`grep -nE 'error:|FAIL'`) so that the diagnostics stay in the output.",
+    "The output has a limit of ~64KB / 1000 lines, which keeps the start. A failed build puts its diagnostics at the end, so they get cut. Send only the tail (`... 2>&1 | tail -n 100`), or filter for them (`grep -nE 'error:|FAIL'`).",
     "",
-    "If the limit cuts the output, the harness adds a structured `[truncated: ...]` notice. The harness also saves the full output to a blob path in a `<ma::agent::raw-output ... />` tag. You can Read that path. To find errors, Read the tail of that blob.",
+    "When the limit cuts the output, the harness adds a `[truncated: ...]` notice and saves the full text to a `<ma::agent::raw-output ... />` blob path. Read the tail of that blob for errors.",
     "",
-    "The transcript of the user has a different limit. The transcript shows only the first ~10 lines of the output body. It shows the remaining lines as a summary: `shown N/M L`. Do not use Bash to show visual content to the user, because the user sees only a part of it. Examples of visual content: ASCII art, banners, ANSI TUI previews, formatted tables and generated reports. To show visual content, put it in your text reply. The user reads the full text reply.",
+    "The user transcript keeps only ~10 lines of the body plus a `shown N/M L` summary. The tool_result you get back is not for visual content: ASCII art, banners, terminal previews, formatted tables or generated reports. Put it in your text reply instead, because the user reads the full reply.",
     "",
-    'The TUI preview can cut more lines than the API limit. If this occurs, the tool_result that you receive has a `<ma::agent::output-preview shown=N total=M>` annotation. The annotation shows you the difference on the next turn. If the harness saved a raw-output blob for that tool result, the annotation also has a `path="..."` attribute. This attribute points to the full output, so you can Read the full output directly.',
+    'The TUI preview can cut more than the API limit. The `<ma::agent::output-preview shown=N total=M>` annotation then carries a `path="..."` attribute when a blob exists. Read that path for the full output.',
     "",
-    "Do not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages or a specific time. While this command runs, your turn stays open. The harness sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle.",
+    "Do not use `sleep` or a polling loop to wait for a sub-agent, a job or a message. Your turn stays open while the command runs. A sleep delays the notice, because the harness sends it only between turns. End your turn to wait. Use a background tool when one is available. A sleep of a few seconds is correct only when the command needs it. Example: wait for a port.",
     "",
-    "If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep in Bash for this purpose. A sleep of a few seconds is correct when the command needs it. Example: wait for a port to open.",
-    "",
-    "The harness keeps the working directory between commands. The harness does not keep the shell state.",
+    "The harness keeps the working directory between commands. It does not keep the shell state.",
   ].join("\n"),
   Read: [
     "Reads a file from the local filesystem.",
@@ -636,7 +633,7 @@ const STE_TOOL_DESCRIPTIONS: Record<string, string> = {
     "",
     'The output that you receive has a limit of ~64KB / 1000 lines. The transcript of the user shows only the first ~12 lines and a summary of the remaining lines. For a broad search, use `output_mode: "files_with_matches"` or `"count"` when possible. `"files_with_matches"` returns only paths and is the densest mode.',
     "",
-    "Do not rely on the output limit to cut the output. Make the search narrower with these parameters:",
+    "Do not let the output limit cut the output. Make the search narrower with these parameters:",
     '- `glob`, for example "*.ts"',
     "- `path`, for a subdirectory",
     "- `-A/-B/-C`, for context lines",
@@ -645,12 +642,12 @@ const STE_TOOL_DESCRIPTIONS: Record<string, string> = {
   FilesStats: [
     "Reports the current status of the files that the session file tracker recorded.",
     "",
-    "To show only the files with one status, set `status` to `present`, `missing` or `changed`. To show all tracked files, do not set `status`. To filter by an exact file or a directory prefix, use `path`. The report is read-only. The tool does not scan the filesystem and does not track new files.",
+    "To show only the files with one status, set `status` to `present`, `missing` or `changed`. To show all tracked files, do not set `status`. To filter by an exact file or a directory prefix, use `path`. This tool has read-only access. It does not scan the filesystem and does not track new files.",
   ].join("\n"),
   Mode: [
     "Returns the active operating mode (for example, ASK) and its tool permission policy. Call this tool if you are not sure whether a mode is active. Example: after long thinking or many tool rounds. Use this tool to get a deterministic answer, not a guess from earlier reasoning.",
     "",
-    'The result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means that no mode is active and no tool restriction applies. `allow: ["*"]` means that every tool is permitted, except the tools in `deny`. If a tool is in `allow` and in `deny`, `deny` wins.',
+    'The result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. The value `id: null` means that no mode is active and no tool restriction applies. The value `allow: ["*"]` means that the harness permits every tool, except the tools in `deny`. If a tool is in `allow` and in `deny`, `deny` wins.',
     "",
     "You do not need to call this tool regularly. Every tool_result that you receive ends with a `<ma::agent::mode-active id=... since=... />` stamp. The stamp has the same id as the result of this tool. Use this tool if no tool round occurred recently and you want to confirm the mode.",
   ].join("\n"),

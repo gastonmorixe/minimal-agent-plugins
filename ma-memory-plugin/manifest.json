@@ -3,7 +3,7 @@
   "name": "Memory",
   "version": "0.4.0",
   "requires": ["prompts.template"],
-  "description": "Persistent cross-session memory plus a per-session short-term scratchpad. Saves via the inline <ma::emit::memory> tag (zero-friction, mid-response), reads/edits/removes via the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). Persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`), while short-term rides as a per-turn user-message attachment.",
+  "description": "Persistent cross-session memory plus a per-session short-term scratchpad. The model saves with the inline <ma::emit::memory> tag in a response, and reads, edits or removes with the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). The persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`). The short-term scope moves as a user-message attachment on each turn.",
   "headless": {
     "tools": [
       {
@@ -45,7 +45,7 @@
                 },
                 "body": {
                   "type": "string",
-                  "description": "New body for add or edit. Single-line preferred, multi-line is collapsed to one line."
+                  "description": "New body for add or edit. A single line is best. The tool folds a multi-line body to one line."
                 },
                 "query": {
                   "type": "string",
@@ -54,12 +54,12 @@
                 "limit": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "For action=list, page size. Default 20, max 100 (over-large values are clamped). Pair with `offset` to page through the full set."
+                  "description": "For action=list, the page size. Default 20, max 100. The tool caps a value that is too large. Pair it with `offset` to page through the full set."
                 },
                 "offset": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page, offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page."
+                  "description": "For action=list, count the entries to skip from the newest end. A value of offset=0 (default) gives the most recent page. A value of offset=20 gives the page before that, and so on. The `next:` hint in the response header gives the exact value for the next page."
                 },
                 "format": {
                   "type": "string",

@@ -1,9 +1,9 @@
-You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff
+You are making a context checkpoint compaction. Create a handoff
 summary for another LLM that will resume the task.
 
 Respond with text only. Do not call any tools.
 Do not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.
-You have all context in the conversation above. Tool calls are REJECTED.
+You have all context in the conversation above. The harness rejects tool calls.
 Reply with the summary body only (no preamble).
 Respond in the same language as the conversation.
 Do not continue the task. Do not answer open questions. Only summarize.
@@ -25,7 +25,7 @@ Exact paths touched plus one line per change.
 Keep exact commands, IDs, error text still needed. Drop full logs.
 
 ## 5. Errors and fixes
-What broke, what fixed it, what is still broken.
+What broke, what fixed it, and what the fix did not repair.
 
 ## 6. Pending tasks
 What remains, next action first. Preserve any unanswered

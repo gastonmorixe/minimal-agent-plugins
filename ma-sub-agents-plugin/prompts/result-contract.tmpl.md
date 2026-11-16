@@ -6,4 +6,4 @@ Deliver each required file through `ReportResult.deliverables`. Give the full fi
 
    "deliverables": [{ "path": "<one required path>", "content": "<full file text>" }]
 
-This works in every mode, also read-only. If you can edit files, you may write a required file first and only list it in `artifacts`. `ReportResult` returns an error and records nothing while a required file is missing, unless you set `"incomplete": true` and give the reason.
+This works in every mode, also read-only. If you can edit files, you may write a required file first. Then list it in `artifacts` only. `ReportResult` returns an error and records nothing while a required file is missing. If you cannot make the file, set `"incomplete": true` and give the reason.

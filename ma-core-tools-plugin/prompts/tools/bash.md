@@ -1,17 +1,15 @@
 Runs a bash command and returns its output.
 
-Do not use Bash to search, read or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Do not use these commands in Bash: `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc`. Use them only if no dedicated tool can do the task. Use Bash only for real shell work: builds, tests, git, package managers and file moves.
+Do not use Bash to search, read or count code. Use Grep for file contents and Glob for file names. Do not run `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc` in Bash. Use Bash for real shell work: builds, tests, git, package managers and file moves.
 
-The output that you receive has a limit of ~64KB / 1000 lines, whichever comes first. The limit keeps the start of the output. A failed build or test run puts its diagnostics at the end of the output. Thus the limit removes the part that you need. For a long command, send only the tail to the output (`... 2>&1 | tail -n 100`). Or filter the output (`grep -nE 'error:|FAIL'`) so that the diagnostics stay in the output.
+The output has a limit of ~64KB / 1000 lines, which keeps the start. A failed build puts its diagnostics at the end, so they get cut. Send only the tail (`... 2>&1 | tail -n 100`), or filter for them (`grep -nE 'error:|FAIL'`).
 
-If the limit cuts the output, the harness adds a structured `[truncated: ...]` notice. The harness also saves the full output to a blob path in a `<ma::agent::raw-output ... />` tag. You can Read that path. To find errors, Read the tail of that blob.
+When the limit cuts the output, the harness adds a `[truncated: ...]` notice and saves the full text to a `<ma::agent::raw-output ... />` blob path. Read the tail of that blob for errors.
 
-The transcript of the user has a different limit. The transcript shows only the first ~10 lines of the output body. It shows the remaining lines as a summary: `shown N/M L`. Do not use Bash to show visual content to the user, because the user sees only a part of it. Examples of visual content: ASCII art, banners, ANSI TUI previews, formatted tables and generated reports. To show visual content, put it in your text reply. The user reads the full text reply.
+The user transcript keeps only ~10 lines of the body plus a `shown N/M L` summary. The tool_result you get back is not for visual content: ASCII art, banners, terminal previews, formatted tables or generated reports. Put it in your text reply instead, because the user reads the full reply.
 
-The TUI preview can cut more lines than the API limit. If this occurs, the tool_result that you receive has a `<ma::agent::output-preview shown=N total=M>` annotation. The annotation shows you the difference on the next turn. If the harness saved a raw-output blob for that tool result, the annotation also has a `path="..."` attribute. This attribute points to the full output, so you can Read the full output directly.
+The TUI preview can cut more than the API limit. The `<ma::agent::output-preview shown=N total=M>` annotation then carries a `path="..."` attribute when a blob exists. Read that path for the full output.
 
-Do not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages or a specific time. While this command runs, your turn stays open. The harness sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle.
+Do not use `sleep` or a polling loop to wait for a sub-agent, a job or a message. Your turn stays open while the command runs. A sleep delays the notice, because the harness sends it only between turns. End your turn to wait. Use a background tool when one is available. A sleep of a few seconds is correct only when the command needs it. Example: wait for a port.
 
-If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep in Bash for this purpose. A sleep of a few seconds is correct when the command needs it. Example: wait for a port to open.
-
-The harness keeps the working directory between commands. The harness does not keep the shell state.
+The harness keeps the working directory between commands. It does not keep the shell state.

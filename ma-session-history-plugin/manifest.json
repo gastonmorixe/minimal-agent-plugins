@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "SessionHistory",
-            "description": "Read the recorded conversation history of a session from the on-disk transcript store (~/.minimal-agent/sessions/<sid>.jsonl), this session's earlier turns or any past one. The archival counterpart to SessionInfo (which reports live runtime state: context %, quota, cost). Actions: 'window' (default) pages records with stable indexes, newest 10 by default (anchor 'end'), and anchor 'start' + offset/limit walks forward. 'meta' summarizes a session (model, cwd, created, record counts, first prompt, liveness). 'list' enumerates saved sessions newest-first (filter by query/cwd). 'search' greps text across one session (sid set) or recent sessions (sid omitted). 'tool_calls' filters invocations by tool name. 'blob' reads one tool call's full pre-truncation output by tool_use_id. 'dump' renders the whole session as markdown or XML (large, prefer 'window'). sid defaults to 'last' and accepts any unique id prefix (e.g. '260d72dd'). Results are bounded: previews clip per record and each response reports totals plus next-page offsets.",
+            "description": "Read the conversation history of a saved session from the on-disk transcript store (~/.minimal-agent/sessions/<sid>.jsonl). It reads this session, its earlier turns, or any past session. It is the archival counterpart to SessionInfo, which reports the live runtime state: context %, quota and cost. Actions: 'window' (default) pages the records with stable indexes, newest 10 by default (anchor 'end'), and anchor 'start' with offset/limit walks forward. 'meta' gives a summary of a session (model, cwd, created, record counts, first prompt, liveness). 'list' enumerates the saved sessions, newest first (filter by query/cwd). 'search' finds text in one session (sid set) or in the recent sessions (sid omitted). 'tool_calls' filters the invocations by tool name. 'blob' reads the full pre-truncation output of one tool call by tool_use_id. 'dump' gives the whole session as markdown or XML (large, prefer 'window'). The sid defaults to 'last' and accepts any unique id prefix (e.g. '260d72dd'). The tool limits each result: it clips the previews for each record, and each response gives the totals and the next-page offsets.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -23,7 +23,7 @@
                 },
                 "sid": {
                   "type": "string",
-                  "description": "Target session id, full id or any unique prefix (e.g. '260d72dd'), or 'last' (default) for the most recent session in this cwd (falling back to the globally most recent). An ambiguous prefix errors with the matching candidates. Not needed for 'list', optional for 'search'."
+                  "description": "Target session id, a full id, or any unique prefix (e.g. '260d72dd'), or 'last' (default) for the most recent session in this cwd. If there is no session in this cwd, the tool uses the globally most recent session. An ambiguous prefix gives an error with the matching candidates. Not needed for 'list', optional for 'search'."
                 },
                 "anchor": {
                   "type": "string",

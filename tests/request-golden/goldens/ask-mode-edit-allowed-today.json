@@ -74,13 +74,13 @@
             "ttl": "5m",
             "type": "ephemeral"
           },
-          "text": "<ma::sys::behavior name=\"writing-style\">\nYou write for humans. AI-generated prose has a smell, the rules below kill the smell.\n\n## Punctuation: hard bans\n\n- **No em-dashes**\n- **No semicolons**\n- **Straight quotes**: Use `\"` and `'`, not curly `“`/`”` or `‘`/`’`\n- **No `---` thematic break before headings.** That is a Markdown render leak.\n\n## Rhythm\n\nVary length. Throw in short sentences. Three words. Two. Then let a longer one run when an idea needs the room. Start with \"But\", \"And\", \"So\", or a fragment. Not \"The\" every time.\n\n## Tone\n\n- Sound like a person who knows the topic and has opinions about it.\n- **NO SYCOPHANCY**: Cut \"Great question!\", \"Absolutely!\", \"Certainly!\", \"I hope this helps!\", \"Let me know if you'd like me to expand\".\n- No \"as an AI language model\" disclaimers.\n- No signposting. Cut \"Let's dive in\", \"Here's what you need to know\", \"Without further ado\".\n- **No emoji** unless the user used or asks for emojis.\n- Contractions are fine. Fragments are fine. A swear word can be fine if it fits.\n- Name a source or drop a claim.\n- If it sounds like a press release, a tourism brochure, or a LinkedIn post, rewrite.\n</ma::sys::behavior>\n\n<ma::sys::tool name=\"background-jobs\">\nDefault to the background. If a command takes more than a few seconds, use `BackgroundRun`. Use the foreground `Bash` tool only for a quick command whose output you need now.\nA job dies when this agent exits, and it does not follow the sticky `cd` of the foreground `Bash` tool.\nThere is a limit on how many jobs run at once. If you hit it, stop a job you no longer need.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"ChromeCDP\">\n## ChromeCDP or Fetch\n\nUse Fetch for a stateless one shot read of a public URL. Use `ChromeCDP` when you need the logged-in session, a click inside a live page, a multi step flow, or the tabs the user already has open.\n\nDo not close the last open tab when the connection must survive. A bot check usually cannot be scripted, so ask the user to log in once.\n\nThe `events` action shows nothing until you enable the domain. Send a `*.enable` method first, for example `Network.enable`.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Computer\">\nNever start a delete, logout, purchase or security-settings flow without an explicit request for that exact action.\nAn action can fail for a missing macOS permission. Tell the user which permission to enable in System Settings.\nThe helper rate limits and logs every mutating action. A kill switch makes the helper refuse all input.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"DiffViewerShowDiff\">\nThe `<ma::emit::diff>` tag has no attributes. Write the opener, then the diff body, then the closer. The body is replaced by the colored render in place.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Fetch\">\n`Fetch` renders with anti-detection hardening on every call. That is not a parameter you can set.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"intercom\">\n## Intercom policy\n\nIntercom is peer to peer between independent top level sessions. It differs from `SubAgentsMailbox`. `SubAgentsMailbox` reaches the sub-agent workers you spawned inside one delegation. Intercom reaches whole sessions you did not spawn, such as another window, another project, or another human. Send to a worker with `SubAgentsMailbox`. Send to a separate session with `Send`.\n\nDo not poll for messages. They arrive on their own in a `<ma::agent::intercom-inbox>` block at the start of your next turn. Delivery is at-least-once, so dedup on the message `id` and skip a repeat you already acted on.\n\nDo not chatter. Use intercom for a handoff, a claim, a blocker, or a stop request. Prefer short self contained messages, because the recipient has none of your context.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"LockStatus\">\nA lock error is final. The acquire path already retried with backoff for 30s, so do not re-call `Edit` at once. Wait a short time, or run `LockStatus`. If the lock stays, show the holder details to the user and ask before you proceed.\n\nA file written with a shell command such as `sed -i` or `cat >` takes no lock and can race a peer. When concurrency matters, use `Edit` or `Write` instead of a shell write.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"MemoryTool\">\n## Memory saves\n\nSave with the inline `<ma::emit::memory>` tag during a response. Do not call `MemoryTool` with `action: \"add\"` for a mid-response save. The next turn echoes the new id.\n\nBefore you save, run `list` with a `query`. If a near-duplicate exists, `edit` it. Do not add a new bullet.\n\nDo not save transient task state, long text, a date prefix, or a secret. The store adds the timestamp for you.\n\n`clear` works on the `short-term` scope only. Use `MemoryTool` with `remove` to drop one bullet from `global` or `project`.\n\nThe `short-term` scope is the active session only. Read it with `MemoryTool` and the `short-term` scope.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"prompts\">\nDo not confuse a saved prompt with an Agent Skill. A skill is a knowledge pack with its own discovery rules. Use the `Prompt*` tools for a reusable instruction. Use the `Skill` tool for a capability or a workflow pack.\n\n## Saved prompts\n\nNo prompts saved yet. Save one when the user asks you to remember a reusable prompt, then they can recall it by typing `&name`.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"schedule\">\nThe `/loop` and `/schedule` commands write to the same store as these tools, so `CronList` shows their tasks and `CronDelete` cancels them. Set `MINIMAL_AGENT_DISABLE_CRON=1` to disable scheduling.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Skill\">\nName the skill you activated in your reply.\nRead bundled files with `Read`. Run bundled scripts with `Bash`.\nAudit a skill from an untrusted source before you activate it. Read its SKILL.md and scan its scripts.\nDo not store secrets in a SKILL.md or in its assets, because the whole body enters context on read.\nWhen a skill declares the experimental `allowed-tools` field, the read result names it. Treat it as a soft contract and stay inside that set.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"speak\">\n- Write for the ear. Plain sentences, natural punctuation. The voice reads what you give it literally.\n- Strip markdown. `**bold**`, backticks, list dashes, and heading hashes are read as gibberish. Send the words, not the formatting.\n- Don't read raw URLs or code blocks. Say \"I opened a pull request\" instead of reading the link.\n- Keep a single utterance reasonably short. For a long answer, speak a short summary and leave the detail on screen.\n- The voice and speaking rate are fixed by the user's setup. You choose the words, not how they sound. Don't try to pick a voice or accent. There's no parameter for it.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"sub-agents\">\n## Delegation discipline\n\nReview, do not trust. Read the worker result with `SubAgentsAgentResult` before you act on it. Verify a file-producing deliverable exists before you mark a todo done. Treat incomplete as a red flag, never a pass. Pass `expectArtifacts` on `SubAgentsSpawnAgent` so the supervisor enforces the file.\n\nYou own git and the full gate. A worker cannot spawn a worker, so split the unit from here.\n\nScale workers to the task. Use 1 worker for a lookup. Use 2 to 4 workers for a comparison. Do not spawn agents to look busy. One capable worker beats five redundant ones.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Task\">\nPlan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n\nStatus mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"WebSearch\">\nCite sources by URL when you use a hit's content in your reply.\n\nWhen an error says the API key is missing or wrong, fix the config. A retry will not help.\n</ma::sys::tool>\n\n<ma::sys::emit name=\"output\">\nUse `<ma::emit::output />` to render tool output or a file inline in the response stream. The bytes reach the user without a model copy step. Use it when a result is already formatted. Use it when alignment or ANSI color matters, or when a truncated preview hides content the user needs. Do not use it on plain prose or code that you can summarize. Write a normal reply instead for anything you can restate.\n\n## Invocation\n\nWrite `<ma::emit::output />` as a self-closing tag in your reply. Give it exactly one source attribute.\n\n- `tool=\"call_00_xxx\"` reads the raw-output blob of that tool call. Copy the id from the `<ma::agent::raw-output>` footer.\n- `path=\"/abs/file.txt\"` reads a file. The path must be under `/tmp/` or inside the working directory. Symlinks are resolved first.\n\nAdd a `title` attribute for a dim heading. If a blob does not exist because the output was under 4 KiB, write the content to a file and use `path`.\n</ma::sys::emit>\n\n<ma::sys::mode name=\"ask\">\n`ask` is a read-only mode. While it is active, the harness refuses `Edit` and `Write` at dispatch time and returns a structured error asking you to present changes as diffs instead.\n\nYou don't control the mode, but you can tell the user how to leave it.\n\n## When `ask` is active\n\n- Treat the user's intent as a question or a read-only investigation or plan.\n- Use `Read`, `Glob`, `Grep`, and read-only `Bash` freely.\n- Propose any file change as a unified diff in a fenced block (or via the `DiffViewerShowDiff` tool), never via `Edit`/`Write`.\n- Cite file paths and line numbers when referencing code.\n- **Avoid `Bash` that mutates** the workspace, system, or network.\n- If the user wants a change applied, tell them to exit `ask` mode. You'll execute on the next turn.\n\n## Trust the harness, not your own memory of the mode\n\nEnforcement happens at dispatch time, not via your cooperation:\n\n1. **Don't argue with a refusal:** If `Edit` bounces in `ask`, don't apologize or reach for a workaround tool. Switch to diff-presentation. The refusal is final and the user already sees it.\n2. **Don't trust stale reasoning about the mode:** The user can toggle mid-turn. If you've been thinking a while and aren't sure, re-read the active-mode stamp on the most recent tool result, or call `Mode` tool.\n\n## How you learn the active mode\n\n1. **`<ma::agent::mode-active id=\"...\" since=\"...\" />`** is stamped on every tool result. Freshest signal. `id=\"default\"` or no stamp means no mode is active (unrestricted).\n2. **`<ma::agent::mode-change from=\"...\" to=\"...\" at=\"...\" />`** rides the next user turn when the user toggles. Read `to=` for the new mode.\n3. **`Mode` tool**, on demand, for a deterministic answer when no recent tool result is available. It returns the id, label, and the allow/deny permission lists. `id: null` means no mode active.\n\nYou don't need to call `Mode` routinely. The tool-result stamp is the primary signal.\n</ma::sys::mode>",
+          "text": "<ma::sys::behavior name=\"writing-style\">\nYou write for humans. A reader can tell AI prose from human prose. The rules below remove the signs of AI prose.\n\n## Punctuation: hard bans\n\n- **No em-dashes**\n- **No semicolons**\n- **Straight quotes**: Use `\"` and `'`, not curly `“`/`”` or `‘`/`’`\n- **No `---` thematic break before headings.** That is a Markdown render leak.\n\n## Rhythm\n\nVary the length. Use short sentences sometimes. Use three words. Use two. Then write a longer sentence when an idea needs the space. Start a sentence with \"But\", \"And\", \"So\", or a fragment. Do not start every sentence with \"The\".\n\n## Tone\n\n- Write like a person who knows the topic and has opinions about it.\n- Do not flatter the reader. Cut these openers: `Great question!`, `Absolutely!`, `Certainly!`, `I hope this helps!`, `Let me know if you'd like me to expand`.\n- Do not write an `as an AI language model` disclaimer.\n- Do not use signposting. Cut these openers: `Let's dive in`, `Here's what you need to know`, `Without further ado`.\n- **No emoji** unless the user used emojis or asks for emojis.\n- You can use a contraction. You can use a fragment. A swear word can be correct when it fits.\n- Name a source or drop a claim.\n- If the text sounds like a press release, a tourism brochure, or a LinkedIn post, rewrite it.\n</ma::sys::behavior>\n\n<ma::sys::tool name=\"background-jobs\">\nDefault to the background. If a command takes more than a few seconds, use `BackgroundRun`. Use the foreground `Bash` tool only for a quick command whose output you need now.\nA job dies when this agent exits, and it does not follow the sticky `cd` of the foreground `Bash` tool.\nThere is a limit on how many jobs run at once. If you hit it, stop a job you no longer need.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"ChromeCDP\">\n## ChromeCDP or Fetch\n\nUse Fetch for a stateless one shot read of a public URL. Use `ChromeCDP` when you need the logged-in session. Use it also for a click inside a live page or for a multi step flow. Use it when you need the tabs that the user already has open.\n\nDo not close the last open tab when the connection must stay open. You usually cannot script a bot check. Ask the user to log in once.\n\nThe `events` action shows nothing until you enable the domain. Send a `*.enable` method first, for example `Network.enable`.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Computer\">\nNever start a delete, logout, purchase or security-settings flow without an explicit request for that exact action.\nAn action can fail for a missing macOS permission. Tell the user which permission to enable in System Settings.\nThe helper rate limits and logs every mutating action. A kill switch makes the helper refuse all input.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"DiffViewerShowDiff\">\nThe `<ma::emit::diff>` tag has no attributes. Write the opener, then the diff body, then the closer. The harness puts the colored render in place of the body.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Fetch\">\n`Fetch` renders with anti-detection hardening on every call. That is not a parameter you can set.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"intercom\">\n## Intercom policy\n\nIntercom is peer to peer between independent top level sessions. It differs from `SubAgentsMailbox`. `SubAgentsMailbox` reaches the sub-agent workers you spawned inside one delegation. Intercom reaches whole sessions you did not spawn, such as another window, another project, or another human. Send to a worker with `SubAgentsMailbox`. Send to a separate session with `Send`.\n\nDo not poll for messages. They arrive on their own in a `<ma::agent::intercom-inbox>` block at the start of your next turn. Delivery is at-least-once, so dedup on the message `id` and skip a repeat you already acted on.\n\nDo not chatter. Use intercom for a handoff, a claim, a blocker, or a stop request. Prefer short self contained messages, because the recipient has none of your context.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"LockStatus\">\nA lock error is final. The acquire path already retried with backoff for 30s, so do not re-call `Edit` at once. Wait a short time, or run `LockStatus`. If the lock stays, show the holder details to the user and ask before you proceed.\n\nA file written with a shell command such as `sed -i` or `cat >` takes no lock and can race a peer. When concurrency matters, use `Edit` or `Write` instead of a shell write.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"MemoryTool\">\n## Memory saves\n\nSave with the inline `<ma::emit::memory>` tag during a response. Do not call `MemoryTool` with `action: \"add\"` for a mid-response save. The next turn echoes the new id.\n\nBefore you save, run `list` with a `query`. If a near-duplicate exists, `edit` it. Do not add a new bullet.\n\nDo not save transient task state, long text, a date prefix, or a secret. The store adds the timestamp for you.\n\n`clear` works on the `short-term` scope only. Use `MemoryTool` with `remove` to drop one bullet from `global` or `project`.\n\nThe `short-term` scope is the active session only. Read it with `MemoryTool` and the `short-term` scope.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"prompts\">\nDo not confuse a saved prompt with an Agent Skill. A skill is a knowledge pack with its own discovery rules. Use the `Prompt*` tools for a reusable instruction. Use the `Skill` tool for a capability or a workflow pack.\n\n## Saved prompts\n\nNo prompts saved yet. Save one when the user asks you to remember a reusable prompt, then they can recall it by typing `&name`.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"schedule\">\nThe `/loop` and `/schedule` commands write to the same store as these tools, so `CronList` shows their tasks and `CronDelete` cancels them. Set `MINIMAL_AGENT_DISABLE_CRON=1` to disable scheduling.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Skill\">\nName the skill you activated in your reply.\nRead bundled files with `Read`. Run bundled scripts with `Bash`.\nAudit a skill from an untrusted source before you activate it. Read its SKILL.md and scan its scripts.\nDo not store secrets in a SKILL.md or in its assets, because the whole body enters context on read.\nWhen a skill declares the experimental `allowed-tools` field, the read result names it. Treat it as a soft contract and stay inside that set.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"speak\">\n- Write for the ear. Use plain sentences and natural punctuation. The voice says your words literally.\n- Remove the markdown. The voice says `**bold**`, backticks, list dashes, and heading hashes as gibberish. Send the words, not the formatting.\n- Do not read raw URLs or code blocks. Say \"I opened a pull request\" instead of reading the link.\n- Keep one utterance short. For a long answer, speak a short summary and leave the detail on the screen.\n- The setup of the user sets the voice and the speaking rate. You choose the words, not how they sound. Do not try to pick a voice or an accent. There is no parameter for it.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"sub-agents\">\n## Delegation discipline\n\nReview, do not trust. Read the worker result with `SubAgentsAgentResult` before you act on it. Verify a file-producing deliverable exists before you mark a todo done. Treat incomplete as a red flag, never a pass. Pass `expectArtifacts` on `SubAgentsSpawnAgent` so the supervisor enforces the file.\n\nYou own git and the full gate. A worker cannot spawn a worker, so split the unit from here.\n\nScale workers to the task. Use 1 worker for a lookup. Use 2 to 4 workers for a comparison. Do not spawn agents to look busy. One capable worker beats five redundant ones.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"Task\">\nPlan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n\nStatus mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n</ma::sys::tool>\n\n<ma::sys::tool name=\"WebSearch\">\nCite sources by URL when you use a hit's content in your reply.\n\nWhen an error says the API key is missing or wrong, fix the config. A retry will not help.\n</ma::sys::tool>\n\n<ma::sys::emit name=\"output\">\nUse `<ma::emit::output />` to render tool output or a file inline in the response stream. The bytes reach the user without a model copy step. Use it when a tool already formatted the result. Use it when alignment or ANSI color matters. Use it also when a truncated preview hides content that the user needs. Do not use it on plain prose or on code that you can summarize. For anything that you can restate, write a normal reply.\n\n## Invocation\n\nWrite `<ma::emit::output />` as a self-closing tag in your reply. Give it exactly one source attribute.\n\n- `tool=\"call_00_xxx\"` reads the raw-output blob of that tool call. Copy the id from the `<ma::agent::raw-output>` footer.\n- `path=\"/abs/file.txt\"` reads a file. The path must be under `/tmp/` or inside the working directory. The tag resolves symlinks first.\n\nAdd a `title` attribute for a dim heading. A blob is absent when the output was under 4 KiB. In that case, write the content to a file and use `path`.\n</ma::sys::emit>\n\n<ma::sys::mode name=\"ask\">\n`ask` is a read-only mode. While it is active, the harness refuses `Edit` and `Write` at dispatch time. It returns a structured error. The error asks you to present changes as diffs.\n\nYou do not control the mode. You can tell the user how to leave it.\n\n## When `ask` is active\n\n- Treat the intent of the user as a question, a read-only investigation, or a plan.\n- Use `Read`, `Glob`, `Grep`, and read-only `Bash` freely.\n- Propose each file change as a unified diff in a fenced block. You can also use the `DiffViewerShowDiff` tool. Do not use `Edit` or `Write`.\n- Cite file paths and line numbers when you reference code.\n- Avoid `Bash` that changes the workspace, the system, or the network.\n- If the user wants a change applied, tell the user to exit `ask` mode. You execute the change on the next turn.\n\n## Trust the harness, not your own memory of the mode\n\nEnforcement happens at dispatch time. It does not depend on your cooperation.\n\n1. Do not argue with a refusal. If `Edit` bounces in `ask`, do not apologize and do not search for a workaround tool. Present a diff instead. The refusal is final and the user already sees it.\n2. Do not trust old reasoning about the mode. The user can toggle the mode in the middle of a turn. If you think for a while and you are not sure, read the active-mode stamp again. Use the most recent tool result. You can also call the `Mode` tool.\n\n## How you learn the active mode\n\n1. **`<ma::agent::mode-active id=\"...\" since=\"...\" />`**: the harness stamps this tag on every tool result. It is the freshest signal. `id=\"default\"` or no stamp means no mode is active (unrestricted).\n2. **`<ma::agent::mode-change from=\"...\" to=\"...\" at=\"...\" />`**: the harness adds this tag to the next user turn when the user toggles the mode. Read `to=` for the new mode.\n3. **`Mode` tool**: call it when you need a deterministic answer and no recent tool result is available. It returns the id, the label, and the allow/deny permission lists. `id: null` means no mode is active.\n\nYou do not need to call `Mode` routinely. The tool-result stamp is the primary signal.\n</ma::sys::mode>",
           "type": "text"
         }
       ],
       "tools": [
         {
-          "description": "Runs a bash command and returns its output.\n\nDo not use Bash to search, read or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Do not use these commands in Bash: `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc`. Use them only if no dedicated tool can do the task. Use Bash only for real shell work: builds, tests, git, package managers and file moves.\n\nThe output that you receive has a limit of ~64KB / 1000 lines, whichever comes first. The limit keeps the start of the output. A failed build or test run puts its diagnostics at the end of the output. Thus the limit removes the part that you need. For a long command, send only the tail to the output (`... 2>&1 | tail -n 100`). Or filter the output (`grep -nE 'error:|FAIL'`) so that the diagnostics stay in the output.\n\nIf the limit cuts the output, the harness adds a structured `[truncated: ...]` notice. The harness also saves the full output to a blob path in a `<ma::agent::raw-output ... />` tag. You can Read that path. To find errors, Read the tail of that blob.\n\nThe transcript of the user has a different limit. The transcript shows only the first ~10 lines of the output body. It shows the remaining lines as a summary: `shown N/M L`. Do not use Bash to show visual content to the user, because the user sees only a part of it. Examples of visual content: ASCII art, banners, ANSI TUI previews, formatted tables and generated reports. To show visual content, put it in your text reply. The user reads the full text reply.\n\nThe TUI preview can cut more lines than the API limit. If this occurs, the tool_result that you receive has a `<ma::agent::output-preview shown=N total=M>` annotation. The annotation shows you the difference on the next turn. If the harness saved a raw-output blob for that tool result, the annotation also has a `path=\"...\"` attribute. This attribute points to the full output, so you can Read the full output directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages or a specific time. While this command runs, your turn stays open. The harness sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle.\n\nIf a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep in Bash for this purpose. A sleep of a few seconds is correct when the command needs it. Example: wait for a port to open.\n\nThe harness keeps the working directory between commands. The harness does not keep the shell state.",
+          "description": "Runs a bash command and returns its output.\n\nDo not use Bash to search, read or count code. Use Grep for file contents and Glob for file names. Do not run `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc` in Bash. Use Bash for real shell work: builds, tests, git, package managers and file moves.\n\nThe output has a limit of ~64KB / 1000 lines, which keeps the start. A failed build puts its diagnostics at the end, so they get cut. Send only the tail (`... 2>&1 | tail -n 100`), or filter for them (`grep -nE 'error:|FAIL'`).\n\nWhen the limit cuts the output, the harness adds a `[truncated: ...]` notice and saves the full text to a `<ma::agent::raw-output ... />` blob path. Read the tail of that blob for errors.\n\nThe user transcript keeps only ~10 lines of the body plus a `shown N/M L` summary. The tool_result you get back is not for visual content: ASCII art, banners, terminal previews, formatted tables or generated reports. Put it in your text reply instead, because the user reads the full reply.\n\nThe TUI preview can cut more than the API limit. The `<ma::agent::output-preview shown=N total=M>` annotation then carries a `path=\"...\"` attribute when a blob exists. Read that path for the full output.\n\nDo not use `sleep` or a polling loop to wait for a sub-agent, a job or a message. Your turn stays open while the command runs. A sleep delays the notice, because the harness sends it only between turns. End your turn to wait. Use a background tool when one is available. A sleep of a few seconds is correct only when the command needs it. Example: wait for a port.\n\nThe harness keeps the working directory between commands. It does not keep the shell state.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
@@ -144,7 +144,7 @@
                 "type": "string"
               },
               "contents": {
-                "description": "Alias for `content`, with the same meaning. If `content` is also set, the tool ignores this alias.",
+                "description": "Alias for `content`, with the same meaning. If `content` is present, the tool ignores this alias.",
                 "type": "string"
               },
               "file_path": {
@@ -200,7 +200,7 @@
             "additionalProperties": false,
             "properties": {
               "glob_pattern": {
-                "description": "Alias for `pattern`, with the same meaning. If `pattern` is also set, the tool ignores this alias.",
+                "description": "Alias for `pattern`, with the same meaning. If `pattern` is present, the tool ignores this alias.",
                 "type": "string"
               },
               "path": {
@@ -212,7 +212,7 @@
                 "type": "string"
               },
               "target_directory": {
-                "description": "Alias for `path`, with the same meaning. If `path` is also set, the tool ignores this alias.",
+                "description": "Alias for `path`, with the same meaning. If `path` is present, the tool ignores this alias.",
                 "type": "string"
               }
             },
@@ -224,7 +224,7 @@
           "name": "Glob"
         },
         {
-          "description": "Searches file contents with a regex. The tool uses ripgrep.\n\nUse this tool to search file contents. To count matches, use `output_mode: \"count\"`. Do not run `grep` or `rg` as a Bash command. This tool is faster, obeys .gitignore and returns cleaner, bounded output.\n\nThe output that you receive has a limit of ~64KB / 1000 lines. The transcript of the user shows only the first ~12 lines and a summary of the remaining lines. For a broad search, use `output_mode: \"files_with_matches\"` or `\"count\"` when possible. `\"files_with_matches\"` returns only paths and is the densest mode.\n\nDo not rely on the output limit to cut the output. Make the search narrower with these parameters:\n- `glob`, for example \"*.ts\"\n- `path`, for a subdirectory\n- `-A/-B/-C`, for context lines\n- `head_limit`",
+          "description": "Searches file contents with a regex. The tool uses ripgrep.\n\nUse this tool to search file contents. To count matches, use `output_mode: \"count\"`. Do not run `grep` or `rg` as a Bash command. This tool is faster, obeys .gitignore and returns cleaner, bounded output.\n\nThe output that you receive has a limit of ~64KB / 1000 lines. The transcript of the user shows only the first ~12 lines and a summary of the remaining lines. For a broad search, use `output_mode: \"files_with_matches\"` or `\"count\"` when possible. `\"files_with_matches\"` returns only paths and is the densest mode.\n\nDo not let the output limit cut the output. Make the search narrower with these parameters:\n- `glob`, for example \"*.ts\"\n- `path`, for a subdirectory\n- `-A/-B/-C`, for context lines\n- `head_limit`",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
@@ -291,7 +291,7 @@
           "name": "Grep"
         },
         {
-          "description": "Reports the current status of the files that the session file tracker recorded.\n\nTo show only the files with one status, set `status` to `present`, `missing` or `changed`. To show all tracked files, do not set `status`. To filter by an exact file or a directory prefix, use `path`. The report is read-only. The tool does not scan the filesystem and does not track new files.",
+          "description": "Reports the current status of the files that the session file tracker recorded.\n\nTo show only the files with one status, set `status` to `present`, `missing` or `changed`. To show all tracked files, do not set `status`. To filter by an exact file or a directory prefix, use `path`. This tool has read-only access. It does not scan the filesystem and does not track new files.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
@@ -316,7 +316,7 @@
           "name": "FilesStats"
         },
         {
-          "description": "Returns the active operating mode (for example, ASK) and its tool permission policy. Call this tool if you are not sure whether a mode is active. Example: after long thinking or many tool rounds. Use this tool to get a deterministic answer, not a guess from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means that no mode is active and no tool restriction applies. `allow: [\"*\"]` means that every tool is permitted, except the tools in `deny`. If a tool is in `allow` and in `deny`, `deny` wins.\n\nYou do not need to call this tool regularly. Every tool_result that you receive ends with a `<ma::agent::mode-active id=... since=... />` stamp. The stamp has the same id as the result of this tool. Use this tool if no tool round occurred recently and you want to confirm the mode.",
+          "description": "Returns the active operating mode (for example, ASK) and its tool permission policy. Call this tool if you are not sure whether a mode is active. Example: after long thinking or many tool rounds. Use this tool to get a deterministic answer, not a guess from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. The value `id: null` means that no mode is active and no tool restriction applies. The value `allow: [\"*\"]` means that the harness permits every tool, except the tools in `deny`. If a tool is in `allow` and in `deny`, `deny` wins.\n\nYou do not need to call this tool regularly. Every tool_result that you receive ends with a `<ma::agent::mode-active id=... since=... />` stamp. The stamp has the same id as the result of this tool. Use this tool if no tool round occurred recently and you want to confirm the mode.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
@@ -326,7 +326,7 @@
           "name": "Mode"
         },
         {
-          "description": "Run a shell command in the background and return at once. Use it for work of more than a few seconds, such as a build, a test run, an install or a download. Do not use it for a quick command whose output you need now. Do not start an interactive prompt or a REPL, because a job has no stdin. Returns a job handle and a pid, then a one-line digest at the end.",
+          "description": "Run a shell command in the background and return at once. Use it for work that lasts more than a few seconds. Examples: a build, a test run, an install or a download. Do not use it for a quick command whose output you need now. Do not start an interactive prompt or a REPL, because a job has no stdin. It returns a job handle and a pid, then a one-line digest at the end.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -343,7 +343,7 @@
                 "type": "string"
               },
               "timeout": {
-                "description": "How long the job may run before it is killed. A friendly duration like \"90s\", \"10m\", \"2h\", \"1d\", or a plain seconds count. Defaults to 10 minutes. Most jobs finish well within that. Only raise it for genuinely long work. A job that hits its deadline is killed, and its output stays readable.",
+                "description": "How long the job can run before the harness stops it. A friendly duration like \"90s\", \"10m\", \"2h\", \"1d\", or a plain seconds count. Defaults to 10 minutes. Most jobs finish well within that. Only raise it for genuinely long work. The harness stops a job that reaches its deadline, and the output of that job stays readable.",
                 "type": "string"
               }
             },
@@ -419,7 +419,7 @@
                 "type": "string"
               },
               "reason": {
-                "description": "A short note recorded on the job for why it was stopped.",
+                "description": "A short note on the job that gives the reason for the stop.",
                 "type": "string"
               },
               "signal": {
@@ -436,12 +436,12 @@
           "name": "BackgroundStop"
         },
         {
-          "description": "Drive a running Chrome over the DevTools Protocol through named actions or a raw `send` passthrough. Use it when you need the user's logged-in session, a click inside a live page, or the network and performance event stream. Do not use it for a plain public page read: use Fetch instead. Never close the last open tab while the connection must survive, because that can quit Chrome. Returns a JSON result per action, and the buffered event list for `events`.",
+          "description": "Drive a running Chrome over the DevTools Protocol. Use named actions or a raw `send` passthrough. Use it when you need the logged-in session of the user, or a click inside a live page. Use it when you need the network and performance event stream. Do not use it for a plain public page read. Use Fetch instead. Do not close the last open tab while the connection must survive, because that action can quit Chrome. Returns a JSON result per action, and the buffered event list for `events`.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
               "action": {
-                "description": "Start here with targets to get a tab id. ping: daemon and browser liveness. targets: open page tabs as {id,title,url}. alltargets: every target including iframes and workers. eval: run JS in a tab. frameeval: run JS in a cross-origin child frame. nav: navigate a tab. newtab: open a tab. setdownload: set the tab download dir. downloads: list downloads, poll until completed. send: raw CDP method passthrough. events: drain the buffered event list. record: toggle event buffering. closetarget: close a tab. activatetarget: focus a tab. getinfo: TargetInfo for one tab.",
+                "description": "Start with `targets` to get a tab id. Use `ping` to show daemon and browser liveness. Use `targets` to show open page tabs as {id,title,url}. Use `alltargets` to show every target, including iframes and workers. Use `eval` to run JS in a tab. Use `frameeval` to run JS in a cross-origin child frame. Use `nav` to navigate a tab. Use `newtab` to open a tab. Use `setdownload` to set the tab download dir. Use `downloads` to list downloads and to poll until completed. Use `send` for the raw CDP method passthrough. Use `events` to drain the buffered event list. Use `record` to toggle event buffering. Use `closetarget` to close a tab. Use `activatetarget` to focus a tab. Use `getinfo` to show TargetInfo for one tab.",
                 "enum": [
                   "ping",
                   "targets",
@@ -531,12 +531,11 @@
                 "type": "string"
               },
               "mode": {
-                "description": "Compaction engine. tail keeps the last N messages verbatim (instant, no summary). local writes a checkpoint summary plus tail. remote uses the provider compact endpoint with local fallback. fork checkpoints for a sub-agent handoff.",
+                "description": "Compaction engine. Use `tail` to keep the last N messages verbatim, with no summary. Use `local` to write a checkpoint summary plus tail. Use `remote` to call the provider compact endpoint, and to fall back to local.",
                 "enum": [
                   "tail",
                   "local",
-                  "remote",
-                  "fork"
+                  "remote"
                 ],
                 "type": "string"
               },
@@ -564,7 +563,7 @@
             "additionalProperties": false,
             "properties": {
               "action": {
-                "description": "What to do. ping: daemon liveness + permission status. perms: report (prompt:true also requests) Accessibility/Screen/Input permissions and open Settings. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost so input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree (flat list default, or nested), minting handles. find: search the tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at x,y. focused: the focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value. perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen or an area to PNG path or base64. Order to prefer: perms, apps, windows, snapshot, find, then perform, setValue or getValue, then mouse, type, key, keypress or screenshot.",
+                "description": "What to do. Each enum value names its own operation. The fields above say what each one reads. First use `ping`, `perms` or `apps` to check the state. Then use `windows` or `snapshot` to get an element handle. Then act with `perform`, `setValue`, `mouse`, `type`, `key` or `keypress`. Use `screenshot` to capture the screen or an area.",
                 "enum": [
                   "ping",
                   "perms",
@@ -728,7 +727,7 @@
                 "type": "number"
               },
               "text": {
-                "description": "type: the literal text to inject (layout-independent, supports emoji/CJK). Blocked when a secure/password field is focused.",
+                "description": "type: the literal text to inject (layout-independent, supports emoji/CJK). Blocked when a secure or password field has focus.",
                 "type": "string"
               },
               "title": {
@@ -796,18 +795,18 @@
           "name": "DiffViewerShowDiff"
         },
         {
-          "description": "Fetch a webpage and return its rendered content. Use it when you know the URL, or when the page needs JavaScript to render and you want clean markdown. Do not use it to search without a URL, to read a local file, or when the user already pasted the content. Every call renders with anti-detection hardening on and that is not a parameter. Returns the page text in `content`.",
+          "description": "Fetch a webpage and give its rendered content. Use it when you know the URL, or when the page needs JavaScript to render and you want clean markdown. Do not use it to search without a URL. Do not use it to read a local file. Do not use it when the user already supplied the content. Each call renders with anti-detection hardening, and that is not a parameter. The tool gives the page text in `content`.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
               "binary": {
                 "default": false,
-                "description": "Opt-in to receive binary tool output. Default false: binary bodies are withheld and replaced with a <ma::agent::binary-result .../> summary (mime, size, on-disk path). Set true only when you intentionally need the bytes (returned as base64 when small enough, otherwise still path-only). Never dumps raw binary as text.",
+                "description": "Opt-in to receive binary tool output. Default false: the harness withholds binary bodies and replaces each one with a <ma::agent::binary-result .../> summary (mime, size, on-disk path). Set true only when you intentionally need the bytes (returned as base64 when small enough, otherwise still path-only). Never dumps raw binary as text.",
                 "type": "boolean"
               },
               "cleanup": {
                 "default": "basic",
-                "description": "Whitespace cleanup for markdown and text only. `basic` is the default and keeps single blank lines. `aggressive` folds whitespace and drops blanks, so use it on a noisy page. `off` is verbatim.",
+                "description": "Whitespace cleanup for markdown and text only. The default `basic` keeps single blank lines. An `aggressive` setting folds the whitespace and drops the blank lines, so use it on a noisy page. An `off` setting keeps the text as it is.",
                 "enum": [
                   "off",
                   "basic",
@@ -816,7 +815,7 @@
                 "type": "string"
               },
               "eval": {
-                "description": "Optional JavaScript expression to evaluate in the page context. By default its value is returned instead of the page body. Use eval_mode='page' to evaluate first and then return the resulting page dump.",
+                "description": "Optional JavaScript expression to evaluate in the page context. By default the tool gives its value in place of the page body. Use eval_mode='page' to evaluate first, then get the resulting page dump.",
                 "type": "string"
               },
               "eval_mode": {
@@ -845,7 +844,7 @@
                 "type": "string"
               },
               "session": {
-                "description": "Session name to keep cookies and localStorage. It must match ^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$. The directory is sandboxed, so a path fails. An empty string opts out. Cookies and tokens are stored as plain JSON on disk, so do not put the user identity in the name. Make one Fetch call at a time per session.",
+                "description": "Session name that keeps the cookies and the localStorage. It must match ^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$. The harness sandboxes the directory, so a path fails. An empty string opts out. The cookies and the tokens go to disk as plain JSON, so do not put the user identity in the name. Make one Fetch call at a time for each session.",
                 "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
                 "type": "string"
               },
@@ -862,7 +861,7 @@
               },
               "wait_until": {
                 "default": "domcontentloaded",
-                "description": "When to consider navigation complete. `domcontentloaded` is the default and the safe choice. `load` waits for every subresource and races anti-bot scripts. `networkidle0` waits for 500ms of quiet and suits a SPA.",
+                "description": "When to count the navigation as complete. The default `domcontentloaded` is the safe choice. A `load` setting waits for each subresource and races the anti-bot scripts. A `networkidle0` setting waits for 500ms of quiet and fits a SPA.",
                 "enum": [
                   "load",
                   "domcontentloaded",
@@ -879,12 +878,12 @@
           "name": "Fetch"
         },
         {
-          "description": "Inspect or clear cooperative file locks under the working directory. Use it when an Edit or Write call fails because a file is locked. Use it when you must know which peer agent holds a file. Do not use it to change file content. Prefer Edit or Write instead for any content change. Returns the lock list with holder session, pid, host and age for an action of list. Returns one holder record for inspect and a removed count for clear-stale.",
+          "description": "Inspect or clear the cooperative file locks under the working directory. Use it when an Edit or Write call fails on a locked file. Use it when you must know which peer agent holds a file. Do not use it to change file content. Use Edit or Write for a content change. For an action of list, it gives the lock list with the holder session, pid, host and age. It gives one holder record for inspect, and a removed count for clear-stale.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
               "action": {
-                "description": "Operation to run. list walks the directory and shows every lock with holder details. inspect shows one lock's metadata. clear-stale removes locks whose holder pid is dead or older than 5 minutes. clear removes one named lock and is unsafe on a live peer.",
+                "description": "Operation to run. The list action reads the directory and shows each lock with its holder details. The inspect action shows the metadata of one lock. The clear-stale action removes the locks whose holder pid is dead or older than 5 minutes. The clear action removes one named lock and is unsafe on a live peer.",
                 "enum": [
                   "list",
                   "inspect",
@@ -954,7 +953,7 @@
                 "type": "boolean"
               },
               "peer": {
-                "description": "inspect: which peer to look at. A short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect.",
+                "description": "inspect: the target peer. Give a short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect.",
                 "type": "string"
               }
             },
@@ -972,7 +971,7 @@
                 "type": "string"
               },
               "kind": {
-                "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook is not built.",
+                "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook has no build.",
                 "enum": [
                   "message",
                   "interrupt"
@@ -984,7 +983,7 @@
                 "type": "string"
               },
               "to": {
-                "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id, or \"all\" to broadcast to every reachable peer, or \"project\" for peers in your project directory. Any prefix of a session id resolves. You cannot message yourself.",
+                "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id. Use \"all\" to broadcast to every reachable peer. Use \"project\" for the peers in your project directory. Any prefix of a session id finds its session. You cannot send a message to yourself.",
                 "type": "string"
               }
             },
@@ -1044,7 +1043,7 @@
                 "type": "string"
               },
               "body": {
-                "description": "New body for add or edit. Single-line preferred, multi-line is collapsed to one line.",
+                "description": "New body for add or edit. A single line is best. The tool folds a multi-line body to one line.",
                 "type": "string"
               },
               "format": {
@@ -1061,12 +1060,12 @@
                 "type": "string"
               },
               "limit": {
-                "description": "For action=list, page size. Default 20, max 100 (over-large values are clamped). Pair with `offset` to page through the full set.",
+                "description": "For action=list, the page size. Default 20, max 100. The tool caps a value that is too large. Pair it with `offset` to page through the full set.",
                 "minimum": 1,
                 "type": "integer"
               },
               "offset": {
-                "description": "For action=list, number of entries to skip counted FROM THE NEWEST END. offset=0 (default) returns the most recent page, offset=20 returns the page before that, and so on. The response header's `next:` hint shows the exact value for the next page.",
+                "description": "For action=list, count the entries to skip from the newest end. A value of offset=0 (default) gives the most recent page. A value of offset=20 gives the page before that, and so on. The `next:` hint in the response header gives the exact value for the next page.",
                 "minimum": 0,
                 "type": "integer"
               },
@@ -1093,7 +1092,7 @@
           "name": "MemoryTool"
         },
         {
-          "description": "Report the agent's current model and what it can do right now. It covers provider, surface, and input modalities (whether it accepts images / PDFs / audio / video, and which file formats). It also covers context window, max output tokens, effort levels, reasoning/thinking support, prompt caching, pricing, plus the session id and working directory. The active model and its capabilities can change during a session (the user may switch models) and may differ after a resume, so do not answer from training-time assumptions. Call this tool to read your live capabilities before telling the user you cannot do something (for example, before claiming you cannot accept an image). Takes no input.",
+          "description": "Report the current model of the agent and what it can do now. Call it before you claim that you cannot accept an image, or read a file type. It covers the provider, the surface and the input modalities (images, PDFs, audio or video), with the file formats that it accepts. It also covers the context window, the maximum output tokens, the effort levels, reasoning and thinking support, prompt caching and pricing. It shows the session id and the working directory. The model and its capabilities can change during a session, and they can differ after a resume. Do not answer from training-time assumptions. Call this tool to read your live capabilities before you tell the user that you cannot do a task. It takes no input.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {},
@@ -1213,11 +1212,11 @@
                 "type": "string"
               },
               "every": {
-                "description": "A human interval, converted to a clean cron cadence. Examples: '5m', '30m', '2h', '1d', 'every 2 hours'. Intervals that don't map to a clean cron step are rounded. Provide this OR `cron`.",
+                "description": "A human interval that the harness converts to a clean cron cadence. Examples: '5m', '30m', '2h', '1d', 'every 2 hours'. The harness rounds an interval that does not map to a clean cron step. Provide this OR `cron`.",
                 "type": "string"
               },
               "prompt": {
-                "description": "The prompt to run each time the task fires. Required. The text is injected as a user turn between turns, never mid-response.",
+                "description": "The prompt to run each time the task fires. Required. The harness injects the text as a user turn between turns, never in the middle of a response.",
                 "type": "string"
               },
               "recurs": {
@@ -1242,7 +1241,7 @@
           "name": "ScheduleCronList"
         },
         {
-          "description": "Cancel a scheduled task by its 8 character id. Use it when a task is done, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. Returns the removed id and the count of tasks that remain.",
+          "description": "Cancel a scheduled task by its 8 character id. Use it when a task is complete, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. It returns the removed id and the count of the tasks that remain.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1284,7 +1283,7 @@
           "name": "ScheduleCronReschedule"
         },
         {
-          "description": "Read the recorded conversation history of a session from the on-disk transcript store (~/.minimal-agent/sessions/<sid>.jsonl), this session's earlier turns or any past one. The archival counterpart to SessionInfo (which reports live runtime state: context %, quota, cost). Actions: 'window' (default) pages records with stable indexes, newest 10 by default (anchor 'end'), and anchor 'start' + offset/limit walks forward. 'meta' summarizes a session (model, cwd, created, record counts, first prompt, liveness). 'list' enumerates saved sessions newest-first (filter by query/cwd). 'search' greps text across one session (sid set) or recent sessions (sid omitted). 'tool_calls' filters invocations by tool name. 'blob' reads one tool call's full pre-truncation output by tool_use_id. 'dump' renders the whole session as markdown or XML (large, prefer 'window'). sid defaults to 'last' and accepts any unique id prefix (e.g. '260d72dd'). Results are bounded: previews clip per record and each response reports totals plus next-page offsets.",
+          "description": "Read the conversation history of a saved session from the on-disk transcript store (~/.minimal-agent/sessions/<sid>.jsonl). It reads this session, its earlier turns, or any past session. It is the archival counterpart to SessionInfo, which reports the live runtime state: context %, quota and cost. Actions: 'window' (default) pages the records with stable indexes, newest 10 by default (anchor 'end'), and anchor 'start' with offset/limit walks forward. 'meta' gives a summary of a session (model, cwd, created, record counts, first prompt, liveness). 'list' enumerates the saved sessions, newest first (filter by query/cwd). 'search' finds text in one session (sid set) or in the recent sessions (sid omitted). 'tool_calls' filters the invocations by tool name. 'blob' reads the full pre-truncation output of one tool call by tool_use_id. 'dump' gives the whole session as markdown or XML (large, prefer 'window'). The sid defaults to 'last' and accepts any unique id prefix (e.g. '260d72dd'). The tool limits each result: it clips the previews for each record, and each response gives the totals and the next-page offsets.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1346,7 +1345,7 @@
                 "type": "string"
               },
               "sid": {
-                "description": "Target session id, full id or any unique prefix (e.g. '260d72dd'), or 'last' (default) for the most recent session in this cwd (falling back to the globally most recent). An ambiguous prefix errors with the matching candidates. Not needed for 'list', optional for 'search'.",
+                "description": "Target session id, a full id, or any unique prefix (e.g. '260d72dd'), or 'last' (default) for the most recent session in this cwd. If there is no session in this cwd, the tool uses the globally most recent session. An ambiguous prefix gives an error with the matching candidates. Not needed for 'list', optional for 'search'.",
                 "type": "string"
               },
               "tool": {
@@ -1363,7 +1362,7 @@
           "name": "SessionHistory"
         },
         {
-          "description": "Report your current runtime state right now (not your capabilities, use ModelInfo for those). Returns: how full your context window is (tokens used / total / percent / headroom) and turn count. The selected effort level, reasoning/thinking mode, and whether fast-mode is on. Provider quota windows (e.g. 5h / 7d utilization and reset). Cumulative token usage and a rough USD cost estimate. The live working directory (which may have changed since startup). And how long this run has been going. Call this when the user asks about context/token budget, cost, quota, how long the session has run, the current working directory, or your current settings. Also use it to self-regulate (for example, to decide whether to compact context when it is getting full). Takes no input.",
+          "description": "Report your current runtime state right now. Do not report your capabilities here. Use ModelInfo for those. Returns: how full your context window is (tokens used / total / percent / headroom) and turn count. The selected effort level, reasoning/thinking mode, and whether fast-mode is on. Provider quota windows (e.g. 5h / 7d utilization and reset). Cumulative token usage and a rough USD cost estimate. The live working directory (which may have changed since startup). And how long this run has been going. Call this tool when the user asks about budget, cost, quota, session run time, working directory, or settings. Also use it to self-regulate (for example, to decide whether to compact context when it is getting full). Takes no input.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {},
@@ -1377,7 +1376,7 @@
             "additionalProperties": false,
             "properties": {
               "action": {
-                "description": "What to do. list: every discovered skill, with broken and shadowed entries, and no maxSkills cap. info: the frontmatter of one skill, with no body load. read: the full SKILL.md body, a trailer of bundled sibling files, and the allowed-tools field when declared.",
+                "description": "What to do. Use list to show every discovered skill, with broken and shadowed entries, and no maxSkills cap. Use info to show the frontmatter of one skill, with no body load. Use read to show the full SKILL.md body, a trailer of bundled sibling files, and the declared allowed-tools field.",
                 "enum": [
                   "list",
                   "info",
@@ -1403,12 +1402,12 @@
             "additionalProperties": false,
             "properties": {
               "text": {
-                "description": "The text to read aloud. Plain prose works best. Markdown syntax, code, and raw URLs are read literally and sound bad, so paraphrase them into speech-friendly wording first. Max 8000 characters. The voice reads the text literally, so use plain sentences and strip markdown.",
+                "description": "The text to read aloud. Plain prose works best. The voice reads markdown syntax, code, and raw URLs literally, and they sound bad. Paraphrase them into speech-friendly wording first. Max 8000 characters. Use plain sentences and strip markdown.",
                 "type": "string"
               },
               "wait": {
                 "default": false,
-                "description": "When false (default), return immediately with a job handle and let the speech play in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line you want confirmed as fully spoken before you move on, never for long passages, which would stall the turn.",
+                "description": "When false (default), return immediately with a job handle. The speech then plays in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line. Use it when you want to confirm that the line is fully spoken before you move on. Do not use it for long passages, which stall the turn.",
                 "type": "boolean"
               }
             },
@@ -1448,12 +1447,12 @@
           "name": "SpeakStop"
         },
         {
-          "description": "Delegate one self-contained unit of work to a background sub-agent. Use it when the unit floods your context, or when it is genuinely independent of the other work. Do not use it for a quick edit you can do yourself, or for work that needs constant back-and-forth. Returns the worker id, its label and its isolation tier. A one line digest arrives between turns.",
+          "description": "Delegate one self-contained unit of work to a background sub-agent. Use it when the unit floods your context, or when the unit is truly independent of the other work. Do not use it for a quick edit that you can do yourself. Do not use it for work that needs constant exchange. The tool gives the worker id, its label and its isolation tier. A one line digest comes between turns.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
               "agent": {
-                "description": "Named specialist: explorer (files), planner (a plan), worker (edits), reviewer (issues), integrator (gate, commit), log-miner (log findings). Omit to use `system`.",
+                "description": "Named specialist: explorer (files), planner (a plan), worker (edits), reviewer (issues), integrator (gate, commit), log-miner (log findings). Leave it out to use `system`.",
                 "type": "string"
               },
               "budget": {
@@ -1465,29 +1464,29 @@
                     "type": "number"
                   },
                   "maxTokens": {
-                    "description": "Max generated tokens (output, thinking included) summed over the run. The worker is stopped past it.",
+                    "description": "Max generated tokens (output, with thinking) summed over the run. The supervisor stops the worker past it.",
                     "type": "number"
                   },
                   "maxTurns": {
-                    "description": "Max model responses. The worker is stopped when it starts one more.",
+                    "description": "Max model responses. The supervisor stops the worker when it starts one more.",
                     "type": "number"
                   }
                 },
                 "type": "object"
               },
               "effort": {
-                "description": "Optional reasoning effort for the worker. Only pass a value the target model accepts (check ModelInfo for the lead/worker model: effort.levels). Do not invent levels from a universal menu: models differ (e.g. some accept low/medium/high, others medium/high/max only). Prefer omitting effort so the model default applies. That is safer than guessing. An unsupported value fails the spawn (or used to crash the child at boot).",
+                "description": "Optional reasoning effort for the worker. Give only a value that the target model accepts (check ModelInfo for the lead and worker model: effort.levels). Do not invent levels from a universal menu, because models differ (e.g. some accept low/medium/high, others medium/high/max only). Leave effort out when you can, so the model default applies. That is safer than a guess. An unsupported value fails the spawn (or used to fail the child at boot).",
                 "type": "string"
               },
               "expectArtifacts": {
-                "description": "Absolute paths this worker must produce to count as done. When set, the supervisor refuses to mark the worker done unless every path exists and is non-empty, and a missing one flips it to 'incomplete' with a warning. Use for delegations whose whole point is to produce a file (e.g. ['/abs/findings.md']) so the system enforces the deliverable instead of you having to check. The worker receives the list. Read-only types (explorer, planner, reviewer, log-miner) deliver the files through ReportResult `deliverables`.",
+                "description": "Absolute paths that this worker must produce to count as complete. When you set them, the supervisor refuses to mark the worker done unless each path exists and has content. A missing path turns the result to 'incomplete' with a warning. Use it for a delegation whose purpose is a file (e.g. ['/abs/findings.md']). Then the system enforces the deliverable and you do not have to check it. The worker gets the list. A read-only type (explorer, planner, reviewer, log-miner) gives the files through the ReportResult `deliverables`.",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "isolation": {
-                "description": "Context tier. `fresh` (default): a clean context with only the task plus the worker's system prompt, for maximum context compression. `fork`: inherit this conversation's full history (shares the prompt cache, sees your context) for a side task that needs the background without re-explaining.",
+                "description": "Context tier. The default `fresh` gives a clean context with only the task and the system prompt of the worker. It gives the maximum context compression. The `fork` setting gives the full history of this conversation, so the worker shares the prompt cache and sees your context. Use `fork` for a side task that needs the background, with no new explanation.",
                 "enum": [
                   "fresh",
                   "fork"
@@ -1495,23 +1494,23 @@
                 "type": "string"
               },
               "label": {
-                "description": "Short display name for the worker in the fleet widget. Defaults to the agent type.",
+                "description": "Short display name for the worker in the fleet widget. The default is the agent type.",
                 "type": "string"
               },
               "model": {
-                "description": "Optional model id for the worker. When omitted, the worker inherits the model YOU the lead are running, for both named specialists and inline workers. Delegating does not downgrade your model. (Opt into per-role models, cheap scout and flagship deep, by setting MINIMAL_AGENT_SUBAGENT_AUTO_TIER=1. Even then an explicit model here still wins.) Pass `model` when you want a specific model for one spawn. Accepts any model id your provider exposes. An unknown id makes the worker crash at startup, which surfaces as a `failed` handle with the real error.",
+                "description": "Optional model id for the worker. When you leave it out, the worker uses the same model that YOU the lead run, for a named specialist and for an inline worker. A delegation does not give you a weaker model. To opt into per-role models, a cheap scout and a flagship deep, set MINIMAL_AGENT_SUBAGENT_AUTO_TIER=1. An explicit model here wins in all cases. Give `model` when you want a specific model for one spawn. It accepts any model id that your provider offers. An unknown id makes the worker fail at startup, and that shows as a `failed` handle with the real error.",
                 "type": "string"
               },
               "system": {
-                "description": "Inline system prompt defining the worker's role, used when `agent` is omitted. Folded above the task.",
+                "description": "Inline system prompt that defines the role of the worker. The tool uses it when you leave `agent` out. It goes above the task.",
                 "type": "string"
               },
               "task": {
-                "description": "The delegation prompt: a clear objective, the scope/file boundaries the worker must stay inside, and the exact output you want back. The single biggest lever on whether delegation succeeds. Required.",
+                "description": "The delegation prompt: a clear objective, the scope and file boundaries that the worker must keep, and the exact output that you want back. This is the largest single factor in the success of a delegation. Required.",
                 "type": "string"
               },
               "taskId": {
-                "description": "Link this worker to a task from the Task tool using its canonical id, such as `1` or `1a`. When the worker finishes the linked todo is ticked done automatically (or canceled with a reason if the worker fails). Use it to make a worker own one of your todos.",
+                "description": "Link this worker to a task from the Task tool with its canonical id, such as `1` or `1a`. When the worker finishes, the harness ticks the linked todo done automatically. If the worker fails, the harness cancels the todo with a reason. Use it to make a worker own one of your todos.",
                 "type": "string"
               }
             },
@@ -1523,7 +1522,7 @@
           "name": "SubAgentsSpawnAgent"
         },
         {
-          "description": "List this session's sub-agents at a glance. Use it to see the fleet before you pull a result or stop a worker. Do not use it for one worker in depth: use SubAgentsAgentStatus. It pulls no worker transcript. Returns the id, type, status, elapsed time, tokens and current activity of each sub-agent.",
+          "description": "List the sub-agents of this session at a glance. Use it to see the fleet before you pull a result or stop a worker. Do not use it for one worker in depth: use SubAgentsAgentStatus. It pulls no worker transcript. It gives the id, the type, the status, the elapsed time, the tokens and the current activity of each sub-agent.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {},
@@ -1532,12 +1531,12 @@
           "name": "SubAgentsListAgents"
         },
         {
-          "description": "Show the status of one sub-agent, or of the whole fleet when you give no id. Use it to check progress, model, isolation tier and linked session. Do not use it to read a result: use SubAgentsAgentResult. Do not use it to read activity: use SubAgentsAgentOutput. Returns a status text with no transcript.",
+          "description": "Show the status of one sub-agent, or of the full fleet when you give no id. Use it to check the progress, the model, the isolation tier and the linked session. Do not use it to read a result: use SubAgentsAgentResult. Do not use it to read activity: use SubAgentsAgentOutput. It gives a status text with no transcript.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
               "id": {
-                "description": "The sub-agent handle (e.g. A2). Omit for the whole fleet.",
+                "description": "The sub-agent handle (e.g. A2). Leave it out for the full fleet.",
                 "type": "string"
               }
             },
@@ -1546,7 +1545,7 @@
           "name": "SubAgentsAgentStatus"
         },
         {
-          "description": "Pull the distilled deliverable of a finished sub-agent into your context. Use it after a worker reaches `done`. This is the only sub-agent tool that carries real worker content back. Do not use it to watch a running worker: use SubAgentsAgentOutput. Returns the result summary and artifact references, not the full transcript. The text is bounded.",
+          "description": "Pull the distilled deliverable of a completed sub-agent into your context. Use it after a worker reaches `done`. This is the only sub-agent tool that carries real worker content back. Do not use it to watch a worker that runs: use SubAgentsAgentOutput. It gives the result summary and the artifact references, not the full transcript. The tool limits the text.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1563,7 +1562,7 @@
           "name": "SubAgentsAgentResult"
         },
         {
-          "description": "Tail the recent activity of one sub-agent: its latest tool calls and notes with timestamps. Use it to see what a worker does right now. Use it sparingly, because the fleet widget and the digest usually suffice. Do not use it to read a final result: use SubAgentsAgentResult. Returns a bounded activity text, never the whole transcript.",
+          "description": "Show the recent activity of one sub-agent: its latest tool calls and notes with timestamps. Use it to see what a worker does now. Use it with care, because the fleet widget and the digest usually suffice. Do not use it to read a final result: use SubAgentsAgentResult. It gives a limited activity text, never the full transcript.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1580,7 +1579,7 @@
           "name": "SubAgentsAgentOutput"
         },
         {
-          "description": "Post and read short notes on a shared board between sibling sub-agents and the lead. Use it only when your task tells you to coordinate, to claim a file, flag a blocker or hand off a finding. Do not use it for general talk. Returns the posted note, or the notes addressed to you after a `since` cursor.",
+          "description": "Post and read short notes on a shared board between sibling sub-agents and the lead. Use it only when your task tells you to coordinate. Also use it to claim a file, flag a blocker or give a finding to a peer. Do not use it for general talk. It gives the posted note, or the notes for you after a `since` cursor.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1601,7 +1600,7 @@
                 "type": "string"
               },
               "since": {
-                "description": "ISO timestamp cursor: read only messages newer than this. (read only)",
+                "description": "ISO timestamp cursor: read only the messages newer than this. (read only)",
                 "type": "string"
               },
               "to": {
@@ -1614,7 +1613,7 @@
           "name": "SubAgentsMailbox"
         },
         {
-          "description": "Cancel a running sub-agent by id. This signals its process and marks it stopped. Use it when a worker is no longer needed, was superseded or goes off track. Do not use it to read a result: use SubAgentsAgentResult. Returns a line that names the stopped sub-agent and the reason, if you gave one. An unknown id returns an error.",
+          "description": "Cancel a sub-agent that runs, by id. This signals its process and marks it stopped. Use it when you no longer need a worker. Use it when a newer worker replaced it. Use it when it goes off track. Do not use it to read a result: use SubAgentsAgentResult. It gives a line that names the stopped sub-agent and the reason, if you gave one. An unknown id gives an error.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1635,12 +1634,12 @@
           "name": "SubAgentsStopAgent"
         },
         {
-          "description": "Plan and track a per-session task list that the user sees as a live board. Use it for work of 3 or more steps, or when the user asks for a plan. Use `add_many` with `tasks` to plan once, then `start` and `done` with a canonical id from the board. Do not use it for trivial work of 1 or 2 steps. Do not record lessons here, because memory owns those. Do not echo the board as prose. `canceled` means abandoned and `done` means finished. A finished phase header is `done`, not `canceled`. Returns an `OK` acknowledgement, then the updated board or a compact note, per the configured result verbosity.",
+          "description": "Plan and track a per-session task list that the user sees as a live board. Use it for work of 3 or more steps, or when the user asks for a plan. Use `add_many` with `tasks` to plan once, then `start` and `done` with a canonical id from the board. Do not use it for trivial work of 1 or 2 steps. Do not record lessons here, because memory owns those. Do not echo the board as prose. `canceled` means abandoned and `done` means finished, so pick the verb that matches the intent. A finished phase header is `done`, not `canceled`. Returns an `OK` acknowledgement, then the updated board or a compact note, per the configured result verbosity.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
               "action": {
-                "description": "What to do. add: one task. add_many: a task tree. replace_plan: a new plan that replaces the board. update: a title or a status. status: a new status. start: move to doing, and auto-start the parent. done: finish, and auto-promote the parent when the last open child closes. A parent stays `doing` while siblings stay open. remove: drop a task that never started. reorder: change top-level order. list: show the board. clear: empty the board. On a validation failure, retry once and do not drip add duplicates.",
+                "description": "What to do. `start` will auto-start the parent. `done` will auto-promote the parent when the last open child closes. A parent whose children are all `done` takes the status `done`, not `canceled`. A parent stays `doing` while siblings stay open. After a validation failure, try one time. Do not add the same task again one at a time.",
                 "enum": [
                   "add",
                   "add_many",
@@ -1675,7 +1674,7 @@
               },
               "format": {
                 "default": "text",
-                "description": "Result content format. `text` returns a plain acknowledgement and, when applicable under the configured verbosity, a canonical-id task board. `json` returns the equivalent parseable shape. Human TUI display is always ANSI.",
+                "description": "Result content format. `text` returns an acknowledgement plus the board when the verbosity allows it. `json` returns the same data as a parseable shape.",
                 "enum": [
                   "text",
                   "json"
@@ -1686,7 +1685,7 @@
                 "description": "Canonical task id from the current board or latest Task tool result, such as `1` or `1a`. Required for: update, status, start, done, remove."
               },
               "items": {
-                "description": "Alias of `tasks`. Prefer `tasks`. Tree form: `{title, children?}[]`. Mutually exclusive with `tasks` and `titles`. Cannot combine with `parent`.",
+                "description": "Alias of `tasks`, in the tree form `{title, children?}[]`. Prefer `tasks`. Cannot combine with `titles` or `parent`.",
                 "items": {
                   "additionalProperties": false,
                   "properties": {
@@ -1729,7 +1728,7 @@
                 "type": "string"
               },
               "status": {
-                "description": "New status. Required for: status. Optional for: update. `canceled` means abandoned and `done` means finished, and the board paints them with opposite marks, so pick the verb that matches the intent.",
+                "description": "New status. Required for: status. Optional for: update. `canceled` means abandoned and `done` means finished, so pick the verb that matches the intent.",
                 "enum": [
                   "todo",
                   "doing",
@@ -1739,7 +1738,7 @@
                 "type": "string"
               },
               "tasks": {
-                "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. Children promote the parent, so do not also call `done` on the parent. Do not stringify the array.",
+                "description": "Preferred tree form for add_many or replace_plan, with optional depth-2 children. Each entry is `{title, children?}` where `children` is a string array of subtask titles. Mutually exclusive with `items` and `titles`. Cannot combine with `parent`. A child promotes the parent task, so do not also call `done` on the parent. Do not convert the array to a string.",
                 "items": {
                   "additionalProperties": false,
                   "properties": {
@@ -1763,11 +1762,11 @@
                 "type": "array"
               },
               "title": {
-                "description": "Task title (single line). Required for: add. Optional for: update (at least one of title or status must be provided).",
+                "description": "Task title (single line). Required for: add. Optional for: update (give at least one of title or status).",
                 "type": "string"
               },
               "titles": {
-                "description": "Flat list of task titles (alias). For add_many: send exactly one of `tasks` (preferred), `items` (same as tasks), or `titles`. Use `titles` only for a flat plan or a flat batch under `parent`.",
+                "description": "Flat list of task titles. Send exactly one of `tasks`, `items` or `titles`. Use `titles` only for a flat plan or a batch under `parent`.",
                 "items": {
                   "type": "string"
                 },

@@ -1,6 +1,6 @@
 ## How you finish (required)
 
-You are a leaf worker. You cannot delegate. SpawnAgent and the Task tool are denied to you and will bounce, so do every step yourself in this session with your own tools.
+You are a leaf worker. You cannot delegate. The harness denies the SpawnAgent tool and the Task hand-off to you, and they bounce. Do every step yourself in this session with your own tools.
 
 The lead requires these files. Each one must exist and not be empty when you finish:
 
@@ -11,7 +11,7 @@ Deliver each required file through `ReportResult.deliverables`. Give the full fi
 
    "deliverables": [{ "path": "<one required path>", "content": "<full file text>" }]
 
-This works in every mode, also read-only. If you can edit files, you may write a required file first and only list it in `artifacts`. `ReportResult` returns an error and records nothing while a required file is missing, unless you set `"incomplete": true` and give the reason.
+This works in every mode, also read-only. If you can edit files, you may write a required file first. Then list it in `artifacts` only. `ReportResult` returns an error and records nothing while a required file is missing. If you cannot make the file, set `"incomplete": true` and give the reason.
 
 As your final action, call the `ReportResult` tool to hand your work back:
 
@@ -21,9 +21,9 @@ As your final action, call the `ReportResult` tool to hand your work back:
    "incomplete": false
    })
 
-`ReportResult` records your result for the lead. You do not write any status file by hand: the tool does it for you, so your summary cannot be malformed or land at the wrong path. Put your real findings in `summary`, not a pointer to them, because that text is what the lead reads. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion even if your process is still alive.
+The `ReportResult` tool records your result for the lead. Do not write a status file by hand. The tool does it for you, so your summary cannot have a bad format and cannot land at the wrong path. Put your real findings in `summary`, not a pointer to them, because the lead reads that text. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion, even if your process is still alive.
 
-If you could not finish, still call `ReportResult` with `"incomplete": true` and a `summary` that explains how far you got and what is left. Do not end your turn without calling it.
+If you could not finish, still call `ReportResult`. Set `"incomplete": true`. In the `summary`, explain how far you got and what remains. Do not end your turn without calling it.
 
 Fallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:
 

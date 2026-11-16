@@ -20,12 +20,12 @@
               "properties": {
                 "text": {
                   "type": "string",
-                  "description": "The text to read aloud. Plain prose works best. Markdown syntax, code, and raw URLs are read literally and sound bad, so paraphrase them into speech-friendly wording first. Max 8000 characters. The voice reads the text literally, so use plain sentences and strip markdown."
+                  "description": "The text to read aloud. Plain prose works best. The voice reads markdown syntax, code, and raw URLs literally, and they sound bad. Paraphrase them into speech-friendly wording first. Max 8000 characters. Use plain sentences and strip markdown."
                 },
                 "wait": {
                   "type": "boolean",
                   "default": false,
-                  "description": "When false (default), return immediately with a job handle and let the speech play in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line you want confirmed as fully spoken before you move on, never for long passages, which would stall the turn."
+                  "description": "When false (default), return immediately with a job handle. The speech then plays in the background while you continue. When true, block until the speech finishes (or the per-call time budget is hit) before returning. Use `true` only for a short line. Use it when you want to confirm that the line is fully spoken before you move on. Do not use it for long passages, which stall the turn."
                 }
               },
               "required": ["text"],

@@ -38,7 +38,7 @@
                     "keypress",
                     "screenshot"
                   ],
-                  "description": "What to do. ping: daemon liveness + permission status. perms: report (prompt:true also requests) Accessibility/Screen/Input permissions and open Settings. apps: list running GUI apps {pid,bundleId,name,frontmost}. activate: bring an app frontmost so input lands in it. windows: list an app's windows. snapshot: dump an app's accessibility tree (flat list default, or nested), minting handles. find: search the tree by role/title/identifier/valueContains. elementAtPoint: hit-test the element at x,y. focused: the focused element. describe: full attribute/action dump for a handle. getValue/setValue: read/write an element's value. perform: run an AX action (axAction) on a handle (AXPress, AXShowMenu, AXConfirm, AXIncrement, AXDecrement, AXRaise, AXCancel). mouse: move/click/doubleclick/rightclick/middleclick/down/up/drag/scroll at x,y. type: inject Unicode text into the focused field. key/keypress: press a key or combo (e.g. cmd+c). screenshot: capture the screen or an area to PNG path or base64. Order to prefer: perms, apps, windows, snapshot, find, then perform, setValue or getValue, then mouse, type, key, keypress or screenshot."
+                  "description": "What to do. Each enum value names its own operation. The fields above say what each one reads. First use `ping`, `perms` or `apps` to check the state. Then use `windows` or `snapshot` to get an element handle. Then act with `perform`, `setValue`, `mouse`, `type`, `key` or `keypress`. Use `screenshot` to capture the screen or an area."
                 },
                 "pid": {
                   "type": "number",
@@ -149,7 +149,7 @@
                 },
                 "text": {
                   "type": "string",
-                  "description": "type: the literal text to inject (layout-independent, supports emoji/CJK). Blocked when a secure/password field is focused."
+                  "description": "type: the literal text to inject (layout-independent, supports emoji/CJK). Blocked when a secure or password field has focus."
                 },
                 "combo": {
                   "type": "string",

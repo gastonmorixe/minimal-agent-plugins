@@ -1,3 +1,3 @@
 ## Context checkpoint
 
-Retained last %%retained%% message(s) verbatim. Older history was dropped.
+The harness kept the last %%retained%% message(s) verbatim. It dropped the older history.

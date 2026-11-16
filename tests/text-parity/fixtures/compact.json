@@ -10,26 +10,26 @@
         {
           "args": [],
           "facts": {},
-          "text": "You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. Tool calls are REJECTED.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, what is still broken.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first."
+          "text": "You are making a context checkpoint compaction. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. The harness rejects tool calls.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, and what the fix did not repair.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first."
         },
         {
           "args": ["keep the API stable"],
           "facts": {
             "focus": "keep the API stable"
           },
-          "text": "You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. Tool calls are REJECTED.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, what is still broken.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first.\n\nFocus for this compaction (verbatim): keep the API stable"
+          "text": "You are making a context checkpoint compaction. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. The harness rejects tool calls.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, and what the fix did not repair.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first.\n\nFocus for this compaction (verbatim): keep the API stable"
         },
         {
           "args": ["  padded  "],
           "facts": {
             "focus": "padded"
           },
-          "text": "You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. Tool calls are REJECTED.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, what is still broken.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first.\n\nFocus for this compaction (verbatim): padded"
+          "text": "You are making a context checkpoint compaction. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. The harness rejects tool calls.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, and what the fix did not repair.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first.\n\nFocus for this compaction (verbatim): padded"
         },
         {
           "args": ["   "],
           "facts": {},
-          "text": "You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. Tool calls are REJECTED.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, what is still broken.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first."
+          "text": "You are making a context checkpoint compaction. Create a handoff\nsummary for another LLM that will resume the task.\n\nRespond with text only. Do not call any tools.\nDo not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.\nYou have all context in the conversation above. The harness rejects tool calls.\nReply with the summary body only (no preamble).\nRespond in the same language as the conversation.\nDo not continue the task. Do not answer open questions. Only summarize.\n\nUse exactly these 7 headings:\n\n## 1. Goal\nOne or two lines on user intent. Primary request first.\n\n## 2. Constraints (verbatim)\nCopy user constraints and security rules word for word.\nNever paraphrase this section.\n\n## 3. Decisions\nEach choice plus one-line reason. Drop superseded drafts.\n\n## 4. Files and snippets\nExact paths touched plus one line per change.\nKeep exact commands, IDs, error text still needed. Drop full logs.\n\n## 5. Errors and fixes\nWhat broke, what fixed it, and what the fix did not repair.\n\n## 6. Pending tasks\nWhat remains, next action first. Preserve any unanswered\nuser question or imperative request verbatim.\n\n## 7. Next step\nThe single action the next session takes first."
         }
       ]
     },
@@ -46,8 +46,8 @@
           "facts": {
             "retained": 0
           },
-          "fullText": "<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nRetained last 0 message(s) verbatim. Older history was dropped.",
-          "text": "## Context checkpoint\n\nRetained last 0 message(s) verbatim. Older history was dropped."
+          "fullText": "<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nThe harness kept the last 0 message(s) verbatim. It dropped the older history.",
+          "text": "## Context checkpoint\n\nThe harness kept the last 0 message(s) verbatim. It dropped the older history."
         },
         {
           "args": {
@@ -57,8 +57,8 @@
           "facts": {
             "retained": 1
           },
-          "fullText": "<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nRetained last 1 message(s) verbatim. Older history was dropped.",
-          "text": "## Context checkpoint\n\nRetained last 1 message(s) verbatim. Older history was dropped."
+          "fullText": "<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nThe harness kept the last 1 message(s) verbatim. It dropped the older history.",
+          "text": "## Context checkpoint\n\nThe harness kept the last 1 message(s) verbatim. It dropped the older history."
         },
         {
           "args": {
@@ -68,8 +68,8 @@
           "facts": {
             "retained": 2
           },
-          "fullText": "<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nRetained last 2 message(s) verbatim. Older history was dropped.",
-          "text": "## Context checkpoint\n\nRetained last 2 message(s) verbatim. Older history was dropped."
+          "fullText": "<ma::context::compaction kind=\"tail\" />\n## Context checkpoint\n\nThe harness kept the last 2 message(s) verbatim. It dropped the older history.",
+          "text": "## Context checkpoint\n\nThe harness kept the last 2 message(s) verbatim. It dropped the older history."
         }
       ]
     },
@@ -82,8 +82,8 @@
           "name": "stub",
           "args": {},
           "facts": {},
-          "fullText": "<ma::context::compaction kind=\"local\" />\n## Context checkpoint\n\nPrior conversation was compacted locally. Continue from the retained recent turns below.",
-          "text": "## Context checkpoint\n\nPrior conversation was compacted locally. Continue from the retained recent turns below."
+          "fullText": "<ma::context::compaction kind=\"local\" />\n## Context checkpoint\n\nThe harness compacted the prior conversation locally. Continue from the retained recent turns below.",
+          "text": "## Context checkpoint\n\nThe harness compacted the prior conversation locally. Continue from the retained recent turns below."
         },
         {
           "name": "stub+focus",
@@ -93,8 +93,8 @@
           "facts": {
             "focus": "keep the API stable"
           },
-          "fullText": "<ma::context::compaction kind=\"local\" />\n## Context checkpoint\n\nFocus (verbatim): keep the API stable\n\nPrior conversation was compacted locally. Continue from the retained recent turns below.",
-          "text": "## Context checkpoint\n\nFocus (verbatim): keep the API stable\n\nPrior conversation was compacted locally. Continue from the retained recent turns below."
+          "fullText": "<ma::context::compaction kind=\"local\" />\n## Context checkpoint\n\nFocus (verbatim): keep the API stable\n\nThe harness compacted the prior conversation locally. Continue from the retained recent turns below.",
+          "text": "## Context checkpoint\n\nFocus (verbatim): keep the API stable\n\nThe harness compacted the prior conversation locally. Continue from the retained recent turns below."
         },
         {
           "name": "summary",
