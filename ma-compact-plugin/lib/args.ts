@@ -5,8 +5,8 @@
  * adapted from `/compact` argv strings to tool JSON input:
  *
  * - `mode`: one of tail|local|remote|fork (case-insensitive, like the
- *   positional `mode=<engine>` argv form). Absent: the host applies its
- *   default (`local`).
+ *   positional `mode=<engine>` argv form). Absent: the handler sends
+ *   `local` (handlers/compact-context.ts).
  * - `tail`: trailing messages kept verbatim. Must be an integer \>= 0
  *   (same rule as `tail=N` / `keep-tail=N`). Absent: host default.
  * - `focus`: hint kept verbatim in the checkpoint (same as `focus="..."`).
