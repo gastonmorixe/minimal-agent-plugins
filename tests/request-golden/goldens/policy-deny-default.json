@@ -31,7 +31,7 @@
                 "ttl": "5m",
                 "type": "ephemeral"
               },
-              "content": "Tool blocked by lifecycle policy hook.",
+              "content": "A lifecycle policy hook prevented this tool call.",
               "is_error": true,
               "tool_use_id": "call-1-0",
               "type": "tool_result"
@@ -43,7 +43,7 @@
       "model": "test-model",
       "system": [
         {
-          "text": "You are Minimal Agent, a minimalistic AI agent CLI harness for the terminal.",
+          "text": "You are Minimal Agent, a minimal AI agent that runs as a CLI harness in the terminal.",
           "type": "text"
         },
         {
@@ -52,7 +52,7 @@
             "ttl": "5m",
             "type": "ephemeral"
           },
-          "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF Config and state are in `<ROOT>/home/`.\nMA-02 DEF The transcript of this session is `<ROOT>/home/sessions/<session_id>.jsonl`.\nMA-03 DEF If `MINIMAL_AGENT_NET_DBG=1` is set, network request and response logs go to `<ROOT>/home/net-dbg/`.\nMA-04 DEF Each net-dbg log folder has a date, and its name ends with `-minimal-agent-<session_id>`.\n\n# Tool-use loop safety\n\nThe agentic tool-use loop has no fixed turn cap by default. Long autonomous tasks (multi-file refactors, audits, sustained research) can run for many rounds without interruption.\n\nA reflection checkpoint fires every 50 tool rounds. The harness applies a 60-second wall-clock cooldown (a human watching can press Esc to interrupt during the countdown). Then it injects a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"60\" />` attachment in the next user content. It is a soft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. To suppress checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body (not a tool call).\n\nTo suppress the next K checkpoints during sustained autonomous work (skipping both the cooldown and the attachment), write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (plain text, not a tool call). The `reason` appears in the user-visible transcript so the human running you can see why you opted out.",
+          "text": "# Instructions (INS)\n\nINS-01 MUST write thinking, replies, and all output in Simplified Technical English (ASD-STE100), to keep the text clear.\nINS-02 MUST keep each reply short and direct.\nINS-03 MUST use Task with subtasks, and do the work in phases.\nINS-04 SHOULD give work to sub-agents, to keep the main context free.\nINS-05 MUST NOT fill the main context, because the session cannot continue when the context is full.\n\n# Minimal Agent (MA)\n\nMA-01 DEF The config and state files are in `<ROOT>/home/`.\nMA-02 DEF The transcript of this session is `<ROOT>/home/sessions/<session_id>.jsonl`.\nMA-03 DEF If the environment has `MINIMAL_AGENT_NET_DBG=1`, the harness writes logs of network requests and responses to `<ROOT>/home/net-dbg/`.\nMA-04 DEF The name of each net-dbg log folder has a date and ends with `-minimal-agent-<session_id>`.\n\n# Tool loop safety\n\nBy default, the tool loop has no fixed limit on the number of rounds. A long autonomous task can run for many rounds without a stop. Examples: a refactor of many files, an audit, or long research.\n\nA reflection checkpoint occurs every 50 tool rounds. First, the harness waits 60 seconds of wall-clock time. During this wait, a user who watches can push Esc to stop the wait. Then the harness adds a `<ma::agent::reflection-checkpoint round=\"N\" cooldown-applied-seconds=\"60\" />` attachment to the next user content. The checkpoint is soft. It is not a stop signal.\n\nBriefly examine if your work still moves toward the goal. Then do one of these steps:\n\n- Continue.\n- Change your strategy.\n- Pause and ask the user.\n\nTo prevent checkpoints, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body. Do not write it as a tool call.\n\nDuring long autonomous work, you can prevent the next K checkpoints. To do this, write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text in your response body. You can put the tag at any position in the response body. Write the tag as plain text. Do not write it as a tool call. For these K checkpoints, the harness does not apply the cooldown and does not add the attachment.\n\nThe user can see the `reason` in the transcript. The `reason` tells the user why you prevented the checkpoints.",
           "type": "text"
         },
         {
@@ -74,21 +74,21 @@
       ],
       "tools": [
         {
-          "description": "Executes a given bash command and returns its output.\n\nDo not use Bash to search, read, or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Avoid `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail`, and `wc` here unless a dedicated tool genuinely cannot do the job. Reserve Bash for real shell work: builds, tests, git, package managers, and moving files.\n\nOutput you receive is capped at ~64KB / 1000 lines, whichever comes first, and the cap keeps the FRONT of the output. A failing build or test run puts its diagnostics at the END, so the front-keep clamp drops the part you want. Scope long commands to the tail yourself (`... 2>&1 | tail -n 100`) or filter (`grep -nE 'error:|FAIL'`) so the signal survives. When the clamp does fire it appends a structured `[truncated: ...]` notice, and the full untruncated body is saved to a `<ma::agent::raw-output ... />` blob path you can Read (its tail for errors).\n\nSeparately, the user's transcript previews only the first ~10 lines of body and summarizes the rest as `shown N/M L`. Do not use Bash to render visual content for the user (ASCII art, banners, ANSI TUI previews, formatted tables, generated reports): they will only see a fraction. To show visual content, put it in your text reply instead, which the user reads in full. When the TUI preview clamped more lines than the API cap did, you will receive a `<ma::agent::output-preview shown=N total=M>` annotation on the tool_result so the divergence is visible to you on the next turn. When a raw-output blob was saved for that result, the annotation also carries a `path=\"...\"` attribute pointing at the full output so you can Read it directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages, or a specific time. While this command runs, your turn stays open. The system sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle. If a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep here for this purpose. A sleep of a few seconds is correct when the command needs it, for example to wait for a port to open.\n\nThe working directory persists between commands, but shell state does not.",
+          "description": "Runs a bash command and returns its output.\n\nDo not use Bash to search, read or count code. To search file contents, use Grep. To find or count files by name, use Glob. To read a file, use Read. Do not use these commands in Bash: `grep`, `rg`, `find`, `fd`, `ls`, `cat`, `head`, `tail` or `wc`. Use them only if no dedicated tool can do the task. Use Bash only for real shell work: builds, tests, git, package managers and file moves.\n\nThe output that you receive has a limit of ~64KB / 1000 lines, whichever comes first. The limit keeps the start of the output. A failed build or test run puts its diagnostics at the end of the output. Thus the limit removes the part that you need. For a long command, send only the tail to the output (`... 2>&1 | tail -n 100`). Or filter the output (`grep -nE 'error:|FAIL'`) so that the diagnostics stay in the output.\n\nIf the limit cuts the output, the harness adds a structured `[truncated: ...]` notice. The harness also saves the full output to a blob path in a `<ma::agent::raw-output ... />` tag. You can Read that path. To find errors, Read the tail of that blob.\n\nThe transcript of the user has a different limit. The transcript shows only the first ~10 lines of the output body. It shows the remaining lines as a summary: `shown N/M L`. Do not use Bash to show visual content to the user, because the user sees only a part of it. Examples of visual content: ASCII art, banners, ANSI TUI previews, formatted tables and generated reports. To show visual content, put it in your text reply. The user reads the full text reply.\n\nThe TUI preview can cut more lines than the API limit. If this occurs, the tool_result that you receive has a `<ma::agent::output-preview shown=N total=M>` annotation. The annotation shows you the difference on the next turn. If the harness saved a raw-output blob for that tool result, the annotation also has a `path=\"...\"` attribute. This attribute points to the full output, so you can Read the full output directly.\n\nDo not use `sleep` or a polling loop to wait for sub-agents, background jobs, messages or a specific time. While this command runs, your turn stays open. The harness sends completion notices only between turns. Thus, a sleep delays the notice that you wait for. To wait, end your turn. A completion notice starts a new turn automatically, also when you are idle.\n\nIf a tool for background commands or scheduled checks is available, use that tool. Do not use a long command or a sleep in Bash for this purpose. A sleep of a few seconds is correct when the command needs it. Example: wait for a port to open.\n\nThe harness keeps the working directory between commands. The harness does not keep the shell state.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "command": {
-                "description": "The command to execute",
+                "description": "The command to run",
                 "type": "string"
               },
               "description": {
-                "description": "Clear, concise description of what this command does",
+                "description": "A clear, short description of what the command does",
                 "type": "string"
               },
               "timeout": {
-                "description": "Optional timeout in milliseconds (max 600000)",
+                "description": "Optional timeout in milliseconds (maximum 600000)",
                 "type": "number"
               }
             },
@@ -100,7 +100,7 @@
           "name": "Bash"
         },
         {
-          "description": "Reads a file from the local filesystem.\n\nFor text files it returns the contents with line numbers (cat -n style), so you can cite line numbers in later Edit calls.\n\nFor image files (PNG, JPEG, GIF, WebP), it returns the actual image to you as a viewable image, not text, when the current model accepts image input. This is how you look at a screenshot, a diagram, a photo, or any image a tool wrote to disk, such as a `Computer` screenshot path: Read the path. A huge image is automatically downscaled to fit the model's limit before it is sent, so you do not need to resize it yourself. Do not try to decode image bytes as text. If the model has no vision support, or the file is a binary document (PDF) that tool output can't carry, Read returns a short message explaining what to do instead, rather than garbled bytes.\n\nText output you (the model) receive is capped at ~64KB / 1000 lines per call. The user's transcript previews only the first ~15 lines and summarizes the rest. For larger files, page with `offset` (zero-based start line) and `limit` (max lines). The truncation notice reports both the cut line and total file size so you can pick the next offset. Image reads are not line-paged. `offset`/`limit` apply to text only.",
+          "description": "Reads a file from the local filesystem.\n\nFor a text file, Read returns the contents with line numbers in `cat -n` style. You can use these line numbers in later Edit calls.\n\nFor an image file (PNG, JPEG, GIF or WebP), Read returns the image itself to you, not text. You can see this image. This occurs only if the current model accepts image input. To examine an image, Read its path. Examples: a screenshot, a diagram, a photo, or any image that a tool wrote to disk. One example is a `Computer` screenshot path.\n\nThe harness automatically makes a very large image smaller before it sends the image. The smaller image fits the limit of the model. You do not need to resize the image. Do not try to decode image bytes as text.\n\nIf the model has no vision support, Read returns a short message, not unreadable bytes. Read does the same for a binary document (PDF) that tool output cannot carry. The message tells you what to do instead.\n\nThe text output that you receive has a limit of ~64KB / 1000 lines per call. The transcript of the user shows only the first ~15 lines and a summary of the remaining lines. For a larger file, read the file in pages with `offset` and `limit`. `offset` is the zero-based start line. `limit` is the maximum number of lines.\n\nThe truncation notice gives the cut line and the total file size. Use these values to select the next `offset`. Read does not divide an image into line pages. `offset`/`limit` apply to text only.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
@@ -110,12 +110,12 @@
                 "type": "string"
               },
               "limit": {
-                "description": "Number of lines to read",
+                "description": "The number of lines to read",
                 "exclusiveMinimum": 0,
                 "type": "integer"
               },
               "offset": {
-                "description": "Line number to start reading from",
+                "description": "The line number where the read starts",
                 "minimum": 0,
                 "type": "integer"
               }
@@ -128,17 +128,17 @@
           "name": "Read"
         },
         {
-          "description": "Writes a file to the local filesystem. Overwrites existing files.",
+          "description": "Writes a file to the local filesystem. If the file exists, Write replaces the file.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "content": {
-                "description": "The content to write to the file. `contents` is accepted as an alias.",
+                "description": "The text to write to the file. You can also use the alias `contents`.",
                 "type": "string"
               },
               "contents": {
-                "description": "Alias for `content`. Same meaning; ignored when `content` is also set.",
+                "description": "Alias for `content`, with the same meaning. If `content` is also set, the tool ignores this alias.",
                 "type": "string"
               },
               "file_path": {
@@ -155,17 +155,17 @@
           "name": "Write"
         },
         {
-          "description": "Performs exact string replacements in files.",
+          "description": "Replaces exact strings in files.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "file_path": {
-                "description": "The absolute path to the file to modify",
+                "description": "The absolute path to the file to change",
                 "type": "string"
               },
               "new_string": {
-                "description": "The text to replace it with",
+                "description": "The replacement text",
                 "type": "string"
               },
               "old_string": {
@@ -188,25 +188,25 @@
           "name": "Edit"
         },
         {
-          "description": "Fast file-name and path pattern matching that works on any codebase size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd`, or `ls` through Bash for this. Supports glob patterns like `**/*.ts` or `src/**/*.{js,ts}`. Returns matching file paths sorted by modification time.\n\nThe glob string is `pattern`. `glob_pattern` is accepted as an alias. Search directory is `path` (defaults to cwd). `target_directory` is accepted as an alias for `path`. If both a canonical name and its alias are set, the canonical name wins.",
+          "description": "Finds files that match a pattern for file names and paths. The tool is fast for a codebase of any size.\n\nUse this tool to find or count files by name or path. Do not use `find`, `fd` or `ls` in Bash for this task. The tool supports glob patterns, for example `**/*.ts` or `src/**/*.{js,ts}`. The tool returns the paths of the matching files, sorted by modification time.\n\nPut the glob string in `pattern`. You can also use the alias `glob_pattern`. Put the search directory in `path`. The default is cwd. You can also use the alias `target_directory` for `path`. If you set a canonical name and its alias, the canonical name wins.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "glob_pattern": {
-                "description": "Alias for `pattern`. Same meaning; ignored when `pattern` is also set.",
+                "description": "Alias for `pattern`, with the same meaning. If `pattern` is also set, the tool ignores this alias.",
                 "type": "string"
               },
               "path": {
-                "description": "Directory to search in. Defaults to cwd. `target_directory` is accepted as an alias.",
+                "description": "The directory to search. The default is cwd. You can also use the alias `target_directory`.",
                 "type": "string"
               },
               "pattern": {
-                "description": "The glob pattern to match files against. `glob_pattern` is accepted as an alias.",
+                "description": "The glob pattern that the file paths must match. You can also use the alias `glob_pattern`.",
                 "type": "string"
               },
               "target_directory": {
-                "description": "Alias for `path`. Same meaning; ignored when `path` is also set.",
+                "description": "Alias for `path`, with the same meaning. If `path` is also set, the tool ignores this alias.",
                 "type": "string"
               }
             },
@@ -218,25 +218,25 @@
           "name": "Glob"
         },
         {
-          "description": "Search file contents with regex, built on ripgrep.\n\nUse this tool for content searches, including counting matches with `output_mode: \"count\"`. Do not invoke `grep` or `rg` as a Bash command: this tool is faster, respects .gitignore, and returns cleaner, bounded output.\n\nOutput you receive is capped at ~64KB / 1000 lines. The user's transcript previews only the first ~12 lines and summarizes the rest. For broad searches, prefer `output_mode: \"files_with_matches\"` (paths only, densest) or `\"count\"`. Narrow with `glob` (e.g. \"*.ts\"), `path` (subdirectory), `-A/-B/-C` for context lines, or `head_limit` rather than relying on the cap to fire.",
+          "description": "Searches file contents with a regex. The tool uses ripgrep.\n\nUse this tool to search file contents. To count matches, use `output_mode: \"count\"`. Do not run `grep` or `rg` as a Bash command. This tool is faster, obeys .gitignore and returns cleaner, bounded output.\n\nThe output that you receive has a limit of ~64KB / 1000 lines. The transcript of the user shows only the first ~12 lines and a summary of the remaining lines. For a broad search, use `output_mode: \"files_with_matches\"` or `\"count\"` when possible. `\"files_with_matches\"` returns only paths and is the densest mode.\n\nDo not rely on the output limit to cut the output. Make the search narrower with these parameters:\n- `glob`, for example \"*.ts\"\n- `path`, for a subdirectory\n- `-A/-B/-C`, for context lines\n- `head_limit`",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "-A": {
-                "description": "Lines after match",
+                "description": "The number of lines to show after each match",
                 "type": "number"
               },
               "-B": {
-                "description": "Lines before match",
+                "description": "The number of lines to show before each match",
                 "type": "number"
               },
               "-C": {
-                "description": "Context lines",
+                "description": "The number of context lines to show before and after each match",
                 "type": "number"
               },
               "-i": {
-                "description": "Case insensitive search",
+                "description": "Ignore letter case in the search",
                 "type": "boolean"
               },
               "-n": {
@@ -244,23 +244,23 @@
                 "type": "boolean"
               },
               "context": {
-                "description": "Context lines (alias for -C)",
+                "description": "The number of context lines (alias for -C)",
                 "type": "number"
               },
               "glob": {
-                "description": "Glob pattern to filter files (e.g. \"*.js\")",
+                "description": "A glob pattern that selects the files to search (for example, \"*.js\")",
                 "type": "string"
               },
               "head_limit": {
-                "description": "Limit output lines (default 250)",
+                "description": "The maximum number of output lines (default 250)",
                 "type": "number"
               },
               "multiline": {
-                "description": "Enable multiline mode",
+                "description": "Set multiline mode",
                 "type": "boolean"
               },
               "output_mode": {
-                "description": "Output mode: content, files_with_matches, or count",
+                "description": "The output mode: content, files_with_matches or count",
                 "enum": [
                   "content",
                   "files_with_matches",
@@ -269,11 +269,11 @@
                 "type": "string"
               },
               "path": {
-                "description": "File or directory to search in. Defaults to cwd.",
+                "description": "The file or directory to search. The default is cwd.",
                 "type": "string"
               },
               "pattern": {
-                "description": "Regex pattern to search for",
+                "description": "The regex pattern to find",
                 "type": "string"
               }
             },
@@ -285,17 +285,17 @@
           "name": "Grep"
         },
         {
-          "description": "Report the current status of files recorded by the session file tracker.\n\nUse `status` to narrow results to `present`, `missing`, or `changed`, or omit it to show all tracked files. Use `path` for an exact file or directory prefix. This is a read-only report. It does not scan the filesystem or track new files.",
+          "description": "Reports the current status of the files that the session file tracker recorded.\n\nTo show only the files with one status, set `status` to `present`, `missing` or `changed`. To show all tracked files, do not set `status`. To filter by an exact file or a directory prefix, use `path`. The report is read-only. The tool does not scan the filesystem and does not track new files.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "path": {
-                "description": "Optional absolute path or directory prefix filter",
+                "description": "Optional filter by an absolute path or a directory prefix",
                 "type": "string"
               },
               "status": {
-                "description": "Optional status filter: all, present, missing, or changed",
+                "description": "Optional filter by status: all, present, missing or changed",
                 "enum": [
                   "all",
                   "present",
@@ -310,7 +310,7 @@
           "name": "FilesStats"
         },
         {
-          "description": "Returns the currently active operating mode (e.g. ASK) and its tool-permission policy. Call when you are uncertain whether a mode is active (e.g. after long thinking or many tool rounds) and you want a deterministic answer instead of guessing from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means no mode is active (fully unrestricted). `allow: [\"*\"]` means every tool is allowed except those in `deny` (deny wins on overlap).\n\nYou do not need to call this routinely: every tool_result you receive carries a trailing `<ma::agent::mode-active id=... since=... />` stamp with the same id. Use this tool when no recent tool round has fired and you want to confirm.",
+          "description": "Returns the active operating mode (for example, ASK) and its tool permission policy. Call this tool if you are not sure whether a mode is active. Example: after long thinking or many tool rounds. Use this tool to get a deterministic answer, not a guess from earlier reasoning.\n\nThe result is a JSON object: `{ id, label, since, permissions: { allow, deny } }`. `id: null` means that no mode is active and no tool restriction applies. `allow: [\"*\"]` means that every tool is permitted, except the tools in `deny`. If a tool is in `allow` and in `deny`, `deny` wins.\n\nYou do not need to call this tool regularly. Every tool_result that you receive ends with a `<ma::agent::mode-active id=... since=... />` stamp. The stamp has the same id as the result of this tool. Use this tool if no tool round occurred recently and you want to confirm the mode.",
           "input_schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
