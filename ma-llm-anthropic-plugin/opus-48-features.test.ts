@@ -31,6 +31,9 @@ import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { buildAnthropicRequestBody } from "./request-body.ts"
 import { translateAnthropicStream } from "./response-stream.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 let resolveModel: (id: string) => ModelEntry
 function setup() {

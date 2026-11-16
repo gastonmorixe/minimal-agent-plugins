@@ -53,7 +53,6 @@ import {
   ANTHROPIC_FABLE_5_2_FAST,
   ANTHROPIC_HAIKU_45,
   ANTHROPIC_HAIKU_55,
-  ANTHROPIC_HAIKU_55_LONG_PROMPT,
   ANTHROPIC_OPUS_4X_FAST_LEGACY,
   ANTHROPIC_OPUS_4X_STANDARD,
   ANTHROPIC_OPUS_48_FAST,
@@ -62,7 +61,6 @@ import {
   ANTHROPIC_SONNET_5_INTRO,
   ANTHROPIC_SONNET_55,
   ANTHROPIC_SONNET_STANDARD,
-  HAIKU_55_LONG_PROMPT_THRESHOLD,
 } from "./pricing.ts"
 
 /**
@@ -167,17 +165,6 @@ function requestPromptChars(req: CanonicalRequest): number {
   }
   return chars
 }
-
-/**
- * Per-request pricing picker for Haiku 5.5, the one length-tiered model in the
- * catalog: base $0.10/$0.50 up to 100k prompt tokens, then $0.50/$2.50 above.
- * The gate is strictly greater-than, matching "prompts up to 100,000 tokens"
- * and the baked catalog's `above_prompt_tokens: 1e5`.
- */
-const haiku55PricingFor = (req: CanonicalRequest): MTokRate =>
-  haiku55PromptTokens(req) > HAIKU_55_LONG_PROMPT_THRESHOLD
-    ? ANTHROPIC_HAIKU_55_LONG_PROMPT
-    : ANTHROPIC_HAIKU_55
 
 /**
  * First instant (UTC) at which Claude Sonnet 5 leaves introductory pricing.

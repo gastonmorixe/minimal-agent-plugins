@@ -35,6 +35,9 @@ import { anthropicAdapter, bootstrapAnthropic } from "./adapter.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { clearAnthropicRateLimits, getAnthropicRateLimits } from "./session-info.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 /** Minimal well-formed Anthropic SSE body: message_start → message_stop. */
 function sseBody(): ReadableStream<Uint8Array> {

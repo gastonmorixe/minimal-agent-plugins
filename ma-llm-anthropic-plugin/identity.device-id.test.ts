@@ -21,6 +21,9 @@ import {
   rememberCredentialAccount,
 } from "./identity.ts"
 import { readAnthropicOAuthAuth } from "./oauth-login.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 const tmp = mkdtempSync(join(tmpdir(), "ma-anthropic-device-id-"))
 

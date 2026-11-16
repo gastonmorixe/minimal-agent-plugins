@@ -34,6 +34,9 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
 import { anthropicProviderPlugin } from "./adapter.ts"
 import { anthropicOAuthLogin, refreshAnthropicOAuthCredential } from "./oauth-login.ts"
+import { useTempAgentHome } from "./test-home.ts"
+
+useTempAgentHome()
 
 /** The store file the old core client (`writeCredentials`) wrote. */
 const LEGACY_FIXTURE = join(import.meta.dir, "__fixtures__", "legacy-core-auth-store.jsonc")

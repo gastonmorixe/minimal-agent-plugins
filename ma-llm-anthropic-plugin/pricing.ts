@@ -124,12 +124,12 @@ export const ANTHROPIC_FABLE_5_1: MTokRate = {
  * standard 1.25x schedule.
  *
  * Source, verified 2026-11-13 two ways:
- *   - the platform pricing table (`Claude Fable 5.2 | $8 / MTok | $40 / MTok |
- *     $10 / MTok | $16 / MTok | $0.20 / MTok`), plus the cache-hit multiplier
+ *   - the platform pricing table (`Claude Fable 5.2 | $8 / MTok | $40 / MTok |`
+ *     `$10 / MTok | $16 / MTok | $0.20 / MTok`), plus the cache-hit multiplier
  *     note ("Claude Fable 5.2 and Claude Mythos 5.2 | 0.025x");
  *   - the claude-code 2.1.323 baked catalog, tier
- *     `tier_8_40_cache_read_0_20` = `{input:8, output:40, cache_write_5m:10,
- *     cache_write_1h:16, cache_read:0.2, web_search:0.01}`.
+ *     `tier_8_40_cache_read_0_20` = `{input:8, output:40, cache_write_5m:10,`
+ *     `cache_write_1h:16, cache_read:0.2, web_search:0.01}`.
  */
 export const ANTHROPIC_FABLE_5_2: MTokRate = {
   inputUSD: 8,
@@ -144,11 +144,11 @@ export const ANTHROPIC_FABLE_5_2: MTokRate = {
  * Claude Fable 5.2 with `speed:"fast"` : 2x the base rate, $16 / 1M input and
  * $80 / 1M output, with cache reads held at $0.20/M.
  *
- * Source: the pricing page fast-mode table (`Claude Fable 5.2 | $16 USD / MTok
- * | $80 USD / MTok`) and the 2.1.323 binary's `kA` constant, the rate the CLI
- * bills for `claude-fable-5-2` when `speed==="fast"`: `{inputTokens:16,
- * outputTokens:80, promptCacheWriteTokens:20, promptCacheWrite1hTokens:32,
- * promptCacheReadTokens:0.4}`.
+ * Source: the pricing page fast-mode table (`Claude Fable 5.2 | $16 USD / MTok`
+ * `| $80 USD / MTok`) and the 2.1.323 binary's `kA` constant, the rate the CLI
+ * bills for `claude-fable-5-2` when `speed==="fast"`: `{inputTokens:16,`
+ * `outputTokens:80, promptCacheWriteTokens:20, promptCacheWrite1hTokens:32,`
+ * `promptCacheReadTokens:0.4}`.
  *
  * The fast cache-read rate in the bundle is 0.4, i.e. 0.025x of the FAST input
  * rate, matching how the base tier's 0.2 is 0.025x of 8. The pricing page only
@@ -222,12 +222,12 @@ export const ANTHROPIC_SONNET_5_INTRO: MTokRate = {
  * page lists Sonnet 5.5 at $2/$10 alongside Sonnet 5, and its cache-hit
  * multiplier is 0.05x rather than the standard 0.1x.
  *
- * Verified 2026-11-13 against the pricing table (`Claude Sonnet 5.5 | $2 /
- * MTok | $10 / MTok | $2.50 / MTok | $4 / MTok | $0.10 / MTok`), the
+ * Verified 2026-11-13 against the pricing table (`Claude Sonnet 5.5 | $2 /`
+ * `MTok | $10 / MTok | $2.50 / MTok | $4 / MTok | $0.10 / MTok`), the
  * cache-hit multiplier table (`Claude Sonnet 5.5 | 0.05x | $0.10 USD`), and
  * the 2.1.323 baked catalog tier `tier_2_10_cache_read_0_10`
- * (`{input:2, output:10, cache_write_5m:2.5, cache_write_1h:4,
- * cache_read:0.1}`).
+ * (`{input:2, output:10, cache_write_5m:2.5, cache_write_1h:4,`
+ * `cache_read:0.1}`).
  */
 export const ANTHROPIC_SONNET_55: MTokRate = {
   inputUSD: 2,
@@ -249,11 +249,11 @@ export const ANTHROPIC_SONNET_55: MTokRate = {
  * long request pays the higher rate even when most of it is a cache hit.
  * {@link haiku55RateForInputTokens} picks between the two.
  *
- * Verified 2026-11-13 against the pricing table (`$0.10 / MTok for prompts up
- * to 100,000 tokens`), the long-context section, and the 2.1.323 baked tier
- * `haiku_55` (`{input:0.1, output:0.5, cache_write_5m:0.125,
- * cache_write_1h:0.2, cache_read:0.01, long_prompt:{above_prompt_tokens:1e5,
- * input:0.5, output:2.5, cache_write_5m:0.625, cache_read:0.05}}`).
+ * Verified 2026-11-13 against the pricing table (`$0.10 / MTok for prompts up`
+ * `to 100,000 tokens`), the long-context section, and the 2.1.323 baked tier
+ * `haiku_55` (`{input:0.1, output:0.5, cache_write_5m:0.125,`
+ * `cache_write_1h:0.2, cache_read:0.01, long_prompt:{above_prompt_tokens:1e5,`
+ * `input:0.5, output:2.5, cache_write_5m:0.625, cache_read:0.05}}`).
  */
 export const ANTHROPIC_HAIKU_55: MTokRate = {
   inputUSD: 0.1,
