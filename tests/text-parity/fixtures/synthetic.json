@@ -1007,6 +1007,281 @@
           "text": "image/tiff isn't a supported type for model-x"
         }
       ]
+    },
+    {
+      "fn": "mediaRejectedMarker",
+      "file": "src/media/resolve.ts",
+      "proposedKind": "user_media.rejected{site:marker}",
+      "cases": [
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "image",
+              "mimeType": "image/png",
+              "sizeBytes": 100,
+              "modelId": "model-x",
+              "modalities": []
+            }
+          ],
+          "text": "[image not sent: model-x doesn't accept image input]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "audio",
+              "mimeType": "audio/wav",
+              "sizeBytes": 100,
+              "modelId": "model-x",
+              "modalities": []
+            }
+          ],
+          "text": "[audio not sent: model-x doesn't accept audio input]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "video",
+              "mimeType": "video/mp4",
+              "sizeBytes": 100,
+              "modelId": "model-x",
+              "modalities": []
+            }
+          ],
+          "text": "[video not sent: model-x doesn't accept video input]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "document",
+              "mimeType": "application/pdf",
+              "sizeBytes": 100,
+              "modelId": "model-x",
+              "modalities": []
+            }
+          ],
+          "text": "[file not sent: model-x doesn't accept document input]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "image",
+              "mimeType": "image/tiff",
+              "sizeBytes": 100,
+              "modelId": "model-x",
+              "modalities": ["image", "pdf", "audio", "video"]
+            }
+          ],
+          "text": "[image not sent: image/tiff isn't a supported type for model-x]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "image",
+              "mimeType": "image/png",
+              "sizeBytes": 100,
+              "modalities": []
+            }
+          ],
+          "text": "[image not sent: this model doesn't accept image input]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "image",
+              "mimeType": "image/png",
+              "sizeBytes": 6000000,
+              "modelId": "model-x",
+              "modalities": ["image", "pdf", "audio", "video"]
+            }
+          ],
+          "text": "[image not sent: 5.7MB (7.6MB encoded) exceeds the 5.0MB limit for model-x]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "image",
+              "mimeType": "image/png",
+              "sizeBytes": 100,
+              "width": 9000,
+              "height": 4000,
+              "modelId": "model-x",
+              "modalities": ["image", "pdf", "audio", "video"]
+            }
+          ],
+          "text": "[image not sent: 9000x4000 exceeds the 8000px limit for model-x]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 33554432,
+              "maxItemsPerRequest": 0,
+              "maxDimension": 8000,
+              "kind": "document",
+              "mimeType": "application/pdf",
+              "sizeBytes": 100,
+              "modelId": "model-x",
+              "modalities": ["image", "pdf", "audio", "video"]
+            }
+          ],
+          "text": "[file not sent: more than 0 attachments for model-x]"
+        },
+        {
+          "args": [
+            {
+              "acceptedMimeTypes": [
+                "image/png",
+                "image/jpeg",
+                "application/pdf",
+                "audio/wav",
+                "video/mp4"
+              ],
+              "maxBytesPerItem": 5242880,
+              "maxRequestBytes": 1048576,
+              "maxItemsPerRequest": 100,
+              "maxDimension": 8000,
+              "kind": "document",
+              "mimeType": "application/pdf",
+              "sizeBytes": 3000000,
+              "modelId": "model-x",
+              "modalities": ["image", "pdf", "audio", "video"]
+            }
+          ],
+          "text": "[file not sent: attachments total exceeds the 1.0MB request limit for model-x]"
+        }
+      ]
+    },
+    {
+      "fn": "mediaUnavailableMarker",
+      "file": "src/media/resolve.ts",
+      "proposedKind": "user_media.unavailable",
+      "cases": [
+        {
+          "args": ["deadbeef"],
+          "text": "[attachment #deadbeef unavailable]"
+        }
+      ]
+    },
+    {
+      "fn": "placeholderText",
+      "file": "src/agent/synthetic-fallbacks.ts",
+      "proposedKind": "assistant.placeholder",
+      "cases": [
+        {
+          "args": [],
+          "text": "[response truncated at the output-token limit before any content was produced]"
+        }
+      ]
+    },
+    {
+      "fn": "continueText",
+      "file": "src/agent/synthetic-fallbacks.ts",
+      "proposedKind": "continue.*",
+      "cases": [
+        {
+          "args": [true],
+          "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+        },
+        {
+          "args": [false],
+          "text": "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) before finishing. Your partial output above is already in the transcript. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
+        }
+      ]
     }
   ]
 }
