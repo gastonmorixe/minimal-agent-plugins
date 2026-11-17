@@ -51,7 +51,11 @@ export interface ScriptedTurn {
   /** Runs before the events, e.g. to simulate core adopting a model. */
   readonly before?: (runtime: FakeRuntime) => void
   /** `ch: "diag"` entries to yield after the events (`data` of each entry). */
-  readonly diags?: readonly { readonly code: string; readonly message?: string }[]
+  readonly diags?: readonly {
+    readonly code: string
+    readonly message?: string
+    readonly data?: Readonly<Record<string, string | number | boolean>>
+  }[]
 }
 
 /**
