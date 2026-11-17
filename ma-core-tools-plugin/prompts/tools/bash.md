@@ -1,9 +1,7 @@
 Run a bash command and give its output.
 
-Do not use Bash to find, read or count code: use `Grep`, `Glob` or `Read`. Use Bash only for shell work: builds, tests and git.
+Do not use Bash to find, read or count code: use `Grep`, `Glob` or `Read`. Use Bash for shell work, for example builds, tests, git, `bun install` and file moves.
 
-The output has a limit of ~64KB / 1000 lines and keeps the start. Filter long output, or send only the end (`... 2>&1 | tail -n 100`).
+The output has a limit of ~64KB / 1000 lines and keeps the start. Filter long output, or use `tail`. Put tables and reports in your text, not in output.
 
-To wait for a job, end your turn. Do not use `sleep` or a loop of checks. When the job is complete, its message starts a new turn.
-
-Only a command that is only `cd <path>` keeps the cwd.
+For long work, use `BackgroundRun`. To wait, end your turn: do not use `sleep`. Only a bare `cd <path>` stays. Each command has a new shell.

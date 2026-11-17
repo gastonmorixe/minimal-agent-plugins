@@ -11,7 +11,7 @@
           "type": "tool",
           "tool": {
             "name": "ModelInfo",
-            "description": "Show the active model and the functions that it has at this time. Use it before you tell the user that you cannot do a task. For example, you cannot accept an image or a file type. The model can change during a session or after `--resume`.\n\nThe tool gives the provider, the context window and the maximum output tokens. It also gives the input types, the `effort` levels, the cost and the `cwd`.",
+            "description": "Show the active model and the functions that it has at this time. Use it before you tell the user that you cannot do a task. For example, you cannot accept an image or a file type. The model can change during a session or after `--resume`. Do not use your memory of the model.\n\nThe tool gives the provider, the context window and the maximum output tokens. It also gives the input types, `thinking`, the `effort` levels, the prompt cache, the cost and the `cwd`.",
             "input_schema": {
               "type": "object",
               "properties": {},
