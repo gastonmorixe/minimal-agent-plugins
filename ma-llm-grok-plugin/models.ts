@@ -53,6 +53,7 @@ import {
   CAPS_GROK_47_RESPONSES,
   CAPS_GROK_420_MULTI_AGENT,
   CAPS_GROK_420_NON_REASONING,
+  CAPS_GROK_420_REASONING,
   CAPS_GROK_BUILD_CHAT,
   CAPS_GROK_BUILD_RESPONSES,
   CAPS_GROK_GENERIC,
@@ -272,7 +273,7 @@ export function registerGrokModels(registrar: ModelRegistrar): string[] {
       "grok-4.20-reasoning-latest",
     ],
     tags: ["grok", "xai", "reasoning", "vision", "tools", "responses"],
-    capabilities: CAPS_GROK_43_RESPONSES,
+    capabilities: CAPS_GROK_420_REASONING,
     pricing: PRICING_GROK_420,
   })
   reg(registrar, {
