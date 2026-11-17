@@ -20,18 +20,18 @@
           "type": "tool",
           "tool": {
             "name": "Peers",
-            "description": "Show the minimal-agent sessions on this computer, or examine one peer session fully. The result also shows this session, with the mark `(you)`. Use this tool before you send a message to a peer, or to know the work of a peer. Do not use this tool for a sub-agent worker. Use `SubAgentsMailbox` for that.\n\nFor `list`, the tool gives the short id, status, model, directory and last work of each session. For `inspect`, the tool gives the data of one peer.",
+            "description": "Show the sessions on this computer, this session as `(you)`. Use it before you send to a peer, or to know its work. For a sub-agent worker, use `SubAgentsMailbox`.\n\nThe tool gives the short id, status, model, directory and work of each session, or one peer.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect"],
-                  "description": "The operation to do:\n- `list`: show all the sessions. This is the default.\n- `inspect`: show the data of one peer.\n\nThe status of a session is one of these values:\n- `online`: the session writes its heartbeat, or its process operates.\n- `busy`: the session operates and is in a turn.\n- `idle`: the session operates and waits for a prompt.\n- `stale`: the heartbeat stopped, and the tool cannot examine the process.\n- `hung`: the process operates, but the heartbeat stopped.\n- `dead`: the process stopped.\n- `offline`: the session stopped correctly, its heartbeat is not correct, or the tool did not see it for a long time."
+                  "description": "- `list`: the default. All sessions.\n- `inspect`: one peer.\n\nStatus:\n- `online`: heartbeat.\n- `busy`: in a turn.\n- `idle`: waits.\n- `stale`: no heartbeat.\n- `hung`: process operates, no heartbeat.\n- `dead`: process stopped.\n- `offline`: correct stop, incorrect heartbeat, or not seen for long."
                 },
                 "peer": {
                   "type": "string",
-                  "description": "The peer to examine with `inspect`. You must give this value for `inspect`. Give a short id (for example, `a1b2c3d4`), a full session id, or a name with `@` before it."
+                  "description": "Necessary for `inspect`. A short id (for example, `a1b2c3d4`), session id, or `@name`."
                 },
                 "include": {
                   "type": "array",
@@ -39,16 +39,16 @@
                     "type": "string",
                     "enum": ["tasks", "jobs", "fleet", "activity", "transcript"]
                   },
-                  "description": "The sections to collect for `inspect`. The default is `tasks`, `activity` and `jobs`. Add `fleet` to show the sub-agents of the peer. Add `transcript` to show the last part of its transcript."
+                  "description": "For `inspect`. The default is `tasks`, `activity`, `jobs`. Also: `fleet` (sub-agents), `transcript`."
                 },
                 "liveOnly": {
                   "type": "boolean",
-                  "description": "For `list`: show only the sessions that can get a message. The tool removes the `hung`, `dead` and `offline` sessions. The default is `false`."
+                  "description": "For `list`. Show only the sessions that can get a message, not `dead` or `offline`. The default is `false`."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
-                  "description": "The output format. The default is `text`."
+                  "description": "The default is `text`."
                 }
               },
               "additionalProperties": false
@@ -68,26 +68,26 @@
           "type": "tool",
           "tool": {
             "name": "Send",
-            "description": "Send a message to one peer, to all available peers, or to the peers in your project directory. Use this tool to give a result to a peer, or to tell a peer to stop. Also use it to tell peers that you use an item, or that your work cannot continue. Do not use this tool for a sub-agent worker. Do not use it to tell each step of your work.\n\nThe tool gives the number of sessions that got the message, their names, the message id and the sessions that it did not send to.",
+            "description": "Send a message to one or more peers. Use it to give a result, stop a peer, or tell that you use an item or cannot continue. Do not use it for a sub-agent worker, or for each step of your work.\n\nThe tool gives the message id and the sessions that got it or did not.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "to": {
                   "type": "string",
-                  "description": "The session that gets the message. You must give this value. Give a short id of a peer (for example, `a1b2c3d4`) or a full session id. A prefix of a session id or of a session name also finds the session. If more than one session has that prefix, the tool does not send to it.\n\nUse `all` to send to all the sessions that can get a message. Use `project` to send to the sessions in your project directory. You cannot send a message to this session."
+                  "description": "Necessary. A peer short id (for example, `a1b2c3d4`), a session id, or a prefix of an id or name that only one session has. Use `all` for all available peers, or `project` for your project directory. You cannot send to this session."
                 },
                 "body": {
                   "type": "string",
-                  "description": "The message text. You must give this value. Put all the necessary data in the message. The session that gets the message does not have your context. Thus, tell who you are and the help that you must have. A long text is possible.\n\nThe maximum is about 256,000 characters, and the tool cuts a longer text."
+                  "description": "Necessary. The message text. The peer does not have your context. Tell who you are and the help that you must have. The maximum is about 256 KiB."
                 },
                 "kind": {
                   "type": "string",
                   "enum": ["message", "interrupt"],
-                  "description": "The type of message:\n- `message`: a usual message. This is the default. If the session that gets it waits for a prompt, the message starts a turn. If that session is in a turn, the message waits for the subsequent turn.\n- `interrupt`: an important message. The harness supplies it the same as a `message`, and it does not stop a turn, because that function is not available at this time. The `<ma::agent::intercom-inbox>` data and the text that starts the turn show the count of `interrupt` messages. The tool result also shows `(interrupt)`."
+                  "description": "- `message`: the default. It starts a turn in a peer that waits, or waits for the subsequent turn.\n- `interrupt`: an important message that does not stop a turn at this time. The peer sees the `interrupt` count."
                 },
                 "replyTo": {
                   "type": "string",
-                  "description": "Optional. The id of a previous message that this message gives a response to. The tool does not use it to find the session. The session that gets the message sees it as `reply-to`."
+                  "description": "Optional. The id of the previous message, for display only."
                 }
               },
               "required": ["to", "body"],
@@ -108,23 +108,23 @@
           "type": "tool",
           "tool": {
             "name": "Inbox",
-            "description": "Read again the Intercom messages that this session got before. Use this tool to examine the message history, or to make sure that you saw a message before. Do not use this tool to wait for new messages. The harness supplies new messages automatically at the start of a turn. The tool gives the messages with the id of the session that sent each one, its model, its timestamp and its body. If there are no messages, the tool gives a short text that tells you this.",
+            "description": "Read again the Intercom messages that you got, to examine them or find one you saw. Do not use it to wait. New messages come at each turn automatically. The tool gives the session id, model, timestamp and body of each message, or an empty text.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "scope": {
                   "type": "string",
                   "enum": ["unread", "recent"],
-                  "description": "The messages to show:\n- `unread`: the messages after your last `IntercomInbox` read. This is the default.\n- `recent`: the last messages."
+                  "description": "- `unread`: after your last read. This is the default.\n- `recent`: the last messages."
                 },
                 "limit": {
                   "type": "number",
-                  "description": "The maximum number of messages to give. The default is 20."
+                  "description": "The maximum number of messages. The default is 20."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
-                  "description": "The output format. The default is `text`."
+                  "description": "The default is `text`."
                 }
               },
               "additionalProperties": false

@@ -94,8 +94,11 @@ export function corpusLemmas(tokens: readonly CorpusToken[], data: DictionaryDat
 }
 
 /**
- * The stale guard: every TN, TV, compound and unapproved entry that no corpus
- * form uses. A stale entry is dead weight and hides a review gap, so it fails.
+ * The stale guard: every TN, TV and compound entry that no corpus form uses.
+ * These entries ALLOW a word, so an unused one is a hole that a future text
+ * can use without review: it fails. Unapproved entries are exempt: they are
+ * the fix map ("use X"), and a rewrite that removes the word is the goal, so
+ * an unapproved word that no text uses any more is the success case.
  *
  * @param data - The dictionary data.
  * @param lemmas - `corpusLemmas` of the corpus.
@@ -118,7 +121,6 @@ export function staleEntries(data: DictionaryData, lemmas: ReadonlySet<string>):
     "compound",
     data.compounds.map((e) => e.word),
   )
-  check("unapproved", [...new Set(data.unapproved.map((e) => e.word))])
   return out
 }
 

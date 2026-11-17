@@ -19,10 +19,6 @@
     ]
   },
   {
-    "word": "acquire",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
-  },
-  {
     "word": "act",
     "files": ["ma-sub-agents-plugin/PROMPT.md"]
   },
@@ -89,17 +85,12 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "aloud",
-    "files": ["ma-speak-plugin/manifest.json"]
-  },
-  {
     "word": "already",
     "files": [
       "ma-ask-mode-plugin/PROMPT.md",
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-chrome-cdp-plugin/PROMPT.md",
       "ma-diagnostics-plugin/manifest.json",
-      "ma-file-lock-plugin/PROMPT.md",
       "ma-intercom-plugin/PROMPT.md",
       "ma-turn-recovery-plugin/prompts/output-truncated.md",
       "ma-turn-recovery-plugin/prompts/session-resumed.md",
@@ -239,10 +230,6 @@
     ]
   },
   {
-    "word": "assets",
-    "files": ["ma-skills-plugin/PROMPT.md"]
-  },
-  {
     "word": "assistant",
     "files": [
       "ma-interleave-thinking-plugin/manifest.json",
@@ -270,7 +257,7 @@
   },
   {
     "word": "audit",
-    "files": ["ma-base-prompt-plugin/prompts/loop-safety/intro.md", "ma-skills-plugin/PROMPT.md"]
+    "files": ["ma-base-prompt-plugin/prompts/loop-safety/intro.md"]
   },
   {
     "word": "authenticates",
@@ -286,7 +273,7 @@
   },
   {
     "word": "autocomplete",
-    "files": ["ma-prompts-plugin/manifest.json", "ma-slash-menu-plugin/manifest.json"]
+    "files": ["ma-slash-menu-plugin/manifest.json"]
   },
   {
     "word": "autonomous",
@@ -302,10 +289,6 @@
   {
     "word": "avoidance",
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
-  },
-  {
-    "word": "backoff",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
   },
   {
     "word": "backticks",
@@ -384,17 +367,6 @@
     ]
   },
   {
-    "word": "board",
-    "files": [
-      "ma-tasks-plugin/prompts/results-compact.md",
-      "ma-tasks-plugin/prompts/results-full.md"
-    ]
-  },
-  {
-    "word": "boards",
-    "files": ["ma-tasks-plugin/manifest.json"]
-  },
-  {
     "word": "boldface",
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
@@ -430,10 +402,6 @@
     "files": ["ma-header-template-plugin/manifest.json"]
   },
   {
-    "word": "brave",
-    "files": ["ma-web-search-plugin/manifest.json"]
-  },
-  {
     "word": "breaker",
     "files": ["ma-diagnostics-plugin/manifest.json"]
   },
@@ -464,10 +432,6 @@
   {
     "word": "browse",
     "files": ["ma-config-plugin/manifest.json", "ma-history-plugin/manifest.json"]
-  },
-  {
-    "word": "bundled",
-    "files": ["ma-skills-plugin/PROMPT.md"]
   },
   {
     "word": "busy",
@@ -542,11 +506,7 @@
   },
   {
     "word": "capability",
-    "files": [
-      "ma-agent-cloud/PROMPT.md",
-      "ma-prompts-plugin/PROMPT.md",
-      "ma-session-history-plugin/manifest.json"
-    ]
+    "files": ["ma-agent-cloud/PROMPT.md", "ma-session-history-plugin/manifest.json"]
   },
   {
     "word": "capable",
@@ -601,10 +561,6 @@
     "files": ["ma-turn-recovery-plugin/prompts/compact-summary-system.md"]
   },
   {
-    "word": "choose",
-    "files": ["ma-speak-plugin/PROMPT.md"]
-  },
-  {
     "word": "chromium",
     "files": ["ma-chrome-cdp-plugin/manifest.json"]
   },
@@ -614,11 +570,7 @@
   },
   {
     "word": "cite",
-    "files": [
-      "ma-ask-mode-plugin/PROMPT.md",
-      "ma-memory-plugin/prompts/summarize.tmpl.md",
-      "ma-web-search-plugin/PROMPT.md"
-    ]
+    "files": ["ma-ask-mode-plugin/PROMPT.md", "ma-memory-plugin/prompts/summarize.tmpl.md"]
   },
   {
     "word": "claim",
@@ -633,10 +585,6 @@
     "files": ["ma-base-prompt-plugin/prompts/tool-output-conventions.md"]
   },
   {
-    "word": "closer",
-    "files": ["ma-diff-view-plugin/PROMPT.md"]
-  },
-  {
     "word": "closing",
     "files": ["ma-memory-plugin/prompts/summarize.tmpl.md"]
   },
@@ -649,10 +597,6 @@
     "files": ["ma-sideband-plugin/manifest.json"]
   },
   {
-    "word": "colored",
-    "files": ["ma-diff-view-plugin/PROMPT.md"]
-  },
-  {
     "word": "comments",
     "files": ["ma-config-plugin/manifest.json"]
   },
@@ -663,14 +607,6 @@
   {
     "word": "compacted",
     "files": ["ma-turn-recovery-plugin/prompts/compact-local-stub.md"]
-  },
-  {
-    "word": "compaction",
-    "files": [
-      "ma-compact-plugin/manifest.json",
-      "ma-turn-recovery-plugin/manifest.json",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
-    ]
   },
   {
     "word": "compacts",
@@ -697,10 +633,6 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts", "ma-tasks-plugin/prompts/planning.md"]
   },
   {
-    "word": "concurrency",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
-  },
-  {
     "word": "concurrent",
     "files": ["ma-file-lock-plugin/manifest.json"]
   },
@@ -710,7 +642,7 @@
   },
   {
     "word": "confuse",
-    "files": ["ma-prompts-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
+    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "connector",
@@ -728,7 +660,6 @@
     "word": "contract",
     "files": [
       "ma-agent-cloud/manifest.json",
-      "ma-skills-plugin/PROMPT.md",
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
     ]
   },
@@ -803,14 +734,6 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "cost",
-    "files": [
-      "ma-session-info-plugin/manifest.json",
-      "ma-slash-menu-plugin/manifest.json",
-      "ma-usage-plugin/manifest.json"
-    ]
-  },
-  {
     "word": "counterpart",
     "files": ["ma-session-info-plugin/manifest.json"]
   },
@@ -881,10 +804,6 @@
   {
     "word": "dead",
     "files": ["ma-file-lock-plugin/manifest.json"]
-  },
-  {
-    "word": "declares",
-    "files": ["ma-skills-plugin/PROMPT.md"]
   },
   {
     "word": "decode",
@@ -987,12 +906,8 @@
     "files": ["ma-background-plugin/manifest.json"]
   },
   {
-    "word": "detail",
-    "files": ["ma-speak-plugin/PROMPT.md"]
-  },
-  {
     "word": "details",
-    "files": ["ma-file-lock-plugin/PROMPT.md", "ma-model-info-plugin/manifest.json"]
+    "files": ["ma-model-info-plugin/manifest.json"]
   },
   {
     "word": "detects",
@@ -1122,10 +1037,6 @@
     "files": ["ma-background-plugin/manifest.json", "ma-intercom-plugin/manifest.json"]
   },
   {
-    "word": "ear",
-    "files": ["ma-speak-plugin/PROMPT.md"]
-  },
-  {
     "word": "earlier",
     "files": [
       "ma-history-edit-plugin/manifest.json",
@@ -1205,10 +1116,6 @@
     "files": ["ma-base-prompt-plugin/prompts/instructions.md", "ma-env-info-plugin/manifest.json"]
   },
   {
-    "word": "etc",
-    "files": ["ma-config-plugin/manifest.json"]
-  },
-  {
     "word": "even",
     "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
   },
@@ -1280,10 +1187,6 @@
     ]
   },
   {
-    "word": "experimental",
-    "files": ["ma-skills-plugin/PROMPT.md"]
-  },
-  {
     "word": "explain",
     "files": [
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
@@ -1296,11 +1199,7 @@
   },
   {
     "word": "exposes",
-    "files": [
-      "ma-diff-view-plugin/manifest.json",
-      "ma-llm-cursor-plugin/prompts/tool-catalog.md",
-      "ma-skills-plugin/manifest.json"
-    ]
+    "files": ["ma-llm-cursor-plugin/prompts/tool-catalog.md", "ma-skills-plugin/manifest.json"]
   },
   {
     "word": "extract",
@@ -1399,7 +1298,7 @@
   },
   {
     "word": "fix",
-    "files": ["ma-sub-agents-plugin/lib/library.ts", "ma-web-search-plugin/PROMPT.md"]
+    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "fixed",
@@ -1438,7 +1337,7 @@
   },
   {
     "word": "formatting",
-    "files": ["ma-agent-writing-style-plugin/manifest.json", "ma-speak-plugin/PROMPT.md"]
+    "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
     "word": "forms",
@@ -1475,10 +1374,6 @@
   {
     "word": "getdynamictools",
     "files": ["ma-llm-cursor-plugin/prompts/tool-catalog.md"]
-  },
-  {
-    "word": "gibberish",
-    "files": ["ma-speak-plugin/PROMPT.md"]
   },
   {
     "word": "global",
@@ -1533,10 +1428,6 @@
     ]
   },
   {
-    "word": "hand-copied",
-    "files": ["ma-emit-output-plugin/manifest.json"]
-  },
-  {
     "word": "hand-off",
     "files": [
       "ma-sub-agents-plugin/prompts/leaf-discipline.md",
@@ -1567,29 +1458,6 @@
     "files": ["ma-fetch-plugin/PROMPT.md"]
   },
   {
-    "word": "harness",
-    "files": [
-      "ma-acp-plugin/host-mode.ts",
-      "ma-acp-plugin/stop-reason.ts",
-      "ma-ask-mode-plugin/PROMPT.md",
-      "ma-ask-mode-plugin/manifest.json",
-      "ma-background-plugin/manifest.json",
-      "ma-base-prompt-plugin/prompts/identity.neutral.md",
-      "ma-base-prompt-plugin/prompts/instructions.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
-      "ma-diff-view-plugin/PROMPT.md",
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/compact-local-stub.md",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
-      "ma-turn-recovery-plugin/prompts/compact-tail-checkpoint.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
-    ]
-  },
-  {
     "word": "hashes",
     "files": ["ma-speak-plugin/PROMPT.md"]
   },
@@ -1609,10 +1477,6 @@
     ]
   },
   {
-    "word": "heartbeat",
-    "files": ["ma-schedule-plugin/manifest.json", "ma-sub-agents-plugin/manifest.json"]
-  },
-  {
     "word": "hello",
     "files": ["ma-prompt-template-plugin/__fixtures__/prompts/hello.md"]
   },
@@ -1627,14 +1491,6 @@
   {
     "word": "hint",
     "files": ["ma-base-prompt-plugin/prompts/tool-output-conventions.md"]
-  },
-  {
-    "word": "hit's",
-    "files": ["ma-web-search-plugin/PROMPT.md"]
-  },
-  {
-    "word": "holder",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
   },
   {
     "word": "home",
@@ -1756,11 +1612,7 @@
   },
   {
     "word": "injects",
-    "files": [
-      "ma-agent-writing-style-plugin/manifest.json",
-      "ma-env-info-plugin/manifest.json",
-      "ma-schedule-plugin/manifest.json"
-    ]
+    "files": ["ma-agent-writing-style-plugin/manifest.json", "ma-env-info-plugin/manifest.json"]
   },
   {
     "word": "inline",
@@ -1770,7 +1622,6 @@
       "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-emit-output-plugin/PROMPT.md",
-      "ma-emit-output-plugin/manifest.json",
       "ma-memory-plugin/PROMPT.md",
       "ma-memory-plugin/manifest.json",
       "ma-slash-menu-plugin/manifest.json",
@@ -1788,26 +1639,12 @@
       "ma-chrome-cdp-plugin/PROMPT.md",
       "ma-emit-output-plugin/PROMPT.md",
       "ma-intercom-plugin/PROMPT.md",
-      "ma-interleave-thinking-plugin/PROMPT.md",
-      "ma-skills-plugin/PROMPT.md"
+      "ma-interleave-thinking-plugin/PROMPT.md"
     ]
-  },
-  {
-    "word": "inspect",
-    "files": ["ma-computer-use-plugin/manifest.json"]
   },
   {
     "word": "instead",
-    "files": [
-      "ma-ask-mode-plugin/PROMPT.md",
-      "ma-file-lock-plugin/PROMPT.md",
-      "ma-speak-plugin/PROMPT.md",
-      "ma-sub-agents-plugin/lib/library.ts"
-    ]
-  },
-  {
-    "word": "intended",
-    "files": ["ma-emit-output-plugin/manifest.json"]
+    "files": ["ma-ask-mode-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "intent",
@@ -1819,10 +1656,6 @@
   {
     "word": "inter-session",
     "files": ["ma-intercom-plugin/manifest.json"]
-  },
-  {
-    "word": "interact",
-    "files": ["ma-computer-use-plugin/manifest.json"]
   },
   {
     "word": "interactive",
@@ -1885,16 +1718,8 @@
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
-    "word": "keyboard",
-    "files": ["ma-computer-use-plugin/manifest.json"]
-  },
-  {
     "word": "kind",
     "files": ["ma-host-text-plugin/manifest.json"]
-  },
-  {
-    "word": "knowledge",
-    "files": ["ma-prompts-plugin/PROMPT.md"]
   },
   {
     "word": "knowledgeable",
@@ -1936,7 +1761,7 @@
   },
   {
     "word": "leave",
-    "files": ["ma-ask-mode-plugin/PROMPT.md", "ma-speak-plugin/PROMPT.md"]
+    "files": ["ma-ask-mode-plugin/PROMPT.md"]
   },
   {
     "word": "leaves",
@@ -1961,8 +1786,7 @@
     "word": "like",
     "files": [
       "ma-agent-writing-style-plugin/PROMPT.md",
-      "ma-agent-writing-style-plugin/manifest.json",
-      "ma-schedule-plugin/manifest.json"
+      "ma-agent-writing-style-plugin/manifest.json"
     ]
   },
   {
@@ -1993,10 +1817,6 @@
   {
     "word": "literal",
     "files": ["ma-agent-identity-plugin/manifest.json"]
-  },
-  {
-    "word": "literally",
-    "files": ["ma-speak-plugin/PROMPT.md"]
   },
   {
     "word": "liveness",
@@ -2047,10 +1867,6 @@
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
-    "word": "mangled",
-    "files": ["ma-emit-output-plugin/manifest.json"]
-  },
-  {
     "word": "mapping",
     "files": ["ma-acp-plugin/manifest.json"]
   },
@@ -2072,18 +1888,7 @@
   },
   {
     "word": "matters",
-    "files": [
-      "ma-emit-output-plugin/PROMPT.md",
-      "ma-file-lock-plugin/PROMPT.md",
-      "ma-sub-agents-plugin/lib/library.ts"
-    ]
-  },
-  {
-    "word": "may",
-    "files": [
-      "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/prompts/result-contract.tmpl.md"
-    ]
+    "files": ["ma-emit-output-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "me",
@@ -2174,10 +1979,6 @@
   {
     "word": "native",
     "files": ["ma-hooks-plugin/manifest.json"]
-  },
-  {
-    "word": "natural",
-    "files": ["ma-schedule-plugin/manifest.json", "ma-speak-plugin/PROMPT.md"]
   },
   {
     "word": "navigation",
@@ -2341,7 +2142,6 @@
     "files": [
       "ma-background-plugin/PROMPT.md",
       "ma-chrome-cdp-plugin/PROMPT.md",
-      "ma-file-lock-plugin/PROMPT.md",
       "ma-usage-plugin/manifest.json"
     ]
   },
@@ -2572,10 +2372,6 @@
     ]
   },
   {
-    "word": "pick",
-    "files": ["ma-speak-plugin/PROMPT.md"]
-  },
-  {
     "word": "ping",
     "files": ["ma-intercom-plugin/manifest.json"]
   },
@@ -2588,15 +2384,10 @@
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
-    "word": "place",
-    "files": ["ma-diff-view-plugin/PROMPT.md"]
-  },
-  {
     "word": "plain",
     "files": [
       "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
       "ma-emit-output-plugin/PROMPT.md",
-      "ma-speak-plugin/PROMPT.md",
       "ma-tasks-plugin/prompts/results-compact.md"
     ]
   },
@@ -2696,10 +2487,6 @@
     "files": ["ma-diagnostics-plugin/manifest.json"]
   },
   {
-    "word": "proceed",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
-  },
-  {
     "word": "produce",
     "files": ["ma-session-history-plugin/manifest.json", "ma-sub-agents-plugin/lib/library.ts"]
   },
@@ -2726,10 +2513,6 @@
   {
     "word": "prove",
     "files": ["ma-policy-ref-plugin/manifest.json"]
-  },
-  {
-    "word": "provider-pluggable",
-    "files": ["ma-web-search-plugin/manifest.json"]
   },
   {
     "word": "provides",
@@ -2776,10 +2559,6 @@
     "files": ["ma-agent-writing-style-plugin/PROMPT.md"]
   },
   {
-    "word": "race",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
-  },
-  {
     "word": "raise",
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
@@ -2789,7 +2568,7 @@
   },
   {
     "word": "raw",
-    "files": ["ma-speak-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
+    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "raw-output",
@@ -2797,10 +2576,6 @@
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-emit-output-plugin/PROMPT.md"
     ]
-  },
-  {
-    "word": "re-call",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
   },
   {
     "word": "re-read",
@@ -2820,7 +2595,7 @@
   },
   {
     "word": "reading",
-    "files": ["ma-speak-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
+    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "readout",
@@ -2860,7 +2635,7 @@
   },
   {
     "word": "recall",
-    "files": ["ma-history-plugin/manifest.json", "ma-prompts-plugin/manifest.json"]
+    "files": ["ma-history-plugin/manifest.json"]
   },
   {
     "word": "recalled",
@@ -2957,11 +2732,7 @@
   },
   {
     "word": "render",
-    "files": [
-      "ma-agent-writing-style-plugin/PROMPT.md",
-      "ma-diff-view-plugin/PROMPT.md",
-      "ma-emit-output-plugin/PROMPT.md"
-    ]
+    "files": ["ma-agent-writing-style-plugin/PROMPT.md", "ma-emit-output-plugin/PROMPT.md"]
   },
   {
     "word": "renderer",
@@ -2970,8 +2741,6 @@
   {
     "word": "renders",
     "files": [
-      "ma-diff-view-plugin/manifest.json",
-      "ma-emit-output-plugin/manifest.json",
       "ma-fetch-plugin/PROMPT.md",
       "ma-sideband-plugin/manifest.json",
       "ma-tps-plugin/manifest.json"
@@ -2994,9 +2763,7 @@
     "files": [
       "ma-base-prompt-plugin/prompts/instructions.md",
       "ma-emit-output-plugin/PROMPT.md",
-      "ma-skills-plugin/PROMPT.md",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
-      "ma-web-search-plugin/PROMPT.md"
+      "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
   {
@@ -3055,31 +2822,18 @@
     "files": ["ma-emit-output-plugin/PROMPT.md"]
   },
   {
-    "word": "restored",
-    "files": ["ma-schedule-plugin/manifest.json"]
-  },
-  {
     "word": "resume",
     "files": [
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-header-template-plugin/manifest.json",
       "ma-intercom-plugin/manifest.json",
       "ma-model-info-plugin/manifest.json",
-      "ma-schedule-plugin/manifest.json",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
   {
     "word": "retained",
     "files": ["ma-turn-recovery-plugin/prompts/compact-local-stub.md"]
-  },
-  {
-    "word": "retried",
-    "files": ["ma-file-lock-plugin/PROMPT.md"]
-  },
-  {
-    "word": "retry",
-    "files": ["ma-web-search-plugin/PROMPT.md"]
   },
   {
     "word": "return",
@@ -3101,10 +2855,6 @@
     ]
   },
   {
-    "word": "reusable",
-    "files": ["ma-prompts-plugin/PROMPT.md", "ma-prompts-plugin/manifest.json"]
-  },
-  {
     "word": "review",
     "files": ["ma-sub-agents-plugin/PROMPT.md", "ma-sub-agents-plugin/manifest.json"]
   },
@@ -3118,7 +2868,7 @@
   },
   {
     "word": "rewrite",
-    "files": ["ma-agent-writing-style-plugin/PROMPT.md", "ma-compact-plugin/manifest.json"]
+    "files": ["ma-agent-writing-style-plugin/PROMPT.md"]
   },
   {
     "word": "rf",
@@ -3169,16 +2919,8 @@
     "files": ["ma-speak-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "says",
-    "files": ["ma-speak-plugin/PROMPT.md", "ma-web-search-plugin/PROMPT.md"]
-  },
-  {
     "word": "scale",
     "files": ["ma-sub-agents-plugin/PROMPT.md"]
-  },
-  {
-    "word": "scan",
-    "files": ["ma-skills-plugin/PROMPT.md"]
   },
   {
     "word": "scheduling",
@@ -3227,11 +2969,7 @@
   },
   {
     "word": "search",
-    "files": [
-      "ma-session-history-plugin/manifest.json",
-      "ma-sub-agents-plugin/lib/library.ts",
-      "ma-web-search-plugin/manifest.json"
-    ]
+    "files": ["ma-session-history-plugin/manifest.json", "ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "security",
@@ -3283,10 +3021,6 @@
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
-    "word": "session-scoped",
-    "files": ["ma-schedule-plugin/manifest.json"]
-  },
-  {
     "word": "settings",
     "files": [
       "ma-computer-use-plugin/PROMPT.md",
@@ -3304,7 +3038,7 @@
   },
   {
     "word": "ships",
-    "files": ["ma-interleave-thinking-plugin/manifest.json", "ma-web-search-plugin/manifest.json"]
+    "files": ["ma-interleave-thinking-plugin/manifest.json"]
   },
   {
     "word": "shot",
@@ -3387,10 +3121,8 @@
       "ma-background-plugin/manifest.json",
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-config-plugin/manifest.json",
-      "ma-file-lock-plugin/PROMPT.md",
       "ma-history-plugin/manifest.json",
       "ma-intercom-plugin/PROMPT.md",
-      "ma-schedule-plugin/PROMPT.md",
       "ma-sub-agents-plugin/PROMPT.md",
       "ma-sub-agents-plugin/lib/library.ts",
       "ma-sub-agents-plugin/prompts/no-host-policy.tmpl.md",
@@ -3421,19 +3153,11 @@
     "files": ["ma-intercom-plugin/PROMPT.md"]
   },
   {
-    "word": "speaking",
-    "files": ["ma-speak-plugin/PROMPT.md"]
-  },
-  {
     "word": "specific",
     "files": [
       "ma-memory-plugin/prompts/framing.project.md",
       "ma-memory-plugin/prompts/summarize.tmpl.md"
     ]
-  },
-  {
-    "word": "speech",
-    "files": ["ma-speak-plugin/manifest.json"]
   },
   {
     "word": "split",
@@ -3556,8 +3280,12 @@
     ]
   },
   {
-    "word": "submit",
-    "files": ["ma-prompts-plugin/manifest.json"]
+    "word": "subagentsreportresult",
+    "files": [
+      "ma-sub-agents-plugin/lib/library.ts",
+      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
+      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
+    ]
   },
   {
     "word": "submitted",
@@ -3627,10 +3355,6 @@
     "files": ["ma-tps-plugin/manifest.json"]
   },
   {
-    "word": "swappable",
-    "files": ["ma-speak-plugin/manifest.json"]
-  },
-  {
     "word": "swear",
     "files": ["ma-agent-writing-style-plugin/PROMPT.md"]
   },
@@ -3679,7 +3403,6 @@
     "word": "takes",
     "files": [
       "ma-background-plugin/PROMPT.md",
-      "ma-file-lock-plugin/PROMPT.md",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
@@ -3692,20 +3415,12 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "teams",
-    "files": ["ma-agent-cloud/PROMPT.md", "ma-agent-cloud/manifest.json"]
-  },
-  {
     "word": "technical",
     "files": ["ma-base-prompt-plugin/prompts/instructions.md"]
   },
   {
     "word": "telemetry",
     "files": ["ma-tps-plugin/manifest.json"]
-  },
-  {
-    "word": "teleport",
-    "files": ["ma-agent-cloud/PROMPT.md"]
   },
   {
     "word": "temperature",
@@ -3725,10 +3440,6 @@
       "ma-base-prompt-plugin/prompts/instructions.md",
       "ma-interleave-thinking-plugin/PROMPT.md"
     ]
-  },
-  {
-    "word": "thinkingdisplay",
-    "files": ["ma-config-plugin/manifest.json"]
   },
   {
     "word": "threshold",
@@ -3778,10 +3489,6 @@
     ]
   },
   {
-    "word": "touching",
-    "files": ["ma-emit-output-plugin/manifest.json"]
-  },
-  {
     "word": "tourism",
     "files": ["ma-agent-writing-style-plugin/PROMPT.md"]
   },
@@ -3809,7 +3516,6 @@
     "word": "treat",
     "files": [
       "ma-ask-mode-plugin/PROMPT.md",
-      "ma-skills-plugin/PROMPT.md",
       "ma-sub-agents-plugin/PROMPT.md",
       "ma-sub-agents-plugin/lib/library.ts"
     ]
@@ -3838,7 +3544,6 @@
     "word": "truncated",
     "files": [
       "ma-emit-output-plugin/PROMPT.md",
-      "ma-emit-output-plugin/manifest.json",
       "ma-turn-recovery-plugin/prompts/response-truncated-placeholder.md"
     ]
   },
@@ -3872,7 +3577,6 @@
       "ma-background-plugin/manifest.json",
       "ma-emit-output-plugin/PROMPT.md",
       "ma-file-lock-plugin/manifest.json",
-      "ma-prompts-plugin/manifest.json",
       "ma-sub-agents-plugin/lib/library.ts"
     ]
   },
@@ -3881,12 +3585,8 @@
     "files": ["ma-history-plugin/manifest.json"]
   },
   {
-    "word": "unexpired",
-    "files": ["ma-schedule-plugin/manifest.json"]
-  },
-  {
     "word": "unified",
-    "files": ["ma-ask-mode-plugin/PROMPT.md", "ma-diff-view-plugin/manifest.json"]
+    "files": ["ma-ask-mode-plugin/PROMPT.md"]
   },
   {
     "word": "universal",
@@ -3902,7 +3602,7 @@
   },
   {
     "word": "untrusted",
-    "files": ["ma-sideband-plugin/manifest.json", "ma-skills-plugin/PROMPT.md"]
+    "files": ["ma-sideband-plugin/manifest.json"]
   },
   {
     "word": "uptime",
@@ -3923,10 +3623,6 @@
   {
     "word": "user-visible",
     "files": ["ma-interleave-thinking-plugin/manifest.json"]
-  },
-  {
-    "word": "utterance",
-    "files": ["ma-speak-plugin/PROMPT.md"]
   },
   {
     "word": "vague",
@@ -3970,7 +3666,7 @@
   },
   {
     "word": "via",
-    "files": ["ma-diagnostics-plugin/manifest.json", "ma-schedule-plugin/manifest.json"]
+    "files": ["ma-diagnostics-plugin/manifest.json"]
   },
   {
     "word": "visible",
@@ -3979,10 +3675,6 @@
   {
     "word": "vocabulary",
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
-  },
-  {
-    "word": "vs",
-    "files": ["ma-session-info-plugin/manifest.json"]
   },
   {
     "word": "wakes",
@@ -4011,7 +3703,6 @@
     "word": "what",
     "files": [
       "ma-agent-writing-style-plugin/PROMPT.md",
-      "ma-core-tools-plugin/tool-text.ts",
       "ma-intercom-plugin/manifest.json",
       "ma-sub-agents-plugin/lib/library.ts",
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
@@ -4023,11 +3714,7 @@
   },
   {
     "word": "whole",
-    "files": [
-      "ma-intercom-plugin/PROMPT.md",
-      "ma-skills-plugin/PROMPT.md",
-      "ma-sub-agents-plugin/lib/library.ts"
-    ]
+    "files": ["ma-intercom-plugin/PROMPT.md", "ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "whose",
@@ -4054,10 +3741,6 @@
     "files": ["ma-emit-output-plugin/PROMPT.md", "ma-session-info-plugin/manifest.json"]
   },
   {
-    "word": "would",
-    "files": ["ma-emit-output-plugin/manifest.json"]
-  },
-  {
     "word": "writing",
     "files": [
       "ma-agent-writing-style-plugin/PROMPT.md",
@@ -4066,10 +3749,7 @@
   },
   {
     "word": "wrong",
-    "files": [
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
-      "ma-web-search-plugin/PROMPT.md"
-    ]
+    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
   },
   {
     "word": "yourself",

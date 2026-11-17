@@ -16,7 +16,7 @@
           "type": "tool",
           "tool": {
             "name": "ChromeCDP",
-            "description": "Control a Chrome that is open on this computer, through the Chrome DevTools Protocol (CDP). Use one of the operations that have a name, or use `send` to send a CDP method directly. Use this tool when you must have the browser session with the login of the user. Use it also to click in a live page, or to get the network and performance events.\n\nDo not use this tool to read a page that has no login. Use `Fetch` for that. Do not close the last open tab when the connection must stay open. If you close it, Chrome can stop. The tool gives a JSON result for each operation. For `events`, it gives the events in the buffer.",
+            "description": "Control an open Chrome through the Chrome DevTools Protocol (CDP), with operations that have names or with `send`. Use it for the user login session, a click in a live page, or the network and performance data. Use `Fetch`, not this tool, to read a page that has no login. Do not close the last tab when the connection must stay open, because Chrome can stop. The tool gives a JSON result for each operation, and the events in the buffer for `events`.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -39,59 +39,59 @@
                     "activatetarget",
                     "getinfo"
                   ],
-                  "description": "The operation to do. Start with `targets` to get a tab id:\n\n- `ping`: show if the daemon and the browser operate.\n- `targets`: show the open page tabs, each with `id`, `title` and `url`.\n- `alltargets`: show all targets, with iframes and workers.\n- `eval`: run JavaScript in a tab.\n- `frameeval`: run JavaScript in a cross-origin child frame.\n- `nav`: navigate a tab to a URL.\n- `newtab`: open a tab.\n- `setdownload`: set the download directory of a tab.\n- `downloads`: show the downloads. Use it again until a download is complete.\n- `send`: send one CDP method directly.\n- `events`: read the events in the buffer.\n- `record`: start or stop the event buffer.\n- `closetarget`: close a tab.\n- `activatetarget`: move a tab to the front.\n- `getinfo`: show the `TargetInfo` of one tab."
+                  "description": "Necessary. Start with `targets` to get a tab id.\n- `targets`: the page tabs (`id`, `title`, `url`).\n- `alltargets`: all targets, also iframes and workers.\n- `frameeval`: run JavaScript in a cross-origin child frame.\n- `downloads`: show the downloads. Use it again until they are complete.\n- `send`: send one CDP method directly.\n- `events`: read the event buffer.\n- `record`: start or stop the event buffer."
                 },
                 "target": {
                   "type": "string",
-                  "description": "The id of a tab, from `targets` or `newtab`. You must give it for `eval`, `frameeval`, `nav`, `setdownload`, `closetarget`, `activatetarget` and `getinfo`. It is optional for `send`. With `send`, the tool sends the method in the session of that tab."
+                  "description": "A tab id from `targets` or `newtab`. Necessary for `eval`, `frameeval`, `nav`, `setdownload`, `closetarget`, `activatetarget` and `getinfo`. For `send`, it is optional and sets the tab session."
                 },
                 "expr": {
                   "type": "string",
-                  "description": "The JavaScript expression to run. The tool gives its value as JSON. You must give it for `eval` and `frameeval`. If the expression causes an error, the result is `{\"__error\":\"...\"}`."
+                  "description": "Necessary for `eval` and `frameeval`: the JavaScript expression. The tool gives its value. An error gives `{\"__error\":\"...\"}`."
                 },
                 "urlSub": {
                   "type": "string",
-                  "description": "A part of the URL of the child frame. The tool uses the first frame with a URL that contains this text. You must give it for `frameeval`. For example, `idmsa.apple.com` for an Apple login frame in the page."
+                  "description": "Necessary for `frameeval`: a part of the child frame URL, for example `idmsa.apple.com`."
                 },
                 "url": {
                   "type": "string",
-                  "description": "The URL to open. You must give it for `nav`. It is optional for `newtab`. The default for `newtab` is `about:blank`."
+                  "description": "The URL. Necessary for `nav`. For `newtab`, the default is `about:blank`."
                 },
                 "dir": {
                   "type": "string",
-                  "description": "The full path of the directory for downloads. You must give it for `setdownload`."
+                  "description": "Necessary for `setdownload`: the full path of the download directory."
                 },
                 "method": {
                   "type": "string",
-                  "description": "A CDP method with the shape `Domain.method`. For example, `Network.enable`, `Performance.getMetrics`, `Page.captureScreenshot` or `Tracing.start`. You must give it for `send`."
+                  "description": "Necessary for `send`: a CDP method `Domain.method`, for example `Network.enable`, `Performance.getMetrics`, `Page.captureScreenshot` or `Tracing.start`."
                 },
                 "params": {
                   "type": "object",
-                  "description": "The parameter object of the method for `send`. For example, `{\"requestId\":\"...\"}` for `Network.getResponseBody`. The default is `{}`."
+                  "description": "For `send`: the method parameters, for example `{\"requestId\":\"...\"}` for `Network.getResponseBody`. The default is `{}`."
                 },
                 "sessionId": {
                   "type": "string",
-                  "description": "A CDP session id for a `send` method. If you give it, the tool uses it and not `target`. Usually, give `target` and not this value."
+                  "description": "For `send`: a CDP session id. The tool uses it and not `target`. Usually, use `target`."
                 },
                 "filter": {
                   "type": "string",
-                  "description": "For `events`: a part of the CDP method name. The tool gives only the events with a method name that contains this text. This value is case-insensitive. For example, `Network.responseReceived`, or only `Network`."
+                  "description": "For `events`: case-insensitive text in the CDP method name, for example `Network.responseReceived` or `Network`."
                 },
                 "since": {
                   "type": "number",
-                  "description": "For `events`: give only the events with a sequence number that is more than this value. To read only the new events, give the `cursor` value from the previous result."
+                  "description": "For `events`: only the events with a sequence number more than this value. For only new events, give the previous `cursor`."
                 },
                 "limit": {
                   "type": "number",
-                  "description": "For `events`: the maximum number of events. The tool gives the newest events that agree with the filter."
+                  "description": "For `events`: the maximum events. The tool gives the newest events."
                 },
                 "clear": {
                   "type": "boolean",
-                  "description": "For `events` and `record`. For `events`, the tool removes all events from the buffer after it reads them. For `record`, the tool removes all events from the buffer when it starts or stops the buffer."
+                  "description": "For `events` and `record`: empty the buffer after the read or with the change."
                 },
                 "on": {
                   "type": "boolean",
-                  "description": "For `record`: `true` starts the event buffer, and `false` stops it. The default is `true`."
+                  "description": "For `record`: `true` starts the buffer and `false` stops it. The default is `true`."
                 }
               },
               "required": ["action"],

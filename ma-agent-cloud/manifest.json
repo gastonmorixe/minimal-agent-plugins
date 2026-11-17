@@ -14,14 +14,14 @@
           "type": "tool",
           "tool": {
             "name": "CloudStatus",
-            "description": "Show the status of the minimal-agent cloud plugin. The tool shows if the cloud functions are on, the cloud flags, and if the network transport is in the transport registry of the harness. Each use also adds that transport to the registry. A second use does not change the registry. At this time, the network functions of the transport do not operate. For example, `CloudStatus({})`.",
+            "description": "Show the status of the minimal-agent cloud plugin. The tool shows if the cloud functions are on, the cloud flags, and if the network transport is in the registry. Each use also adds the transport (a placeholder) to the registry, one time only. For example, `CloudStatus({})`.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
-                  "description": "The output format. The default is `\"text\"`."
+                  "description": "The output format. The default is `text`."
                 }
               },
               "additionalProperties": false
@@ -43,7 +43,7 @@
           "type": "tool",
           "tool": {
             "name": "CloudLogin",
-            "description": "Log this CLI in to the minimal-agent cloud backend with the OAuth device-authorization flow (RFC 8628). The tool shows a short user code and a URL. The user opens the URL in a browser and gives approval for the code. Then the tool completes the login and saves the access token on this computer. After the login, these cloud functions start: teleport, and peers and teams on other computers.\n\nTo set the backend, set `MINIMAL_AGENT_CLOUD_URL`. The default is `http://localhost:4000/api/auth`. For example, `CloudLogin({})`.",
+            "description": "Log this CLI in to the minimal-agent cloud backend with the OAuth device flow (RFC 8628). The tool shows a user code and a URL for approval in a browser. Then it saves the access token on this computer. After the login, teleport, and peers and teams on other computers start. To set the backend, set `MINIMAL_AGENT_CLOUD_URL` (default `http://localhost:4000/api/auth`). For example, `CloudLogin({})`.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -66,7 +66,7 @@
           "type": "tool",
           "tool": {
             "name": "CloudPush",
-            "description": "Upload the new records of this session to the cloud teleport store immediately. Then the user can see the session live on the web or on a mobile device. The tool sends only the records that the cloud did not receive. Thus you can use the tool again safely, and an upload continues after a stop.\n\nThe tool operates only after a login with `CloudLogin`, and only when the cloud functions are on. If not, the tool does not upload records. The upload also starts automatically in the background between turns. For example, `CloudPush({})`.",
+            "description": "Upload the new records of this session to the cloud teleport store immediately. Then the user can see the session live on the web or a mobile device. The tool sends only the records that the cloud does not have, thus you can use it again safely. It operates only after `CloudLogin` and when the cloud functions are on. The upload also starts automatically between turns. For example, `CloudPush({})`.",
             "input_schema": {
               "type": "object",
               "properties": {},

@@ -78,7 +78,7 @@ describe("Task tool description canceled-vs-done guidance", () => {
     // Auto-promote is store-owned. The action text must say the store
     // promotes the parent when the last open child closes.
     expect(ACTION_DESC).toMatch(
-      /When\s+the\s+last\s+open\s+subtask\s+closes,\s+the\s+parent\s+also\s+becomes\s+`done`\s+automatically/,
+      /After\s+the\s+last\s+open\s+subtask,\s+the\s+parent\s+also\s+becomes\s+`done`\s+automatically/,
     )
     expect(ACTION_DESC).not.toMatch(/does not auto-promote/i)
     expect(ACTION_DESC).not.toMatch(/parent\s+does\s+not\s+become\s+`done`/i)
@@ -89,7 +89,7 @@ describe("Task tool description canceled-vs-done guidance", () => {
   test("documents parent auto-start", () => {
     expect(ACTION_DESC).toMatch(/`start`: set the task to `doing`\. The parent also starts\./)
     // Partial-completion rollup: the parent stays doing while siblings are open.
-    expect(ACTION_DESC).toMatch(/While other subtasks stay open, the parent stays `doing`/)
+    expect(ACTION_DESC).toMatch(/Before that, it stays `doing`/)
   })
 
   test("warns against redundant parent done after last-child auto-promote", () => {
@@ -104,7 +104,7 @@ describe("Task tool description canceled-vs-done guidance", () => {
   test("recommends parent/subtask structure for multi-phase plans", () => {
     // Tree form via tasks+children (preferred over drip-feed parent: adds).
     expect(TOOL_DESC).toMatch(/`add_many`\s+with\s+`tasks`/)
-    expect(TASKS_DESC).toMatch(/This is the recommended value/i)
+    expect(TASKS_DESC).toMatch(/The recommended task tree/i)
     expect(TASKS_DESC).toMatch(/`\{title, children\?\}`/)
   })
 

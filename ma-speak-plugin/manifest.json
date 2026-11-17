@@ -14,18 +14,18 @@
           "type": "tool",
           "tool": {
             "name": "Speak",
-            "description": "Speak text to the user through the speakers of the computer. Use this tool when the user tells you that they want to hear the result. Use it when a short spoken message helps. Do not use it for code, a URL, a table or much markdown. Do not speak a written response that the user reads. The tool gives a job id immediately, and the voice continues while you continue your work.",
+            "description": "Speak text to the user through the speakers of the computer. Use it when the user wants to hear the result, or when a short spoken message helps. Do not use it for code, a URL, a table or much markdown. Do not speak a written response that the user reads. The tool gives a job id immediately, and the voice continues while you work.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "text": {
                   "type": "string",
-                  "description": "The text to speak. Usual sentences are best. The voice speaks markdown, code and URLs as you write them, and this is bad to hear. Change them into usual words first, and remove the markdown. The maximum is 8000 characters."
+                  "description": "Necessary. Usual sentences are best. The voice speaks markdown, code and URLs as you write them, and this is bad to hear. Change them into usual words first. The maximum is 8000 characters."
                 },
                 "wait": {
                   "type": "boolean",
                   "default": false,
-                  "description": "With `false` (the default), the tool gives a job id immediately. Then the voice continues while you continue your work. With `true`, the tool waits until the voice stops or until its time limit. Use `true` only for a short line. Use it when you must know that the voice spoke the full line before you continue. Do not use it for a long text, because the turn stops until the voice stops."
+                  "description": "With `false` (the default), the tool gives a job id immediately, and the voice continues while you work. With `true`, the tool waits until the voice stops or until its time limit. Use `true` only for a short line that you must know is fully spoken before you continue. Do not use it for a long text: the turn stops until the voice stops."
                 }
               },
               "required": ["text"],
@@ -48,13 +48,13 @@
           "type": "tool",
           "tool": {
             "name": "SpeakStatus",
-            "description": "Show if the voice plays. Use this tool before you wait, speak again, or stop a job. Do not use it to stop a job. Use `SpeakStop` for that. The tool gives the status of one job, or the status of all jobs in this session.",
+            "description": "Show if the voice plays. Use it before you wait, speak again, or stop a job. To stop a job, use `SpeakStop`. The tool gives the status of one job, or of all jobs in this session.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The job id that `Speak` gave. For example, `s1`. If you do not give it, the tool gives the status of all jobs in this session."
+                  "description": "The job id that `Speak` gave, for example `s1`. With no id, the tool gives the status of all jobs in this session."
                 }
               },
               "additionalProperties": false
@@ -76,13 +76,13 @@
           "type": "tool",
           "tool": {
             "name": "SpeakStop",
-            "description": "Stop the voice. Use this tool immediately when the user tells you to stop. Use it when you spoke incorrect words. Do not use it to see if a job continues. Use `SpeakStatus` for that.\n\nThe tool gives a message that the job stopped. If the job was complete before, the message tells you that the tool did no work.",
+            "description": "Stop the voice. Use it immediately when the user tells you to stop, or when you spoke incorrect words. To see if a job continues, use `SpeakStatus`.\n\nThe tool gives a message that the job stopped, or that the job was complete before.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The job id that `Speak` gave. For example, `s1`. If you do not give it, the tool stops all active voice jobs in this session."
+                  "description": "The job id that `Speak` gave, for example `s1`. With no id, the tool stops all active voice jobs in this session."
                 }
               },
               "additionalProperties": false

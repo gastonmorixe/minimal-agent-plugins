@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "Computer",
-            "description": "Control this Mac through the Accessibility tree or through input events from the mouse and the keyboard. Use the Accessibility tree first, because it operates on elements that have names. Use input events only for a canvas, an Electron app or a web view with a thin tree. Do not use this tool for a browser page that `ChromeCDP` can control. This tool has no sandbox. Thus, read the screen before you write to it.\n\nCoordinates are in points, not in pixels, with 0,0 at the top left. One coordinate system applies to all displays. For `snapshot` and `find`, the tool gives element ids with role, title, value and `bbox`. For `getValue`, the tool gives one value. For `screenshot`, the tool gives the path of a PNG file.",
+            "description": "Control this Mac through the Accessibility tree or through mouse and keyboard input. Use the tree first, because its elements have names. Use input only for a canvas, Electron or a web view with a thin tree. Do not use it for a browser page that `ChromeCDP` can control. There is no sandbox, thus read the screen before you write to it.\n\nThe tool gives element ids with role, title, value and `bbox` for `snapshot` and `find`, one value for `getValue`, and a PNG path for `screenshot`.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -38,62 +38,62 @@
                     "keypress",
                     "screenshot"
                   ],
-                  "description": "The operation to do. Start with `ping` or `perms`. Use this sequence: `perms`, `apps`, `windows`, `snapshot`, `find`, then `perform` or `setValue`, then mouse or key input. The other fields tell the operations that they apply to.\n\n- `ping`: show if the daemon operates, and the permission status.\n- `perms`: show the Accessibility, Screen and Input permissions. With `prompt` `true`, the tool also shows the prompts for the missing `ax` and `screen` permissions. It shows the prompt for the `input` permission only with `pane` `\"input\"`.\n- `apps`: show the GUI apps that run, each with `pid`, `bundleId`, `name` and `frontmost`.\n- `activate`: move an app to the front. Then the input goes to that app.\n- `windows`: show the windows of an app.\n- `snapshot`: read the accessibility tree and get element ids.\n- `find`: find elements in that tree by role, title, identifier or value.\n- `elementAtPoint`: find the element at `x` and `y`.\n- `focused`: give the element that receives the keyboard input.\n- `describe`: give all attributes and AX operations of an element id.\n- `getValue`: read the value of an element id.\n- `setValue`: write the value of an element id.\n- `perform`: do an AX operation on an element id.\n- `mouse`: move, click, drag or scroll.\n- `type`: type text.\n- `key`: push a key, with or without modifier keys.\n- `keypress`: the same as `key`.\n- `screenshot`: get an image of the screen or of an area of it."
+                  "description": "Necessary. Start with `ping` or `perms`. Then use `apps`, `windows`, `snapshot`, `find`, then `perform` or `setValue`, then mouse or key input. Other fields tell the operations that they apply to.\n- `ping`: daemon and permission status.\n- `apps`: GUI apps with `pid` and `bundleId`.\n- `activate`: move an app to the front for input.\n- `snapshot`: read the tree and get element ids.\n- `focused`: the element with the keyboard input.\n- `perform`: do an AX operation.\n- `keypress`: the same as `key`."
                 },
                 "pid": {
                   "type": "number",
-                  "description": "The process id of the target app. For `windows`, `snapshot` and `find`, it selects the app. If you do not give it, the tool uses the app at the front."
+                  "description": "The app process id for `windows`, `snapshot` and `find`. The default is the front app."
                 },
                 "bundleId": {
                   "type": "string",
-                  "description": "The bundle id of the target app. For example, `com.apple.TextEdit`. You can give it as an alternative to `pid`. For `windows`, `snapshot` and `find`, it selects the app. If you do not give it, the tool uses the app at the front.\n\nFor `type`, `key`, `keypress` and `mouse`, the tool first moves that app to the front. Then the keys and clicks go to that app. Use it before you type."
+                  "description": "The app bundle id, for example `com.apple.TextEdit`, or use `pid`. For `type`, `key`, `keypress` and `mouse`, the tool first moves the app to the front. Use it before you type."
                 },
                 "maxDepth": {
                   "type": "number",
-                  "description": "For `snapshot`: the maximum depth of the tree to read. The default is 20."
+                  "description": "For `snapshot`: the maximum depth. The default is 20."
                 },
                 "maxNodes": {
                   "type": "number",
-                  "description": "For `snapshot`: the maximum number of nodes in the result. The default is 2000. Use a lower value to make the result smaller."
+                  "description": "For `snapshot`: the maximum nodes. The default is 2000. Decrease it for a smaller result."
                 },
                 "visibleOnly": {
                   "type": "boolean",
-                  "description": "For `snapshot`: if `true`, the tool does not give the elements with a frame that is not on the screen. It keeps the elements with an unknown frame. The default is `true`."
+                  "description": "For `snapshot`: only the elements on the screen. The default is `true`."
                 },
                 "flatten": {
                   "type": "boolean",
-                  "description": "For `snapshot`: if `true`, the tool gives the elements as one flat sequence. A flat sequence uses a smaller number of tokens. If `false`, the tool gives the tree. The default is `true`."
+                  "description": "For `snapshot`: `true` gives a flat sequence, `false` the tree. The default is `true`."
                 },
                 "role": {
                   "type": "string",
-                  "description": "For `find`: the AX role to find. For example, `AXButton`, `AXTextField`, `AXTextArea`, `AXMenuItem` or `AXCheckBox`."
+                  "description": "For `find`: the AX role, for example `AXButton` or `AXTextField`."
                 },
                 "title": {
                   "type": "string",
-                  "description": "For `find`: text to find in the AX title (`AXTitle`) of each element. This value is case-insensitive. The tool does not examine the AX description."
+                  "description": "For `find`: case-insensitive text in the `AXTitle` only."
                 },
                 "identifier": {
                   "type": "string",
-                  "description": "For `find`: the AX identifier (`AXIdentifier`) that the app sets. The value must be the same as the AX identifier. Many elements have no AX identifier."
+                  "description": "For `find`: the full `AXIdentifier`. Apps frequently do not set it."
                 },
                 "valueContains": {
                   "type": "string",
-                  "description": "For `find`: text to find in the value of each element. This value is case-insensitive."
+                  "description": "For `find`: case-insensitive text in the value."
                 },
                 "limit": {
                   "type": "number",
-                  "description": "For `find`: the maximum number of elements in the result. The default is 25."
+                  "description": "For `find`: the maximum results. The default is 25."
                 },
                 "el": {
                   "type": "string",
-                  "description": "An element id, for example `e7`. You get element ids from `snapshot`, `find`, `elementAtPoint` and `focused`. You must give it for `describe`, `getValue`, `setValue` and `perform`. An element id becomes incorrect when the UI changes. Then the tool gives the HTTP status 409 and an error. Then use `snapshot` again."
+                  "description": "Necessary for `describe`, `getValue`, `setValue` and `perform`: an element id (`e7`) from `snapshot`, `find`, `elementAtPoint` or `focused`. After a UI change, it gives the error 409. Then use `snapshot` again."
                 },
                 "axAction": {
                   "type": "string",
-                  "description": "For `perform`: the name of the AX operation. Usual names are `AXPress` (click), `AXShowMenu`, `AXConfirm`, `AXCancel`, `AXIncrement`, `AXDecrement` and `AXRaise`."
+                  "description": "For `perform`: the AX operation, for example `AXPress` (click), `AXShowMenu` or `AXRaise`."
                 },
                 "value": {
-                  "description": "For `setValue`: the new value. For a text field, this is usually a string."
+                  "description": "For `setValue`: the new value, usually a string."
                 },
                 "op": {
                   "type": "string",
@@ -108,102 +108,102 @@
                     "drag",
                     "scroll"
                   ],
-                  "description": "For `mouse`: the mouse operation. The default is `move`."
+                  "description": "For `mouse`: the operation. The default is `move`."
                 },
                 "x": {
                   "type": "number",
-                  "description": "The X coordinate in points, from the left side. To click an AX element, use `bbox[0] + bbox[2] / 2`. On a screenshot with 2 pixels for each point, divide the pixel coordinate by 2."
+                  "description": "The X coordinate in points from the left, on all displays. To click an AX element, use `bbox[0]+bbox[2]/2`. On a 2x screenshot, divide the pixel value by 2."
                 },
                 "y": {
                   "type": "number",
-                  "description": "The Y coordinate in points, from the top. To click an AX element, use `bbox[1] + bbox[3] / 2`."
+                  "description": "The Y coordinate in points from the top. To click an AX element, use `bbox[1]+bbox[3]/2`."
                 },
                 "toX": {
                   "type": "number",
-                  "description": "For a mouse `drag`: the X coordinate where the drag stops."
+                  "description": "For `drag`: the end X coordinate."
                 },
                 "toY": {
                   "type": "number",
-                  "description": "For a mouse `drag`: the Y coordinate where the drag stops."
+                  "description": "For `drag`: the end Y coordinate."
                 },
                 "button": {
                   "type": "string",
                   "enum": ["left", "right", "center"],
-                  "description": "For `mouse`: the mouse button. The default is `left`."
+                  "description": "For `mouse`: the button. The default is `left`."
                 },
                 "clicks": {
                   "type": "number",
-                  "description": "For a mouse `click`: the number of clicks. Use 1, 2 or 3 for one, two or three clicks."
+                  "description": "For `click`: 1, 2 or 3 clicks."
                 },
                 "steps": {
                   "type": "number",
-                  "description": "For a mouse `drag`: the number of move steps between the start and the end. More steps make a smoother drag. The default is 20."
+                  "description": "For `drag`: the move steps, more for a smoother drag. The default is 20."
                 },
                 "dy": {
                   "type": "number",
-                  "description": "For a mouse `scroll`: the number of vertical lines. A value more than 0 scrolls up. A value less than 0 scrolls down."
+                  "description": "For `scroll`: vertical lines (+ up, - down)."
                 },
                 "dx": {
                   "type": "number",
-                  "description": "For a mouse `scroll`: the number of horizontal lines. A value more than 0 scrolls left. A value less than 0 scrolls right."
+                  "description": "For `scroll`: horizontal lines (+ left, - right)."
                 },
                 "text": {
                   "type": "string",
-                  "description": "For `type`: the text to type, as it is written. The tool sends each character directly, thus the keyboard language does not change the text. You can type emoji and CJK characters. The tool does not type when a password field receives the keyboard input."
+                  "description": "For `type`: the text, also emoji and CJK, in all keyboard languages. The tool does not type into a password field."
                 },
                 "combo": {
                   "type": "string",
-                  "description": "For `key`: a key with modifier keys, for example `cmd+c`, `cmd+shift+4` or `ctrl+left`. The modifiers are `cmd` (or `command`), `shift`, `alt` (or `option`), `ctrl` (or `control`) and `fn`. The last part is the key."
+                  "description": "For `key`: modifiers, then the key, for example `cmd+c`. Modifiers are `cmd` (`command`), `shift`, `alt` (`option`), `ctrl` (`control`) and `fn`."
                 },
                 "key": {
                   "type": "string",
-                  "description": "For `keypress`: the name of one key. For example, `return`, `tab`, `space`, `delete`, `escape`, `up`, `down`, `left`, `right`, `f1` to `f20`, `a` to `z` and `0` to `9`. You can add `modifiers`."
+                  "description": "For `keypress`: one key name, for example `return`, `tab`, `escape`, `f1`-`f20`, `a`-`z` or `0`-`9`. You can add `modifiers`."
                 },
                 "modifiers": {
                   "type": "array",
                   "items": {
                     "type": "string"
                   },
-                  "description": "For `keypress`: the names of the modifier keys to hold: `cmd`, `shift`, `alt`, `ctrl` or `fn`."
+                  "description": "For `keypress`: the modifiers to hold, `cmd`, `shift`, `alt`, `ctrl` or `fn`."
                 },
                 "holdMs": {
                   "type": "number",
-                  "description": "For `key` and `keypress`: the time in milliseconds to hold the key down before the tool releases it. The default is 0."
+                  "description": "For `key` and `keypress`: the hold time in milliseconds. The default is 0."
                 },
                 "mode": {
                   "type": "string",
                   "enum": ["screen", "area"],
-                  "description": "For `screenshot`: `\"screen\"` gives an image of the full display. `\"area\"` gives an image of the area that `x`, `y`, `w` and `h` set. The default is `\"screen\"`."
+                  "description": "For `screenshot`: `screen` (full display, the default) or `area` (`x`, `y`, `w`, `h`)."
                 },
                 "w": {
                   "type": "number",
-                  "description": "For a `screenshot` of an area: the width in points."
+                  "description": "For `area`: the width in points."
                 },
                 "h": {
                   "type": "number",
-                  "description": "For a `screenshot` of an area: the height in points."
+                  "description": "For `area`: the height in points."
                 },
                 "display": {
                   "type": "number",
-                  "description": "For `screenshot`: the index of the display, when the Mac has more than one display. The index 0 is usually the primary display."
+                  "description": "For `screenshot`: the display index. 0 is usually the primary."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["path", "base64"],
-                  "description": "For `screenshot`. The default is `\"path\"`: the tool writes a PNG file and gives its path. With `\"base64\"`, you do not get the image. The tool puts a placeholder in the result."
+                  "description": "For `screenshot`: `path` (the default) gives a PNG path. `base64` gives a placeholder, not the image."
                 },
                 "outputDir": {
                   "type": "string",
-                  "description": "For a `screenshot` with the format `\"path\"`: the directory for the PNG file."
+                  "description": "For a `path` screenshot: the PNG directory."
                 },
                 "prompt": {
                   "type": "boolean",
-                  "description": "For `perms`: if `true`, the tool shows the macOS prompts for the missing `ax` and `screen` permissions. It also opens the applicable permission pane of macOS. The tool shows the prompt for the `input` permission only with `pane` `\"input\"`."
+                  "description": "For `perms`: if `true`, show the missing `ax` and `screen` prompts and open the permission pane. For the `input` prompt, also set `pane` to `input`."
                 },
                 "pane": {
                   "type": "string",
                   "enum": ["ax", "screen", "input"],
-                  "description": "For `perms`: an other permission pane to show. Only `\"input\"` changes the result: then the tool also shows the prompt for the `input` permission, which is optional."
+                  "description": "For `perms`: also show this pane. The `input` permission is optional."
                 }
               },
               "required": ["action"],

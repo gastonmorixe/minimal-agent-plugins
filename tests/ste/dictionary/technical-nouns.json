@@ -15,11 +15,6 @@
     "reason": "a second name that a tool or a param also accepts"
   },
   {
-    "word": "alt",
-    "category": 19,
-    "reason": "the Alt (Option) key on a keyboard"
-  },
-  {
     "word": "ansi",
     "category": 19,
     "reason": "the ANSI escape codes that a terminal uses for color"
@@ -38,11 +33,6 @@
     "word": "app",
     "category": 19,
     "reason": "an application that runs on the computer of the user"
-  },
-  {
-    "word": "apple",
-    "category": 11,
-    "reason": "the Apple company, maker of macOS and the Mac"
   },
   {
     "word": "argument",
@@ -70,11 +60,6 @@
     "reason": "a named value on an HTML or an accessibility element"
   },
   {
-    "word": "audio",
-    "category": 19,
-    "reason": "sound data or a sound file"
-  },
-  {
     "word": "auth",
     "category": 19,
     "reason": "short name for authentication, a category 19 example term"
@@ -98,11 +83,6 @@
     "word": "bash",
     "category": 19,
     "reason": "the bash command shell program of Unix systems"
-  },
-  {
-    "word": "bbox",
-    "category": 19,
-    "reason": "bounding box: the x, y, width and height of an element"
   },
   {
     "word": "binary",
@@ -210,11 +190,6 @@
     "reason": "the remote service that runs agents for a user"
   },
   {
-    "word": "cmd",
-    "category": 19,
-    "reason": "the Command key on a Mac keyboard"
-  },
-  {
     "word": "codebase",
     "category": 19,
     "reason": "all the source files of one software project"
@@ -285,11 +260,6 @@
     "reason": "Cascading Style Sheets, the style language of web pages"
   },
   {
-    "word": "ctrl",
-    "category": 19,
-    "reason": "the Control key on a keyboard"
-  },
-  {
     "word": "cursor",
     "category": 19,
     "reason": "the mark on a screen that shows the input position"
@@ -328,11 +298,6 @@
     "word": "diagnostic",
     "category": 19,
     "reason": "a compiler or linter message about a problem in the code"
-  },
-  {
-    "word": "diagram",
-    "category": 15,
-    "reason": "a drawing that shows the parts of a system and their relation"
   },
   {
     "word": "diff",
@@ -395,11 +360,6 @@
     "reason": "the Escape key on a keyboard"
   },
   {
-    "word": "eval",
-    "category": 19,
-    "reason": "evaluation of a JavaScript expression in a page"
-  },
-  {
     "word": "event",
     "category": 19,
     "reason": "a message that a program sends when something occurs"
@@ -438,11 +398,6 @@
     "word": "flag",
     "category": 19,
     "reason": "a command-line option such as --strict"
-  },
-  {
-    "word": "fn",
-    "category": 19,
-    "reason": "the Fn key on a Mac keyboard"
   },
   {
     "word": "folder",
@@ -585,11 +540,6 @@
     "reason": "the position of an item in a list, or a lookup table"
   },
   {
-    "word": "integer",
-    "category": 7,
-    "reason": "a whole number with no fraction"
-  },
-  {
     "word": "integrator",
     "category": 11,
     "reason": "the name of the sub-agent type that merges and commits work"
@@ -638,11 +588,6 @@
     "word": "key",
     "category": 19,
     "reason": "a keyboard key, or the name of a value in a map"
-  },
-  {
-    "word": "keyword",
-    "category": 19,
-    "reason": "a word that a search engine matches"
   },
   {
     "word": "kib",
@@ -730,11 +675,6 @@
     "reason": "the Markdown text format"
   },
   {
-    "word": "markup",
-    "category": 19,
-    "reason": "text with tags, for example HTML or XML"
-  },
-  {
     "word": "mcp",
     "category": 19,
     "reason": "Model Context Protocol"
@@ -820,11 +760,6 @@
     "reason": "the OAuth authorization protocol"
   },
   {
-    "word": "offset",
-    "category": 19,
-    "reason": "the number of items or lines to skip before the start"
-  },
-  {
     "word": "os",
     "category": 19,
     "reason": "operating system of a computer, short form"
@@ -870,19 +805,9 @@
     "reason": "a text pattern that a search matches, for example a regex"
   },
   {
-    "word": "pdf",
-    "category": 19,
-    "reason": "the PDF document file type"
-  },
-  {
     "word": "peer",
     "category": 19,
     "reason": "another agent session that this session can send messages to"
-  },
-  {
-    "word": "percent",
-    "category": 9,
-    "reason": "a unit for a part of one hundred"
   },
   {
     "word": "permission",
@@ -1180,11 +1105,6 @@
     "reason": "a text value in code or in JSON"
   },
   {
-    "word": "substring",
-    "category": 19,
-    "reason": "a part of a longer string of characters"
-  },
-  {
     "word": "subtask",
     "category": 19,
     "reason": "a task under a parent task on the task board"
@@ -1240,11 +1160,6 @@
     "reason": "the number 3, written as a word in text"
   },
   {
-    "word": "timeout",
-    "category": 9,
-    "reason": "a time limit after which a program stops a job"
-  },
-  {
     "word": "timestamp",
     "category": 9,
     "reason": "a value that records a date and a time"
@@ -1273,11 +1188,6 @@
     "word": "tree",
     "category": 19,
     "reason": "a data structure of nodes with a parent and children"
-  },
-  {
-    "word": "tui",
-    "category": 19,
-    "reason": "terminal user interface"
   },
   {
     "word": "two",
@@ -1310,11 +1220,6 @@
     "reason": "the person who operates the agent, the end user"
   },
   {
-    "word": "video",
-    "category": 19,
-    "reason": "a file or a stream of moving images"
-  },
-  {
     "word": "web",
     "category": 19,
     "reason": "the World Wide Web of pages and sites"
@@ -1323,11 +1228,6 @@
     "word": "webp",
     "category": 19,
     "reason": "the WebP image file type"
-  },
-  {
-    "word": "webpage",
-    "category": 19,
-    "reason": "one page of a web site"
   },
   {
     "word": "websocket",

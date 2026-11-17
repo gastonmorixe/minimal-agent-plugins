@@ -12,64 +12,64 @@
           "type": "tool",
           "tool": {
             "name": "SessionHistory",
-            "description": "Read the history of a saved session from the transcript store on disk (`~/.minimal-agent/sessions/<sid>.jsonl`). The tool can read this session, the previous turns of this session, or a previous session. Use `SessionInfo` for the live condition of this session: the context percent, the quota and the cost.\n\nSelect the operation with `action`:\n\n- `window`: show the records of a session in pages, with stable indexes. This is the default. It shows the newest 10 records (`anchor` `end`). Use `anchor` `start` with `offset` and `limit` to go forward from the first record.\n- `meta`: give a summary of a session. It has the model, the `cwd`, the start time, the record counts, the first prompt, and if the session is live.\n- `list`: show the saved sessions, newest first. You can filter them with `query` and `cwd`.\n- `search`: find text in one session when you give `sid`. If you do not give `sid`, the tool examines the newest sessions.\n- `tool_calls`: filter the tool uses by tool name.\n- `blob`: read the full output of one tool use from before the harness cut it. Give its `toolUseId`.\n- `dump`: give the full session as markdown or XML. This output can be very large, thus use `window` when possible.\n\nThe default `sid` is `last`. The start of an id is also correct if it agrees with only one session. The tool limits each result: it cuts the preview of each record. Each page gives the totals and the offsets of the next page.",
+            "description": "Read a saved session from the transcript store. It can be this session or a previous session. For the live context, quota and cost, use `SessionInfo`.\n\n`window` (the default) gives records in pages. `search` finds text in one session or in the newest sessions. `blob` gives the full output of one tool use, before the cut. `dump` gives the full session and is large: use `window` when possible.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["window", "meta", "list", "search", "tool_calls", "blob", "dump"],
-                  "description": "The data to read. The default is `\"window\"` (records in pages)."
+                  "description": "The data to read. The default is `window`."
                 },
                 "sid": {
                   "type": "string",
-                  "description": "The id of the target session. Give a full id, the start of an id (for example, `bc567526`), or `\"last\"`. The default is `\"last\"`: the newest session in this `cwd`. If this `cwd` has no session, the tool uses the newest session of all. The start of an id that agrees with more than one session gives an error with the possible ids. `list` does not use `sid`, and `sid` is optional for `search`."
+                  "description": "The session: a full id, the start of one id (for example, `bc567526`), or `last`. The default is `last`, the newest session in this `cwd`, or the newest of all. A start that agrees with more ids gives an error with these ids. `list` does not use it. For `search`, no `sid` examines the newest sessions."
                 },
                 "anchor": {
                   "type": "string",
                   "enum": ["start", "end"],
-                  "description": "For `window`: the end of the session where the pages start. Use `\"start\"` for the first record or `\"end\"` for the newest record. The default is `\"end\"`."
+                  "description": "For `window`: `start` (the first record) or `end` (the newest record). The default is `end`."
                 },
                 "offset": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "For `window`, `list`, `search` and `tool_calls`: the number of items to ignore at the start. For `window`, the tool counts from the `anchor`. For the other operations, the tool counts from the newest item. The default is 0."
+                  "description": "For `window`, `list`, `search` and `tool_calls`: the items to ignore, from the `anchor` for `window`. The default is 0."
                 },
                 "limit": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "The number of items on one page. The default for `window` is 10, and the maximum is 500. The default for `list` is 25. The default for `search` and `tool_calls` is 20."
+                  "description": "The page length. For `window`, the default is 10 and the maximum is 500. For `list`, the default is 25. For `search` and `tool_calls`, it is 20."
                 },
                 "previewChars": {
                   "type": "integer",
                   "minimum": 80,
-                  "description": "For `window` and `search`: the maximum number of characters of each record body. The default is 600 for `window` and 160 for `search`."
+                  "description": "For `window` and `search`: the maximum characters of each record body. The default is 600 for `window` and 160 for `search`."
                 },
                 "query": {
                   "type": "string",
-                  "description": "For `search`: the text to find. For `list`: the text to find in the `sid` or the `cwd` of each session. This value is case-insensitive."
+                  "description": "For `search`: the text to find. For `list`: text in the `sid` or `cwd`. It is case-insensitive."
                 },
                 "cwd": {
                   "type": "string",
-                  "description": "For `list`: show only the sessions with a recorded `cwd` that is the same as this path."
+                  "description": "For `list`: only the sessions with this `cwd`."
                 },
                 "tool": {
                   "type": "string",
-                  "description": "For `tool_calls`: show only the uses of the tool with this name. For example, `Bash`. If you do not give a name, the tool shows the uses of all tools."
+                  "description": "For `tool_calls`: only the uses of this tool, for example `Bash`. The default is all tools."
                 },
                 "toolUseId": {
                   "type": "string",
-                  "description": "For `blob`: the `tool_use` id of the tool output to read."
+                  "description": "For `blob`: the `tool_use` id of the output."
                 },
                 "maxBytes": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "For `blob`: the maximum number of bytes of blob text that the tool gives. The default is 65536."
+                  "description": "For `blob`: the maximum bytes. The default is 65536."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["markdown", "xml"],
-                  "description": "For `dump`: the output format. The default is `\"markdown\"`."
+                  "description": "For `dump`: the output format. The default is `markdown`."
                 }
               },
               "additionalProperties": false

@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "SessionInfo",
-            "description": "Show the live condition of this session at this time. Do not use this tool to find the functions of the model. Use `ModelInfo` for that. Use this tool when the user wants to know the cost, the quota, the run time or the directory. Use it also to control your use of the context. For example, use it to find if you must make the context shorter.\n\nThe tool gives these items:\n\n- The fill level of the context window: the tokens in use, the total, the percent and the free tokens. If the window length is unknown, the tool gives only the tokens in use.\n- The number of turns.\n- The selected `effort` level, the `reasoning` functions that the model has, and if fast mode is on.\n- The quota windows of the provider (for example, 5h and 7d), each with its percent of use and the time until it starts again. The tool can give no quota windows.\n- The total token quantity for this session and an approximate USD cost.\n- The live active directory (`cwd`). It can be different from the directory at the start.\n- The time since this process started.\n\nThe tool has no input.",
+            "description": "Show the live condition of this session. The tool gives the context window use, the turns, the `effort` and the quota windows. It also gives the tokens, the approximate USD cost, the `cwd` and the run time. For the model functions, use `ModelInfo`.\n\nUse it when the user wants to know the cost, quota, run time or `cwd`. Use it also to find if your context is too full.",
             "input_schema": {
               "type": "object",
               "properties": {},

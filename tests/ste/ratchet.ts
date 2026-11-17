@@ -234,9 +234,8 @@ export function isZeroTolerance(finding: Pick<SteFinding, "rule" | "role">): boo
  * baseline entry (R3 A4). s14 and s17 are errors in prose too (DESIGN 2), and
  * s20 is zero-tolerance in every role.
  *
- * Note: s14 and s17 have prose debt today, recorded with `--introduce`.
- * TODO(ste): move them here when that debt is zero. The PROMOTE_AT_ZERO test
- * forces the move.
+ * A rule in {@link PROMOTE_AT_ZERO} moves here when its prose debt is zero.
+ * The PROMOTE_AT_ZERO test forces the move.
  */
 export const ZERO_TOLERANCE: ReadonlySet<string> = new Set([
   // Clean on origin/main (the baseline was empty), so promoted at once.
@@ -254,6 +253,10 @@ export const ZERO_TOLERANCE: ReadonlySet<string> = new Set([
   // s19 keeps its prose debt in tests/ste/dictionary/pending.json, which
   // removes a recorded word before it becomes a finding. So every s19 finding
   // is a NEW word, and a new word fails at once.
+  // Promoted 2026-11-17: the STE pass removed the last prose debt.
+  "ste-s7-passive",
+  "ste-s14-abbreviation",
+  "ste-s17-modal",
   "ste-s19-dictionary",
   "ste-s20-tool-name",
   "ste-s21-result-verb",
@@ -266,12 +269,9 @@ export const ZERO_TOLERANCE: ReadonlySet<string> = new Set([
  * move.
  */
 export const PROMOTE_AT_ZERO: ReadonlySet<string> = new Set([
-  "ste-s7-passive",
   "ste-s13-paragraph",
-  "ste-s14-abbreviation",
   "ste-s15-slash",
   "ste-s16-progressive",
-  "ste-s17-modal",
   "ste-s18-fragment",
 ])
 

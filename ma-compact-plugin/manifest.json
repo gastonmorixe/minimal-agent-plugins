@@ -12,28 +12,28 @@
           "type": "tool",
           "tool": {
             "name": "CompactContext",
-            "description": "Put a request for a context compaction in the queue. A compaction replaces the previous session history with a checkpoint and keeps the last messages.\n\nUse this tool when the user tells you to decrease the context. Use it when the context window is very full, or when you cannot find facts from previous messages. Do not use it in a tool loop, because each tool in the loop must complete first. When the user wants a clean start, a new session is better.\n\nThe tool gives a text line with the mode, the `tail` value and the cause. The harness does the compaction in this turn, before it sends the next request to the model. Then continue with the checkpoint and the last messages. If the harness rejects the request, the tool gives an error. Then try again after some time.",
+            "description": "Put a context compaction request in the queue. A compaction replaces previous history with a checkpoint and keeps the last messages.\n\nUse it when the user tells you, when the context is very full, or when you cannot find previous facts. Do not use it in a tool loop. For a clean start, a new session is better.\n\nThe harness does the compaction in this turn, before the next model request. Then continue with the last messages. A rejected request gives an error: try again after a time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "mode": {
                   "type": "string",
                   "enum": ["tail", "local", "remote"],
-                  "description": "The compaction method. The values are:\n- `tail`: keep the last `tail` messages with no change, and write no summary.\n- `local`: write a checkpoint summary, and keep the last messages.\n- `remote`: use the compaction endpoint of the provider. If this is not possible, the harness writes a checkpoint without a summary and keeps the last messages."
+                  "description": "- `tail`: keep the last messages, with no summary.\n- `local`: write a checkpoint summary.\n- `remote`: use the provider endpoint. If not possible, write a checkpoint without a summary."
                 },
                 "tail": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "The number of last messages that stay after the checkpoint with no change. The default is 6."
+                  "description": "The number of last messages to keep without change. The default is 6."
                 },
                 "focus": {
                   "type": "string",
-                  "description": "A short instruction for the summary. The harness gives it to the model that writes the summary, and the checkpoint keeps it as you wrote it. For example, the facts that the next step must have."
+                  "description": "An instruction for the summary, for example the facts that the next step must have. The checkpoint keeps it."
                 },
                 "reason": {
                   "type": "string",
                   "enum": ["manual", "auto"],
-                  "description": "The cause of the compaction: `manual` (the user told you to do it) or `auto` (you selected it). The default is `auto`."
+                  "description": "`manual` (the user told you) or `auto` (you selected it, the default)."
                 }
               },
               "additionalProperties": false

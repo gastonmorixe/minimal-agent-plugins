@@ -11,7 +11,7 @@
           "type": "tool",
           "tool": {
             "name": "ModelInfo",
-            "description": "Show the active model of the agent and the functions that it has at this time. Use this tool before you tell the user that the model cannot accept an image or a type of file. Use this tool also before you tell the user that you cannot do a task. Do not think that your previous data about the model is correct. The model and its functions can change during a session, and they can be different after `--resume`.\n\nThe tool gives the provider, the surface, the context window and the maximum number of output tokens. It also gives the input types: images, PDF documents, audio and video, with the file formats for each type. It also gives the `effort` levels, the `thinking` functions, the prompt cache, and the cost for each token. It also gives the session id and the active directory (`cwd`). The tool has no input.",
+            "description": "Show the active model and the functions that it has at this time. Use it before you tell the user that you cannot do a task. For example, you cannot accept an image or a file type. The model can change during a session or after `--resume`.\n\nThe tool gives the provider, the context window and the maximum output tokens. It also gives the input types, the `effort` levels, the cost and the `cwd`.",
             "input_schema": {
               "type": "object",
               "properties": {},

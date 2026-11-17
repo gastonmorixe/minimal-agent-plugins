@@ -202,12 +202,40 @@ describe("golden leaf diff against the merge base", () => {
       const before = baseGolden(name)
       const after = currentGolden(name)
       const diffs = leafDiff(before, after)
-      const forbidden = diffs.filter((d) => d.kind !== "string")
+      const forbidden = diffs.filter(
+        (d) => d.kind !== "string" && !allowedProseChange(name, d.path),
+      )
       expect(forbidden.slice(0, 20).map((d) => `${d.kind} ${d.path}`)).toEqual([])
       expect(contractLeaves(after)).toEqual(contractLeaves(before))
     })
   }
 })
+
+/**
+ * Model-facing prose that ships OUTSIDE a `description` or `text` key, and that
+ * the STE pass may change. Each entry names one golden, one JSON path and the
+ * source of the text. Keep it narrow: a new entry needs a source and a reason.
+ */
+const PROSE_LEAVES: ReadonlyArray<{ golden: string; path: string; source: string }> = [
+  // The ask-mode refusal hint (ma-ask-mode-plugin/manifest.json refusalHint),
+  // which core sends as the tool_result of a refused Edit or Write. The STE
+  // pass fixed the old tool name `ShowDiff` (wire name: DiffViewerShowDiff).
+  {
+    golden: "ask-mode-edit-allowed-today.json",
+    path: "$.requests[0].messages[2].content[0].content",
+    source: "ma-ask-mode-plugin refusalHint",
+  },
+  {
+    golden: "ask-mode-write-allowed-today.json",
+    path: "$.requests[0].messages[2].content[0].content",
+    source: "ma-ask-mode-plugin refusalHint",
+  },
+]
+
+/** True when a value change at `path` in `golden` is a listed prose leaf. */
+function allowedProseChange(golden: string, path: string): boolean {
+  return PROSE_LEAVES.some((leaf) => leaf.golden === golden && leaf.path === path)
+}
 
 describe("golden leaf diff: rules", () => {
   const base = {

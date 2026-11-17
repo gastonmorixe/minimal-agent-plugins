@@ -281,7 +281,7 @@ describe("integrity", () => {
 })
 
 describe("stale guard", () => {
-  test("every TN, TV, compound and unapproved entry occurs in the corpus", () => {
+  test("every TN, TV and compound entry occurs in the corpus", () => {
     expect(staleEntries(data, lemmas)).toEqual([])
   })
   test("the guard reports an entry that does not occur", () => {

@@ -12,10 +12,6 @@
     "reason": "web content from a different origin than the page, a browser security term"
   },
   {
-    "word": "device-authorization",
-    "reason": "the OAuth device authorization flow (RFC 8628) for a login"
-  },
-  {
     "word": "json-rpc",
     "reason": "the JSON-RPC remote procedure call protocol"
   },
@@ -26,10 +22,6 @@
   {
     "word": "minimal-agent",
     "reason": "the name of this agent product and its packages"
-  },
-  {
-    "word": "no-op",
-    "reason": "an operation that changes nothing"
   },
   {
     "word": "sub-agent",
