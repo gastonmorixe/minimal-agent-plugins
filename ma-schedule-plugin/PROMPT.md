@@ -1,1 +1,1 @@
-The `/loop` and `/schedule` commands write to the same store as these tools, so `CronList` shows their tasks and `CronDelete` cancels them. Set `MINIMAL_AGENT_DISABLE_CRON=1` to disable scheduling.
+The `/loop` and `/schedule` commands write to the same store as these tools. Thus `ScheduleCronList` shows their tasks, and `ScheduleCronDelete` cancels them. To disable scheduling, set `MINIMAL_AGENT_DISABLE_CRON=1`.

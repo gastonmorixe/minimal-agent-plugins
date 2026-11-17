@@ -1,0 +1,33 @@
+[
+  {
+    "word": "cjk",
+    "category": 19,
+    "reason": "the Chinese, Japanese and Korean scripts as one group of text characters"
+  },
+  {
+    "word": "cost",
+    "category": 19,
+    "reason": "the USD amount that a model provider charges for the tokens of a session",
+    "verb": "use"
+  },
+  {
+    "word": "keyboard",
+    "category": 19,
+    "reason": "the hardware device with keys that sends key input to the Mac"
+  },
+  {
+    "word": "sandbox",
+    "category": 19,
+    "reason": "the macOS mechanism that limits the files and services that an app can access"
+  },
+  {
+    "word": "team",
+    "category": 19,
+    "reason": "an Intercom group of peer sessions with a name, which the cloud plugin lets span computers"
+  },
+  {
+    "word": "teleport",
+    "category": 19,
+    "reason": "the name of the cloud function that copies a session to the cloud so the user can see it live"
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "word": "online",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the session writes its heartbeat and is in no known phase"
+  },
+  {
+    "word": "busy",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the session is in a turn"
+  },
+  {
+    "word": "idle",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the session waits between turns"
+  },
+  {
+    "word": "stale",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the heartbeat is older than the stale limit"
+  },
+  {
+    "word": "hung",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the process is alive but the heartbeat stopped"
+  },
+  {
+    "word": "dead",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the process is gone"
+  },
+  {
+    "word": "offline",
+    "source": "ma-intercom-plugin/lib/liveness.ts",
+    "reason": "IntercomPeers status: the session exited, or has no valid heartbeat"
+  },
+  {
+    "word": "note",
+    "source": "ma-sub-agents-plugin/lib/mailbox.ts",
+    "reason": "SubAgentsMailbox kind: a usual message (the default)"
+  },
+  {
+    "word": "claim",
+    "source": "ma-sub-agents-plugin/lib/mailbox.ts",
+    "reason": "SubAgentsMailbox kind: the sender takes a file or a task"
+  },
+  {
+    "word": "blocker",
+    "source": "ma-sub-agents-plugin/lib/mailbox.ts",
+    "reason": "SubAgentsMailbox kind: an error that stops the sender"
+  },
+  {
+    "word": "handoff",
+    "source": "ma-sub-agents-plugin/lib/mailbox.ts",
+    "reason": "SubAgentsMailbox kind: work that the sender gives to a different agent"
+  }
+]

@@ -84,7 +84,7 @@ describe("SubagentsAttachment", () => {
       )
     }
     const t = new SubagentsAttachment("lead", { dir }, () => NOW).toText() as string
-    expect(t).toContain("more (ListAgents)")
+    expect(t).toContain("more (SubAgentsListAgents)")
   })
 
   // Relocated from the core seam test (src/agent.turn-attachments.test.ts,

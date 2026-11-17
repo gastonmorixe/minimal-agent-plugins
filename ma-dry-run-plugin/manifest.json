@@ -2,7 +2,7 @@
   "id": "dry-run",
   "name": "Dry run",
   "version": "0.1.0",
-  "description": "Builds the full LLM request (system prompt, messages, tools, options), prints it as JSON, and blocks the send. No request reaches the provider. Disabled by default. Enable with --enable-plugin dry-run.",
+  "description": "The plugin makes the full LLM request (system prompt, messages, tools, options), prints it as JSON, and does not send it. No request reaches the provider. Disabled by default. Enable with --enable-plugin dry-run.",
   "enabled": false,
   "permissions": ["hooks:message.willSend"],
   "headless": {

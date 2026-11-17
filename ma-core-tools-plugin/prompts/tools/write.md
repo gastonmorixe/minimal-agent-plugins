@@ -1,1 +1,1 @@
-Writes a file to the local filesystem. If the file exists, Write replaces the file.
+Write a file to the local filesystem. If the file is on the disk, the tool replaces it.

@@ -60,6 +60,12 @@ describe("compactContext", () => {
     expect(r.content).toContain("mode: local")
     expect(r.content).toContain("tail: 6")
     expect(r.displayHeader).toBe("compact queued (local)")
+    // The drain runs at the start of the next round of THIS turn (core
+    // agent-core.ts drainPendingCompact), not after the turn.
+    expect(r.content).toContain(
+      "The harness does the compaction in this turn, before the next model request.",
+    )
+    expect(r.content).not.toContain("after this turn")
   })
 
   it("passes explicit mode/tail/focus/reason through", async () => {

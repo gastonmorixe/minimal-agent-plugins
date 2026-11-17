@@ -52,7 +52,7 @@ export default async function cronCreate(ctx: TUIContext): Promise<TUIResult> {
     create = { cron: rawCron, prompt, recurs, source: "tool" }
     if (!recurs) {
       const nf = nextFire(parseCron(rawCron), new Date(now))
-      if (!nf) return fail("That schedule has no upcoming fire time.")
+      if (!nf) return fail("That schedule has no upcoming run time.")
       create.nextAtMs = nf.getTime()
     }
   } else if (every && everyMs !== null && recurs && everyMs < MIN_CRON_MS) {
@@ -75,7 +75,7 @@ export default async function cronCreate(ctx: TUIContext): Promise<TUIResult> {
     rounded = ic.rounded
     if (!recurs) {
       const nf = nextFire(parseCron(ic.cron), new Date(now))
-      if (!nf) return fail("That schedule has no upcoming fire time.")
+      if (!nf) return fail("That schedule has no upcoming run time.")
       create.nextAtMs = nf.getTime()
     }
   } else {
@@ -95,7 +95,7 @@ export default async function cronCreate(ctx: TUIContext): Promise<TUIResult> {
     content:
       `Scheduled task ${e.id} (${recurs ? "recurring" : "one-shot"}). ` +
       `${describeCreated(e, now, rounded)[0]}. ` +
-      `It injects the prompt between turns when due. Cancel with CronDelete("${e.id}").`,
+      `It injects the prompt between turns when due. Cancel with ScheduleCronDelete("${e.id}").`,
     display: body,
     displayHeader: info,
     displayFooter: taskFooter(e, now),

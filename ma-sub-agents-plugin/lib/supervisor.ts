@@ -104,12 +104,12 @@ export function completionDigest(r: SubagentRecord): string {
       // The sentence below adds its own period, so drop a trailing one.
       const short = clip(r.status.result.short, 220).replace(/[.。]+$/, "")
       const facts = runFacts(r.status.result)
-      return `Sub-agent ${r.id} (${r.label}) finished${facts}: ${short}. Pull the full result with AgentResult ${r.id}.`
+      return `Sub-agent ${r.id} (${r.label}) finished${facts}: ${short}. Pull the full result with SubAgentsAgentResult ${r.id}.`
     }
     case "incomplete": {
       const salvaged = r.status.salvage
-        ? ` Its findings were salvaged (it produced a summary but not the required file). Read them with AgentResult ${r.id} before you decide. You may not need a full re-run.`
-        : ` Inspect it with AgentResult ${r.id} and re-spawn if you still need the work.`
+        ? ` Its findings were salvaged (it produced a summary but not the required file). Read them with SubAgentsAgentResult ${r.id} before you decide. You may not need a full re-run.`
+        : ` Inspect it with SubAgentsAgentResult ${r.id} and re-spawn if you still need the work.`
       return `Sub-agent ${r.id} (${r.label}) finished INCOMPLETE: deliverable contract not met (${clip(r.status.reason, 120)}). Not a clean success.${salvaged}`
     }
     case "failed":

@@ -15,25 +15,25 @@
           "type": "tool",
           "tool": {
             "name": "BackgroundRun",
-            "description": "Run a shell command in the background and return at once. Use it for work that lasts more than a few seconds. Examples: a build, a test run, an install or a download. Do not use it for a quick command whose output you need now. Do not start an interactive prompt or a REPL, because a job has no stdin. It returns a job handle and a pid, then a one-line digest at the end.",
+            "description": "Run a shell command in the background. The tool does not wait for the command. Use it for work that continues for more than some seconds, for example a build, a test or `bun install`. Do not use it for a short command if you must have its output at this time.\n\nDo not start a REPL or a prompt for the user, because a job has no stdin. The tool gives a job id and a pid. When the job is complete, the harness sends you a one-line summary between turns.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "command": {
                   "type": "string",
-                  "description": "The shell command to run (executed via bash -c). Required."
+                  "description": "Necessary. The shell command. The tool runs it with `bash -c`."
                 },
                 "description": {
                   "type": "string",
-                  "description": "A short label for this job, shown in the status widget and logs (e.g. \"full test suite\")."
+                  "description": "A short name for the job, for example `\"full test run\"`. The status widget and the job summary show it."
                 },
                 "cwd": {
                   "type": "string",
-                  "description": "Working directory for the job. Defaults to the agent's current working directory. Note: this does not follow the foreground Bash tool's sticky cd."
+                  "description": "The directory of the job. The default is the directory where the agent started. A Bash `cd` does not change it."
                 },
                 "timeout": {
                   "type": "string",
-                  "description": "How long the job can run before the harness stops it. A friendly duration like \"90s\", \"10m\", \"2h\", \"1d\", or a plain seconds count. Defaults to 10 minutes. Most jobs finish well within that. Only raise it for genuinely long work. The harness stops a job that reaches its deadline, and the output of that job stays readable."
+                  "description": "The time limit, for example `\"90s\"`, `\"10m\"`, `\"2h\"` or `\"1d\"`. A number without a unit is seconds. The default is 10 minutes. Increase it only for long work. After the harness stops the job, you can read its output."
                 }
               },
               "required": ["command"],
@@ -56,13 +56,13 @@
           "type": "tool",
           "tool": {
             "name": "BackgroundStatus",
-            "description": "Glance at background jobs. Use it to see state, elapsed time, exit code and a short tail. Do not use it to read a full log, use BackgroundLogs for that. Returns the state of one job, or the state of every job in this session.",
+            "description": "Show the status of one background job, or of all jobs. For a job with an error, the status includes the exit code. For one job, it also includes the last output lines. To read a full log, use `BackgroundLogs`.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "A job handle from BackgroundRun (e.g. j2). Omit to see all jobs in this session."
+                  "description": "A job id from BackgroundRun, for example `j2`. If you do not give an id, the tool shows all jobs."
                 }
               },
               "additionalProperties": false
@@ -84,37 +84,37 @@
           "type": "tool",
           "tool": {
             "name": "BackgroundLogs",
-            "description": "Read the captured output of a background job. Use it after a digest, or with a `since` cursor to stream only new output. Do not use it to watch the state or the exit code, use BackgroundStatus for that. Returns a bounded slice of the log, with ANSI codes stripped unless you set `raw`.",
+            "description": "Read the recorded output of a background job, for example after the job summary. To read only new output, use `since`. To monitor the status or the exit code, use `BackgroundStatus`. The tool gives a part of the log, with a byte limit.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The job handle to read (e.g. j2). Required."
+                  "description": "Necessary. The job id, for example `j2`."
                 },
                 "tail": {
                   "type": "number",
-                  "description": "Return only the last N lines (after any grep filter)."
+                  "description": "Give only the last N lines, after `grep`."
                 },
                 "offset": {
                   "type": "number",
-                  "description": "Zero-based first line of a range (after any grep filter)."
+                  "description": "The zero-based first line of a range, after `grep`."
                 },
                 "limit": {
                   "type": "number",
-                  "description": "Maximum number of lines to return for a range."
+                  "description": "The maximum number of lines for a range."
                 },
                 "grep": {
                   "type": "string",
-                  "description": "Only return lines matching this regular expression."
+                  "description": "Give only the lines that agree with this regular expression."
                 },
                 "since": {
                   "type": "number",
-                  "description": "A byte cursor from a prior BackgroundLogs call. Returns only output written after it, for incremental streaming reads."
+                  "description": "The `byte cursor` value from a previous BackgroundLogs result."
                 },
                 "raw": {
                   "type": "boolean",
-                  "description": "Keep ANSI escape codes in the returned text. Default false (stripped)."
+                  "description": "If `true`, keep the ANSI codes. The default is `false`: the tool removes them."
                 }
               },
               "required": ["id"],
@@ -137,22 +137,22 @@
           "type": "tool",
           "tool": {
             "name": "BackgroundStop",
-            "description": "Cancel a background job. Use it for one job, or for all jobs, that you no longer need. Do not use it to pause work, because a stopped job does not resume. Returns the stop result, and a no-op note when the job had already finished.",
+            "description": "Stop one or all background jobs that you do not have to keep. Do not use it to stop work for a short time, because a stopped job cannot continue. The tool gives the result, or tells you that the job was complete.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The job handle to stop (e.g. j2). Omit to stop every running job in this session."
+                  "description": "The job id, for example `j2`. Without it, the tool stops all jobs that run in this session."
                 },
                 "signal": {
                   "type": "string",
                   "enum": ["SIGTERM", "SIGKILL"],
-                  "description": "Signal to send. Default SIGTERM (graceful, escalates to SIGKILL). Use SIGKILL to force-kill immediately."
+                  "description": "The default is `SIGTERM`, then `SIGKILL` after a short time. `SIGKILL` stops the job immediately."
                 },
                 "reason": {
                   "type": "string",
-                  "description": "A short note on the job that gives the reason for the stop."
+                  "description": "A short cause. The job status keeps it."
                 }
               },
               "additionalProperties": false

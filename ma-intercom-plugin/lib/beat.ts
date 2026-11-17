@@ -117,7 +117,7 @@ export function wakeMessage(fresh: readonly Envelope[]): string {
   // must not be able to forge `<ma::...>` framing.
   const first = fresh[fresh.length - 1]
   const hint = first ? ` Latest: "${sanitizePeerLine(first.body).slice(0, 140)}"` : ""
-  return `${lead}.${hint} The full message(s) are in the intercom-inbox attachment on this turn. Reply with Send if you need to.`
+  return `${lead}.${hint} The full message(s) are in the intercom-inbox attachment on this turn. Reply with IntercomSend if you need to.`
 }
 
 /**

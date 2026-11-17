@@ -185,7 +185,7 @@ export function checkDeliverables(
   if (contract.length === 0) {
     return err(
       "`deliverables` is only for files the lead required (`expectArtifacts`), and this worker has no required files. " +
-        "Remove `deliverables` and call ReportResult again. Put your findings in `summary`. " +
+        "Remove `deliverables` and call SubAgentsReportResult again. Put your findings in `summary`. " +
         "If your task names required files, the lead may run an older sub-agents plugin; set incomplete:true and put the content in summary.",
     )
   }
@@ -194,20 +194,20 @@ export function checkDeliverables(
     if (d.path.length > 1 && d.path.endsWith("/")) {
       return err(
         `"${d.path}" ends with a trailing slash, so it names a directory, not a file. ` +
-          `Allowed paths: ${contract.join(", ")}. Nothing was written. Remove the slash and call ReportResult again.`,
+          `Allowed paths: ${contract.join(", ")}. Nothing was written. Remove the slash and call SubAgentsReportResult again.`,
       )
     }
     const p = isAbsolute(d.path) ? resolve(d.path) : undefined
     if (!p || !contract.includes(p)) {
       return err(
-        `ReportResult can write only the required files. "${d.path}" is not one of them. ` +
-          `Allowed paths: ${contract.join(", ")}. Nothing was written. Fix the path and call ReportResult again.`,
+        `SubAgentsReportResult can write only the required files. "${d.path}" is not one of them. ` +
+          `Allowed paths: ${contract.join(", ")}. Nothing was written. Fix the path and call SubAgentsReportResult again.`,
       )
     }
     if (out.some((o) => o.path === p)) {
       return err(
         `\`deliverables\` names ${p} more than once. Give each required file one time, with its full text. ` +
-          "Nothing was written. Call ReportResult again.",
+          "Nothing was written. Call SubAgentsReportResult again.",
       )
     }
     out.push({ path: p, content: d.content })

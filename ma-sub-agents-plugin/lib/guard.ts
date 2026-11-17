@@ -68,10 +68,10 @@ export function evaluateSpawnGuard(
       allowed: false,
       reason:
         `nesting limit reached (depth ${input.childDepth} > max ${policy.maxDepth}). ` +
-        `You are a leaf worker and cannot spawn or delegate. Do not try to hand off ` +
+        `You are a leaf sub-agent and cannot spawn or delegate. Do not try to hand off ` +
         `this work. Do it yourself in this session with your own tools (Write, Edit, ` +
-        `Bash, Read), then call ReportResult to hand back the result. If a unit is ` +
-        `genuinely too big for one worker, that is the lead's call to decompose, not yours.`,
+        `Bash, Read), then call SubAgentsReportResult to hand back the result. If a unit is ` +
+        `genuinely too big for one sub-agent, that is the lead's call to decompose, not yours.`,
     }
   }
   if (input.activeCount >= policy.maxConcurrent) {
@@ -79,7 +79,7 @@ export function evaluateSpawnGuard(
       allowed: false,
       reason:
         `concurrency limit reached (${input.activeCount}/${policy.maxConcurrent} active). ` +
-        `Wait for a worker to finish (AgentResult) or stop one (StopAgent) before spawning more.`,
+        `Wait for a worker to finish (SubAgentsAgentResult) or stop one (SubAgentsStopAgent) before spawning more.`,
     }
   }
   if (input.totalCount >= policy.maxTotal) {

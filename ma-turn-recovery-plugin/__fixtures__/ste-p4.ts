@@ -18,7 +18,7 @@ const PROMPT_REWRITES: ReadonlyArray<readonly [string, string]> = [
   // prompts/reflection-checkpoint.tmpl.md
   [
     '<ma::agent::reflection-checkpoint round="%%round%%" cooldown-applied-seconds="%%cooldownSec%%" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for="K" reason="..." />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment).',
-    '<ma::agent::reflection-checkpoint round="%%round%%" cooldown-applied-seconds="%%cooldownSec%%" />\nThis checkpoint is soft. It is not a stop signal. Briefly examine if your work still moves toward the goal. Then do one of these steps:\n\n- Continue.\n- Change your strategy.\n- Pause and ask the user.\n\nTo prevent the next K checkpoints, write `<ma::agent::reflection-ack silence-for="K" reason="..." />` as inline text in your response body. You can put the tag at any position in the response body. Do not write it as a tool call. For these K checkpoints, the harness does not apply the cooldown and does not add this attachment.',
+    '<ma::agent::reflection-checkpoint round="%%round%%" cooldown-applied-seconds="%%cooldownSec%%" />\nThis checkpoint is soft. It is not a signal to stop. Briefly examine if your work still moves toward the goal. Then do one of these steps:\n\n- Continue.\n- Change your strategy.\n- Pause and ask the user.\n\nTo prevent the next K checkpoints, write `<ma::agent::reflection-ack silence-for="K" reason="..." />` as inline text in your response body. You can put the tag at any position in the response body. Do not write it as a tool call. For these K checkpoints, the harness does not apply the cooldown and does not add this attachment.',
   ],
   // prompts/response-truncated-placeholder.md
   [
@@ -38,7 +38,7 @@ const PROMPT_REWRITES: ReadonlyArray<readonly [string, string]> = [
   // prompts/stream-interrupted.md
   [
     "<ma::agent::stream-interrupted />\nThe provider closed its previous response early (no terminal stream event) after one or more complete tool calls. Those completed tool results are already in this turn. Do not repeat those tool calls. Continue from the current state only.",
-    "<ma::agent::stream-interrupted />\nThe provider closed its previous response before the response was complete. The stream had no terminal event. The close occurred after one or more complete tool calls. The results of those tool calls are already in this turn. Do not make those tool calls again. Continue only from the current state.",
+    "<ma::agent::stream-interrupted />\nThe provider closed its previous response before the response was complete. The stream had no terminal event. The provider closed it after one or more complete tool calls. The results of those tool calls are already in this turn. Do not make those tool calls again. Continue only from the current state.",
   ],
   // prompts/turn-aborted.md
   [

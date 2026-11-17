@@ -2,7 +2,7 @@
   "id": "acp",
   "name": "ACP",
   "version": "0.1.0",
-  "description": "ACP host mode. Run minimal-agent as an Agent Client Protocol (ACP) agent over stdio. Editors (Zed, JetBrains, others) can then drive it with no custom glue. Level 1 covers initialize, session/new, session/prompt, session/cancel and session/set_config_option (model, effort). Level 1 also covers text/thought streaming, tool-call, usage and notice updates, and ACP stop-reason mapping. The approval gate (session/request_permission) is off by default. Use --approval to set it on.",
+  "description": "ACP host mode. Run minimal-agent as an Agent Client Protocol (ACP) agent over stdio. Editors (Zed, JetBrains, others) can then drive it with no custom glue.\n\nLevel 1 covers initialize, session/new, session/prompt, session/cancel and session/set_config_option (model, effort). Level 1 also covers text/thought streaming, tool-call, usage and notice updates, and ACP stop-reason mapping. The approval gate (session/request_permission) is off by default. Use --approval to set it on.",
   "permissions": ["hostMode:stdio", "hooks:tool.willInvoke"],
   "headless": {
     "hostModes": [

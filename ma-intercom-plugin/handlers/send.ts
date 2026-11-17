@@ -65,7 +65,7 @@ export default async function sendHandler(ctx: TUIContext): Promise<TUIResult> {
       outcome.skipped.map((s) => `${s.ref}: ${s.reason}`).join("; ") || "no reachable recipients"
     return {
       kind: "tool_result",
-      content: `Not delivered (${why}). Tip: run Peers to see who is online.`,
+      content: `Not delivered (${why}). Use IntercomPeers to see which sessions are online.`,
       is_error: true,
       displayHeader: renderSendHeader({
         kind,

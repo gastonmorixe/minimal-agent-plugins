@@ -88,7 +88,7 @@ function writeAll(files: readonly Deliverable[]): string | undefined {
       writeTemp(temps[i] as string, f.content)
     } catch (e) {
       cleanup(0)
-      return `ReportResult: failed to write ${f.path}: ${errText(e)}. No file was written and no result was recorded. Fix the cause and call ReportResult again.`
+      return `SubAgentsReportResult: failed to write ${f.path}: ${errText(e)}. No file was written and no result was recorded. Fix the cause and call SubAgentsReportResult again.`
     }
   }
   const renamed: string[] = []
@@ -102,7 +102,7 @@ function writeAll(files: readonly Deliverable[]): string | undefined {
         renamed.length > 0
           ? ` These files were already written: ${renamed.join(", ")}.`
           : " No file was written."
-      return `ReportResult: failed to write ${f.path}: ${errText(e)}.${done} No result was recorded. Fix the cause and call ReportResult again.`
+      return `SubAgentsReportResult: failed to write ${f.path}: ${errText(e)}.${done} No result was recorded. Fix the cause and call SubAgentsReportResult again.`
     }
   }
   return undefined
@@ -130,7 +130,11 @@ export const available: ToolAvailability = (ctx) => Boolean(ctx.env[ENV_RESULT_P
  */
 export default async function reportResult(ctx: TUIContext): Promise<TUIResult> {
   if (ctx.trigger.type !== "tool") {
-    return { kind: "tool_result", content: "ReportResult: unexpected trigger", is_error: true }
+    return {
+      kind: "tool_result",
+      content: "SubAgentsReportResult: unexpected trigger",
+      is_error: true,
+    }
   }
 
   const parsed = parseReportRequest(ctx.trigger.input)
@@ -143,9 +147,9 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
     return {
       kind: "tool_result",
       content:
-        "ReportResult is the SUB-AGENT completion tool: it records a worker's result for its lead. " +
+        "SubAgentsReportResult is the SUB-AGENT completion tool: it records the result of a sub-agent for its lead. " +
         "This session is not a sub-agent (no result path in the environment), so there is nothing to report. " +
-        "If you are the lead, reply normally. To read a finished worker's result, use AgentResult.",
+        "If you are the lead, reply normally. To read the result of a finished sub-agent, use SubAgentsAgentResult.",
       is_error: true,
     }
   }
@@ -162,7 +166,7 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
     const links = checked.value.filter((d) => isSymlink(d.path)).map((d) => d.path)
     if (links.length > 0) {
       return fail(
-        `ReportResult does not write through a symlink. These required paths are symlinks: ${links.join(", ")}. ` +
+        `SubAgentsReportResult does not write through a symlink. These required paths are symlinks: ${links.join(", ")}. ` +
           "Nothing was written. Ask the lead for a path that is not a symlink, or set incomplete:true and put the content in summary.",
       )
     }
@@ -177,7 +181,7 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
   if (missing.length > 0 && !req.incomplete) {
     return fail(
       `The lead requires these files, and they are missing or empty: ${missing.join(", ")}. ` +
-        "No result was recorded. Call ReportResult again and pass each file in `deliverables` " +
+        "No result was recorded. Call SubAgentsReportResult again and pass each file in `deliverables` " +
         'as { "path": "<absolute path>", "content": "<full file text>" }. ' +
         "This works in every mode, also read-only. If you cannot make a file, set incomplete:true and give the reason in summary.",
     )
@@ -194,7 +198,7 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
   } catch (e) {
     return {
       kind: "tool_result",
-      content: `ReportResult: failed to write the result sentinel to ${resultPath}: ${errText(e)}. As a fallback, write that JSON to the path yourself.`,
+      content: `SubAgentsReportResult: failed to write the result sentinel to ${resultPath}: ${errText(e)}. As a fallback, write that JSON to the path yourself.`,
       is_error: true,
     }
   }

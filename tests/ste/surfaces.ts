@@ -20,6 +20,8 @@ import { basename, join, relative, resolve } from "node:path"
 
 import { collectInlineTsStrings } from "../../scripts/prompt-inventory.ts"
 
+import type { Role } from "./ste-rules.ts"
+
 /** One model-facing string. */
 export interface Surface {
   /** Repo-relative path (from the plugins root). */
@@ -32,6 +34,32 @@ export interface Surface {
   line: number
   /** Surface family, for grouping in a report. */
   kind: "prompt-md" | "prompts-md" | "manifest" | "inline-ts" | "core-ts"
+  /**
+   * Role of the text: `tool` (a tool description in `tools[]`), `param` (a
+   * parameter description in a tool schema) or `prose`. Absent: computed with
+   * {@link roleOf}.
+   */
+  role?: Role
+}
+
+/**
+ * The role of a surface (R3 A2).
+ *
+ * - `tool`: a manifest locator that ends in `.trigger.tool.description`, or a
+ *   built-in tool text file `ma-core-tools-plugin/prompts/tools/*.md`.
+ * - `param`: a locator that contains `.input_schema.` or starts with
+ *   `PARAMS.`, or the core binary guard (it adds the `binary` param).
+ * - `prose`: everything else (PROMPT.md, prompts, plugin descriptions, core).
+ *
+ * @param s - The surface file, locator and kind.
+ * @returns The role.
+ */
+export function roleOf(s: Pick<Surface, "file" | "locator" | "kind">): Role {
+  if (s.kind === "manifest" && /\.trigger\.tool\.description$/.test(s.locator)) return "tool"
+  if (/(?:^|\/)ma-core-tools-plugin\/prompts\/tools\/[^/]+\.md$/.test(s.file)) return "tool"
+  if (s.locator.includes(".input_schema.") || s.locator.startsWith("PARAMS.")) return "param"
+  if (s.file === "core/src/tools/binary-guard.ts") return "param"
+  return "prose"
 }
 
 /** Default plugins root: two levels up from this file. */
@@ -352,7 +380,9 @@ export function paramMapStrings(
  * @returns Every surface, sorted by file and line.
  */
 export function allSurfaces(root: string = PLUGINS_ROOT): Surface[] {
-  const out = pluginDirs(root).flatMap((plugin) => pluginSurfaces(root, plugin))
+  const out = pluginDirs(root)
+    .flatMap((plugin) => pluginSurfaces(root, plugin))
+    .map((surface) => Object.assign(surface, { role: roleOf(surface) }))
   return out.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)
 }
 
@@ -415,5 +445,5 @@ export function coreSurfaces(coreRoot: string = CORE_ROOT): Surface[] {
       })
     }
   }
-  return out
+  return out.map((surface) => Object.assign(surface, { role: roleOf(surface) }))
 }

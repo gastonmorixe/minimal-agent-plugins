@@ -58,7 +58,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
   if (idx === -1) {
     return {
       kind: "tool_result",
-      content: `No scheduled task with id "${id}". Use CronList to see current ids.`,
+      content: `No scheduled task with id "${id}". Use ScheduleCronList to see current ids.`,
       is_error: true,
     }
   }
@@ -87,7 +87,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
     if (rawNextAtMs <= now) {
       return {
         kind: "tool_result",
-        content: `nextAtMs (${rawNextAtMs}) is in the past. The task would fire immediately. Use a future timestamp.`,
+        content: `nextAtMs (${rawNextAtMs}) is in the past. The task would run immediately. Use a future timestamp.`,
         is_error: true,
       }
     }
@@ -99,7 +99,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
 
   const e = updated
   const info = taskInfo(e, now)
-  const body = wrapText(`Rescheduled. Next fire at ${clockHHMMSS(e.nextAtMs ?? now)}`, 72)
+  const body = wrapText(`Rescheduled. Next run at ${clockHHMMSS(e.nextAtMs ?? now)}`, 72)
   // A fixed recurring task keeps its cron after the single-use fire.
   const backOnCron = e.pace !== "dynamic" && e.recurs
   if (e.intervalMs) {
@@ -116,7 +116,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
       : ""
   return {
     kind: "tool_result",
-    content: `Rescheduled task ${id}. Next fire at ${clockHHMMSS(e.nextAtMs ?? now)}${tail}.`,
+    content: `Rescheduled task ${id}. Next run at ${clockHHMMSS(e.nextAtMs ?? now)}${tail}.`,
     display: body.join("\n"),
     displayHeader: info,
     displayFooter: taskFooter(e, now),

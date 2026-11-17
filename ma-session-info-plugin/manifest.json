@@ -2,7 +2,7 @@
   "id": "session-info",
   "name": "Session Info",
   "version": "0.1.0",
-  "description": "Contributes the SessionInfo tool: the live runtime state of the agent at call time. It reports context fullness as tokens used vs window. It reports the selected effort/reasoning settings and fast-mode. It reports provider quota windows, cumulative token usage and rough cost, the current working directory, and uptime. It is the runtime-state counterpart to ModelInfo, which reports static capabilities. The tool reads stable host data sources directly (session tokens, provider session info, model registry). Thus it needs no provider import and never blocks on the network.",
+  "description": "Contributes the SessionInfo tool: the live runtime state of the agent at call time. It shows context fullness as tokens used compared with the window, and the selected effort, reasoning and fast-mode settings. It gives provider quota windows, cumulative token usage and rough cost, the current working directory, and uptime. It is the runtime-state counterpart to ModelInfo, which gives static capabilities. The tool reads stable host data sources directly (session tokens, provider session info, model registry). Thus it needs no provider import and never blocks on the network.",
   "capabilities": ["models:read", "session-info:read"],
   "headless": {
     "tools": [
@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "SessionInfo",
-            "description": "Report your current runtime state right now. Do not report your capabilities here. Use ModelInfo for those. Returns: how full your context window is (tokens used / total / percent / headroom) and turn count. The selected effort level, reasoning/thinking mode, and whether fast-mode is on. Provider quota windows (e.g. 5h / 7d utilization and reset). Cumulative token usage and a rough USD cost estimate. The live working directory (which may have changed since startup). And how long this run has been going. Call this tool when the user asks about budget, cost, quota, session run time, working directory, or settings. Also use it to self-regulate (for example, to decide whether to compact context when it is getting full). Takes no input.",
+            "description": "Show the status of this session at this time. The tool gives how full the context is, the turns, the `effort` and the quota limits. It also gives the tokens, the approximate cost in USD, the `cwd` and the time since the start. For the model functions, use `ModelInfo`.\n\nUse it when the user wants to know these values, or to find if your context is too full.",
             "input_schema": {
               "type": "object",
               "properties": {},

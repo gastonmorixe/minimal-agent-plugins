@@ -2,7 +2,7 @@
   "id": "hooks",
   "name": "Config-driven hooks",
   "version": "0.1.0",
-  "description": "Runs shell and HTTP hooks from ~/.minimal-agent/hooks.json and <project>/.minimal-agent/hooks.json (native format, always first), plus other agents' hook configs through dialect adapters. On by default. Opt out with --disable-plugin hooks or plugins.hooks.enabled=false.",
+  "description": "The plugin runs shell and HTTP hooks from ~/.minimal-agent/hooks.json and <project>/.minimal-agent/hooks.json (native format, always first), plus other agents' hook configs through dialect adapters. On by default. Opt out with --disable-plugin hooks or plugins.hooks.enabled=false.",
   "permissions": [
     "hooks:turn.willStart",
     "hooks:tool.willInvoke",

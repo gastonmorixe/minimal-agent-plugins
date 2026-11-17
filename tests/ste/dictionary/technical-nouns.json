@@ -1,0 +1,1312 @@
+[
+  {
+    "word": "accessibility",
+    "category": 19,
+    "reason": "the macOS Accessibility API and its tree of on-screen elements"
+  },
+  {
+    "word": "ai",
+    "category": 19,
+    "reason": "artificial intelligence, a rule 1.5 category 19 example term"
+  },
+  {
+    "word": "alias",
+    "category": 19,
+    "reason": "a second name that a tool or a param also accepts"
+  },
+  {
+    "word": "ansi",
+    "category": 19,
+    "reason": "the ANSI escape codes that a terminal uses for color"
+  },
+  {
+    "word": "anthropic",
+    "category": 11,
+    "reason": "the Anthropic company"
+  },
+  {
+    "word": "api",
+    "category": 19,
+    "reason": "application programming interface of a program or a service"
+  },
+  {
+    "word": "app",
+    "category": 19,
+    "reason": "an application that runs on the computer of the user"
+  },
+  {
+    "word": "argument",
+    "category": 19,
+    "reason": "a value given to a command or a function"
+  },
+  {
+    "word": "array",
+    "category": 19,
+    "reason": "a JSON list value, an ordered set of items"
+  },
+  {
+    "word": "artifact",
+    "category": 19,
+    "reason": "a file that a worker agent makes as the result of its task"
+  },
+  {
+    "word": "ascii",
+    "category": 19,
+    "reason": "the 7-bit ASCII character set"
+  },
+  {
+    "word": "attribute",
+    "category": 19,
+    "reason": "a named value on an HTML or an accessibility element"
+  },
+  {
+    "word": "auth",
+    "category": 19,
+    "reason": "short name for authentication, a category 19 example term"
+  },
+  {
+    "word": "ax",
+    "category": 19,
+    "reason": "prefix of the macOS Accessibility API names (AXButton, AXPress)"
+  },
+  {
+    "word": "backend",
+    "category": 19,
+    "reason": "the server or service that does the work behind a front end"
+  },
+  {
+    "word": "background",
+    "category": 19,
+    "reason": "a process or a job that runs without the user waiting for it"
+  },
+  {
+    "word": "bash",
+    "category": 19,
+    "reason": "the bash command shell program of Unix systems"
+  },
+  {
+    "word": "binary",
+    "category": 19,
+    "reason": "data that is not text, for example an image or a PDF file"
+  },
+  {
+    "word": "blob",
+    "category": 19,
+    "reason": "a block of raw output that the harness saves to a file"
+  },
+  {
+    "word": "body",
+    "category": 19,
+    "reason": "the main part of a message, a request or a response"
+  },
+  {
+    "word": "browser",
+    "category": 19,
+    "reason": "a web browser program such as Chrome"
+  },
+  {
+    "word": "buffer",
+    "category": 19,
+    "reason": "a memory area that holds data until a reader takes it"
+  },
+  {
+    "word": "build",
+    "category": 19,
+    "reason": "the compile and package step of a software project",
+    "verb": "make"
+  },
+  {
+    "word": "bullet",
+    "category": 15,
+    "reason": "a list item mark in markdown text"
+  },
+  {
+    "word": "bundle",
+    "category": 19,
+    "reason": "a macOS application bundle and its bundle id"
+  },
+  {
+    "word": "button",
+    "category": 19,
+    "reason": "a control on a screen or a mouse that you push or click"
+  },
+  {
+    "word": "byte",
+    "category": 9,
+    "reason": "a unit of data size, eight bits"
+  },
+  {
+    "word": "cache",
+    "category": 19,
+    "reason": "a stored copy of data that makes the next read faster",
+    "verb": "keep"
+  },
+  {
+    "word": "canvas",
+    "category": 19,
+    "reason": "an HTML canvas element that a page draws on"
+  },
+  {
+    "word": "cdp",
+    "category": 19,
+    "reason": "Chrome DevTools Protocol, the browser control protocol"
+  },
+  {
+    "word": "character",
+    "category": 19,
+    "reason": "one letter, digit, mark or symbol of text"
+  },
+  {
+    "word": "checkpoint",
+    "category": 19,
+    "reason": "a saved summary of a conversation that replaces older messages"
+  },
+  {
+    "word": "child",
+    "category": 19,
+    "reason": "a process, a task or an element under a parent one"
+  },
+  {
+    "word": "chrome",
+    "category": 19,
+    "reason": "the Google Chrome web browser"
+  },
+  {
+    "word": "claude",
+    "category": 19,
+    "reason": "the Claude family of language models"
+  },
+  {
+    "word": "cli",
+    "category": 19,
+    "reason": "command-line interface, a program that you operate from a terminal"
+  },
+  {
+    "word": "client",
+    "category": 19,
+    "reason": "a program that connects to a server or a service"
+  },
+  {
+    "word": "cloud",
+    "category": 19,
+    "reason": "the remote service that runs agents for a user"
+  },
+  {
+    "word": "codebase",
+    "category": 19,
+    "reason": "all the source files of one software project"
+  },
+  {
+    "word": "command",
+    "category": 19,
+    "reason": "a text instruction that a shell or a program runs"
+  },
+  {
+    "word": "commit",
+    "category": 19,
+    "reason": "a git commit, one recorded change set in a repository"
+  },
+  {
+    "word": "computer",
+    "category": 19,
+    "reason": "the machine that the agent and its tools operate on"
+  },
+  {
+    "word": "config",
+    "category": 19,
+    "reason": "short name for a configuration file or its settings"
+  },
+  {
+    "word": "content",
+    "category": 19,
+    "reason": "the text or data in a file or a message, a category 19 example term"
+  },
+  {
+    "word": "context",
+    "category": 19,
+    "reason": "the context window: all the text that a model reads for one turn"
+  },
+  {
+    "word": "cookie",
+    "category": 19,
+    "reason": "a small value that a web site stores in the browser"
+  },
+  {
+    "word": "coordinate",
+    "category": 7,
+    "reason": "one of the two numbers (x and y) that give a point on a screen"
+  },
+  {
+    "word": "core",
+    "category": 19,
+    "reason": "the minimal-agent core package, the base of the plugins"
+  },
+  {
+    "word": "country",
+    "category": 11,
+    "reason": "a nation, as a geopolitical entity in a search region"
+  },
+  {
+    "word": "cron",
+    "category": 19,
+    "reason": "the cron schedule format of five time fields"
+  },
+  {
+    "word": "crud",
+    "category": 19,
+    "reason": "create, read, update and delete operations"
+  },
+  {
+    "word": "css",
+    "category": 19,
+    "reason": "Cascading Style Sheets, the style language of web pages"
+  },
+  {
+    "word": "cursor",
+    "category": 19,
+    "reason": "a position marker: the text input position on a screen, or a value that marks a read position in a log (byte cursor)"
+  },
+  {
+    "word": "cwd",
+    "category": 19,
+    "reason": "current working directory of a process"
+  },
+  {
+    "word": "daemon",
+    "category": 19,
+    "reason": "a background process that serves other programs"
+  },
+  {
+    "word": "day",
+    "category": 9,
+    "reason": "a unit of time, 24 hours"
+  },
+  {
+    "word": "default",
+    "category": 19,
+    "reason": "the value that a setting has when the caller gives no value"
+  },
+  {
+    "word": "description",
+    "category": 15,
+    "reason": "the text field that tells what a tool or a param does"
+  },
+  {
+    "word": "devtools",
+    "category": 19,
+    "reason": "the Chrome DevTools of the browser"
+  },
+  {
+    "word": "diagnostic",
+    "category": 19,
+    "reason": "a compiler or linter message about a problem in the code"
+  },
+  {
+    "word": "diff",
+    "category": 19,
+    "reason": "the text that shows the changed lines between two files"
+  },
+  {
+    "word": "digit",
+    "category": 9,
+    "reason": "one of the characters 0 to 9"
+  },
+  {
+    "word": "directory",
+    "category": 19,
+    "reason": "a folder in a file system"
+  },
+  {
+    "word": "disk",
+    "category": 19,
+    "reason": "the storage device that holds files"
+  },
+  {
+    "word": "document",
+    "category": 15,
+    "reason": "a file with text for a reader, for example a PDF"
+  },
+  {
+    "word": "editor",
+    "category": 19,
+    "reason": "a program for text and code changes, for example an IDE"
+  },
+  {
+    "word": "electron",
+    "category": 19,
+    "reason": "the Electron desktop application framework"
+  },
+  {
+    "word": "element",
+    "category": 19,
+    "reason": "one node of an HTML page or of an accessibility tree"
+  },
+  {
+    "word": "emoji",
+    "category": 19,
+    "reason": "a small picture character in Unicode text"
+  },
+  {
+    "word": "endpoint",
+    "category": 19,
+    "reason": "a URL where a service receives requests"
+  },
+  {
+    "word": "env",
+    "category": 19,
+    "reason": "environment variables of a process"
+  },
+  {
+    "word": "esc",
+    "category": 19,
+    "reason": "the Escape key on a keyboard"
+  },
+  {
+    "word": "event",
+    "category": 19,
+    "reason": "a message that a program sends when something occurs"
+  },
+  {
+    "word": "explorer",
+    "category": 11,
+    "reason": "the name of the read-only sub-agent type that finds files"
+  },
+  {
+    "word": "expression",
+    "category": 19,
+    "reason": "a JavaScript or a cron expression that a program evaluates"
+  },
+  {
+    "word": "field",
+    "category": 19,
+    "reason": "one named value in a record or a form, a category 19 example term"
+  },
+  {
+    "word": "file",
+    "category": 19,
+    "reason": "a named unit of data on disk, a category 19 example term"
+  },
+  {
+    "word": "filesystem",
+    "category": 19,
+    "reason": "the folders and files that an operating system keeps"
+  },
+  {
+    "word": "five",
+    "category": 9,
+    "reason": "the number 5, written as a word in text"
+  },
+  {
+    "word": "flag",
+    "category": 19,
+    "reason": "a command-line option such as --strict"
+  },
+  {
+    "word": "folder",
+    "category": 19,
+    "reason": "a directory in a file system"
+  },
+  {
+    "word": "footer",
+    "category": 15,
+    "reason": "the text block at the end of a page or a message"
+  },
+  {
+    "word": "foreground",
+    "category": 19,
+    "reason": "the process or window that has the focus of the user"
+  },
+  {
+    "word": "format",
+    "category": 19,
+    "reason": "the shape of data or text, for example JSON or markdown"
+  },
+  {
+    "word": "frame",
+    "category": 19,
+    "reason": "an HTML frame or iframe in a web page"
+  },
+  {
+    "word": "frontmatter",
+    "category": 15,
+    "reason": "the metadata block at the start of a markdown file"
+  },
+  {
+    "word": "gif",
+    "category": 19,
+    "reason": "the GIF image file type"
+  },
+  {
+    "word": "git",
+    "category": 19,
+    "reason": "the git version control program"
+  },
+  {
+    "word": "gitignore",
+    "category": 19,
+    "reason": "the .gitignore file of a git repository"
+  },
+  {
+    "word": "glob",
+    "category": 19,
+    "reason": "a file name pattern with wildcards such as *.ts"
+  },
+  {
+    "word": "graphql",
+    "category": 19,
+    "reason": "the GraphQL query language"
+  },
+  {
+    "word": "green",
+    "category": 17,
+    "reason": "a color, used for the added lines of a diff"
+  },
+  {
+    "word": "grep",
+    "category": 19,
+    "reason": "the grep program that finds lines of text that agree with a pattern"
+  },
+  {
+    "word": "gui",
+    "category": 19,
+    "reason": "graphical user interface"
+  },
+  {
+    "word": "header",
+    "category": 19,
+    "reason": "a named field at the start of an HTTP request or a message"
+  },
+  {
+    "word": "headless",
+    "category": 19,
+    "reason": "a program mode that runs with no screen or user interface"
+  },
+  {
+    "word": "history",
+    "category": 19,
+    "reason": "the stored list of earlier prompts, messages or sessions"
+  },
+  {
+    "word": "hook",
+    "category": 19,
+    "reason": "a function that a plugin registers so that the harness runs it at a specified event"
+  },
+  {
+    "word": "host",
+    "category": 19,
+    "reason": "a program that loads a plugin or a protocol peer and runs it (the plugin host, ACP host mode). The minimal-agent program itself is the harness."
+  },
+  {
+    "word": "hour",
+    "category": 9,
+    "reason": "a unit of time, 60 minutes"
+  },
+  {
+    "word": "http",
+    "category": 19,
+    "reason": "the HyperText Transfer Protocol"
+  },
+  {
+    "word": "hunk",
+    "category": 19,
+    "reason": "one block of changed lines in a diff"
+  },
+  {
+    "word": "hyphen",
+    "category": 15,
+    "reason": "the punctuation mark that joins the parts of a compound word"
+  },
+  {
+    "word": "id",
+    "category": 19,
+    "reason": "a short identifier string for an item"
+  },
+  {
+    "word": "identifier",
+    "category": 19,
+    "reason": "a name or a code that identifies one item"
+  },
+  {
+    "word": "iframe",
+    "category": 19,
+    "reason": "an HTML element that holds a second page in a page"
+  },
+  {
+    "word": "image",
+    "category": 19,
+    "reason": "a picture file, for example PNG or JPEG"
+  },
+  {
+    "word": "index",
+    "category": 19,
+    "reason": "the position of an item in a list, or a lookup table"
+  },
+  {
+    "word": "integrator",
+    "category": 11,
+    "reason": "the name of the sub-agent type that merges and commits work"
+  },
+  {
+    "word": "iso",
+    "category": 15,
+    "reason": "the ISO standards, for example ISO 3166 country codes"
+  },
+  {
+    "word": "javascript",
+    "category": 19,
+    "reason": "the JavaScript programming language of web pages"
+  },
+  {
+    "word": "jetbrains",
+    "category": 19,
+    "reason": "the JetBrains company and its code editors"
+  },
+  {
+    "word": "job",
+    "category": 19,
+    "reason": "a background process that the agent starts and monitors"
+  },
+  {
+    "word": "jpeg",
+    "category": 19,
+    "reason": "the JPEG image file type"
+  },
+  {
+    "word": "json",
+    "category": 19,
+    "reason": "JavaScript Object Notation, a text data format"
+  },
+  {
+    "word": "jsonl",
+    "category": 19,
+    "reason": "a text file with one JSON value on each line"
+  },
+  {
+    "word": "key",
+    "category": 19,
+    "reason": "a keyboard key, or the name of a value in a map"
+  },
+  {
+    "word": "kib",
+    "category": 9,
+    "reason": "kibibyte, a unit of 1024 bytes"
+  },
+  {
+    "word": "language",
+    "category": 19,
+    "reason": "a programming language, or a language model"
+  },
+  {
+    "word": "lead",
+    "category": 11,
+    "reason": "the main agent that starts and supervises the sub-agents",
+    "verb": "control, send"
+  },
+  {
+    "word": "letter",
+    "category": 15,
+    "reason": "one alphabetic character"
+  },
+  {
+    "word": "library",
+    "category": 19,
+    "reason": "a stored collection of items, for example saved prompts"
+  },
+  {
+    "word": "lime",
+    "category": 17,
+    "reason": "a light green color that a diff viewer uses"
+  },
+  {
+    "word": "line",
+    "category": 15,
+    "reason": "one row of text in a file or an output"
+  },
+  {
+    "word": "linkedin",
+    "category": 19,
+    "reason": "the LinkedIn web site"
+  },
+  {
+    "word": "linter",
+    "category": 19,
+    "reason": "a program that finds style and code problems"
+  },
+  {
+    "word": "llm",
+    "category": 19,
+    "reason": "large language model, a category 19 example term"
+  },
+  {
+    "word": "localstorage",
+    "category": 19,
+    "reason": "the browser localStorage key and value store"
+  },
+  {
+    "word": "lock",
+    "category": 19,
+    "reason": "a file that one agent holds so that other agents do not change the same file at the same time (the LockStatus tool)"
+  },
+  {
+    "word": "log",
+    "category": 19,
+    "reason": "a file or a stream of records that a program writes while it operates",
+    "verb": "record, write"
+  },
+  {
+    "word": "login",
+    "category": 19,
+    "reason": "the procedure to identify a user to a service"
+  },
+  {
+    "word": "lsp",
+    "category": 19,
+    "reason": "Language Server Protocol"
+  },
+  {
+    "word": "mac",
+    "category": 19,
+    "reason": "a Mac computer from Apple that operates with macOS"
+  },
+  {
+    "word": "macos",
+    "category": 19,
+    "reason": "the macOS operating system"
+  },
+  {
+    "word": "markdown",
+    "category": 19,
+    "reason": "the Markdown text format"
+  },
+  {
+    "word": "mcp",
+    "category": 19,
+    "reason": "Model Context Protocol"
+  },
+  {
+    "word": "memory",
+    "category": 19,
+    "reason": "stored notes that stay between sessions, a category 19 example term"
+  },
+  {
+    "word": "menu",
+    "category": 19,
+    "reason": "a list of commands on a screen, a category 19 example term"
+  },
+  {
+    "word": "message",
+    "category": 19,
+    "reason": "one unit of text that a user, a model or a tool sends"
+  },
+  {
+    "word": "metadata",
+    "category": 19,
+    "reason": "data about other data, a category 19 example term"
+  },
+  {
+    "word": "millisecond",
+    "category": 9,
+    "reason": "a unit of time, one thousandth of a second"
+  },
+  {
+    "word": "mime",
+    "category": 19,
+    "reason": "the MIME type that names the format of a file"
+  },
+  {
+    "word": "minute",
+    "category": 9,
+    "reason": "a unit of time, 60 seconds"
+  },
+  {
+    "word": "model",
+    "category": 19,
+    "reason": "the AI language model that the agent uses"
+  },
+  {
+    "word": "modifier",
+    "category": 19,
+    "reason": "a modifier key such as Shift, Ctrl, Alt or Cmd"
+  },
+  {
+    "word": "month",
+    "category": 9,
+    "reason": "a unit of time in a calendar"
+  },
+  {
+    "word": "mouse",
+    "category": 19,
+    "reason": "the pointer device, a category 19 example term"
+  },
+  {
+    "word": "ms",
+    "category": 9,
+    "reason": "the symbol for millisecond"
+  },
+  {
+    "word": "ndjson",
+    "category": 19,
+    "reason": "newline-delimited JSON format"
+  },
+  {
+    "word": "network",
+    "category": 19,
+    "reason": "connected computers, a category 19 example term"
+  },
+  {
+    "word": "node",
+    "category": 19,
+    "reason": "one item of a tree, for example of the accessibility tree"
+  },
+  {
+    "word": "oauth",
+    "category": 19,
+    "reason": "the OAuth authorization protocol"
+  },
+  {
+    "word": "os",
+    "category": 19,
+    "reason": "operating system of a computer, short form"
+  },
+  {
+    "word": "overlay",
+    "category": 19,
+    "reason": "a screen layer that shows on top of other content"
+  },
+  {
+    "word": "page",
+    "category": 15,
+    "reason": "a web page, or one part of a long list of results"
+  },
+  {
+    "word": "pane",
+    "category": 19,
+    "reason": "one area of a window, for example a settings pane"
+  },
+  {
+    "word": "parameter",
+    "category": 19,
+    "reason": "a named input value of a tool or a function"
+  },
+  {
+    "word": "parent",
+    "category": 19,
+    "reason": "the process, task or element above a child one"
+  },
+  {
+    "word": "password",
+    "category": 19,
+    "reason": "a secret word that identifies a user"
+  },
+  {
+    "word": "path",
+    "category": 19,
+    "reason": "the location of a file or a folder in a file system"
+  },
+  {
+    "word": "pattern",
+    "category": 19,
+    "reason": "a text pattern that a search matches, for example a regex"
+  },
+  {
+    "word": "peer",
+    "category": 19,
+    "reason": "another agent session that this session can send messages to"
+  },
+  {
+    "word": "permission",
+    "category": 19,
+    "reason": "a right that the operating system or a mode gives to a program"
+  },
+  {
+    "word": "pid",
+    "category": 19,
+    "reason": "process id, the number of a running process"
+  },
+  {
+    "word": "pink",
+    "category": 17,
+    "reason": "a color, used for the removed lines of a diff"
+  },
+  {
+    "word": "pixel",
+    "category": 9,
+    "reason": "one dot of a screen or an image"
+  },
+  {
+    "word": "placeholder",
+    "category": 19,
+    "reason": "a mark in a template that a program replaces with a value"
+  },
+  {
+    "word": "planner",
+    "category": 11,
+    "reason": "the name of the sub-agent type that writes a plan"
+  },
+  {
+    "word": "plugin",
+    "category": 19,
+    "reason": "a minimal-agent package that adds tools or text, a plug-in"
+  },
+  {
+    "word": "png",
+    "category": 19,
+    "reason": "the PNG image file type"
+  },
+  {
+    "word": "pointer",
+    "category": 19,
+    "reason": "a reference to data at another location"
+  },
+  {
+    "word": "policy",
+    "category": 15,
+    "reason": "the set of rules that a mode applies to tools"
+  },
+  {
+    "word": "port",
+    "category": 19,
+    "reason": "a network port number on a host"
+  },
+  {
+    "word": "prefix",
+    "category": 19,
+    "reason": "the first characters of a string"
+  },
+  {
+    "word": "preview",
+    "category": 19,
+    "reason": "a short view of content before the full view"
+  },
+  {
+    "word": "process",
+    "category": 19,
+    "reason": "a program that runs on the operating system"
+  },
+  {
+    "word": "project",
+    "category": 19,
+    "reason": "the folder and the code repository that a session works in"
+  },
+  {
+    "word": "prompt",
+    "category": 19,
+    "reason": "the text that a user or a program gives to a model"
+  },
+  {
+    "word": "protocol",
+    "category": 19,
+    "reason": "a set of rules for the data that programs send to each other"
+  },
+  {
+    "word": "provider",
+    "category": 11,
+    "reason": "a company or a service that supplies a language model"
+  },
+  {
+    "word": "query",
+    "category": 19,
+    "reason": "the text of a search or a database request"
+  },
+  {
+    "word": "queue",
+    "category": 19,
+    "reason": "a list of items that wait for their turn"
+  },
+  {
+    "word": "quota",
+    "category": 19,
+    "reason": "the usage limit that a provider sets for an account"
+  },
+  {
+    "word": "red",
+    "category": 17,
+    "reason": "a color, used to mark a removed or a failed item"
+  },
+  {
+    "word": "regex",
+    "category": 19,
+    "reason": "a regular expression, a text pattern language"
+  },
+  {
+    "word": "registry",
+    "category": 19,
+    "reason": "a list of registered items, for example of plugins or tools"
+  },
+  {
+    "word": "repl",
+    "category": 19,
+    "reason": "an interactive read-evaluate-print loop of a language"
+  },
+  {
+    "word": "repo",
+    "category": 19,
+    "reason": "short name for a code repository"
+  },
+  {
+    "word": "request",
+    "category": 19,
+    "reason": "a message that a client sends to a server or a model"
+  },
+  {
+    "word": "response",
+    "category": 19,
+    "reason": "a message that a server or a model sends back"
+  },
+  {
+    "word": "reviewer",
+    "category": 11,
+    "reason": "the name of the read-only sub-agent type that finds issues"
+  },
+  {
+    "word": "rfc",
+    "category": 15,
+    "reason": "an IETF Request for Comments standard"
+  },
+  {
+    "word": "ripgrep",
+    "category": 19,
+    "reason": "the ripgrep search program"
+  },
+  {
+    "word": "role",
+    "category": 11,
+    "reason": "the part an agent or a message has, for example user or worker"
+  },
+  {
+    "word": "root",
+    "category": 19,
+    "reason": "the top folder of a project or a file system"
+  },
+  {
+    "word": "rule",
+    "category": 15,
+    "reason": "one numbered writing or coding rule"
+  },
+  {
+    "word": "runtime",
+    "category": 19,
+    "reason": "the program that runs code, for example Bun"
+  },
+  {
+    "word": "schema",
+    "category": 19,
+    "reason": "a JSON schema that describes the shape of data"
+  },
+  {
+    "word": "screen",
+    "category": 19,
+    "reason": "a computer display, a category 19 example term"
+  },
+  {
+    "word": "screenshot",
+    "category": 19,
+    "reason": "an image of what a screen shows"
+  },
+  {
+    "word": "script",
+    "category": 19,
+    "reason": "a file with commands that a program runs"
+  },
+  {
+    "word": "second",
+    "category": 9,
+    "reason": "a unit of time, one sixtieth of a minute"
+  },
+  {
+    "word": "secret",
+    "category": 19,
+    "reason": "a password, a token or a key that must stay private"
+  },
+  {
+    "word": "section",
+    "category": 15,
+    "reason": "one part of a document under a heading"
+  },
+  {
+    "word": "selector",
+    "category": 19,
+    "reason": "a CSS selector that finds elements in a page"
+  },
+  {
+    "word": "sentence",
+    "category": 15,
+    "reason": "a unit of text that ends with a period"
+  },
+  {
+    "word": "session",
+    "category": 19,
+    "reason": "one agent conversation with its messages and state"
+  },
+  {
+    "word": "shell",
+    "category": 19,
+    "reason": "a command interpreter such as bash or zsh"
+  },
+  {
+    "word": "sid",
+    "category": 19,
+    "reason": "session id, the identifier of a session"
+  },
+  {
+    "word": "signal",
+    "category": 19,
+    "reason": "a POSIX process signal such as SIGTERM"
+  },
+  {
+    "word": "skill",
+    "category": 19,
+    "reason": "an Agent Skill, a SKILL.md pack of instructions"
+  },
+  {
+    "word": "snapshot",
+    "category": 19,
+    "reason": "a copy of the state of a tree or a page at one time"
+  },
+  {
+    "word": "socket",
+    "category": 19,
+    "reason": "an end point of a network or a local inter-process connection"
+  },
+  {
+    "word": "spa",
+    "category": 19,
+    "reason": "single-page application, a web page that renders with JavaScript"
+  },
+  {
+    "word": "span",
+    "category": 19,
+    "reason": "a run of text between backticks in markdown"
+  },
+  {
+    "word": "speaker",
+    "category": 19,
+    "reason": "an audio output device of a computer"
+  },
+  {
+    "word": "status",
+    "category": 19,
+    "reason": "the state value of a job, a task or a program"
+  },
+  {
+    "word": "stdin",
+    "category": 19,
+    "reason": "the standard input stream of a process"
+  },
+  {
+    "word": "stdio",
+    "category": 19,
+    "reason": "the standard input and output streams of a process"
+  },
+  {
+    "word": "stream",
+    "category": 19,
+    "reason": "data that a program sends a part at a time"
+  },
+  {
+    "word": "string",
+    "category": 19,
+    "reason": "a text value in code or in JSON"
+  },
+  {
+    "word": "subtask",
+    "category": 19,
+    "reason": "a task under a parent task on the task board"
+  },
+  {
+    "word": "summary",
+    "category": 15,
+    "reason": "a short text that gives the main points of a longer text"
+  },
+  {
+    "word": "supervisor",
+    "category": 19,
+    "reason": "the process that starts, monitors and stops sub-agent processes"
+  },
+  {
+    "word": "tab",
+    "category": 19,
+    "reason": "one page of a browser window"
+  },
+  {
+    "word": "table",
+    "category": 15,
+    "reason": "a grid of rows and columns in a document"
+  },
+  {
+    "word": "tag",
+    "category": 19,
+    "reason": "a marked part of the model output or of a tool result, written as <ma::...>, that the harness reads"
+  },
+  {
+    "word": "target",
+    "category": 19,
+    "reason": "a Chrome DevTools Protocol target, for example a tab",
+    "verb": "go to, use"
+  },
+  {
+    "word": "tcc",
+    "category": 19,
+    "reason": "the macOS privacy permission database"
+  },
+  {
+    "word": "template",
+    "category": 19,
+    "reason": "a text with placeholders that a program fills"
+  },
+  {
+    "word": "terminal",
+    "category": 19,
+    "reason": "a text window where a user operates a shell"
+  },
+  {
+    "word": "text",
+    "category": 19,
+    "reason": "words and characters in a file or a message"
+  },
+  {
+    "word": "three",
+    "category": 9,
+    "reason": "the number 3, written as a word in text"
+  },
+  {
+    "word": "timestamp",
+    "category": 9,
+    "reason": "a value that records a date and a time"
+  },
+  {
+    "word": "title",
+    "category": 15,
+    "reason": "the name of a page, a window or a document"
+  },
+  {
+    "word": "token",
+    "category": 19,
+    "reason": "a unit of text that a language model reads, a category 19 example term"
+  },
+  {
+    "word": "transcript",
+    "category": 15,
+    "reason": "the written record of the messages of a session"
+  },
+  {
+    "word": "transport",
+    "category": 19,
+    "reason": "the network layer that sends messages between agent sessions"
+  },
+  {
+    "word": "tree",
+    "category": 19,
+    "reason": "a data structure of nodes with a parent and children"
+  },
+  {
+    "word": "two",
+    "category": 9,
+    "reason": "the number 2, written as a word in text"
+  },
+  {
+    "word": "ui",
+    "category": 19,
+    "reason": "user interface, the screen part that a user operates"
+  },
+  {
+    "word": "unix",
+    "category": 19,
+    "reason": "the Unix family of operating systems, for example macOS and Linux"
+  },
+  {
+    "word": "url",
+    "category": 19,
+    "reason": "the web address of a page or a file"
+  },
+  {
+    "word": "usd",
+    "category": 9,
+    "reason": "United States dollar, a unit of cost"
+  },
+  {
+    "word": "user",
+    "category": 11,
+    "reason": "the person who operates the agent, the end user"
+  },
+  {
+    "word": "web",
+    "category": 19,
+    "reason": "the World Wide Web of pages and sites"
+  },
+  {
+    "word": "webp",
+    "category": 19,
+    "reason": "the WebP image file type"
+  },
+  {
+    "word": "websocket",
+    "category": 19,
+    "reason": "the WebSocket network protocol"
+  },
+  {
+    "word": "week",
+    "category": 9,
+    "reason": "a unit of time, seven days"
+  },
+  {
+    "word": "weekday",
+    "category": 9,
+    "reason": "a day from Monday to Friday"
+  },
+  {
+    "word": "whitespace",
+    "category": 19,
+    "reason": "space, tab and newline characters"
+  },
+  {
+    "word": "widget",
+    "category": 19,
+    "reason": "a small user interface part, for example a status panel"
+  },
+  {
+    "word": "window",
+    "category": 19,
+    "reason": "a screen area of an application, or the context window of a model"
+  },
+  {
+    "word": "word",
+    "category": 15,
+    "reason": "a unit of text between spaces"
+  },
+  {
+    "word": "worker",
+    "category": 11,
+    "reason": "the name of the sub-agent type that edits files"
+  },
+  {
+    "word": "workspace",
+    "category": 19,
+    "reason": "a folder with the packages of one project"
+  },
+  {
+    "word": "worktree",
+    "category": 19,
+    "reason": "a git worktree, a second checkout of a repository"
+  },
+  {
+    "word": "xml",
+    "category": 19,
+    "reason": "the XML markup language, a category 19 example term"
+  },
+  {
+    "word": "year",
+    "category": 9,
+    "reason": "a unit of time in a calendar"
+  },
+  {
+    "word": "zed",
+    "category": 19,
+    "reason": "the Zed code editor, an ACP client program"
+  },
+  {
+    "word": "zero",
+    "category": 9,
+    "reason": "the number 0, written as a word in text"
+  }
+]

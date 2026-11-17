@@ -1,5 +1,5 @@
 <ma::agent::reflection-checkpoint round="%%round%%" cooldown-applied-seconds="%%cooldownSec%%" />
-This checkpoint is soft. It is not a stop signal. Briefly examine if your work still moves toward the goal. Then do one of these steps:
+This checkpoint is soft. It is not a signal to stop. Briefly examine if your work still moves toward the goal. Then do one of these steps:
 
 - Continue.
 - Change your strategy.
