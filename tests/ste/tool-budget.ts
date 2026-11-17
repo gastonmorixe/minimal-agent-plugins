@@ -43,9 +43,9 @@ export const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-ha
  * loose.
  *
  * 2026-11-17 STE pass (ASD-STE100 Issue 9) with the 500-character cap per
- * description (`MAX_DESCRIPTION_CHARS`): from 8163 to 6847 words.
+ * description (`MAX_DESCRIPTION_CHARS`): from 8163 to 6856 words.
  */
-export const TOOL_BLOCK_WORDS = 6847
+export const TOOL_BLOCK_WORDS = 6856
 
 /** How far below {@link TOOL_BLOCK_WORDS} the tree may drift before it must be lowered. */
 export const LOOSE_WORDS = 50
@@ -65,7 +65,7 @@ export const TOOL_WORDS: Readonly<Record<string, number>> = {
   BackgroundRun: 183,
   BackgroundStatus: 60,
   BackgroundStop: 86,
-  Bash: 121,
+  Bash: 115,
   ChromeCDP: 346,
   CompactContext: 162,
   Computer: 646,
@@ -81,13 +81,13 @@ export const TOOL_WORDS: Readonly<Record<string, number>> = {
   LockStatus: 175,
   MemoryTool: 266,
   Mode: 65,
-  ModelInfo: 74,
+  ModelInfo: 86,
   PromptDelete: 49,
   PromptEdit: 71,
   PromptList: 48,
   PromptNew: 111,
   PromptShow: 48,
-  Read: 108,
+  Read: 111,
   ScheduleCronCreate: 214,
   ScheduleCronDelete: 44,
   ScheduleCronList: 37,
@@ -131,7 +131,23 @@ export interface Raise {
  * The raise log. An entry above its value at the merge base needs a row here
  * with the same `tool`, `from` and `to`. Keep old rows: they are the history.
  */
-export const RAISES: readonly Raise[] = []
+export const RAISES: readonly Raise[] = [
+  {
+    tool: "ModelInfo",
+    from: 74,
+    to: 86,
+    date: "2026-11-17",
+    reason:
+      "restore 'do not use your memory of the model' and the thinking and prompt-cache outputs (DROPPED.md risk 9)",
+  },
+  {
+    tool: "Read",
+    from: 108,
+    to: 111,
+    date: "2026-11-17",
+    reason: "restore 'use it to see a screenshot' (DROPPED.md risk 10)",
+  },
+]
 
 /** The long-run per-tool target. Never reach it by dropping a fact or a rule. */
 export const TARGET = {
