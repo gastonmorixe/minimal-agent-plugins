@@ -1,0 +1,137 @@
+[
+  {
+    "word": "abort",
+    "category": "2c",
+    "reason": "stop a running request or job before it completes"
+  },
+  {
+    "word": "boot",
+    "category": "2c",
+    "reason": "start a computer or a program from the beginning"
+  },
+  {
+    "word": "clear",
+    "category": "2b",
+    "reason": "remove all the items of a buffer, a field or a list"
+  },
+  {
+    "word": "click",
+    "category": "2a",
+    "reason": "push and release a mouse button on a screen item"
+  },
+  {
+    "word": "copy",
+    "category": "2b",
+    "reason": "make a second copy of text or of a file"
+  },
+  {
+    "word": "debug",
+    "category": "2c",
+    "reason": "find and remove the cause of a software fault"
+  },
+  {
+    "word": "delete",
+    "category": "2b",
+    "reason": "erase a file, a record or an item for all time"
+  },
+  {
+    "word": "disable",
+    "category": "2b",
+    "reason": "set a plugin, a tool or a function so that it does not operate"
+  },
+  {
+    "word": "download",
+    "category": "2c",
+    "reason": "get a file from a network into local storage"
+  },
+  {
+    "word": "drag",
+    "category": "2b",
+    "reason": "move a screen item with the mouse button held down"
+  },
+  {
+    "word": "enable",
+    "category": "2b",
+    "reason": "set a plugin, a tool or a function so that it operates"
+  },
+  {
+    "word": "enter",
+    "category": "2a",
+    "reason": "type text into a field or a prompt"
+  },
+  {
+    "word": "filter",
+    "category": "2b",
+    "reason": "show only the items that agree with a condition"
+  },
+  {
+    "word": "format",
+    "category": "2c",
+    "reason": "put text or data into a specified shape"
+  },
+  {
+    "word": "load",
+    "category": "2c",
+    "reason": "read a file or a plugin into memory"
+  },
+  {
+    "word": "navigate",
+    "category": "2b",
+    "reason": "go to a different page or URL in a browser"
+  },
+  {
+    "word": "print",
+    "category": "2a",
+    "reason": "write text to a terminal or to paper"
+  },
+  {
+    "word": "process",
+    "category": "2c",
+    "reason": "do the computer operations on data or on a request"
+  },
+  {
+    "word": "run",
+    "category": "2c",
+    "reason": "run a command, a script or a test: no approved verb gives this meaning"
+  },
+  {
+    "word": "save",
+    "category": "2b",
+    "reason": "write data to a file so that it stays after the program stops"
+  },
+  {
+    "word": "scroll",
+    "category": "2b",
+    "reason": "move the view of a page or a list up or down"
+  },
+  {
+    "word": "sort",
+    "category": "2b",
+    "reason": "put items in a sequence by a key"
+  },
+  {
+    "word": "store",
+    "category": "2b",
+    "reason": "keep data in memory or on disk, a category 2b example verb"
+  },
+  {
+    "word": "type",
+    "category": "2a",
+    "reason": "enter characters with a keyboard"
+  },
+  {
+    "word": "update",
+    "category": "2c",
+    "reason": "change data or software to a newer version"
+  },
+  {
+    "word": "upload",
+    "category": "2c",
+    "reason": "send a file from local storage to a network service"
+  },
+  {
+    "word": "validate",
+    "category": "2b",
+    "reason": "make sure that data agrees with its schema or rules"
+  }
+]

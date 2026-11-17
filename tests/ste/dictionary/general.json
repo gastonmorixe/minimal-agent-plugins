@@ -1,0 +1,2042 @@
+[
+  {
+    "word": "a",
+    "pos": "art"
+  },
+  {
+    "word": "about",
+    "pos": "prep"
+  },
+  {
+    "word": "above",
+    "pos": "prep"
+  },
+  {
+    "word": "accept",
+    "pos": "v"
+  },
+  {
+    "word": "access",
+    "pos": "n"
+  },
+  {
+    "word": "accurate",
+    "pos": "adj"
+  },
+  {
+    "word": "accurately",
+    "pos": "adv"
+  },
+  {
+    "word": "across",
+    "pos": "prep"
+  },
+  {
+    "word": "activate",
+    "pos": "v"
+  },
+  {
+    "word": "active",
+    "pos": "adj"
+  },
+  {
+    "word": "add",
+    "pos": "v"
+  },
+  {
+    "word": "adjust",
+    "pos": "v"
+  },
+  {
+    "word": "aft",
+    "pos": "adj"
+  },
+  {
+    "word": "after",
+    "pos": "conj"
+  },
+  {
+    "word": "after",
+    "pos": "prep"
+  },
+  {
+    "word": "again",
+    "pos": "adv"
+  },
+  {
+    "word": "against",
+    "pos": "prep"
+  },
+  {
+    "word": "agent",
+    "pos": "n"
+  },
+  {
+    "word": "agree",
+    "pos": "v"
+  },
+  {
+    "word": "align",
+    "pos": "v"
+  },
+  {
+    "word": "all",
+    "pos": "adj"
+  },
+  {
+    "word": "along",
+    "pos": "prep"
+  },
+  {
+    "word": "also",
+    "pos": "adv"
+  },
+  {
+    "word": "alternative",
+    "pos": "adj"
+  },
+  {
+    "word": "alternative",
+    "pos": "n"
+  },
+  {
+    "word": "always",
+    "pos": "adv"
+  },
+  {
+    "word": "an",
+    "pos": "art"
+  },
+  {
+    "word": "and",
+    "pos": "conj"
+  },
+  {
+    "word": "applicable",
+    "pos": "adj"
+  },
+  {
+    "word": "apply",
+    "pos": "v"
+  },
+  {
+    "word": "approval",
+    "pos": "n"
+  },
+  {
+    "word": "approved",
+    "pos": "adj"
+  },
+  {
+    "word": "approximate",
+    "pos": "adj"
+  },
+  {
+    "word": "area",
+    "pos": "n"
+  },
+  {
+    "word": "arm",
+    "pos": "v"
+  },
+  {
+    "word": "around",
+    "pos": "prep"
+  },
+  {
+    "word": "arrow",
+    "pos": "n"
+  },
+  {
+    "word": "as",
+    "pos": "prep"
+  },
+  {
+    "word": "assemble",
+    "pos": "v"
+  },
+  {
+    "word": "at",
+    "pos": "prep"
+  },
+  {
+    "word": "attach",
+    "pos": "v"
+  },
+  {
+    "word": "automatic",
+    "pos": "adj"
+  },
+  {
+    "word": "automatically",
+    "pos": "adv"
+  },
+  {
+    "word": "available",
+    "pos": "adj"
+  },
+  {
+    "word": "back",
+    "pos": "adv"
+  },
+  {
+    "word": "bad",
+    "pos": "adj"
+  },
+  {
+    "word": "bare",
+    "pos": "adj"
+  },
+  {
+    "word": "be",
+    "pos": "v"
+  },
+  {
+    "word": "because",
+    "pos": "conj"
+  },
+  {
+    "word": "because of",
+    "pos": "prep"
+  },
+  {
+    "word": "become",
+    "pos": "v"
+  },
+  {
+    "word": "before",
+    "pos": "conj"
+  },
+  {
+    "word": "before",
+    "pos": "prep"
+  },
+  {
+    "word": "behind",
+    "pos": "prep"
+  },
+  {
+    "word": "below",
+    "pos": "prep"
+  },
+  {
+    "word": "between",
+    "pos": "prep"
+  },
+  {
+    "word": "blocked",
+    "pos": "adj"
+  },
+  {
+    "word": "bottom",
+    "pos": "adj"
+  },
+  {
+    "word": "bottom",
+    "pos": "n"
+  },
+  {
+    "word": "break",
+    "pos": "v"
+  },
+  {
+    "word": "but",
+    "pos": "conj"
+  },
+  {
+    "word": "by",
+    "pos": "prep"
+  },
+  {
+    "word": "calculate",
+    "pos": "v"
+  },
+  {
+    "word": "can",
+    "pos": "v"
+  },
+  {
+    "word": "cancel",
+    "pos": "v"
+  },
+  {
+    "word": "cannot",
+    "pos": "v"
+  },
+  {
+    "word": "careful",
+    "pos": "adj"
+  },
+  {
+    "word": "carefully",
+    "pos": "adv"
+  },
+  {
+    "word": "cause",
+    "pos": "n"
+  },
+  {
+    "word": "cause",
+    "pos": "v"
+  },
+  {
+    "word": "change",
+    "pos": "n"
+  },
+  {
+    "word": "change",
+    "pos": "v"
+  },
+  {
+    "word": "check",
+    "pos": "n"
+  },
+  {
+    "word": "circular",
+    "pos": "adj"
+  },
+  {
+    "word": "clean",
+    "pos": "adj"
+  },
+  {
+    "word": "clean",
+    "pos": "v"
+  },
+  {
+    "word": "clear",
+    "pos": "adj"
+  },
+  {
+    "word": "click",
+    "pos": "n"
+  },
+  {
+    "word": "close",
+    "pos": "v"
+  },
+  {
+    "word": "code",
+    "pos": "n"
+  },
+  {
+    "word": "collect",
+    "pos": "v"
+  },
+  {
+    "word": "color",
+    "pos": "n"
+  },
+  {
+    "word": "come",
+    "pos": "v"
+  },
+  {
+    "word": "communication",
+    "pos": "n"
+  },
+  {
+    "word": "compare",
+    "pos": "v"
+  },
+  {
+    "word": "complete",
+    "pos": "v"
+  },
+  {
+    "word": "completed",
+    "pos": "adj"
+  },
+  {
+    "word": "condition",
+    "pos": "n"
+  },
+  {
+    "word": "connect",
+    "pos": "v"
+  },
+  {
+    "word": "connection",
+    "pos": "n"
+  },
+  {
+    "word": "constant",
+    "pos": "adj"
+  },
+  {
+    "word": "contain",
+    "pos": "v"
+  },
+  {
+    "word": "contents",
+    "pos": "n"
+  },
+  {
+    "word": "continue",
+    "pos": "v"
+  },
+  {
+    "word": "continuous",
+    "pos": "adj"
+  },
+  {
+    "word": "control",
+    "pos": "n"
+  },
+  {
+    "word": "control",
+    "pos": "v"
+  },
+  {
+    "word": "copy",
+    "pos": "n"
+  },
+  {
+    "word": "correct",
+    "pos": "adj"
+  },
+  {
+    "word": "correct",
+    "pos": "v"
+  },
+  {
+    "word": "correctly",
+    "pos": "adv"
+  },
+  {
+    "word": "count",
+    "pos": "v"
+  },
+  {
+    "word": "cut",
+    "pos": "v"
+  },
+  {
+    "word": "dangerous",
+    "pos": "adj"
+  },
+  {
+    "word": "data",
+    "pos": "n"
+  },
+  {
+    "word": "date",
+    "pos": "n"
+  },
+  {
+    "word": "decision",
+    "pos": "n"
+  },
+  {
+    "word": "decrease",
+    "pos": "v"
+  },
+  {
+    "word": "dedicated",
+    "pos": "adj"
+  },
+  {
+    "word": "deep",
+    "pos": "adj"
+  },
+  {
+    "word": "defective",
+    "pos": "adj"
+  },
+  {
+    "word": "deploy",
+    "pos": "v"
+  },
+  {
+    "word": "depth",
+    "pos": "n"
+  },
+  {
+    "word": "device",
+    "pos": "n"
+  },
+  {
+    "word": "different",
+    "pos": "adj"
+  },
+  {
+    "word": "differently",
+    "pos": "adv"
+  },
+  {
+    "word": "dim",
+    "pos": "adj"
+  },
+  {
+    "word": "dimension",
+    "pos": "n"
+  },
+  {
+    "word": "direction",
+    "pos": "n"
+  },
+  {
+    "word": "directly",
+    "pos": "adv"
+  },
+  {
+    "word": "disconnect",
+    "pos": "v"
+  },
+  {
+    "word": "disengage",
+    "pos": "v"
+  },
+  {
+    "word": "display",
+    "pos": "n"
+  },
+  {
+    "word": "divide",
+    "pos": "v"
+  },
+  {
+    "word": "do",
+    "pos": "v"
+  },
+  {
+    "word": "down",
+    "pos": "adj"
+  },
+  {
+    "word": "down",
+    "pos": "adv"
+  },
+  {
+    "word": "down",
+    "pos": "prep"
+  },
+  {
+    "word": "drain",
+    "pos": "v"
+  },
+  {
+    "word": "drop",
+    "pos": "n"
+  },
+  {
+    "word": "dry",
+    "pos": "adj"
+  },
+  {
+    "word": "dry",
+    "pos": "v"
+  },
+  {
+    "word": "during",
+    "pos": "prep"
+  },
+  {
+    "word": "each",
+    "pos": "adj"
+  },
+  {
+    "word": "each",
+    "pos": "pron"
+  },
+  {
+    "word": "empty",
+    "pos": "adj"
+  },
+  {
+    "word": "end",
+    "pos": "n"
+  },
+  {
+    "word": "engage",
+    "pos": "v"
+  },
+  {
+    "word": "entry",
+    "pos": "n"
+  },
+  {
+    "word": "error",
+    "pos": "n"
+  },
+  {
+    "word": "estimate",
+    "pos": "n"
+  },
+  {
+    "word": "examine",
+    "pos": "v"
+  },
+  {
+    "word": "example",
+    "pos": "n"
+  },
+  {
+    "word": "exit",
+    "pos": "n"
+  },
+  {
+    "word": "expand",
+    "pos": "v"
+  },
+  {
+    "word": "external",
+    "pos": "adj"
+  },
+  {
+    "word": "fact",
+    "pos": "n"
+  },
+  {
+    "word": "fall",
+    "pos": "v"
+  },
+  {
+    "word": "far",
+    "pos": "adj"
+  },
+  {
+    "word": "fast",
+    "pos": "adj"
+  },
+  {
+    "word": "feel",
+    "pos": "v"
+  },
+  {
+    "word": "fill",
+    "pos": "v"
+  },
+  {
+    "word": "filtered",
+    "pos": "adj"
+  },
+  {
+    "word": "find",
+    "pos": "v"
+  },
+  {
+    "word": "finish",
+    "pos": "n"
+  },
+  {
+    "word": "fire",
+    "pos": "n"
+  },
+  {
+    "word": "fire",
+    "pos": "v"
+  },
+  {
+    "word": "first",
+    "pos": "adv"
+  },
+  {
+    "word": "fit",
+    "pos": "n"
+  },
+  {
+    "word": "flat",
+    "pos": "adj"
+  },
+  {
+    "word": "flight",
+    "pos": "n"
+  },
+  {
+    "word": "flow",
+    "pos": "n"
+  },
+  {
+    "word": "flow",
+    "pos": "v"
+  },
+  {
+    "word": "fold",
+    "pos": "v"
+  },
+  {
+    "word": "follow",
+    "pos": "v"
+  },
+  {
+    "word": "for",
+    "pos": "prep"
+  },
+  {
+    "word": "forward",
+    "pos": "adj"
+  },
+  {
+    "word": "forward",
+    "pos": "adv"
+  },
+  {
+    "word": "free",
+    "pos": "adj"
+  },
+  {
+    "word": "freely",
+    "pos": "adv"
+  },
+  {
+    "word": "frequently",
+    "pos": "adv"
+  },
+  {
+    "word": "from",
+    "pos": "prep"
+  },
+  {
+    "word": "front",
+    "pos": "adj"
+  },
+  {
+    "word": "front",
+    "pos": "n"
+  },
+  {
+    "word": "full",
+    "pos": "adj"
+  },
+  {
+    "word": "fully",
+    "pos": "adv"
+  },
+  {
+    "word": "function",
+    "pos": "n"
+  },
+  {
+    "word": "general",
+    "pos": "adj"
+  },
+  {
+    "word": "get",
+    "pos": "v"
+  },
+  {
+    "word": "give",
+    "pos": "v"
+  },
+  {
+    "word": "go",
+    "pos": "v"
+  },
+  {
+    "word": "good",
+    "pos": "adj"
+  },
+  {
+    "word": "gradually",
+    "pos": "adv"
+  },
+  {
+    "word": "group",
+    "pos": "n"
+  },
+  {
+    "word": "hang",
+    "pos": "v"
+  },
+  {
+    "word": "hard",
+    "pos": "adj"
+  },
+  {
+    "word": "have",
+    "pos": "v"
+  },
+  {
+    "word": "hear",
+    "pos": "v"
+  },
+  {
+    "word": "heavy",
+    "pos": "adj"
+  },
+  {
+    "word": "height",
+    "pos": "n"
+  },
+  {
+    "word": "help",
+    "pos": "v"
+  },
+  {
+    "word": "here",
+    "pos": "adv"
+  },
+  {
+    "word": "high",
+    "pos": "adj"
+  },
+  {
+    "word": "hit",
+    "pos": "v"
+  },
+  {
+    "word": "hold",
+    "pos": "v"
+  },
+  {
+    "word": "horizontal",
+    "pos": "adj"
+  },
+  {
+    "word": "hot",
+    "pos": "adj"
+  },
+  {
+    "word": "how",
+    "pos": "adv"
+  },
+  {
+    "word": "identify",
+    "pos": "v"
+  },
+  {
+    "word": "if",
+    "pos": "conj"
+  },
+  {
+    "word": "ignore",
+    "pos": "v"
+  },
+  {
+    "word": "immediately",
+    "pos": "adv"
+  },
+  {
+    "word": "important",
+    "pos": "adj"
+  },
+  {
+    "word": "in",
+    "pos": "adv"
+  },
+  {
+    "word": "in",
+    "pos": "prep"
+  },
+  {
+    "word": "in progress",
+    "pos": "adv"
+  },
+  {
+    "word": "include",
+    "pos": "v"
+  },
+  {
+    "word": "incorrect",
+    "pos": "adj"
+  },
+  {
+    "word": "increase",
+    "pos": "v"
+  },
+  {
+    "word": "independently",
+    "pos": "adv"
+  },
+  {
+    "word": "indication",
+    "pos": "n"
+  },
+  {
+    "word": "inflate",
+    "pos": "v"
+  },
+  {
+    "word": "information",
+    "pos": "n"
+  },
+  {
+    "word": "initial",
+    "pos": "adj"
+  },
+  {
+    "word": "inner",
+    "pos": "adj"
+  },
+  {
+    "word": "input",
+    "pos": "n"
+  },
+  {
+    "word": "inspection",
+    "pos": "n"
+  },
+  {
+    "word": "install",
+    "pos": "v"
+  },
+  {
+    "word": "instruction",
+    "pos": "n"
+  },
+  {
+    "word": "interchange",
+    "pos": "v"
+  },
+  {
+    "word": "interval",
+    "pos": "n"
+  },
+  {
+    "word": "into",
+    "pos": "prep"
+  },
+  {
+    "word": "investigation",
+    "pos": "n"
+  },
+  {
+    "word": "isolate",
+    "pos": "v"
+  },
+  {
+    "word": "it",
+    "pos": "pron"
+  },
+  {
+    "word": "item",
+    "pos": "n"
+  },
+  {
+    "word": "its",
+    "pos": "adj"
+  },
+  {
+    "word": "keep",
+    "pos": "v"
+  },
+  {
+    "word": "kill",
+    "pos": "v"
+  },
+  {
+    "word": "know",
+    "pos": "v"
+  },
+  {
+    "word": "large",
+    "pos": "adj"
+  },
+  {
+    "word": "last",
+    "pos": "adj"
+  },
+  {
+    "word": "last",
+    "pos": "adv"
+  },
+  {
+    "word": "layer",
+    "pos": "n"
+  },
+  {
+    "word": "leak",
+    "pos": "n"
+  },
+  {
+    "word": "left",
+    "pos": "adj"
+  },
+  {
+    "word": "length",
+    "pos": "n"
+  },
+  {
+    "word": "less",
+    "pos": "adj"
+  },
+  {
+    "word": "let",
+    "pos": "v"
+  },
+  {
+    "word": "level",
+    "pos": "adj"
+  },
+  {
+    "word": "level",
+    "pos": "n"
+  },
+  {
+    "word": "lift",
+    "pos": "v"
+  },
+  {
+    "word": "limit",
+    "pos": "n"
+  },
+  {
+    "word": "live",
+    "pos": "adj"
+  },
+  {
+    "word": "local",
+    "pos": "adj"
+  },
+  {
+    "word": "locally",
+    "pos": "adv"
+  },
+  {
+    "word": "lock",
+    "pos": "v"
+  },
+  {
+    "word": "long",
+    "pos": "adj"
+  },
+  {
+    "word": "look",
+    "pos": "v"
+  },
+  {
+    "word": "loop",
+    "pos": "n"
+  },
+  {
+    "word": "loosen",
+    "pos": "v"
+  },
+  {
+    "word": "low",
+    "pos": "adj"
+  },
+  {
+    "word": "lower",
+    "pos": "v"
+  },
+  {
+    "word": "make",
+    "pos": "v"
+  },
+  {
+    "word": "make sure",
+    "pos": "v"
+  },
+  {
+    "word": "mandatory",
+    "pos": "adj"
+  },
+  {
+    "word": "manual",
+    "pos": "adj"
+  },
+  {
+    "word": "manual",
+    "pos": "n"
+  },
+  {
+    "word": "many",
+    "pos": "adj"
+  },
+  {
+    "word": "mark",
+    "pos": "n"
+  },
+  {
+    "word": "material",
+    "pos": "n"
+  },
+  {
+    "word": "maximum",
+    "pos": "adj"
+  },
+  {
+    "word": "maximum",
+    "pos": "n"
+  },
+  {
+    "word": "measure",
+    "pos": "v"
+  },
+  {
+    "word": "mechanical",
+    "pos": "adj"
+  },
+  {
+    "word": "method",
+    "pos": "n"
+  },
+  {
+    "word": "middle",
+    "pos": "adj"
+  },
+  {
+    "word": "middle",
+    "pos": "n"
+  },
+  {
+    "word": "minimum",
+    "pos": "adj"
+  },
+  {
+    "word": "minimum",
+    "pos": "n"
+  },
+  {
+    "word": "missing",
+    "pos": "adj"
+  },
+  {
+    "word": "mix",
+    "pos": "v"
+  },
+  {
+    "word": "mobile",
+    "pos": "adj"
+  },
+  {
+    "word": "mode",
+    "pos": "n"
+  },
+  {
+    "word": "monitor",
+    "pos": "v"
+  },
+  {
+    "word": "more",
+    "pos": "adj"
+  },
+  {
+    "word": "more",
+    "pos": "adv"
+  },
+  {
+    "word": "most",
+    "pos": "adj"
+  },
+  {
+    "word": "most",
+    "pos": "adv"
+  },
+  {
+    "word": "move",
+    "pos": "v"
+  },
+  {
+    "word": "much",
+    "pos": "adj"
+  },
+  {
+    "word": "much",
+    "pos": "adv"
+  },
+  {
+    "word": "must",
+    "pos": "v"
+  },
+  {
+    "word": "name",
+    "pos": "n"
+  },
+  {
+    "word": "near",
+    "pos": "adj"
+  },
+  {
+    "word": "near",
+    "pos": "prep"
+  },
+  {
+    "word": "necessary",
+    "pos": "adj"
+  },
+  {
+    "word": "neutral",
+    "pos": "adj"
+  },
+  {
+    "word": "new",
+    "pos": "adj"
+  },
+  {
+    "word": "next",
+    "pos": "adj"
+  },
+  {
+    "word": "no",
+    "pos": "adj"
+  },
+  {
+    "word": "no",
+    "pos": "adv"
+  },
+  {
+    "word": "noise",
+    "pos": "n"
+  },
+  {
+    "word": "none",
+    "pos": "pron"
+  },
+  {
+    "word": "not",
+    "pos": "adv"
+  },
+  {
+    "word": "number",
+    "pos": "n"
+  },
+  {
+    "word": "obey",
+    "pos": "v"
+  },
+  {
+    "word": "object",
+    "pos": "n"
+  },
+  {
+    "word": "occur",
+    "pos": "v"
+  },
+  {
+    "word": "of",
+    "pos": "prep"
+  },
+  {
+    "word": "off",
+    "pos": "adj"
+  },
+  {
+    "word": "off",
+    "pos": "adv"
+  },
+  {
+    "word": "off",
+    "pos": "prep"
+  },
+  {
+    "word": "on",
+    "pos": "adj"
+  },
+  {
+    "word": "on",
+    "pos": "adv"
+  },
+  {
+    "word": "on",
+    "pos": "prep"
+  },
+  {
+    "word": "one",
+    "pos": "pron"
+  },
+  {
+    "word": "only",
+    "pos": "adj"
+  },
+  {
+    "word": "only",
+    "pos": "adv"
+  },
+  {
+    "word": "open",
+    "pos": "adj"
+  },
+  {
+    "word": "open",
+    "pos": "v"
+  },
+  {
+    "word": "operate",
+    "pos": "v"
+  },
+  {
+    "word": "operation",
+    "pos": "n"
+  },
+  {
+    "word": "optional",
+    "pos": "adj"
+  },
+  {
+    "word": "or",
+    "pos": "conj"
+  },
+  {
+    "word": "other",
+    "pos": "adj"
+  },
+  {
+    "word": "other",
+    "pos": "pron"
+  },
+  {
+    "word": "out",
+    "pos": "adj"
+  },
+  {
+    "word": "out",
+    "pos": "adv"
+  },
+  {
+    "word": "outdoors",
+    "pos": "adv"
+  },
+  {
+    "word": "outer",
+    "pos": "adj"
+  },
+  {
+    "word": "output",
+    "pos": "n"
+  },
+  {
+    "word": "override",
+    "pos": "v"
+  },
+  {
+    "word": "paint",
+    "pos": "v"
+  },
+  {
+    "word": "pair",
+    "pos": "n"
+  },
+  {
+    "word": "part",
+    "pos": "n"
+  },
+  {
+    "word": "paste",
+    "pos": "n"
+  },
+  {
+    "word": "patch",
+    "pos": "n"
+  },
+  {
+    "word": "performance",
+    "pos": "n"
+  },
+  {
+    "word": "period",
+    "pos": "n"
+  },
+  {
+    "word": "permanent",
+    "pos": "adj"
+  },
+  {
+    "word": "person",
+    "pos": "n"
+  },
+  {
+    "word": "piece",
+    "pos": "n"
+  },
+  {
+    "word": "play",
+    "pos": "n"
+  },
+  {
+    "word": "plus",
+    "pos": "prep"
+  },
+  {
+    "word": "point",
+    "pos": "n"
+  },
+  {
+    "word": "point",
+    "pos": "v"
+  },
+  {
+    "word": "position",
+    "pos": "n"
+  },
+  {
+    "word": "possible",
+    "pos": "adj"
+  },
+  {
+    "word": "possibly",
+    "pos": "adv"
+  },
+  {
+    "word": "precaution",
+    "pos": "n"
+  },
+  {
+    "word": "prevent",
+    "pos": "v"
+  },
+  {
+    "word": "previous",
+    "pos": "adj"
+  },
+  {
+    "word": "primary",
+    "pos": "adj"
+  },
+  {
+    "word": "pull",
+    "pos": "v"
+  },
+  {
+    "word": "push",
+    "pos": "v"
+  },
+  {
+    "word": "put",
+    "pos": "v"
+  },
+  {
+    "word": "quantity",
+    "pos": "n"
+  },
+  {
+    "word": "quickly",
+    "pos": "adv"
+  },
+  {
+    "word": "range",
+    "pos": "n"
+  },
+  {
+    "word": "rate",
+    "pos": "n"
+  },
+  {
+    "word": "read",
+    "pos": "v"
+  },
+  {
+    "word": "receive",
+    "pos": "v"
+  },
+  {
+    "word": "recommend",
+    "pos": "v"
+  },
+  {
+    "word": "record",
+    "pos": "v"
+  },
+  {
+    "word": "refer",
+    "pos": "v"
+  },
+  {
+    "word": "reflection",
+    "pos": "n"
+  },
+  {
+    "word": "regular",
+    "pos": "adj"
+  },
+  {
+    "word": "regularly",
+    "pos": "adv"
+  },
+  {
+    "word": "reject",
+    "pos": "v"
+  },
+  {
+    "word": "related",
+    "pos": "adj"
+  },
+  {
+    "word": "release",
+    "pos": "v"
+  },
+  {
+    "word": "remaining",
+    "pos": "adj"
+  },
+  {
+    "word": "remove",
+    "pos": "v"
+  },
+  {
+    "word": "repair",
+    "pos": "n"
+  },
+  {
+    "word": "repair",
+    "pos": "v"
+  },
+  {
+    "word": "replace",
+    "pos": "v"
+  },
+  {
+    "word": "replacement",
+    "pos": "n"
+  },
+  {
+    "word": "report",
+    "pos": "n"
+  },
+  {
+    "word": "result",
+    "pos": "n"
+  },
+  {
+    "word": "retract",
+    "pos": "v"
+  },
+  {
+    "word": "right",
+    "pos": "adj"
+  },
+  {
+    "word": "rough",
+    "pos": "adj"
+  },
+  {
+    "word": "routing",
+    "pos": "n"
+  },
+  {
+    "word": "row",
+    "pos": "n"
+  },
+  {
+    "word": "safe",
+    "pos": "adj"
+  },
+  {
+    "word": "safely",
+    "pos": "adv"
+  },
+  {
+    "word": "safety",
+    "pos": "n"
+  },
+  {
+    "word": "safety",
+    "pos": "v"
+  },
+  {
+    "word": "same",
+    "pos": "adj"
+  },
+  {
+    "word": "same",
+    "pos": "pron"
+  },
+  {
+    "word": "satisfactory",
+    "pos": "adj"
+  },
+  {
+    "word": "schedule",
+    "pos": "v"
+  },
+  {
+    "word": "seal",
+    "pos": "n"
+  },
+  {
+    "word": "seal",
+    "pos": "v"
+  },
+  {
+    "word": "see",
+    "pos": "v"
+  },
+  {
+    "word": "select",
+    "pos": "v"
+  },
+  {
+    "word": "selection",
+    "pos": "n"
+  },
+  {
+    "word": "send",
+    "pos": "v"
+  },
+  {
+    "word": "sense",
+    "pos": "v"
+  },
+  {
+    "word": "sensitive",
+    "pos": "adj"
+  },
+  {
+    "word": "sequence",
+    "pos": "n"
+  },
+  {
+    "word": "set",
+    "pos": "n"
+  },
+  {
+    "word": "set",
+    "pos": "v"
+  },
+  {
+    "word": "shape",
+    "pos": "n"
+  },
+  {
+    "word": "short",
+    "pos": "adj"
+  },
+  {
+    "word": "show",
+    "pos": "v"
+  },
+  {
+    "word": "side",
+    "pos": "n"
+  },
+  {
+    "word": "sign",
+    "pos": "n"
+  },
+  {
+    "word": "since",
+    "pos": "conj"
+  },
+  {
+    "word": "slot",
+    "pos": "n"
+  },
+  {
+    "word": "slow",
+    "pos": "adj"
+  },
+  {
+    "word": "small",
+    "pos": "adj"
+  },
+  {
+    "word": "smooth",
+    "pos": "adj"
+  },
+  {
+    "word": "soft",
+    "pos": "adj"
+  },
+  {
+    "word": "some",
+    "pos": "adj"
+  },
+  {
+    "word": "some",
+    "pos": "pron"
+  },
+  {
+    "word": "sound",
+    "pos": "n"
+  },
+  {
+    "word": "source",
+    "pos": "n"
+  },
+  {
+    "word": "space",
+    "pos": "n"
+  },
+  {
+    "word": "speak",
+    "pos": "v"
+  },
+  {
+    "word": "specified",
+    "pos": "adj"
+  },
+  {
+    "word": "spill",
+    "pos": "v"
+  },
+  {
+    "word": "stable",
+    "pos": "adj"
+  },
+  {
+    "word": "standard",
+    "pos": "adj"
+  },
+  {
+    "word": "start",
+    "pos": "n"
+  },
+  {
+    "word": "start",
+    "pos": "v"
+  },
+  {
+    "word": "stay",
+    "pos": "v"
+  },
+  {
+    "word": "step",
+    "pos": "n"
+  },
+  {
+    "word": "stop",
+    "pos": "v"
+  },
+  {
+    "word": "straight",
+    "pos": "adj"
+  },
+  {
+    "word": "strip",
+    "pos": "n"
+  },
+  {
+    "word": "structure",
+    "pos": "n"
+  },
+  {
+    "word": "subsequent",
+    "pos": "adj"
+  },
+  {
+    "word": "subsequently",
+    "pos": "adv"
+  },
+  {
+    "word": "such",
+    "pos": "adj"
+  },
+  {
+    "word": "sufficient",
+    "pos": "adj"
+  },
+  {
+    "word": "supply",
+    "pos": "n"
+  },
+  {
+    "word": "supply",
+    "pos": "v"
+  },
+  {
+    "word": "sure",
+    "pos": "adj"
+  },
+  {
+    "word": "surface",
+    "pos": "n"
+  },
+  {
+    "word": "symptom",
+    "pos": "n"
+  },
+  {
+    "word": "system",
+    "pos": "n"
+  },
+  {
+    "word": "tag",
+    "pos": "v"
+  },
+  {
+    "word": "task",
+    "pos": "n"
+  },
+  {
+    "word": "tell",
+    "pos": "v"
+  },
+  {
+    "word": "test",
+    "pos": "n"
+  },
+  {
+    "word": "than",
+    "pos": "conj"
+  },
+  {
+    "word": "that",
+    "pos": "conj"
+  },
+  {
+    "word": "that",
+    "pos": "pron"
+  },
+  {
+    "word": "the",
+    "pos": "art"
+  },
+  {
+    "word": "their",
+    "pos": "adj"
+  },
+  {
+    "word": "them",
+    "pos": "pron"
+  },
+  {
+    "word": "then",
+    "pos": "adv"
+  },
+  {
+    "word": "there",
+    "pos": "adv"
+  },
+  {
+    "word": "there",
+    "pos": "pron"
+  },
+  {
+    "word": "these",
+    "pos": "adj"
+  },
+  {
+    "word": "these",
+    "pos": "pron"
+  },
+  {
+    "word": "they",
+    "pos": "pron"
+  },
+  {
+    "word": "thin",
+    "pos": "adj"
+  },
+  {
+    "word": "think",
+    "pos": "v"
+  },
+  {
+    "word": "this",
+    "pos": "adj"
+  },
+  {
+    "word": "this",
+    "pos": "pron"
+  },
+  {
+    "word": "those",
+    "pos": "pron"
+  },
+  {
+    "word": "through",
+    "pos": "adv"
+  },
+  {
+    "word": "through",
+    "pos": "prep"
+  },
+  {
+    "word": "thus",
+    "pos": "adv"
+  },
+  {
+    "word": "tight",
+    "pos": "adj"
+  },
+  {
+    "word": "time",
+    "pos": "n"
+  },
+  {
+    "word": "to",
+    "pos": "prep"
+  },
+  {
+    "word": "together",
+    "pos": "adv"
+  },
+  {
+    "word": "too",
+    "pos": "adv"
+  },
+  {
+    "word": "tool",
+    "pos": "n"
+  },
+  {
+    "word": "top",
+    "pos": "adj"
+  },
+  {
+    "word": "top",
+    "pos": "n"
+  },
+  {
+    "word": "total",
+    "pos": "adj"
+  },
+  {
+    "word": "total",
+    "pos": "n"
+  },
+  {
+    "word": "touch",
+    "pos": "v"
+  },
+  {
+    "word": "transmit",
+    "pos": "v"
+  },
+  {
+    "word": "transparent",
+    "pos": "adj"
+  },
+  {
+    "word": "try",
+    "pos": "v"
+  },
+  {
+    "word": "turn",
+    "pos": "n"
+  },
+  {
+    "word": "turn",
+    "pos": "v"
+  },
+  {
+    "word": "type",
+    "pos": "n"
+  },
+  {
+    "word": "unit",
+    "pos": "n"
+  },
+  {
+    "word": "unknown",
+    "pos": "adj"
+  },
+  {
+    "word": "unless",
+    "pos": "conj"
+  },
+  {
+    "word": "until",
+    "pos": "conj"
+  },
+  {
+    "word": "until",
+    "pos": "prep"
+  },
+  {
+    "word": "unwanted",
+    "pos": "adj"
+  },
+  {
+    "word": "up",
+    "pos": "adj"
+  },
+  {
+    "word": "up",
+    "pos": "adv"
+  },
+  {
+    "word": "up",
+    "pos": "prep"
+  },
+  {
+    "word": "use",
+    "pos": "v"
+  },
+  {
+    "word": "usual",
+    "pos": "adj"
+  },
+  {
+    "word": "usually",
+    "pos": "adv"
+  },
+  {
+    "word": "value",
+    "pos": "n"
+  },
+  {
+    "word": "vertical",
+    "pos": "adj"
+  },
+  {
+    "word": "very",
+    "pos": "adv"
+  },
+  {
+    "word": "view",
+    "pos": "n"
+  },
+  {
+    "word": "visual",
+    "pos": "adj"
+  },
+  {
+    "word": "voice",
+    "pos": "n"
+  },
+  {
+    "word": "wait",
+    "pos": "v"
+  },
+  {
+    "word": "walk",
+    "pos": "v"
+  },
+  {
+    "word": "want",
+    "pos": "v"
+  },
+  {
+    "word": "warm",
+    "pos": "adj"
+  },
+  {
+    "word": "weak",
+    "pos": "adj"
+  },
+  {
+    "word": "when",
+    "pos": "conj"
+  },
+  {
+    "word": "where",
+    "pos": "conj"
+  },
+  {
+    "word": "which",
+    "pos": "pron"
+  },
+  {
+    "word": "while",
+    "pos": "conj"
+  },
+  {
+    "word": "who",
+    "pos": "pron"
+  },
+  {
+    "word": "width",
+    "pos": "n"
+  },
+  {
+    "word": "will",
+    "pos": "v"
+  },
+  {
+    "word": "with",
+    "pos": "prep"
+  },
+  {
+    "word": "without",
+    "pos": "prep"
+  },
+  {
+    "word": "work",
+    "pos": "n"
+  },
+  {
+    "word": "write",
+    "pos": "v"
+  },
+  {
+    "word": "you",
+    "pos": "pron"
+  },
+  {
+    "word": "your",
+    "pos": "adj"
+  }
+]
