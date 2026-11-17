@@ -1,8 +1,9 @@
 /**
- * Lazy Files API upload for large inline media in an outgoing Messages call.
+ * Lazy Files API upload for inline media in an outgoing Messages call.
  *
  * Before the adapter encodes a request, {@link prepareMediaUploads} finds each
- * base64 image or document whose decoded size is at least the threshold,
+ * base64 image or document whose decoded size is at least the threshold
+ * (10 bytes by default, env `MINIMAL_AGENT_FILES_API_THRESHOLD_BYTES`),
  * uploads it once through the Files API, and swaps the source to
  * `{kind:"file_id"}` in a COPY of the request. The canonical messages (and so
  * the transcript) keep the base64, so a file id is never persisted.
@@ -39,8 +40,33 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
 import { AnthropicFilesError, clampExpiresInSeconds, uploadAnthropicFile } from "./files-api.ts"
 
-/** Default upload threshold: inline media of 1 MiB or more (decoded) is uploaded. */
-export const ANTHROPIC_UPLOAD_THRESHOLD_BYTES = 1024 * 1024
+/**
+ * Default upload threshold: inline media of 10 bytes or more (decoded) is
+ * uploaded, so in practice every image and document goes through the Files
+ * API. Override with {@link ANTHROPIC_UPLOAD_THRESHOLD_ENV}.
+ */
+export const ANTHROPIC_UPLOAD_THRESHOLD_BYTES = 10
+
+/**
+ * Env var that overrides the upload threshold, in decoded bytes. `0` uploads
+ * every item. A very large value (for example `1048576`) keeps small media
+ * inline. A value that is not a non-negative integer is ignored.
+ */
+export const ANTHROPIC_UPLOAD_THRESHOLD_ENV = "MINIMAL_AGENT_FILES_API_THRESHOLD_BYTES"
+
+/**
+ * The upload threshold to use: the env override when it is a non-negative
+ * integer, else {@link ANTHROPIC_UPLOAD_THRESHOLD_BYTES}. Read on each call,
+ * so a change to the env takes effect on the next request.
+ */
+export function resolveUploadThresholdBytes(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env[ANTHROPIC_UPLOAD_THRESHOLD_ENV]?.trim()
+  if (raw && /^\d+$/.test(raw)) {
+    const n = Number(raw)
+    if (Number.isSafeInteger(n)) return n
+  }
+  return ANTHROPIC_UPLOAD_THRESHOLD_BYTES
+}
 
 /** Default `expires_in_seconds` of an upload: 24 h (the upload cache is per process). */
 export const ANTHROPIC_UPLOAD_EXPIRES_IN_SECONDS = 86_400
@@ -174,7 +200,7 @@ function uploadMime(block: CanonicalBlock): Candidate | undefined {
 
 /** Options of {@link prepareMediaUploads}. */
 export interface MediaUploadOptions {
-  /** Decoded-size threshold in bytes. Defaults to {@link ANTHROPIC_UPLOAD_THRESHOLD_BYTES}. */
+  /** Decoded-size threshold in bytes. Defaults to {@link resolveUploadThresholdBytes}. */
   thresholdBytes?: number
   /** Upload expiry. Defaults to {@link ANTHROPIC_UPLOAD_EXPIRES_IN_SECONDS}, clamped to 3600..7776000. */
   expiresInSeconds?: number
@@ -315,7 +341,7 @@ export async function prepareMediaUploads(
   opts: MediaUploadOptions = {},
 ): Promise<PreparedUploads> {
   const used = new Map<string, UsedFile>()
-  const threshold = opts.thresholdBytes ?? ANTHROPIC_UPLOAD_THRESHOLD_BYTES
+  const threshold = opts.thresholdBytes ?? resolveUploadThresholdBytes()
   const ident = credentialIdentity(ctx.auth)
   if (disabledCredentials.has(ident)) return { req, used }
   const st: UploadCallState = {

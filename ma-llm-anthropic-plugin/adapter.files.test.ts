@@ -5,7 +5,7 @@
  * @module llm-anthropic/adapter.files.test
  */
 
-import { beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import type { CanonicalBlock } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
@@ -23,10 +23,12 @@ import {
   _resetMediaUploadCacheForTest,
   ANTHROPIC_UPLOAD_EXPIRES_IN_SECONDS,
   ANTHROPIC_UPLOAD_THRESHOLD_BYTES,
+  ANTHROPIC_UPLOAD_THRESHOLD_ENV,
   credentialIdentity,
   evictMissingFiles,
   isMissingFileError,
   prepareMediaUploads,
+  resolveUploadThresholdBytes,
 } from "./media-upload.ts"
 
 let resolveModel: (id: string) => ModelEntry
@@ -34,11 +36,16 @@ const auth: ProviderAuth = { kind: "api-key", key: "sk-test" }
 
 beforeEach(() => {
   process.env.MINIMAL_AGENT_NO_REQUEST_GZIP = "1"
+  delete process.env[ANTHROPIC_UPLOAD_THRESHOLD_ENV]
   _resetGzipRejectedForTest()
   _resetMediaUploadCacheForTest()
   const reg = makeTestRegistry()
   bootstrapAnthropic(reg.ctx)
   resolveModel = reg.resolveModel
+})
+
+afterEach(() => {
+  delete process.env[ANTHROPIC_UPLOAD_THRESHOLD_ENV]
 })
 
 /** Base64 of `n` bytes that differ by `seed`. */
@@ -48,7 +55,7 @@ function b64(n: number, seed = 1): string {
   return Buffer.from(bytes).toString("base64")
 }
 
-const BIG = b64(ANTHROPIC_UPLOAD_THRESHOLD_BYTES)
+const BIG = b64(1024 * 1024)
 const SMALL = b64(1000)
 
 function image(data: string): CanonicalBlock {
@@ -165,11 +172,35 @@ describe("adapter run(): lazy Files API upload", () => {
     expect(uploads.length).toBe(1)
   })
 
-  it("keeps a small image inline with no upload", async () => {
+  it("uploads a small image by default (threshold 10 bytes)", async () => {
+    const { client, uploads, messages } = scripted()
+    await runWith(reqWith(image(SMALL)), client)
+    expect(uploads.length).toBe(1)
+    expect(sentContent(messages[0]!)[0].source).toEqual({ type: "file", file_id: "file_up1" })
+  })
+
+  it("keeps media under the 10-byte default inline with no upload", async () => {
+    const { client, uploads, messages } = scripted()
+    await runWith(reqWith(image(b64(ANTHROPIC_UPLOAD_THRESHOLD_BYTES - 1))), client)
+    expect(uploads.length).toBe(0)
+    expect(sentContent(messages[0]!)[0].source.type).toBe("base64")
+  })
+
+  it("the env threshold keeps a small image inline", async () => {
+    process.env[ANTHROPIC_UPLOAD_THRESHOLD_ENV] = String(1024 * 1024)
     const { client, uploads, messages } = scripted()
     await runWith(reqWith(image(SMALL)), client)
     expect(uploads.length).toBe(0)
     expect(sentContent(messages[0]!)[0].source.type).toBe("base64")
+    await runWith(reqWith(image(BIG)), client)
+    expect(uploads.length).toBe(1)
+  })
+
+  it("env threshold 0 uploads even a 1-byte image", async () => {
+    process.env[ANTHROPIC_UPLOAD_THRESHOLD_ENV] = "0"
+    const { client, uploads } = scripted()
+    await runWith(reqWith(image(b64(1))), client)
+    expect(uploads.length).toBe(1)
   })
 
   it("uploads a big PDF document and sends a document file source", async () => {
@@ -444,5 +475,36 @@ describe("credentialIdentity", () => {
     expect(o).not.toContain("oat-secret")
     expect(a).not.toBe(b)
     expect(o.startsWith("oauth:")).toBe(true)
+  })
+})
+
+describe("resolveUploadThresholdBytes", () => {
+  it("defaults to 10 bytes", () => {
+    expect(ANTHROPIC_UPLOAD_THRESHOLD_BYTES).toBe(10)
+    expect(resolveUploadThresholdBytes({})).toBe(10)
+  })
+
+  it("reads a non-negative integer from the env", () => {
+    expect(resolveUploadThresholdBytes({ [ANTHROPIC_UPLOAD_THRESHOLD_ENV]: "0" })).toBe(0)
+    expect(resolveUploadThresholdBytes({ [ANTHROPIC_UPLOAD_THRESHOLD_ENV]: " 1048576 " })).toBe(
+      1048576,
+    )
+  })
+
+  it("ignores a value that is not a non-negative integer", () => {
+    for (const v of ["", "  ", "-1", "1.5", "1e6", "abc", "10kb", "99999999999999999999"]) {
+      expect(resolveUploadThresholdBytes({ [ANTHROPIC_UPLOAD_THRESHOLD_ENV]: v })).toBe(10)
+    }
+  })
+
+  it("an explicit thresholdBytes option wins over the env", async () => {
+    process.env[ANTHROPIC_UPLOAD_THRESHOLD_ENV] = "0"
+    const { client, uploads } = scripted()
+    const ctx: RunContext = { auth, sessionId: "s1", networkClient: client }
+    const req = reqWith(image(SMALL))
+    const out = await prepareMediaUploads(req, ctx, client, { thresholdBytes: 1 << 30 })
+    expect(out.req).toBe(req)
+    expect(out.used.size).toBe(0)
+    expect(uploads.length).toBe(0)
   })
 })
