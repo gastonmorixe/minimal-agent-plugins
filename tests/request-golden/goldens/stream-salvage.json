@@ -36,7 +36,7 @@
             "ttl": "5m",
             "type": "ephemeral"
           },
-          "text": "# Environment\n\nHost snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.\n\n```ini\nchassis=<V>\ncolorterm=<V>\ncpu_count=<V>\ncwd=<V>\ndate_iso=<V>\neditor=<V>\ngit_branch=<V>\ngit_default=<V>\ngit_dirty=<V>\nhome=<V>\nhostname=<V>\nhw_model=<V>\nin_tmux=<V>\nlang=<V>\nmodel=<V>\nos_arch=<V>\nos_kernel=<V>\nos_name=<V>\nos_product=<V>\npid=<V>\nplugin_dir=<V>\nsession_id=<V>\nshell=<V>\nterm=<V>\nterm_cols=<V>\nterm_lines=<V>\nterm_program=<V>\ntimezone=<V>\nuser=<V>\nversion=<V>\n```",
+          "text": "# Environment\n\nHost snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.\n\nchassis=<V>\ncolorterm=<V>\ncpu_count=<V>\ncwd=<V>\ndate_iso=<V>\neditor=<V>\ngit_branch=<V>\ngit_default=<V>\ngit_dirty=<V>\nhome=<V>\nhostname=<V>\nhw_model=<V>\nin_tmux=<V>\nlang=<V>\nmodel=<V>\nos_arch=<V>\nos_kernel=<V>\nos_name=<V>\nos_product=<V>\npid=<V>\nplugin_dir=<V>\nsession_id=<V>\nshell=<V>\nterm=<V>\nterm_cols=<V>\nterm_lines=<V>\nterm_program=<V>\ntimezone=<V>\nuser=<V>\nversion=<V>",
           "type": "text"
         },
         {
@@ -1884,7 +1884,7 @@
             "ttl": "5m",
             "type": "ephemeral"
           },
-          "text": "# Environment\n\nHost snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.\n\n```ini\nchassis=<V>\ncolorterm=<V>\ncpu_count=<V>\ncwd=<V>\ndate_iso=<V>\neditor=<V>\ngit_branch=<V>\ngit_default=<V>\ngit_dirty=<V>\nhome=<V>\nhostname=<V>\nhw_model=<V>\nin_tmux=<V>\nlang=<V>\nmodel=<V>\nos_arch=<V>\nos_kernel=<V>\nos_name=<V>\nos_product=<V>\npid=<V>\nplugin_dir=<V>\nsession_id=<V>\nshell=<V>\nterm=<V>\nterm_cols=<V>\nterm_lines=<V>\nterm_program=<V>\ntimezone=<V>\nuser=<V>\nversion=<V>\n```",
+          "text": "# Environment\n\nHost snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.\n\nchassis=<V>\ncolorterm=<V>\ncpu_count=<V>\ncwd=<V>\ndate_iso=<V>\neditor=<V>\ngit_branch=<V>\ngit_default=<V>\ngit_dirty=<V>\nhome=<V>\nhostname=<V>\nhw_model=<V>\nin_tmux=<V>\nlang=<V>\nmodel=<V>\nos_arch=<V>\nos_kernel=<V>\nos_name=<V>\nos_product=<V>\npid=<V>\nplugin_dir=<V>\nsession_id=<V>\nshell=<V>\nterm=<V>\nterm_cols=<V>\nterm_lines=<V>\nterm_program=<V>\ntimezone=<V>\nuser=<V>\nversion=<V>",
           "type": "text"
         },
         {
