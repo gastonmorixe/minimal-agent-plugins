@@ -112,10 +112,11 @@ export function normalizeText(text: string, roots: string[]): string {
   out = out.split(PLUGINS_ROOT).join("<PLUGINS>")
   // The env-info ini block lists host keys that differ per machine and shell.
   // Keep every key and the line order. Mask only the value.
-  out = out.replace(/```ini\n([\s\S]*?)\n```/g, (_m, body: string) => {
-    const lines = body.split("\n").map((l) => l.replace(/^([^=\n]*=).*$/, "$1<V>"))
-    return `\`\`\`ini\n${lines.join("\n")}\n\`\`\``
-  })
+  // The block has no fence. It is the run of key=value lines after the note.
+  out = out.replace(
+    /(Do not invent sibling absolute project roots\.\n\n)((?:[a-z_]+=[^\n]*(?:\n|$))+)/g,
+    (_m, head: string, body: string) => head + body.replace(/^([a-z_]+=)[^\n]*$/gm, "$1<V>"),
+  )
   out = out.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<UUID>")
   // Grep returns "Grep error: <rg stderr, trimmed>" as the whole result. rg text differs per version.
   out = out.replace(/(Grep error: )[\s\S]*$/, "$1<RG_STDERR>")

@@ -121,7 +121,7 @@ rm -f /tmp/env-info-$$.out
 # Emit plain markdown (placement: afterInstructions) so the snapshot survives
 # `--no-system-session-context` / sessionContext overrides that strip the
 # XML-wrapped plugin sessionContext block. Include a short heading + note
-# (formerly only in PROMPT.md under sessionContext) and a fenced ini block.
+# (formerly only in PROMPT.md under sessionContext) and plain key=value lines.
 # No <ma::sys::…> / <env> wrapper — afterInstructions is unwrapped plain text.
 # stderr is redirected for the whole emit so a closed pipe (test cancellation,
 # loader teardown) doesn't print "broken pipe" diagnostics.
@@ -130,8 +130,6 @@ rm -f /tmp/env-info-$$.out
   echo
   echo 'Host snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.'
   echo
-  echo '```ini'
   cat "/tmp/env-info-$$.sorted"
-  echo '```'
 } 2>/dev/null
 rm -f "/tmp/env-info-$$.sorted"

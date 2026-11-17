@@ -29,16 +29,15 @@ XML is still optional framing; the snapshot itself is not sessionContext.
 - `manifest.json`: declares the prompt fragment + subprocess command
   (`placement: "afterInstructions"`).
 - `gather.sh`: collects the host facts and emits the full `# Environment`
-  markdown (heading + note + fenced `ini`). Designed to be fast, never
+  markdown (heading + note + plain `key=value` lines). Designed to be fast, never
   network-touching, and to fail closed (empty output, never a crash).
 - `PROMPT.md`: intentionally empty. Framing lives in the fragment so the
   snapshot does not depend on sessionContext / PROMPT.md composition.
 
 ## Format
 
-INI-style `key=value` lines, one per attribute, wrapped in a markdown
-code fence with `ini` syntax. Keys are stable; new attributes append
-to the end.
+INI-style `key=value` lines, one per attribute, emitted as plain text
+(no code fence). Keys are stable; new attributes append to the end.
 
 ## Agent identity fields
 
