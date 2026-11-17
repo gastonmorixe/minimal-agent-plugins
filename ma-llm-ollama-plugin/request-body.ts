@@ -37,6 +37,7 @@ import type {
   ToolChoice,
 } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
 import type { EffortLevel } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
 
 import type { ModelView } from "./lib/host-types.ts"
 
@@ -113,7 +114,7 @@ export function buildOllamaChatBody(
 ): OllamaChatRequestBody {
   const body: OllamaChatRequestBody = {
     model: model.vendorIds?.firstParty ?? req.modelId,
-    messages: buildOllamaMessages(req),
+    messages: buildOllamaMessages(req, model.id),
     stream: req.stream ?? true,
   }
 
@@ -205,7 +206,7 @@ function buildOptions(req: CanonicalRequest, model: ModelView): OllamaRequestOpt
  * (`req.system`) becomes a leading `role:"system"` message; tool_result blocks
  * become `role:"tool"` messages; assistant tool_use blocks become `tool_calls`.
  */
-function buildOllamaMessages(req: CanonicalRequest): OllamaWireMessage[] {
+function buildOllamaMessages(req: CanonicalRequest, modelId: string): OllamaWireMessage[] {
   const out: OllamaWireMessage[] = []
 
   if (req.system && req.system.length > 0) {
@@ -214,12 +215,12 @@ function buildOllamaMessages(req: CanonicalRequest): OllamaWireMessage[] {
   }
 
   for (const msg of req.messages) {
-    appendMessage(out, msg)
+    appendMessage(out, msg, modelId)
   }
   return out
 }
 
-function appendMessage(out: OllamaWireMessage[], msg: CanonicalMessage): void {
+function appendMessage(out: OllamaWireMessage[], msg: CanonicalMessage, modelId: string): void {
   // role:"tool" canonical message (OpenAI-style) → Ollama tool message.
   if (msg.role === "tool") {
     out.push({
@@ -244,7 +245,7 @@ function appendMessage(out: OllamaWireMessage[], msg: CanonicalMessage): void {
     }
     const rest = msg.content.filter((b) => b.type !== "tool_result")
     if (rest.length === 0) return
-    appendMessage(out, { ...msg, content: rest })
+    appendMessage(out, { ...msg, content: rest }, modelId)
     return
   }
 
@@ -259,6 +260,8 @@ function appendMessage(out: OllamaWireMessage[], msg: CanonicalMessage): void {
     content: "",
   }
   const textParts: string[] = []
+  // Indexes in `textParts` of placeholder texts (each goes on its own line).
+  const placeholders = new Set<number>()
   const thinkingParts: string[] = []
   const images: string[] = []
   const toolCalls: OllamaToolCall[] = []
@@ -271,6 +274,11 @@ function appendMessage(out: OllamaWireMessage[], msg: CanonicalMessage): void {
     } else if (block.type === "image") {
       const b64 = imageToBase64(block)
       if (b64) images.push(b64)
+      else placeholders.add(textParts.push(unsupportedAttachmentText(block, modelId).text) - 1)
+    } else if (block.type === "audio" || block.type === "file" || block.type === "video") {
+      // The native chat API has no slot for these: send the core placeholder
+      // text so the model knows an attachment was there (no silent drop).
+      placeholders.add(textParts.push(unsupportedAttachmentText(block, modelId).text) - 1)
     } else if (block.type === "tool_use") {
       toolCalls.push({
         function: {
@@ -279,14 +287,27 @@ function appendMessage(out: OllamaWireMessage[], msg: CanonicalMessage): void {
         },
       })
     }
-    // redacted_thinking / audio / file: Ollama's chat API has no slot; drop.
+    // redacted_thinking: Ollama's chat API has no slot; drop.
   }
 
-  wire.content = textParts.join("")
+  wire.content = joinText(textParts, placeholders)
   if (thinkingParts.length > 0) wire.thinking = thinkingParts.join("")
   if (images.length > 0) wire.images = images
   if (toolCalls.length > 0) wire.tool_calls = toolCalls
   out.push(wire)
+}
+
+/**
+ * Join the text parts of one message. Text blocks join with no separator (as
+ * before); a placeholder text goes on its own line.
+ */
+function joinText(parts: readonly string[], placeholders: ReadonlySet<number>): string {
+  let out = ""
+  parts.forEach((part, i) => {
+    const own = placeholders.has(i) || placeholders.has(i - 1)
+    out += own && out.length > 0 ? `\n${part}` : part
+  })
+  return out
 }
 
 function blocksToText(blocks: CanonicalBlock[]): string {
@@ -300,7 +321,8 @@ function blocksToText(blocks: CanonicalBlock[]): string {
 function imageToBase64(block: ImageBlock): string | null {
   const src = block.source
   if (src.kind === "base64") return src.data
-  // url / file_id sources can't be inlined as base64 for Ollama; skip.
+  // url / file_id sources can't be inlined as base64 for Ollama (the caller
+  // sends a placeholder).
   return null
 }
 
