@@ -8,7 +8,7 @@ import {
   type CacheWarnSink,
   snapshotRequest,
 } from "./detector.ts"
-import { sessionKeyOf, start } from "./start.ts"
+import { detectorKeyOf, MAX_DETECTORS, sessionKeyOf, start } from "./start.ts"
 import { createWireWatch, extractUsage, type WireObserver, type WireRequest } from "./wire-watch.ts"
 
 interface Warning {
@@ -132,10 +132,12 @@ function drive(
     sse: string
     gzip?: boolean
     session?: string
+    url?: string
   },
 ): void {
   const req: WireRequest = {
     id: opts.id,
+    url: opts.url ?? "https://api.example.test/v1/messages",
     method: "POST",
     headers: opts.session ? { "x-claude-code-session-id": opts.session } : {},
     body: JSON.stringify(opts.body),
@@ -213,8 +215,101 @@ describe("start", () => {
   })
 
   it("does not use a redacted session header as a key", () => {
-    const base = { id: "x", method: "POST", body: "" }
+    const base = { id: "x", method: "POST", url: "https://a.test/v1/messages", body: "" }
     expect(sessionKeyOf({ ...base, headers: { "x-session-id": "[REDACTED]" } })).toBe("")
     expect(sessionKeyOf({ ...base, headers: { "x-claude-code-session-id": "abc" } })).toBe("abc")
+  })
+})
+
+/** One SSE response with these cache counts. */
+function usageSse(read: number, create: number): string {
+  return `event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":10,"cache_read_input_tokens":${read},"cache_creation_input_tokens":${create}}}}\n\n`
+}
+
+/** A started plugin with a fake network API, and a function to send one turn. */
+function startedPlugin() {
+  let observer: WireObserver | undefined
+  const sink = recorder()
+  start({
+    log: sink,
+    host: { network: { observe: (o: WireObserver) => ((observer = o), () => {}) } },
+  })
+  if (!observer) throw new Error("no observer")
+  const w = observer
+  let n = 0
+  const turn = (model: string, read: number, create: number, url?: string) =>
+    drive(w, {
+      id: `t${++n}`,
+      body: { ...MARKED, model },
+      sse: usageSse(read, create),
+      session: "s1",
+      ...(url ? { url } : {}),
+    })
+  return { sink, turn }
+}
+
+describe("target switch in one session", () => {
+  it("a model switch does not warn for a healthy first turn on the new model", () => {
+    const { sink, turn } = startedPlugin()
+    // Model A: the cache reads on each turn (healthy).
+    turn("model-a", 5000, 100)
+    turn("model-a", 5100, 100)
+    // Switch to model B: a cold cache. The first turn writes, the second reads.
+    turn("model-b", 0, 5200)
+    turn("model-b", 5200, 50)
+    expect(sink.warnings).toEqual([])
+  })
+
+  it("a switch right after a cache write does not give no_read_after_write", () => {
+    const { sink, turn } = startedPlugin()
+    turn("model-a", 0, 5000)
+    turn("model-b", 0, 5000)
+    expect(sink.warnings).toEqual([])
+  })
+
+  it("a provider switch with the same model id starts a new history", () => {
+    const { sink, turn } = startedPlugin()
+    turn("same-model", 5000, 0, "https://one.test/v1/messages")
+    turn("same-model", 5000, 0, "https://one.test/v1/messages")
+    turn("same-model", 0, 5000, "https://two.test/v1/messages")
+    expect(sink.warnings).toEqual([])
+  })
+
+  it("still warns on the same model when the cache falls to 0", () => {
+    const { sink, turn } = startedPlugin()
+    turn("model-a", 5000, 0)
+    turn("model-a", 5000, 0)
+    turn("model-a", 0, 5000)
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["cache_evicted"])
+  })
+
+  it("going back to an earlier model keeps that model's history", () => {
+    const { sink, turn } = startedPlugin()
+    turn("model-a", 0, 5000)
+    turn("model-b", 0, 5000)
+    // Back on A: A wrote on its last turn and reads 0 now, a real miss.
+    turn("model-a", 0, 5000)
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["no_read_after_write"])
+  })
+
+  it("keys on session, model and origin, and keeps at most MAX_DETECTORS", () => {
+    const req = {
+      id: "x",
+      method: "POST",
+      url: "https://a.test/v1/messages?x=1",
+      headers: { "x-session-id": "s" },
+      body: "",
+    }
+    const snap = { breakpoints: 1, approxPrefixChars: 1, model: "m" }
+    expect(detectorKeyOf(req, snap)).toBe("s\u0000m\u0000https://a.test")
+    expect(detectorKeyOf({ ...req, url: "not a url" }, snap)).toBe("s\u0000m\u0000")
+    // Over the cap, the oldest model's history goes: model 0 writes, then
+    // MAX_DETECTORS other models push it out, so its next 0-read turn is a
+    // fresh start (no warning), not a no_read_after_write.
+    const { sink, turn } = startedPlugin()
+    turn("m0", 0, 5000)
+    for (let i = 1; i <= MAX_DETECTORS; i++) turn(`m${i}`, 0, 5000)
+    turn("m0", 0, 5000)
+    expect(sink.warnings).toEqual([])
   })
 })

@@ -3,10 +3,7 @@
   "name": "Cache",
   "version": "0.1.0",
   "description": "Tells you when the prompt cache did not engage. The plugin monitors each provider request and its response. It looks for a request with cache marks and a response that did not read the cache. Then it sends one diagnostic with the source `cache.anomaly`. It sends one diagnostic for each type of cache error. The plugin adds no text to the system prompt.",
-  "capabilities": [
-    "network:observe",
-    "models:read"
-  ],
+  "capabilities": ["network:observe", "models:read"],
   "headless": {
     "promptFragments": [
       {
