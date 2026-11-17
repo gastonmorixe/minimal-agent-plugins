@@ -34,6 +34,7 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { metaApiKeyAuth, museOAuthLogin } from "./auth.ts"
+import { metaMediaLimits } from "./input-formats.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type {
   ModelEntry,
@@ -74,6 +75,11 @@ export const metaAdapter: ProviderAdapter = {
     return validateOpenAIRequest(req, model)
   },
 
+  /** The model's input formats (`inputMimeTypes`), 50 MB inline (Meta docs). */
+  mediaLimits(model: ModelEntry) {
+    return metaMediaLimits(model)
+  },
+
   async *run(
     req: CanonicalRequest,
     model: ModelEntry,
@@ -106,7 +112,8 @@ export const metaAdapter: ProviderAdapter = {
     const wireModelId = model.vendorIds?.firstParty ?? req.modelId
 
     if (model.surfaceId === "openai-chat-completions") {
-      const body = buildOpenAIChatBody(req, model)
+      // Meta Chat takes `video_url` (mp4); PDF goes as `file`, audio as `input_audio`.
+      const body = buildOpenAIChatBody(req, model, undefined, { video: true })
       body.model = wireModelId
 
       ctx.debug?.header(`POST ${CHAT_COMPLETIONS_URL}`)
