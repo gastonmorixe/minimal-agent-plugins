@@ -50,6 +50,7 @@ import {
   CAPS_QWEN3_8_MAX,
   CAPS_STEP_5_PREVIEW,
 } from "./capabilities.ts"
+import { withOpencodeInputMimeTypes } from "./input-formats.ts"
 import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import {
@@ -107,7 +108,8 @@ function makeSpec(
     surfaceId: opts.surfaceId,
     displayName: opts.displayName,
     tags: opts.tags,
-    capabilities: opts.capabilities,
+    // Per-model input formats: the live list, else the static flags.
+    capabilities: withOpencodeInputMimeTypes(opts.capabilities, id, opts.surfaceId),
     estimateTokens,
     pricing: opts.pricing,
     vendorIds: { firstParty: id },
@@ -373,7 +375,10 @@ export function registerOpencodeModelInto(
   registrar: ModelRegistrar,
   spec: OpencodeModelSpec,
 ): string {
-  registrar.register(spec)
+  registrar.register({
+    ...spec,
+    capabilities: withOpencodeInputMimeTypes(spec.capabilities, spec.id, spec.surfaceId),
+  })
   localCatalog.push({ id: spec.id, tags: spec.tags ?? [] })
   return spec.id
 }

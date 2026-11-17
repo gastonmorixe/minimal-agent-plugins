@@ -14,6 +14,8 @@ import {
   defaultCapabilities,
 } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
+import { CLINEPASS_IMAGE_MIME_TYPES } from "./input-formats.ts"
+
 const CACHING_AUTO = {
   explicit: false,
   automatic: true,
@@ -73,6 +75,8 @@ function baseReasoning(opts: {
     structuredOutputs: true,
     assistantPrefill: false,
     modalities: opts.vision ? { ...MODALITIES_VISION } : { ...MODALITIES_TEXT },
+    // Images only on a vision model (`image_url`); no PDF, audio or video.
+    inputMimeTypes: opts.vision ? CLINEPASS_IMAGE_MIME_TYPES : [],
     serverSideHistory: false,
     serverTools: [],
   }

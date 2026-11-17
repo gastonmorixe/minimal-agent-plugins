@@ -14,6 +14,7 @@ import {
   CAPS_MUSE,
   CAPS_OPENCODE_ZEN_CHAT_FALLBACK,
 } from "./capabilities.ts"
+import { withOpencodeInputMimeTypes } from "./input-formats.ts"
 import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { PRICING_OPENCODE_ZEN_GENERIC, PRICING_OX_ALPHA_FREE, ZEN_PRICING } from "./pricing.ts"
@@ -152,7 +153,8 @@ function makeSpec(id: string): ZenModelSpec {
     surfaceId,
     displayName,
     tags: ["opencode-zen", surfaceId, family, ...(family === "free" ? ["free", "cheap"] : [])],
-    capabilities: capsFor(family),
+    // Per-model input formats: the live list, else the static flags.
+    capabilities: withOpencodeInputMimeTypes(capsFor(family), id, surfaceId),
     estimateTokens,
     pricing:
       ZEN_PRICING[id] ?? (family === "free" ? PRICING_OX_ALPHA_FREE : PRICING_OPENCODE_ZEN_GENERIC),
@@ -174,7 +176,15 @@ export function registerOpencodeZenModelInto(registrar: ModelRegistrar, modelId:
   // anonymous gate refuses them before a request (see ZEN_UNKNOWN_PAID_TAG).
   const base = spec.tags ?? []
   const tags = base.includes("free") ? base : [...base, ZEN_UNKNOWN_PAID_TAG]
-  registrar.register({ ...spec, tags, capabilities: CAPS_OPENCODE_ZEN_CHAT_FALLBACK })
+  registrar.register({
+    ...spec,
+    tags,
+    capabilities: withOpencodeInputMimeTypes(
+      CAPS_OPENCODE_ZEN_CHAT_FALLBACK,
+      modelId,
+      spec.surfaceId,
+    ),
+  })
   return modelId
 }
 /** Tag on ad-hoc Zen models whose price is unknown and not marked free. */

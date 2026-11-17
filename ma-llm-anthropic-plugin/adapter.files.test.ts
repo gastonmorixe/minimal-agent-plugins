@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import type { CanonicalBlock } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { evictMissingFiles } from "@minimal-agent/core/plugin-api/llm/file-uploads"
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
   NetworkClient,
@@ -25,7 +26,6 @@ import {
   ANTHROPIC_UPLOAD_THRESHOLD_BYTES,
   ANTHROPIC_UPLOAD_THRESHOLD_ENV,
   credentialIdentity,
-  evictMissingFiles,
   isMissingFileError,
   prepareMediaUploads,
   resolveUploadThresholdBytes,
@@ -133,9 +133,10 @@ async function runWith(
   req: CanonicalRequest,
   client: NetworkClient,
   runAuth: ProviderAuth = auth,
+  modelId = "claude-opus-4-8",
 ): Promise<void> {
   const ctx: RunContext = { auth: runAuth, sessionId: "s1", networkClient: client }
-  for await (const _ of anthropicAdapter.run!(req, resolveModel("claude-opus-4-8"), ctx)) {
+  for await (const _ of anthropicAdapter.run!({ ...req, modelId }, resolveModel(modelId), ctx)) {
     // drain
   }
 }
@@ -424,12 +425,13 @@ describe("adapter run(): review fixes", () => {
     const { client, uploads } = scripted()
     const ctx: RunContext = { auth, sessionId: "s1", networkClient: client }
     const req = reqWith(image(BIG))
-    const first = await prepareMediaUploads(req, ctx, client)
-    evictMissingFiles(first.used, fileNotFound("file_up1"))
-    const second = await prepareMediaUploads(req, ctx, client)
+    const model = resolveModel("claude-opus-4-8")
+    const first = await prepareMediaUploads(req, model, ctx, client)
+    evictMissingFiles(first, fileNotFound("file_up1"))
+    const second = await prepareMediaUploads(req, model, ctx, client)
     expect([...second.used.keys()]).toEqual(["file_up2"])
-    evictMissingFiles(first.used, fileNotFound("file_up1"))
-    const third = await prepareMediaUploads(req, ctx, client)
+    evictMissingFiles(first, fileNotFound("file_up1"))
+    const third = await prepareMediaUploads(req, model, ctx, client)
     expect([...third.used.keys()]).toEqual(["file_up2"])
     expect(uploads.length).toBe(2)
   })
@@ -442,6 +444,63 @@ describe("adapter run(): review fixes", () => {
     expect(h["x-gateway-key"]).toBe("gw-secret")
     expect(h["anthropic-beta"]).toBeUndefined()
     expect(h["x-api-key"]).toBeUndefined()
+  })
+})
+
+describe("adapter run(): per-model upload formats", () => {
+  const doc = (mediaType: string, data = BIG, filename?: string): CanonicalBlock => ({
+    type: "file",
+    source: { kind: "base64", mediaType, data, ...(filename && { filename }) },
+  })
+
+  it("uploads csv and json documents as text/plain and keeps the filename", async () => {
+    for (const mime of ["text/csv", "application/json"]) {
+      _resetMediaUploadCacheForTest()
+      const { client, uploads, messages } = scripted()
+      await runWith(reqWith(doc(mime, BIG, "data.x")), client)
+      expect(uploads.length).toBe(1)
+      const head = uploadText(uploads[0]!).slice(0, 400)
+      expect(head).toContain("Content-Type: text/plain")
+      expect(head).toContain('filename="data.x"')
+      expect(sentContent(messages[0]!)[0]).toEqual({
+        type: "document",
+        source: { type: "file", file_id: "file_up1" },
+      })
+    }
+  })
+
+  it("does not upload an Office document (rejected in v1): it is sent as a placeholder", async () => {
+    const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    const { client, uploads, messages } = scripted()
+    await runWith(reqWith(doc(docx)), client)
+    expect(uploads.length).toBe(0)
+    const first = sentContent(messages[0]!)[0]
+    expect(first.type).toBe("text")
+    expect(first.text).toContain("not sent")
+  })
+
+  it("does not upload audio (no audio input on the Messages API)", async () => {
+    const { client, uploads } = scripted()
+    const audio: CanonicalBlock = {
+      type: "audio",
+      source: { kind: "base64", format: "mp3", mediaType: "audio/mpeg", data: BIG },
+    }
+    await runWith(reqWith(audio), client)
+    expect(uploads.length).toBe(0)
+  })
+
+  it("an image-only model uploads the image but not a PDF", async () => {
+    const { client, uploads, messages } = scripted()
+    await runWith(
+      reqWith(image(BIG), doc("application/pdf", b64(2048, 3))),
+      client,
+      auth,
+      "claude-haiku-4-5",
+    )
+    expect(uploads.length).toBe(1)
+    const sent = sentContent(messages[0]!)
+    expect(sent[0].source).toEqual({ type: "file", file_id: "file_up1" })
+    expect(sent[1].source.type).toBe("base64")
   })
 })
 
@@ -502,7 +561,9 @@ describe("resolveUploadThresholdBytes", () => {
     const { client, uploads } = scripted()
     const ctx: RunContext = { auth, sessionId: "s1", networkClient: client }
     const req = reqWith(image(SMALL))
-    const out = await prepareMediaUploads(req, ctx, client, { thresholdBytes: 1 << 30 })
+    const out = await prepareMediaUploads(req, resolveModel("claude-opus-4-8"), ctx, client, {
+      thresholdBytes: 1 << 30,
+    })
     expect(out.req).toBe(req)
     expect(out.used.size).toBe(0)
     expect(uploads.length).toBe(0)

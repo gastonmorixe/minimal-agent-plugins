@@ -10,7 +10,10 @@
  * Ad-hoc / unknown slugs fall back to {@link CAPS_OPENROUTER_CHAT}.
  *
  * Convention: OpenRouter `file` input modality → `modalities.pdf` (documents),
- * matching `lib/modality-check.ts`.
+ * matching `lib/modality-check.ts`. OpenRouter parses a PDF `file` part on
+ * every model (native, or its `mistral-ocr` / `cloudflare-ai` engine), so
+ * every model sets `pdf`. Each record carries its `inputMimeTypes` (see
+ * {@link openRouterInputMimeTypes}).
  *
  * @module llm/providers/openrouter/capabilities
  */
@@ -18,7 +21,54 @@
 import {
   type Capabilities,
   defaultCapabilities,
+  resolveInputMimeTypes,
 } from "@minimal-agent/core/plugin-api/llm/capabilities"
+
+// ---------------------------------------------------------------------------
+// Input formats (https://openrouter.ai/docs/guides/overview/multimodal/,
+// checked 2026-11-17)
+// ---------------------------------------------------------------------------
+
+/** Image formats (`image_url`, url or base64). */
+export const OPENROUTER_IMAGE_MIME_TYPES: readonly string[] = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]
+
+/** Document formats (`file` part, url or base64): PDF on every model. */
+export const OPENROUTER_DOCUMENT_MIME_TYPES: readonly string[] = ["application/pdf"]
+
+/** Audio formats (`input_audio`, base64 only): wav and mp3. */
+export const OPENROUTER_AUDIO_MIME_TYPES: readonly string[] = ["audio/wav", "audio/mpeg"]
+
+/** Video formats (`video_url`, url or data URL): mp4, mpeg, mov and webm. */
+export const OPENROUTER_VIDEO_MIME_TYPES: readonly string[] = [
+  "video/mp4",
+  "video/mpeg",
+  "video/quicktime",
+  "video/webm",
+]
+
+/** Every format OpenRouter can take, before the per-model modality filter. */
+export const OPENROUTER_DEFAULT_MIME_TYPES: readonly string[] = [
+  ...OPENROUTER_IMAGE_MIME_TYPES,
+  ...OPENROUTER_DOCUMENT_MIME_TYPES,
+  ...OPENROUTER_AUDIO_MIME_TYPES,
+  ...OPENROUTER_VIDEO_MIME_TYPES,
+]
+
+/**
+ * The input MIME types of an OpenRouter model: its `inputMimeTypes`, else the
+ * OpenRouter set filtered by the modality flags (audio only on a model with
+ * audio input, video only on a model with video input).
+ */
+export function openRouterInputMimeTypes(
+  caps: Pick<Capabilities, "modalities" | "inputMimeTypes">,
+): readonly string[] {
+  return resolveInputMimeTypes(caps, OPENROUTER_DEFAULT_MIME_TYPES)
+}
 
 // ---------------------------------------------------------------------------
 // Shared sub-shapes
@@ -48,11 +98,14 @@ const TOOLS_NONE = {
   strictSchema: false,
 } as const
 
-/** Text + image. */
-const M_TI = { image: true, audio: false, pdf: false, video: false } as const
+/**
+ * Text + image (+ PDF: OpenRouter parses a PDF `file` part on any model, so
+ * the live `file` modality is not needed for it).
+ */
+const M_TI = { image: true, audio: false, pdf: true, video: false } as const
 
-/** Text + image + video. */
-const M_TIV = { image: true, audio: false, pdf: false, video: true } as const
+/** Text + image + video (+ PDF, as above). */
+const M_TIV = { image: true, audio: false, pdf: true, video: true } as const
 
 /** Text + image + file (documents → pdf). */
 const M_TIP = { image: true, audio: false, pdf: true, video: false } as const
@@ -111,6 +164,7 @@ function orChatBase(
     structuredOutputs: opts.structured,
     assistantPrefill: false,
     modalities: { ...modalities },
+    inputMimeTypes: openRouterInputMimeTypes({ modalities }),
     serverSideHistory: false,
     serverTools: [],
   }

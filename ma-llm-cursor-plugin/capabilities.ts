@@ -9,6 +9,12 @@ export interface CursorCapsOptions {
   contextWindow?: number
   maxOutputTokens?: number
   thinking?: boolean
+  /**
+   * The upstream model sees images (catalog `supportsImages`). It does not
+   * set image input: the Agent Run encoder sends text only, so every Cursor
+   * model has `modalities.image: false` and no `inputMimeTypes` (an
+   * attachment is rejected up front). The `vision` tag keeps the fact.
+   */
   vision?: boolean
   effortLevels?: ReadonlyArray<string>
   maxMode?: boolean
@@ -294,8 +300,11 @@ export function cursorCaps(options: CursorCapsOptions = {}): Capabilities {
     midConversationSystem: true,
     structuredOutputs: false,
     assistantPrefill: false,
+    // The Agent Run body is one text field (request-body.ts): no image,
+    // audio, PDF or video input on any model, whatever `options.vision` says.
+    // No `inputMimeTypes`: with every flag off, the resolved list is empty.
     modalities: {
-      image: options.vision ?? false,
+      image: false,
       audio: false,
       pdf: false,
       video: false,
