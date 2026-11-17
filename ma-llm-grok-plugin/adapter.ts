@@ -35,6 +35,7 @@ import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { grokApiKeyAuth } from "./auth.ts"
 import { buildGrokHeaders } from "./headers.ts"
+import { grokMediaLimits } from "./input-formats.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type {
   ModelEntry,
@@ -87,6 +88,11 @@ export const grokAdapter: ProviderAdapter = {
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
+  },
+
+  /** The model's input formats (`inputMimeTypes`), 20 MiB per image (xAI docs). */
+  mediaLimits(model: ModelEntry) {
+    return grokMediaLimits(model)
   },
 
   async *run(

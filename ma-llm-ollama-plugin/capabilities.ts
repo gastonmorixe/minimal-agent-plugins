@@ -84,9 +84,25 @@ export interface OllamaCapsOptions {
   effortLevels?: ReadonlyArray<"low" | "medium" | "high" | "xhigh" | "max">
   /** Image input (vision). */
   vision?: boolean
-  /** Audio input. */
+  /**
+   * Audio input on the model card. The native `/api/chat` has no audio slot
+   * (audio goes only to `/v1/audio/transcriptions`), so the flag stays off
+   * and an audio block is rejected up front.
+   */
   audio?: boolean
 }
+
+/**
+ * Image formats the native `/api/chat` `images[]` array takes (base64 only;
+ * the REST API does not take a URL). Source:
+ * https://docs.ollama.com/capabilities/vision (2026-11-17).
+ */
+export const OLLAMA_IMAGE_MIME_TYPES: readonly string[] = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]
 
 /**
  * Build a capability record for one Ollama Cloud model family from its
@@ -112,11 +128,13 @@ export function ollamaCaps(opts: OllamaCapsOptions): Capabilities {
     const dft = levels.includes("medium") ? "medium" : (levels[0] ?? "medium")
     caps.effort = { levels, default: dft }
   }
+  // Native `/api/chat` takes base64 images only: no audio, PDF or video.
   caps.modalities = {
     image: Boolean(opts.vision),
-    audio: Boolean(opts.audio),
+    audio: false,
     pdf: false,
     video: false,
   }
+  caps.inputMimeTypes = opts.vision ? OLLAMA_IMAGE_MIME_TYPES : []
   return caps
 }

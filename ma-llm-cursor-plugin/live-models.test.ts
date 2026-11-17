@@ -143,7 +143,8 @@ describe("Cursor AvailableModels decoder", () => {
     const capabilities = deriveCursorCapabilities(model)
     expect(capabilities.contextWindow).toBe(200_000)
     expect(capabilities.thinking.visible).toBe(true)
-    expect(capabilities.modalities.image).toBe(true)
+    // Image input is off: the Agent Run encoder sends text only.
+    expect(capabilities.modalities.image).toBe(false)
     expect(capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
     expect(capabilities.tools.userDefined).toBe(true)
     // Must not leak CloudAgentEffortMode "1"/"2"
@@ -247,7 +248,9 @@ describe("registerCursorLiveCatalog", () => {
     expect(primary!.capabilities.thinking.visible).toBe(true)
     expect(primary!.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
     expect(primary!.capabilities.tools.userDefined).toBe(true)
-    expect(primary!.capabilities.modalities.image).toBe(true)
+    // Image input is off (text-only encoder); the tag keeps the upstream fact.
+    expect(primary!.capabilities.modalities.image).toBe(false)
+    expect(primary!.tags).toContain("vision")
     // Jack bridge: real parameter id, not hardcoded "effort" assumption only
     expect(primary!.tags).toContain("effort-param:effort")
     expect(effortParamIdFromTags(primary!.tags)).toBe("effort")

@@ -52,12 +52,7 @@ import type {
 import { findModelByTags } from "./lib/registry.ts"
 import { listAnthropicModels } from "./list-models.ts"
 import { anthropicMediaLimits } from "./media-limits.ts"
-import {
-  evictMissingFiles,
-  isMissingFileError,
-  prepareMediaUploads,
-  restoreInline,
-} from "./media-upload.ts"
+import { prepareMediaUploads, retryInlineAfterMissingFile } from "./media-upload.ts"
 import { registerAnthropicAdHocModelInto, registerAnthropicModels } from "./models.ts"
 import { anthropicOAuthLogin } from "./oauth-login.ts"
 import { type AnthropicRequestBody, buildAnthropicRequestBody } from "./request-body.ts"
@@ -463,13 +458,17 @@ export const anthropicAdapter: ProviderAdapter = {
   },
 
   /**
-   * Anthropic media walls (32 MB request, 5 MB/item, format set, item
-   * count by context tier). This hook is how CORE learns the limits —
-   * core's fallback is the neutral conservative floor in
-   * `src/media/default-limits.ts`, never an Anthropic import.
+   * Anthropic media walls (32 MB request, 5 MB/item, item count by context
+   * tier) and the model's own input format set (`inputMimeTypes`). This
+   * hook is how CORE learns the limits — core's fallback is the neutral
+   * conservative floor in `src/media/default-limits.ts`, never an Anthropic
+   * import.
    */
   mediaLimits(model: ModelEntry) {
-    return anthropicMediaLimits({ contextWindow: model.capabilities.contextWindow })
+    return anthropicMediaLimits({
+      contextWindow: model.capabilities.contextWindow,
+      capabilities: model.capabilities,
+    })
   },
 
   // No preflight() and no applyResolution(). The API docs say to send
@@ -503,7 +502,7 @@ export const anthropicAdapter: ProviderAdapter = {
 
     // Large inline media goes up through the Files API first. Only the wire
     // copy gets file ids; `req` (and the transcript) keeps the base64.
-    const uploads = await prepareMediaUploads(req, ctx, networkClient)
+    const uploads = await prepareMediaUploads(req, model, ctx, networkClient)
     let baseReq = uploads.req
 
     /** Build + POST one attempt. Returns the response and the beta set sent. */
@@ -614,12 +613,12 @@ export const anthropicAdapter: ProviderAdapter = {
       const errText = attempt.errText ?? (await attempt.response.text().catch(() => ""))
       attempt.errText = errText
       if (status === 404) {
-        if (fileRetried || !isMissingFileError(404, errText, uploads.used.keys())) break
-        if (uploads.used.size === 0) break
+        if (fileRetried) break
+        const retry = retryInlineAfterMissingFile(req, uploads, 404, errText)
+        if (!retry) break
         fileRetried = true
-        const evicted = evictMissingFiles(uploads.used, errText)
         ctx.debug?.kv("files.retry", "inline after missing file id")
-        baseReq = restoreInline(req, uploads.req, evicted)
+        baseReq = retry
       } else if (previousMessageId !== null && isPreviousMessageIdRejection(400, errText)) {
         // Evict the rejected id so a later withRetry re-run of run() (same
         // req.messages) does not recompute and resend it.

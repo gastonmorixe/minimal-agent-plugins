@@ -6,6 +6,19 @@ export interface GenericEndpointConfig {
   providerModel?: string
   /** Effort ladder the ad-hoc model advertises (from --effort-levels). */
   effortLevels?: string[]
+  /**
+   * Image input override (`MINIMAL_AGENT_IMAGE_INPUT`: 1/true/on or
+   * 0/false/off). Absent: the codec's image flag decides.
+   */
+  imageInput?: boolean
+}
+
+/** Parse an on/off value. Unknown text gives `undefined` (no override). */
+function parseSwitch(v: string | undefined): boolean | undefined {
+  const s = v?.toLowerCase()
+  if (s === "1" || s === "true" || s === "on" || s === "yes") return true
+  if (s === "0" || s === "false" || s === "off" || s === "no") return false
+  return undefined
 }
 
 function clean(v: string | undefined): string | undefined {
@@ -34,6 +47,7 @@ export function readGenericEndpointConfig(
         .map((s) => s.trim())
         .filter((s) => s.length > 0)
     : undefined
+  const imageInput = parseSwitch(clean(env.MINIMAL_AGENT_IMAGE_INPUT))
   return {
     endpoint,
     format,
@@ -41,6 +55,7 @@ export function readGenericEndpointConfig(
       ? { providerModel: clean(env.MINIMAL_AGENT_PROVIDER_MODEL) }
       : {}),
     ...(effortLevels && effortLevels.length > 0 ? { effortLevels } : {}),
+    ...(imageInput !== undefined ? { imageInput } : {}),
   }
 }
 
