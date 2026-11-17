@@ -29,6 +29,7 @@ import { snapshotRequest } from "./detector.ts"
 export interface WireRequest {
   readonly id: string
   readonly method: string
+  readonly url: string
   readonly headers: Readonly<Record<string, string>>
   readonly body: string
 }
@@ -132,11 +133,12 @@ function requestSnapshot(req: WireRequest): RequestContextSnapshot | undefined {
 /**
  * Build the wire observer for `ctx.host.network.observe`.
  *
- * @param detectorFor - The detector of the conversation of a request. The
- *   plugin keeps one per session, so two web sessions do not mix their turns.
+ * @param detectorFor - The detector for a request and its facts. The plugin
+ *   keeps one detector for each session, model and endpoint, so two web
+ *   sessions do not mix their turns, and a model switch starts a new history.
  */
 export function createWireWatch(
-  detectorFor: (req: WireRequest) => CacheAnomalyDetector,
+  detectorFor: (req: WireRequest, snapshot: RequestContextSnapshot) => CacheAnomalyDetector,
 ): WireObserver {
   const pending = new Map<string, Pending>()
   return {
@@ -170,7 +172,7 @@ export function createWireWatch(
       const usage = extractUsage(decodeBody(p.chunks, p.size))
       // No usage: an aborted or unknown response. It is not a cache fact.
       if (!usage) return
-      detectorFor(req).observe(usage, p.snapshot)
+      detectorFor(req, p.snapshot).observe(usage, p.snapshot)
     },
     onError(req) {
       pending.delete(req.id)
