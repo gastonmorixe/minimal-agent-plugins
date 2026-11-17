@@ -50,7 +50,11 @@ export interface CronEntry {
   lastFiredAt?: number
   /** Hard expiry (ms epoch). Recurring tasks expire 7 days after creation. */
   expiresAt?: number
-  /** For `pace:"dynamic"`: absolute next-fire time (ms epoch). */
+  /**
+   * Absolute next-fire time (ms epoch) for a `pace:"dynamic"` task or a
+   * one-shot. On a fixed recurring task it is a single-use override set by
+   * CronReschedule: the task fires once at it, then goes back to `cron`.
+   */
   nextAtMs?: number
   /**
    * For `pace:"dynamic"` recurring tasks: the period in ms to re-arm by after

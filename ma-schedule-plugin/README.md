@@ -10,8 +10,9 @@ Run prompts on a schedule. A minimal-agent port of Claude Code's
 - **Tools** the model uses from natural language ("remind me at 3pm", "every 5
   minutes check the deploy"): `CronCreate`, `CronList`, `CronDelete`, and
   `CronReschedule`. `CronReschedule` moves the next fire of a task: give
-  `every` (a new steady cadence) or `nextAtMs` (a one-shot delay). The task
-  then runs on the dynamic pace.
+  `every` (a new steady cadence; the task then runs on the dynamic pace) or
+  `nextAtMs` (a single-use fire time; the task then re-arms with its existing
+  cadence, so a cron task goes back to its cron).
 - **Commands** the user types: `/loop [interval] [prompt]` and
   `/schedule "<cron>" <prompt>` / `/schedule list` / `/schedule cancel <id>`.
 - **A 1-second heartbeat** (a live-area slot) that checks the store each tick and,

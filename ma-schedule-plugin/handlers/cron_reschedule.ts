@@ -6,13 +6,16 @@
  * human interval like "30s", "10m") to re-arm at a new cadence, OR
  * `nextAtMs` to set an absolute epoch-ms fire time.
  *
- * For dynamic tasks, the heartbeat re-arms `nextAtMs = now + intervalMs`
- * after each fire, so setting `every` gives the task a new steady cadence.
+ * `every` switches the task to the dynamic pace: the heartbeat re-arms
+ * `nextAtMs = now + intervalMs` after each fire, so the task gets a new
+ * steady cadence. `nextAtMs` is single-use and keeps the existing cadence:
+ * a cron task fires once at it and then continues on its cron, a dynamic
+ * task re-arms by its own interval, and a one-shot just moves.
  *
  * @module schedule/handlers/cron_reschedule
  */
 
-import { clockHHMMSS, taskFooter, taskInfo, wrapText } from "../lib/format.ts"
+import { cadenceLabel, clockHHMMSS, taskFooter, taskInfo, wrapText } from "../lib/format.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { parseDurationMs } from "../lib/interval.ts"
 import { type CronEntry, cronStoreForSession } from "../lib/store.ts"
@@ -62,7 +65,10 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
 
   const now = Date.now()
   const entry = entries[idx]
-  const updated: CronEntry = { ...entry, pace: "dynamic" }
+  // `nextAtMs` alone keeps the pace: a cron task fires once at it, then
+  // goes back to its cron (the scheduler clears the override). Only `every`
+  // switches the task to the dynamic pace with a new interval.
+  const updated: CronEntry = { ...entry }
 
   if (rawEvery) {
     const ms = parseDurationMs(rawEvery)
@@ -73,8 +79,10 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
         is_error: true,
       }
     }
+    updated.pace = "dynamic"
     updated.intervalMs = ms
     updated.nextAtMs = now + ms
+    updated.label = rawEvery
   } else if (rawNextAtMs !== null) {
     if (rawNextAtMs <= now) {
       return {
@@ -92,14 +100,23 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
   const e = updated
   const info = taskInfo(e, now)
   const body = wrapText(`Rescheduled. Next fire at ${clockHHMMSS(e.nextAtMs ?? now)}`, 72)
+  // A fixed recurring task keeps its cron after the single-use fire.
+  const backOnCron = e.pace !== "dynamic" && e.recurs
   if (e.intervalMs) {
     const label = rawEvery || `${Math.round(e.intervalMs / 1000)}s`
     body.push(`New cadence: every ${label}`)
+  } else if (backOnCron) {
+    body.push(`Then back on its schedule: ${cadenceLabel(e)}`)
   }
 
+  const tail = e.intervalMs
+    ? `, every ~${Math.round(e.intervalMs / 1000)}s`
+    : backOnCron
+      ? `, then back on its schedule (${cadenceLabel(e)})`
+      : ""
   return {
     kind: "tool_result",
-    content: `Rescheduled task ${id}. Next fire at ${clockHHMMSS(e.nextAtMs ?? now)}${e.intervalMs ? `, every ~${Math.round(e.intervalMs / 1000)}s` : ""}.`,
+    content: `Rescheduled task ${id}. Next fire at ${clockHHMMSS(e.nextAtMs ?? now)}${tail}.`,
     display: body.join("\n"),
     displayHeader: info,
     displayFooter: taskFooter(e, now),

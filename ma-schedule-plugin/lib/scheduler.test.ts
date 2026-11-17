@@ -148,6 +148,37 @@ describe("due — dynamic", () => {
   })
 })
 
+describe("due — fixed recurring with a nextAtMs override", () => {
+  it("holds the cron until nextAtMs, fires once, then resumes the cron", () => {
+    // */5 cron; override to 10:07:00, between two cron minutes.
+    let e = entry({ id: "ovr00001", cron: "*/5 * * * *", nextAtMs: ms(2026, 5, 30, 10, 7, 0) })
+
+    // 10:05 matches the cron but comes before the override → no fire.
+    const early = due([e], ms(2026, 5, 30, 10, 5, 0))
+    expect(early.fire).toEqual([])
+
+    // 10:07 → the single-use override fires and is cleared.
+    const at = due([e], ms(2026, 5, 30, 10, 7, 0))
+    expect(at.fire.map((x) => x.id)).toEqual(["ovr00001"])
+    e = at.mutated?.[0] as CronEntry
+    expect(e.nextAtMs).toBeUndefined()
+    expect(e.pace).toBe("fixed")
+    expect(nextFireMs(e, ms(2026, 5, 30, 10, 7, 1))).toBe(ms(2026, 5, 30, 10, 10, 0))
+
+    // 10:08 does not match the cron → nothing; 10:10 does → the cron fires.
+    expect(due([e], ms(2026, 5, 30, 10, 8, 0)).fire).toEqual([])
+    expect(due([e], ms(2026, 5, 30, 10, 10, 0)).fire.map((x) => x.id)).toEqual(["ovr00001"])
+  })
+
+  it("does not double-fire when the override lands on a cron minute", () => {
+    const e = entry({ id: "ovr00002", cron: "*/5 * * * *", nextAtMs: ms(2026, 5, 30, 10, 10, 0) })
+    const at = due([e], ms(2026, 5, 30, 10, 10, 0))
+    expect(at.fire.length).toBe(1)
+    const again = due([at.mutated?.[0] as CronEntry], ms(2026, 5, 30, 10, 10, 30))
+    expect(again.fire).toEqual([])
+  })
+})
+
 describe("due — expiry", () => {
   it("drops a recurring task past its expiresAt without firing", () => {
     const e = entry({ id: "exp00001", cron: "* * * * *", expiresAt: ms(2026, 5, 30, 10, 0, 0) })

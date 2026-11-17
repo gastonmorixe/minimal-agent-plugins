@@ -17,6 +17,9 @@
  *     `nextAtMs = now + intervalMs` (a sub-minute `/loop 10s`, or a
  *     `CronReschedule every`). A self-paced task has no `intervalMs` and
  *     re-arms by `defaultDynamicMs` until the model adjusts it.
+ *   - Fixed recurring with a `nextAtMs` override (CronReschedule): the
+ *     cron does not fire until `nextAtMs`, the task fires once then, and
+ *     the override is cleared so the cron cadence resumes.
  *   - Recurring tasks drop when past their 7-day `expiresAt`.
  *
  * Jitter is a per-task sub-minute offset derived from the id. It only
@@ -50,9 +53,14 @@ export function jitterSecondsFor(id: string): number {
   return h % 30
 }
 
-/** Is this entry time-based (one-shot or dynamic) rather than cron-recurring? */
+/**
+ * Does this entry fire off `nextAtMs` rather than its cron? True for a
+ * one-shot, a dynamic task, and a fixed recurring task with a pending
+ * `nextAtMs` override (set by CronReschedule). The override fires once
+ * and is then cleared, so the task goes back to its cron.
+ */
 function isTimeBased(e: CronEntry): boolean {
-  return e.pace === "dynamic" || !e.recurs
+  return e.pace === "dynamic" || !e.recurs || e.nextAtMs !== undefined
 }
 
 /** Options for {@link due}. */
@@ -131,6 +139,8 @@ export function due(entries: CronEntry[], now: number, opts: DueOptions = {}): D
     }
     const updated: CronEntry = { ...e, lastFiredAt: now }
     if (e.pace === "dynamic") updated.nextAtMs = now + (e.intervalMs ?? dynMs)
+    // Fixed recurring: a nextAtMs override is single-use; back to the cron.
+    else delete updated.nextAtMs
     keep.push(updated)
   }
 
