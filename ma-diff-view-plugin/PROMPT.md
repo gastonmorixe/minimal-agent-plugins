@@ -1,1 +1,1 @@
-The `<ma::emit::diff>` tag has no attributes. Write the opener, then the diff body, then the closer. The harness puts the colored render in place of the body.
+The `<ma::emit::diff>` tag has one optional attribute, `title`. The user sees the title above the diff. Write the open tag, then the diff text, then the close tag. The harness replaces the tags and the diff text with the diff in color.

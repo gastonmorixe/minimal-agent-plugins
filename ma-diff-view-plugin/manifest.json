@@ -2,7 +2,7 @@
   "id": "diff-view",
   "name": "Diff Viewer",
   "version": "0.1.0",
-  "description": "Renders unified diffs with ANSI colors and exposes a ShowDiff tool.",
+  "description": "This plugin shows diffs in ANSI colors. It adds the DiffViewerShowDiff tool.",
   "headless": {
     "tools": [
       {
@@ -12,17 +12,17 @@
           "tool": {
             "name": "ShowDiff",
             "aliases": ["show_diff"],
-            "description": "Render a unified diff with ANSI colors and return the colored text. Use it when the diff is the primary content of the reply. Do not use it for a hunk that must sit inside a longer explanation. Use the inline `<ma::emit::diff>` tag for that case instead. Do not paste raw patch text into the reply. Returns one string of colored diff text. Additions are lime green and deletions are hot pink.",
+            "description": "Show a diff in the `diff -u` format to the user, in ANSI colors. Use this tool when the diff is the primary content of your response. Do not use it for a hunk in a longer text. Use the `<ma::emit::diff>` tag for that. Do not put the patch text directly in your response.\n\nThe tool gives you the patch text with no change. Only the user sees the diff in color. Added lines are lime green, and removed lines are hot pink.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "patch": {
                   "type": "string",
-                  "description": "The full unified diff text to render, from git diff or diff -u."
+                  "description": "The full diff text to show, in the `diff -u` format. For example, the output of `git diff`."
                 },
                 "title": {
                   "type": "string",
-                  "description": "Optional heading shown above the diff."
+                  "description": "Optional. A title that the user sees above the diff."
                 }
               },
               "required": ["patch"],

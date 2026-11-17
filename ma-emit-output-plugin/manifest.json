@@ -2,7 +2,7 @@
   "id": "emit-output",
   "name": "Emit Output",
   "version": "0.1.0",
-  "description": "Inline renders file/blob content in the response stream, without the model touching the bytes. Intended for the ascii-renderer skill and other tool output that would be truncated/mangled if hand-copied.",
+  "description": "This plugin shows the content of a file or a blob in the response stream. The model does not copy the bytes. The plugin is for the ascii-renderer skill and for other tool output. If the model copies such output, the output can become cut or incorrect.",
   "capabilities": ["blobs:read"],
   "headless": {
     "tools": [

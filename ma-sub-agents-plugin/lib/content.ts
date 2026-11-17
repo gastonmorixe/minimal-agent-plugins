@@ -71,12 +71,12 @@ export function recordLine(r: SubagentRecord, nowMs: number): string {
 /** The full fleet, as model-facing text. */
 export function fleetText(records: readonly SubagentRecord[], nowMs: number): string {
   if (records.length === 0) {
-    return "No sub-agents in this session. Use SpawnAgent to delegate a unit of work."
+    return "No sub-agents in this session. Use SubAgentsSpawnAgent to delegate a unit of work."
   }
   const s = fleetStats(records)
   const head = `Fleet: ${s.running} running · ${s.queued} queued · ${s.done} done · ${s.failed} failed · ${s.stopped} stopped · ${fmtSpend(s)} total`
   const rows = records.map((r) => recordLine(r, nowMs))
-  const tail = s.done > 0 ? "\nPull a finished worker's deliverable with AgentResult <id>." : ""
+  const tail = s.done > 0 ? "\nPull a finished worker's deliverable with SubAgentsAgentResult <id>." : ""
   return `${head}\n\n${rows.join("\n")}${tail}`
 }
 
@@ -149,7 +149,7 @@ export function resultText(r: SubagentRecord): string {
       return `Sub-agent ${r.id} was stopped${r.status.reason ? `: ${r.status.reason}` : ""}. No result was recorded on the fleet status.`
     case "queued":
     case "running":
-      return `Sub-agent ${r.id} is still ${r.status.kind}. No final result yet. Check AgentStatus ${r.id} or wait for the digest that arrives between turns when it finishes.`
+      return `Sub-agent ${r.id} is still ${r.status.kind}. No final result yet. Check SubAgentsAgentStatus ${r.id} or wait for the digest that arrives between turns when it finishes.`
     default: {
       throw new Error(`unhandled status kind: ${String(r.status satisfies never)}`)
     }

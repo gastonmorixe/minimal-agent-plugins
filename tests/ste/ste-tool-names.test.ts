@@ -135,13 +135,20 @@ describe("s20 index: the port of the core naming rule", () => {
       AgentOutput: "SubAgentsAgentOutput",
       Mailbox: "SubAgentsMailbox",
       StopAgent: "SubAgentsStopAgent",
-      CloudStatus: "CloudCloudStatus",
-      CloudLogin: "CloudCloudLogin",
-      CloudPush: "CloudCloudPush",
     }
     for (const [alias, wire] of Object.entries(expected)) {
       expect(`${alias}->${INDEX.aliasToWire.get(alias)}`).toBe(`${alias}->${wire}`)
     }
+  })
+
+  test("ma-agent-cloud keeps its tool names (explicitName), so no CloudCloud* name", () => {
+    for (const name of ["CloudStatus", "CloudLogin", "CloudPush"]) {
+      expect(`${name}: wire=${INDEX.wire.has(name)} alias=${INDEX.aliasToWire.get(name)}`).toBe(
+        `${name}: wire=true alias=undefined`,
+      )
+    }
+    expect([...INDEX.wire].filter((n) => n.startsWith("CloudCloud"))).toEqual([])
+    expect([...INDEX.aliasToWire.values()].filter((n) => n.startsWith("CloudCloud"))).toEqual([])
   })
 
   test.if(existsSync(join(CORE_ROOT, "src/plugins/loader/helpers.ts")))(
@@ -210,7 +217,7 @@ describe("s20 detector (R3 section 8)", () => {
     ],
     ["Call `SpawnAgent`.", ["SpawnAgent->SubAgentsSpawnAgent"]],
     ["Use `ScheduleCronCreated` for that.", ["ScheduleCronCreated->ScheduleCronCreate"]],
-    ["Example: CloudStatus({}).", ["CloudStatus->CloudCloudStatus"]],
+    ["Example: CronList({}).", ["CronList->ScheduleCronList"]],
     ["Send to a separate session with `Send`.", ["Send->IntercomSend"]],
     ["The Send tool delivers a message.", ["Send->IntercomSend"]],
     ["Reply with Send if you need to.", ["Send->IntercomSend"]],
@@ -240,6 +247,7 @@ describe("s20 detector (R3 section 8)", () => {
     ["Read the inbox and the mailbox.", "lowercase"],
     ["Use the GitHub API and the OpenAI SDK.", "CamelCase product names"],
     ["Call SubAgentsReportResult, then IntercomSend.", "wire names"],
+    ["Example: CloudStatus({}). Then use `CloudLogin`.", "explicitName wire names"],
     ["Set `aliasToWire` with a `ToolNameIndex`.", "code identifiers"],
   ]
 
@@ -421,21 +429,10 @@ describe("s20 mutation proof", () => {
  * engine adds that surface.
  */
 const KNOWN_SURFACE_OFFENDERS: Readonly<Record<string, number>> = {
-  "ma-agent-cloud/PROMPT.md|CloudLogin": 1,
-  "ma-agent-cloud/PROMPT.md|CloudStatus": 1,
-  "ma-agent-cloud/manifest.json|CloudLogin": 2,
-  "ma-agent-cloud/manifest.json|CloudPush": 1,
-  "ma-agent-cloud/manifest.json|CloudStatus": 2,
   "ma-ask-mode-plugin/manifest.json|ShowDiff": 1,
   "ma-diff-view-plugin/manifest.json|ShowDiff": 1,
   "ma-intercom-plugin/PROMPT.md|Send": 1,
   "ma-intercom-plugin/manifest.json|Mailbox": 1,
-  "ma-schedule-plugin/PROMPT.md|CronDelete": 1,
-  "ma-schedule-plugin/PROMPT.md|CronList": 1,
-  "ma-schedule-plugin/manifest.json|CronCreate": 1,
-  "ma-schedule-plugin/manifest.json|CronDelete": 2,
-  "ma-schedule-plugin/manifest.json|CronList": 1,
-  "ma-schedule-plugin/manifest.json|CronReschedule": 2,
   "ma-sub-agents-plugin/lib/library.ts|ReportResult": 6,
   "ma-sub-agents-plugin/manifest.json|ReportResult": 1,
   "ma-sub-agents-plugin/prompts/leaf-discipline.md|ReportResult": 2,
@@ -450,16 +447,9 @@ const KNOWN_SURFACE_OFFENDERS: Readonly<Record<string, number>> = {
  * `file|alias -> count`, measured 2026-11-17. A count may go down, never up.
  */
 const KNOWN_HANDLER_OFFENDERS: Readonly<Record<string, number>> = {
-  "ma-agent-cloud/handlers/login.ts|CloudLogin": 1,
-  "ma-agent-cloud/handlers/login.ts|CloudStatus": 1,
-  "ma-agent-cloud/handlers/push.ts|CloudLogin": 1,
-  "ma-agent-cloud/handlers/status.ts|CloudLogin": 1,
   "ma-intercom-plugin/handlers/peers.ts|Peers": 1,
   "ma-intercom-plugin/handlers/send.ts|Peers": 1,
   "ma-intercom-plugin/lib/beat.ts|Send": 1,
-  "ma-schedule-plugin/handlers/cron_create.ts|CronDelete": 1,
-  "ma-schedule-plugin/handlers/cron_delete.ts|CronList": 1,
-  "ma-schedule-plugin/handlers/cron_reschedule.ts|CronList": 1,
   "ma-sub-agents-plugin/handlers/report_result.ts|AgentResult": 1,
   "ma-sub-agents-plugin/handlers/report_result.ts|ReportResult": 5,
   "ma-sub-agents-plugin/handlers/spawn_agent.ts|AgentResult": 1,

@@ -1,5 +1,5 @@
-- Write for the ear. Use plain sentences and natural punctuation. The voice says your words literally.
-- Remove the markdown. The voice says `**bold**`, backticks, list dashes, and heading hashes as gibberish. Send the words, not the formatting.
-- Do not read raw URLs or code blocks. Say "I opened a pull request" instead of reading the link.
-- Keep one utterance short. For a long answer, speak a short summary and leave the detail on the screen.
-- The setup of the user sets the voice and the speaking rate. You choose the words, not how they sound. Do not try to pick a voice or an accent. There is no parameter for it.
+- Write for a person who hears the words. Use usual sentences and usual punctuation. The voice speaks your words as you write them.
+- Remove the markdown. The voice speaks `**bold**`, backticks, list dashes and heading hashes as noise. Send only the words.
+- Do not speak URLs or code blocks. For example, say "I opened a pull request". Do not speak the link.
+- Keep each spoken message short. For a long answer, speak a short summary, and keep the data on the screen.
+- The setup of the user sets the voice and the rate of the voice. You select the words, not the sound. Do not try to select a voice or an accent. The tool has no parameter for it.

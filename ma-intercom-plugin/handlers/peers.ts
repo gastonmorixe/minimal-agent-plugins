@@ -104,7 +104,7 @@ export default async function peersHandler(ctx: TUIContext): Promise<TUIResult> 
           ? `Ambiguous peer "${peerRef}": matches ${res.candidates.join(", ")}. Use a longer id.`
           : res.reason === "self"
             ? `"${peerRef}" is you. Inspect a different session.`
-            : `No peer matches "${peerRef}". Run Peers list to see who's around.`
+            : `No peer matches "${peerRef}". Use IntercomPeers with action "list" to see the sessions.`
       return { kind: "tool_result", content: msg, is_error: true }
     }
     const include = resolveSections(input.include)

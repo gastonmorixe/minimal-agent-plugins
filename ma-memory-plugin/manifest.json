@@ -25,47 +25,47 @@
           "type": "tool",
           "tool": {
             "name": "MemoryTool",
-            "description": "Query and change durable per-user memories plus a per-session scratchpad. Use it when the user asks what you remember. Also use it before you debug a familiar symptom, or before you save a bullet on a new topic. Do not use `add` for an in-flight save, and never store a secret: the inline memory tag is better there. Returns rows with id, timestamp and body. The list header states the total count, and `clear` returns a removed count.",
+            "description": "Read and change the permanent memories of the user, and a short-term record for each session. Use this tool when the user tells you to show your memories of them. Use it before you debug a symptom that you know. Use it before you save a bullet with new information.\n\nDo not use `add` to save during a response. The `<ma::emit::memory>` tag is better for that. Do not save a secret.\n\nThe tool gives rows with the id, the timestamp and the body. The first line of `list` gives the total number of entries. `clear` gives the number of removed entries.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "read", "add", "edit", "remove", "clear"],
-                  "description": "list: page of entries. read: one body. add: save a bullet. edit: replace a body. remove: delete an id. clear: empty short-term."
+                  "description": "The operation. The values are:\n- `list`: show one page of entries.\n- `read`: show the full body of one entry.\n- `add`: save a new bullet.\n- `edit`: replace the body of one bullet.\n- `remove`: delete the bullet with this `id`.\n- `clear`: delete all entries in `short-term`."
                 },
                 "scope": {
                   "type": "string",
                   "enum": ["global", "project", "short-term"],
-                  "description": "global is cross-project. project is this codebase. short-term ends with the session."
+                  "description": "The memory store. The values are:\n- `global`: for all projects.\n- `project`: for this project only.\n- `short-term`: for this session only. It stops at the end of the session."
                 },
                 "id": {
                   "type": "string",
-                  "description": "Bullet id from a prior <memory-saved> echo, list result, or save-echo. Required for read/edit/remove. Persistent ids look like `lwq8tg-a8f3`, short-term ids are integers like `3`."
+                  "description": "The id of a bullet. Get it from a `<ma::agent::memory-saved>` tag or from a `list` result. You must give it for `read`, `edit` and `remove`. A permanent id has the shape `mwklay8d-a8f3`. A `short-term` id is an integer, for example `3`."
                 },
                 "body": {
                   "type": "string",
-                  "description": "New body for add or edit. A single line is best. The tool folds a multi-line body to one line."
+                  "description": "The new body for `add` or `edit`. One line is best. The tool changes a body of more than one line into one line."
                 },
                 "query": {
                   "type": "string",
-                  "description": "Optional case-insensitive substring filter for action=list. Pairs with limit/offset for filtered pagination."
+                  "description": "Optional. A text to find in the body of each entry, for `list` only. The tool does a case-insensitive compare. Use it with `limit` and `offset` to show the found entries page by page."
                 },
                 "limit": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "For action=list, the page size. Default 20, max 100. The tool caps a value that is too large. Pair it with `offset` to page through the full set."
+                  "description": "The number of entries on one page, for `list` only. The default is 20. The maximum is 100. The tool decreases a larger value to 100. Use it with `offset` to show all entries page by page."
                 },
                 "offset": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "For action=list, count the entries to skip from the newest end. A value of offset=0 (default) gives the most recent page. A value of offset=20 gives the page before that, and so on. The `next:` hint in the response header gives the exact value for the next page."
+                  "description": "The number of entries to ignore from the newest entry, for `list` only. The default is 0, which gives the newest page. With a `limit` of 20, the value 20 gives the page before that. In `text` format, a `next:` line after the rows gives the value for the next page. In `json` format, the `next_offset` field gives it."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
                   "default": "text",
-                  "description": "Result format. `text` (default) returns a compact human-readable list. `json` returns a structured shape suitable when you need to extract specific values."
+                  "description": "The result format. The default is `text`.\n- `text`: short lines for a person to read.\n- `json`: a data structure. Use it when you must get specified values from the result."
                 }
               },
               "required": ["action", "scope"],

@@ -95,7 +95,7 @@ export default async function cronCreate(ctx: TUIContext): Promise<TUIResult> {
     content:
       `Scheduled task ${e.id} (${recurs ? "recurring" : "one-shot"}). ` +
       `${describeCreated(e, now, rounded)[0]}. ` +
-      `It injects the prompt between turns when due. Cancel with CronDelete("${e.id}").`,
+      `It injects the prompt between turns when due. Cancel with ScheduleCronDelete("${e.id}").`,
     display: body,
     displayHeader: info,
     displayFooter: taskFooter(e, now),

@@ -47,64 +47,74 @@ const TASKS_DESC = PROPS.tasks?.description ?? ""
 const STATUS_DESC = PROPS.status?.description ?? ""
 
 describe("Task tool description canceled-vs-done guidance", () => {
+  // The STE rewrite says "stopped" for abandoned and "completed" for finished.
+  const CANCELED_RULE = /Use\s+`canceled`\s+for\s+a\s+task\s+that\s+you\s+stopped/
+  const DONE_RULE = /`done`\s+for\s+a\s+task\s+that\s+you\s+completed/
+
   test("has a dedicated rule distinguishing canceled from done", () => {
     // The tool description carries the rule. The status property repeats it.
-    expect(TOOL_DESC).toMatch(/`canceled`\s+means\s+abandoned\s+and\s+`done`\s+means\s+finished/)
-    expect(STATUS_DESC).toMatch(/`canceled`\s+means\s+abandoned\s+and\s+`done`\s+means\s+finished/)
+    expect(TOOL_DESC).toMatch(
+      /Use\s+`canceled`\s+for\s+a\s+task\s+that\s+you\s+stopped,\s+and\s+`done`\s+for\s+a\s+task\s+that\s+you\s+completed/,
+    )
+    expect(STATUS_DESC).toMatch(CANCELED_RULE)
+    expect(STATUS_DESC).toMatch(DONE_RULE)
   })
 
   test("defines canceled = abandoned and done = finished", () => {
-    expect(TOOL_DESC).toMatch(/`canceled`\s+means\s+abandoned/i)
-    expect(TOOL_DESC).toMatch(/`done`\s+means\s+finished/i)
-    expect(STATUS_DESC).toMatch(/`canceled`\s+means\s+abandoned/i)
-    expect(STATUS_DESC).toMatch(/`done`\s+means\s+finished/i)
+    expect(TOOL_DESC).toMatch(CANCELED_RULE)
+    expect(TOOL_DESC).toMatch(DONE_RULE)
+    expect(STATUS_DESC).toMatch(CANCELED_RULE)
+    expect(STATUS_DESC).toMatch(DONE_RULE)
   })
 
   test("explicitly addresses the phase-header anti-pattern", () => {
     // The wrong inference was: "phase header has no direct work, so
     // cancel it when subtasks are done." The tool description must
-    // contradict it by name.
-    expect(TOOL_DESC).toMatch(/phase\s+header\s+is\s+`done`,\s+not\s+`canceled`/i)
+    // contradict it by name (a phase header is a parent task).
+    expect(TOOL_DESC).toMatch(/parent\s+task\s+is\s+`done`,\s+not\s+`canceled`/i)
   })
 
   test("notes that parents with all-done children are done, not canceled", () => {
     // Auto-promote is store-owned. The action text must say the store
     // promotes the parent when the last open child closes.
-    expect(ACTION_DESC).toMatch(/auto-promotes?\s+the\s+parent/i)
-    expect(ACTION_DESC).toMatch(/last\s+open\s+child/i)
+    expect(ACTION_DESC).toMatch(
+      /When\s+the\s+last\s+open\s+subtask\s+closes,\s+the\s+parent\s+also\s+becomes\s+`done`\s+automatically/,
+    )
     expect(ACTION_DESC).not.toMatch(/does not auto-promote/i)
+    expect(ACTION_DESC).not.toMatch(/parent\s+does\s+not\s+become\s+`done`/i)
     // A finished phase header is `done`, never `canceled`.
-    expect(TOOL_DESC).toMatch(/finished\s+phase\s+header\s+is\s+`done`/i)
+    expect(TOOL_DESC).toMatch(/completed\s+parent\s+task\s+is\s+`done`/i)
   })
 
   test("documents parent auto-start", () => {
-    expect(ACTION_DESC).toMatch(/auto-starts?\s+the\s+parent/i)
+    expect(ACTION_DESC).toMatch(/`start`: set the task to `doing`\. The parent also starts\./)
     // Partial-completion rollup: the parent stays doing while siblings are open.
-    expect(ACTION_DESC).toMatch(/parent stays `doing` while siblings stay open/i)
+    expect(ACTION_DESC).toMatch(/While other subtasks stay open, the parent stays `doing`/)
   })
 
   test("warns against redundant parent done after last-child auto-promote", () => {
     // Models often call done(last child) and done(parent) in one turn.
     // The tasks property must forbid the second call by name. The re-done
     // hard error is pinned in handlers/task_tool.api-simplify.test.ts.
-    expect(TASKS_DESC).toMatch(/do not also call `done` on the parent/i)
-    expect(ACTION_DESC).toMatch(/auto-promote/i)
+    expect(TASKS_DESC).toMatch(/do not use `done` on the parent/i)
+    expect(TASKS_DESC).toMatch(/the parent becomes `done` automatically/i)
+    expect(ACTION_DESC).toMatch(/parent also becomes `done` automatically/i)
   })
 
   test("recommends parent/subtask structure for multi-phase plans", () => {
     // Tree form via tasks+children (preferred over drip-feed parent: adds).
     expect(TOOL_DESC).toMatch(/`add_many`\s+with\s+`tasks`/)
-    expect(TASKS_DESC).toMatch(/Preferred tree form/i)
+    expect(TASKS_DESC).toMatch(/This is the recommended value/i)
     expect(TASKS_DESC).toMatch(/`\{title, children\?\}`/)
   })
 
   test("the do-not rules repeat the canceled-vs-done warning", () => {
     // Belt-and-suspenders: a model that skims the do-not rules in the tool
     // description must also see the warning, and so must the status property.
-    expect(TOOL_DESC).toMatch(/Do not use it for trivial work/)
-    expect(TOOL_DESC).toMatch(/Do not echo the board as prose/)
-    const afterRules = TOOL_DESC.slice(TOOL_DESC.indexOf("Do not echo"))
-    expect(afterRules).toMatch(/`canceled`\s+means\s+abandoned/i)
-    expect(STATUS_DESC).toMatch(/pick the verb that matches the intent/i)
+    expect(TOOL_DESC).toMatch(/Do not use this tool for small work/)
+    expect(TOOL_DESC).toMatch(/Do not write the board again as text/)
+    const afterRules = TOOL_DESC.slice(TOOL_DESC.indexOf("Do not write the board"))
+    expect(afterRules).toMatch(CANCELED_RULE)
+    expect(STATUS_DESC).toMatch(CANCELED_RULE)
   })
 })

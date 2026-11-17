@@ -32,57 +32,57 @@
           "type": "tool",
           "tool": {
             "name": "Fetch",
-            "description": "Fetch a webpage and give its rendered content. Use it when you know the URL, or when the page needs JavaScript to render and you want clean markdown. Do not use it to search without a URL. Do not use it to read a local file. Do not use it when the user already supplied the content. Each call renders with anti-detection hardening, and that is not a parameter. The tool gives the page text in `content`.",
+            "description": "Get a page from the web, and give its contents after a browser loads it. Use this tool when you know the URL. Also use it when the page must run JavaScript and you want clean markdown. Do not use it to find pages without a URL or to read a local file. Do not use it to get contents that the user gave you.\n\nFor each use, the browser tries to look the same as a browser that a person operates. No parameter changes this. The tool gives the page text in `content`.",
             "mayReturnBinary": true,
             "input_schema": {
               "type": "object",
               "properties": {
                 "url": {
                   "type": "string",
-                  "description": "The page URL. Must start with http:// or https://. Max 4096 chars."
+                  "description": "The URL of the page. The URL must start with `http://` or `https://`. The maximum length is 4096 characters."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["markdown", "text", "html", "links", "accessibility", "original"],
                   "default": "markdown",
-                  "description": "Output format. `markdown` is the default for reading articles and docs. `text` for prose. `html` for markup. `links` to crawl a page. `accessibility` for a structure tree. `original` for raw bytes."
+                  "description": "The output format. The default is `markdown`. The values are:\n- `markdown`: for text pages and documents.\n- `text`: only the text.\n- `html`: the HTML tags.\n- `links`: the URLs on the page, to find more pages.\n- `accessibility`: the structure tree of the page.\n- `original`: the bytes of the page with no changes."
                 },
                 "selector": {
                   "type": "string",
-                  "description": "Optional CSS selector. The browser waits for this element before returning. Useful for SPAs where the interesting content arrives after initial load."
+                  "description": "Optional. A CSS selector. The browser waits for this element before the tool gives a result. Use it for a page that loads its contents after the first load, for example an SPA."
                 },
                 "eval": {
                   "type": "string",
-                  "description": "Optional JavaScript expression to evaluate in the page context. By default the tool gives its value in place of the page body. Use eval_mode='page' to evaluate first, then get the resulting page dump."
+                  "description": "Optional. A JavaScript expression that the browser calculates in the context of the page. By default, the tool gives the value of the expression, not the page body. To calculate the expression first and then get the full page, use `eval_mode: \"page\"`."
                 },
                 "eval_mode": {
                   "type": "string",
                   "enum": ["value", "page"],
-                  "description": "Optional return mode for eval. When omitted, eval alone returns its value while selector plus eval implies 'page'. 'value' returns the expression result. 'page' evaluates, settles page work, then returns the requested format."
+                  "description": "Optional. The result mode for `eval`. With only `eval`, the default is `value`. With a `selector` and `eval`, the default is `page`. The values are:\n- `value`: the result of the expression.\n- `page`: the browser calculates the expression and waits for the page to become stable. Then the tool gives the page in the `format` that you set."
                 },
                 "wait_until": {
                   "type": "string",
                   "enum": ["load", "domcontentloaded", "networkidle0"],
                   "default": "domcontentloaded",
-                  "description": "When to count the navigation as complete. The default `domcontentloaded` is the safe choice. A `load` setting waits for each subresource and races the anti-bot scripts. A `networkidle0` setting waits for 500ms of quiet and fits a SPA."
+                  "description": "The event that completes the page load. The default is `domcontentloaded`. The values are:\n- `domcontentloaded`: wait for the HTML of the page.\n- `load`: also wait for each file that the page loads. Thus scripts that try to find automatic browsers have more time to run.\n- `networkidle0`: wait until the page sends no network requests for 500 ms. Use it for an SPA."
                 },
                 "timeout_sec": {
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 120,
                   "default": 30,
-                  "description": "Navigation timeout in seconds. Bump this for slow or dynamic pages."
+                  "description": "The time limit for the page load, in seconds. Increase it for slow pages or for pages that load their contents after the first load."
                 },
                 "cleanup": {
                   "type": "string",
                   "enum": ["off", "basic", "aggressive"],
                   "default": "basic",
-                  "description": "Whitespace cleanup for markdown and text only. The default `basic` keeps single blank lines. An `aggressive` setting folds the whitespace and drops the blank lines, so use it on a noisy page. An `off` setting keeps the text as it is."
+                  "description": "The whitespace changes for the `markdown` and `text` formats only. The default is `basic`. The values are:\n- `basic`: keep one empty line where the page has more.\n- `aggressive`: change all space characters to the usual space and remove all empty lines. Use it on a page with much noise.\n- `off`: keep the text with no changes."
                 },
                 "session": {
                   "type": "string",
                   "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
-                  "description": "Session name that keeps the cookies and the localStorage. It must match ^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$. The harness sandboxes the directory, so a path fails. An empty string opts out. The cookies and the tokens go to disk as plain JSON, so do not put the user identity in the name. Make one Fetch call at a time for each session."
+                  "description": "The name of a session that keeps the cookies and the localStorage. The name must agree with `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`. The harness keeps each session in a different directory, thus a path causes an error. An empty string disables the default session.\n\nThe harness writes the cookies and the tokens to disk as clear JSON text. Thus, do not put the name of the user in the session name. Use Fetch only one time at a time for each session."
                 }
               },
               "required": ["url"],
