@@ -77,6 +77,22 @@ describe("CronStore — CRUD", () => {
       source: "loop",
     })
   })
+
+  it("persists intervalMs through create and a reload", () => {
+    const s = store()
+    s.create(
+      {
+        cron: "* * * * *",
+        prompt: "p",
+        recurs: true,
+        pace: "dynamic",
+        nextAtMs: 31_000,
+        intervalMs: 30_000,
+      },
+      1_000,
+    )
+    expect(store().load()[0]?.intervalMs).toBe(30_000)
+  })
 })
 
 describe("CronStore — capacity", () => {

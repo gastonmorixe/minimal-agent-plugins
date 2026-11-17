@@ -13,9 +13,10 @@
  *     missed while the agent was busy.
  *   - One-shot (fixed or reminder): stores an absolute `nextAtMs`; fires
  *     once when `now >= nextAtMs`, then deletes itself.
- *   - Dynamic ("self-paced"): fires at `nextAtMs`, then re-arms
- *     `nextAtMs = now + defaultDynamicMs` so the loop keeps running at a
- *     default cadence until the model adjusts it.
+ *   - Dynamic: fires at `nextAtMs`, then re-arms by its own period,
+ *     `nextAtMs = now + intervalMs` (a sub-minute `/loop 10s`, or a
+ *     `CronReschedule every`). A self-paced task has no `intervalMs` and
+ *     re-arms by `defaultDynamicMs` until the model adjusts it.
  *   - Recurring tasks drop when past their 7-day `expiresAt`.
  *
  * Jitter is a per-task sub-minute offset derived from the id. It only
@@ -58,7 +59,7 @@ function isTimeBased(e: CronEntry): boolean {
 export interface DueOptions {
   /** Per-task sub-minute fire offset (default 0 = fire immediately). */
   jitterSeconds?: (id: string) => number
-  /** Re-arm interval for dynamic tasks after a fire. */
+  /** Re-arm interval for a dynamic task that has no `intervalMs` of its own. */
   defaultDynamicMs?: number
 }
 
@@ -129,7 +130,7 @@ export function due(entries: CronEntry[], now: number, opts: DueOptions = {}): D
       continue
     }
     const updated: CronEntry = { ...e, lastFiredAt: now }
-    if (e.pace === "dynamic") updated.nextAtMs = now + dynMs
+    if (e.pace === "dynamic") updated.nextAtMs = now + (e.intervalMs ?? dynMs)
     keep.push(updated)
   }
 
