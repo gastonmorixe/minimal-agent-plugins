@@ -19,7 +19,10 @@
  * - `response.reasoning_summary_text.done` → `ThinkingStopEvent`
  * - `response.output_item.added type:"function_call"` → `ToolUseStartEvent`
  * - `response.function_call_arguments.delta` → `ToolUseInputDeltaEvent`
- * - `response.function_call_arguments.done` → `ToolUseStopEvent`
+ * - `response.function_call_arguments.done` → one `ToolUseInputDeltaEvent`
+ *   with the full arguments, only when no delta came for that call
+ * - `response.output_item.done type:"function_call"` → `ToolUseStopEvent`
+ *   with the parsed input
  * - `response.refusal.delta` → `RefusalDeltaEvent`
  * - `response.completed` → `MessageDeltaEvent` + `MessageStopEvent`
  * - `response.failed` / `response.incomplete` → `MessageDeltaEvent` (error)
@@ -231,6 +234,8 @@ export async function* translateOpenAIResponsesStream(
   const textBlocks = new Map<string, number>()
   const reasoningBlocks = new Map<string, number>()
   const functionBlocks = new Map<string, number>()
+  // Function-call keys that got at least one non-empty argument delta.
+  const functionBlocksWithDelta = new Set<string>()
 
   for await (const ev of events) {
     switch (ev.type) {
@@ -344,6 +349,7 @@ export async function* translateOpenAIResponsesStream(
         // multiple function calls coexist).
         for (const [k, idx] of functionBlocks.entries()) {
           if (k.endsWith(`:${d.item_id}`)) {
+            if (d.delta) functionBlocksWithDelta.add(k)
             yield { type: "tool_use_input_delta", index: idx, partialJson: d.delta }
             break
           }
@@ -351,16 +357,19 @@ export async function* translateOpenAIResponsesStream(
         break
       }
       case "response.function_call_arguments.done": {
-        // Final aggregated arguments — the corresponding `output_item.done`
-        // will emit the canonical tool_use_stop with parsed input. We can
-        // still surface the final partial here as a delta for consumers
-        // that didn't accumulate. (Idempotent: the stop event re-parses.)
+        // Final aggregated arguments. When deltas streamed, they already
+        // carry this text, so do nothing. The backend can also send NO
+        // delta and only this event (often for parallel calls). Then send
+        // the full arguments as one delta, so the consumer that builds the
+        // input from deltas does not get `{}`. The later `output_item.done`
+        // still reports the parsed input on `tool_use_stop`.
         const d = ev as FunctionCallArgumentsDone
         for (const [k, idx] of functionBlocks.entries()) {
           if (k.endsWith(`:${d.item_id}`)) {
-            // No-op: the cumulative deltas already covered this. The
-            // final wire `done` event has the same text concatenated.
-            void idx
+            if (!functionBlocksWithDelta.has(k) && d.arguments) {
+              functionBlocksWithDelta.add(k)
+              yield { type: "tool_use_input_delta", index: idx, partialJson: d.arguments }
+            }
             break
           }
         }
