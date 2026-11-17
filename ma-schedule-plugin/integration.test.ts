@@ -16,7 +16,9 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import cronCreate from "./handlers/cron_create.ts"
 import cronDelete from "./handlers/cron_delete.ts"
 import cronList from "./handlers/cron_list.ts"
-import { CronStore } from "./lib/store.ts"
+import cronReschedule from "./handlers/cron_reschedule.ts"
+import { due, nextFireMs } from "./lib/scheduler.ts"
+import { type CronEntry, CronStore } from "./lib/store.ts"
 
 /**
  * Local structural mirror of the host's `tool_result` TUIResult variant.
@@ -124,5 +126,61 @@ describe("CronList + CronDelete", () => {
   it("lists empty cleanly", async () => {
     const listed = asTool(await cronList(ctx({})))
     expect(listed.content).toContain("No scheduled tasks")
+  })
+})
+
+describe("CronReschedule", () => {
+  it("nextAtMs alone keeps a cron task on its cron cadence", async () => {
+    await cronCreate(ctx({ cron: "*/5 * * * *", prompt: "poll" }))
+    const before = new CronStore(SID, { dir }).load()[0] as CronEntry
+    const at = Date.now() + 10 * 60_000
+    const r = asTool(await cronReschedule(ctx({ id: before.id, nextAtMs: at })))
+    expect(r.is_error).toBeUndefined()
+    expect(r.content).toContain("back on its schedule")
+
+    const e = new CronStore(SID, { dir }).load()[0] as CronEntry
+    expect(e).toMatchObject({ pace: "fixed", cron: "*/5 * * * *", nextAtMs: at })
+    expect(e.intervalMs).toBeUndefined()
+
+    // It fires once at nextAtMs, then the next fire comes from the cron.
+    const d = due([e], at)
+    expect(d.fire.map((x) => x.id)).toEqual([e.id])
+    const after = d.mutated?.[0] as CronEntry
+    expect(after.pace).toBe("fixed")
+    expect(after.nextAtMs).toBeUndefined()
+    const next = nextFireMs(after, at + 1) as number
+    expect(new Date(next).getMinutes() % 5).toBe(0)
+    expect(next - at).toBeLessThanOrEqual(5 * 60_000)
+  })
+
+  it("every switches to the dynamic pace and re-arms by the new interval", async () => {
+    await cronCreate(ctx({ cron: "*/5 * * * *", prompt: "poll" }))
+    const id = (new CronStore(SID, { dir }).load()[0] as CronEntry).id
+    const t0 = Date.now()
+    const r = asTool(await cronReschedule(ctx({ id, every: "30s" })))
+    expect(r.is_error).toBeUndefined()
+
+    let e = new CronStore(SID, { dir }).load()[0] as CronEntry
+    expect(e).toMatchObject({ pace: "dynamic", intervalMs: 30_000, label: "30s" })
+    expect(e.nextAtMs as number).toBeGreaterThanOrEqual(t0 + 30_000)
+
+    const start = e.nextAtMs as number
+    const fires: number[] = []
+    for (let t = start; fires.length < 3; t += 1000) {
+      const d = due([e], t)
+      if (d.fire.length > 0) fires.push(t)
+      if (d.mutated) e = d.mutated[0] as CronEntry
+    }
+    expect(fires).toEqual([start, start + 30_000, start + 60_000])
+  })
+
+  it("nextAtMs on a dynamic task keeps its own interval", async () => {
+    await cronCreate(ctx({ every: "20s", prompt: "tail" }))
+    const id = (new CronStore(SID, { dir }).load()[0] as CronEntry).id
+    const at = Date.now() + 120_000
+    await cronReschedule(ctx({ id, nextAtMs: at }))
+    const e = new CronStore(SID, { dir }).load()[0] as CronEntry
+    expect(e).toMatchObject({ pace: "dynamic", intervalMs: 20_000, nextAtMs: at })
+    expect(due([e], at).mutated?.[0]?.nextAtMs).toBe(at + 20_000)
   })
 })
