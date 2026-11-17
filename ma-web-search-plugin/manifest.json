@@ -2,7 +2,7 @@
   "id": "web-search",
   "name": "Web Search",
   "version": "0.1.0",
-  "description": "Search the web from the agent. Provider-pluggable, ships with Brave as the default.",
+  "description": "Find information on the web. The plugin can use different providers. The default provider is Brave.",
   "headless": {
     "tools": [
       {
@@ -11,54 +11,54 @@
           "type": "tool",
           "tool": {
             "name": "WebSearch",
-            "description": "Search the open web for current information. Use it when the user asks about facts that may have changed since training. Use it for a recent release, a recent event, or a URL. Use it to verify a claim before you state it. Do not use it when the answer is already in the conversation or in files you read. Prefer Grep or Read instead when a local search is faster. Returns ranked hits with title, URL, snippet, age and source. The host retries transient failures 3 times, so do not re-fire at once.",
+            "description": "Find information on the web. Use this tool when the user tells you to find facts that are possibly newer than your data. Use it for a new release, a new event or a URL. Use it to make sure that a fact is correct before you give it. Do not use it when this session or a file that you read has the result. When `Grep` or `Read` can find the result faster on the local disk, use that tool first.\n\nThe tool gives the found pages in the sequence of the provider. Each page has a title, a URL, a short part of its text, its date and its source. The tool tries a request again 2 times after some errors. Thus do not send the same request again immediately.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "query": {
                   "type": "string",
-                  "description": "The search query (required). Max 400 characters. Brevity helps, most providers do better with 2-6 well-chosen keywords than full sentences."
+                  "description": "The words to find. You must give this value. The maximum is 400 characters. Most providers give better results for 2 to 6 important words than for full sentences."
                 },
                 "type": {
                   "type": "string",
                   "enum": ["web", "news"],
                   "default": "web",
-                  "description": "Search vertical. 'web' = general results, 'news' = time-sensitive recent articles."
+                  "description": "The type of result. The values are:\n- `web`: general pages.\n- `news`: new items about events."
                 },
                 "count": {
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 20,
                   "default": 10,
-                  "description": "How many hits to return. Default 10. Smaller is usually better, top 5 are typically the only ones worth reading."
+                  "description": "The number of pages to give. The default is 10. A small number is usually better. Usually only the first 5 pages are important."
                 },
                 "offset": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Page index (0-based). Use to paginate beyond the first page."
+                  "description": "The page number of the results, from 0. Use it to get the pages after the first page."
                 },
                 "freshness": {
                   "type": "string",
-                  "description": "Time filter: 'pd' (past day), 'pw' (past week), 'pm' (past month), 'py' (past year), or 'YYYY-MM-DDtoYYYY-MM-DD' for a custom range."
+                  "description": "A time filter. The values are `pd` (the last day), `pw` (the last week), `pm` (the last month) and `py` (the last year). For a range of dates, write `YYYY-MM-DDtoYYYY-MM-DD`."
                 },
                 "country": {
                   "type": "string",
-                  "description": "ISO-2 country code (e.g. 'US', 'DE') or 'ALL'. Affects result region."
+                  "description": "The country of the results, as an ISO code of 2 letters, or `ALL`. For example, `US` or `DE`."
                 },
                 "lang": {
                   "type": "string",
-                  "description": "2-character language code (e.g. 'en', 'de'). Affects result language."
+                  "description": "The language of the results, as a code of 2 letters. For example, `en` or `de`."
                 },
                 "safesearch": {
                   "type": "string",
                   "enum": ["off", "moderate", "strict"],
-                  "description": "Adult content filter."
+                  "description": "The filter for content that is not safe for children."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
                   "default": "text",
-                  "description": "Result format. 'text' (default) returns a compact human-readable list. 'json' returns a structured shape with the same fields, suitable when you need to extract specific values."
+                  "description": "The result format. The default is `text`.\n- `text`: short lines for a person to read.\n- `json`: a data structure with the same fields. Use it when you must get specified values from the result."
                 }
               },
               "required": ["query"],

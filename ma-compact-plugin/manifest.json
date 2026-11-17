@@ -2,7 +2,7 @@
   "id": "compact",
   "name": "Compact",
   "version": "0.1.0",
-  "description": "Contributes the CompactContext tool. The tool queues a context compaction (checkpoint and prune) through the host's context:compact seam. There are two triggers. Manual: the user asks to compact, or routes /compact to the model. Auto: the model calls the tool itself when the session feels context-heavy. The plugin never compacts directly. It validates the arguments and queues the request. The host does the rewrite after the turn.",
+  "description": "Contributes the CompactContext tool. The tool queues a context compaction (checkpoint and prune) through the host's context:compact seam. There are two triggers. Manual: the user asks to compact, or routes /compact to the model. Auto: the model calls the tool itself when the session feels context-heavy.\n\nThe plugin never compacts directly. It validates the arguments and queues the request. The harness does the compaction in the same turn, before the next model request.",
   "capabilities": ["context:compact"],
   "headless": {
     "tools": [
@@ -12,28 +12,28 @@
           "type": "tool",
           "tool": {
             "name": "CompactContext",
-            "description": "Queue a context compaction, which checkpoints the conversation and prunes older history. Use it when the user asks to compact or shorten context. Use it when context fullness is high or recall is degrading. Do not use it inside a tool loop, because a pending tool call must finish first. Prefer a fresh session instead when the user wants a clean start. Returns queued true with a message when the host accepted the request. It never compacts mid-turn, so continue with the retained tail. A refusal returns queued false, so retry later.",
+            "description": "Put a request for a context compaction in the queue. A compaction replaces the previous session history with a checkpoint and keeps the last messages.\n\nUse this tool when the user tells you to decrease the context. Use it when the context window is very full, or when you cannot find facts from previous messages. Do not use it in a tool loop, because each tool in the loop must complete first. When the user wants a clean start, a new session is better.\n\nThe tool gives a text line with the mode, the `tail` value and the cause. The harness does the compaction in this turn, before it sends the next request to the model. Then continue with the checkpoint and the last messages. If the harness rejects the request, the tool gives an error. Then try again after some time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "mode": {
                   "type": "string",
                   "enum": ["tail", "local", "remote"],
-                  "description": "Compaction engine. Use `tail` to keep the last N messages verbatim, with no summary. Use `local` to write a checkpoint summary plus tail. Use `remote` to call the provider compact endpoint, and to fall back to local."
+                  "description": "The compaction method. The values are:\n- `tail`: keep the last `tail` messages with no change, and write no summary.\n- `local`: write a checkpoint summary, and keep the last messages.\n- `remote`: use the compaction endpoint of the provider. If this is not possible, the harness writes a checkpoint without a summary and keeps the last messages."
                 },
                 "tail": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Trailing messages kept verbatim behind the checkpoint. Default 6."
+                  "description": "The number of last messages that stay after the checkpoint with no change. The default is 6."
                 },
                 "focus": {
                   "type": "string",
-                  "description": "Hint passed to the summarizer and kept verbatim in the checkpoint (e.g. what the next step needs)."
+                  "description": "A short instruction for the summary. The harness gives it to the model that writes the summary, and the checkpoint keeps it as you wrote it. For example, the facts that the next step must have."
                 },
                 "reason": {
                   "type": "string",
                   "enum": ["manual", "auto"],
-                  "description": "Why compacting: manual (the user asked) or auto (the model decided). Default auto."
+                  "description": "The cause of the compaction: `manual` (the user told you to do it) or `auto` (you selected it). The default is `auto`."
                 }
               },
               "additionalProperties": false

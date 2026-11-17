@@ -1,0 +1,12 @@
+[
+  {
+    "word": "HTML",
+    "category": 19,
+    "reason": "the markup language of a web page; the Fetch format `html` gives the page in this language"
+  },
+  {
+    "word": "package",
+    "category": 19,
+    "reason": "a unit of software that a package manager such as bun or npm installs into a project"
+  }
+]

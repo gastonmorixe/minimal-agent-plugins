@@ -1,1 +1,1 @@
-Do not confuse a saved prompt with an Agent Skill. A skill is a knowledge pack with its own discovery rules. Use the `Prompt*` tools for a reusable instruction. Use the `Skill` tool for a capability or a workflow pack.
+A saved prompt is not an Agent Skill. A skill is a pack of instructions and files, with its own discovery rules. Use the `Prompt*` tools for an instruction that the user wants to use again. Use the `Skill` tool for a skill or a workflow pack.

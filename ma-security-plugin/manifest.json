@@ -60,7 +60,7 @@
           "type": "tool",
           "tool": {
             "name": "SecurityStatus",
-            "description": "Report the security plugin state: active profile and build phase. Takes no input.",
+            "description": "Show the status of the `security` plugin: the active `profile` and the build `phase`. The tool has no input.",
             "input_schema": {
               "type": "object",
               "properties": {},

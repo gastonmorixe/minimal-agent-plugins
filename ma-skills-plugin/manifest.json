@@ -11,18 +11,18 @@
           "type": "tool",
           "tool": {
             "name": "Skill",
-            "description": "Discover, inspect and load an Agent Skill. A skill is a SKILL.md pack that holds instructions, scripts and references for one task. Discovery scans the skill roots at session start, and a closer root wins. Use it when a task matches a skill description, or when a workflow must be repeatable. Do not use it for a trivial one-off command. Do not paraphrase a skill from its catalog entry, because the catalog is a router. Returns the catalog for `list`, the frontmatter for `info`, and the body plus a sibling list for `read`.",
+            "description": "Find, examine and load an Agent Skill. A skill is a directory for one task. It has a SKILL.md file with instructions, and scripts and other files. The tool finds the skills again at each use. The system prompt shows the skills that the harness found at the start of the session. When two roots have the same skill, the tool uses the root nearer to the project.\n\nUse this tool when a task agrees with the description of a skill. Use it when you must do a task again with the same steps. Do not use it for a short command that you do one time. Do not do a skill from its short entry in the system prompt. Read the skill first.\n\nThe tool gives:\n- `list`: all skills.\n- `info`: the frontmatter of one skill.\n- `read`: the body, and the other files in the skill directory.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "info", "read"],
-                  "description": "What to do. Use list to show every discovered skill, with broken and shadowed entries, and no maxSkills cap. Use info to show the frontmatter of one skill, with no body load. Use read to show the full SKILL.md body, a trailer of bundled sibling files, and the declared allowed-tools field."
+                  "description": "The operation. The values are:\n- `list`: show all skills that the tool found. This includes the broken skills, and the skills that have the same name as a skill in a nearer root. The `maxSkills` limit does not apply.\n- `info`: show the frontmatter of one skill. The tool does not load the body.\n- `read`: show the full body of the SKILL.md file, the other files in the skill directory, and the `allowed-tools` field."
                 },
                 "name": {
                   "type": "string",
-                  "description": "Skill name (must match the SKILL.md frontmatter `name` field). Required for 'info' and 'read'."
+                  "description": "The name of the skill. It must be the same as the `name` field in the SKILL.md frontmatter. You must give it for `info` and `read`."
                 }
               },
               "required": ["action"],

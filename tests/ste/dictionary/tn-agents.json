@@ -1,0 +1,17 @@
+[
+  {
+    "word": "board",
+    "category": 19,
+    "reason": "the task board: the live view of the task tree of a session that the Task tool keeps and the user sees"
+  },
+  {
+    "word": "harness",
+    "category": 19,
+    "reason": "the minimal-agent program that sends requests to the model and runs the tools (DESIGN glossary)"
+  },
+  {
+    "word": "heartbeat",
+    "category": 19,
+    "reason": "the presence record that a session writes again at a fixed interval to show that it operates"
+  }
+]

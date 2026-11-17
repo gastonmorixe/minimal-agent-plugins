@@ -2,7 +2,9 @@
 
 This plugin connects this session to the minimal-agent cloud backend. The plugin owns the network transport. It registers the transport in the host transport registry. Peers and teams of Intercom can then span machines without a change. The rest of the system never sees if a transport is local or remote.
 
-Login is real. The CLI authenticates to the backend with the OAuth device grant (RFC 8628). The CLI stores a bearer token locally. `cloudEnabled` is `false` until you log in. After login, the feature flags come from the backend (`me { flags }`). The network methods of the remote transport are still a stub until the WebSocket layer lands. The auth and the flags path is live.
+Login is real. The CLI authenticates to the backend with the OAuth device grant (RFC 8628). The CLI stores a bearer token locally.
+
+`cloudEnabled` is `false` until you log in. After login, the feature flags come from the backend (`me { flags }`). The network methods of the remote transport are still a stub until the WebSocket layer lands. The auth and the flags path is live.
 
 ## Tools
 
@@ -20,4 +22,6 @@ The CLI stores the token at `~/.minimal-agent/cloud-auth.json`. Only the owner c
 
 ## Architecture (why this plugin never imports Intercom or core)
 
-The plugin hands its remote transport to Intercom through the host-brokered `transport:registry` capability. The plugin calls `host.transportRegistry.register(...)`. Intercom calls `list()`. Neither plugin imports the other. The host is a neutral broker. The host treats a transport as opaque. The provider plugins use the same dependency-inversion shape to register models.
+The plugin hands its remote transport to Intercom through the host-brokered `transport:registry` capability. The plugin calls `host.transportRegistry.register(...)`. Intercom calls `list()`. Neither plugin imports the other.
+
+The host is a neutral broker. The host treats a transport as opaque. The provider plugins use the same dependency-inversion shape to register models.

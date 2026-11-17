@@ -58,7 +58,7 @@ export default async function cronReschedule(ctx: TUIContext): Promise<TUIResult
   if (idx === -1) {
     return {
       kind: "tool_result",
-      content: `No scheduled task with id "${id}". Use CronList to see current ids.`,
+      content: `No scheduled task with id "${id}". Use ScheduleCronList to see current ids.`,
       is_error: true,
     }
   }

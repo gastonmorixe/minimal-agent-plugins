@@ -11,24 +11,24 @@
           "type": "tool",
           "tool": {
             "name": "LockStatus",
-            "description": "Inspect or clear the cooperative file locks under the working directory. Use it when an Edit or Write call fails on a locked file. Use it when you must know which peer agent holds a file. Do not use it to change file content. Use Edit or Write for a content change. For an action of list, it gives the lock list with the holder session, pid, host and age. It gives one holder record for inspect, and a removed count for clear-stale.",
+            "description": "Examine or clear the file locks that agents use, in the cwd and the directories below it. Use this tool when `Edit` or `Write` gives a lock error. Use it when you must know which peer agent has the lock on a file. Do not use it to change the content of a file. Use `Edit` or `Write` for that.\n\nThe tool gives this data:\n- `list`: each lock, with the session, pid and host that have it, and the time since the lock was made.\n- `inspect`: the record of the session that has the lock.\n- `clear-stale`: the number of removed locks.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect", "clear-stale", "clear"],
-                  "description": "Operation to run. The list action reads the directory and shows each lock with its holder details. The inspect action shows the metadata of one lock. The clear-stale action removes the locks whose holder pid is dead or older than 5 minutes. The clear action removes one named lock and is unsafe on a live peer."
+                  "description": "The operation. The values are:\n- `list`: read the directory and the directories below it, and show each lock and the session that has it.\n- `inspect`: show the data of one lock.\n- `clear-stale`: remove each lock of which the process stopped, and each lock that was made more than 5 minutes before.\n- `clear`: remove one lock. This is dangerous when the peer that has the lock continues to operate."
                 },
                 "path": {
                   "type": "string",
-                  "description": "For `list`/`clear-stale`: the directory to walk (default: cwd). For `inspect`/`clear`: absolute path of the locked file, not the .locked sibling."
+                  "description": "For `list` and `clear-stale`: the directory to examine. The default is the cwd. For `inspect` and `clear`: the full path of the locked file. Do not give the path of the `.locked` file."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
                   "default": "text",
-                  "description": "Output format. `text` (default) is compact ANSI for transcript reading. `json` is parseable for programmatic use."
+                  "description": "The output format. The default is `text`.\n- `text`: short lines with ANSI colors, for the transcript.\n- `json`: data that a script can read."
                 }
               },
               "required": ["action"],

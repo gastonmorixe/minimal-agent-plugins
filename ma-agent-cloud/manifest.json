@@ -14,18 +14,20 @@
           "type": "tool",
           "tool": {
             "name": "CloudStatus",
-            "description": "Report the status of the minimal-agent cloud connector. It shows if the cloud features are on, the current feature flags, and if the remote transport is in the host transport registry. A call also registers the (stub) remote transport, and that operation is idempotent. The tool mostly reads state. Example: CloudStatus({}).",
+            "description": "Show the status of the minimal-agent cloud plugin. The tool shows if the cloud functions are on, the cloud flags, and if the network transport is in the transport registry of the harness. Each use also adds that transport to the registry. A second use does not change the registry. At this time, the network functions of the transport do not operate. For example, `CloudStatus({})`.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
-                  "description": "Output format. Default \"text\"."
+                  "description": "The output format. The default is `\"text\"`."
                 }
               },
               "additionalProperties": false
-            }
+            },
+            "explicitName": true,
+            "reason": "the plugin name Cloud is already in the tool name"
           }
         },
         "handler": {
@@ -41,12 +43,14 @@
           "type": "tool",
           "tool": {
             "name": "CloudLogin",
-            "description": "Log this CLI into the minimal-agent cloud backend with the device-authorization grant (RFC 8628). The tool prints a short user code and a verification URL to approve in your browser. Then it completes the login and saves the access token on this machine. After the login, the cloud features start: teleport, remote peers and teams. Set the backend with MINIMAL_AGENT_CLOUD_URL (default http://localhost:4000/api/auth). Example: CloudLogin({}).",
+            "description": "Log this CLI in to the minimal-agent cloud backend with the OAuth device-authorization flow (RFC 8628). The tool shows a short user code and a URL. The user opens the URL in a browser and gives approval for the code. Then the tool completes the login and saves the access token on this computer. After the login, these cloud functions start: teleport, and peers and teams on other computers.\n\nTo set the backend, set `MINIMAL_AGENT_CLOUD_URL`. The default is `http://localhost:4000/api/auth`. For example, `CloudLogin({})`.",
             "input_schema": {
               "type": "object",
               "properties": {},
               "additionalProperties": false
-            }
+            },
+            "explicitName": true,
+            "reason": "the plugin name Cloud is already in the tool name"
           }
         },
         "handler": {
@@ -62,12 +66,14 @@
           "type": "tool",
           "tool": {
             "name": "CloudPush",
-            "description": "Upload the new records of this session to the cloud teleport store by hand. Then the user can view the session live from web or mobile. The tool is idempotent and resumable: it sends only the records that the cloud did not get. It needs a login (CloudLogin) and the cloud features on. Without them, the tool does nothing. The upload also starts automatically in the background between turns. Example: CloudPush({}).",
+            "description": "Upload the new records of this session to the cloud teleport store immediately. Then the user can see the session live on the web or on a mobile device. The tool sends only the records that the cloud did not receive. Thus you can use the tool again safely, and an upload continues after a stop.\n\nThe tool operates only after a login with `CloudLogin`, and only when the cloud functions are on. If not, the tool does not upload records. The upload also starts automatically in the background between turns. For example, `CloudPush({})`.",
             "input_schema": {
               "type": "object",
               "properties": {},
               "additionalProperties": false
-            }
+            },
+            "explicitName": true,
+            "reason": "the plugin name Cloud is already in the tool name"
           }
         },
         "handler": {
