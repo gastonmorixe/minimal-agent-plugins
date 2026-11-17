@@ -38,6 +38,7 @@ import { openAIApiKeyAuth, openAIOAuthLogin } from "./auth.ts"
 import { buildOpenAIChatBody } from "./chat/request-body.ts"
 import { type OpenAIChatChunk, translateOpenAIChatStream } from "./chat/response-stream.ts"
 import { buildOpenAIHeaders } from "./headers.ts"
+import { openAIMediaLimits } from "./input-formats.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type {
   ModelEntry,
@@ -76,6 +77,14 @@ export const openaiAdapter: ProviderAdapter = {
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
+  },
+
+  /**
+   * The model's input formats (`inputMimeTypes`), 50 MB per file and per
+   * request (OpenAI file-inputs guide).
+   */
+  mediaLimits(model: ModelEntry) {
+    return openAIMediaLimits(model)
   },
 
   async *run(

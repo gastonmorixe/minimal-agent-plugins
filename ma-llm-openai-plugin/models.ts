@@ -116,6 +116,7 @@ import {
   CAPS_O3_PRO_RESPONSES,
   CAPS_O3_RESPONSES,
 } from "./capabilities.ts"
+import { withOpenAIInputMimeTypes } from "./input-formats.ts"
 import {
   PRICING_CHAT_LATEST,
   PRICING_GPT_4O,
@@ -178,7 +179,12 @@ export function findOpenAIModelByTags(mustHave: readonly string[]): string | und
 export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   localCatalog.length = 0
   const ids: string[] = []
-  const register = (spec: ProviderModelSpec): void => {
+  const register = (input: ProviderModelSpec): void => {
+    // Per-model input formats: the surface set filtered by the model flags.
+    const spec = {
+      ...input,
+      capabilities: withOpenAIInputMimeTypes(input.capabilities, input.surfaceId),
+    }
     registrar.register(spec)
     localCatalog.push({ id: spec.id, tags: spec.tags ?? [] })
     ids.push(spec.id)
