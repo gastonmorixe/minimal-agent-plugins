@@ -14,6 +14,7 @@ import type {
   NetworkResponse,
 } from "@minimal-agent/core/plugin-api/net/types"
 
+import { CAPS_HAIKU_45, CAPS_OPUS_48 } from "./capabilities.ts"
 import {
   AnthropicFilesError,
   buildFilesHeaders,
@@ -26,6 +27,7 @@ import {
   MIN_EXPIRES_IN_SECONDS,
   uploadAnthropicFile,
 } from "./files-api.ts"
+import { createAnthropicFileStore } from "./media-upload.ts"
 
 const META = {
   type: "file",
@@ -265,5 +267,114 @@ describe("buildFilesHeaders: custom auth", () => {
     expect(lower.filter((k) => k === "anthropic-beta")).toEqual(["anthropic-beta"])
     expect(h["Anthropic-Beta"]).toBe("gw-beta-1")
     expect(h["X-Gateway-Key"]).toBe("g1")
+  })
+})
+
+describe("createAnthropicFileStore (core ProviderFileStore over the Files API)", () => {
+  const deps = (client: NetworkClient) => ({
+    auth: { kind: "api-key", key: "sk-test" } as ProviderAuth,
+    networkClient: client,
+    sessionId: "s1",
+  })
+  const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+  it("accepts images, PDF and text docs for a PDF model; rejects Office, audio, video", () => {
+    const store = createAnthropicFileStore(
+      { capabilities: CAPS_OPUS_48 },
+      deps(fake(200, META).client),
+    )
+    expect(store.id).toBe("anthropic")
+    for (const m of ["image/png", "IMAGE/JPEG", "application/pdf", "text/plain", "text/csv"]) {
+      expect(store.accepts(m, "claude-opus-4-8")).toBe(true)
+    }
+    for (const m of ["text/markdown", "application/json"]) {
+      expect(store.accepts(m, "claude-opus-4-8")).toBe(true)
+    }
+    for (const m of [DOCX, "audio/mpeg", "video/mp4", "image/bmp", "application/zip"]) {
+      expect(store.accepts(m, "claude-opus-4-8")).toBe(false)
+    }
+  })
+
+  it("an image-only model accepts images only", () => {
+    const store = createAnthropicFileStore(
+      { capabilities: CAPS_HAIKU_45 },
+      deps(fake(200, META).client),
+    )
+    expect(store.accepts("image/webp", "claude-haiku-4-5")).toBe(true)
+    expect(store.accepts("application/pdf", "claude-haiku-4-5")).toBe(false)
+    expect(store.accepts("text/plain", "claude-haiku-4-5")).toBe(false)
+  })
+
+  it("uploads text-like types as text/plain and keeps other types", () => {
+    const store = createAnthropicFileStore(
+      { capabilities: CAPS_OPUS_48 },
+      deps(fake(200, META).client),
+    )
+    expect(store.uploadMimeType?.("text/csv")).toBe("text/plain")
+    expect(store.uploadMimeType?.("application/json")).toBe("text/plain")
+    expect(store.uploadMimeType?.("application/pdf")).toBe("application/pdf")
+    expect(store.uploadMimeType?.("image/png")).toBe("image/png")
+  })
+
+  it("upload POSTs the clamped expiry and maps expires_at to epoch ms", async () => {
+    const { client, seen } = fake(200, { ...META, expires_at: "2026-11-16T16:16:45.000Z" })
+    const store = createAnthropicFileStore({ capabilities: CAPS_OPUS_48 }, deps(client))
+    const ac = new AbortController()
+    const out = await store.upload({
+      bytes: new TextEncoder().encode("hi"),
+      filename: "a.txt",
+      mimeType: "text/plain",
+      expiresInSeconds: 10,
+      signal: ac.signal,
+    })
+    expect(out).toEqual({ id: META.id, expiresAt: Date.parse("2026-11-16T16:16:45.000Z") })
+    expect(seen[0]!.url).toBe(FILES_URL)
+    expect(seen[0]!.signal).toBe(ac.signal)
+    expect(new TextDecoder().decode(seen[0]!.body as Uint8Array)).toContain(
+      `name="expires_in_seconds"\r\n\r\n${MIN_EXPIRES_IN_SECONDS}\r\n`,
+    )
+  })
+
+  it("upload errors keep the HTTP status for the core pass", async () => {
+    const store = createAnthropicFileStore(
+      { capabilities: CAPS_OPUS_48 },
+      deps(fake(413, { error: { type: "request_too_large", message: "big" } }).client),
+    )
+    const err = await store
+      .upload({
+        bytes: new Uint8Array(1),
+        filename: "a",
+        mimeType: "image/png",
+        expiresInSeconds: 3600,
+      })
+      .then(
+        () => undefined,
+        (e: unknown) => e,
+      )
+    expect(err).toBeInstanceOf(AnthropicFilesError)
+    expect((err as AnthropicFilesError).status).toBe(413)
+  })
+
+  it("metadata gives null for a 404 and delete calls DELETE", async () => {
+    const gone = fake(404, { error: { type: "not_found_error", message: "x" } })
+    const store404 = createAnthropicFileStore({ capabilities: CAPS_OPUS_48 }, deps(gone.client))
+    expect(await store404.metadata?.("file_x")).toBeNull()
+    const ok = fake(200, { id: "file_x", type: "file_deleted" })
+    const store = createAnthropicFileStore({ capabilities: CAPS_OPUS_48 }, deps(ok.client))
+    await store.delete("file_x")
+    expect(ok.seen[0]!.method).toBe("DELETE")
+    expect(ok.seen[0]!.url).toBe(`${FILES_URL}/file_x`)
+  })
+
+  it("isMissingFileError matches only a not_found 404 about a file", () => {
+    const store = createAnthropicFileStore(
+      { capabilities: CAPS_OPUS_48 },
+      deps(fake(200, META).client),
+    )
+    const nf = JSON.stringify({
+      error: { type: "not_found_error", message: "File `file_a` not found." },
+    })
+    expect(store.isMissingFileError?.(404, nf, ["file_a"])).toBe(true)
+    expect(store.isMissingFileError?.(400, nf, ["file_a"])).toBe(false)
   })
 })
