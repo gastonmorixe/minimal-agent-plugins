@@ -23,10 +23,12 @@ import {
   validateOpenAIRequest,
 } from "@minimal-agent/core/plugin-api/llm/openai-chat"
 import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { MediaLimits } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { clinepassApiKeyAuth } from "./auth.ts"
+import { clinepassMediaLimits } from "./input-formats.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -61,6 +63,11 @@ export const clinepassAdapter: ProviderAdapter = {
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
+  },
+
+  /** Images only on vision models (`image_url`), core default sizes. */
+  mediaLimits(model: ModelEntry): MediaLimits {
+    return clinepassMediaLimits(model)
   },
 
   async *run(
