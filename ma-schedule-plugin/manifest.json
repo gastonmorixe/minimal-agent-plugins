@@ -11,25 +11,25 @@
           "type": "tool",
           "tool": {
             "name": "CronCreate",
-            "description": "Schedule a prompt to run on a cron schedule or at an interval. Use this tool to do a task after a time. Use it also to examine a deploy or a pull request at an interval until it is stable. Do not use this tool to show or cancel a task. Use `ScheduleCronList` or `ScheduleCronDelete` for that.\n\nDo not schedule a push, a delete or a deploy unless the user approved it before. The tool gives the new task with its id, its schedule and its next fire time.",
+            "description": "Schedule a prompt to run on a cron schedule or at an interval. Use it to do a task after a time. Use it also to examine a deploy or a pull request until it is stable. To show or cancel a task, use `ScheduleCronList` or `ScheduleCronDelete`. Do not schedule a push, a delete or a deploy unless the user approved it. The tool gives the new task with its id, schedule and next fire time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "prompt": {
                   "type": "string",
-                  "description": "The prompt to run each time the task fires. You must give this value. The prompt goes into the session as a user turn. This occurs between turns, and not during a response."
+                  "description": "Necessary. The prompt to run at each fire. It goes into the session as a user turn, between turns, not during a response."
                 },
                 "cron": {
                   "type": "string",
-                  "description": "A standard cron expression with 5 fields: minute, hour, day of the month, month, day of the week. The tool uses the local time. You can use `*`, ranges (`1-5`), steps (`*/15`) and sets of values (`1,15,30`). For example, `0 9 * * 1-5` is 9 AM on each weekday. Give this value or `every`, not the two. If you give the two, the tool uses `cron`."
+                  "description": "A standard 5-field cron expression (minute, hour, day of month, month, day of week) in local time. You can use `*`, ranges (`1-5`), steps (`*/15`) and sets (`1,15,30`). For example, `0 9 * * 1-5` is 9 AM on weekdays. Give this value or `every`."
                 },
                 "every": {
                   "type": "string",
-                  "description": "An interval in usual words, for example `5m`, `30m`, `2h`, `1d` or `2 hours`. The text can start with the word `every`. The tool changes an interval of one minute or more to a cron schedule. If the interval does not divide into a cron step, the tool adjusts it and tells you. A task that runs again with an interval of less than one minute (for example, `10s`) runs at that interval. Give this value or `cron`."
+                  "description": "An interval, for example `5m`, `2h`, `1d` or `2 hours`. The tool changes an interval of one minute or more to a cron schedule, and adjusts it to a cron step. Give this value or `cron`."
                 },
                 "recurs": {
                   "type": "boolean",
-                  "description": "Set to `false` for a task that runs one time. The default is `true`: the task runs again on its schedule. The tool deletes a one-time task after it fires. A session can have a maximum of 50 tasks. The tool removes a task that runs again 7 days after you make it."
+                  "description": "The default is `true`. Set `false` for a one-time task, which the tool deletes after it fires. The maximum is 50 tasks for each session. A task that runs again stops after 7 days."
                 }
               },
               "required": ["prompt"],
@@ -50,7 +50,7 @@
           "type": "tool",
           "tool": {
             "name": "CronList",
-            "description": "Show the scheduled tasks of this session. Use this tool to find which tasks there are, or before you cancel or change a task. Do not use this tool to change a task. Use `ScheduleCronReschedule` or `ScheduleCronDelete` for that. The tool gives the id, the schedule, the next fire time and the prompt of each task.",
+            "description": "Show the scheduled tasks of this session, for example before you cancel or change one. To change a task, use `ScheduleCronReschedule` or `ScheduleCronDelete`. The tool gives the id, schedule, next fire time and prompt of each task.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -71,13 +71,13 @@
           "type": "tool",
           "tool": {
             "name": "CronDelete",
-            "description": "Cancel a scheduled task with its 8-character id. Use this tool when a task is complete, or when the user does not want the task. Do not use this tool to make a task wait longer. Use `ScheduleCronReschedule` for that. The tool gives the id that it removed and the number of tasks that stay.",
+            "description": "Cancel a scheduled task with its 8-character id, when the task is complete or the user does not want it. To change the fire time, use `ScheduleCronReschedule`. The tool gives the removed id and the number of tasks that stay.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The 8-character id of the task to cancel."
+                  "description": "The 8-character task id."
                 }
               },
               "required": ["id"],
@@ -98,21 +98,21 @@
           "type": "tool",
           "tool": {
             "name": "CronReschedule",
-            "description": "Change when a scheduled task fires next. Use this tool to set a new interval for a task, or to move the time of a one-time task. Do not use this tool to make a task. Use `ScheduleCronCreate` for that. The tool gives the task id, the next fire time, and the interval or the schedule that follows.",
+            "description": "Change the next fire time of a scheduled task. Use it to set a new interval, or to move a one-time task to a different time. To make a task, use `ScheduleCronCreate`. The tool gives the task id, the new interval and the next fire time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The 8-character id of the task to change. You must give this value."
+                  "description": "Necessary. The 8-character task id."
                 },
                 "every": {
                   "type": "string",
-                  "description": "A new interval, for example `30s`, `5m` or `2h`. The task fires one interval after the request. Then a task that runs again fires at this interval, and not on its cron schedule. A one-time task fires one time only. Give this value or `nextAtMs`. If you give the two, the tool uses `every`."
+                  "description": "A new interval for all subsequent fires, for example `30s`, `5m` or `2h`. Give this or `nextAtMs`."
                 },
                 "nextAtMs": {
                   "type": "number",
-                  "description": "A Unix time in milliseconds for the next fire. A time before the time of the request gives an error. The tool uses this time for one fire only. Then a cron task goes back to its cron schedule, and a task with an interval goes back to its interval. A one-time task fires at this time. Give this value or `every`."
+                  "description": "A Unix time in milliseconds for one next fire. Then the task goes back to its schedule. Give this value or `every`."
                 }
               },
               "required": ["id"],

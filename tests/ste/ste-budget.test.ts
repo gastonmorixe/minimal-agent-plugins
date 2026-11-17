@@ -9,13 +9,18 @@
  */
 
 import { execFileSync } from "node:child_process"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
 import { PLUGINS_ROOT } from "./surfaces.ts"
 import {
   budgetWords,
+  descriptionTexts,
   LOOSE_WORDS,
+  MAX_DESCRIPTION_CHARS,
   PER_TOOL_LOOSE,
   parseToolWords,
   RAISES,
@@ -211,5 +216,55 @@ describe("per-tool budget: mutation proof", () => {
     const source = `export const TOOL_WORDS: Readonly<Record<string, number>> = {\n  Bash: 386,\n  "Task": 562,\n}`
     expect(parseToolWords(source)).toEqual({ Bash: 386, Task: 562 })
     expect(parseToolWords("export const PER_TOOL_MAX = 751")).toBeNull()
+  })
+})
+
+describe("description length cap (MAX_DESCRIPTION_CHARS)", () => {
+  const texts = descriptionTexts()
+
+  test("the golden yields every tool and param description", () => {
+    expect(texts.filter((t) => t.path === "description").length).toBe(toolWords().length)
+    expect(texts.length).toBeGreaterThan(200)
+  })
+
+  test("no tool or param description is longer than the cap", () => {
+    const over = texts
+      .filter((t) => t.chars > MAX_DESCRIPTION_CHARS)
+      .map((t) => `${t.tool} ${t.path}: ${t.chars} chars`)
+    expect(over).toEqual([])
+  })
+
+  test("the cap is the value the user set", () => {
+    expect(MAX_DESCRIPTION_CHARS).toBe(500)
+  })
+
+  test("mutation: a planted long description is caught", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ste-cap-"))
+    const file = join(dir, "golden.json")
+    const golden = {
+      requests: [
+        {
+          tools: [
+            {
+              name: "Probe",
+              description: "x".repeat(MAX_DESCRIPTION_CHARS + 1),
+              input_schema: {
+                type: "object",
+                properties: {
+                  a: { type: "string", description: "y".repeat(MAX_DESCRIPTION_CHARS) },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    }
+    writeFileSync(file, JSON.stringify(golden))
+    const rows = descriptionTexts(file)
+    rmSync(dir, { recursive: true, force: true })
+    expect(rows.map((r) => [r.path, r.chars > MAX_DESCRIPTION_CHARS])).toEqual([
+      ["description", true],
+      ["input_schema.properties.a", false],
+    ])
   })
 })

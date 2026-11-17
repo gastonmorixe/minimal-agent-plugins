@@ -1,16 +1,11 @@
 {
   "version": 1,
-  "generated": "2026-11-17T11:56:48.165Z",
+  "generated": "2026-11-17T13:05:32.872Z",
   "entries": [
     {
       "file": "ma-acp-plugin/manifest.json",
       "rule": "ste-s13-paragraph",
       "count": 1
-    },
-    {
-      "file": "ma-agent-cloud/PROMPT.md",
-      "rule": "ste-s13-paragraph",
-      "count": 2
     },
     {
       "file": "ma-agent-identity-plugin/manifest.json",
@@ -38,31 +33,6 @@
       "count": 1
     },
     {
-      "file": "ma-ask-mode-plugin/PROMPT.md",
-      "rule": "ste-s15-slash",
-      "count": 1
-    },
-    {
-      "file": "ma-chrome-cdp-plugin/manifest.json",
-      "rule": "ste-s15-slash",
-      "count": 1
-    },
-    {
-      "file": "ma-compact-plugin/manifest.json",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-computer-use-plugin/manifest.json",
-      "rule": "ste-s15-slash",
-      "count": 2
-    },
-    {
-      "file": "ma-config-plugin/manifest.json",
-      "rule": "ste-s14-abbreviation",
-      "count": 1
-    },
-    {
       "file": "ma-diagnostics-plugin/manifest.json",
       "rule": "ste-s13-paragraph",
       "count": 1
@@ -75,31 +45,6 @@
     {
       "file": "ma-diagnostics-plugin/manifest.json",
       "rule": "ste-s18-fragment",
-      "count": 1
-    },
-    {
-      "file": "ma-diff-view-plugin/manifest.json",
-      "rule": "ste-s18-fragment",
-      "count": 1
-    },
-    {
-      "file": "ma-emit-output-plugin/manifest.json",
-      "rule": "ste-s15-slash",
-      "count": 2
-    },
-    {
-      "file": "ma-emit-output-plugin/manifest.json",
-      "rule": "ste-s17-modal",
-      "count": 1
-    },
-    {
-      "file": "ma-emit-output-plugin/manifest.json",
-      "rule": "ste-s7-passive",
-      "count": 1
-    },
-    {
-      "file": "ma-emit-output-plugin/PROMPT.md",
-      "rule": "ste-s13-paragraph",
       "count": 1
     },
     {
@@ -118,113 +63,13 @@
       "count": 1
     },
     {
-      "file": "ma-intercom-plugin/manifest.json",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-llm-cursor-plugin/prompts/tool-catalog.md",
-      "rule": "ste-s15-slash",
-      "count": 1
-    },
-    {
       "file": "ma-llm-cursor-plugin/scripts/probe-carry.ts",
       "rule": "ste-s18-fragment",
       "count": 1
     },
     {
-      "file": "ma-memory-plugin/prompts/summarize.tmpl.md",
-      "rule": "ste-s14-abbreviation",
-      "count": 1
-    },
-    {
       "file": "ma-quota-status-plugin/manifest.json",
       "rule": "ste-s15-slash",
-      "count": 1
-    },
-    {
-      "file": "ma-schedule-plugin/manifest.json",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-schedule-plugin/manifest.json",
-      "rule": "ste-s15-slash",
-      "count": 1
-    },
-    {
-      "file": "ma-schedule-plugin/manifest.json",
-      "rule": "ste-s18-fragment",
-      "count": 1
-    },
-    {
-      "file": "ma-session-history-plugin/manifest.json",
-      "rule": "ste-s15-slash",
-      "count": 2
-    },
-    {
-      "file": "ma-session-history-plugin/manifest.json",
-      "rule": "ste-s18-fragment",
-      "count": 1
-    },
-    {
-      "file": "ma-session-info-plugin/manifest.json",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-session-info-plugin/manifest.json",
-      "rule": "ste-s14-abbreviation",
-      "count": 1
-    },
-    {
-      "file": "ma-session-info-plugin/manifest.json",
-      "rule": "ste-s15-slash",
-      "count": 1
-    },
-    {
-      "file": "ma-skills-plugin/PROMPT.md",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-sub-agents-plugin/lib/library.ts",
-      "rule": "ste-s13-paragraph",
-      "count": 5
-    },
-    {
-      "file": "ma-sub-agents-plugin/lib/library.ts",
-      "rule": "ste-s15-slash",
-      "count": 5
-    },
-    {
-      "file": "ma-sub-agents-plugin/lib/library.ts",
-      "rule": "ste-s17-modal",
-      "count": 1
-    },
-    {
-      "file": "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-sub-agents-plugin/prompts/result-contract.tmpl.md",
-      "rule": "ste-s17-modal",
-      "count": 1
-    },
-    {
-      "file": "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
-      "rule": "ste-s13-paragraph",
-      "count": 1
-    },
-    {
-      "file": "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
-      "rule": "ste-s17-modal",
-      "count": 1
-    },
-    {
-      "file": "ma-tasks-plugin/manifest.json",
-      "rule": "ste-s13-paragraph",
       "count": 1
     },
     {

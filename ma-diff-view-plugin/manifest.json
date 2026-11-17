@@ -12,17 +12,17 @@
           "tool": {
             "name": "ShowDiff",
             "aliases": ["show_diff"],
-            "description": "Show a diff in the `diff -u` format to the user, in ANSI colors. Use this tool when the diff is the primary content of your response. Do not use it for a hunk in a longer text. Use the `<ma::emit::diff>` tag for that. Do not put the patch text directly in your response.\n\nThe tool gives you the patch text with no change. Only the user sees the diff in color. Added lines are lime green, and removed lines are hot pink.",
+            "description": "Show a diff in the `diff -u` format to the user, in ANSI colors. Use it when the diff is the primary content of your response. For a hunk in a longer text, use the `<ma::emit::diff>` tag. Do not put the patch text directly in your response.\n\nThe tool gives you the patch text with no change. Only the user sees the colors: added lines are lime green, removed lines hot pink.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "patch": {
                   "type": "string",
-                  "description": "The full diff text to show, in the `diff -u` format. For example, the output of `git diff`."
+                  "description": "The full diff text in the `diff -u` format, for example from `git diff`."
                 },
                 "title": {
                   "type": "string",
-                  "description": "Optional. A title that the user sees above the diff."
+                  "description": "A title above the diff."
                 }
               },
               "required": ["patch"],

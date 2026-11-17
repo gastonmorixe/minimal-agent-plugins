@@ -80,7 +80,8 @@ describe("STE coverage", () => {
       s.file.endsWith("ma-core-tools-plugin/tool-text.ts"),
     )
     expect(toolText.length).toBeGreaterThanOrEqual(30)
-    expect(toolText.some((s) => s.text.includes("timeout in milliseconds"))).toBe(true)
+    // Pin one PARAMS value by its text, so a scanner that drops the map fails.
+    expect(toolText.some((s) => s.text.includes("The time limit in milliseconds"))).toBe(true)
   })
 
   test("the core binary guard param is a surface", () => {

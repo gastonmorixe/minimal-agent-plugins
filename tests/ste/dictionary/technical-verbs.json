@@ -75,11 +75,6 @@
     "reason": "read a file or a plugin into memory"
   },
   {
-    "word": "navigate",
-    "category": "2b",
-    "reason": "go to a different page or URL in a browser"
-  },
-  {
     "word": "print",
     "category": "2a",
     "reason": "write text to a terminal or to paper"
@@ -98,11 +93,6 @@
     "word": "save",
     "category": "2b",
     "reason": "write data to a file so that it stays after the program stops"
-  },
-  {
-    "word": "scroll",
-    "category": "2b",
-    "reason": "move the view of a page or a list up or down"
   },
   {
     "word": "sort",

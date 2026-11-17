@@ -41,8 +41,11 @@ export const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-ha
  * the budget is set to the measured value. The ratchet blocks growth from here.
  * Lower it by hand after a real cut. The lower tolerance stops it sitting
  * loose.
+ *
+ * 2026-11-17 STE pass (ASD-STE100 Issue 9) with the 500-character cap per
+ * description (`MAX_DESCRIPTION_CHARS`): from 8163 to 6847 words.
  */
-export const TOOL_BLOCK_WORDS = 8163
+export const TOOL_BLOCK_WORDS = 6847
 
 /** How far below {@link TOOL_BLOCK_WORDS} the tree may drift before it must be lowered. */
 export const LOOSE_WORDS = 50
@@ -58,52 +61,52 @@ export const LOOSE_WORDS = 50
  * prints the table.
  */
 export const TOOL_WORDS: Readonly<Record<string, number>> = {
-  BackgroundLogs: 127,
-  BackgroundRun: 184,
+  BackgroundLogs: 115,
+  BackgroundRun: 183,
   BackgroundStatus: 60,
-  BackgroundStop: 89,
-  Bash: 386,
-  ChromeCDP: 414,
-  CompactContext: 168,
-  Computer: 751,
+  BackgroundStop: 86,
+  Bash: 121,
+  ChromeCDP: 346,
+  CompactContext: 162,
+  Computer: 646,
   DiffViewerShowDiff: 91,
-  Edit: 25,
-  Fetch: 406,
-  FilesStats: 85,
-  Glob: 178,
-  Grep: 222,
+  Edit: 24,
+  Fetch: 405,
+  FilesStats: 62,
+  Glob: 119,
+  Grep: 168,
   IntercomInbox: 74,
   IntercomPeers: 141,
-  IntercomSend: 180,
+  IntercomSend: 176,
   LockStatus: 175,
-  MemoryTool: 267,
-  Mode: 156,
-  ModelInfo: 127,
-  PromptDelete: 53,
-  PromptEdit: 73,
+  MemoryTool: 266,
+  Mode: 65,
+  ModelInfo: 74,
+  PromptDelete: 49,
+  PromptEdit: 71,
   PromptList: 48,
-  PromptNew: 112,
-  PromptShow: 54,
-  Read: 287,
+  PromptNew: 111,
+  PromptShow: 48,
+  Read: 108,
   ScheduleCronCreate: 214,
-  ScheduleCronDelete: 55,
-  ScheduleCronList: 45,
+  ScheduleCronDelete: 44,
+  ScheduleCronList: 37,
   ScheduleCronReschedule: 90,
-  SessionHistory: 340,
-  SessionInfo: 122,
-  Skill: 158,
-  Speak: 173,
-  SpeakStatus: 67,
-  SpeakStop: 70,
-  SubAgentsAgentOutput: 64,
-  SubAgentsAgentResult: 66,
-  SubAgentsAgentStatus: 70,
-  SubAgentsListAgents: 60,
+  SessionHistory: 281,
+  SessionInfo: 69,
+  Skill: 153,
+  Speak: 162,
+  SpeakStatus: 60,
+  SpeakStop: 65,
+  SubAgentsAgentOutput: 58,
+  SubAgentsAgentResult: 61,
+  SubAgentsAgentStatus: 60,
+  SubAgentsListAgents: 59,
   SubAgentsMailbox: 120,
-  SubAgentsSpawnAgent: 592,
+  SubAgentsSpawnAgent: 504,
   SubAgentsStopAgent: 84,
-  Task: 562,
-  WebSearch: 224,
+  Task: 467,
+  WebSearch: 211,
   Write: 54,
 }
 
@@ -136,6 +139,27 @@ export const TARGET = {
   owner: "Gaston",
   note: "Cut the tools above 250 words by hand, one tool per change, and lower its TOOL_WORDS entry with each cut.",
 } as const
+
+/**
+ * The maximum length of ONE description string that ships in the tool block:
+ * a tool `description` or a param `description` at any depth. Set by the
+ * user (2026-11-17): a description keeps only the most important part.
+ *
+ * Counted in UTF-16 code units (`string.length`) of the text as it ships in
+ * the request, after the harness builds it, so it covers text that core adds
+ * (for example the `binary` param).
+ */
+export const MAX_DESCRIPTION_CHARS = 500
+
+/** One shipped description string with its place and length. */
+export interface DescriptionText {
+  /** Wire tool name. */
+  tool: string
+  /** `description` for the tool, or the param path, for example `input_schema.properties.action`. */
+  path: string
+  /** Length in UTF-16 code units. */
+  chars: number
+}
 
 /** Tools that exist only in a test fixture, so they are not shipped text. */
 const FIXTURE_ONLY = new Set(["FixtureThrow"])
@@ -256,5 +280,57 @@ export function unloggedRaises(
     )
     if (!logged) out.push(`${tool}: ${from} -> ${to} has no RAISES row with a reason`)
   }
+  return out
+}
+
+/**
+ * Every description string of every shipped tool, with its length.
+ *
+ * @param path - The request golden to read.
+ * @returns One row per description string, tool first, then params in order.
+ */
+export function descriptionTexts(path: string = GOLDEN): DescriptionText[] {
+  const golden = JSON.parse(readFileSync(path, "utf8")) as unknown
+  const out: DescriptionText[] = []
+  const seen = new Set<string>()
+
+  const walkSchema = (tool: string, value: unknown, at: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => walkSchema(tool, item, `${at}[${index}]`))
+      return
+    }
+    if (!value || typeof value !== "object") return
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const next = at ? `${at}.${key}` : key
+      if (key === "description" && typeof child === "string") {
+        out.push({ tool, path: at || "description", chars: child.length })
+      } else {
+        walkSchema(tool, child, next)
+      }
+    }
+  }
+
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item)
+      return
+    }
+    if (!value || typeof value !== "object") return
+    const node = value as Record<string, unknown>
+    if (
+      typeof node.name === "string" &&
+      node.input_schema &&
+      typeof node.description === "string"
+    ) {
+      if (!FIXTURE_ONLY.has(node.name) && !seen.has(node.name)) {
+        seen.add(node.name)
+        out.push({ tool: node.name, path: "description", chars: node.description.length })
+        walkSchema(node.name, node.input_schema, "input_schema")
+      }
+    }
+    for (const child of Object.values(node)) walk(child)
+  }
+
+  walk(golden)
   return out
 }

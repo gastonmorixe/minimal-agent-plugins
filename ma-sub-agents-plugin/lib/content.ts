@@ -76,7 +76,8 @@ export function fleetText(records: readonly SubagentRecord[], nowMs: number): st
   const s = fleetStats(records)
   const head = `Fleet: ${s.running} running · ${s.queued} queued · ${s.done} done · ${s.failed} failed · ${s.stopped} stopped · ${fmtSpend(s)} total`
   const rows = records.map((r) => recordLine(r, nowMs))
-  const tail = s.done > 0 ? "\nPull a finished worker's deliverable with SubAgentsAgentResult <id>." : ""
+  const tail =
+    s.done > 0 ? "\nPull a finished worker's deliverable with SubAgentsAgentResult <id>." : ""
   return `${head}\n\n${rows.join("\n")}${tail}`
 }
 

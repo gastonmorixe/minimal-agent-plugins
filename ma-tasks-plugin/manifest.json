@@ -23,7 +23,7 @@
           "type": "tool",
           "tool": {
             "name": "Task",
-            "description": "Make and monitor the task board of this session. The user sees the board live.\n\nUse this tool for work of 3 or more steps. Also use it when the user tells you to make a sequence of steps. First, use `add_many` with `tasks` to add all the steps. Then use `start` and `done` with the task id from the board. Do not use this tool for small work of 1 or 2 steps.\n\nDo not use the board to record information for subsequent sessions. Memory keeps that information. Do not write the board again as text in your response. Use `canceled` for a task that you stopped, and `done` for a task that you completed. A completed parent task is `done`, not `canceled`.\n\nThe tool gives an `OK` line. After it, the tool gives the updated board or a short line. A short line occurs only for `start`, `done` and `status`, and only when full results are off.",
+            "description": "Make and monitor the task board of this session. The user sees the board live. Use it for 3 or more steps. Do not use this tool for small work of 1 or 2 steps. Use `add_many` with `tasks` to add all steps, then `start` and `done` with the board id.\n\nDo not write the board again as text. Use `canceled` for a task that you stopped, and `done` for a task that you completed. A completed parent task is `done`, not `canceled`. The tool gives an `OK` line and the board.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -42,31 +42,31 @@
                     "list",
                     "clear"
                   ],
-                  "description": "The operation to do:\n- `add`: add one task.\n- `add_many`: add a task tree.\n- `replace_plan`: remove all the tasks and add a new task tree.\n- `update`: change a title or a status.\n- `status`: set a new status.\n- `start`: set the task to `doing`. The parent also starts.\n- `done`: set the task to `done`. When the last open subtask closes, the parent also becomes `done` automatically. While other subtasks stay open, the parent stays `doing`.\n- `remove`: remove a task and its subtasks. Use it for a task that did not start.\n- `reorder`: change the sequence of the top-level tasks.\n- `list`: show the board.\n- `clear`: remove all the tasks.\n\nIf the tool rejects your input, try again one time. Do not add the same tasks again one at a time."
+                  "description": "The operation:\n- `start`: set the task to `doing`. The parent also starts.\n- `done`: set the task to `done`. After the last open subtask, the parent also becomes `done` automatically. Before that, it stays `doing`.\n- `remove`: remove a task and its subtasks.\n- `replace_plan`: replace the board with a new tree.\nIf the tool rejects your input, try again one time."
                 },
                 "id": {
-                  "description": "The task id from the board or from the last Task result, for example `1` or `1a`. You must give this value for `update`, `status`, `start`, `done` and `remove`."
+                  "description": "Necessary for `update`, `status`, `start`, `done` and `remove`. The task id from the board or the last result, for example `1` or `1a`."
                 },
                 "title": {
                   "type": "string",
-                  "description": "The task title, on one line. You must give this value for `add`. For `update`, give a title, a status or the two."
+                  "description": "Necessary for `add`. The task title, on one line. For `update`, give a title, a status or the two."
                 },
                 "tasks": {
                   "type": "array",
-                  "description": "The task tree for `add_many` or `replace_plan`. This is the recommended value. Each item is `{title, children?}`. The `children` value is an array of subtask titles, with a depth of 2 only. Give only one of `tasks`, `items` or `titles`. Do not give `parent` with this value.\n\nWhen all the subtasks are closed, the parent becomes `done` automatically. Thus, do not use `done` on the parent. Do not change the array to a string.",
+                  "description": "The recommended task tree for `add_many` or `replace_plan`. Each item is `{title, children?}`. Give only one of `tasks`, `items` or `titles`, and no `parent`.\n\nDo not use `done` on the parent, because the parent becomes `done` automatically. Do not change the array to a string.",
                   "items": {
                     "type": "object",
                     "properties": {
                       "title": {
                         "type": "string",
-                        "description": "The title of a top-level task."
+                        "description": "A top-level task title."
                       },
                       "children": {
                         "type": "array",
                         "items": {
                           "type": "string"
                         },
-                        "description": "Optional. The subtask titles of this parent. Give strings, not objects. The depth is 2 only."
+                        "description": "Optional. The subtask titles, as strings, at depth 2."
                       }
                     },
                     "required": ["title"],
@@ -78,24 +78,24 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "An array of task titles, with no subtasks. Give only one of `tasks`, `items` or `titles`. Use `titles` only for tasks with no subtasks, or for subtasks of one `parent`."
+                  "description": "Task titles with no subtasks, or the subtasks of one `parent`."
                 },
                 "items": {
                   "type": "array",
-                  "description": "An alias of `tasks`, with the same shape `{title, children?}[]`. The recommended value is `tasks`. Do not give `items` with `tasks`, `titles` or `parent`.",
+                  "description": "An alias of `tasks`, with the same rules. Use `tasks`.",
                   "items": {
                     "type": "object",
                     "properties": {
                       "title": {
                         "type": "string",
-                        "description": "The title of a top-level task."
+                        "description": "A top-level task title."
                       },
                       "children": {
                         "type": "array",
                         "items": {
                           "type": "string"
                         },
-                        "description": "Optional. The subtask titles of this parent. Give strings, not objects. The depth is 2 only."
+                        "description": "Optional. The subtask titles, as strings, at depth 2."
                       }
                     },
                     "required": ["title"],
@@ -103,46 +103,46 @@
                   }
                 },
                 "parent": {
-                  "description": "The parent of this task. The task becomes a subtask of that parent. Give an id in the same shape as `id`. You can use it with `add`, and with `add_many` and `titles`. Do not use it with `tasks` or `items`."
+                  "description": "The parent id of the new subtask, in the shape of `id`. Use it with `add`, or with `add_many` and `titles`. Do not use it with `tasks` or `items`."
                 },
                 "after": {
-                  "description": "Optional, for `add` and a top-level task only. The id of a top-level task. The tool puts the new task after that task and after all its subtasks. If the tool cannot find that task, or if it is a subtask, the new task goes at the end. The default position is the end."
+                  "description": "Optional, for a top-level `add`. The new task goes after this top-level task and its subtasks. Without it, or for an unknown or subtask id, the new task goes at the end."
                 },
                 "status": {
                   "type": "string",
                   "enum": ["todo", "doing", "done", "canceled"],
-                  "description": "The new status. You must give this value for `status`. It is optional for `update`. Use `canceled` for a task that you stopped. Use `done` for a task that you completed."
+                  "description": "Necessary for `status`. Optional for `update`. Use `canceled` for a task that you stopped. Use `done` for a task that you completed."
                 },
                 "reason": {
                   "type": "string",
-                  "description": "Optional. The cause that the tool records when you set the status to `canceled`."
+                  "description": "Optional. The cause that the tool records for `canceled`."
                 },
                 "order": {
                   "type": "array",
-                  "description": "The ids of the top-level tasks, in the new sequence. You must give this value for `reorder`. The subtasks move with their parent."
+                  "description": "Necessary for `reorder`. The top-level task ids in the new sequence. Subtasks move with their parent."
                 },
                 "filter": {
                   "type": "string",
                   "enum": ["all", "active", "done", "canceled"],
-                  "description": "A filter for `list`. At this time, the tool ignores it and shows all the tasks."
+                  "description": "A filter for `list`. The tool ignores it at this time."
                 },
                 "query": {
                   "type": "string",
-                  "description": "A substring filter for the titles in `list`. At this time, the tool ignores it."
+                  "description": "A filter for the titles in `list`. The tool ignores it at this time."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
                   "default": "text",
-                  "description": "The format of the result. The default is `text`. With `text`, the tool gives an `OK` line. It also gives the board if the result is not a short line. With `json`, the tool gives the data as JSON."
+                  "description": "The default is `text`. With `json`, the tool gives the same data as JSON."
                 },
                 "parallel": {
                   "type": "boolean",
-                  "description": "For `start`. The tool accepts this value and ignores it. The `start` operation does not change the status of other `doing` tasks."
+                  "description": "For `start`. The tool ignores it, and does not change other `doing` tasks."
                 },
                 "force": {
                   "type": "boolean",
-                  "description": "For `clear`. Set to `true` to clear the board when a task is `doing`. Without it, the tool rejects `clear` in that condition. The default is `false`."
+                  "description": "For `clear`. Set to `true` to clear the board when a task is `doing`. The default is `false`."
                 }
               },
               "required": ["action"],

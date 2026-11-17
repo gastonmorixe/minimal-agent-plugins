@@ -195,7 +195,9 @@ export function renderWidget(
   }
   if (ordered.length > shown.length) {
     const more = ordered.length - shown.length
-    lines.push(color(ansi, ANSI.DGRAY, `   … +${more} more ${GLYPHS.bullet} SubAgentsListAgents for all`))
+    lines.push(
+      color(ansi, ANSI.DGRAY, `   … +${more} more ${GLYPHS.bullet} SubAgentsListAgents for all`),
+    )
   }
   return lines.join("\n")
 }
