@@ -25,12 +25,14 @@
 import type {
   CanonicalBlock,
   CanonicalMessage,
+  FileBlock,
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type {
   CanonicalToolDefinition,
   ToolChoice,
 } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
 import type { ServerToolId } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
 
 import { sanitizeSchemaName, wantsStrictSchema } from "../chat/request-body.ts"
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
@@ -158,6 +160,8 @@ export interface OpenAIResponsesMessageItem {
     | { type: "input_image"; image_url: string; detail?: "low" | "high" | "auto" }
     | { type: "input_image"; file_id: string; detail?: "low" | "high" | "auto" }
     | { type: "input_file"; file_id: string }
+    | { type: "input_file"; file_data: string; filename: string }
+    | { type: "input_file"; file_url: string; filename?: string }
   >
 }
 
@@ -208,7 +212,7 @@ export function buildOpenAIResponsesBody(
   const body: OpenAIResponsesRequestBody = {
     model: model.vendorIds?.firstParty ?? req.modelId,
     instructions: buildInstructions(req),
-    input: buildInputItems(req),
+    input: buildInputItems(req, model.id),
     store: false,
   }
 
@@ -310,15 +314,61 @@ function buildInstructions(req: CanonicalRequest): string {
     .join("\n\n")
 }
 
-function buildInputItems(req: CanonicalRequest): OpenAIResponsesInputItem[] {
+function buildInputItems(req: CanonicalRequest, modelId: string): OpenAIResponsesInputItem[] {
   const items: OpenAIResponsesInputItem[] = []
   for (const msg of req.messages) {
-    appendCanonicalMessage(items, msg)
+    appendCanonicalMessage(items, msg, modelId)
   }
   return items
 }
 
-function appendCanonicalMessage(items: OpenAIResponsesInputItem[], msg: CanonicalMessage): void {
+/** File name extension per document MIME type, for a default `filename`. */
+const FILE_EXTENSION_BY_MIME: Readonly<Record<string, string>> = {
+  "application/pdf": "pdf",
+  "text/plain": "txt",
+  "text/markdown": "md",
+  "text/csv": "csv",
+  "text/tab-separated-values": "tsv",
+  "text/html": "html",
+  "text/css": "css",
+  "application/json": "json",
+  "application/xml": "xml",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+}
+
+/** The `filename` to send: the source name, else `document.<ext>`. */
+function inputFileName(filename: string | undefined, mediaType: string | undefined): string {
+  if (filename) return filename
+  const mime = mediaType?.split(";")[0]?.trim().toLowerCase() ?? ""
+  return `document.${FILE_EXTENSION_BY_MIME[mime] ?? "bin"}`
+}
+
+/**
+ * A file block as a Responses `input_file` part: `file_id` as is, base64 as a
+ * data URL in `file_data` (with a `filename`), a url in `file_url`.
+ */
+function fileToInputPart(block: FileBlock): OpenAIResponsesMessageItem["content"][number] {
+  const src = block.source
+  if (src.kind === "file_id") return { type: "input_file", file_id: src.fileId }
+  if (src.kind === "base64") {
+    return {
+      type: "input_file",
+      file_data: `data:${src.mediaType};base64,${src.data}`,
+      filename: inputFileName(src.filename, src.mediaType),
+    }
+  }
+  return src.filename
+    ? { type: "input_file", file_url: src.url, filename: src.filename }
+    : { type: "input_file", file_url: src.url }
+}
+
+function appendCanonicalMessage(
+  items: OpenAIResponsesInputItem[],
+  msg: CanonicalMessage,
+  modelId: string,
+): void {
   if (msg.role === "tool") {
     for (const block of msg.content) {
       if (block.type === "tool_result") {
@@ -369,9 +419,7 @@ function appendCanonicalMessage(items: OpenAIResponsesInputItem[], msg: Canonica
         }
         break
       case "file":
-        if (block.source.kind === "file_id") {
-          parts.push({ type: "input_file", file_id: block.source.fileId })
-        }
+        parts.push(fileToInputPart(block))
         break
       case "tool_use":
         items.push({
@@ -393,8 +441,16 @@ function appendCanonicalMessage(items: OpenAIResponsesInputItem[], msg: Canonica
         })
         break
       }
-      case "thinking":
       case "audio":
+      case "video":
+        // The Responses API has no audio or video input part. Send a
+        // placeholder, so the model knows an attachment was there.
+        parts.push({
+          type: msg.role === "assistant" ? "output_text" : "input_text",
+          text: unsupportedAttachmentText(block, modelId).text,
+        })
+        break
+      case "thinking":
         // Not represented as input items on Responses.
         break
     }

@@ -134,4 +134,8 @@ export interface ProviderAdapter {
     ctx: import("@minimal-agent/core/plugin-api/llm/provider-auth").RunContext,
   ): AsyncIterable<import("@minimal-agent/core/plugin-api/llm/canonical-events").CanonicalEvent>
   recommendSubagentModels?(): SubagentModelRecommendation[]
+  /** Optional media budget and input formats of one model (host `checkMedia`). */
+  mediaLimits?(
+    model: ModelEntry,
+  ): import("@minimal-agent/core/plugin-api/llm/provider-plugin").MediaLimits
 }

@@ -260,9 +260,11 @@ describe("validateOpenAIRequest — modality degrade", () => {
     const degraded = res.degrade!
     expect(degraded.messages).toHaveLength(1)
     const blocks = degraded.messages[0]!.content
-    expect(blocks).toHaveLength(1)
+    // The image becomes a placeholder text block (no silent drop).
+    expect(blocks).toHaveLength(2)
     expect(blocks[0]!.type).toBe("text")
     expect((blocks[0] as { text: string }).text).toBe("what is this?")
+    expect((blocks[1] as { text: string }).text).toContain("image attachment not sent")
   })
 
   it("returns ok when all modalities match the model", () => {

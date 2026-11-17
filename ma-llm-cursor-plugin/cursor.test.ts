@@ -308,6 +308,7 @@ describe("capabilities seed", () => {
           modalities?: { image: boolean }
         }
         vendorIds?: { cursor?: string }
+        tags?: string[]
       }
     >()
     const models = {
@@ -331,7 +332,8 @@ describe("capabilities seed", () => {
     expect(entries.get("grok-4.6")?.vendorIds?.cursor).toBe("grok-4.6")
     const fast = entries.get("cursor-grok-4.6-high-fast")
     expect(fast?.capabilities.thinking.visible).toBe(true)
-    expect(fast?.capabilities.modalities?.image).toBe(true)
+    expect(fast?.capabilities.modalities?.image).toBe(false)
+    expect(fast?.tags).toContain("vision")
     expect(fast?.capabilities.effort.levels).toEqual(["high"])
     expect(fast?.vendorIds?.cursor).toBe("cursor-grok-4.6-high-fast")
     const nonFast = entries.get("cursor-grok-4.6-high")
@@ -344,8 +346,10 @@ describe("capabilities seed", () => {
       "grok-4.6",
     )
     expect(alias?.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+    // Image input is off (text-only Agent Run encoder); the tag keeps the fact.
     const vision = entries.get("cursor-gpt-5.6-sol-medium")
-    expect(vision?.capabilities.modalities?.image).toBe(true)
+    expect(vision?.capabilities.modalities?.image).toBe(false)
+    expect(vision?.tags).toContain("vision")
     const auto = entries.get("cursor-auto")
     expect(auto?.vendorIds?.cursor).toBe("default")
 

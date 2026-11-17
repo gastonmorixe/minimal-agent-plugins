@@ -22,6 +22,7 @@ import {
 } from "@minimal-agent/core/plugin-api/llm/errors"
 import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
+  MediaLimits,
   ModelRegistrar,
   ProviderPlugin,
   ProviderSetupContext,
@@ -33,6 +34,7 @@ import type {
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
 import { normalizeEndpoint, readGenericEndpointConfig } from "./config.ts"
+import { genericImageOnlyCaps, genericMediaLimits } from "./input-formats.ts"
 import type { ModelEntry, ProviderAdapter, ValidationResult } from "./lib/host-types.ts"
 import { PRICING_GENERIC_ENDPOINT } from "./pricing.ts"
 
@@ -71,6 +73,11 @@ export const genericEndpointAdapter: ProviderAdapter = {
 
   validate(req: CanonicalRequest, model: ModelEntry): ValidationResult {
     return selectedCodec().validate(req, model)
+  },
+
+  /** Images only, when the model has image input (see `input-formats.ts`). */
+  mediaLimits(model: ModelEntry): MediaLimits {
+    return genericMediaLimits(model)
   },
 
   async *run(
@@ -126,8 +133,13 @@ export const genericEndpointAdapter: ProviderAdapter = {
 export function registerGenericEndpointAdHocModel(modelId: string): void {
   if (!capturedModels) return
   const codec = selectedCodec()
-  const { providerModel, effortLevels } = readGenericEndpointConfig()
-  const baseCaps = codec.defaultCapabilities ?? defaultCapabilities()
+  const { providerModel, effortLevels, imageInput } = readGenericEndpointConfig()
+  // Images only (no PDF, audio or video): the user's server formats are not
+  // known. The codec image flag or the user config turns images on.
+  const baseCaps = genericImageOnlyCaps(
+    codec.defaultCapabilities ?? defaultCapabilities(),
+    imageInput,
+  )
   // When the user declares an effort ladder (--effort-levels), advertise it so
   // startup effort validation accepts `--effort <level>`. The codec defaults
   // (e.g. GPT-4o chat) declare none, which otherwise rejects any effort.
