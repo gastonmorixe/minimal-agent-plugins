@@ -36,7 +36,12 @@ function call(i: number, name: string, args: string, deltas: string[]): object[]
       item_id: id,
       delta,
     })),
-    { type: "response.function_call_arguments.done", output_index: i, item_id: id, arguments: args },
+    {
+      type: "response.function_call_arguments.done",
+      output_index: i,
+      item_id: id,
+      arguments: args,
+    },
     { type: "response.output_item.done", output_index: i, item: { ...item, arguments: args } },
   ]
 }
