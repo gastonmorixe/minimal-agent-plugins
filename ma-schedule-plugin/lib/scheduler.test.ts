@@ -20,6 +20,7 @@ function entry(over: Partial<CronEntry> & Pick<CronEntry, "id">): CronEntry {
     ...(over.lastFiredAt !== undefined ? { lastFiredAt: over.lastFiredAt } : {}),
     ...(over.expiresAt !== undefined ? { expiresAt: over.expiresAt } : {}),
     ...(over.nextAtMs !== undefined ? { nextAtMs: over.nextAtMs } : {}),
+    ...(over.intervalMs !== undefined ? { intervalMs: over.intervalMs } : {}),
   }
 }
 
@@ -94,8 +95,8 @@ describe("due — one-shot", () => {
   })
 })
 
-describe("due — dynamic (self-paced)", () => {
-  it("fires at nextAtMs and re-arms by defaultDynamicMs", () => {
+describe("due — dynamic", () => {
+  it("a self-paced task (no intervalMs) fires at nextAtMs and re-arms by defaultDynamicMs", () => {
     const target = ms(2026, 5, 30, 12, 0, 0)
     const e = entry({ id: "dyn00001", pace: "dynamic", recurs: true, nextAtMs: target })
     const now = target + 100
@@ -103,6 +104,47 @@ describe("due — dynamic (self-paced)", () => {
     expect(r.fire.map((x) => x.id)).toEqual(["dyn00001"])
     expect(r.mutated?.[0]?.nextAtMs).toBe(now + 60_000)
     expect(r.mutated?.[0]?.lastFiredAt).toBe(now)
+  })
+
+  it("a self-paced task with no options re-arms by the 5-minute built-in default", () => {
+    const target = ms(2026, 5, 30, 12, 0, 0)
+    const e = entry({ id: "dyn00002", pace: "dynamic", recurs: true, nextAtMs: target })
+    const r = due([e], target)
+    expect(r.mutated?.[0]?.nextAtMs).toBe(target + 5 * 60_000)
+  })
+
+  it("a task with intervalMs re-arms by its own interval, not the default", () => {
+    const target = ms(2026, 5, 30, 12, 0, 0)
+    const e = entry({
+      id: "dyn00003",
+      pace: "dynamic",
+      recurs: true,
+      nextAtMs: target,
+      intervalMs: 30_000,
+    })
+    const r = due([e], target + 100, { defaultDynamicMs: 60_000 })
+    expect(r.fire.map((x) => x.id)).toEqual(["dyn00003"])
+    expect(r.mutated?.[0]?.nextAtMs).toBe(target + 100 + 30_000)
+  })
+
+  it("a 30s interval re-arms at 30s across 3 fires", () => {
+    let e = entry({
+      id: "dyn00004",
+      pace: "dynamic",
+      recurs: true,
+      nextAtMs: ms(2026, 5, 30, 12, 0, 0),
+      intervalMs: 30_000,
+    })
+    const fires: number[] = []
+    // Tick once a second for two minutes, like the 1-second heartbeat.
+    for (let t = e.nextAtMs as number; fires.length < 3; t += 1000) {
+      const r = due([e], t)
+      if (r.fire.length > 0) fires.push(t)
+      if (r.mutated) e = r.mutated[0] as CronEntry
+    }
+    const start = ms(2026, 5, 30, 12, 0, 0)
+    expect(fires).toEqual([start, start + 30_000, start + 60_000])
+    expect(e.nextAtMs).toBe(start + 90_000)
   })
 })
 

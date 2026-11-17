@@ -12,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
 import cmdLoop from "./handlers/cmd_loop.ts"
 import cmdSchedule from "./handlers/cmd_schedule.ts"
-import { CronStore } from "./lib/store.ts"
+import { due } from "./lib/scheduler.ts"
+import { type CronEntry, CronStore } from "./lib/store.ts"
 
 let dir: string
 const SID = "cmd-session"
@@ -60,6 +61,29 @@ describe("/loop", () => {
     const e = store().load()[0]
     expect(e?.pace).toBe("dynamic")
     expect(typeof e?.nextAtMs).toBe("number")
+  })
+
+  it("a /loop 30s task fires every 30s through the scheduler", async () => {
+    const r = await cmdLoop(ctx("30s tail the deploy"))
+    expect(r.kind).toBe("notice")
+    let e = store().load()[0] as CronEntry
+    expect(e).toMatchObject({ pace: "dynamic", intervalMs: 30_000, label: "30s" })
+    const start = e.nextAtMs as number
+    const fires: number[] = []
+    for (let t = start; fires.length < 3; t += 1000) {
+      const d = due([e], t)
+      if (d.fire.length > 0) fires.push(t)
+      if (d.mutated) e = d.mutated[0] as CronEntry
+    }
+    expect(fires).toEqual([start, start + 30_000, start + 60_000])
+  })
+
+  it("a self-paced /loop stores no intervalMs, so it keeps the default cadence", async () => {
+    await cmdLoop(ctx("check CI"))
+    const e = store().load()[0] as CronEntry
+    expect(e.intervalMs).toBeUndefined()
+    const d = due([e], e.nextAtMs as number)
+    expect(d.mutated?.[0]?.nextAtMs).toBe((e.nextAtMs as number) + 5 * 60_000)
   })
 
   it("uses the maintenance prompt for a bare /loop", async () => {

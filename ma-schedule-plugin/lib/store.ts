@@ -246,6 +246,7 @@ export class CronStore {
     }
     if (input.recurs) entry.expiresAt = now + SEVEN_DAYS_MS
     if (input.nextAtMs !== undefined) entry.nextAtMs = input.nextAtMs
+    if (input.intervalMs !== undefined) entry.intervalMs = input.intervalMs
     if (input.label !== undefined) entry.label = input.label
     if (input.source !== undefined) entry.source = input.source
     entries.push(entry)
