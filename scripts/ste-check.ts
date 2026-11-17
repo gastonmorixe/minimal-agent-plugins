@@ -10,29 +10,45 @@
  * Usage:
  *   bun run scripts/ste-check.ts              # gate, exit 1 on a regression
  *   bun run scripts/ste-check.ts --report     # write tests/ste/ste-report.md
- *   bun run scripts/ste-check.ts --write      # record today's counts
+ *   bun run scripts/ste-check.ts --write      # record today's counts (never a raise)
+ *   bun run scripts/ste-check.ts --write --introduce <rule-id>
+ *                                             # let a NEW rule record its prose debt
  *   bun run scripts/ste-check.ts --strict     # fail on any finding, no baseline
  *   bun run scripts/ste-check.ts --dir <p>    # gate one other tree, no baseline
+ *
+ * A finding in the tool block (role `tool` or `param`) and a finding of a
+ * zero-tolerance rule never enter the baseline. The gate fails on each one.
+ *
+ * Extra rules (s19 dictionary, s20 tool names) live in
+ * `tests/ste/extra-rules.ts`. The gate loads that module only when it exists.
+ * Its default export has the `ExtraFindings` signature of `ste-rules.ts`.
  *
  * @module scripts/ste-check
  */
 
 import { execFileSync } from "node:child_process"
-import { writeFileSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 import {
   BASELINE_PATH,
   type Baseline,
   formatFinding,
+  guardRequired,
   improvements,
+  introduceEntries,
+  type ReportOptions,
+  raisedEntries,
   readBaseline,
   regressions,
   reportByFile,
   toEntries,
   toMarkdown,
   writeBaseline,
+  zeroToleranceFindings,
+  zeroToleranceRegressions,
 } from "../tests/ste/ratchet.ts"
+import { type ExtraFindings, RULE_IDS } from "../tests/ste/ste-rules.ts"
 import { allSurfaces, CORE_ROOT, coreSurfaces, PLUGINS_ROOT } from "../tests/ste/surfaces.ts"
 
 interface Options {
@@ -41,17 +57,54 @@ interface Options {
   strict: boolean
   /** A folder to gate on its own. Its findings are printed, never baselined. */
   dir?: string
+  /** With `--write`: new rule ids that may record their prose debt. */
+  introduce: Set<string>
 }
+
+/** The optional extra-rules module, next to the engine. */
+const EXTRA_RULES = resolve(import.meta.dir, "../tests/ste/extra-rules.ts")
+
+/**
+ * Load the extra rules (s19, s20) when `tests/ste/extra-rules.ts` exists.
+ *
+ * @returns The report options with the hook, or no hook.
+ */
+async function loadExtraRules(): Promise<ReportOptions> {
+  if (!existsSync(EXTRA_RULES)) return {}
+  try {
+    const mod = (await import(EXTRA_RULES)) as { default?: unknown; isVerb?: unknown }
+    if (typeof mod.default !== "function") {
+      // The file exists, so its rules are expected. Turning them off with a
+      // warning would pass s19/s20 debt in silence.
+      console.error(`STE: ${EXTRA_RULES} has no default export function.`)
+      process.exit(2)
+    }
+    const isVerb =
+      typeof mod.isVerb === "function" ? (mod.isVerb as (word: string) => boolean) : undefined
+    return { extraFindings: mod.default as ExtraFindings, isVerb }
+  } catch (error) {
+    // A broken extra-rules module must not pass in silence: it is a gate input.
+    console.error(
+      `STE: cannot load ${EXTRA_RULES}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    process.exit(2)
+  }
+}
+
+const REPORT_OPTIONS: ReportOptions = await loadExtraRules()
 
 /** Parse the command line. */
 function parseArgs(argv: readonly string[]): Options {
-  const options: Options = { write: false, report: false, strict: false }
+  const options: Options = { write: false, report: false, strict: false, introduce: new Set() }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === "--write") options.write = true
     else if (arg === "--report") options.report = true
     else if (arg === "--strict") options.strict = true
-    else if (arg === "--dir" && argv[i + 1]) {
+    else if (arg === "--introduce" && argv[i + 1]) {
+      options.introduce.add(argv[i + 1] as string)
+      i++
+    } else if (arg === "--dir" && argv[i + 1]) {
       options.dir = resolve(argv[i + 1] as string)
       i++
     }
@@ -64,7 +117,7 @@ function printReport(options: Options): number {
   const surfaces = options.dir
     ? allSurfaces(options.dir)
     : [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)]
-  const reports = reportByFile(surfaces)
+  const reports = reportByFile(surfaces, REPORT_OPTIONS)
   const entries = toEntries(reports)
   const total = entries.reduce((sum, entry) => sum + entry.count, 0)
 
@@ -106,9 +159,16 @@ function writeMode(options: Options): number {
     console.error("--write needs the repo tree. Do not give --dir.")
     return 2
   }
+  for (const rule of options.introduce) {
+    if (!RULE_IDS.includes(rule)) {
+      console.error(`--introduce: unknown rule id ${rule}`)
+      return 2
+    }
+  }
   const surfaces = [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)]
-  const reports = reportByFile(surfaces)
-  const next = toEntries(reports)
+  const reports = reportByFile(surfaces, REPORT_OPTIONS)
+  // Tool-role, param-role and zero-tolerance findings are never written.
+  let next = toEntries(reports)
 
   // A raise is a merge failure, not a review miss. Without this, a bad edit
   // plus `ste:write` makes the gate green.
@@ -118,30 +178,56 @@ function writeMode(options: Options): number {
   } catch {
     // Two honest cases: a shallow or detached CI clone, or the first commit
     // that adds the baseline. Say which, so the guard is never silently off.
-    console.warn("WARNING: no baseline at the merge base. The raise guard is off.")
-    console.warn("  Expected on the commit that first adds the baseline.")
-    console.warn("  Set STE_SKIP_BASELINE_GUARD=1 to accept this in CI.")
-    base = undefined
-  }
-  if (base) {
-    const raised = next.filter((entry) => {
-      const old = base?.entries.find((e) => e.file === entry.file && e.rule === entry.rule)
-      return entry.count > (old?.count ?? 0)
-    })
-    if (raised.length > 0) {
-      console.error("Refusing to raise the baseline above origin/main:")
-      for (const r of raised)
-        console.error(
-          `  ${r.file} ${r.rule}: ${r.count} (was ${base.entries.find((e) => e.file === r.file && e.rule === r.rule)?.count ?? 0})`,
-        )
-      console.error("Fix the text instead. A raise needs a separate, reviewed change.")
+    if (guardRequired()) {
+      console.error(
+        "STE: no baseline at the merge base, and CI is set. The raise guard cannot run.",
+      )
+      console.error(
+        "  Fetch origin/main, or set STE_SKIP_BASELINE_GUARD=1 on the commit that adds the baseline.",
+      )
       return 1
     }
+    console.warn("WARNING: no baseline at the merge base. The raise guard is off.")
+    console.warn("  Expected on the commit that first adds the baseline.")
+    console.warn("  In CI this fails unless STE_SKIP_BASELINE_GUARD=1.")
+    base = undefined
+  }
+  let working: Baseline | undefined
+  try {
+    working = readBaseline(BASELINE_PATH)
+  } catch {
+    working = undefined
+  }
+  const raised = raisedEntries(next, base, options.introduce, working)
+  if (raised.length > 0 && options.introduce.size > 0) {
+    // One rule at a time: the other raises are not written and stay red.
+    console.log(`Not written (not in --introduce): ${raised.length} entries above their limit.`)
+    next = introduceEntries(next, base, options.introduce, working)
+  } else if (raised.length > 0) {
+    console.error("Refusing to raise the baseline above origin/main:")
+    for (const r of raised) {
+      const was =
+        (
+          base?.entries.find((e) => e.file === r.file && e.rule === r.rule) ??
+          working?.entries.find((e) => e.file === r.file && e.rule === r.rule)
+        )?.count ?? 0
+      console.error(`  ${r.file} ${r.rule}: ${r.count} (was ${was})`)
+    }
+    console.error(
+      "Fix the text instead. A NEW rule records its prose debt with --introduce <rule-id>.",
+    )
+    return 1
   }
 
   writeBaseline(next, BASELINE_PATH)
   const total = next.reduce((sum, entry) => sum + entry.count, 0)
   console.log(`Wrote ${BASELINE_PATH} with ${total} findings in ${reports.length} files.`)
+  const zero = zeroToleranceFindings(reports)
+  if (zero.length > 0) {
+    console.log(
+      `Not written: ${zero.length} zero-tolerance findings (tool block or zero-tolerance rule).`,
+    )
+  }
   return 0
 }
 
@@ -161,9 +247,9 @@ function gate(options: Options): number {
   }
 
   const surfaces = [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)]
-  const reports = reportByFile(surfaces)
+  const reports = reportByFile(surfaces, REPORT_OPTIONS)
   const current = toEntries(reports)
-  const worse = regressions(current, baseline)
+  const worse = [...regressions(current, baseline), ...zeroToleranceRegressions(reports)]
   const better = improvements(current, baseline)
 
   if (options.report) {
@@ -183,7 +269,12 @@ function gate(options: Options): number {
 
   console.log(`\nSTE gate: FAIL (${worse.length} regressions)`)
   for (const item of worse) {
-    const kind = item.reason === "new" ? "new rule in this file" : "above baseline"
+    const kind =
+      item.reason === "new"
+        ? "new rule in this file"
+        : item.reason === "zero-tolerance"
+          ? "zero tolerance: tool block or a clean rule"
+          : "above baseline"
     console.log(`  ${item.file} ${item.rule}: ${item.current} > ${item.baseline} (${kind})`)
   }
   for (const report of reports) {

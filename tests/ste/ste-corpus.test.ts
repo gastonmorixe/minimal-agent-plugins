@@ -19,22 +19,44 @@ import { resolve } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
+import extraRules, { isVerb } from "./extra-rules.ts"
 import {
   BASELINE_PATH,
+  EXEMPT_SNIPPETS,
   formatFinding,
+  guardRequired,
   INTENTIONALLY_EMPTY,
   improvements,
+  introduceEntries,
+  isZeroTolerance,
+  PROMOTE_AT_ZERO,
+  raisedEntries,
   readBaseline,
   regressions,
   reportByFile,
   toEntries,
+  ZERO_TOLERANCE,
+  zeroToleranceFindings,
+  zeroToleranceRegressions,
 } from "./ratchet.ts"
-import { RULE_IDS } from "./ste-rules.ts"
-import { allSurfaces, CORE_ROOT, coreSurfaces, PLUGINS_ROOT } from "./surfaces.ts"
+import { RULE_IDS, type SteFinding } from "./ste-rules.ts"
+import { allSurfaces, CORE_ROOT, coreSurfaces, PLUGINS_ROOT, type Surface } from "./surfaces.ts"
 
 const surfaces = [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)]
-const reports = reportByFile(surfaces)
+// The same extra rules (s19 dictionary, s20 tool names) that `ste-check.ts`
+// loads, so the test suite and the gate give the same answer.
+const reports = reportByFile(surfaces, { extraFindings: extraRules, isVerb })
 const current = toEntries(reports)
+
+/** A one-surface prompt file, for a planted case. */
+function planted(text: string, file = "planted.md", extra: Partial<Surface> = {}): Surface {
+  return { file, locator: "(whole file)", text, line: 1, kind: "prompt-md", ...extra }
+}
+
+/** Every finding of a report list, flat. */
+function flat(list: ReturnType<typeof reportByFile>): SteFinding[] {
+  return list.flatMap((report) => report.findings)
+}
 
 describe("STE corpus", () => {
   test("finds the surfaces it must audit", () => {
@@ -168,7 +190,11 @@ describe("STE corpus", () => {
   test("the baseline covers every file that has a finding today", () => {
     const baseline = readBaseline(BASELINE_PATH)
     const covered = new Set(baseline.entries.map((entry) => entry.file))
-    expect([...reports.map((r) => r.file)].filter((file) => !covered.has(file))).toEqual([])
+    // A zero-tolerance finding (tool block) is never covered: its own test fails.
+    const files = reports
+      .filter((r) => r.findings.some((f) => !isZeroTolerance(f)))
+      .map((r) => r.file)
+    expect(files.filter((file) => !covered.has(file))).toEqual([])
   })
 
   test("a baseline refresh does not hide a new file", () => {
@@ -183,6 +209,189 @@ describe("STE corpus", () => {
   test("the audit does not read its own report or baseline", () => {
     const self = surfaces.filter((s) => s.file.includes("tests/ste/"))
     expect(self).toEqual([])
+  })
+
+  test("tool role has no STE finding", () => {
+    // DESIGN D2: the tool block ships on every request, so every rule is an
+    // error there and nothing enters a baseline. This test stays red until
+    // the tool text rewrite (phase C) lands. That is expected.
+    const lines = zeroToleranceFindings(reports)
+      .filter(({ finding }) => finding.role === "tool" || finding.role === "param")
+      .map(({ file, finding }) => `${formatFinding(file, finding)} [${finding.locator}]`)
+    expect(lines).toEqual([])
+  })
+
+  test("no prose finding of a zero-tolerance rule", () => {
+    const lines = zeroToleranceFindings(reports)
+      .filter(({ finding }) => finding.role !== "tool" && finding.role !== "param")
+      .map(({ file, finding }) => formatFinding(file, finding))
+    expect(lines).toEqual([])
+  })
+
+  test("the baseline holds no tool-role, param-role or zero-tolerance entry", () => {
+    const baseline = readBaseline(BASELINE_PATH)
+    for (const entry of baseline.entries) {
+      expect(ZERO_TOLERANCE.has(entry.rule), `${entry.file} ${entry.rule}`).toBe(false)
+    }
+    // A file whose only findings are tool-role findings has no entry.
+    const proseKeys = new Set(
+      reports.flatMap((r) =>
+        r.findings.filter((f) => !isZeroTolerance(f)).map((f) => `${r.file}\u0000${f.rule}`),
+      ),
+    )
+    for (const entry of baseline.entries) {
+      expect(proseKeys.has(`${entry.file}\u0000${entry.rule}`), `${entry.file} ${entry.rule}`).toBe(
+        true,
+      )
+    }
+  })
+
+  test("a tool-role or param-role finding never becomes a baseline entry", () => {
+    const text = "Takes no input. Use a/b. The job is running."
+    for (const role of ["tool", "param"] as const) {
+      const list = reportByFile([planted(text, "m.json", { role, kind: "manifest" })])
+      expect(flat(list).length).toBeGreaterThan(0)
+      expect(toEntries(list)).toEqual([])
+      const zero = zeroToleranceRegressions(list)
+      expect(zero.length).toBeGreaterThan(0)
+      expect(zero.every((r) => r.reason === "zero-tolerance" && r.baseline === 0)).toBe(true)
+    }
+    // The same text in prose is recorded debt.
+    const prose = toEntries(reportByFile([planted(text)]))
+    expect(prose.map((e) => e.rule).sort()).toEqual([
+      "ste-s15-slash",
+      "ste-s16-progressive",
+      "ste-s18-fragment",
+    ])
+  })
+
+  test("a zero-tolerance rule never becomes a baseline entry in prose", () => {
+    const list = reportByFile([planted("Utilize it; it's robust.")])
+    expect(flat(list).length).toBeGreaterThan(0)
+    expect(toEntries(list)).toEqual([])
+  })
+
+  test("--introduce lets only a new rule record its prose debt", () => {
+    const base = {
+      version: 1 as const,
+      generated: "x",
+      entries: [{ file: "a.md", rule: "ste-s1-long-sentence", count: 1 }],
+    }
+    const next = [
+      { file: "a.md", rule: "ste-s1-long-sentence", count: 1 },
+      { file: "a.md", rule: "ste-s15-slash", count: 2 },
+      { file: "b.md", rule: "ste-s13-paragraph", count: 1 },
+    ]
+    // Without --introduce, every new pair is a raise.
+    expect(raisedEntries(next, base).map((e) => e.rule)).toEqual([
+      "ste-s15-slash",
+      "ste-s13-paragraph",
+    ])
+    // --introduce opens exactly the named rule.
+    expect(raisedEntries(next, base, new Set(["ste-s15-slash"])).map((e) => e.rule)).toEqual([
+      "ste-s13-paragraph",
+    ])
+    // A rule that already has entries at the merge base never grows.
+    const grown = [{ file: "a.md", rule: "ste-s1-long-sentence", count: 2 }]
+    expect(raisedEntries(grown, base, new Set(["ste-s1-long-sentence"])).length).toBe(1)
+    // A rule introduced on this branch keeps its working count, never more.
+    const working = {
+      ...base,
+      entries: [...base.entries, { file: "a.md", rule: "ste-s15-slash", count: 2 }],
+    }
+    expect(raisedEntries(next, base, new Set(), working).map((e) => e.rule)).toEqual([
+      "ste-s13-paragraph",
+    ])
+    const more = [{ file: "a.md", rule: "ste-s15-slash", count: 3 }]
+    expect(raisedEntries(more, base, new Set(), working).length).toBe(1)
+    // introduceEntries writes the introduced rule and clamps every other raise.
+    expect(introduceEntries(next, base, new Set(["ste-s15-slash"]))).toEqual([
+      { file: "a.md", rule: "ste-s1-long-sentence", count: 1 },
+      { file: "a.md", rule: "ste-s15-slash", count: 2 },
+    ])
+    // No merge base: no guard (the CI check is separate).
+    expect(raisedEntries(next, undefined)).toEqual([])
+  })
+
+  test("B10: CI without a merge-base baseline fails unless STE_SKIP_BASELINE_GUARD=1", () => {
+    expect(guardRequired({ CI: "1" })).toBe(true)
+    expect(guardRequired({ CI: "true" })).toBe(true)
+    expect(guardRequired({ CI: "1", STE_SKIP_BASELINE_GUARD: "1" })).toBe(false)
+    expect(guardRequired({})).toBe(false)
+    expect(guardRequired({ CI: "false" })).toBe(false)
+  })
+
+  test("PROMOTE_AT_ZERO: a rule with no baseline entry is zero-tolerance", () => {
+    // The promotion is a forced one-line move: when the last prose debt of a
+    // rule is gone, this test fails until the rule moves to ZERO_TOLERANCE.
+    const baseline = readBaseline(BASELINE_PATH)
+    const withDebt = new Set(baseline.entries.map((entry) => entry.rule))
+    const missing = [...PROMOTE_AT_ZERO].filter(
+      (rule) => !withDebt.has(rule) && !ZERO_TOLERANCE.has(rule),
+    )
+    expect(missing).toEqual([])
+    for (const rule of [...PROMOTE_AT_ZERO, ...ZERO_TOLERANCE]) expect(RULE_IDS).toContain(rule)
+    expect([...PROMOTE_AT_ZERO].filter((rule) => ZERO_TOLERANCE.has(rule))).toEqual([])
+  })
+
+  test("B7: every EXEMPT_SNIPPETS entry still occurs in its file", () => {
+    for (const [key, snippets] of EXEMPT_SNIPPETS) {
+      const [file] = key.split("\u0000")
+      const text = surfaces
+        .filter((s) => s.file === file)
+        .map((s) => s.text.toLowerCase())
+        .join("\n")
+      for (const snippet of snippets) {
+        expect(text.includes(snippet.toLowerCase()), `stale exemption: ${file}: ${snippet}`).toBe(
+          true,
+        )
+      }
+    }
+  })
+
+  test("B2: an exemption covers only the quoted example, not the same word elsewhere", () => {
+    const file = "ma-agent-writing-style-plugin/PROMPT.md"
+    const text =
+      "Cut these openers: `Let's dive in`, `Here's what you need to know`.\nLet's start now. It's fine."
+    const found = flat(reportByFile([planted(text, file)])).filter(
+      (f) => f.rule === "ste-s6-contraction",
+    )
+    expect(found.map((f) => f.snippet)).toEqual(["Let's", "It's"])
+    expect(found.every((f) => f.line === 2)).toBe(true)
+  })
+
+  test("B5: s10 judges the whole file, not one surface", () => {
+    const a = planted("Start the run.", "m.json", { locator: "a", kind: "manifest" })
+    const b = planted("Begin the run.", "m.json", { locator: "b", kind: "manifest" })
+    const found = flat(reportByFile([a, b])).filter((f) => f.rule === "ste-s10-inconsistent-term")
+    expect(found.length).toBe(1)
+    const other = planted("Begin the run.", "n.json", { locator: "b", kind: "manifest" })
+    expect(flat(reportByFile([a, other])).some((f) => f.rule === "ste-s10-inconsistent-term")).toBe(
+      false,
+    )
+  })
+
+  test("reportByFile passes the extra rules once per surface", () => {
+    let calls = 0
+    const list = reportByFile([planted("Read it."), planted("Stop it.", "other.md")], {
+      extraFindings: ({ file, role }) => {
+        calls++
+        return [
+          {
+            rule: "ste-s20-tool-name",
+            message: "m",
+            snippet: file,
+            line: 1,
+            severity: "error",
+            role,
+          },
+        ]
+      },
+    })
+    expect(calls).toBe(2)
+    expect(flat(list).filter((f) => f.rule === "ste-s20-tool-name").length).toBe(2)
+    // s20 is zero-tolerance in every role.
+    expect(toEntries(list)).toEqual([])
   })
 
   test("the git-tracked baseline is valid JSON with a date", () => {
