@@ -183,10 +183,11 @@ describe("llm-grok provider plugin (architecture-aligned)", () => {
     expect(flagship.capabilities.effort.default).toBe("high")
     expect(flagship.capabilities.speedFast).toBe(true)
     expect(flagship.knowledgeCutoff).toBe("2026-02-01")
+    // Agentic model on Responses: PDF and text files as input_file.
     expect(flagship.capabilities.modalities).toEqual({
       image: true,
       audio: false,
-      pdf: false,
+      pdf: true,
       video: false,
     })
     expect(flagship.capabilities).toEqual(CAPS_GROK_46_RESPONSES)

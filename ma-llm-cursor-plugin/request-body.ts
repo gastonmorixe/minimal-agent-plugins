@@ -17,6 +17,7 @@ import type {
   CanonicalMessage,
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
 
 import { effortParamIdFromTags, fastParamIdFromTags, isCursorFastParamId } from "./capabilities.ts"
 import type { CursorCarryPlan } from "./conversation-carry.ts"
@@ -351,7 +352,7 @@ export function buildCursorAgentRunBody(
   }
   // With a carried checkpoint the server already holds system + history:
   // send only the new user text (conversation-carry.ts).
-  const userText = carry ? carry.userText : summarizeMessages(req.messages)
+  const userText = carry ? carry.userText : summarizeMessages(req.messages, model.id)
   const text =
     !carry && systemParts.length > 0
       ? `${systemParts.join("\n\n")}\n\n${userText || "(empty)"}`
@@ -393,15 +394,15 @@ export function summarizeRequestText(req: CanonicalRequest): string {
     const t = blockText(block)
     if (t) parts.push(t)
   }
-  const body = summarizeMessages(req.messages)
+  const body = summarizeMessages(req.messages, req.modelId)
   if (body) parts.push(body)
   return parts.join("\n\n") || "(empty)"
 }
 
-function summarizeMessages(messages: CanonicalMessage[]): string {
+function summarizeMessages(messages: CanonicalMessage[], modelId: string): string {
   const parts: string[] = []
   for (const msg of messages) {
-    const body = messageText(msg)
+    const body = messageText(msg, modelId)
     if (body) parts.push(`${msg.role}: ${body}`)
   }
   return parts.join("\n\n")
@@ -421,9 +422,12 @@ function clip(text: string, max: number): string {
   return `${text.slice(0, max)}\n[truncated ${text.length - max} chars]`
 }
 
-function toolResultText(block: Extract<CanonicalBlock, { type: "tool_result" }>): string {
+function toolResultText(
+  block: Extract<CanonicalBlock, { type: "tool_result" }>,
+  modelId: string,
+): string {
   const body = block.content
-    .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
+    .map((c) => (c.type === "text" ? c.text : unsupportedAttachmentText(c, modelId).text))
     .join("\n")
     .trim()
   const label = block.isError ? "non-executable past result (error)" : "non-executable past result"
@@ -449,7 +453,7 @@ function sanitizeAssistantHistoryText(text: string): string {
     .replace(/GetDynamicToolsnamespaces?\S+/g, "[non-executable past bridge call omitted]")
 }
 
-function messageText(msg: CanonicalMessage): string {
+function messageText(msg: CanonicalMessage, modelId: string): string {
   const texts: string[] = []
   for (const block of msg.content) {
     if (block.type === "tool_use") {
@@ -461,7 +465,17 @@ function messageText(msg: CanonicalMessage): string {
       continue
     }
     if (block.type === "tool_result") {
-      texts.push(toolResultText(block))
+      texts.push(toolResultText(block, modelId))
+      continue
+    }
+    if (
+      block.type === "image" ||
+      block.type === "audio" ||
+      block.type === "file" ||
+      block.type === "video"
+    ) {
+      // The Agent Run body is text only: name the attachment (no silent drop).
+      texts.push(unsupportedAttachmentText(block, modelId).text)
       continue
     }
     const t = blockText(block)

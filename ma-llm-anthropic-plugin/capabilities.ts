@@ -81,6 +81,56 @@ const MODALITIES_TEXT_IMAGE = {
   video: false,
 }
 
+// ---------------------------------------------------------------------------
+// Input MIME types (per-model; the single source of truth for media gating)
+// ---------------------------------------------------------------------------
+
+/** Image formats the Messages API takes in an `image` block (no animation). */
+export const ANTHROPIC_IMAGE_INPUT_MIME_TYPES: readonly string[] = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]
+
+/**
+ * Text-like document formats. The encoder (and the Files API upload) sends
+ * each one as a `text/plain` document (see core `isTextLikeMime`). The list
+ * holds every text type that core media ingest can give (txt, md, csv, tsv,
+ * html, css, code as `text/plain`, json, ndjson, xml, yaml).
+ */
+export const ANTHROPIC_TEXT_DOCUMENT_MIME_TYPES: readonly string[] = [
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "text/tab-separated-values",
+  "text/html",
+  "text/css",
+  "application/json",
+  "application/x-ndjson",
+  "application/xml",
+  "application/yaml",
+]
+
+/**
+ * Document formats the Messages API takes in a `document` block: PDF plus the
+ * text-like types. Office files (docx, xlsx, pptx) are not in the list: they
+ * need the code execution tool and `container_upload` (out of scope, v1).
+ */
+export const ANTHROPIC_DOCUMENT_INPUT_MIME_TYPES: readonly string[] = [
+  "application/pdf",
+  ...ANTHROPIC_TEXT_DOCUMENT_MIME_TYPES,
+]
+
+/** Input types of a model with image and PDF input. No audio, no video. */
+const INPUT_MIME_IMAGE_PDF: readonly string[] = [
+  ...ANTHROPIC_IMAGE_INPUT_MIME_TYPES,
+  ...ANTHROPIC_DOCUMENT_INPUT_MIME_TYPES,
+]
+
+/** Input types of an image-only model. */
+const INPUT_MIME_IMAGE: readonly string[] = [...ANTHROPIC_IMAGE_INPUT_MIME_TYPES]
+
 const SERVER_TOOLS_FULL = ["web_search", "code_interpreter"] as const
 const SERVER_TOOLS_BASIC = ["web_search"] as const
 
@@ -119,6 +169,7 @@ export const CAPS_OPUS_48: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
 }
@@ -184,6 +235,7 @@ export const CAPS_OPUS_45: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: true,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_BASIC],
 }
@@ -280,6 +332,7 @@ export const CAPS_OPUS_46: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
 }
@@ -305,6 +358,7 @@ export const CAPS_HAIKU_55: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
 }
@@ -337,6 +391,7 @@ export const CAPS_SONNET_55: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
 }
@@ -379,6 +434,7 @@ export const CAPS_SONNET_5: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
 }
@@ -406,6 +462,7 @@ export const CAPS_SONNET_46: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
 }
@@ -439,6 +496,7 @@ export const CAPS_SONNET_45: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: true,
   modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_BASIC],
 }
@@ -476,6 +534,7 @@ export const CAPS_HAIKU_45: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: true,
   modalities: { ...MODALITIES_TEXT_IMAGE },
+  inputMimeTypes: INPUT_MIME_IMAGE,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_BASIC],
 }

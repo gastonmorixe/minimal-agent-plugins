@@ -34,6 +34,8 @@ import {
   defaultCapabilities,
 } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
+import { HUGGINGFACE_IMAGE_MIME_TYPES } from "./input-formats.ts"
+
 /**
  * Reasoning-effort levels HuggingFace's Chat Completions surface accepts
  * (per the chat-completion task spec; honored per-model, ignored otherwise).
@@ -85,6 +87,8 @@ export const CAPS_HUGGINGFACE_CHAT: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { image: true, audio: false, pdf: false, video: false },
+  // Images only (`image_url`); no PDF, audio or video on the router.
+  inputMimeTypes: HUGGINGFACE_IMAGE_MIME_TYPES,
   serverSideHistory: false,
   serverTools: [],
 }
@@ -145,5 +149,6 @@ export function deriveHuggingFaceCapabilities(info: HuggingFaceModelCapabilityIn
     tools: { ...CAPS_HUGGINGFACE_CHAT.tools, userDefined: anyTools },
     structuredOutputs: anyStructured,
     modalities: { ...CAPS_HUGGINGFACE_CHAT.modalities, image: hasImage },
+    inputMimeTypes: hasImage ? HUGGINGFACE_IMAGE_MIME_TYPES : [],
   }
 }

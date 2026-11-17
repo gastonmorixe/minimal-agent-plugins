@@ -19,6 +19,7 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { opencodeApiKeyAuth } from "./auth.ts"
+import { opencodeMediaLimits } from "./input-formats.ts"
 import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthropic-request.ts"
 import type { ModelEntry, ProviderAdapter, SurfaceId, ValidationResult } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
@@ -283,6 +284,11 @@ export const opencodeZenAdapter: ProviderAdapter = {
     if (model.surfaceId === "anthropic-messages") return validateAnthropicRequest(req, model)
     return validateOpenAIRequest(req, model)
   },
+
+  /** The model's input formats (`inputMimeTypes`, from the live catalog). */
+  mediaLimits(model: ModelEntry) {
+    return opencodeMediaLimits(model)
+  },
   async *run(
     req: CanonicalRequest,
     model: ModelEntry,
@@ -310,7 +316,9 @@ export const opencodeZenAdapter: ProviderAdapter = {
     if (model.surfaceId === "openai-chat-completions") {
       url = OPENCODE_ZEN_CHAT_URL
       headers = { ...buildOpenAIHeaders({ auth: openAIAuth }), ...identity }
-      body = { ...buildOpenAIChatBody(mapped, model) }
+      // The gateway takes `video_url` on Chat (OpenCode docs); PDF goes as
+      // `file`, audio as `input_audio`, everything else as a placeholder.
+      body = { ...buildOpenAIChatBody(mapped, model, undefined, { video: true }) }
       body.stream = true
       body.stream_options = { include_usage: true }
       body.prompt_cache_key = cacheKey

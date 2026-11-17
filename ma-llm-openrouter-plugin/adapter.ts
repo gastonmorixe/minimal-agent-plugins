@@ -25,11 +25,13 @@ import {
   buildOpenAIChatBody,
   buildOpenAIHeaders,
   type OpenAIChatChunk,
+  type OpenAIChatEncodeOptions,
   translateOpenAIChatStream,
   validateOpenAIRequest,
 } from "@minimal-agent/core/plugin-api/llm/openai-chat"
 import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
+  MediaLimits,
   ModelRegistrar,
   ProviderPlugin,
   ProviderSetupContext,
@@ -38,6 +40,7 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { openRouterApiKeyAuth } from "./auth.ts"
+import { openRouterMediaLimits } from "./input-formats.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -58,6 +61,12 @@ import {
 
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+/**
+ * OpenRouter takes `video_url` parts and a URL in `file.file_data`
+ * (https://openrouter.ai/docs/guides/overview/multimodal/, 2026-11-17).
+ */
+const OPENROUTER_CHAT_ENCODE: OpenAIChatEncodeOptions = { video: true, fileUrl: true }
+
 /** OpenRouter adapter. Speaks the OpenAI Chat surface against OpenRouter's host. */
 export const openrouterAdapter: ProviderAdapter = {
   id: "openrouter",
@@ -66,6 +75,14 @@ export const openrouterAdapter: ProviderAdapter = {
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
+  },
+
+  /**
+   * The model's input formats (images, PDF, and audio or video per model),
+   * with the core default sizes.
+   */
+  mediaLimits(model: ModelEntry): MediaLimits {
+    return openRouterMediaLimits(model)
   },
 
   async *run(
@@ -83,7 +100,7 @@ export const openrouterAdapter: ProviderAdapter = {
     const headers = buildOpenAIHeaders({ auth })
     // Optional OpenRouter attribution header (used for their app leaderboard).
     headers["x-title"] = "minimal-agent"
-    const body = buildOpenAIChatBody(req, model)
+    const body = buildOpenAIChatBody(req, model, undefined, OPENROUTER_CHAT_ENCODE)
     ctx.debug?.header(`POST ${OPENROUTER_CHAT_URL}`)
     ctx.debug?.kv("model", body.model)
     ctx.debug?.headers(headers)

@@ -501,9 +501,9 @@ describe("ollama capabilities", () => {
     expect(caps.thinking.adaptive).toBe(true)
   })
 
-  it("encodes vision + audio modalities", () => {
+  it("encodes vision; audio stays off (native /api/chat has no audio slot)", () => {
     const caps = ollamaCaps({ contextWindow: 128_000, vision: true, audio: true })
-    expect(caps.modalities).toEqual({ image: true, audio: true, pdf: false, video: false })
+    expect(caps.modalities).toEqual({ image: true, audio: false, pdf: false, video: false })
   })
 
   it("a plain model has no thinking and no modalities", () => {

@@ -43,17 +43,23 @@ const TOOLS_FULL = {
   strictSchema: true,
 }
 
-const MODALITIES_TEXT_IMAGE = {
+/**
+ * Every OpenAI vision model (gpt-4o and later, o-series) takes PDF input:
+ * `input_file` on Responses, a `file` part on Chat Completions. The exact
+ * per-model, per-surface MIME list is set at registration (see
+ * `input-formats.ts`).
+ */
+const MODALITIES_TEXT_IMAGE_PDF = {
   image: true,
   audio: false,
-  pdf: false,
+  pdf: true,
   video: false,
 }
 
-const MODALITIES_TEXT_IMAGE_AUDIO = {
+const MODALITIES_TEXT_IMAGE_AUDIO_PDF = {
   image: true,
   audio: true,
-  pdf: false,
+  pdf: true,
   video: false,
 }
 
@@ -84,7 +90,7 @@ export const CAPS_GPT_4O_CHAT: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE_AUDIO },
+  modalities: { ...MODALITIES_TEXT_IMAGE_AUDIO_PDF },
   serverSideHistory: false,
   serverTools: [],
 }
@@ -94,7 +100,7 @@ export const CAPS_GPT_4O_MINI_CHAT: Capabilities = {
   ...CAPS_GPT_4O_CHAT,
   contextWindow: 128_000,
   maxOutputTokens: 16_384,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
 }
 
 /** gpt-4.1 on Chat Completions. Docs: 1,047,576 context (2026-07-30). */
@@ -128,7 +134,7 @@ export const CAPS_O3_CHAT: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
   serverSideHistory: false,
   serverTools: [],
 }
@@ -162,7 +168,7 @@ export const CAPS_GPT_5_RESPONSES: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
   serverSideHistory: true,
   serverTools: ["web_search", "file_search", "code_interpreter"],
 }
@@ -222,7 +228,7 @@ export const CAPS_GPT_6_ASTRA_RESPONSES: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
   serverSideHistory: true,
   serverTools: ["web_search", "file_search", "code_interpreter", "computer_use"],
 }
@@ -409,7 +415,7 @@ export const CAPS_GPT_5_6_SOL_RESPONSES: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
   serverSideHistory: true,
   serverTools: ["web_search", "file_search", "code_interpreter", "computer_use"],
 }
@@ -566,7 +572,7 @@ export const CAPS_GPT_5_5_RESPONSES: Capabilities = {
   midConversationSystem: true,
   structuredOutputs: true,
   assistantPrefill: false,
-  modalities: { ...MODALITIES_TEXT_IMAGE },
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
   serverSideHistory: true,
   serverTools: ["web_search", "file_search", "code_interpreter"],
 }

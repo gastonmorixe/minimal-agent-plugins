@@ -9,7 +9,7 @@
  * Docs (Jonathan meta-harness, 2026-10-04):
  * - Standard 1.3 effort: minimal|low|medium|high|xhigh|max (`none` → 400)
  * - Contributor: same except `max` unavailable
- * - Modalities: text/image/video/PDF; audio understanding exists but degraded on 1.3
+ * - Modalities: text/image/video/PDF/audio (audio quality is degraded on 1.3)
  * - GET /v1/models is id-only (no pricing/context on wire)
  *
  * Context mode (Responses): `serverSideHistory: false` by default. Stateless
@@ -47,16 +47,46 @@ const MODALITIES_TEXT = {
 } as const
 
 /**
- * Muse Spark multimodal. Docs list audio input, but 1.3 audio understanding is
- * currently degraded (prefer muse-voice-transcribe / 1.2 for ASR). Keep audio
- * false so the agent does not send audio parts by default.
+ * Muse multimodal: images, PDF, MP4 video and audio (mpeg, wav). The docs
+ * say that audio on muse-spark-1.3 is "not fully supported" (quality only);
+ * the API takes it, so the model accepts it.
+ * https://dev.meta.ai/docs/media-understanding (2026-11-17)
  */
 const MODALITIES_MULTIMODAL = {
   image: true,
-  audio: false,
+  audio: true,
   pdf: true,
   video: true,
 } as const
+
+// ---------------------------------------------------------------------------
+// Input MIME types (per model; the single source of truth for media gating)
+// ---------------------------------------------------------------------------
+
+/** Image formats Muse takes (`image_url` / `input_image`). */
+export const META_IMAGE_MIME_TYPES: readonly string[] = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+]
+
+/** Video formats Muse takes (`video_url` / `input_video`). */
+export const META_VIDEO_MIME_TYPES: readonly string[] = ["video/mp4"]
+
+/** Audio formats Muse takes (`input_audio`, format mp3 or wav). */
+export const META_AUDIO_MIME_TYPES: readonly string[] = ["audio/mpeg", "audio/wav"]
+
+/**
+ * Every input type of a multimodal Muse model. Text files (txt, json) are
+ * not inference input (https://dev.meta.ai/docs/file-handling).
+ */
+export const META_MULTIMODAL_MIME_TYPES: readonly string[] = [
+  ...META_IMAGE_MIME_TYPES,
+  "application/pdf",
+  ...META_VIDEO_MIME_TYPES,
+  ...META_AUDIO_MIME_TYPES,
+]
 
 const SERVER_TOOLS_MUSE = ["web_search", "computer_use", "file_search"] as const
 
@@ -102,6 +132,7 @@ function baseMuse(opts: {
     structuredOutputs: true,
     assistantPrefill: false,
     modalities: opts.vision ? { ...MODALITIES_MULTIMODAL } : { ...MODALITIES_TEXT },
+    inputMimeTypes: opts.vision ? META_MULTIMODAL_MIME_TYPES : [],
     serverSideHistory: false,
     serverTools: [...SERVER_TOOLS_MUSE],
   }
@@ -172,7 +203,7 @@ export const CAPS_MUSE_SPARK_1_2_CONTRIBUTOR_RESPONSES: Capabilities = responses
 /**
  * Muse Wonder 1.0 (live 2026-11-15, released 2026-10-12). models.dev: 1M
  * context, 131072 output, effort minimal..max, text/image/video/pdf/audio in.
- * Audio stays false, same as the Spark tables.
+ * Same input formats as the Spark tables.
  */
 const EFFORT_MUSE_FULL = EFFORT_MUSE_1_3_STANDARD
 

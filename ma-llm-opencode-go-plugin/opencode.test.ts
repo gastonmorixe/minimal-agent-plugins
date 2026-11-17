@@ -249,11 +249,13 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(muse.surfaceId).toBe("openai-responses")
     expect(muse.capabilities.contextWindow).toBe(1_048_576)
     expect(muse.capabilities.maxOutputTokens).toBe(131_072)
+    // The vendored Responses encoder has no audio or video part: the flags
+    // follow the encoder (see input-formats.ts).
     expect(muse.capabilities.modalities).toEqual({
       image: true,
-      audio: true,
+      audio: false,
       pdf: true,
-      video: true,
+      video: false,
     })
     expect([...muse.capabilities.effort.levels]).toEqual([
       "minimal",
@@ -272,11 +274,12 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
     expect(qwen38.surfaceId).toBe("anthropic-messages")
     expect(qwen38.capabilities.contextWindow).toBe(1_000_000)
     expect(qwen38.capabilities.maxOutputTokens).toBe(131_072)
+    // Messages has no video part: the flags follow the encoder.
     expect(qwen38.capabilities.modalities).toEqual({
       image: true,
       audio: false,
       pdf: false,
-      video: true,
+      video: false,
     })
     expect(qwen38.pricing?.inputUSD).toBe(2.0)
     expect(qwen38.pricing?.outputUSD).toBe(6.0)

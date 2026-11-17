@@ -27,6 +27,8 @@ import {
   defaultCapabilities,
 } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
+import { waferImageInput } from "./input-formats.ts"
+
 // ---------------------------------------------------------------------------
 // Shared sub-shapes
 // ---------------------------------------------------------------------------
@@ -89,6 +91,8 @@ function baseWaferCaps(
     assistantPrefill: false,
     serverSideHistory: false,
     serverTools: [],
+    // Images only on a vision model (`image_url`); no PDF, audio or video.
+    inputMimeTypes: waferImageInput(overrides.modalities),
     ...overrides,
   }
 }
