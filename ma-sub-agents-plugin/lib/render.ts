@@ -112,7 +112,7 @@ function fleetRow(r: SubagentRecord, ansi: boolean, nowMs: number): string {
     const el = fmtElapsed(nowMs - Date.parse(s.startedAt))
     trail = `${el}  ${color(ansi, ANSI.DGRAY, `${s.progress.tools} tools ${GLYPHS.bullet} ${fmtSpend(s.progress)}`)}`
   } else if (s.kind === "done") {
-    trail = `${color(ansi, ANSI.DIM, clip(s.result.short, 28))} ${color(ansi, ANSI.DGRAY, "→")} ${color(ansi, ANSI.LGRAY, `AgentResult ${r.id}`)}`
+    trail = `${color(ansi, ANSI.DIM, clip(s.result.short, 28))} ${color(ansi, ANSI.DGRAY, "→")} ${color(ansi, ANSI.LGRAY, `SubAgentsAgentResult ${r.id}`)}`
   } else if (s.kind === "incomplete") {
     trail = color(ansi, ANSI.GOLD, `⚠ no deliverable · ${clip(s.reason, 30)}`)
   } else if (s.kind === "failed") {
@@ -152,7 +152,7 @@ export function renderFleetDisplay(
   if (records.length === 0) {
     return {
       header: color(ansi, `${ANSI.DIM}${ANSI.ITALIC}`, "no sub-agents"),
-      body: color(ansi, ANSI.DIM, "  SpawnAgent({task, agent}) to delegate work"),
+      body: color(ansi, ANSI.DIM, "  SubAgentsSpawnAgent({task, agent}) to delegate work"),
       footer: "",
     }
   }

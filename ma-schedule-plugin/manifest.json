@@ -2,7 +2,7 @@
   "id": "schedule",
   "name": "Schedule",
   "version": "0.1.0",
-  "description": "Run prompts on a schedule. Adds the ScheduleCronCreate/ScheduleCronList/ScheduleCronDelete tools. The model schedules tasks from natural language like 'remind me at 3pm' or 'every 5 minutes check the deploy'. A 1-second heartbeat injects each due task's prompt between turns via the prompt.inject port. Also adds the /loop and /schedule commands. Tasks are session-scoped at ~/.minimal-agent/sessions/<sid>.cron.json and restored (unexpired) on --resume. Disable with MINIMAL_AGENT_DISABLE_CRON=1.",
+  "description": "Run prompts at specified times. The plugin adds the ScheduleCronCreate, ScheduleCronList, ScheduleCronDelete and ScheduleCronReschedule tools, and the `/loop` and `/schedule` commands. The model schedules a task from usual words, for example \"remind me at 3pm\" or \"every 5 minutes run the tests\". A heartbeat examines the tasks each second. It sends the prompt of each due task between turns through the `prompt.inject` port. The tasks are stored for each session at `~/.minimal-agent/sessions/<sid>.cron.json`.\n\nOn `--resume`, the tasks come back, but not a task after its time limit. To disable the plugin, set `MINIMAL_AGENT_DISABLE_CRON=1`.",
   "headless": {
     "tools": [
       {
@@ -11,25 +11,25 @@
           "type": "tool",
           "tool": {
             "name": "CronCreate",
-            "description": "Schedule a prompt to run on a cron schedule or on an interval. Use it for a reminder, or to poll a deploy or a pull request until it settles. Do not use it to list or to cancel a task, use CronList or CronDelete for that. Do not schedule a push, a delete or a deploy unless the user already authorized it. Returns the new task, with its id, its schedule and its next fire time.",
+            "description": "Schedule a prompt to run on a cron expression or at an interval. Use it to do a task at a specified time. Use it also to monitor a code change or a command that deploys code, until the result is stable. To show or cancel a task, use `ScheduleCronList` or `ScheduleCronDelete`. Do not schedule a task that pushes, deletes or deploys without the approval of the user. The tool gives the id and next start time of the new task.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "prompt": {
                   "type": "string",
-                  "description": "The prompt to run each time the task fires. Required. The harness injects the text as a user turn between turns, never in the middle of a response."
+                  "description": "Necessary. The prompt to run at each start, as a user turn between turns."
                 },
                 "cron": {
                   "type": "string",
-                  "description": "A standard 5-field cron expression (minute hour day-of-month month day-of-week), interpreted in LOCAL time. Supports *, ranges (1-5), steps (*/15), and lists (1,15,30). Example: '0 9 * * 1-5' = weekdays at 9am. Provide this OR `every`."
+                  "description": "A standard 5-field cron expression (minute, hour, day of month, month, day of week) in local time. You can use `*`, ranges (`1-5`), steps (`*/15`) and sets (`1,15,30`). For example, `0 9 * * 1-5` is 9 AM on weekdays. Give this value or `every`."
                 },
                 "every": {
                   "type": "string",
-                  "description": "A human interval that the harness converts to a clean cron cadence. Examples: '5m', '30m', '2h', '1d', 'every 2 hours'. The harness rounds an interval that does not map to a clean cron step. Provide this OR `cron`."
+                  "description": "An interval, for example `5m`, `2h`, `1d` or `2 hours`. The tool changes an interval of one minute or more to a cron expression, and adjusts it to a cron step. Give this value or `cron`."
                 },
                 "recurs": {
                   "type": "boolean",
-                  "description": "Whether the task repeats. Default true. Set false for a one-shot reminder that deletes itself after it fires once. A session holds up to 50 tasks, and a recurring task expires after 7 days."
+                  "description": "The default is `true`. Set `false` for a one-time task, which the tool deletes after it runs. The maximum is 50 tasks for each session. A task that runs again stops after 7 days."
                 }
               },
               "required": ["prompt"],
@@ -50,7 +50,7 @@
           "type": "tool",
           "tool": {
             "name": "CronList",
-            "description": "List the scheduled tasks of this session. Use it to answer which tasks exist, or before you cancel or reschedule one. Do not use it to change a task, use CronReschedule or CronDelete for that. Returns each task id, schedule, next fire time and prompt.",
+            "description": "Show the scheduled tasks of this session. To change a task, use `ScheduleCronReschedule` or `ScheduleCronDelete`. The tool gives the id, cron expression or interval, next start time and prompt of each task.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -71,13 +71,13 @@
           "type": "tool",
           "tool": {
             "name": "CronDelete",
-            "description": "Cancel a scheduled task by its 8 character id. Use it when a task is complete, or when the user no longer wants it. Do not use it to delay a task, use CronReschedule for that. It returns the removed id and the count of the tasks that remain.",
+            "description": "Cancel a scheduled task when the task is complete or the user does not want it. To change the next start time, use `ScheduleCronReschedule`. The tool gives the removed id and the number of tasks that stay.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The 8-char task id to cancel."
+                  "description": "The 8-character task id."
                 }
               },
               "required": ["id"],
@@ -98,21 +98,21 @@
           "type": "tool",
           "tool": {
             "name": "CronReschedule",
-            "description": "Change the next fire time of a scheduled task. Use it to set a new cadence, or to delay a one-shot. Do not use it to create a task, use CronCreate for that. Returns the task id, the new cadence and the new next fire time.",
+            "description": "Change the next start time of a scheduled task. Use it to set a new interval, or to move a one-time task to a different time. To make a task, use `ScheduleCronCreate`. The tool gives the new interval and the next start time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "The 8-char task id to reschedule (required)."
+                  "description": "Necessary. The 8-character task id."
                 },
                 "every": {
                   "type": "string",
-                  "description": "A human interval like \"30s\", \"5m\", \"2h\". Sets a new recurring cadence. Mutually exclusive with `nextAtMs`."
+                  "description": "A new interval between the starts, for example `30s`, `5m` or `2h`. Give this or `nextAtMs`."
                 },
                 "nextAtMs": {
                   "type": "number",
-                  "description": "Absolute epoch-ms timestamp for the next fire. Single-use: the task re-arms with its existing cadence after firing. Mutually exclusive with `every`."
+                  "description": "A Unix time in milliseconds for one start of the task. Then the task uses its cron expression or interval again. Give this value or `every`."
                 }
               },
               "required": ["id"],

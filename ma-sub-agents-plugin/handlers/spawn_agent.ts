@@ -62,8 +62,8 @@ export default async function spawn(ctx: TUIContext): Promise<TUIResult> {
   const disp = renderSpawnDisplay(rec, true)
   const content =
     `Spawned sub-agent ${rec.id} (${rec.type} · ${rec.model} · ${rec.isolation}), running in background as session ${rec.sid}. ` +
-    `It works concurrently. You are not blocked. Track it with ListAgents or AgentStatus ${rec.id}. ` +
-    `When it finishes you'll get a one-line digest between turns and can pull the full deliverable with AgentResult ${rec.id}.` +
+    `It works concurrently. You are not blocked. Track it with SubAgentsListAgents or SubAgentsAgentStatus ${rec.id}. ` +
+    `When it finishes you'll get a one-line digest between turns and can pull the full deliverable with SubAgentsAgentResult ${rec.id}.` +
     loweredLine(rec.modeLowered, deps.renderPrompt) +
     providerLine(rec.profileProvider, deps.renderPrompt)
   return {

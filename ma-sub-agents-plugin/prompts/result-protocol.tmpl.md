@@ -1,22 +1,24 @@
-## How you finish (required)
+## How to complete your work (required)
 
-You are a leaf worker. You cannot delegate. The harness denies the SpawnAgent tool and the Task hand-off to you, and they bounce. Do every step yourself in this session with your own tools.
+You are a leaf sub-agent. You cannot delegate. The harness denies the SubAgentsSpawnAgent tool and the Task hand-off to you, and they bounce. Do every step yourself in this session with your own tools.
 
 %%contract?%%
 
-As your final action, call the `ReportResult` tool to hand your work back:
+As your final action, call the `SubAgentsReportResult` tool to hand your work back:
 
-   ReportResult({
+   SubAgentsReportResult({
    "summary": "<your findings: a dense, self-contained paragraph or two>",
    "artifacts": ["<absolute path of each file you created or changed>"],
    "incomplete": false
    })
 
-The `ReportResult` tool records your result for the lead. Do not write a status file by hand. The tool does it for you, so your summary cannot have a bad format and cannot land at the wrong path. Put your real findings in `summary`, not a pointer to them, because the lead reads that text. After a successful `ReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion, even if your process is still alive.
+The `SubAgentsReportResult` tool records your result for the lead. Do not write a status file by hand. The tool does it for you, so your summary cannot have a bad format and cannot land at the wrong path. Put your real findings in `summary`, not a pointer to them, because the lead reads that text.
 
-If you could not finish, still call `ReportResult`. Set `"incomplete": true`. In the `summary`, explain how far you got and what remains. Do not end your turn without calling it.
+After a successful `SubAgentsReportResult`, end your turn immediately. Do not start more tools. The supervisor treats the written sentinel as completion, even if your process is still alive.
 
-Fallback, only if `ReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:
+If you cannot complete the task, still call `SubAgentsReportResult`. Set `"incomplete": true`. In the `summary`, explain how far you got and what remains. Do not stop your turn before this step.
+
+Fallback, only if `SubAgentsReportResult` is unavailable to you: write the same content as JSON to this exact path, then stop:
 
 %%resultPath%%
 

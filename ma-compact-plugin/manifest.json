@@ -2,7 +2,7 @@
   "id": "compact",
   "name": "Compact",
   "version": "0.1.0",
-  "description": "Contributes the CompactContext tool. The tool queues a context compaction (checkpoint and prune) through the host's context:compact seam. There are two triggers. Manual: the user asks to compact, or routes /compact to the model. Auto: the model calls the tool itself when the session feels context-heavy. The plugin never compacts directly. It validates the arguments and queues the request. The host does the rewrite after the turn.",
+  "description": "Contributes the CompactContext tool. The tool queues a context compaction (checkpoint and prune) through the host's context:compact seam. There are two triggers. Manual: the user asks to compact, or routes /compact to the model. Auto: the model calls the tool itself when the session feels context-heavy.\n\nThe plugin never compacts directly. It validates the arguments and queues the request. The harness does the compaction in the same turn, before the next model request.",
   "capabilities": ["context:compact"],
   "headless": {
     "tools": [
@@ -12,28 +12,28 @@
           "type": "tool",
           "tool": {
             "name": "CompactContext",
-            "description": "Queue a context compaction, which checkpoints the conversation and prunes older history. Use it when the user asks to compact or shorten context. Use it when context fullness is high or recall is degrading. Do not use it inside a tool loop, because a pending tool call must finish first. Prefer a fresh session instead when the user wants a clean start. Returns queued true with a message when the host accepted the request. It never compacts mid-turn, so continue with the retained tail. A refusal returns queued false, so retry later.",
+            "description": "Put a context compaction request in the queue. A compaction replaces previous history with a checkpoint and keeps the last messages.\n\nUse it when the user tells you, when the context is very full, or when you cannot find previous facts. Do not use it in a tool loop. For a clean start, a new session is better.\n\nThe harness does the compaction in this turn, before the next model request. Then continue with the last messages. A rejected request gives an error: try again after a time.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "mode": {
                   "type": "string",
                   "enum": ["tail", "local", "remote"],
-                  "description": "Compaction engine. Use `tail` to keep the last N messages verbatim, with no summary. Use `local` to write a checkpoint summary plus tail. Use `remote` to call the provider compact endpoint, and to fall back to local."
+                  "description": "- `tail`: keep the last messages, with no summary.\n- `local`: write a checkpoint summary.\n- `remote`: use the provider endpoint. If not possible, write a checkpoint without a summary."
                 },
                 "tail": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Trailing messages kept verbatim behind the checkpoint. Default 6."
+                  "description": "The number of last messages to keep without change. The default is 6."
                 },
                 "focus": {
                   "type": "string",
-                  "description": "Hint passed to the summarizer and kept verbatim in the checkpoint (e.g. what the next step needs)."
+                  "description": "An instruction for the summary, for example the facts that the next step must have. The checkpoint keeps it."
                 },
                 "reason": {
                   "type": "string",
                   "enum": ["manual", "auto"],
-                  "description": "Why compacting: manual (the user asked) or auto (the model decided). Default auto."
+                  "description": "`manual` (the user told you) or `auto` (you selected it, the default)."
                 }
               },
               "additionalProperties": false

@@ -66,7 +66,9 @@ function tokens(text: string): Map<string, number> {
       if (label === "env var" && isBareLabel(masked, match.index ?? 0, match[0])) continue
       // A sentence-ending period after a path is punctuation, not part of the
       // path: `config.jsonc.` and `config.jsonc,` are the same fact.
-      const raw = label === "path" || label === "number" ? match[0].replace(/\.+$/, "") : match[0]
+      let raw = label === "path" || label === "number" ? match[0].replace(/\.+$/, "") : match[0]
+      // `10 s` and `10s` are the same fact: drop the space before a unit (B9).
+      if (label === "number") raw = raw.replace(/[ \t]+(?=[A-Za-z%]+$)/, "")
       const key = `${label}\u0000${raw}`
       out.set(key, (out.get(key) ?? 0) + 1)
     }

@@ -30,6 +30,18 @@ Keep the meaning exact. Change style, not facts.
     character.
 12. Use "you" for the model, "the user" for the human, "the harness" for the
     program.
+13. No abbreviation: e.g. -> for example, i.e. -> that is, etc. -> name the
+    items, vs -> or.
+14. Modals: may/might -> can or possibly, should/shall -> must, would -> can.
+15. No slash for "or": `a/b` -> `a or b`. A path, URL or unit stays.
+16. No progressive: `is running` -> `runs`. No opening -ing clause.
+17. A paragraph has 6 sentences or fewer. Make a list for more.
+18. A sentence has a subject or is an imperative. Do not start with And, Or,
+    But or So. A tool description opens with an imperative ("Read a file.").
+19. Tool role: the result sentence is "The tool gives ...".
+
+The tool block (tool and param descriptions) is zero-tolerance: every finding
+there is an error and none can enter the baseline.
 
 ## Do not change
 

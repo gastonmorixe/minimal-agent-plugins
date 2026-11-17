@@ -1,0 +1,12 @@
+[
+  {
+    "word": "brave",
+    "category": 19,
+    "reason": "the Brave Search web service that the WebSearch tool sends its queries to"
+  },
+  {
+    "word": "compaction",
+    "category": 19,
+    "reason": "the harness operation that replaces old session history with a checkpoint and keeps the last messages"
+  }
+]

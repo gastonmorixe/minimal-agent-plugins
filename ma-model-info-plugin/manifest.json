@@ -11,7 +11,7 @@
           "type": "tool",
           "tool": {
             "name": "ModelInfo",
-            "description": "Report the current model of the agent and what it can do now. Call it before you claim that you cannot accept an image, or read a file type. It covers the provider, the surface and the input modalities (images, PDFs, audio or video), with the file formats that it accepts. It also covers the context window, the maximum output tokens, the effort levels, reasoning and thinking support, prompt caching and pricing. It shows the session id and the working directory. The model and its capabilities can change during a session, and they can differ after a resume. Do not answer from training-time assumptions. Call this tool to read your live capabilities before you tell the user that you cannot do a task. It takes no input.",
+            "description": "Show the active model and its functions at this time. Use it, not your previous data, before you tell the user that you cannot do a task. An example is to read an image or a file type. The model can change during a session or after `--resume`.\n\nThe tool gives the provider, the context window and the maximum output tokens. It also gives the input types, how the model can think before its output, the `effort` levels, the prompt cache, the cost and the `cwd`.",
             "input_schema": {
               "type": "object",
               "properties": {},

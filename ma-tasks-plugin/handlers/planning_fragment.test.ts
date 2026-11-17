@@ -99,7 +99,7 @@ describe("tasks planning fragment", () => {
       ctx(() => snapshot(true), { MINIMAL_AGENT_TASKS_FULL_RESULTS: "1" }),
     )
     expect(out).toContain("Every successful mutation")
-    expect(out).toContain("complete updated canonical-id board")
+    expect(out).toContain("full updated canonical-id board")
     expect(out).not.toContain("return a short plain `OK ...` acknowledgement")
   })
 })

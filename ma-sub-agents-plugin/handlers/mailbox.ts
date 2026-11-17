@@ -11,7 +11,13 @@
  */
 
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
-import { type MailMessage, postMessage, readMailbox, visibleTo } from "../lib/mailbox.ts"
+import {
+  DEFAULT_MAIL_KIND,
+  type MailMessage,
+  postMessage,
+  readMailbox,
+  visibleTo,
+} from "../lib/mailbox.ts"
 import { resolveSessionsDir } from "../lib/runtime.ts"
 import { ENV_ID, ENV_LEAD } from "../lib/spawn-plan.ts"
 import { ANSI, color, GLYPHS } from "../lib/style.ts"
@@ -50,7 +56,7 @@ export default async function mailbox(ctx: TUIContext): Promise<TUIResult> {
     if (!body)
       return { kind: "tool_result", content: "Mailbox post: `body` is required.", is_error: true }
     const to = str(input.to) ?? "*"
-    const kind = str(input.kind) ?? "note"
+    const kind = str(input.kind) ?? DEFAULT_MAIL_KIND
     const msg: MailMessage = { ts: new Date().toISOString(), from: me, to, kind, body }
     postMessage(path, msg)
     return {

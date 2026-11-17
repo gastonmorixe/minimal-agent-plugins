@@ -1,0 +1,1632 @@
+[
+  {
+    "word": "abandon",
+    "pos": "v",
+    "use": "go, stop"
+  },
+  {
+    "word": "absent",
+    "pos": "adj",
+    "use": "missing, no"
+  },
+  {
+    "word": "acquire",
+    "pos": "v",
+    "use": "get"
+  },
+  {
+    "word": "act",
+    "pos": "v",
+    "use": "operate, do"
+  },
+  {
+    "word": "action",
+    "pos": "n",
+    "use": "operation, step, task"
+  },
+  {
+    "word": "activity",
+    "pos": "n",
+    "use": "task, work"
+  },
+  {
+    "word": "addition",
+    "pos": "n",
+    "use": "add"
+  },
+  {
+    "word": "advance",
+    "pos": "v",
+    "use": "set, move"
+  },
+  {
+    "word": "affect",
+    "pos": "v",
+    "use": "change"
+  },
+  {
+    "word": "aim",
+    "pos": "v",
+    "use": "point"
+  },
+  {
+    "word": "alert",
+    "pos": "v",
+    "use": "tell"
+  },
+  {
+    "word": "alignment",
+    "pos": "n",
+    "use": "align"
+  },
+  {
+    "word": "allow",
+    "pos": "v",
+    "use": "let"
+  },
+  {
+    "word": "already",
+    "pos": "adv",
+    "use": "before, in progress"
+  },
+  {
+    "word": "analyze",
+    "pos": "v",
+    "use": "examine"
+  },
+  {
+    "word": "anchor",
+    "pos": "v",
+    "use": "attach"
+  },
+  {
+    "word": "annotation",
+    "pos": "n",
+    "use": "write, record"
+  },
+  {
+    "word": "another",
+    "pos": "adj",
+    "use": "one, different, again"
+  },
+  {
+    "word": "any",
+    "pos": "adj",
+    "use": "all, each, one"
+  },
+  {
+    "word": "any",
+    "pos": "pron",
+    "use": "one, all"
+  },
+  {
+    "word": "appear",
+    "pos": "v",
+    "use": "show, view, think, possible"
+  },
+  {
+    "word": "approve",
+    "pos": "v",
+    "use": "approval"
+  },
+  {
+    "word": "arrive",
+    "pos": "v",
+    "use": "get"
+  },
+  {
+    "word": "article",
+    "pos": "n",
+    "use": "item"
+  },
+  {
+    "word": "ask",
+    "pos": "v",
+    "use": "tell, speak"
+  },
+  {
+    "word": "attachment",
+    "pos": "n",
+    "use": "attach"
+  },
+  {
+    "word": "authorized",
+    "pos": "adj",
+    "use": "approved"
+  },
+  {
+    "word": "avoid",
+    "pos": "v",
+    "use": "prevent, do not"
+  },
+  {
+    "word": "base",
+    "pos": "n",
+    "use": "bottom"
+  },
+  {
+    "word": "base",
+    "pos": "v",
+    "use": "use"
+  },
+  {
+    "word": "beneath",
+    "pos": "prep",
+    "use": "below"
+  },
+  {
+    "word": "beyond",
+    "pos": "prep",
+    "use": "more than"
+  },
+  {
+    "word": "big",
+    "pos": "adj",
+    "use": "large"
+  },
+  {
+    "word": "bind",
+    "pos": "v",
+    "use": "attach, connect"
+  },
+  {
+    "word": "blank",
+    "pos": "v",
+    "use": "seal"
+  },
+  {
+    "word": "block",
+    "pos": "v",
+    "use": "stop, prevent"
+  },
+  {
+    "word": "both",
+    "pos": "adj",
+    "use": "each, all"
+  },
+  {
+    "word": "branch",
+    "pos": "v",
+    "use": "divide"
+  },
+  {
+    "word": "bring",
+    "pos": "v",
+    "use": "move, put"
+  },
+  {
+    "word": "broadcast",
+    "pos": "v",
+    "use": "transmit"
+  },
+  {
+    "word": "bump",
+    "pos": "v",
+    "use": "hit"
+  },
+  {
+    "word": "call",
+    "pos": "v",
+    "use": "use, tell"
+  },
+  {
+    "word": "cap",
+    "pos": "v",
+    "use": "seal"
+  },
+  {
+    "word": "capability",
+    "pos": "n",
+    "use": "function, can"
+  },
+  {
+    "word": "capable",
+    "pos": "adj",
+    "use": "approved, can"
+  },
+  {
+    "word": "care",
+    "pos": "n",
+    "use": "precaution, careful, carefully"
+  },
+  {
+    "word": "carry",
+    "pos": "v",
+    "use": "transmit"
+  },
+  {
+    "word": "case",
+    "pos": "n",
+    "use": "condition"
+  },
+  {
+    "word": "choice",
+    "pos": "n",
+    "use": "selection, alternative"
+  },
+  {
+    "word": "choose",
+    "pos": "v",
+    "use": "select, alternative"
+  },
+  {
+    "word": "clamp",
+    "pos": "v",
+    "use": "attach, put"
+  },
+  {
+    "word": "clip",
+    "pos": "v",
+    "use": "cut, attach"
+  },
+  {
+    "word": "colored",
+    "pos": "adj",
+    "use": "color"
+  },
+  {
+    "word": "combine",
+    "pos": "v",
+    "use": "mix, put together"
+  },
+  {
+    "word": "common",
+    "pos": "adj",
+    "use": "same"
+  },
+  {
+    "word": "comparison",
+    "pos": "n",
+    "use": "compare"
+  },
+  {
+    "word": "completion",
+    "pos": "n",
+    "use": "end, complete"
+  },
+  {
+    "word": "confirm",
+    "pos": "v",
+    "use": "make sure"
+  },
+  {
+    "word": "construct",
+    "pos": "v",
+    "use": "assemble"
+  },
+  {
+    "word": "convert",
+    "pos": "v",
+    "use": "change"
+  },
+  {
+    "word": "coordinate",
+    "pos": "v",
+    "use": "control, agree with"
+  },
+  {
+    "word": "cover",
+    "pos": "v",
+    "use": "include, have"
+  },
+  {
+    "word": "create",
+    "pos": "v",
+    "use": "make, cause"
+  },
+  {
+    "word": "critical",
+    "pos": "adj",
+    "use": "very important, careful"
+  },
+  {
+    "word": "cross",
+    "pos": "v",
+    "use": "go across"
+  },
+  {
+    "word": "decide",
+    "pos": "v",
+    "use": "select, decision"
+  },
+  {
+    "word": "define",
+    "pos": "v",
+    "use": "calculate, give, specified"
+  },
+  {
+    "word": "delay",
+    "pos": "n",
+    "use": "interval, immediately"
+  },
+  {
+    "word": "delay",
+    "pos": "v",
+    "use": "after"
+  },
+  {
+    "word": "deliver",
+    "pos": "v",
+    "use": "supply"
+  },
+  {
+    "word": "delivery",
+    "pos": "n",
+    "use": "supply"
+  },
+  {
+    "word": "demand",
+    "pos": "v",
+    "use": "necessary"
+  },
+  {
+    "word": "depend",
+    "pos": "v",
+    "use": "if"
+  },
+  {
+    "word": "describe",
+    "pos": "v",
+    "use": "give"
+  },
+  {
+    "word": "desired",
+    "pos": "adj",
+    "use": "necessary, correct"
+  },
+  {
+    "word": "detach",
+    "pos": "v",
+    "use": "disconnect, disengage, remove"
+  },
+  {
+    "word": "detail",
+    "pos": "n",
+    "use": "data, information"
+  },
+  {
+    "word": "detail",
+    "pos": "v",
+    "use": "give, refer, specified"
+  },
+  {
+    "word": "detect",
+    "pos": "v",
+    "use": "find, sense"
+  },
+  {
+    "word": "differ",
+    "pos": "v",
+    "use": "different"
+  },
+  {
+    "word": "direct",
+    "pos": "v",
+    "use": "point"
+  },
+  {
+    "word": "discover",
+    "pos": "v",
+    "use": "find"
+  },
+  {
+    "word": "dispatch",
+    "pos": "v",
+    "use": "send"
+  },
+  {
+    "word": "distinct",
+    "pos": "adj",
+    "use": "clear"
+  },
+  {
+    "word": "doubt",
+    "pos": "n",
+    "use": "not sure, think"
+  },
+  {
+    "word": "drive",
+    "pos": "v",
+    "use": "operate, control"
+  },
+  {
+    "word": "duration",
+    "pos": "n",
+    "use": "during"
+  },
+  {
+    "word": "early",
+    "pos": "adj",
+    "use": "previous, first"
+  },
+  {
+    "word": "effort",
+    "pos": "n",
+    "use": "try"
+  },
+  {
+    "word": "elapse",
+    "pos": "v",
+    "use": "after, interval"
+  },
+  {
+    "word": "emit",
+    "pos": "v",
+    "use": "from"
+  },
+  {
+    "word": "enforce",
+    "pos": "v",
+    "use": "obey"
+  },
+  {
+    "word": "enough",
+    "pos": "adj",
+    "use": "sufficient"
+  },
+  {
+    "word": "equal",
+    "pos": "v",
+    "use": "same"
+  },
+  {
+    "word": "escape",
+    "pos": "v",
+    "use": "release"
+  },
+  {
+    "word": "evaluate",
+    "pos": "v",
+    "use": "examine"
+  },
+  {
+    "word": "even",
+    "pos": "adj",
+    "use": "same"
+  },
+  {
+    "word": "every",
+    "pos": "adj",
+    "use": "all, each"
+  },
+  {
+    "word": "evidence",
+    "pos": "n",
+    "use": "indication, sign, show"
+  },
+  {
+    "word": "evidence",
+    "pos": "v",
+    "use": "show, find"
+  },
+  {
+    "word": "exact",
+    "pos": "adj",
+    "use": "accurate, correct"
+  },
+  {
+    "word": "exactly",
+    "pos": "adv",
+    "use": "accurately, fully, correct"
+  },
+  {
+    "word": "exceed",
+    "pos": "v",
+    "use": "more than"
+  },
+  {
+    "word": "except",
+    "pos": "prep",
+    "use": "but, not"
+  },
+  {
+    "word": "exchange",
+    "pos": "v",
+    "use": "interchange, replace"
+  },
+  {
+    "word": "execute",
+    "pos": "v",
+    "use": "do, these"
+  },
+  {
+    "word": "exist",
+    "pos": "v",
+    "use": "be"
+  },
+  {
+    "word": "explain",
+    "pos": "v",
+    "use": "tell"
+  },
+  {
+    "word": "expose",
+    "pos": "v",
+    "use": "show, give"
+  },
+  {
+    "word": "extract",
+    "pos": "v",
+    "use": "remove"
+  },
+  {
+    "word": "face",
+    "pos": "v",
+    "use": "point, turn"
+  },
+  {
+    "word": "factor",
+    "pos": "n",
+    "use": "cause"
+  },
+  {
+    "word": "fail",
+    "pos": "v",
+    "use": "if not"
+  },
+  {
+    "word": "failed",
+    "pos": "adj",
+    "use": "defective, incorrect"
+  },
+  {
+    "word": "failure",
+    "pos": "n",
+    "use": "if not, error"
+  },
+  {
+    "word": "false",
+    "pos": "adj",
+    "use": "incorrect"
+  },
+  {
+    "word": "familiar",
+    "pos": "adj",
+    "use": "know"
+  },
+  {
+    "word": "feature",
+    "pos": "v",
+    "use": "have"
+  },
+  {
+    "word": "few",
+    "pos": "adj",
+    "use": "small number, some"
+  },
+  {
+    "word": "final",
+    "pos": "adj",
+    "use": "last"
+  },
+  {
+    "word": "finding",
+    "pos": "n",
+    "use": "result"
+  },
+  {
+    "word": "fine",
+    "pos": "adj",
+    "use": "small"
+  },
+  {
+    "word": "fix",
+    "pos": "v",
+    "use": "attach, set, repair, install"
+  },
+  {
+    "word": "flood",
+    "pos": "v",
+    "use": "use too much"
+  },
+  {
+    "word": "focus",
+    "pos": "v",
+    "use": "examine, look"
+  },
+  {
+    "word": "force",
+    "pos": "v",
+    "use": "push"
+  },
+  {
+    "word": "form",
+    "pos": "n",
+    "use": "shape"
+  },
+  {
+    "word": "form",
+    "pos": "v",
+    "use": "be, make"
+  },
+  {
+    "word": "fresh",
+    "pos": "adj",
+    "use": "new"
+  },
+  {
+    "word": "further",
+    "pos": "adj",
+    "use": "more"
+  },
+  {
+    "word": "further",
+    "pos": "adv",
+    "use": "more"
+  },
+  {
+    "word": "gather",
+    "pos": "v",
+    "use": "collect"
+  },
+  {
+    "word": "generate",
+    "pos": "v",
+    "use": "be, give, supply"
+  },
+  {
+    "word": "genuine",
+    "pos": "adj",
+    "use": "correct"
+  },
+  {
+    "word": "glue",
+    "pos": "v",
+    "use": "attach"
+  },
+  {
+    "word": "great",
+    "pos": "adj",
+    "use": "large, more than, very"
+  },
+  {
+    "word": "guard",
+    "pos": "v",
+    "use": "prevent"
+  },
+  {
+    "word": "halve",
+    "pos": "v",
+    "use": "divide"
+  },
+  {
+    "word": "handle",
+    "pos": "v",
+    "use": "use, do"
+  },
+  {
+    "word": "happen",
+    "pos": "v",
+    "use": "occur"
+  },
+  {
+    "word": "harden",
+    "pos": "v",
+    "use": "make safe"
+  },
+  {
+    "word": "head",
+    "pos": "v",
+    "use": "point"
+  },
+  {
+    "word": "huge",
+    "pos": "adj",
+    "use": "large"
+  },
+  {
+    "word": "idle",
+    "pos": "v",
+    "use": "stop, wait"
+  },
+  {
+    "word": "immediate",
+    "pos": "adj",
+    "use": "immediately"
+  },
+  {
+    "word": "implement",
+    "pos": "v",
+    "use": "do"
+  },
+  {
+    "word": "incomplete",
+    "pos": "adj",
+    "use": "not full, not completed, all"
+  },
+  {
+    "word": "independent",
+    "pos": "adj",
+    "use": "independently"
+  },
+  {
+    "word": "inject",
+    "pos": "v",
+    "use": "put"
+  },
+  {
+    "word": "insert",
+    "pos": "v",
+    "use": "put, engage"
+  },
+  {
+    "word": "inside",
+    "pos": "adj",
+    "use": "inner"
+  },
+  {
+    "word": "inside",
+    "pos": "n",
+    "use": "inner"
+  },
+  {
+    "word": "inside",
+    "pos": "prep",
+    "use": "in, into"
+  },
+  {
+    "word": "inspect",
+    "pos": "v",
+    "use": "examine, inspection"
+  },
+  {
+    "word": "instead",
+    "pos": "adv",
+    "use": "alternative"
+  },
+  {
+    "word": "intermediate",
+    "pos": "adj",
+    "use": "middle, between"
+  },
+  {
+    "word": "interrupt",
+    "pos": "v",
+    "use": "stop"
+  },
+  {
+    "word": "isolation",
+    "pos": "n",
+    "use": "isolate"
+  },
+  {
+    "word": "just",
+    "pos": "adv",
+    "use": "immediately"
+  },
+  {
+    "word": "kind",
+    "pos": "n",
+    "use": "type"
+  },
+  {
+    "word": "label",
+    "pos": "v",
+    "use": "identify"
+  },
+  {
+    "word": "land",
+    "pos": "v",
+    "use": "go, get"
+  },
+  {
+    "word": "later",
+    "pos": "adj",
+    "use": "subsequent, then"
+  },
+  {
+    "word": "later",
+    "pos": "adv",
+    "use": "subsequently, when, after"
+  },
+  {
+    "word": "least",
+    "pos": "adv",
+    "use": "minimum"
+  },
+  {
+    "word": "leave",
+    "pos": "v",
+    "use": "keep, go, let stay"
+  },
+  {
+    "word": "limited",
+    "pos": "adj",
+    "use": "small"
+  },
+  {
+    "word": "link",
+    "pos": "v",
+    "use": "connect, attach"
+  },
+  {
+    "word": "list",
+    "pos": "v",
+    "use": "record, show"
+  },
+  {
+    "word": "main",
+    "pos": "adj",
+    "use": "primary"
+  },
+  {
+    "word": "match",
+    "pos": "v",
+    "use": "agree with, be the same as"
+  },
+  {
+    "word": "matter",
+    "pos": "n",
+    "use": "material"
+  },
+  {
+    "word": "may",
+    "pos": "v",
+    "use": "can, possibly"
+  },
+  {
+    "word": "mention",
+    "pos": "v",
+    "use": "give"
+  },
+  {
+    "word": "mid",
+    "pos": "adj",
+    "use": "middle, during"
+  },
+  {
+    "word": "need",
+    "pos": "v",
+    "use": "must, necessary"
+  },
+  {
+    "word": "neither",
+    "pos": "adj",
+    "use": "not, or"
+  },
+  {
+    "word": "neither",
+    "pos": "pron",
+    "use": "not, or"
+  },
+  {
+    "word": "neutralize",
+    "pos": "v",
+    "use": "neutral"
+  },
+  {
+    "word": "never",
+    "pos": "adv",
+    "use": "do not"
+  },
+  {
+    "word": "noisy",
+    "pos": "adj",
+    "use": "noise"
+  },
+  {
+    "word": "normal",
+    "pos": "adj",
+    "use": "usual, correct"
+  },
+  {
+    "word": "note",
+    "pos": "v",
+    "use": "record"
+  },
+  {
+    "word": "now",
+    "pos": "adv",
+    "use": "at this time"
+  },
+  {
+    "word": "often",
+    "pos": "adv",
+    "use": "frequently"
+  },
+  {
+    "word": "old",
+    "pos": "adj",
+    "use": "previous"
+  },
+  {
+    "word": "omit",
+    "pos": "v",
+    "use": "do not give, ignore"
+  },
+  {
+    "word": "once",
+    "pos": "adv",
+    "use": "one time"
+  },
+  {
+    "word": "once",
+    "pos": "conj",
+    "use": "when"
+  },
+  {
+    "word": "opaque",
+    "pos": "adj",
+    "use": "not transparent"
+  },
+  {
+    "word": "option",
+    "pos": "n",
+    "use": "alternative, possible, can"
+  },
+  {
+    "word": "order",
+    "pos": "n",
+    "use": "sequence"
+  },
+  {
+    "word": "order",
+    "pos": "v",
+    "use": "tell"
+  },
+  {
+    "word": "origin",
+    "pos": "n",
+    "use": "source"
+  },
+  {
+    "word": "original",
+    "pos": "adj",
+    "use": "initial"
+  },
+  {
+    "word": "otherwise",
+    "pos": "adv",
+    "use": "if not, differently"
+  },
+  {
+    "word": "outside",
+    "pos": "adj",
+    "use": "external, outer"
+  },
+  {
+    "word": "outside",
+    "pos": "adv",
+    "use": "outdoors"
+  },
+  {
+    "word": "outside",
+    "pos": "n",
+    "use": "external, outer"
+  },
+  {
+    "word": "outside",
+    "pos": "prep",
+    "use": "near"
+  },
+  {
+    "word": "over",
+    "pos": "prep",
+    "use": "above, along, on, more than"
+  },
+  {
+    "word": "pack",
+    "pos": "v",
+    "use": "put, fill"
+  },
+  {
+    "word": "partial",
+    "pos": "adj",
+    "use": "not fully"
+  },
+  {
+    "word": "pass",
+    "pos": "v",
+    "use": "give, go, through"
+  },
+  {
+    "word": "passage",
+    "pos": "n",
+    "use": "part"
+  },
+  {
+    "word": "past",
+    "pos": "prep",
+    "use": "around, through"
+  },
+  {
+    "word": "per",
+    "pos": "prep",
+    "use": "for each"
+  },
+  {
+    "word": "perform",
+    "pos": "v",
+    "use": "measure"
+  },
+  {
+    "word": "permit",
+    "pos": "v",
+    "use": "let"
+  },
+  {
+    "word": "persist",
+    "pos": "v",
+    "use": "continue"
+  },
+  {
+    "word": "persistent",
+    "pos": "adj",
+    "use": "permanent"
+  },
+  {
+    "word": "place",
+    "pos": "n",
+    "use": "position, area"
+  },
+  {
+    "word": "place",
+    "pos": "v",
+    "use": "put"
+  },
+  {
+    "word": "precise",
+    "pos": "adj",
+    "use": "accurate"
+  },
+  {
+    "word": "presence",
+    "pos": "n",
+    "use": "be"
+  },
+  {
+    "word": "present",
+    "pos": "adj",
+    "use": "be"
+  },
+  {
+    "word": "present",
+    "pos": "v",
+    "use": "give, show"
+  },
+  {
+    "word": "preserve",
+    "pos": "v",
+    "use": "keep"
+  },
+  {
+    "word": "press",
+    "pos": "v",
+    "use": "push"
+  },
+  {
+    "word": "priority",
+    "pos": "n",
+    "use": "important, before, first"
+  },
+  {
+    "word": "probe",
+    "pos": "v",
+    "use": "find"
+  },
+  {
+    "word": "proceed",
+    "pos": "v",
+    "use": "continue, during, while"
+  },
+  {
+    "word": "produce",
+    "pos": "v",
+    "use": "cause, give, make, supply"
+  },
+  {
+    "word": "profile",
+    "pos": "n",
+    "use": "set"
+  },
+  {
+    "word": "progress",
+    "pos": "n",
+    "use": "continue, in progress"
+  },
+  {
+    "word": "progress",
+    "pos": "v",
+    "use": "continue"
+  },
+  {
+    "word": "progressive",
+    "pos": "adj",
+    "use": "gradually"
+  },
+  {
+    "word": "provide",
+    "pos": "v",
+    "use": "give, supply"
+  },
+  {
+    "word": "quick",
+    "pos": "adj",
+    "use": "quickly"
+  },
+  {
+    "word": "quit",
+    "pos": "v",
+    "use": "go, stop"
+  },
+  {
+    "word": "quote",
+    "pos": "v",
+    "use": "give"
+  },
+  {
+    "word": "raise",
+    "pos": "v",
+    "use": "lift, increase, retract"
+  },
+  {
+    "word": "reach",
+    "pos": "v",
+    "use": "get, touch, be"
+  },
+  {
+    "word": "real",
+    "pos": "adj",
+    "use": "correct"
+  },
+  {
+    "word": "reason",
+    "pos": "n",
+    "use": "cause, because of"
+  },
+  {
+    "word": "recover",
+    "pos": "v",
+    "use": "collect"
+  },
+  {
+    "word": "recur",
+    "pos": "v",
+    "use": "occur"
+  },
+  {
+    "word": "reference",
+    "pos": "n",
+    "use": "refer"
+  },
+  {
+    "word": "register",
+    "pos": "v",
+    "use": "record, show"
+  },
+  {
+    "word": "regulate",
+    "pos": "v",
+    "use": "control, adjust"
+  },
+  {
+    "word": "relevant",
+    "pos": "adj",
+    "use": "related, their, its"
+  },
+  {
+    "word": "remain",
+    "pos": "v",
+    "use": "stay"
+  },
+  {
+    "word": "render",
+    "pos": "v",
+    "use": "show, make"
+  },
+  {
+    "word": "repeat",
+    "pos": "v",
+    "use": "again"
+  },
+  {
+    "word": "request",
+    "pos": "v",
+    "use": "tell, write"
+  },
+  {
+    "word": "require",
+    "pos": "v",
+    "use": "must, necessary"
+  },
+  {
+    "word": "reset",
+    "pos": "v",
+    "use": "set"
+  },
+  {
+    "word": "respond",
+    "pos": "v",
+    "use": "give a result"
+  },
+  {
+    "word": "rest",
+    "pos": "n",
+    "use": "remaining"
+  },
+  {
+    "word": "rest",
+    "pos": "v",
+    "use": "be, put"
+  },
+  {
+    "word": "restore",
+    "pos": "v",
+    "use": "repair, put"
+  },
+  {
+    "word": "resume",
+    "pos": "v",
+    "use": "continue"
+  },
+  {
+    "word": "retain",
+    "pos": "v",
+    "use": "keep"
+  },
+  {
+    "word": "return",
+    "pos": "n",
+    "use": "result"
+  },
+  {
+    "word": "return",
+    "pos": "v",
+    "use": "give"
+  },
+  {
+    "word": "reusable",
+    "pos": "adj",
+    "use": "use"
+  },
+  {
+    "word": "reuse",
+    "pos": "v",
+    "use": "use"
+  },
+  {
+    "word": "review",
+    "pos": "n",
+    "use": "inspection, examine"
+  },
+  {
+    "word": "round",
+    "pos": "adj",
+    "use": "circular"
+  },
+  {
+    "word": "route",
+    "pos": "n",
+    "use": "routing"
+  },
+  {
+    "word": "route",
+    "pos": "v",
+    "use": "send"
+  },
+  {
+    "word": "routine",
+    "pos": "adj",
+    "use": "usual"
+  },
+  {
+    "word": "scan",
+    "pos": "v",
+    "use": "examine"
+  },
+  {
+    "word": "search",
+    "pos": "v",
+    "use": "find, examine"
+  },
+  {
+    "word": "secure",
+    "pos": "adj",
+    "use": "tight, safe, correctly"
+  },
+  {
+    "word": "secure",
+    "pos": "v",
+    "use": "attach, safety"
+  },
+  {
+    "word": "security",
+    "pos": "n",
+    "use": "safety"
+  },
+  {
+    "word": "separate",
+    "pos": "adj",
+    "use": "different"
+  },
+  {
+    "word": "separate",
+    "pos": "v",
+    "use": "disconnect, divide"
+  },
+  {
+    "word": "serve",
+    "pos": "v",
+    "use": "give, supply"
+  },
+  {
+    "word": "setting",
+    "pos": "n",
+    "use": "set, value"
+  },
+  {
+    "word": "settle",
+    "pos": "v",
+    "use": "stop, become stable"
+  },
+  {
+    "word": "shift",
+    "pos": "v",
+    "use": "move"
+  },
+  {
+    "word": "shorten",
+    "pos": "v",
+    "use": "decrease"
+  },
+  {
+    "word": "should",
+    "pos": "v",
+    "use": "must, if"
+  },
+  {
+    "word": "silence",
+    "pos": "v",
+    "use": "stop"
+  },
+  {
+    "word": "size",
+    "pos": "n",
+    "use": "length, quantity, dimension"
+  },
+  {
+    "word": "slide",
+    "pos": "v",
+    "use": "move"
+  },
+  {
+    "word": "specific",
+    "pos": "adj",
+    "use": "approved, specified"
+  },
+  {
+    "word": "speech",
+    "pos": "n",
+    "use": "voice"
+  },
+  {
+    "word": "split",
+    "pos": "v",
+    "use": "divide, break"
+  },
+  {
+    "word": "stage",
+    "pos": "n",
+    "use": "step"
+  },
+  {
+    "word": "stamp",
+    "pos": "v",
+    "use": "put, identify"
+  },
+  {
+    "word": "stand",
+    "pos": "v",
+    "use": "stay"
+  },
+  {
+    "word": "state",
+    "pos": "n",
+    "use": "condition"
+  },
+  {
+    "word": "state",
+    "pos": "v",
+    "use": "tell"
+  },
+  {
+    "word": "sticky",
+    "pos": "adj",
+    "use": "continuous"
+  },
+  {
+    "word": "still",
+    "pos": "adv",
+    "use": "continue, stay"
+  },
+  {
+    "word": "strictly",
+    "pos": "adv",
+    "use": "fully"
+  },
+  {
+    "word": "submit",
+    "pos": "v",
+    "use": "send"
+  },
+  {
+    "word": "successful",
+    "pos": "adj",
+    "use": "correct, satisfactory"
+  },
+  {
+    "word": "suitable",
+    "pos": "adj",
+    "use": "applicable, correct"
+  },
+  {
+    "word": "support",
+    "pos": "n",
+    "use": "function"
+  },
+  {
+    "word": "support",
+    "pos": "v",
+    "use": "let, can use"
+  },
+  {
+    "word": "switch",
+    "pos": "v",
+    "use": "set"
+  },
+  {
+    "word": "take",
+    "pos": "v",
+    "use": "get, read, have"
+  },
+  {
+    "word": "talk",
+    "pos": "v",
+    "use": "speak"
+  },
+  {
+    "word": "thread",
+    "pos": "v",
+    "use": "put"
+  },
+  {
+    "word": "toward",
+    "pos": "prep",
+    "use": "to, direction"
+  },
+  {
+    "word": "track",
+    "pos": "v",
+    "use": "monitor"
+  },
+  {
+    "word": "treat",
+    "pos": "v",
+    "use": "apply, touch"
+  },
+  {
+    "word": "trigger",
+    "pos": "v",
+    "use": "cause, start"
+  },
+  {
+    "word": "true",
+    "pos": "adj",
+    "use": "correct, agree"
+  },
+  {
+    "word": "under",
+    "pos": "prep",
+    "use": "below, in, less than"
+  },
+  {
+    "word": "undo",
+    "pos": "v",
+    "use": "loosen"
+  },
+  {
+    "word": "unrestricted",
+    "pos": "adj",
+    "use": "free"
+  },
+  {
+    "word": "unsafe",
+    "pos": "adj",
+    "use": "dangerous"
+  },
+  {
+    "word": "usage",
+    "pos": "n",
+    "use": "quantity, use"
+  },
+  {
+    "word": "utilization",
+    "pos": "n",
+    "use": "use"
+  },
+  {
+    "word": "vary",
+    "pos": "v",
+    "use": "change"
+  },
+  {
+    "word": "verify",
+    "pos": "v",
+    "use": "make sure"
+  },
+  {
+    "word": "via",
+    "pos": "prep",
+    "use": "through"
+  },
+  {
+    "word": "visible",
+    "pos": "adj",
+    "use": "see, view"
+  },
+  {
+    "word": "warn",
+    "pos": "v",
+    "use": "tell"
+  },
+  {
+    "word": "watch",
+    "pos": "v",
+    "use": "monitor, look"
+  },
+  {
+    "word": "well",
+    "pos": "adv",
+    "use": "correctly, good, fully"
+  },
+  {
+    "word": "whether",
+    "pos": "conj",
+    "use": "if"
+  },
+  {
+    "word": "whole",
+    "pos": "adj",
+    "use": "full, all"
+  },
+  {
+    "word": "whose",
+    "pos": "pron",
+    "use": "of which"
+  },
+  {
+    "word": "wire",
+    "pos": "v",
+    "use": "attach"
+  },
+  {
+    "word": "within",
+    "pos": "prep",
+    "use": "in, in or less, in less than"
+  },
+  {
+    "word": "would",
+    "pos": "v",
+    "use": "can"
+  },
+  {
+    "word": "wrong",
+    "pos": "adj",
+    "use": "incorrect"
+  },
+  {
+    "word": "yet",
+    "pos": "adv",
+    "use": "at this time"
+  },
+  {
+    "word": "yet",
+    "pos": "conj",
+    "use": "but"
+  },
+  {
+    "word": "yourself",
+    "pos": "pron",
+    "use": "you"
+  }
+]

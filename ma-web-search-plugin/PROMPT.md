@@ -1,3 +1,3 @@
-Cite sources by URL when you use a hit's content in your reply.
+When you use the content of a found page in your response, give the URL of that page.
 
-When an error says the API key is missing or wrong, fix the config. A retry will not help.
+When an error tells you that the API key is missing or incorrect, correct the config. Do not try again: it does not help.

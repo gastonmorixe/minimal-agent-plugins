@@ -91,7 +91,7 @@ function rowDetail(r: SubagentRecord, ansi: boolean, nowMs: number): string {
     }
     case "done": {
       const arrow = color(ansi, ANSI.DGRAY, "→")
-      return `${color(ansi, ANSI.DIM, clip(s.result.short, 38))} ${arrow} ${color(ansi, ANSI.LGRAY, `AgentResult ${r.id}`)}`
+      return `${color(ansi, ANSI.DIM, clip(s.result.short, 38))} ${arrow} ${color(ansi, ANSI.LGRAY, `SubAgentsAgentResult ${r.id}`)}`
     }
     case "incomplete":
       return color(ansi, ANSI.GOLD, `⚠ no deliverable · ${clip(s.reason, 34)}`)
@@ -195,7 +195,9 @@ export function renderWidget(
   }
   if (ordered.length > shown.length) {
     const more = ordered.length - shown.length
-    lines.push(color(ansi, ANSI.DGRAY, `   … +${more} more ${GLYPHS.bullet} ListAgents for all`))
+    lines.push(
+      color(ansi, ANSI.DGRAY, `   … +${more} more ${GLYPHS.bullet} SubAgentsListAgents for all`),
+    )
   }
   return lines.join("\n")
 }

@@ -1,6 +1,6 @@
 # dry-run plugin
 
-Builds the full LLM request, prints it as JSON, and blocks the send. No
+The plugin makes the full LLM request, prints it as JSON, and does not send it. No
 request reaches the provider.
 
 The dump shows what the model would get: every system block (including

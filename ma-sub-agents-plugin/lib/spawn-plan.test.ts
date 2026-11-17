@@ -184,9 +184,9 @@ describe("buildSpawnPlan startup profile (SPEC 4.4, R11, T1, T5, T6)", () => {
 })
 
 describe("renderResultProtocol (the markdown template)", () => {
-  it("teaches: leaf worker, no delegation, call ReportResult; with the fallback path", () => {
+  it("teaches: leaf sub-agent, no delegation, call ReportResult; with the fallback path", () => {
     const out = renderResultProtocol(testRender, "/sessions/abc.result.json")
-    expect(out).toMatch(/leaf worker/i)
+    expect(out).toMatch(/leaf sub-agent/i)
     expect(out).toMatch(/cannot delegate/i)
     expect(out).toMatch(/SpawnAgent/)
     expect(out).toMatch(/ReportResult/)

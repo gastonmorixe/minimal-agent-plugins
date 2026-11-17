@@ -2,7 +2,7 @@
   "id": "intercom",
   "name": "Intercom",
   "version": "0.1.0",
-  "description": "Inter-session communication and presence. The plugin lets a session see what the other sessions do. It shows a live roster with derived liveness. It also gives a deep inspection of the tasks, the background jobs and the sub-agent fleet of a peer. A session can send a message to a peer: a note, a ping, an interrupt or a broadcast. The messages are durable, they arrive as a per-turn <ma::agent::intercom-inbox> block, and they survive a crash and a resume. A ping or an interrupt wakes an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. To disable presence, set MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
+  "description": "Inter-session communication and presence. The plugin lets a session see what the other sessions do. It shows a live roster with derived liveness. It also gives a deep inspection of the tasks, the background jobs and the sub-agent fleet of a peer.\n\nA session can send a message to a peer: a note, a ping, an interrupt or a broadcast. The messages are durable, they arrive as a per-turn <ma::agent::intercom-inbox> block, and they survive a crash and a resume. A ping or an interrupt wakes an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. To disable presence, set MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
   "capabilities": ["sessions:read"],
   "permissions": [
     "hooks:editor.key",
@@ -20,18 +20,18 @@
           "type": "tool",
           "tool": {
             "name": "Peers",
-            "description": "List the other minimal-agent sessions on this machine, or inspect one peer in depth. Use it before you message a peer, or when you must know what a peer is doing. Do not use it to reach a sub-agent worker: use Mailbox. Returns the roster with short id, liveness, model, directory and activity, or one peer bundle for `inspect`.",
+            "description": "Show the sessions on this computer, with this session as `(you)`. Use it before you send a message. For a sub-agent, use `SubAgentsMailbox`.\n\nThe tool gives the short id, status, model, directory and work of each session, or one peer for `inspect`.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect"],
-                  "description": "\"list\" (default) for the roster, or \"inspect\" for one peer. Liveness: online beating, busy in a turn, stale not beating, hung process alive, dead process gone, offline exited cleanly."
+                  "description": "- `list` (default): all sessions.\n- `inspect`: one peer.\n\nStatus of a session:\n- `online`: it writes its status.\n- `busy`: in a turn.\n- `idle`: it waits.\n- `stale`: no new status for some time.\n- `hung`: the process operates, with no status.\n- `dead`: the process stopped.\n- `offline`: it stopped correctly, or it has no correct status."
                 },
                 "peer": {
                   "type": "string",
-                  "description": "inspect: the target peer. Give a short id (e.g. \"a1b2c3d4\"), a full session id, or an at-mention. Required for inspect."
+                  "description": "Necessary for `inspect`. A short id, a session id, or `@name`."
                 },
                 "include": {
                   "type": "array",
@@ -39,16 +39,16 @@
                     "type": "string",
                     "enum": ["tasks", "jobs", "fleet", "activity", "transcript"]
                   },
-                  "description": "inspect: which sections to gather. Default [tasks, activity, jobs]. Add \"fleet\" for sub-agents, \"transcript\" for a recent transcript excerpt."
+                  "description": "For `inspect`. The default is `tasks`, `activity`, `jobs`. Also: `fleet` (sub-agents), `transcript`."
                 },
                 "liveOnly": {
                   "type": "boolean",
-                  "description": "list: drop dead/offline sessions, showing only reachable peers. Default false."
+                  "description": "For `list`: only the sessions that can get a message."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
-                  "description": "Output format. Default \"text\"."
+                  "description": "The default is `text`."
                 }
               },
               "additionalProperties": false
@@ -68,26 +68,26 @@
           "type": "tool",
           "tool": {
             "name": "Send",
-            "description": "Send a message to one peer session, to every reachable session, or to sessions in your project directory. Use it to hand off a result, claim a shared resource, flag a blocker, or ask a peer to stop. Do not use it for a sub-agent worker, and do not use it for running commentary. Returns the delivered count, the peer names, the envelope id and the skipped peers.",
+            "description": "Send a message to one or more peers. Use it to give a result, stop a peer, or tell that you use an item or cannot continue. Do not use it for a sub-agent, or for each step of your work.\n\nThe tool gives the message id and the sessions that got it or did not.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "to": {
                   "type": "string",
-                  "description": "Recipient: a peer short id like \"a1b2c3d4\" or a full session id. Use \"all\" to broadcast to every reachable peer. Use \"project\" for the peers in your project directory. Any prefix of a session id finds its session. You cannot send a message to yourself."
+                  "description": "Necessary. A short id (`a1b2c3d4`), a session id, or a prefix of an id or name that only one session has. Use `all` for all available peers, or `project` for your project directory. You cannot send a message to this session."
                 },
                 "body": {
                   "type": "string",
-                  "description": "The message text. Keep it self-contained: the recipient has none of your context, so say who you are and what you need. Long coordination payloads are fine (safety ceiling ~256 KiB)."
+                  "description": "Necessary. The peer does not have your context. Tell it who you are and the data that you must get. The maximum is about 256 KiB."
                 },
                 "kind": {
                   "type": "string",
                   "enum": ["message", "interrupt"],
-                  "description": "Delivery kind. \"message\" (default) queues if busy, wakes if idle. \"interrupt\" signals urgency and changes the TUI glyph only, because the preemption hook does not exist yet."
+                  "description": "- `message` (default): if the peer waits, the message starts a turn. If not, the message waits for the next turn of the peer.\n- `interrupt`: an important message that does not stop a turn. The peer sees the number of `interrupt` messages."
                 },
                 "replyTo": {
                   "type": "string",
-                  "description": "Optional prior message id this replies to (threading, display-only)."
+                  "description": "The id of the previous message, for display only."
                 }
               },
               "required": ["to", "body"],
@@ -108,23 +108,23 @@
           "type": "tool",
           "tool": {
             "name": "Inbox",
-            "description": "Re-read intercom messages that already arrived. Use it when you must review history, or to confirm that you already saw a message. Do not use it to wait for new mail: delivery is automatic on every turn. Returns message rows with sender id, model, timestamp and body, or an empty notice.",
+            "description": "Read again the Intercom messages that you got. Do not use it to wait: new messages come at each turn automatically. The tool gives the session id, model, timestamp and body of each message, or an empty text.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "scope": {
                   "type": "string",
                   "enum": ["unread", "recent"],
-                  "description": "\"unread\" (default) since your last Inbox read, or \"recent\" for the latest messages."
+                  "description": "- `unread` (default): the messages after you last used this tool.\n- `recent`: the last messages."
                 },
                 "limit": {
                   "type": "number",
-                  "description": "Max messages to return. Default 20."
+                  "description": "The maximum number of messages. The default is 20."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["text", "json"],
-                  "description": "Output format. Default \"text\"."
+                  "description": "The default is `text`."
                 }
               },
               "additionalProperties": false

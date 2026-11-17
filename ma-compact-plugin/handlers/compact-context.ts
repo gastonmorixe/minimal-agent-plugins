@@ -3,7 +3,9 @@
  * sub-API, queue the request, return `queued: true` + a human message.
  *
  * The plugin never compacts directly (no `agent.compact()` call). The host
- * performs the history rewrite after the turn; this handler only queues.
+ * drains the request at the start of the next round of the same turn, before
+ * the next model request (core `agent-core.ts` `drainPendingCompact`); this
+ * handler only queues.
  * Missing capability (`context:compact` not granted) is a loud error, not
  * a crash. A host that refused the queue (`queued: false`) is also an
  * error, with the args echoed so the model can retry or tell the user.
@@ -79,6 +81,8 @@ function formatQueued(opts: {
   const keepTail = opts.keepTail ?? DEFAULT_KEEP_TAIL
   const parts = [`Compact queued (mode: ${mode}, tail: ${keepTail}, reason: ${opts.reason}).`]
   if (opts.focus) parts.push(`Focus: ${opts.focus}`)
-  parts.push("The host rewrites history after this turn. Continue with the retained tail.")
+  parts.push(
+    "The harness does the compaction in this turn, before the next model request. Then continue with the last messages.",
+  )
   return parts.join(" ")
 }

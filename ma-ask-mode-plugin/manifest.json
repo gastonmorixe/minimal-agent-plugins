@@ -26,7 +26,7 @@
           "allow": ["*"],
           "deny": ["Edit", "Write"]
         },
-        "refusalHint": "Present the proposed change as a unified diff in a fenced code block (or via the ShowDiff tool); the user will apply it manually."
+        "refusalHint": "Give the change that you recommend as a diff in the `diff -u` format, in a code block. You can also use the DiffViewerShowDiff tool. The user applies the change."
       }
     ]
   }

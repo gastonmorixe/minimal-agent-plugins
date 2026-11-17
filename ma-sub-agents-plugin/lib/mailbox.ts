@@ -17,13 +17,23 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 /** One mailbox message. `to: "*"` is a broadcast. */
+/**
+ * The message kinds that the SubAgentsMailbox `kind` param names. The field
+ * stays free-form (the handler keeps any string); these are the documented
+ * values, and `DEFAULT_MAIL_KIND` is the one the handler sets.
+ */
+export const MAIL_KINDS = ["note", "claim", "blocker", "handoff"] as const
+
+/** The kind of a message posted with no `kind`. */
+export const DEFAULT_MAIL_KIND = "note"
+
 export interface MailMessage {
   readonly ts: string
   /** Sender handle: a worker id (`"A2"`) or `"lead"`. */
   readonly from: string
   /** Recipient handle, or `"*"` for broadcast. */
   readonly to: string
-  /** Free-form category (`"note"`, `"claim"`, `"blocker"`, …). */
+  /** Free-form category. The tool text names the {@link MAIL_KINDS}; any other string is kept as it is. */
   readonly kind: string
   readonly body: string
 }
@@ -46,7 +56,7 @@ export function parseMailbox(text: string): MailMessage[] {
           ts: String(o.ts ?? ""),
           from: o.from,
           to: o.to,
-          kind: String(o.kind ?? "note"),
+          kind: String(o.kind ?? DEFAULT_MAIL_KIND),
           body: o.body,
         })
       }

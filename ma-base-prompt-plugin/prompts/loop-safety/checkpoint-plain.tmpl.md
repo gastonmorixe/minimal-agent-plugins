@@ -1,4 +1,4 @@
-A reflection checkpoint occurs every %%interval%% tool rounds. The harness adds a `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="0" />` attachment to the next user content. The checkpoint is soft. It is not a stop signal.
+A reflection checkpoint occurs every %%interval%% tool rounds. The harness adds a `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="0" />` attachment to the next user content. The checkpoint is soft. It is not a signal to stop.
 
 Briefly examine if your work still moves toward the goal. Then do one of these steps:
 

@@ -55,7 +55,7 @@ const model = {
 const tools = [
   {
     name: "VaultLookup",
-    description: "Look up a vault code by key. Returns the code.",
+    description: "Look up a vault code by key. The tool returns the code.",
     inputSchema: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
   },
   {

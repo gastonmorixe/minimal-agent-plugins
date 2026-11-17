@@ -1,0 +1,34 @@
+[
+  {
+    "word": "built-in",
+    "reason": "a tool or a function that comes with the program, not from a plugin"
+  },
+  {
+    "word": "case-insensitive",
+    "reason": "a text match that ignores the difference between capital and small letters"
+  },
+  {
+    "word": "cross-origin",
+    "reason": "web content from a different origin than the page, a browser security term"
+  },
+  {
+    "word": "json-rpc",
+    "reason": "the JSON-RPC remote procedure call protocol"
+  },
+  {
+    "word": "log-miner",
+    "reason": "the name of the sub-agent type that reads logs and reports findings"
+  },
+  {
+    "word": "minimal-agent",
+    "reason": "the name of this agent product and its packages"
+  },
+  {
+    "word": "sub-agent",
+    "reason": "a child agent process that the lead agent starts for one task"
+  },
+  {
+    "word": "zero-based",
+    "reason": "an index that starts at 0, not at 1"
+  }
+]

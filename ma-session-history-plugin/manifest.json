@@ -2,7 +2,7 @@
   "id": "session-history",
   "name": "Session History",
   "version": "0.1.0",
-  "description": "Contributes the SessionHistory tool: paginated, filterable read access to any saved session's transcript (this one or a past one) from the append-only JSONL store. Window records, list/search sessions, filter tool calls by name, read spilled tool-output blobs, or produce the full markdown/XML dump. Reads only through the ctx.host capability surface (sessions:read, blobs:read). Distinct from SessionInfo, which reports the current run's live state.",
+  "description": "Contributes the SessionHistory tool: paginated, filterable read access to any saved session's transcript (this one or a past one) from the append-only JSONL store. Window records, list or search sessions, filter tool calls by name, read spilled tool-output blobs, or produce the full markdown or XML dump. The tool reads only through the ctx.host capability surface (sessions:read, blobs:read). Distinct from SessionInfo, which reports the current run's live state.",
   "capabilities": ["sessions:read", "blobs:read"],
   "headless": {
     "tools": [
@@ -12,64 +12,64 @@
           "type": "tool",
           "tool": {
             "name": "SessionHistory",
-            "description": "Read the conversation history of a saved session from the on-disk transcript store (~/.minimal-agent/sessions/<sid>.jsonl). It reads this session, its earlier turns, or any past session. It is the archival counterpart to SessionInfo, which reports the live runtime state: context %, quota and cost. Actions: 'window' (default) pages the records with stable indexes, newest 10 by default (anchor 'end'), and anchor 'start' with offset/limit walks forward. 'meta' gives a summary of a session (model, cwd, created, record counts, first prompt, liveness). 'list' enumerates the saved sessions, newest first (filter by query/cwd). 'search' finds text in one session (sid set) or in the recent sessions (sid omitted). 'tool_calls' filters the invocations by tool name. 'blob' reads the full pre-truncation output of one tool call by tool_use_id. 'dump' gives the whole session as markdown or XML (large, prefer 'window'). The sid defaults to 'last' and accepts any unique id prefix (e.g. '260d72dd'). The tool limits each result: it clips the previews for each record, and each response gives the totals and the next-page offsets.",
+            "description": "Read a saved session. It can be this session or a previous session. For the live context, quota and cost, use `SessionInfo`.\n\n`window` (the default) gives entries in pages. `search` finds text in one session or in the newest sessions. `blob` gives the full output of one tool result, before the harness made it shorter. `dump` gives the full session and is large: use `window` when possible.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["window", "meta", "list", "search", "tool_calls", "blob", "dump"],
-                  "description": "What to read. Default 'window' (paged records)."
+                  "description": "The data to read."
                 },
                 "sid": {
                   "type": "string",
-                  "description": "Target session id, a full id, or any unique prefix (e.g. '260d72dd'), or 'last' (default) for the most recent session in this cwd. If there is no session in this cwd, the tool uses the globally most recent session. An ambiguous prefix gives an error with the matching candidates. Not needed for 'list', optional for 'search'."
+                  "description": "The session: a full id, the start of one id (for example, `260d72dd`), or `last`. The default is `last`, the newest session in this `cwd`, or the newest of all. Without it, `search` examines the newest sessions. If the start agrees with more than one id, the tool gives an error with these ids."
                 },
                 "anchor": {
                   "type": "string",
                   "enum": ["start", "end"],
-                  "description": "window: page from the oldest record ('start') or the newest ('end', default)."
+                  "description": "For `window`: `start` (the first entry) or `end` (the newest entry). The default is `end`."
                 },
                 "offset": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "window/list/search/tool_calls: records to skip from the anchor. Default 0."
+                  "description": "For `window`, `list`, `search` and `tool_calls`: the number of entries to ignore. For `window`, the tool counts from the `anchor`. The default is 0."
                 },
                 "limit": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Page size. Defaults: window 10 (max 500), list 25, search 20, tool_calls 20."
+                  "description": "The page length. For `window`, the default is 10 and the maximum is 500. For `list`, the default is 25. For `search` and `tool_calls`, it is 20."
                 },
                 "previewChars": {
                   "type": "integer",
                   "minimum": 80,
-                  "description": "window/search: per-record body clip in characters. Default 600 (window) / 160 (search)."
+                  "description": "For `window` and `search`: the maximum number of characters of each entry body. The default is 600 for `window` and 160 for `search`."
                 },
                 "query": {
                   "type": "string",
-                  "description": "search: case-insensitive substring to find. list: filter sessions by sid/cwd substring."
+                  "description": "For `search`: the text to find. For `list`: text in the `sid` or `cwd`. It is case-insensitive."
                 },
                 "cwd": {
                   "type": "string",
-                  "description": "list: only sessions whose recorded cwd equals this path."
+                  "description": "For `list`: only the sessions with this `cwd`."
                 },
                 "tool": {
                   "type": "string",
-                  "description": "tool_calls: only invocations of this tool name (e.g. 'Bash'). Omit for all tools."
+                  "description": "For `tool_calls`: only the entries for this tool, for example `Bash`."
                 },
                 "toolUseId": {
                   "type": "string",
-                  "description": "blob: the tool_use id whose raw spilled output to read."
+                  "description": "For `blob`: the `tool_use` id of the output."
                 },
                 "maxBytes": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "blob: clamp the returned blob text to this many bytes. Default 65536."
+                  "description": "For `blob`: the maximum number of bytes. The default is 65536."
                 },
                 "format": {
                   "type": "string",
                   "enum": ["markdown", "xml"],
-                  "description": "dump: output format. Default markdown."
+                  "description": "For `dump`: the output format. The default is `markdown`."
                 }
               },
               "additionalProperties": false

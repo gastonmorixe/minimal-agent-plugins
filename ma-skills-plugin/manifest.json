@@ -11,18 +11,18 @@
           "type": "tool",
           "tool": {
             "name": "Skill",
-            "description": "Discover, inspect and load an Agent Skill. A skill is a SKILL.md pack that holds instructions, scripts and references for one task. Discovery scans the skill roots at session start, and a closer root wins. Use it when a task matches a skill description, or when a workflow must be repeatable. Do not use it for a trivial one-off command. Do not paraphrase a skill from its catalog entry, because the catalog is a router. Returns the catalog for `list`, the frontmatter for `info`, and the body plus a sibling list for `read`.",
+            "description": "Find, examine and load an Agent Skill. A skill is a directory for one task, with a SKILL.md file of instructions, scripts and other files. The tool finds the skills again each time. The system prompt shows the skills found at session start. Of two roots with the same skill, the tool uses the root nearer to the project.\n\nUse it when a task agrees with a skill description, or to do a task again with the same steps. Do not use it for a short command. Read a skill before you do its steps.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "info", "read"],
-                  "description": "What to do. Use list to show every discovered skill, with broken and shadowed entries, and no maxSkills cap. Use info to show the frontmatter of one skill, with no body load. Use read to show the full SKILL.md body, a trailer of bundled sibling files, and the declared allowed-tools field."
+                  "description": "- `list`: all skills, also broken skills and copies in other roots. No `maxSkills` limit applies.\n- `info`: the frontmatter of one skill, without the body.\n- `read`: the full SKILL.md body, the other files in the skill directory, and the `allowed-tools` field."
                 },
                 "name": {
                   "type": "string",
-                  "description": "Skill name (must match the SKILL.md frontmatter `name` field). Required for 'info' and 'read'."
+                  "description": "Necessary for `info` and `read`. The `name` field in the SKILL.md frontmatter."
                 }
               },
               "required": ["action"],

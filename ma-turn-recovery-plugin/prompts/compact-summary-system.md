@@ -1,9 +1,10 @@
-You are making a context checkpoint compaction. Create a handoff
+Make a context checkpoint compaction. Create a handoff
 summary for another LLM that will resume the task.
 
 Respond with text only. Do not call any tools.
 Do not use Read, Bash, Grep, Glob, Edit, Write, or any other tool.
 You have all context in the conversation above. The harness ignores tool calls.
+
 Reply with the summary body only (no preamble).
 Respond in the same language as the conversation.
 Do not continue the task. Do not answer open questions. Only summarize.

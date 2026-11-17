@@ -39,6 +39,7 @@
     "ste:report": "bun run scripts/ste-check.ts --report",
     "ste:write": "bun run scripts/ste-check.ts --write",
     "ste:parity": "bun run scripts/ste-parity.ts",
+    "ste:dict": "bun run scripts/ste-dict.ts",
     "typecheck": "bun run scripts/typecheck.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

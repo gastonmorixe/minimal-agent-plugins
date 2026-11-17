@@ -2,6 +2,6 @@
   "id": "ma-agent-writing-style",
   "name": "Agent Writing Style",
   "version": "0.2.0",
-  "description": "Opinionated agent writing style. The plugin injects a prose discipline into the system prompt, so the model writes like a knowledgeable human and not like AI text. It bans em-dashes and semicolons. It removes AI vocabulary (for example delve, tapestry, pivotal). It removes copula avoidance (serves as, stands as) and 'not just X but Y' parallelisms. It also removes superficial -ing tails, sycophancy, signposting, significance inflation, vague attribution, emoji used as formatting, and mechanical boldface. The user can override it per request. This is a prompt-only plugin: its only contribution is the PROMPT.md behavior mandate.",
+  "description": "Opinionated agent writing style. The plugin injects a prose discipline into the system prompt, so the model writes like a knowledgeable human and not like AI text. It bans em-dashes and semicolons.\n\nIt removes AI vocabulary (for example delve, tapestry, pivotal). It removes copula avoidance (serves as, stands as) and 'not just X but Y' parallelisms. It also removes superficial -ing tails, sycophancy, signposting, significance inflation, vague attribution, emoji used as formatting, and mechanical boldface.\n\nThe user can override it per request. This is a prompt-only plugin: its only contribution is the PROMPT.md behavior mandate.",
   "prompt": "./PROMPT.md"
 }
