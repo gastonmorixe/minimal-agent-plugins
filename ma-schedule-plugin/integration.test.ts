@@ -116,7 +116,13 @@ describe("CronList + CronDelete", () => {
     const del = asTool(await cronDelete(ctx({ id })))
     expect(del.is_error).toBeUndefined()
     expect(del.content).toContain("Canceled")
+    expect(del.content).toContain("1 scheduled task remains.")
     expect(new CronStore(SID, { dir }).count()).toBe(1)
+
+    // The last delete reports zero.
+    const last = new CronStore(SID, { dir }).load()[0]?.id as string
+    const del2 = asTool(await cronDelete(ctx({ id: last })))
+    expect(del2.content).toContain("0 scheduled tasks remain.")
 
     // Deleting an unknown id errors.
     const bad = asTool(await cronDelete(ctx({ id: "zzzzzzzz" })))

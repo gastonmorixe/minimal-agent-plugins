@@ -9,7 +9,8 @@ import { cronStoreForSession } from "../lib/store.ts"
 
 /**
  * Tool handler for `CronDelete`: cancels one scheduled task by its
- * 8-character id and confirms (or reports the miss).
+ * 8-character id and confirms with the count of tasks that remain (or
+ * reports the miss).
  */
 export default async function cronDelete(ctx: TUIContext): Promise<TUIResult> {
   if (ctx.env.MINIMAL_AGENT_DISABLE_CRON === "1") {
@@ -35,9 +36,10 @@ export default async function cronDelete(ctx: TUIContext): Promise<TUIResult> {
       is_error: true,
     }
   }
+  const remaining = store.count()
   return {
     kind: "tool_result",
-    content: `Canceled scheduled task ${id}.`,
+    content: `Canceled scheduled task ${id}. ${remaining} scheduled task${remaining === 1 ? "" : "s"} remain${remaining === 1 ? "s" : ""}.`,
     display: `✓ canceled ${id}${existed ? ` (${existed.prompt.replace(/\s+/g, " ").trim().slice(0, 60)})` : ""}`,
     displayHeader: id,
   }
