@@ -2,7 +2,7 @@
  * HuggingFace Inference Providers pricing (USD per 1M tokens).
  *
  * HuggingFace passes through each backend provider's pricing with no markup.
- * Rates below are live `/v1/models` snapshots as of **2026-11-15**: for each
+ * Rates below are live `/v1/models` snapshots as of **2026-11-18**: for each
  * slug we pick `is_model_author` when that row has pricing, else the live
  * backend with the best `context_length` that `supports_tools`, breaking ties
  * on lowest input USD. Cache write/read are not in the HF payload — write
@@ -57,9 +57,11 @@ export const PRICING_HF_DEEPSEEK_V4_1_FLASH: MTokRate = rate(0.2, 0.6)
 export const PRICING_HF_DEEPSEEK_V4_PRO: MTokRate = rate(1.3, 2.6)
 
 /**
- * moonshotai/Kimi-K2.7-Code: live 2026-11-15, deepinfra \@ 262144 ctx.
+ * moonshotai/Kimi-K2.7-Code: live 2026-11-18, author `moonshotai` \@ 262144 ctx
+ * (0.95/4; supersedes the 2026-11-15 deepinfra 0.68/3.4 pick now that the
+ * author backend publishes pricing).
  */
-export const PRICING_HF_KIMI_K2_7_CODE: MTokRate = rate(0.68, 3.4)
+export const PRICING_HF_KIMI_K2_7_CODE: MTokRate = rate(0.95, 4)
 
 /**
  * moonshotai/Kimi-K3.1-Pro: live 2026-11-15, deepinfra \@ 1048576 ctx
@@ -68,11 +70,11 @@ export const PRICING_HF_KIMI_K2_7_CODE: MTokRate = rate(0.68, 3.4)
 export const PRICING_HF_KIMI_K3_1_PRO: MTokRate = rate(2, 10)
 
 /**
- * zai-org/GLM-5.3: live 2026-11-15, deepinfra \@ 1048576 ctx.
- * Author backend `zai-org` is live with tools but omits pricing/context.
- * Replaces the GLM-5.2 entry.
+ * zai-org/GLM-5.3: live 2026-11-18, author `zai-org` \@ 1048576 ctx
+ * (1.4/4.4; the author backend now publishes pricing, so the 2026-11-15
+ * deepinfra 0.9/4 fallback is retired). Replaces the GLM-5.2 entry.
  */
-export const PRICING_HF_GLM_5_3: MTokRate = rate(0.9, 4)
+export const PRICING_HF_GLM_5_3: MTokRate = rate(1.4, 4.4)
 
 /**
  * MiniMaxAI/MiniMax-M3: live 2026-11-15, novita \@ 1000000 ctx

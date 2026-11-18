@@ -1,6 +1,6 @@
 /**
  * Snapshot of `modalities.input` per model from the live catalog
- * (https://opencode.ai/zen/v1/models, 2026-11-17, 88 models). Each list names the input
+ * (https://opencode.ai/zen/v1/models, 2026-11-18, 87 models). Each list names the input
  * types that the gateway takes for the model. Update it from the live
  * catalog when the gateway adds a model.
  *
@@ -219,7 +219,6 @@ export const LIVE_INPUT_MODALITIES: Readonly<Record<string, readonly string[]>> 
   "gemini-4-carbon": L3,
   "gemini-4-hydrogen": L3,
   "glm-5.3-flash": L4,
-  "glm-5.3-flash-free": L4,
   "grok-4.5": L5,
   "grok-4.6": L5,
   "nemotron-3.5-super-vl-free": L5,

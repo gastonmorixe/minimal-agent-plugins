@@ -241,6 +241,30 @@ export const PRICING_STEP_5_PREVIEW: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
+/**
+ * Source: models.dev opencode-go (2026-11-16). Free model has no Go list rate.
+ */
+export const PRICING_HY4_FLASH_FREE: MTokRate = {
+  inputUSD: 0,
+  outputUSD: 0,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0,
+  webSearchPerCallUSD: 0,
+}
+
+/**
+ * Source: models.dev opencode-go (2026-11-16): $1.50/$4.50/$0.075
+ * (cache_write $1.875 5m / $3 1h — keep base 1h? use 5m base like siblings use
+ * single write tier; models.dev canonical `cache_write` is 1.875).
+ */
+export const PRICING_QWEN4_MAX: MTokRate = {
+  inputUSD: 1.5,
+  outputUSD: 4.5,
+  cacheWriteUSD: 1.875,
+  cacheReadUSD: 0.075,
+  webSearchPerCallUSD: 0,
+}
+
 // Anthropic Messages surface
 
 /** Source: docs/go pricing table (2026-07-30). models.dev agrees (no cache_write). */

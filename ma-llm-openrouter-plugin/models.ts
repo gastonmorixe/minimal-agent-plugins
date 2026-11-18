@@ -6,7 +6,7 @@
  * `openai-chat-completions` surface — OpenRouter normalizes every upstream model to
  * the OpenAI Chat Completions wire format, so the DeepSeek/OpenAI chat
  * translator handles them unchanged. Only a representative few are
- * registered (snapshot as of 2026-11-15); any other slug still works on
+ * registered (snapshot as of 2026-11-18); any other slug still works on
  * the wire (the CLI doesn't gate on the registry), just without a local
  * cost estimate.
  *
@@ -23,7 +23,7 @@ import {
   CAPS_OR_CLAUDE_SONNET_55,
   CAPS_OR_DEEPSEEK_V41_FLASH,
   CAPS_OR_GPT_4O_MINI,
-  CAPS_OR_GPT_61_SOL,
+  CAPS_OR_GPT_62_SOL,
   CAPS_OR_GROK_47,
   CAPS_OR_KIMI_K31_PRO,
 } from "./capabilities.ts"
@@ -34,7 +34,7 @@ import {
   PRICING_OR_DEEPSEEK_V41_FLASH,
   PRICING_OR_GENERIC,
   PRICING_OR_GPT_4O_MINI,
-  PRICING_OR_GPT_61_SOL,
+  PRICING_OR_GPT_62_SOL,
   PRICING_OR_GROK_47,
   PRICING_OR_KIMI_K31_PRO,
 } from "./pricing.ts"
@@ -68,7 +68,7 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     ids.push(registerOpenRouterModelInto(models, spec))
   }
 
-  // Flagship: large context, vision, reasoning, tools. (live 2026-11-15)
+  // Flagship: large context, vision, reasoning, tools. (live 2026-11-18)
   add({
     id: "moonshotai/kimi-k3.1-pro",
     displayName: "Kimi K3.1 Pro (OpenRouter)",
@@ -100,13 +100,13 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     capabilities: CAPS_OR_CLAUDE_OPUS_55,
     pricing: PRICING_OR_CLAUDE_OPUS_55,
   })
-  // OpenAI frontier via OpenRouter.
+  // OpenAI frontier via OpenRouter. (live 2026-11-18: gpt-6.2-sol supersedes 6.1-sol)
   add({
-    id: "openai/gpt-6.1-sol",
-    displayName: "GPT-6.1 Sol (OpenRouter)",
+    id: "openai/gpt-6.2-sol",
+    displayName: "GPT-6.2 Sol (OpenRouter)",
     tags: ["openrouter", "openai-compatible", "flagship"],
-    capabilities: CAPS_OR_GPT_61_SOL,
-    pricing: PRICING_OR_GPT_61_SOL,
+    capabilities: CAPS_OR_GPT_62_SOL,
+    pricing: PRICING_OR_GPT_62_SOL,
   })
   // xAI frontier via OpenRouter.
   add({

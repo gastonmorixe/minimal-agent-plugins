@@ -10,7 +10,7 @@
  * Each model has its own `Capabilities` record and `MTokRate` — no buckets.
  * IDs: live `https://opencode.ai/zen/go/v1/models`. Caps: models.dev
  * `opencode-go`. Pricing: docs/go first, models.dev for omitted slugs
- * (2026-11-15).
+ * (2026-11-18).
  *
  * @module llm/providers/opencode/models
  */
@@ -32,6 +32,7 @@ import {
   CAPS_GROK_4_7,
   CAPS_HY3,
   CAPS_HY4,
+  CAPS_HY4_FLASH_FREE,
   CAPS_HY4_PREVIEW,
   CAPS_ICEMAN_CONTRIBUTOR_FREE,
   CAPS_KIMI_K2_7_CODE,
@@ -48,6 +49,7 @@ import {
   CAPS_QWEN3_7_PLUS,
   CAPS_QWEN3_8_FLASH,
   CAPS_QWEN3_8_MAX,
+  CAPS_QWEN4_MAX,
   CAPS_STEP_5_PREVIEW,
 } from "./capabilities.ts"
 import { withOpencodeInputMimeTypes } from "./input-formats.ts"
@@ -67,6 +69,7 @@ import {
   PRICING_GROK_4_7,
   PRICING_HY3,
   PRICING_HY4,
+  PRICING_HY4_FLASH_FREE,
   PRICING_HY4_PREVIEW,
   PRICING_ICEMAN_CONTRIBUTOR_FREE,
   PRICING_KIMI_K2_7_CODE,
@@ -83,6 +86,7 @@ import {
   PRICING_QWEN3_7_PLUS,
   PRICING_QWEN3_8_FLASH,
   PRICING_QWEN3_8_MAX,
+  PRICING_QWEN4_MAX,
   PRICING_STEP_5_PREVIEW,
 } from "./pricing.ts"
 
@@ -213,6 +217,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode-go", "openai-compatible", "hy"],
       capabilities: CAPS_HY4_PREVIEW,
       pricing: PRICING_HY4_PREVIEW,
+      surfaceId: "openai-chat-completions",
+    }),
+    makeSpec("hy4-flash-free", {
+      displayName: "Hy4 Flash Free",
+      tags: ["opencode-go", "openai-compatible", "hy", "free", "cheap"],
+      capabilities: CAPS_HY4_FLASH_FREE,
+      pricing: PRICING_HY4_FLASH_FREE,
       surfaceId: "openai-chat-completions",
     }),
     makeSpec("longcat-2.0", {
@@ -351,6 +362,13 @@ export function registerOpencodeModels(registrar: ModelRegistrar): string[] {
       tags: ["opencode-go", "anthropic-compatible", "qwen"],
       capabilities: CAPS_QWEN3_7_PLUS,
       pricing: PRICING_QWEN3_7_PLUS,
+      surfaceId: "anthropic-messages",
+    }),
+    makeSpec("qwen4-max", {
+      displayName: "Qwen4 Max",
+      tags: ["opencode-go", "anthropic-compatible", "qwen", "flagship"],
+      capabilities: CAPS_QWEN4_MAX,
+      pricing: PRICING_QWEN4_MAX,
       surfaceId: "anthropic-messages",
     }),
     makeSpec("claude-haiku-5-5", {

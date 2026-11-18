@@ -313,6 +313,54 @@ export const CAPS_GPT_6_1_TERRA_CHAT: Capabilities = {
 }
 
 /**
+ * GPT-6.2 Sol (released 2026-11-17, models.dev, live /v1/models). Efficient
+ * reasoning tier: effort `low|medium|high|xhigh|max` (default medium),
+ * 1.05M context, 128K output. Same $2/$10 short-context pricing as 6.1 Sol.
+ */
+export const CAPS_GPT_6_2_SOL_RESPONSES: Capabilities = {
+  ...CAPS_GPT_6_1_SOL_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "medium" },
+}
+
+/**
+ * GPT-6.2 Sol on Chat Completions. Tools off (same rule as 6.1 Sol Chat:
+ * function tools rejected on Chat, use Responses), trimmed Chat ladder.
+ */
+export const CAPS_GPT_6_2_SOL_CHAT: Capabilities = {
+  ...CAPS_GPT_6_2_SOL_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh"], default: "medium" },
+  tools: {
+    ...TOOLS_FULL,
+    userDefined: false,
+    parallel: false,
+    toolChoice: false,
+    strictSchema: false,
+  },
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
+ * GPT-6.2 Astra (released 2026-11-17, models.dev, live /v1/models). New
+ * flagship: effort `low|medium|high|xhigh|max` (default low per models.dev
+ * reasoning default; Astra keeps no `none`, and models.dev lists no `ultra`
+ * for 6.2). $8/$40 short-context Standard.
+ */
+export const CAPS_GPT_6_2_ASTRA_RESPONSES: Capabilities = {
+  ...CAPS_GPT_6_ASTRA_RESPONSES,
+  effort: { levels: ["low", "medium", "high", "xhigh", "max"], default: "low" },
+}
+
+/** GPT-6.2 Astra on Chat Completions. Effort accepted; summaries not streamed. */
+export const CAPS_GPT_6_2_ASTRA_CHAT: Capabilities = {
+  ...CAPS_GPT_6_2_ASTRA_RESPONSES,
+  thinking: { adaptive: false, extended: false, visible: false, interleaved: false },
+  serverSideHistory: false,
+  serverTools: [],
+}
+
+/**
  * GPT-6 Sol (2026-09-22, superseded by 6.1 Sol). Effort
  * `none|low|medium|high|xhigh|max` (default medium). Chat Completions
  * supports function calling only with effort `none`.

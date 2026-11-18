@@ -4,7 +4,7 @@
  * Wafer returns pricing in cents-per-million-tokens from `GET /v1/models`;
  * we convert to USD-per-million for the canonical `MTokRate` shape.
  * This file holds the statically-known rates for the built-in catalog.
- * Rates are sourced from the live API (2026-11-15 snapshot) and should be
+ * Rates are sourced from the live API (2026-11-18 snapshot) and should be
  * refreshed periodically. When the live block carries
  * `cache_read_microcents_per_million`, the cache-read rate uses that finer
  * value (the rounded `cache_read_cents_per_million` can differ by up to 0.5).
@@ -76,30 +76,30 @@ export const PRICING_KIMI_K3_1_PRO: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** MiniMax-M3.1-Flash — input 15 / output 60 / cache_read 1.5 cents-per-million. */
+/** MiniMax-M3.1-Flash — input 15 / output 60 / cache_read 2 cents-per-million (live 2026-11-18; was 1.5 on 2026-11-15). */
 export const PRICING_MINIMAX_M3_1_FLASH: MTokRate = {
   inputUSD: usd(15),
   outputUSD: usd(60),
   cacheWriteUSD: usd(15),
-  cacheReadUSD: usd(1.5),
+  cacheReadUSD: usd(2),
   webSearchPerCallUSD: 0,
 }
 
-/** DeepSeek-V4-Pro — input 28 / output 396 / cache_read 4.4 cents-per-million. */
+/** DeepSeek-V4-Pro — input 28 / output 396 / cache_read 4 cents-per-million (live 2026-11-18; was 4.4 on 2026-11-15). */
 export const PRICING_DEEPSEEK_V4_PRO: MTokRate = {
   inputUSD: usd(28),
   outputUSD: usd(396),
   cacheWriteUSD: usd(28),
-  cacheReadUSD: usd(4.4),
+  cacheReadUSD: usd(4),
   webSearchPerCallUSD: 0,
 }
 
-/** DeepSeek-V4.1-Flash — input 19 / output 65 / cache_read 1.2 cents-per-million. */
+/** DeepSeek-V4.1-Flash — input 19 / output 65 / cache_read 1 cent-per-million (live 2026-11-18; was 1.2 on 2026-11-15). */
 export const PRICING_DEEPSEEK_V4_1_FLASH: MTokRate = {
   inputUSD: usd(19),
   outputUSD: usd(65),
   cacheWriteUSD: usd(19),
-  cacheReadUSD: usd(1.2),
+  cacheReadUSD: usd(1),
   webSearchPerCallUSD: 0,
 }
 

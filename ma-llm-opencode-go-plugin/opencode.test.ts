@@ -133,7 +133,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
 
   it("registers all known model IDs", () => {
     setup()
-    // Live /v1/models snapshot 2026-11-15 (authoritative ID list).
+    // Live /v1/models snapshot 2026-11-18 (authoritative ID list, 32 ids).
     const ids = [
       "beam-free",
       "claude-haiku-5-5",
@@ -148,6 +148,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "grok-4.7",
       "hy3",
       "hy4",
+      "hy4-flash-free",
       "hy4-preview",
       "iceman-contributor-free",
       "kimi-k2.7-code",
@@ -164,6 +165,7 @@ describe("llm-opencode (triple-surface provider: Chat + Messages + Responses)", 
       "qwen3.7-plus",
       "qwen3.8-flash",
       "qwen3.8-max",
+      "qwen4-max",
       "step-5-preview",
     ]
     for (const id of ids) {

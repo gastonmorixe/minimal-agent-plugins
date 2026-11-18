@@ -11,7 +11,7 @@
  * activation time via `registerWaferModels()`.
  *
  * Catalog snapshot: live `GET https://pass.wafer.ai/v1/models` as of
- * 2026-11-15 (13 entries, all with a `wafer` metadata block, all
+ * 2026-11-18 (13 entries, all with a `wafer` metadata block, all
  * registered). Only entries with a `wafer` metadata block are registered.
  * Wafer serves dated checkpoints (`-0423`, `-1017`) as distinct SKUs with
  * their own rates, so they register as separate models. Ids that left the
@@ -81,7 +81,7 @@ export interface WaferPricing {
 
 /**
  * Built-in model catalog. Each entry is a model advertised by the live
- * `GET /v1/models` endpoint (with a `wafer` block) as of 2026-11-15.
+ * `GET /v1/models` endpoint (with a `wafer` block) as of 2026-11-18.
  * The first entry is the default. Role tags: scout = `cheap` + `scout`
  * (GLM-5.3-Flash), balanced = `balanced` (GLM-5.2), deep = `flagship` +
  * `deep` (GLM-5.3).

@@ -56,7 +56,7 @@ describe("llm-opencode-zen", () => {
 
   it("registers every live Zen model with the documented surface", () => {
     const reg = setup()
-    expect(LIVE_MODEL_IDS).toHaveLength(86)
+    expect(LIVE_MODEL_IDS).toHaveLength(87)
     for (const id of LIVE_MODEL_IDS) {
       const model = reg.resolveModel(id)
       expect(model.providerId).toBe("opencode-zen")
@@ -67,6 +67,30 @@ describe("llm-opencode-zen", () => {
       else expect(model.surfaceId).toBe("openai-chat-completions")
       expect(model.pricing).toBeDefined()
       expect(model.capabilities.contextWindow).toBeGreaterThan(0)
+    }
+  })
+
+  it("registers the 2026-11-18 live additions with models.dev pricing", () => {
+    const reg = setup()
+    // GPT-6.2 Astra (frontier) + GPT-6.2 Sol (efficient), both Responses.
+    const astra = reg.resolveModel("gpt-6.2-astra")
+    expect(astra.surfaceId).toBe("openai-responses")
+    expect(astra.pricing?.inputUSD).toBe(8)
+    expect(astra.pricing?.outputUSD).toBe(40)
+    expect(astra.pricing?.cacheWriteUSD).toBe(10)
+    const sol = reg.resolveModel("gpt-6.2-sol")
+    expect(sol.surfaceId).toBe("openai-responses")
+    expect(sol.pricing?.inputUSD).toBe(2)
+    expect(sol.pricing?.outputUSD).toBe(10)
+    expect(sol.pricing?.cacheWriteUSD).toBe(2.5)
+    // Hy4 Flash Free rides the free/chat bucket.
+    const hy4f = reg.resolveModel("hy4-flash-free")
+    expect(hy4f.surfaceId).toBe("openai-chat-completions")
+    expect(hy4f.tags).toContain("free")
+    expect(hy4f.pricing?.inputUSD).toBe(0)
+    // Retired free SKUs left the live list.
+    for (const retired of ["glm-5.3-flash-free", "minimax-m3.1-flash-free"]) {
+      expect(() => reg.resolveModel(retired)).toThrow()
     }
   })
 
@@ -83,12 +107,7 @@ describe("llm-opencode-zen", () => {
     expect(ember.surfaceId).toBe("openai-responses")
     expect(ember.pricing?.inputUSD).toBe(0.1)
     expect(ember.pricing?.cacheReadUSD).toBe(0.004)
-    for (const id of [
-      "iceman-free",
-      "inkling-2-small-free",
-      "longcat-2.5-free",
-      "minimax-m3.1-flash-free",
-    ]) {
+    for (const id of ["iceman-free", "inkling-2-small-free", "longcat-2.5-free"]) {
       const m = reg.resolveModel(id)
       expect(m.surfaceId).toBe("openai-chat-completions")
       expect(m.tags).toContain("free")

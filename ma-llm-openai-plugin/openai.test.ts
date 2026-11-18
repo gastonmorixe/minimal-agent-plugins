@@ -93,6 +93,42 @@ describe("registerOpenAIModels", () => {
     expect(chat.capabilities.thinking.visible).toBe(false)
   })
 
+  it("registers gpt-6.2 Astra + Sol alongside the 6.1 generation", () => {
+    const reg = makeTestRegistry()
+    const ids = registerOpenAIModels(reg.models)
+    // Live /v1/models 2026-11-18: gpt-6.2-astra + gpt-6.2-sol, no shutdown date.
+    for (const id of ["gpt-6.2-astra", "gpt-6.2-astra-chat", "gpt-6.2-sol", "gpt-6.2-sol-chat"]) {
+      expect(ids).toContain(id)
+    }
+    const astra62 = reg.resolveModel("gpt-6.2-astra")
+    expect(astra62.surfaceId).toBe("openai-responses")
+    expect(astra62.vendorIds?.firstParty).toBe("gpt-6.2-astra")
+    expect(astra62.capabilities.contextWindow).toBe(1_050_000)
+    expect(astra62.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
+    expect(astra62.capabilities.effort.default).toBe("low")
+    expect(astra62.capabilities.speedFast).toBe(true)
+    expect(astra62.pricing.inputUSD).toBe(8)
+    expect(astra62.pricing.outputUSD).toBe(40)
+    expect(astra62.pricing.cacheReadUSD).toBe(0.4)
+    expect(astra62.knowledgeCutoff).toBe("2026-05-18")
+    expect(reg.resolveModel("gpt-6.2-astra-chat").surfaceId).toBe("openai-chat-completions")
+    expect(reg.resolveModel("gpt-6.2-astra-chat").vendorIds?.firstParty).toBe("gpt-6.2-astra")
+
+    const sol62 = reg.resolveModel("gpt-6.2-sol")
+    expect(sol62.surfaceId).toBe("openai-responses")
+    expect(sol62.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh", "max"])
+    expect(sol62.capabilities.effort.default).toBe("medium")
+    expect(sol62.pricing.inputUSD).toBe(2)
+    expect(sol62.pricing.outputUSD).toBe(10)
+    expect(sol62.pricing.cacheReadUSD).toBe(0.1)
+    expect(sol62.knowledgeCutoff).toBe("2026-06-01")
+    const sol62chat = reg.resolveModel("gpt-6.2-sol-chat")
+    expect(sol62chat.surfaceId).toBe("openai-chat-completions")
+    expect(sol62chat.vendorIds?.firstParty).toBe("gpt-6.2-sol")
+    expect(sol62chat.capabilities.tools.userDefined).toBe(false)
+    expect(sol62chat.capabilities.effort.levels).toEqual(["low", "medium", "high", "xhigh"])
+  })
+
   it("registers gpt-6.1 Sol, gpt-6.1 Terra, gpt-6 Sol and gpt-6 Luna with model-card data", () => {
     const reg = makeTestRegistry()
     const ids = registerOpenAIModels(reg.models)
@@ -197,6 +233,10 @@ describe("registerOpenAIModels", () => {
 
     expect(ids).toEqual(
       expect.arrayContaining([
+        "gpt-6.2-astra",
+        "gpt-6.2-astra-chat",
+        "gpt-6.2-sol",
+        "gpt-6.2-sol-chat",
         "gpt-6-astra",
         "gpt-6-astra-chat",
         "gpt-5.6-sol",
@@ -588,8 +628,9 @@ describe("GPT-6 Chat caps and sub-agent picks", () => {
     const reg = makeTestRegistry()
     registerOpenAIModels(reg.models)
     expect(findOpenAIModelByTags(["chat", "fast"])).toBe("gpt-5.6-luna-chat")
-    expect(findOpenAIModelByTags(["flagship", "chat"])).toBe("gpt-6-astra-chat")
-    expect(findOpenAIModelByTags(["flagship", "reasoning"])).toBe("gpt-6-astra")
+    // Newest flagship first (2026-11-18): 6.2-astra-chat / 6.2-astra.
+    expect(findOpenAIModelByTags(["flagship", "chat"])).toBe("gpt-6.2-astra-chat")
+    expect(findOpenAIModelByTags(["flagship", "reasoning"])).toBe("gpt-6.2-astra")
   })
 })
 

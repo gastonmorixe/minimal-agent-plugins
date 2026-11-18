@@ -101,7 +101,7 @@ describe("llm-huggingface (OpenAI-compatible gateway, reuses llm-openai's wire l
     expect(adapter.displayName).toBe("HuggingFace")
   })
 
-  it("pins the curated 2026-11-15 catalog (ids, caps, pricing)", () => {
+  it("pins the curated 2026-11-18 catalog (ids, caps, pricing)", () => {
     const ids = registerHuggingFaceModels(makeTestRegistry().models)
     expect(ids).toEqual([
       "deepseek-ai/DeepSeek-V4.1-Flash",
@@ -126,7 +126,8 @@ describe("llm-huggingface (OpenAI-compatible gateway, reuses llm-openai's wire l
     const glm = resolveModel("zai-org/GLM-5.3")
     expect(glm.capabilities.structuredOutputs).toBe(true)
     expect(glm.capabilities.modalities.image).toBe(false)
-    expect(glm.pricing?.outputUSD).toBe(4)
+    expect(glm.pricing?.outputUSD).toBe(4.4)
+    expect(glm.pricing?.inputUSD).toBe(1.4)
     expect(resolveModel("MiniMaxAI/MiniMax-M3").capabilities.contextWindow).toBe(1_000_000)
   })
 

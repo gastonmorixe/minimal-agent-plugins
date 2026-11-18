@@ -1,4 +1,4 @@
-/** OpenCode Zen's complete live model registry. Live check 2026-11-15: 86 ids. */
+/** OpenCode Zen's complete live model registry. Live check 2026-11-18: 87 ids. */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
@@ -80,6 +80,8 @@ const LIVE_MODEL_IDS = [
   "gpt-6-sol",
   "gpt-6-luna",
   "gpt-6-astra",
+  "gpt-6.2-sol",
+  "gpt-6.2-astra",
   "gpt-5.6-sol",
   "gpt-5.6-terra",
   "gpt-5.6-luna",
@@ -113,13 +115,11 @@ const LIVE_MODEL_IDS = [
   "deepseek-v4.1-flash-free",
   "deepseek-v4-pro",
   "glm-5.3-flash",
-  "glm-5.3-flash-free",
   "glm-5.3",
   "glm-5.2",
   "glm-5.1",
   "glm-5",
   "minimax-m3",
-  "minimax-m3.1-flash-free",
   "minimax-m2.7",
   "minimax-m2.5",
   "kimi-k3",
@@ -136,6 +136,7 @@ const LIVE_MODEL_IDS = [
   "inkling-2-small-free",
   "longcat-2.5-free",
   "mimo-v2.6-flash-free",
+  "hy4-flash-free",
   "big-pickle",
   "nemotron-3.5-lightning-free",
   "nemotron-3.5-super-vl-free",
