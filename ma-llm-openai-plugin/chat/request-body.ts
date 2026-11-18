@@ -17,12 +17,13 @@
  * @module llm/providers/openai/chat/request-body
  */
 
-import type {
-  AudioBlock,
-  CanonicalBlock,
-  CanonicalMessage,
-  FileBlock,
-  ToolResultBlock,
+import {
+  type AudioBlock,
+  type CanonicalBlock,
+  type CanonicalMessage,
+  type FileBlock,
+  stringifyWireBlock,
+  type ToolResultBlock,
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type {
   CanonicalToolDefinition,
@@ -225,8 +226,11 @@ function buildChatMessages(req: CanonicalRequest, modelId: string): OpenAIChatMe
 
 function canonicalMessageToChat(msg: CanonicalMessage, modelId: string): OpenAIChatMessage {
   // role:"tool" — content is a string (or stringified array on the wire).
+  // stringifyWireBlock drops the internal `sideband` and `outcome` keys.
   if (msg.role === "tool") {
-    const text = msg.content.map((b) => (b.type === "text" ? b.text : JSON.stringify(b))).join("\n")
+    const text = msg.content
+      .map((b) => (b.type === "text" ? b.text : stringifyWireBlock(b)))
+      .join("\n")
     return { role: "tool", tool_call_id: msg.toolCallId, content: text }
   }
   // role:"system" mid-convo → system role (Chat allows it anywhere).
