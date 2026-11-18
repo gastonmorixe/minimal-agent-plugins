@@ -8,8 +8,8 @@ no custom glue. The plugin is a `hostModes` entry. Start it with:
 minimal-agent --host-mode acp
 ```
 
-Level 1 scope: `initialize`, `session/new`, `session/prompt`, `session/cancel`,
-`session/set_config_option` (provider, model, effort), text and thought streaming,
+Level 1 scope: `initialize`, `session/new`, `session/resume`, `session/prompt`,
+`session/cancel`, `session/set_config_option` (provider, model, effort), text and thought streaming,
 tool-call, usage and notice updates, and the ACP stop-reason map. One ACP
 session per process. Zero runtime dependencies.
 
@@ -225,6 +225,29 @@ meaning: `docs/acp-extensions.md` section 5.a.
 One process serves one cwd. `session/new` accepts a `cwd` that is the process
 cwd or a symlink to it (on macOS, `/var/folders/...` is a symlink to
 `/private/var/...`). Another dir is a JSON-RPC `-32602` error.
+
+## session/resume
+
+A client such as T3 Code keeps the session id from `session/new`. Later it
+starts a new agent process for the same thread and sends `session/resume`
+with that id. T3 Code refuses to reopen a thread when the agent advertises
+neither `loadSession` nor `sessionCapabilities.resume`.
+
+- The `initialize` result has `sessionCapabilities.resume = {}` when the CLI
+  has `HostRuntime.resumeSession` (feature detection). An older CLI has none:
+  then there is no `resume` capability, and `session/resume` is `-32601`.
+- `loadSession` stays `false`. The agent does not stream the history back,
+  so the client shows its own copy of the thread.
+- `session/resume {sessionId, cwd, mcpServers?, systemPrompt?}` reopens the
+  saved session `~/.minimal-agent/sessions/<sessionId>.jsonl` in place: the
+  same id, its model history, and new records appended to the same file.
+  The reply is `{configOptions}`, with no `sessionId`.
+- An id with no saved session (or not a UUID) is `-32002` (resource not
+  found). The process stays open, and the client can send `session/new`.
+- The `cwd` and `systemPrompt` checks are the same as for `session/new`.
+  `session/new` and `session/resume` share the one-session limit.
+- Known limit: plugin sidecar files keyed on the process id (for example
+  `<sid>.tasks.jsonl`) are not moved to the resumed id.
 
 ## session/new systemPrompt (ACP unstable)
 
