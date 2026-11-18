@@ -23,6 +23,35 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-18: **The cache plugin tells a likely server-side cache miss
+  apart from a client-side prompt change** (`ma-cache-plugin`). The wire
+  watcher keeps a small prefix fingerprint for each request: a hash of
+  `tools`, a hash of `system`, a hash of the other request options (with
+  the sorted `anthropic-beta` header, without `max_tokens`, `stream`,
+  `metadata` and `diagnostics`), one hash for each message (without
+  `cache_control` and without assistant thinking blocks), the index of the
+  last marked message, the indexes of the messages that had thinking, and
+  the response `request-id` when the host gives it. A read of 0 inside the
+  TTL with an unchanged prefix is the new code `server_miss` at info level
+  ("likely a server-side miss: the prefix up to the previous marker is
+  unchanged and the previous request read its cache"), but only when no
+  thinking was removed or the previous request read at least 90% of its
+  prompt. It does not start a `prefix_changed` streak. Else it is
+  `prefix_changed` ("thinking removal + cache lookback: no reachable cache
+  entry"). A partial read after the expected thinking removal is silent only
+  when the turn wrote at most 10% of its prompt; a larger write is
+  `prefix_changed` ("thinking removal; the read stays on an older entry").
+  A real `prefix_changed` names the changed part: the tools, the system
+  prompt, the request options, the first changed message, or a thinking
+  removal from an older message. The server's `cache_missed_input_tokens`
+  is now the "server-reported miss size", not "tokens missed": it is not the
+  loss, the tokens written are. Replay of session cc84c125 requests
+  080-095: request 087 (read 0, 213,492 written) was a false
+  `prefix_changed` warning and is now `server_miss` with its request id;
+  the other 15 requests give no diagnostic. Replay of session ffcf4115
+  R1-R26: `prefix_changed` warnings at R3, R5, R8, R10 and R17 (streak 1,
+  3, 1, 3, 10), R16-R26 attributed to the thinking removal + cache
+  lookback; R2 (no thinking removed) is `server_miss`.
 - 2026-11-18: **The cache plugin names the cause of a cache miss and no
   longer says "evicted" or "prefix likely changed" by guess** (`353ed8f`,
   `ma-cache-plugin`). The detector takes one `CacheFacts` record for each
