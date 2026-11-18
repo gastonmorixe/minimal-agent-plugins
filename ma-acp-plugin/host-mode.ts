@@ -373,7 +373,8 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
   // Counts `session/prompt` turns, for unique notice fallback message ids.
   let turnSeq = 0
   // Diagnostics that the user must see, as notices (`diag-notices.ts`).
-  // One notice per key for the life of the connection.
+  // One notice per key for the life of the connection, except `cache.break`
+  // (one notice per break; streak starts only for a client without notices).
   const diagNoticer = createDiagNoticer()
   let diagNoticeSeq = 0
   let args: HostModeArgs
@@ -643,8 +644,8 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                     if (ev.type === "error") runError = errorText(ev)
                     enc.encode(ev)
                   } else if (entry.ch === "diag" && entry.data.code !== TEMPERATURE_IGNORED_CODE) {
-                    // Listed diagnostics (for example `cache.anomaly`), one notice per key.
-                    const notice = diagNoticer.notice(entry.data)
+                    // Listed diagnostics (for example `cache.break`, `cache.anomaly`).
+                    const notice = diagNoticer.notice(entry.data, { clientNotices })
                     if (notice) {
                       diagNoticeSeq += 1
                       channel.notify("session/update", {

@@ -8,6 +8,39 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-18: **The cache plugin reports every prompt-cache break as a fact,
+  and frontends show breaks from that fact, not from the log severity**
+  (`ma-cache-plugin`, `ma-acp-plugin`). Before, the cause chose the log
+  level and each frontend dropped info, so a break that the plugin called
+  expected was not shown: a 63 min idle turn rewrote 26,426 tokens with only
+  an info log line and no token count. A replay of 42 recorded Anthropic
+  sessions found 113 breaks (19.2M tokens rewritten); the TUI showed a
+  warning for 36 of them, so 77 (13.8M tokens) were hidden.
+  - Each break sends one `cache.didBreak` bus event and one `cache.break`
+    notice diagnostic (for a host without bus access), with no once-per-code
+    or milestone limit. The fields are in the `README.md`.
+  - The prefix check runs before the TTL check, so an idle gap does not hide
+    a client change: a changed prefix after an idle time is `prefix_changed`
+    with `idle: true`, not `ttl_expired`.
+  - New breaks with cause `unknown`: a warm turn followed by a request with
+    no cache markers, and a warm turn followed by a turn that neither read
+    nor wrote the cache. A small `messages_changed` write after the thinking
+    removal is now a break event (not actionable), and still has no
+    diagnostic.
+  - `server_miss` is a warning (was info), with the request id. The warning
+    comes at 1, 3, 10, 30, ... server misses in a row; the break event comes
+    each time. `ttl_expired` stays info and now gives `written` and `lost`.
+  - ACP: a client with `session.notices` gets a notice for each break
+    (`warning` when actionable, else `info`). A client without notices gets
+    the break as answer text only when an actionable run starts. The
+    `cache.anomaly` codes that are also a break (`prefix_changed`,
+    `server_miss`, `ttl_expired`) give no notice now, so one break is one
+    notice.
+  - Not decided yet: whether the client should remove the thinking of the
+    previous latest assistant message. In the replay, the breaks after that
+    removal are 90 of 113 and 62% of the tokens rewritten. They are
+    `actionable`.
+
 - 2026-11-18: **Request goldens: the prompt-cache anchor marker is on by
   default.** Core now sends the anchor marker unless a layer turns it off
   (`--no-cache-anchor`, `MINIMAL_AGENT_CACHE_ANCHOR=0`, or config

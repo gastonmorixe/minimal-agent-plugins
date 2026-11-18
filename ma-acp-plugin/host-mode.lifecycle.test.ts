@@ -765,7 +765,7 @@ describe("sampling (contract 5.f)", () => {
     expect(await h.exit).toBe(0)
   })
 
-  it("a cache.anomaly diag gives one notice per anomaly code for the connection", async () => {
+  it("a cache.anomaly diag gives one notice per non-break code; each cache.break gives one", async () => {
     const rt = createFakeRuntime()
     const cold = {
       code: "cache.anomaly",
@@ -773,14 +773,22 @@ describe("sampling (contract 5.f)", () => {
         "cache: request had 2 cache_control marker(s) but the API returned 0 read + 0 write.",
       data: { code: "markers_ignored_cold" },
     }
+    // The same break as a cache.anomaly: no notice, the cache.break gives it.
     const evicted = {
       code: "cache.anomaly",
       message: "cache: turn 3 read 0 cached tokens.",
       data: { code: "prefix_changed" },
     }
+    const brk = (turn: number, streak: number) => ({
+      code: "cache.break",
+      message: `cache broke on turn ${turn}: 9,000 tokens rewritten (tools changed)`,
+      data: { cause: "prefix_changed", turn, streak, actionable: true },
+    })
     rt.turns.push({ events: [], outcome: "completed", diags: [cold, cold, { code: "other.code" }] })
-    rt.turns.push({ events: [], outcome: "completed", diags: [cold, evicted] })
+    rt.turns.push({ events: [], outcome: "completed", diags: [cold, evicted, brk(3, 1)] })
+    rt.turns.push({ events: [], outcome: "completed", diags: [evicted, brk(4, 2)] })
     const h = await openExtSession(rt, [], true)
+    await h.prompt()
     await h.prompt()
     await h.prompt()
     const notices = h
@@ -798,9 +806,65 @@ describe("sampling (contract 5.f)", () => {
         sessionUpdate: "notice",
         severity: "warning",
         title: "Prompt cache not read",
-        description: "cache: turn 3 read 0 cached tokens.",
+        description: brk(3, 1).message,
+      },
+      {
+        sessionUpdate: "notice",
+        severity: "warning",
+        title: "Prompt cache not read",
+        description: brk(4, 2).message,
       },
     ])
+    h.end()
+    expect(await h.exit).toBe(0)
+  })
+
+  it("without session.notices only an actionable cache.break that starts a streak is answer text", async () => {
+    const rt = createFakeRuntime()
+    const brk = (cause: string, streak: number, actionable: boolean) => ({
+      code: "cache.break",
+      message: `cache break ${cause} streak ${streak}`,
+      data: { cause, streak, actionable },
+    })
+    rt.turns.push({
+      events: [],
+      outcome: "completed",
+      diags: [
+        brk("ttl_expired", 1, false),
+        brk("prefix_changed", 1, true),
+        brk("prefix_changed", 2, true),
+      ],
+    })
+    const h = await openExtSession(rt, [])
+    await h.prompt()
+    const chunks = h
+      .lines()
+      .map((m) => m.params?.update)
+      .filter((u) => u?.sessionUpdate === "agent_message_chunk")
+    expect(chunks.length).toBe(1)
+    expect(JSON.stringify(chunks[0])).toContain("cache break prefix_changed streak 1")
+    h.end()
+    expect(await h.exit).toBe(0)
+  })
+
+  it("without session.notices an actionable cache.break after a ttl_expired is answer text", async () => {
+    const rt = createFakeRuntime()
+    const brk = (cause: string, streak: number, actionable: boolean) => ({
+      code: "cache.break",
+      message: `cache break ${cause} streak ${streak}`,
+      data: { cause, streak, actionable },
+    })
+    rt.turns.push({ events: [], outcome: "completed", diags: [brk("ttl_expired", 1, false)] })
+    rt.turns.push({ events: [], outcome: "completed", diags: [brk("prefix_changed", 2, true)] })
+    const h = await openExtSession(rt, [])
+    await h.prompt()
+    await h.prompt()
+    const chunks = h
+      .lines()
+      .map((m) => m.params?.update)
+      .filter((u) => u?.sessionUpdate === "agent_message_chunk")
+    expect(chunks.length).toBe(1)
+    expect(JSON.stringify(chunks[0])).toContain("cache break prefix_changed streak 2")
     h.end()
     expect(await h.exit).toBe(0)
   })

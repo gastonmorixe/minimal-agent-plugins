@@ -80,9 +80,12 @@ describe("CacheAnomalyDetector", () => {
     expect(codes).toEqual(["ttl_expired"])
     expect(sink.warnings).toEqual([])
     expect(sink.infos.map((w) => w.sd)).toEqual([
-      { code: "ttl_expired", turn: 2, gapSec: 485, ttlSec: 300 },
+      { code: "ttl_expired", turn: 2, gapSec: 485, ttlSec: 300, written: 24585, lost: 22113 },
     ])
     expect(sink.infos[0]?.message).toContain("expired: 485 s passed since turn 1 ended")
+    expect(sink.infos[0]?.message).toContain(
+      "It lost the 22113 cached tokens of turn 1 and wrote 24585 tokens to the cache.",
+    )
   })
 
   it("the same gap inside a 1h TTL is prefix_changed", () => {
@@ -351,7 +354,7 @@ describe("start", () => {
     expect(stops).toBe(1)
   })
 
-  it("the same body with a read of 0 is info server_miss through ctx.log.info", () => {
+  it("the same body with a read of 0 is a warn server_miss through ctx.log.warn", () => {
     let observer: WireObserver | undefined
     const sink = recorder()
     const stop = start({
@@ -367,8 +370,8 @@ describe("start", () => {
       session: "s1",
       resHeaders: { "request-id": "req_L3" },
     })
-    expect(sink.warnings).toEqual([])
-    expect(sink.infos.map((x) => [x.source, x.sd?.code, x.sd?.requestId])).toEqual([
+    expect(sink.infos).toEqual([])
+    expect(sink.warnings.map((x) => [x.source, x.sd?.code, x.sd?.requestId])).toEqual([
       [ANOMALY_SOURCE, "server_miss", "req_L3"],
     ])
     stop()

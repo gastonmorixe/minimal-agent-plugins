@@ -1,11 +1,14 @@
 # ma-cache-plugin
 
-Warns when the prompt cache does not work. Each problem becomes one
-diagnostic with source `cache.anomaly`: a warning, or info for an expected
-miss. Each frontend shows it in its own way: the TUI as a scrollback chip
-(warnings only), the web in the Trace Diagnostics tab, and ACP as a
-`warning` notice (`ma-acp-plugin/diag-notices.ts`, warnings only). The
-plugin adds no text to the system prompt.
+Tells you when the prompt cache breaks. Each break is one `cache.didBreak`
+bus event (see [Break events](#break-events)), whatever the cause. Each
+problem also becomes one diagnostic with source `cache.anomaly`: a warning,
+or info for an expected miss. Each frontend shows the diagnostic in its own
+way: the TUI as a scrollback chip (warnings only) and the web in the Trace
+Diagnostics tab. Each break also writes one `cache.break` notice
+diagnostic, and ACP turns it into a notice (see
+[Break events](#break-events)). The plugin adds no text to the system
+prompt.
 
 ## How it works
 
@@ -37,13 +40,35 @@ with the same facts can replace the wire watcher (design note:
 
 It keeps one history for each session, model and endpoint origin, and checks:
 
-| Code                   | Level | When                                                                                                                                        |
-| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `markers_ignored_cold` | warn  | markers on a large prefix, but 0 read and 0 write (once per history)                                                                        |
-| `below_min_block_size` | warn  | markers on a prefix below the model's cache minimum (once)                                                                                  |
-| `ttl_expired`          | info  | the cache was in use, then a read of 0 after a gap above the TTL                                                                            |
-| `server_miss`          | info  | a read of 0 inside the TTL with an unchanged prefix, and no thinking removed or the previous turn read its cache: likely a server-side miss |
-| `prefix_changed`       | warn  | a read of 0 inside the TTL that the client caused, or a server miss size larger than the read                                               |
+| Code                   | Level | When                                                                                                                                                                                          |
+| ---------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `markers_ignored_cold` | warn  | markers on a large prefix, but 0 read and 0 write (once per history)                                                                                                                          |
+| `below_min_block_size` | warn  | markers on a prefix below the model's cache minimum (once)                                                                                                                                    |
+| `ttl_expired`          | info  | the cache was in use, then a read of 0 after a gap above the TTL, and the prefix is unchanged (or not known). The text gives the tokens written and lost                                      |
+| `server_miss`          | warn  | a read of 0 inside the TTL with an unchanged prefix, and no thinking removed or the previous turn read its cache: likely a server-side miss. Gives the request id. Warns at 1, 3, 10, 30, ... |
+| `prefix_changed`       | warn  | a read of 0 that the client caused, or a server miss size larger than the read. After an idle gap, the text says the session was also idle                                                    |
+
+A break is the same fact in each row: the previous turn of the history
+read or wrote the cache, and this turn did not read that prefix. The two
+cold codes are a break only after a turn that used the cache. The level
+says only how loud the log is. It does not say if a break happened. The
+break event does.
+
+Two breaks have no code of their own (cause `unknown` in the event):
+
+- Markers, 0 read and 0 write after a turn that used the cache: "the
+  server neither read nor wrote the cache". `written` is 0. The cold
+  warning above stays one time for each history.
+- A request with no `cache_control` markers and a read of 0, after a turn
+  that used the cache: "the request had no cache_control markers". No
+  diagnostic. That turn is then the previous turn of the next comparison.
+  (The wire watcher today skips a request with no marker, so a host event
+  is the source of this case.)
+
+The prefix check runs first, before the time check. So a client change
+after an idle gap is `prefix_changed`, not `ttl_expired`. `ttl_expired` is
+only for an unchanged prefix (the expected thinking removal included), or
+a turn where one side has no fingerprint.
 
 The prefix check compares the fingerprint with the one of the previous
 request: the tools, the system prompt, the request options, and each
@@ -60,7 +85,7 @@ from the new marker.
   changed message. A shorter history is a removed message.
 - Thinking removed from another assistant message (not the previous latest
   one with thinking): `prefix_changed`, "thinking removed from message i".
-- All equal and a read of 0: `server_miss` (info) only if no thinking was
+- All equal and a read of 0: `server_miss` (warn) only if no thinking was
   removed, or the previous request read its prefix (read at least 90% of
   read + write). The text says "likely a server-side miss" and gives the
   `request-id` when it is known. It is a likely cause, not a proven one.
@@ -71,7 +96,8 @@ from the new marker.
 - All equal except the expected thinking removal, and a partial read with
   the server reason `messages_changed`: no diagnostic when the turn wrote
   at most 10% of its prompt (read + write). That is the normal cost of the
-  removal. A larger write is `prefix_changed`, "thinking removal; the read
+  removal. It is still a break: the event has the cause
+  `thinking_older_entry` and `actionable: false`. A larger write is `prefix_changed`, "thinking removal; the read
   stays on an older entry": each turn reads the same old entry and writes
   the rest again.
 - A request without a fingerprint (for a host event with no hashes), or a
@@ -88,9 +114,75 @@ which each message gives.
 Misses in a row are a streak: the first `prefix_changed` warns, and the
 warning comes again at 3, 10, 30, 100, ... misses, with the tokens written
 since the first. A turn that reads with no miss ends the streak.
-`ttl_expired` also ends it. A `server_miss` does not start, extend or end
-the streak. The thinking-removal cases above are `prefix_changed`, so they
-start and extend the streak.
+`ttl_expired` and the small-write thinking case also end it. A
+`server_miss` does not start, extend or end the streak. The thinking-removal
+cases above are `prefix_changed`, so they start and extend the streak. This
+streak is only for the warnings. The break event counts its own streak.
+
+`server_miss` has its own count of turns in a row, for its warning only. It
+stays a warning, and it warns at the same milestones (1, 3, 10, 30, ...),
+with "N server misses in a row" when N is more than 1. A clean read, a
+`ttl_expired`, and a break with another cause end the count. The break
+event and the `cache.break` diagnostic are sent for each `server_miss`.
+
+## Break events
+
+Each break sends one `cache.didBreak` event on the bus, through `ctx.emit`.
+The payload is `CacheBreakPayload`
+(`@minimal-agent/core/plugin-api/types/cache-break`). There is no
+once-per-code limit and no milestone limit: 5 breaks in a row are 5 events.
+A turn that reads its prefix sends none.
+
+- `sessionId`, `model`, `origin`: the history of the break.
+- `turn`, `prevTurn`: this turn and the turn before it.
+- `expectedRead`: the previous read + write. The most this turn could read.
+- `read`, `written`: the counts of this turn.
+- `lost`: `expectedRead - read`, at least 0. The tokens written again.
+- `gapSec`, `ttlSec`, `idle`: the gap, the TTL, and true when the gap is
+  above the TTL. `idle` is set for each cause.
+- `cause`: `ttl_expired`, `prefix_changed`, `thinking_lookback`,
+  `thinking_older_entry`, `server_miss`, or `unknown` (no fingerprint on
+  one side, a server miss that no client change explains, a cold turn with
+  markers, or a request with no marker).
+- `changed`, `changedIndex`: the changed part and the message index.
+- `serverReason`, `serverMissedTokens`, `requestId`: the server's hints.
+- `streak`, `streakLost`: breaks in a row (any cause) and the tokens lost
+  since the first. A turn that reads with no break ends it.
+- `actionable`: false for `ttl_expired` and for the small-write
+  `thinking_older_entry`. True for the others.
+- `message`: one line of plain text, for example
+  `cache broke on turn 5: 48,213 tokens rewritten (idle 63 min > 5 min TTL)`.
+- `at`: the response end, in epoch ms.
+
+A frontend must show breaks from this event, not from the log level. The
+log hides info lines in the TUI, so an idle expiry is not seen there as a
+`cache.anomaly` line. A frontend can style a break by `actionable`. It
+must not hide one by it. A host without `ctx.emit` drops the events, and
+the diagnostics still work.
+
+Each break also writes one diagnostic with source `cache.break`, at notice
+level (`ctx.log.notice`). It is the same fact, for a host without bus
+access. The message is the payload `message`. The structured data is the
+scalar payload fields that are set: `cause`, `turn`, `prevTurn`, `read`,
+`written`, `lost`, `expectedRead`, `gapSec`, `ttlSec`, `idle`, `changed`,
+`changedIndex`, `serverReason`, `serverMissedTokens`, `requestId`,
+`streak`, `streakLost` and `actionable`. The loader routes it to the session of the run that made the
+request.
+
+- ACP (`ma-acp-plugin/diag-notices.ts`) sends a notice for each
+  `cache.break`: `warning` when `actionable`, else `info`. A client without
+  `session.notices` gets the notice as answer text, so it gets only an
+  actionable break with `streak` 1 (the start of a streak), or an
+  actionable break after a break that was not actionable (the previous
+  `cache.break` on the connection), or the first `cache.break` of the
+  connection (it can have `streak` above 1, for example after a resume).
+  The `streak` counts every cause, so a
+  `prefix_changed` after a `ttl_expired` is sent. ACP sends no
+  notice for the `cache.anomaly` codes that are also a break
+  (`prefix_changed`, `server_miss`, `ttl_expired`).
+- The TUI does not show notice diagnostics (the scrollback shows warnings
+  and worse, the footer uses notice only for `recovery`). It shows breaks
+  from the bus event, so a break is not shown two times.
 
 ## Limits
 
@@ -120,8 +212,9 @@ start and extend the streak.
 ## Files
 
 - `start.ts`: attaches the wire watcher from a headless prompt fragment
-  (the headless entry that gets `ctx.host`), and keeps the histories.
+  (the headless entry that gets `ctx.host`), keeps the histories, and sends
+  the break events through `ctx.emit`.
 - `wire-watch.ts`: reads requests and responses, and calls the detector.
-- `detector.ts`: `CacheFacts`, the prefix comparison and the checks. The
-  sink is injected (`ctx.log`).
+- `detector.ts`: `CacheFacts`, the break definition, the prefix comparison
+  and the checks. The sink (`ctx.log`) and the break target are injected.
 - `on_target_switch.ts`: the `target.didSwitch` handler.
