@@ -16,14 +16,18 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   caps the stored data at 16000 bytes.
 
 - 2026-11-18: **`ma-llm-cursor-plugin` reads the stored outcome of a tool
-  result for the wire text.** `toolResultToWireText` takes the body and the
-  plain-text annotations (`[truncated: ...]`, `[note: ...]`) from the stored
-  `outcome` (core `viewPersistedOutcome`), then runs the same strip regex as
-  before. The old path stays for a block with no or a bad `outcome` and for a
-  block with more than one text block. The text sent to Cursor is byte-equal
-  to the old path for every case of the parity test (four annotation kinds,
-  empty body, a body that holds `\n\n[note:`, truncated with a blob, a tasks
-  tag, media only).
+  result for the wire text, only where the bytes stay equal.**
+  `toolResultToWireText` takes the body and the plain-text annotations
+  (`[truncated: ...]`, `[note: ...]`) from the stored `outcome` (core
+  `viewPersistedOutcome`), then runs the same strip regex as before. It uses
+  this path only when the result is provably the same as the old path: the
+  outcome fits, the only text block is the first one, the spans cover the
+  text to its end, the body holds no `<ma::agent::` text, and every
+  annotation is a core kind with the expected text and joins. In every other
+  case (no or bad outcome, a plugin annotation, a harness tag in the body, an
+  edited text, a tasks board in the body) the old path runs. The text sent to
+  Cursor is byte-equal to the old path: a differential test (30000 cases, a
+  frozen copy of the old function) found no difference.
 
 ### Fixed
 
