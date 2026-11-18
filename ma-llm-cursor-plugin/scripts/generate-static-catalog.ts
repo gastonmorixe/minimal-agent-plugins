@@ -115,7 +115,9 @@ const rows: CursorStaticCatalogRow[] = expanded.map((entry) => {
     displayName: entry.displayName,
     defaultOn: entry.tags.includes("default-on"),
     supportsThinking: entry.capabilities.thinking.visible,
-    supportsImages: entry.capabilities.modalities.image,
+    // Image input is off on every model (text-only encoder); the tag keeps
+    // the upstream fact.
+    supportsImages: entry.tags.includes("vision"),
     contextWindow: entry.capabilities.contextWindow,
     maxOutputTokens: entry.capabilities.maxOutputTokens,
     effortLevels: entry.capabilities.effort.levels,

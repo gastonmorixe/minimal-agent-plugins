@@ -52,6 +52,20 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-17: **A target switch during the session.** Follows core
+  `feat/target-switch-anytime`.
+  - `ma-sub-agents-plugin`: a new worker gets the lead's live credential,
+    provider and effort (`ctx.queryTarget`). Before, it got the values of
+    the lead's boot, so after a switch it had the new model with the old
+    credential. A host with no `queryTarget` keeps the env and argv sources.
+  - `ma-acp-plugin`: `session/set_config_option` during a retry or quota
+    wait now takes effect at once. The same prompt continues on the new
+    target, with no cancel (e2e test k2).
+  - `ma-llm-anthropic-plugin`: the thinking-switch test has the new rule.
+    No thinking block of the old target goes to the new one.
+  - `ma-session-history-plugin`: a summary line for the `target_switch`
+    record.
+
 - 2026-11-02 `b592d92`: **`ma-llm-anthropic-plugin` reads plan, seat, and
   usage for a stored credential.** New `account-plan.ts` gives the provider a
   `fetchAccountPlan` hook. It reads `GET /api/oauth/profile`,

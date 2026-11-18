@@ -18,7 +18,7 @@ import { describe, expect, it } from "bun:test"
 
 import type { TUIContext } from "../lib/host-types.ts"
 
-import { serviceDepsFromCtx } from "./handler-deps.ts"
+import { resolveLeadCredentialAndEffort, serviceDepsFromCtx } from "./handler-deps.ts"
 
 const LEAD = "11111111-1111-4111-8111-111111111111"
 
@@ -392,5 +392,64 @@ describe("serviceDepsFromCtx startup profile (SPEC 4.5, R11, T8)", () => {
     expect(serviceDepsFromCtx(makeCtx({ MINIMAL_AGENT_SUBAGENT_INHERIT: "0" }))?.inherit).toBe(
       false,
     )
+  })
+})
+
+describe("the lead's live target at each spawn (ctx.queryTarget)", () => {
+  /** A context whose live target can change between two spawns. */
+  function liveCtx(
+    env: Record<string, string>,
+    target: { credentialName?: string; providerId?: string; model: string; effort?: string },
+  ): { ctx: TUIContext; set(next: typeof target): void } {
+    let live = target
+    const ctx = {
+      ...makeCtx({ env, model: target.model, providerId: "boot-provider" }),
+      queryTarget: () => live,
+    } as unknown as TUIContext
+    return {
+      ctx,
+      set: (next) => {
+        live = next
+      },
+    }
+  }
+
+  it("a worker that starts after a switch gets the new credential, provider and effort", () => {
+    // The env has the BOOT values, as after a real boot.
+    const env = { MINIMAL_AGENT_CREDENTIAL_NAME: "full-quota", MINIMAL_AGENT_EFFORT: "high" }
+    const { ctx, set } = liveCtx(env, {
+      credentialName: "full-quota",
+      providerId: "boot-provider",
+      model: "claude-opus-4-8",
+      effort: "high",
+    })
+    const before = serviceDepsFromCtx(ctx)
+    expect(before?.defaultCredentialName).toBe("full-quota")
+    expect(before?.defaultEffort).toBe("high")
+    expect(before?.leadProvider).toBe("boot-provider")
+
+    set({ credentialName: "second", providerId: "other-provider", model: "m2", effort: "low" })
+
+    const after = serviceDepsFromCtx(ctx)
+    expect(after?.defaultCredentialName).toBe("second")
+    expect(after?.defaultEffort).toBe("low")
+    expect(after?.leadProvider).toBe("other-provider")
+  })
+
+  it("an absent live value is real: it does not fall back to the boot env", () => {
+    const env = { MINIMAL_AGENT_CREDENTIAL_NAME: "full-quota", MINIMAL_AGENT_EFFORT: "high" }
+    const { ctx } = liveCtx(env, { providerId: "p", model: "m" })
+    expect(resolveLeadCredentialAndEffort(ctx, [])).toEqual({ credentialName: "", effort: "" })
+    const deps = serviceDepsFromCtx(ctx)
+    expect(deps?.defaultCredentialName).toBeUndefined()
+    expect(deps?.defaultEffort).toBeUndefined()
+  })
+
+  it("with no queryTarget (an older core) the env and the lead argv still apply", () => {
+    const ctx = makeCtx({ env: { MINIMAL_AGENT_EFFORT: "high" } })
+    expect(resolveLeadCredentialAndEffort(ctx, ["bin", "--credential-name", "from-argv"])).toEqual({
+      credentialName: "from-argv",
+      effort: "high",
+    })
   })
 })

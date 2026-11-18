@@ -217,6 +217,7 @@ Wire shape: `session/prompt` `_meta["minimal-agent/sampling"] = {"temperature": 
 - Stable `notice` update, gated by client capability `clientCapabilities.session.notices` (`SDK/dist/v1/schema/types.gen.d.ts:3013-3018`: "Supplying `{}` means the client can present notices to the user").
 - minimal-agent checks it at `initialize` (`P/host-mode.ts:161`, `P/notices.ts:125-129`) and sends `notice` or an `agent_message_chunk` text fallback (`P/notices.ts:108-121`).
 - Studio does not advertise it (`S/server/runtime/drivers/acp/driver.ts:135`). So notices reach Studio as answer text. Studio advertising `notices` is "later" and needs a Studio handler first.
+- Session diagnostics: most `ch: "diag"` entries are for logs and are dropped. The codes listed in `P/diag-notices.ts` become a `warning` notice, at most one time per connection for each code and sub-key. Today this is `cache.anomaly` from the `cache` plugin (sub-key: the anomaly `code`, for example `markers_ignored_cold`). The description is the diagnostic message. To show a new diagnostic, add one row to `DIAG_NOTICES`.
 
 ## 6. Who sends what
 

@@ -63,6 +63,7 @@ import type {
 } from "@minimal-agent/core/host-kit/host-mode"
 
 import { buildConfigOptions, setConfigOption } from "./config-options.ts"
+import { createDiagNoticer } from "./diag-notices.ts"
 import { createSessionEncoder, type SessionEncoder, type SessionEncoderOptions } from "./encoder.ts"
 import { errorText } from "./error-text.ts"
 import {
@@ -344,6 +345,10 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
   let ext: ExtAdvert = NO_EXT
   // Counts `session/prompt` turns, for unique notice fallback message ids.
   let turnSeq = 0
+  // Diagnostics that the user must see, as notices (`diag-notices.ts`).
+  // One notice per key for the life of the connection.
+  const diagNoticer = createDiagNoticer()
+  let diagNoticeSeq = 0
   let args: HostModeArgs
   try {
     args = parseHostModeArgs(ctx.argv)
@@ -557,6 +562,19 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
                     }
                     if (ev.type === "error") runError = errorText(ev)
                     enc.encode(ev)
+                  } else if (entry.ch === "diag" && entry.data.code !== TEMPERATURE_IGNORED_CODE) {
+                    // Listed diagnostics (for example `cache.anomaly`), one notice per key.
+                    const notice = diagNoticer.notice(entry.data)
+                    if (notice) {
+                      diagNoticeSeq += 1
+                      channel.notify("session/update", {
+                        sessionId: s.sessionId,
+                        update: noticeUpdate(notice, {
+                          clientNotices,
+                          fallbackMessageId: `notice-diag-${turnSeq}-${diagNoticeSeq}`,
+                        }),
+                      })
+                    }
                   } else if (
                     entry.ch === "diag" &&
                     entry.data.code === TEMPERATURE_IGNORED_CODE &&

@@ -259,7 +259,7 @@ function fillSparseStaticCatalog(entries: CursorCatalogEntry[]): CursorCatalogEn
             contextWindow: parent.capabilities.contextWindow,
             maxOutputTokens: parent.capabilities.maxOutputTokens,
             thinking: parent.capabilities.thinking.visible,
-            vision: parent.capabilities.modalities.image,
+            vision: parent.tags.includes("vision"),
             effortLevels: [effort],
             speedFast: hasFast,
           }),

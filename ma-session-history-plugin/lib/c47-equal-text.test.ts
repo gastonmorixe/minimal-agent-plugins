@@ -346,6 +346,12 @@ describe("C47 unknown kind and image source edge", () => {
     )
   })
 
+  it("summaryFromFacts for a target switch names the new model", () => {
+    expect(summaryFromFacts("target_switch", { ...zeroFacts, model: "model-x" }, [])).toBe(
+      "target switch · model model-x",
+    )
+  })
+
   it("image and document with a missing source detail print undefined like core", () => {
     const mk = (block: Record<string, unknown>): SessionRecordsView =>
       ({

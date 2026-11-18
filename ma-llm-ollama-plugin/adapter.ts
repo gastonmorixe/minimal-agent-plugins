@@ -38,6 +38,7 @@ import type {
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 
 import { ollamaApiKeyAuth } from "./auth.ts"
+import { ollamaMediaLimits } from "./input-formats.ts"
 import type { ModelView, SubagentModelRecommendation } from "./lib/host-types.ts"
 import { listOllamaLiveModels } from "./live-models.ts"
 import { registerOllamaAdHocModelInto, registerOllamaModels } from "./models.ts"
@@ -110,6 +111,11 @@ export const ollamaAdapter: ProviderAdapterView = {
 
   validate(req: CanonicalRequest, model: ModelView): ProviderValidationResult {
     return validateOllamaRequest(req, model)
+  },
+
+  /** Base64 images on vision models only (native `images[]`), core default sizes. */
+  mediaLimits(model: ModelView) {
+    return ollamaMediaLimits(model)
   },
 
   async *run(
