@@ -28,9 +28,10 @@
  * @module llm/anthropic-request
  */
 
-import type {
-  CanonicalBlock,
-  CanonicalMessage,
+import {
+  type CanonicalBlock,
+  type CanonicalMessage,
+  stringifyWireBlock,
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalToolDefinition } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
 import { CapabilityViolation } from "@minimal-agent/core/plugin-api/llm/errors"
@@ -302,7 +303,8 @@ function stringifySystemContent(content: CanonicalBlock[]): string {
       // Provider rejects non-text in role:"system" mid-conversation.
       // We coerce to JSON to surface what was passed; validate() should
       // catch this upstream.
-      return JSON.stringify(b)
+      // stringifyWireBlock drops the internal `sideband` and `outcome` keys.
+      return stringifyWireBlock(b)
     })
     .join("\n")
 }

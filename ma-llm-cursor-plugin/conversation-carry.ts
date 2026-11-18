@@ -27,7 +27,10 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-import type { CanonicalMessage } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+import {
+  type CanonicalMessage,
+  wireBlock,
+} from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 
 import type { CursorBlobStore } from "./proto/kv.ts"
 
@@ -50,13 +53,21 @@ export function cursorCarryEnabled(env: NodeJS.ProcessEnv = process.env): boolea
   return env.MA_CURSOR_CARRY?.trim() !== "0"
 }
 
-/** Stable fingerprint of a message prefix (roles, block types, ids, text, inputs). */
+/**
+ * Stable fingerprint of a message prefix (roles, block types, ids, text, inputs).
+ *
+ * Each block goes through `wireBlock`, so the internal keys `sideband` and
+ * `outcome` do not change the hash: a live block with them and the same
+ * block resumed without them give one fingerprint. For a block with no
+ * metadata key the bytes are the same as `JSON.stringify(msg.content)`, so
+ * carry files written before this change stay valid.
+ */
 export function fingerprintMessages(messages: readonly CanonicalMessage[]): string {
   const hasher = new Bun.CryptoHasher("sha256")
   for (const msg of messages) {
     hasher.update(msg.role)
     hasher.update("\u0000")
-    hasher.update(JSON.stringify(msg.content))
+    hasher.update(JSON.stringify(msg.content.map(wireBlock)))
     hasher.update("\u0001")
   }
   return hasher.digest("hex")
