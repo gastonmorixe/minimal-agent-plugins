@@ -223,3 +223,25 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
     expect(text).not.toContain("~/.minimal-agent")
   })
 })
+
+describe("MA-02 does not promise a transcript file that may not exist", () => {
+  test("says the host may keep the transcript in memory, and names SessionInfo", () => {
+    const provider = createBaseProvider((name) =>
+      readFileSync(join(import.meta.dir, "prompts", name), "utf8"),
+    )
+    const [part] =
+      provider.instructionParts?.({
+        reflectionInterval: 50,
+        reflectionCooldownMs: 60000,
+        blobStoreEnabled: false,
+        agentHome: "/home/x",
+      }) ?? []
+    const text = part?.text ?? ""
+    expect(text).toContain("If the host saves the transcript of this session")
+    expect(text).toContain("Some hosts keep it only in memory")
+    expect(text).toContain("`SessionInfo` gives the session id")
+    expect(text).not.toContain(
+      "The transcript of this session is `/home/x/sessions/<session_id>.jsonl`",
+    )
+  })
+})

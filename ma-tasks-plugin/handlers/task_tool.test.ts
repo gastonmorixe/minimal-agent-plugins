@@ -731,3 +731,26 @@ function extractFirstHash(content: string): string {
   if (!row) throw new Error(`no task id found in: ${content}`)
   return row[1]
 }
+
+describe("Task store per session", () => {
+  test("the handler context id wins over the env copy (many sessions, one process)", async () => {
+    const other = { ...ctx({ action: "list" }), agent: { sessionId: "ctx-sid-2" } }
+    await taskToolHandler({
+      ...other,
+      trigger: {
+        type: "tool",
+        name: "Task",
+        input: { action: "add", title: "from ctx" },
+        tool_use_id: "t2",
+      },
+    } as never)
+    const fromCtx = await taskToolHandler({
+      ...other,
+      trigger: { type: "tool", name: "Task", input: { action: "list" }, tool_use_id: "t3" },
+    } as never)
+    expect(fromCtx.content).toContain("from ctx")
+    // The env sid's own board does not have it.
+    const fromEnv = await taskToolHandler(ctx({ action: "list" }))
+    expect(fromEnv.content).not.toContain("from ctx")
+  })
+})

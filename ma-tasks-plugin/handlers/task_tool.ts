@@ -717,7 +717,9 @@ export default async function taskToolHandler(ctx: TUIContext): Promise<TUIResul
   const input = v.value
   input.fullResults = tasksFullResults(ctx.env)
 
-  const sid = ctx.env.MINIMAL_AGENT_SESSION_ID?.trim() || null
+  // The handler context first (a host with many sessions gives each its own
+  // id), then the env copy.
+  const sid = ctx.agent?.sessionId?.trim() || ctx.env.MINIMAL_AGENT_SESSION_ID?.trim() || null
   const store = makeStore(sid, ctx.env)
   if (store === null) {
     return err(
