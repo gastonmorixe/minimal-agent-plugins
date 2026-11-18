@@ -327,6 +327,12 @@ export interface SubagentRecord {
   readonly modeLowered?: { readonly from: string; readonly to: string }
   /** Set when the worker got a provider-derived profile (SPEC 6.4): the two provider ids. */
   readonly profileProvider?: { readonly lead: string; readonly worker: string }
+  /**
+   * Public id of the lead secret that made this worker's control key
+   * (`target-control-lead.ts`). The lead can send a target switch only to a
+   * worker with its own id. Absent on a worker of an older build.
+   */
+  readonly controlKeyId?: string
 }
 
 /** Per-status counts across a fleet. */
