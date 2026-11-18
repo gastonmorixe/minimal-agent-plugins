@@ -17,6 +17,17 @@
         "order": 1000,
         "placement": "afterInstructions"
       }
+    ],
+    "events": [
+      {
+        "id": "on_target_switch",
+        "on": "target.didSwitch",
+        "handler": {
+          "type": "module",
+          "path": "./on_target_switch.ts",
+          "export": "default"
+        }
+      }
     ]
   }
 }
