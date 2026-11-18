@@ -10,7 +10,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it, spyOn } from "bun:test"
 
 import { renderFor } from "../../tests/support/prompt-render.ts"
 
@@ -545,6 +545,43 @@ describe("refreshAndRender: failure modes", () => {
     expect(r.reason).toContain("regen-failed-no-fallback")
     expect(r.text).toBe(memContent.trim())
     expect(existsSync(join(dir, "memory.summary.md"))).toBe(false)
+  })
+})
+
+describe("refreshAndRender: log sink", () => {
+  const failing = async () => {
+    throw new SummarizeError("send-failed", "network down")
+  }
+  function setup() {
+    const dir = makeTempDir()
+    writeFileSync(join(dir, "memory.md"), manyBullets(20))
+    return {
+      scope: "project" as const,
+      memoryPath: join(dir, "memory.md"),
+      summaryPath: join(dir, "memory.summary.md"),
+      cfg: ENABLED_CFG,
+    }
+  }
+
+  it("sends the regen failure line to the injected log", async () => {
+    const lines: string[] = []
+    await refreshAndRender(setup(), { render, summarize: failing, log: (m) => lines.push(m) })
+    expect(lines).toEqual(["regen failed (send-failed): network down"])
+  })
+
+  it("is silent without an injected log: no stderr write, even with DEBUG=1", async () => {
+    const savedDebug = process.env.DEBUG
+    process.env.DEBUG = "1"
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    try {
+      const r = await refreshAndRender(setup(), { render, summarize: failing })
+      expect(r.reason).toContain("regen-failed-no-fallback")
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+      if (savedDebug === undefined) delete process.env.DEBUG
+      else process.env.DEBUG = savedDebug
+    }
   })
 })
 

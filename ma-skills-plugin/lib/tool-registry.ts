@@ -130,19 +130,34 @@ export function validateToolSpec(
 // ---------------------------------------------------------------------------
 
 /**
+ * Receives a problem found while loading scripted tools. `data.file` is the
+ * `scripts/register.ts` path. A caller with a plugin logger passes
+ * `(m, d) => ctx.log.warn("tool-registry", m, d)`.
+ */
+export type ToolRegistryWarn = (
+  message: string,
+  data?: Record<string, string | number | boolean>,
+) => void
+
+/**
  * Load tools programmatically from `scripts/register.ts` in a skill directory.
  *
  * If `scripts/register.ts` exists, it is dynamically imported. If its default
  * export is a function, that function is called with a `registerTool` callback
  * that validates and collects ToolSpec objects.
  *
- * Never throws — all errors are logged to stderr and the offending tool or
- * module is skipped.
+ * Never throws — each problem goes to `warn` (when given) and the offending
+ * tool or module is skipped. Without `warn` the problems are dropped: this
+ * module has no logger of its own and never writes to the process streams.
  *
  * @param skillDir - Absolute path to the skill's directory.
+ * @param warn - Optional sink for an invalid tool spec or a failed import.
  * @returns Collected validated ToolSpec[].
  */
-export async function loadScriptedTools(skillDir: string): Promise<ToolSpec[]> {
+export async function loadScriptedTools(
+  skillDir: string,
+  warn?: ToolRegistryWarn,
+): Promise<ToolSpec[]> {
   const registerPath = resolve(skillDir, "scripts", "register.ts")
 
   if (!existsSync(registerPath)) {
@@ -151,12 +166,20 @@ export async function loadScriptedTools(skillDir: string): Promise<ToolSpec[]> {
 
   const tools: ToolSpec[] = []
 
+  const report = (message: string): void => {
+    try {
+      warn?.(message, { file: registerPath })
+    } catch {
+      // Reporting is best effort: it must not break loading the other tools.
+    }
+  }
+
   const registerTool = (def: unknown): void => {
     const v = validateToolSpec(def)
     if (v.ok) {
       tools.push(v.value)
     } else {
-      console.error(`[ma-skills] invalid tool spec in ${registerPath}: ${v.errors.join("; ")}`)
+      report(`invalid tool spec in ${registerPath}: ${v.errors.join("; ")}`)
     }
   }
 
@@ -168,8 +191,8 @@ export async function loadScriptedTools(skillDir: string): Promise<ToolSpec[]> {
       await fn(registerTool)
     }
   } catch (e) {
-    console.error(
-      `[ma-skills] failed to load scripted tools from ${registerPath}: ${
+    report(
+      `failed to load scripted tools from ${registerPath}: ${
         e instanceof Error ? e.message : String(e)
       }`,
     )

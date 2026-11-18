@@ -123,6 +123,8 @@ type InjectStrategy = (args: {
   render: RenderFn
   /** Typed diagnostic sink (source id only). */
   diagnostic: (id: string) => void
+  /** Debug trail of the summary refresh (`ctx.log.debug`). */
+  log: (msg: string) => void
 }) => Promise<string[]>
 
 /** Strategy: emit nothing. The model relies on `MemoryTool` to query. */
@@ -145,6 +147,7 @@ const summaryStrategy: InjectStrategy = async ({
   completeFn,
   render,
   diagnostic,
+  log,
 }) => {
   // refreshAndRender reads the file itself, so we don't pre-read here.
   // It also already short-circuits if the file is missing/empty.
@@ -156,7 +159,7 @@ const summaryStrategy: InjectStrategy = async ({
       cfg: cfg.summary,
       ...(completeFn ? { completeFn } : {}),
     },
-    { render, diagnostic },
+    { render, diagnostic, log },
   )
   if (!result.text) return []
   return [`### ${label} (\`${memoryPath}\`)`, "", result.text, ""]
@@ -251,6 +254,9 @@ export default async function loadMemories(
   }
 
   const diagnostic = (id: string): void => ctx.log.warn(id, "")
+  // The refresh trail rides the plugin logger at Debug: the file log and the
+  // `--debug` mirror show it, a default session does not.
+  const log = (msg: string): void => ctx.log.debug("summary-refresh", msg)
 
   const globalSection = await strategy({
     label: "Global",
@@ -260,6 +266,7 @@ export default async function loadMemories(
     refresh,
     render,
     diagnostic,
+    log,
     ...(completeFn ? { completeFn } : {}),
   })
   const projectSection = await strategy({
@@ -270,6 +277,7 @@ export default async function loadMemories(
     refresh,
     render,
     diagnostic,
+    log,
     ...(completeFn ? { completeFn } : {}),
   })
 

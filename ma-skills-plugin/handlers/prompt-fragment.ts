@@ -223,7 +223,7 @@ function renderMarkdownTable(rows: string[][]): string {
  */
 const handler: PromptFragmentHandler = (ctx: PromptFragmentContext): string => {
   try {
-    const config = loadSkillsConfig()
+    const config = loadSkillsConfig((message, data) => ctx.log.debug("config", message, data))
     if (!config.enabled) return ""
     const result = discoverSkills(config, ctx.cwd, homedir())
     warnBrokenSkills(ctx.log, result.broken)

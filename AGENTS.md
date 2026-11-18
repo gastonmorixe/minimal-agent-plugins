@@ -27,6 +27,10 @@ harness code lives in the sibling core remote, not here.
   A rule that should also apply to core and cli belongs in
   `minimal-agent-config`, not here. Bump its pin in `package.json` after.
 
+### No direct stdout or stderr writes
+
+Plugin code that runs inside the host (handlers, hooks, lib code they call) never writes to the process stdout or stderr: it would land on the host's terminal and tear the live area. A handler reports through `ctx.log.<level>(source, message, data)` (`PluginLogger`, the host prefixes the plugin id) or returns a `CommandResult`. Lib code outside a handler takes an optional callback. The oxlint rule `ma/no-direct-stdio` (from core, `node_modules/@minimal-agent/core/scripts/lint/`) enforces it, and `tests/no-direct-stdio.test.ts` keeps `tests/no-direct-stdio.baseline.json` exact. Only a process entry may write: a `cli.ts`, a `bin/*.ts` daemon, a backend subprocess, a dev script. After a fix, shrink the list with `node node_modules/@minimal-agent/core/scripts/lint/verify-no-direct-stdio.mjs --repo . --baseline tests/no-direct-stdio.baseline.json --sync`.
+
 ## Core pin (`bun run pin:core`)
 
 The root `package.json` and many plugin `package.json` files name

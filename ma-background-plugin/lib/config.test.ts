@@ -1,9 +1,14 @@
-import { describe, expect, test } from "bun:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 
 import {
   DEFAULT_MAX_MODEL_BYTES,
   DEFAULT_TIMEOUT_MS,
   defaultConfig,
+  loadBgConfig,
   MAX_CONCURRENT_CEILING,
   parseBgConfig,
 } from "./config.ts"
@@ -93,5 +98,79 @@ describe("parseBgConfig", () => {
     })
     expect(c.enabled).toBe(true)
     expect(c.limits.maxConcurrent).toBe(16)
+  })
+})
+
+describe("loadBgConfig - malformed config file", () => {
+  let dir: string
+  let savedDebug: string | undefined
+
+  // Each test writes its own file, so the once-per-process report never leaks
+  // from one test into the next.
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "ma-bg-cfg-"))
+    savedDebug = process.env.DEBUG
+  })
+
+  afterEach(() => {
+    if (savedDebug === undefined) delete process.env.DEBUG
+    else process.env.DEBUG = savedDebug
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  /** An env that points the loader at a malformed file; DEBUG=1 on purpose. */
+  function badEnv(): { env: NodeJS.ProcessEnv; path: string } {
+    const path = join(dir, "bad.jsonc")
+    writeFileSync(path, "{ not valid")
+    return { env: { MINIMAL_AGENT_CONFIG: path, DEBUG: "1" }, path }
+  }
+
+  test("reports through onWarn once with { path } when loaded three times, and writes no stderr with DEBUG=1", () => {
+    const { env, path } = badEnv()
+    process.env.DEBUG = "1"
+    const calls: Array<{ message: string; data: unknown }> = []
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    try {
+      // The heartbeat slot reloads the config every second: three loads, one report.
+      for (let i = 0; i < 3; i++) {
+        const cfg = loadBgConfig(env, (message, data) => calls.push({ message, data }))
+        expect(cfg).toEqual(defaultConfig())
+      }
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+    }
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.data).toEqual({ path })
+    expect(calls[0]?.message).toStartWith("parse error: ")
+  })
+
+  test("is silent without a callback, even with DEBUG=1", () => {
+    const { env } = badEnv()
+    process.env.DEBUG = "1"
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    try {
+      expect(loadBgConfig(env)).toEqual(defaultConfig())
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+    }
+  })
+
+  test("a load without a callback does not use up the report for a later one", () => {
+    const { env, path } = badEnv()
+    loadBgConfig(env)
+    const calls: unknown[] = []
+    loadBgConfig(env, (_message, data) => calls.push(data))
+    expect(calls).toEqual([{ path }])
+  })
+
+  test("a callback that throws does not break the load", () => {
+    const { env } = badEnv()
+    expect(
+      loadBgConfig(env, () => {
+        throw new Error("sink down")
+      }),
+    ).toEqual(defaultConfig())
   })
 })

@@ -34,15 +34,18 @@ export interface TUIContext {
 
 /** Structured logger the host injects (syslog-style levels). */
 export interface PluginLogger {
-  emergency(scope: string, message: string): void
-  alert(scope: string, message: string): void
-  critical(scope: string, message: string): void
-  error(scope: string, message: string): void
-  warn(scope: string, message: string): void
-  notice(scope: string, message: string): void
-  info(scope: string, message: string): void
-  debug(scope: string, message: string): void
+  emergency(scope: string, message: string, sd?: StructuredData): void
+  alert(scope: string, message: string, sd?: StructuredData): void
+  critical(scope: string, message: string, sd?: StructuredData): void
+  error(scope: string, message: string, sd?: StructuredData): void
+  warn(scope: string, message: string, sd?: StructuredData): void
+  notice(scope: string, message: string, sd?: StructuredData): void
+  info(scope: string, message: string, sd?: StructuredData): void
+  debug(scope: string, message: string, sd?: StructuredData): void
 }
+
+/** Free-form key/value pairs the host serializes into RFC 5424 STRUCTURED-DATA. */
+export type StructuredData = Readonly<Record<string, string | number | boolean>>
 
 /** A tool handler's return value. Mirror of the host's TUIResult union subset. */
 export type TUIResult =

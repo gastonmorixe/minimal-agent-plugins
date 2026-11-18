@@ -398,7 +398,7 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     }
   }
 
-  const config = loadFetchConfig()
+  const config = loadFetchConfig((message, data) => ctx.log?.debug("config", message, data))
   if (!config.enabled) {
     return {
       kind: "tool_result",

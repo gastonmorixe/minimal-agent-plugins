@@ -242,7 +242,11 @@ export interface RefreshAndRenderDeps {
   summarize?: typeof realSummarize
   /** Override "now" for tests. Defaults to `() => new Date()`. */
   now?: () => Date
-  /** Optional logger (e.g. for "regen skipped: X" messages). Defaults to stderr. */
+  /**
+   * Optional logger (e.g. for "regen skipped: X" messages). Without it the
+   * module stays silent: it never writes to the process streams. A handler
+   * passes `(msg) => ctx.log.debug("summary-refresh", msg)`.
+   */
   log?: (msg: string) => void
   /** Typed diagnostic sink: receives a source id only, no message text. */
   diagnostic?: (id: string) => void
@@ -261,26 +265,17 @@ export interface RefreshResult {
 }
 
 /**
- * Default logger. Best-effort and decoupled: writes only when `DEBUG=1`
- * (matching the old verbose-info trail) and never reaches into the host
- * repo. Production callers that want diagnostics on the agent's
- * structured logger thread their `ctx.log` in via `deps.log` (the
- * prompt-fragment handler has it); without that, summary-refresh
- * diagnostics fall back to this quiet stderr line. Must never throw.
+ * Default logger: silent. This module has no logger of its own and never
+ * writes to the process streams. A caller that wants the trail passes
+ * `deps.log`; the prompt-fragment handler passes
+ * `(msg) => ctx.log.debug("summary-refresh", msg)`, which puts the lines on
+ * the diagnostic bus at Debug severity (the file log and the `--debug` mirror).
  *
  * The plugin used to dynamic-import `src/diagnostic-bus.ts` here; that
  * was the last host coupling in this file and is removed in Wave D-7.
- * Routing onto the diagnostic bus is recovered for free whenever the
- * caller passes `ctx.log` as `deps.log`.
  */
-function defaultLog(msg: string): void {
-  try {
-    if (process.env.DEBUG === "1") {
-      process.stderr.write(`memory.summary-refresh: ${msg}\n`)
-    }
-  } catch {
-    // Logging is best-effort and must never throw.
-  }
+function defaultLog(_msg: string): void {
+  // Intentionally silent: see above.
 }
 
 /**

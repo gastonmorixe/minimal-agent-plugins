@@ -199,7 +199,7 @@ export default async function webSearchHandler(ctx: TUIContext): Promise<TUIResu
     return { kind: "tool_result", content: `WebSearch: ${v.error}`, is_error: true }
   }
 
-  const config = loadWebSearchConfig()
+  const config = loadWebSearchConfig((message, data) => ctx.log.debug("config", message, data))
   const opts = mergeOptions(v.value, config)
   // Provider chain diagnostics ride the per-plugin logger so a flaky
   // provider populates the file log + TUI surface instead of dumping

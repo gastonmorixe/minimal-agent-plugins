@@ -34,7 +34,9 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     return { kind: "tool_result", content: `BackgroundStatus: ${parsed.error}`, is_error: true }
   }
 
-  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv)
+  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv, (message, data) =>
+    ctx.log?.debug("config", message, data),
+  )
   const deps = serviceDepsFromCtx(ctx, config)
   if (!deps) {
     return {
