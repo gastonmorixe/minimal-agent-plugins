@@ -101,6 +101,11 @@ interface MockScript {
   readonly toolCalls?: number
   /** The Bash command of each call (default: append to `marker.txt`). */
   readonly command?: string
+  /**
+   * A model id whose quota is full: each request for it gets HTTP 429 with
+   * `Retry-After: 3600`. Requests for other models answer as usual.
+   */
+  readonly rateLimitedModel?: string
 }
 
 /** Token counts the mock reports for request `n` (1-based): `prompt_tokens` = 1000 * n. */
@@ -113,7 +118,7 @@ const promptTokensOf = (n: number): number => 1000 * n
  * bodies are kept in `bodies`.
  */
 function startMockModel(script: MockScript = {}) {
-  const { toolCalls = 1, command = "echo ran >> marker.txt" } = script
+  const { toolCalls = 1, command = "echo ran >> marker.txt", rateLimitedModel } = script
   let requests = 0
   const bodies: Json[] = []
   const sse = (chunks: unknown[]): string =>
@@ -136,6 +141,12 @@ function startMockModel(script: MockScript = {}) {
     async fetch(req) {
       const body = JSON.parse(await req.text()) as Json
       bodies.push(body)
+      if (rateLimitedModel !== undefined && body.model === rateLimitedModel) {
+        return new Response(
+          JSON.stringify({ error: { code: "rate_limit_exceeded", message: "quota is full" } }),
+          { status: 429, headers: { "content-type": "application/json", "retry-after": "3600" } },
+        )
+      }
       requests++
       const messages = Array.isArray(body.messages) ? (body.messages as Json[]) : []
       // A new prompt starts when the last message is the user's text.
@@ -722,6 +733,47 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       expect(a.stderr()).toContain("--approval-timeout-ms must be a positive integer")
       expect(a.lines).toEqual([])
       expect(a.model.bodies).toHaveLength(0)
+    } finally {
+      a.proc.kill("SIGKILL")
+    }
+  }, 60_000)
+
+  it("(k2) a model switch during a rate-limit wait: the prompt continues on the new model, with no cancel", async () => {
+    const name = "switch-in-wait"
+    const a = spawnAgent(name, [], "allow_once", {
+      toolCalls: 0,
+      model: "mock-small",
+      rateLimitedModel: "mock-small",
+      pluginRoot: twoModelsPluginRoot(name),
+    })
+    try {
+      const id = await startTurn(a)
+      const sessionId = ((await a.reply(2)).result as { sessionId: string }).sessionId
+      // The first request got 429 with Retry-After 3600: the turn now waits one hour.
+      const t0 = Date.now()
+      while (a.model.bodies.length < 1) {
+        if (Date.now() - t0 > 30_000) throw new Error(`no model request: ${a.stderr()}`)
+        await Bun.sleep(20)
+      }
+      await Bun.sleep(300)
+      expect(a.model.bodies.map((b) => b.model)).toEqual(["mock-small"])
+
+      const switchedAt = Date.now()
+      a.send({
+        jsonrpc: "2.0",
+        id: 4,
+        method: "session/set_config_option",
+        params: { sessionId, configId: "model", value: "mock-big" },
+      })
+      const options = ((await a.reply(4)).result as { configOptions: Json[] }).configOptions
+      expect(options.find((o) => o.id === "model")?.currentValue).toBe("mock-big")
+
+      // The SAME prompt ends on the new model. It was not cancelled.
+      expect((await a.reply(id)).result).toMatchObject({ stopReason: "end_turn" })
+      expect(Date.now() - switchedAt).toBeLessThan(10_000)
+      expect(a.model.bodies.map((b) => b.model)).toEqual(["mock-small", "mock-big"])
+      expect(JSON.stringify(updates(a))).toContain("DONE")
+      expect(await finish(a)).toBe(0)
     } finally {
       a.proc.kill("SIGKILL")
     }
