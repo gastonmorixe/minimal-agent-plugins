@@ -8,7 +8,8 @@ import {
   type CacheWarnSink,
   snapshotRequest,
 } from "./detector.ts"
-import { detectorKeyOf, MAX_DETECTORS, sessionKeyOf, start } from "./start.ts"
+import onTargetSwitch from "./on_target_switch.ts"
+import { detectorKeyOf, MAX_DETECTORS, resetAllDetectors, sessionKeyOf, start } from "./start.ts"
 import { createWireWatch, extractUsage, type WireObserver, type WireRequest } from "./wire-watch.ts"
 
 interface Warning {
@@ -230,11 +231,11 @@ function usageSse(read: number, create: number): string {
 function startedPlugin() {
   let observer: WireObserver | undefined
   const sink = recorder()
-  start({
+  const stopWatch = start({
     log: sink,
     host: { network: { observe: (o: WireObserver) => ((observer = o), () => {}) } },
   })
-  if (!observer) throw new Error("no observer")
+  if (!observer || !stopWatch) throw new Error("no observer")
   const w = observer
   let n = 0
   const turn = (model: string, read: number, create: number, url?: string) =>
@@ -245,7 +246,7 @@ function startedPlugin() {
       session: "s1",
       ...(url ? { url } : {}),
     })
-  return { sink, turn }
+  return { sink, turn, stop: stopWatch }
 }
 
 describe("target switch in one session", () => {
@@ -311,5 +312,46 @@ describe("target switch in one session", () => {
     for (let i = 1; i <= MAX_DETECTORS; i++) turn(`m${i}`, 0, 5000)
     turn("m0", 0, 5000)
     expect(sink.warnings).toEqual([])
+  })
+})
+
+describe("target.didSwitch reset", () => {
+  it("a credential switch on the same model and endpoint does not warn", () => {
+    const { sink, turn, stop } = startedPlugin()
+    turn("model-a", 5000, 0)
+    turn("model-a", 5000, 0)
+    // The quota wait ends with a switch to another credential: same provider,
+    // same model, same endpoint. The host sends target.didSwitch.
+    onTargetSwitch({ event: "target.didSwitch", payload: {} })
+    turn("model-a", 0, 5000)
+    turn("model-a", 5000, 0)
+    expect(sink.warnings).toEqual([])
+    stop()
+  })
+
+  it("without the event the same turns warn (the case the event fixes)", () => {
+    const { sink, turn, stop } = startedPlugin()
+    turn("model-a", 5000, 0)
+    turn("model-a", 5000, 0)
+    turn("model-a", 0, 5000)
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["cache_evicted"])
+    stop()
+  })
+
+  it("after a reset, a real miss on the new target still warns", () => {
+    const { sink, turn, stop } = startedPlugin()
+    turn("model-a", 5000, 0)
+    resetAllDetectors()
+    turn("model-a", 0, 5000)
+    turn("model-a", 0, 5000)
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["no_read_after_write"])
+    stop()
+  })
+
+  it("a stopped watcher is not reset any more", () => {
+    const { stop } = startedPlugin()
+    const before = resetAllDetectors()
+    stop()
+    expect(resetAllDetectors()).toBe(before - 1)
   })
 })
