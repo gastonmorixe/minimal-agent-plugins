@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { CdpConnection, type MinimalSocket } from "./connection.ts"
+import { CdpConnection, ConnectionClosedError, type MinimalSocket } from "./connection.ts"
 
 /**
  * A fake CDP socket: records sent frames and lets the test push inbound
@@ -136,6 +136,19 @@ describe("send / reply correlation", () => {
     sock.close()
     await expect(a).rejects.toThrow(/ws closed/)
     await expect(b).rejects.toThrow(/ws closed/)
+  })
+
+  test("a lost socket rejects with ConnectionClosedError, so the daemon answers 503 and not 400", async () => {
+    const { conn, sock } = connected()
+    const inFlight = conn.send("Target.getTargets")
+    sock.close()
+    const closed = await inFlight.catch((e: unknown) => e)
+    expect(closed).toBeInstanceOf(ConnectionClosedError)
+    expect((closed as Error).message).toBe("ws closed")
+    // After the close there is no socket: a new send fails the same way.
+    const none = await conn.send("Target.getTargets").catch((e: unknown) => e)
+    expect(none).toBeInstanceOf(ConnectionClosedError)
+    expect((none as Error).message).toBe("not connected")
   })
 
   test("a synchronous socket send() throw rejects that caller and leaves no pending", async () => {

@@ -54,7 +54,7 @@ import { readFileSync, statSync, unlinkSync } from "node:fs"
 import { homedir } from "node:os"
 
 import { socketAnswers } from "../lib/client.ts"
-import { CdpConnection } from "../lib/connection.ts"
+import { CdpConnection, ConnectionClosedError } from "../lib/connection.ts"
 import { dispatch } from "../lib/dispatch.ts"
 import {
   DEFAULT_DENY_COOLDOWN_MS,
@@ -272,6 +272,12 @@ function listen(): void {
         const r = await dispatch(conn, route, params, wsUrl)
         return json(r.status, r.body)
       } catch (e) {
+        // Chrome quit while this request waited for its reply (or between the
+        // connect check and the send). That is "Chrome unreachable", not a bad
+        // request: answer 503 as the connect failures above do.
+        if (e instanceof ConnectionClosedError) {
+          return json(503, { error: `chrome unreachable: ${e.message}` })
+        }
         return json(400, { error: e instanceof Error ? e.message : String(e) })
       } finally {
         inflight--
