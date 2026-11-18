@@ -50,7 +50,9 @@ describe("harness pick()", () => {
 
   test("other tool_result keys stay", () => {
     const got = pick(opts([toolResult({ is_error: true, outcome: { v: 1 } })]))
-    const block = ((got.messages as Array<{ content: unknown }>)[2]?.content as unknown[])[0]
+    const msg = (got.messages as Array<{ content: unknown }>)[2]
+    expect(msg).toBeDefined()
+    const block = (msg!.content as unknown[])[0]
     expect(block).toEqual(toolResult({ is_error: true }))
   })
 
@@ -63,7 +65,9 @@ describe("harness pick()", () => {
       sideband: { kind: "probe-mark" },
     }
     const got = pick(opts([text]))
-    const block = ((got.messages as Array<{ content: unknown }>)[2]?.content as unknown[])[0]
+    const msg = (got.messages as Array<{ content: unknown }>)[2]
+    expect(msg).toBeDefined()
+    const block = (msg!.content as unknown[])[0]
     expect(block).toEqual(text)
   })
 
