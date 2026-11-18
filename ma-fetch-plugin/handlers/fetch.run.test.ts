@@ -476,7 +476,11 @@ describe("runWithDeps - error paths", () => {
         },
       }),
       exited,
-      pid: 4321,
+      // No `pid`. With a pid, killBackend sends SIGTERM to the real process
+      // GROUP -pid first and calls this fake kill() only when that throws. If
+      // that group exists for this user, the signal hits an unrelated process,
+      // kill() never runs, `exited` never resolves, and the test hangs until
+      // bun's 5000 ms limit.
       // When the watchdog kills, let the process "exit" so callBackend returns.
       kill: () => {
         exitResolve(137)
