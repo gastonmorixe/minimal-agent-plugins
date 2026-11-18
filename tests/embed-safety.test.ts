@@ -124,6 +124,19 @@ const ALLOWLIST: readonly AllowEntry[] = [
     reason: "Test support module, imported by tests only.",
   },
   {
+    file: "ma-sub-agents-plugin/lib/lane/replay-harness.ts",
+    rule: "import-meta-path",
+    line: 'new URL("../__fixtures__/lane/", import.meta.url)',
+    reason: "Test and dev helper that replays recorded fixtures, imported by tests only.",
+  },
+  {
+    file: "ma-sub-agents-plugin/lib/lane/scrub-fixture.ts",
+    rule: "import-meta-path",
+    line: 'new URL("../__fixtures__/lane/", import.meta.url)',
+    reason:
+      "Developer script that makes the fixtures from the checkout, not part of the plugin runtime.",
+  },
+  {
     file: "ma-llm-openai-plugin/openai.test-helpers.ts",
     rule: "import-meta-path",
     line: 'join(import.meta.dir, "__fixtures__"',

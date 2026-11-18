@@ -21,10 +21,27 @@ describe("createDiagNoticer", () => {
 
   it("sends each code and sub-key one time", () => {
     const n = createDiagNoticer()
-    const d = { code: "cache.anomaly", message: "m", data: { code: "cache_evicted" } }
+    const d = { code: "cache.anomaly", message: "m", data: { code: "prefix_changed" } }
     expect(n.notice(d)).toBeDefined()
     expect(n.notice(d)).toBeUndefined()
     expect(createDiagNoticer().notice(d)).toBeDefined()
+  })
+
+  it("drops a diagnostic below warning severity (the cache plugin's info ttl_expired)", () => {
+    const n = createDiagNoticer()
+    const info = { code: "cache.anomaly", message: "m", severity: 6, data: { code: "ttl_expired" } }
+    expect(n.notice(info)).toBeUndefined()
+    const warn = {
+      code: "cache.anomaly",
+      message: "m",
+      severity: 4,
+      data: { code: "prefix_changed" },
+    }
+    expect(n.notice(warn)).toEqual({
+      severity: "warning",
+      title: "Prompt cache not read",
+      description: "m",
+    })
   })
 
   it("every rule gives a non-empty title", () => {
