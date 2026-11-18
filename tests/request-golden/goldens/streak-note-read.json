@@ -1698,7 +1698,11 @@
                 "type": "string"
               },
               "after": {
-                "description": "Optional, for a top-level `add`. The new task goes after this top-level task and its subtasks. Without it, or for an unknown or subtask id, it goes at the end."
+                "description": "Optional, for a top-level `add`. The new task goes after this top-level task and its subtasks. Without it, or for an unknown or subtask id, it goes at the end.",
+                "type": [
+                  "string",
+                  "integer"
+                ]
               },
               "filter": {
                 "description": "For `list`: the status of the tasks to show. The tool ignores it at this time.",
@@ -1724,7 +1728,11 @@
                 "type": "string"
               },
               "id": {
-                "description": "Necessary for `update`, `status`, `start`, `done` and `remove`. The task id from the board or the last result, for example `1` or `1a`."
+                "description": "Necessary for `update`, `status`, `start`, `done` and `remove`. The task id from the board or the last result, for example `1` or `1a`.",
+                "type": [
+                  "string",
+                  "integer"
+                ]
               },
               "items": {
                 "description": "An alias of `tasks`. Use `tasks`.",
@@ -1752,6 +1760,12 @@
               },
               "order": {
                 "description": "Necessary for `reorder`. The top-level task ids in the new sequence. Subtasks move with their parent.",
+                "items": {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
                 "type": "array"
               },
               "parallel": {
@@ -1759,7 +1773,11 @@
                 "type": "boolean"
               },
               "parent": {
-                "description": "The parent id of the new subtask. Use it with `add`, or with `add_many` and `titles`. Do not use it with `tasks` or `items`."
+                "description": "The parent id of the new subtask. Use it with `add`, or with `add_many` and `titles`. Do not use it with `tasks` or `items`.",
+                "type": [
+                  "string",
+                  "integer"
+                ]
               },
               "query": {
                 "description": "For `list`: the text to find in the titles. The tool ignores it at this time.",
