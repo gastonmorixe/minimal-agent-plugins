@@ -19,7 +19,9 @@ import { runReconcile } from "../lib/service.ts"
 const handler = async (ctx: LiveAreaHandlerContext): Promise<string | null> => {
   if (ctx.env.MINIMAL_AGENT_DISABLE_BGJOBS === "1") return null
 
-  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv)
+  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv, (message, data) =>
+    ctx.log?.debug("config", message, data),
+  )
   const deps = serviceDepsFromCtx(
     {
       packageDir: ctx.packageDir,

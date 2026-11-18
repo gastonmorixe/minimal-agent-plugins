@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 
-import { defaultConfig, parseFetchConfig } from "./config.ts"
+import { defaultConfig, loadFetchConfig, parseFetchConfig } from "./config.ts"
 
 type ManifestProperty = { default?: unknown }
 type FetchManifest = {
@@ -554,5 +555,82 @@ describe("SESSION_NAME_PATTERN", () => {
     for (const bad of ["", "-x", "_x", ".x", "x.y", "x/y", "x y", "x\\y"]) {
       expect(SESSION_NAME_PATTERN.test(bad)).toBe(false)
     }
+  })
+})
+
+describe("loadFetchConfig - malformed config file", () => {
+  let dir: string
+  let savedConfig: string | undefined
+  let savedDebug: string | undefined
+
+  // Each test writes its own file, so the once-per-process report never leaks
+  // from one test into the next.
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "ma-fetch-cfg-"))
+    savedConfig = process.env.MINIMAL_AGENT_CONFIG
+    savedDebug = process.env.DEBUG
+  })
+
+  afterEach(() => {
+    if (savedConfig === undefined) delete process.env.MINIMAL_AGENT_CONFIG
+    else process.env.MINIMAL_AGENT_CONFIG = savedConfig
+    if (savedDebug === undefined) delete process.env.DEBUG
+    else process.env.DEBUG = savedDebug
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  function badFile(): string {
+    const path = join(dir, "bad.jsonc")
+    writeFileSync(path, "{ not valid")
+    process.env.MINIMAL_AGENT_CONFIG = path
+    return path
+  }
+
+  test("reports through onWarn once with { path } when loaded three times, and writes no stderr with DEBUG=1", () => {
+    const path = badFile()
+    process.env.DEBUG = "1"
+    const calls: Array<{ message: string; data: unknown }> = []
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    try {
+      for (let i = 0; i < 3; i++) {
+        const cfg = loadFetchConfig((message, data) => calls.push({ message, data }))
+        expect(cfg).toEqual(defaultConfig())
+      }
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+    }
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.data).toEqual({ path })
+    expect(calls[0]?.message).toStartWith("parse error: ")
+  })
+
+  test("is silent without a callback, even with DEBUG=1", () => {
+    badFile()
+    process.env.DEBUG = "1"
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    try {
+      expect(loadFetchConfig()).toEqual(defaultConfig())
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+    }
+  })
+
+  test("a load without a callback does not use up the report for a later one", () => {
+    const path = badFile()
+    loadFetchConfig()
+    const calls: unknown[] = []
+    loadFetchConfig((_message, data) => calls.push(data))
+    expect(calls).toEqual([{ path }])
+  })
+
+  test("a callback that throws does not break the load", () => {
+    badFile()
+    expect(
+      loadFetchConfig(() => {
+        throw new Error("sink down")
+      }),
+    ).toEqual(defaultConfig())
   })
 })

@@ -4,6 +4,10 @@
   "plugins": ["typescript", "oxc", "import"],
   "jsPlugins": [
     {
+      "name": "ma",
+      "specifier": "./node_modules/@minimal-agent/core/scripts/lint/no-direct-stdio.mjs"
+    },
+    {
       "name": "jsdoc-js",
       "specifier": "eslint-plugin-jsdoc"
     },
@@ -24,6 +28,9 @@
     }
   },
   "rules": {
+    // No module writes to the process stdout or stderr on its own. Product output goes
+    // through an injected writer, diagnostics through the diagnostic bus or the plugin logger.
+    "ma/no-direct-stdio": "error",
     "typescript/require-array-sort-compare": "off",
     "typescript/consistent-return": "off",
     "jsdoc-js/require-jsdoc": [
@@ -57,6 +64,36 @@
     "tsdoc/syntax": "error"
   },
   "overrides": [
+    {
+      // ma/no-direct-stdio allowlist. Keep it equal to tests/no-direct-stdio.baseline.json
+      // (a test checks that): `exempt` globs first (tests, dev tooling), then one
+      // entry per file that may still write directly. The count per file can only go down.
+      "files": [
+        "**/*.test.ts",
+        "**/*fixture*.ts",
+        "**/__fixtures__/**",
+        "**/*.e2e.ts",
+        "**/e2e/**",
+        "scripts/**",
+        "**/scripts/**",
+        "tests/**",
+        "ma-background-plugin/bin/runner.ts",
+        "ma-chrome-cdp-plugin/bin/cdp-server.ts",
+        "ma-chrome-cdp-plugin/bin/cdpd.ts",
+        "ma-computer-use-plugin/bin/cud.ts",
+        "ma-fetch-plugin/backends/obscura.ts",
+        "ma-file-lock-plugin/cli.ts",
+        "ma-header-template-plugin/handlers/on_session_will_start.ts",
+        "ma-history-plugin/cli.ts",
+        "ma-llm-cursor-plugin/bidi-debug.ts",
+        "ma-memory-plugin/cli.ts",
+        "ma-slash-menu-plugin/bin/preview.ts",
+        "ma-speak-plugin/backends/macos-say.ts",
+        "ma-tasks-plugin/cli.ts",
+        "ma-web-search-plugin/cli.ts"
+      ],
+      "rules": { "ma/no-direct-stdio": "off" }
+    },
     {
       "files": ["**/*.test.ts"],
       "rules": {

@@ -112,7 +112,7 @@ const handler: TUIHandler = async (ctx: TUIContext): Promise<TUIResult> => {
   const v = validateInput(ctx.trigger.input)
   if (!v.ok) return errResult(`Skill: ${v.error}`)
 
-  const config = loadSkillsConfig()
+  const config = loadSkillsConfig((message, data) => ctx.log.debug("config", message, data))
   if (!config.enabled) {
     return errResult(
       'Skill: plugin is disabled in user config (plugins["ma-skills"].enabled = false)',

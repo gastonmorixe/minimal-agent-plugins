@@ -15,6 +15,8 @@
  * `TUIResult` (the `tool_result` variant only).
  */
 
+import type { PluginLogger } from "@minimal-agent/core/plugin-api/types/plugin"
+
 export interface ToolTrigger {
   type: "tool"
   /** The tool name as declared in the manifest (`Fetch`). */
@@ -36,6 +38,11 @@ export interface TUIContext {
   stdout: NodeJS.WriteStream
   stdin: NodeJS.ReadStream
   stderr: NodeJS.WriteStream
+  /**
+   * Plugin-scoped diagnostic logger (the host prefixes the plugin id). The host
+   * always sets it. It is optional here so a handler test need not fake one.
+   */
+  log?: PluginLogger
 }
 
 export type TUIResult =

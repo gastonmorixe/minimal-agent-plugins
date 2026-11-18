@@ -16,6 +16,8 @@
  * @module lib/host-types
  */
 
+import type { PluginLogger } from "@minimal-agent/core/plugin-api/types/plugin"
+
 /**
  * Boot-time identity of the host agent, shared with every handler context.
  * Mirror of `src/plugins/types.ts:AgentContext`. We read `sessionId` to
@@ -60,6 +62,11 @@ export interface TUIContext {
   stdout: NodeJS.WriteStream
   stdin: NodeJS.ReadStream
   stderr: NodeJS.WriteStream
+  /**
+   * Plugin-scoped diagnostic logger (the host prefixes the plugin id). The host
+   * always sets it. It is optional here so a handler test need not fake one.
+   */
+  log?: PluginLogger
   /** Boot-time agent identity. Optional only on the legacy back-compat path. */
   agent?: AgentContext
 }
@@ -100,6 +107,11 @@ export interface LiveAreaHandlerContext {
   /** Aborts when the per-invocation timeout fires or the REPL is closing. */
   abort: AbortSignal
   stderr: NodeJS.WriteStream
+  /**
+   * Plugin-scoped diagnostic logger (the host prefixes the plugin id). The host
+   * always sets it. It is optional here so a handler test need not fake one.
+   */
+  log?: PluginLogger
   /** Monotonically increasing tick counter for this slot (0 on first call). */
   tick: number
   /**

@@ -24,7 +24,9 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     return { kind: "tool_result", content: "BackgroundRun: wrong trigger type", is_error: true }
   }
 
-  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv)
+  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv, (message, data) =>
+    ctx.log?.debug("config", message, data),
+  )
   if (!config.enabled) {
     return {
       kind: "tool_result",

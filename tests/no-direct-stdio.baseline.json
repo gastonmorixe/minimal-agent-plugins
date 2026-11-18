@@ -1,0 +1,98 @@
+{
+  "exempt": [
+    "**/*.test.ts",
+    "**/*fixture*.ts",
+    "**/__fixtures__/**",
+    "**/*.e2e.ts",
+    "**/e2e/**",
+    "scripts/**",
+    "**/scripts/**",
+    "tests/**"
+  ],
+  "allow": {
+    "ma-background-plugin/bin/runner.ts": {
+      "count": 1,
+      "kind": "R",
+      "reason": "Job runner process: one env-error line on its own stderr, which its only parent discards.",
+      "target": "main(argv, io)"
+    },
+    "ma-chrome-cdp-plugin/bin/cdp-server.ts": {
+      "count": 1,
+      "kind": "R",
+      "reason": "Daemon process: its stdout is appended to a log file by both spawners, so this is a file, not a terminal.",
+      "target": "main(argv, { log })"
+    },
+    "ma-chrome-cdp-plugin/bin/cdpd.ts": {
+      "count": 9,
+      "kind": "R",
+      "reason": "Own-process entry (`cdpd start|stop|status|logs`): the printed lines are the product, and `tail` is spawned with inherited stdio on purpose.",
+      "target": "main(argv, io) with an injected writer"
+    },
+    "ma-computer-use-plugin/bin/cud.ts": {
+      "count": 33,
+      "kind": "S",
+      "reason": "Operator script behind `bun run cud`: top-level command switch with console output and inherited child stdio.",
+      "target": "stay (dev tool); move to scripts/ later"
+    },
+    "ma-fetch-plugin/backends/obscura.ts": {
+      "count": 4,
+      "kind": "R",
+      "reason": "Subprocess entry: page content on stdout and diagnostics on stderr are the contract; the parent parses the stderr text to classify failures.",
+      "target": "main(argv, io); keep the stderr text stable"
+    },
+    "ma-file-lock-plugin/cli.ts": {
+      "count": 2,
+      "kind": "R",
+      "reason": "CLI entry. runCli() is already pure and returns {stdout, stderr, exitCode}; only the import.meta.main guard writes.",
+      "target": "stay (thinnest possible R)"
+    },
+    "ma-header-template-plugin/handlers/on_session_will_start.ts": {
+      "count": 1,
+      "kind": "L",
+      "reason": "TEMP debt: a hook prints the rendered header straight to process.stderr once per process.",
+      "target": "notification.emit through the hook context, or the startup-rows chain"
+    },
+    "ma-history-plugin/cli.ts": {
+      "count": 2,
+      "kind": "W",
+      "reason": "CLI entry: the one place that binds process.stdout and process.stderr as the injected io of run().",
+      "target": "stay (composition root of the CLI)"
+    },
+    "ma-llm-cursor-plugin/bidi-debug.ts": {
+      "count": 1,
+      "kind": "L",
+      "reason": "TEMP debt: a bidi debug tracer that prints with console.error.",
+      "target": "a Debug diagnostic through the plugin logger"
+    },
+    "ma-memory-plugin/cli.ts": {
+      "count": 2,
+      "kind": "W",
+      "reason": "CLI entry: the one place that binds process.stdout and process.stderr as the injected io of run().",
+      "target": "stay (composition root of the CLI)"
+    },
+    "ma-slash-menu-plugin/bin/preview.ts": {
+      "count": 4,
+      "kind": "S",
+      "reason": "Dev preview tool: prints an overlay mock-up to stdout.",
+      "target": "stay (dev tool)"
+    },
+    "ma-speak-plugin/backends/macos-say.ts": {
+      "count": 3,
+      "kind": "R",
+      "reason": "Backend child process: its stderr lines are read by the parent, and `say` runs with inherited stderr.",
+      "target": "main(argv, io); pipe the child's stderr"
+    },
+    "ma-tasks-plugin/cli.ts": {
+      "count": 1,
+      "kind": "R",
+      "reason": "CLI entry: its stdout output is the product.",
+      "target": "run(argv, io) like ma-history-plugin/cli.ts"
+    },
+    "ma-web-search-plugin/cli.ts": {
+      "count": 2,
+      "kind": "W",
+      "reason": "CLI entry: the one place that binds process.stdout and process.stderr as the injected io of run().",
+      "target": "stay (composition root of the CLI)"
+    }
+  }
+}

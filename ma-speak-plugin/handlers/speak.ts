@@ -72,7 +72,7 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     return { kind: "tool_result", content: "Speak: wrong trigger type", is_error: true }
   }
 
-  const config = loadSpeakConfig()
+  const config = loadSpeakConfig((message, data) => ctx.log?.debug("config", message, data))
   if (!config.enabled) {
     return {
       kind: "tool_result",

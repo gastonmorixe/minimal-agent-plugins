@@ -15,7 +15,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 
 import type { PromptFragmentContext } from "../lib/host-types.ts"
 import { DEFAULT_MEMORY_CONFIG, type MemoryConfig } from "../lib/memory-config.ts"
@@ -566,5 +566,37 @@ describe("loadMemories: ctx.prompts undefined", () => {
     expect(ids).toEqual(["memory.prompt_provider_missing"])
     expect(msgs).toEqual([""])
     expect(out).toContain("## Last-good")
+  })
+
+  it("sends the refresh trail to ctx.log.debug('summary-refresh') and writes no stderr", async () => {
+    process.env.MINIMAL_AGENT_MEMORY_NAMESPACE = "loadtest"
+    const home = makeTempDir()
+    const cwd = "/Users/x/proj"
+    const bullets = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `- [#b${i}] [2026-05-12T00:00:${String(i).padStart(2, "0")}+00:00] ${"x".repeat(60)}`,
+    ).join("\n")
+    primeNamespaced(home, cwd, { global: bullets })
+    const ctx = makeCtx(home, cwd)
+    const debugs: Array<{ source: string; message: string }> = []
+    ctx.log.debug = (source, message) => {
+      debugs.push({ source, message })
+    }
+    ctx.host = { llm: { complete: async () => ({ text: "unused" }) } } as never
+    const savedDebug = process.env.DEBUG
+    process.env.DEBUG = "1"
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    try {
+      await loadMemories(ctx, { loadConfig: () => cfgWith("summary") })
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+      if (savedDebug === undefined) delete process.env.DEBUG
+      else process.env.DEBUG = savedDebug
+    }
+    expect(debugs).toHaveLength(1)
+    expect(debugs[0]?.source).toBe("summary-refresh")
+    expect(debugs[0]?.message).toStartWith("regen failed")
   })
 })

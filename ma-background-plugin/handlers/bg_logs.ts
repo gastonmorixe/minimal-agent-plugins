@@ -27,7 +27,9 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
   }
   const req = parsed.value
 
-  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv)
+  const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv, (message, data) =>
+    ctx.log?.debug("config", message, data),
+  )
   const store = storeFromCtx(ctx)
   if (!store) {
     return {

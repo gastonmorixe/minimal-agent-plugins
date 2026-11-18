@@ -10,9 +10,9 @@ import {
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 
-import { skillScriptEnv, toolSpecToHandler } from "./tool-registry.ts"
+import { loadScriptedTools, skillScriptEnv, toolSpecToHandler } from "./tool-registry.ts"
 import type { ToolSpec } from "./types.ts"
 
 describe("skillScriptEnv", () => {
@@ -156,5 +156,81 @@ describe("script tool handler timeout and abort", () => {
     expect(r.is_error).toBe(true)
     expect(await waitGone(script, 1000)).toBe(true)
     expect(await waitGone(bg, 1000)).toBe(true)
+  })
+})
+
+describe("loadScriptedTools warnings", () => {
+  let dir: string
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "skill-register-"))
+    mkdirSync(join(dir, "scripts"))
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  const registerPath = () => join(dir, "scripts", "register.ts")
+  const validSpec = `{
+    name: "Good",
+    description: "a valid tool",
+    parameters: { type: "object", properties: {} },
+    handler: { type: "inline", promptTemplate: "hello" },
+  }`
+
+  test("an invalid tool spec goes to warn with { file }, the valid one still loads", async () => {
+    writeFileSync(
+      registerPath(),
+      `export default (register) => {
+        register({ name: "lowercase" })
+        register(${validSpec})
+      }\n`,
+    )
+    const calls: Array<{ message: string; data: unknown }> = []
+    const tools = await loadScriptedTools(dir, (message, data) => calls.push({ message, data }))
+    expect(tools.map((t) => t.name)).toEqual(["Good"])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.message).toStartWith(`invalid tool spec in ${registerPath()}: `)
+    expect(calls[0]?.data).toEqual({ file: registerPath() })
+  })
+
+  test("a register.ts that throws goes to warn with { file }", async () => {
+    writeFileSync(registerPath(), 'throw new Error("boom")\n')
+    const calls: Array<{ message: string; data: unknown }> = []
+    const tools = await loadScriptedTools(dir, (message, data) => calls.push({ message, data }))
+    expect(tools).toEqual([])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.message).toBe(`failed to load scripted tools from ${registerPath()}: boom`)
+    expect(calls[0]?.data).toEqual({ file: registerPath() })
+  })
+
+  test("without warn nothing is written to stderr or the console", async () => {
+    writeFileSync(
+      registerPath(),
+      `export default (register) => {
+        register({ name: "lowercase" })
+      }\n`,
+    )
+    const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
+    const consoleError = spyOn(console, "error").mockImplementation(() => {})
+    try {
+      expect(await loadScriptedTools(dir)).toEqual([])
+      expect(stderr).not.toHaveBeenCalled()
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+      consoleError.mockRestore()
+    }
+  })
+
+  test("a warn that throws does not stop the other tools from loading", async () => {
+    writeFileSync(
+      registerPath(),
+      `export default (register) => {
+        register({ name: "lowercase" })
+        register(${validSpec})
+      }\n`,
+    )
+    const tools = await loadScriptedTools(dir, () => {
+      throw new Error("sink down")
+    })
+    expect(tools.map((t) => t.name)).toEqual(["Good"])
   })
 })

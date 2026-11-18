@@ -205,11 +205,44 @@ export function parseSpeakConfig(raw: unknown): SpeakConfig {
 }
 
 /**
+ * Receives a config problem. `data` carries the offending file `path`. A
+ * handler passes `(m, d) => ctx.log.debug("config", m, d)`.
+ */
+export type ConfigWarn = (message: string, data?: Record<string, string | number | boolean>) => void
+
+/**
+ * `path + message` pairs already reported. A caller that reloads the config
+ * often (a handler per call, a slot per second) reports each problem once per
+ * process.
+ */
+const reported = new Set<string>()
+
+/**
+ * Report a problem once per `path` + `message`. Silent without a callback, and
+ * then it does not use up the key, so a later call with a callback still
+ * reports. A callback that throws never breaks config loading.
+ */
+function reportOnce(onWarn: ConfigWarn | undefined, path: string, message: string): void {
+  if (!onWarn) return
+  const key = `${path}\u0000${message}`
+  if (reported.has(key)) return
+  reported.add(key)
+  try {
+    onWarn(message, { path })
+  } catch {
+    // Reporting is best effort: a misconfigured plugin must not crash the agent.
+  }
+}
+
+/**
  * Load + parse user config. Always returns a valid `SpeakConfig` - built-in
  * defaults on any failure. Use `defaultConfig()` directly to skip disk IO
  * (tests, CLI use cases).
+ *
+ * @param onWarn - Optional. Receives a malformed-file message, once per
+ *   process for each file and message. Without it the load is silent.
  */
-export function loadSpeakConfig(): SpeakConfig {
+export function loadSpeakConfig(onWarn?: ConfigWarn): SpeakConfig {
   const path = configPath()
   const raw = readRaw(path)
   if (raw === null) return defaultConfig()
@@ -217,9 +250,7 @@ export function loadSpeakConfig(): SpeakConfig {
   try {
     parsed = parseJsonc(raw)
   } catch (err) {
-    if (process.env.DEBUG === "1") {
-      process.stderr.write(`[ma-speak] ${path}: parse error: ${(err as Error).message}\n`)
-    }
+    reportOnce(onWarn, path, `parse error: ${(err as Error).message}`)
     return defaultConfig()
   }
   return parseSpeakConfig(parsed)
