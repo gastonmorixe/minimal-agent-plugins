@@ -1319,7 +1319,7 @@
                 "type": "string"
               },
               "sid": {
-                "description": "The session: a full id, the start of one id (for example, `260d72dd`), or `last`. The default is `last`, the newest session in this `cwd`, or the newest of all. Without it, `search` examines the newest sessions. If the start agrees with more than one id, the tool gives an error with these ids.",
+                "description": "The session: a full id, the start of one id (for example, `260d72dd`), `last` or `newest`. The default is `last`, this session. `newest` is the newest saved session. Without it, `search` examines the newest sessions. If the start agrees with more than one id, the tool gives an error with these ids.",
                 "type": "string"
               },
               "tool": {
@@ -3185,7 +3185,7 @@
                 "type": "string"
               },
               "sid": {
-                "description": "The session: a full id, the start of one id (for example, `260d72dd`), or `last`. The default is `last`, the newest session in this `cwd`, or the newest of all. Without it, `search` examines the newest sessions. If the start agrees with more than one id, the tool gives an error with these ids.",
+                "description": "The session: a full id, the start of one id (for example, `260d72dd`), `last` or `newest`. The default is `last`, this session. `newest` is the newest saved session. Without it, `search` examines the newest sessions. If the start agrees with more than one id, the tool gives an error with these ids.",
                 "type": "string"
               },
               "tool": {
