@@ -60,7 +60,7 @@
  *   request id. It does not start, extend or end a `prefix_changed` streak.
  *   It has its own count: `server_miss` turns in a row. The warning is
  *   written at the same milestones as `prefix_changed` (1, 3, 10, 30, ...),
- *   with "N server misses in a row" when N > 1. A clean read and any break
+ *   with "N server misses in a row" when N is above 1. A clean read and any break
  *   with another cause (`ttl_expired` included) end the count. The break
  *   event is not limited.
  * - The thinking removal and the server's lookback: when the client removes

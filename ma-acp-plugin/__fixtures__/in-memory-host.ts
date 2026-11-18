@@ -95,3 +95,43 @@ export async function openInMemorySession(rt: FakeRuntime) {
   const created = await h.reply(2)
   return { ...h, sessionId: created.result?.sessionId as string }
 }
+
+/**
+ * Start a host whose client advertises the L3 `features` (and, when
+ * `notices` is set, `clientCapabilities.session.notices`), and open one
+ * session. `prompt(meta?)` sends one `session/prompt` and waits for its reply.
+ */
+export async function openExtSession(rt: FakeRuntime, features: string[], notices = false) {
+  const h = startInMemoryHost(rt)
+  h.send({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: 1,
+      clientCapabilities: {
+        ...(notices ? { session: { notices: {} } } : {}),
+        _meta: { "minimal-agent/ext": { version: 1, features } },
+      },
+    },
+  })
+  await h.reply(1)
+  h.send({ jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: "/work", mcpServers: [] } })
+  const sessionId = (await h.reply(2)).result?.sessionId as string
+  let nextId = 10
+  const prompt = async (meta?: Record<string, unknown>) => {
+    const id = nextId++
+    h.send({
+      jsonrpc: "2.0",
+      id,
+      method: "session/prompt",
+      params: {
+        sessionId,
+        prompt: [{ type: "text", text: "go" }],
+        ...(meta ? { _meta: meta } : {}),
+      },
+    })
+    return h.reply(id)
+  }
+  return { ...h, sessionId, prompt }
+}
