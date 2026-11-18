@@ -203,7 +203,7 @@ describe("toolResultToWireText outcome parity (M3b-1)", () => {
     join?: string
   }
 
-  /** Build the stored text and the record outcome by the D6 join ("\n\n" default). */
+  /** Build the stored text and the record outcome by the D6 join (`"\n\n"` default). */
   const build = (body: string, parts: Part[]): { text: string; outcome: PersistedToolOutcome } => {
     let text = body
     const annotations: PersistedToolOutcome["annotations"] = []

@@ -4,7 +4,7 @@
  * @module llm/providers/cursor/bidi-tool-results
  */
 
-import { viewPersistedOutcome } from "@minimal-agent/core/plugin-api"
+import { CORE_ANNOTATION_KINDS, viewPersistedOutcome } from "@minimal-agent/core/plugin-api"
 import type {
   CanonicalMessage,
   ToolResultBlock,
@@ -129,35 +129,99 @@ export function stripMaAgentWireAnnotations(text: string): string {
 
 /** Start of a harness tag. The strip regex deletes it. */
 const MA_AGENT_TAG_PREFIX = "<ma::agent::"
-/** Start of a tasks tag. The strip regex converts it, so it stays (MA-39298). */
-const MA_AGENT_TASKS_PREFIX = "<ma::agent::tasks"
+/** Start of a harness closing tag. */
+const MA_AGENT_CLOSER_PREFIX = "</ma::agent::"
+
+/** Core kinds that hold plain text, with the prefix that the text must have. */
+const PLAIN_TEXT_KINDS: Readonly<Record<string, string>> = {
+  "output-truncated": "[truncated:",
+  "output-streak": "[note:",
+}
 
 /**
  * Model-facing text of a tool_result from its stored `outcome`, or `undefined`
- * when the old path must run. The text is the body, then the plain-text
- * annotations (`[truncated: ...]`, `[note: ...]`) in append order with the join
- * "\n\n". Tag annotations are not added: the strip regex would delete them.
+ * when the old path must run. The old path joins the text blocks with `"\n"` and
+ * strips the harness tags. This function gives the SAME bytes as the old path
+ * in every case where it returns a string. The result is the body, then the
+ * plain-text annotations (`[truncated: ...]`, `[note: ...]`) in append order,
+ * each after `"\n\n"`. Tag annotations are not added: the strip regex deletes them.
  *
- * Returns `undefined` (old path) when:
- * - the block has no `outcome`, or `outcome` does not fit the content;
- * - the block has more than one non-empty text block. The stored offsets refer
- *   to the FIRST text block only (D8 rule 1), and the old path joins all of them.
+ * Returns `undefined` (old path) unless ALL of these rules hold:
+ * - (a) `block.outcome` is set and `viewPersistedOutcome` gives a view.
+ * - (b) At most one text block has text. If one has, it is the FIRST text
+ *   block, because the stored offsets refer to the first text block only.
+ * - (c) The stored spans tile the text: the body, then each annotation, with
+ *   nothing after the last annotation (so the content was not edited).
+ * - (d) The body has no `<ma::agent::` text, so the strip regex finds no tag
+ *   in the body (a tag opener in the body can swallow the text after it).
+ * - (e) Each annotation is of a core kind. A plain-text kind
+ *   (`output-truncated`, `output-streak`) has the right prefix and no
+ *   `<ma::agent::` text. A tag kind starts with `<ma::agent::`, the strip regex
+ *   deletes ALL of its text, and it has no closer inside it.
+ * - (f) Each gap between two spans is `"\n\n"` or `"\n"`, and the newlines before
+ *   each plain-text annotation (gaps of the tag annotations before it
+ *   included) are at least two, and exactly `"\n\n"` when no tag lies between.
+ *   When the body only has white space, the first gap can also be empty
+ *   (the strip step trims it in both paths).
+ *
+ * @param block - The tool_result block.
+ * @returns The text before the strip step, or `undefined` for the old path.
  */
-function outcomeWireText(block: ToolResultBlock): string | undefined {
+export function outcomeWireText(block: ToolResultBlock): string | undefined {
+  // (a)
   if (block.outcome === undefined) return undefined
-  let textBlocks = 0
-  for (const c of block.content) {
-    if (c.type === "text" && c.text) textBlocks++
-  }
-  if (textBlocks > 1) return undefined
   const view = viewPersistedOutcome(block.content, block.outcome)
   if (view === undefined) return undefined
+
+  // (b)
+  const first = block.content.find((c) => c.type === "text")
+  for (const c of block.content) {
+    if (c.type === "text" && c.text && c !== first) return undefined
+  }
+
+  // (c) `viewPersistedOutcome` checks the order and the range of the spans.
+  const last = view.annotations[view.annotations.length - 1]
+  if ((last === undefined ? view.bodyEnd : last.end) !== view.text.length) return undefined
+
+  // (d)
+  if (view.body.includes(MA_AGENT_TAG_PREFIX)) return undefined
+
   let out = view.body
+  let previousEnd = view.bodyEnd
+  // Before the first plain-text annotation, a body with only white space is trimmed in both paths.
+  let blankLead = view.body.trim() === ""
+  let newlines = 0
+  let sawTag = false
   for (const a of view.annotations) {
-    if (a.text.startsWith(MA_AGENT_TAG_PREFIX) && !a.text.startsWith(MA_AGENT_TASKS_PREFIX)) {
+    // (f) gap
+    const gap = view.text.slice(previousEnd, a.start)
+    if (gap !== "\n\n" && gap !== "\n" && !(blankLead && gap === "")) return undefined
+    newlines += gap.length
+    previousEnd = a.end
+
+    // (e)
+    if (!(CORE_ANNOTATION_KINDS as readonly string[]).includes(a.kind)) return undefined
+    const prefix = PLAIN_TEXT_KINDS[a.kind]
+    if (prefix === undefined) {
+      if (!a.text.startsWith(MA_AGENT_TAG_PREFIX)) return undefined
+      if (stripMaAgentWireAnnotations(a.text) !== "") return undefined
+      // A closer is allowed only as the last text of the annotation.
+      const closer = a.text.indexOf(MA_AGENT_CLOSER_PREFIX)
+      if (closer !== -1) {
+        const close = a.text.indexOf(">", closer)
+        if (close !== a.text.length - 1) return undefined
+        if (a.text.indexOf(MA_AGENT_CLOSER_PREFIX, closer + 1) !== -1) return undefined
+      }
+      sawTag = true
       continue
     }
+    if (!a.text.startsWith(prefix) || a.text.includes(MA_AGENT_TAG_PREFIX)) return undefined
+    // (f) join
+    if (!blankLead && (newlines < 2 || (!sawTag && gap !== "\n\n"))) return undefined
     out += `\n\n${a.text}`
+    blankLead = false
+    newlines = 0
+    sawTag = false
   }
   return out
 }
