@@ -39,6 +39,8 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/canonical-events"
 import { classifyUpstreamError, tagUpstreamError } from "@minimal-agent/core/plugin-api/llm/errors"
 
+import { dropOptionalNulls } from "./strict-tools.ts"
+
 // ---------------------------------------------------------------------------
 // Wire types (subset we consume)
 // ---------------------------------------------------------------------------
@@ -218,7 +220,21 @@ interface OpenAIResponsesUsage {
  */
 export async function* translateOpenAIResponsesStream(
   events: AsyncIterable<OpenAIResponsesEvent>,
+  /**
+   * Original schema of each tool sent as strict, by tool name. The model sends
+   * `null` for each optional property it does not use; the final input of the
+   * call drops those nulls (see `strict-tools.ts`).
+   */
+  strictSchemas: ReadonlyMap<string, unknown> = new Map(),
 ): AsyncIterable<CanonicalEvent> {
+  /** Tool name of each open function-call block, by its key. */
+  const functionNames = new Map<string, string>()
+  /**
+   * Raw argument text of each open STRICT call, by its key. Its deltas are
+   * held back (the text has nulls for unused optional properties). The text
+   * is the fallback for `output_item.done` with no arguments.
+   */
+  const strictArgs = new Map<string, string>()
   let messageStartEmitted = false
   let lastUsage: CanonicalUsage = { inputTokens: 0, outputTokens: 0 }
   let stopReason: StopReason | null = null
@@ -262,6 +278,7 @@ export async function* translateOpenAIResponsesStream(
           const key = `${added.output_index}:${added.item.id ?? added.item.call_id ?? ""}`
           const idx = nextBlockIndex++
           functionBlocks.set(key, idx)
+          functionNames.set(key, added.item.name ?? "")
           yield {
             type: "tool_use_start",
             index: idx,
@@ -282,15 +299,31 @@ export async function* translateOpenAIResponsesStream(
           const key = `${done.output_index}:${done.item.id ?? done.item.call_id ?? ""}`
           const blockIdx = functionBlocks.get(key)
           if (blockIdx !== undefined) {
+            const name = functionNames.get(key) ?? done.item.name ?? ""
+            const strict = strictSchemas.has(name)
+            // A strict call's raw text was held back (see the delta cases).
+            // Use the final item text, else the text the deltas collected.
+            const raw = done.item.arguments || (strict ? (strictArgs.get(key) ?? "") : "")
             let input: unknown
-            const raw = done.item.arguments ?? ""
             try {
               input = raw ? JSON.parse(raw) : {}
             } catch {
               input = { _raw: raw }
             }
+            if (strict) {
+              // Strict tool: drop the nulls of unused optional properties, and
+              // send the cleaned input as the call's only delta. A consumer
+              // that builds the input from deltas then gets the same input.
+              input = dropOptionalNulls(input, strictSchemas.get(name))
+              if (raw) {
+                const json = JSON.stringify(input)
+                yield { type: "tool_use_input_delta", index: blockIdx, partialJson: json }
+              }
+            }
             yield { type: "tool_use_stop", index: blockIdx, input }
             functionBlocks.delete(key)
+            functionNames.delete(key)
+            strictArgs.delete(key)
           }
         }
         break
@@ -350,6 +383,13 @@ export async function* translateOpenAIResponsesStream(
         // multiple function calls coexist).
         for (const [k, idx] of functionBlocks.entries()) {
           if (k.endsWith(`:${d.item_id}`)) {
+            // A strict tool's raw arguments carry `null` for each unused
+            // optional property. Its input goes out once, cleaned, at
+            // `output_item.done` (see there), so no raw delta here.
+            if (strictSchemas.has(functionNames.get(k) ?? "")) {
+              strictArgs.set(k, (strictArgs.get(k) ?? "") + d.delta)
+              break
+            }
             if (d.delta) functionBlocksWithDelta.add(k)
             yield { type: "tool_use_input_delta", index: idx, partialJson: d.delta }
             break
@@ -367,6 +407,11 @@ export async function* translateOpenAIResponsesStream(
         const d = ev as FunctionCallArgumentsDone
         for (const [k, idx] of functionBlocks.entries()) {
           if (k.endsWith(`:${d.item_id}`)) {
+            if (strictSchemas.has(functionNames.get(k) ?? "")) {
+              // The full text: it wins over the collected deltas.
+              if (d.arguments) strictArgs.set(k, d.arguments)
+              break
+            }
             if (!functionBlocksWithDelta.has(k) && d.arguments) {
               functionBlocksWithDelta.add(k)
               yield { type: "tool_use_input_delta", index: idx, partialJson: d.arguments }

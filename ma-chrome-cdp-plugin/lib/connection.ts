@@ -42,6 +42,15 @@ export interface ConnectionOpts {
   log?: (msg: string) => void
 }
 
+/**
+ * The socket to Chrome is gone: it closed while a request waited for its
+ * reply, or a request came when there was no socket. The daemon answers 503
+ * for it, as for the other "Chrome is not reachable" cases.
+ */
+export class ConnectionClosedError extends Error {
+  override readonly name = "ConnectionClosedError"
+}
+
 interface Pending {
   resolve: (m: CdpInbound) => void
   reject: (e: Error) => void
@@ -158,7 +167,7 @@ export class CdpConnection {
     params: Record<string, unknown> = {},
     sessionId?: string,
   ): Promise<CdpInbound> {
-    if (!this.ws) return Promise.reject(new Error("not connected"))
+    if (!this.ws) return Promise.reject(new ConnectionClosedError("not connected"))
     const id = ++this.idc
     const frame = buildRequest(id, method, params, sessionId)
     return new Promise<CdpInbound>((resolve, reject) => {
@@ -186,7 +195,7 @@ export class CdpConnection {
   private rejectAllPending(reason: string): void {
     for (const [, p] of this.pending) {
       clearTimeout(p.timer)
-      p.reject(new Error(reason))
+      p.reject(new ConnectionClosedError(reason))
     }
     this.pending.clear()
   }

@@ -23,7 +23,7 @@
         "refreshMs": 300000,
         "timeoutMs": 8000,
         "placeholder": "\u001b[2m5h ░░░░░░░░ ··%        7d ░░░░░░░░ ··%        · ░░░░░░░░ ··%\u001b[22m",
-        "refreshOn": ["quota.headersReceived", "terminal.resize"]
+        "refreshOn": ["quota.headersReceived", "terminal.resize", "target.didSwitch"]
       }
     ]
   }

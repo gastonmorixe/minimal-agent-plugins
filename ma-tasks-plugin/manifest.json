@@ -45,6 +45,7 @@
                   "description": "The operation:\n- `start`: set the task to `doing`. The parent also starts.\n- `done`: set the task to `done`. When no subtask is open, the parent becomes `done` automatically. Before that, the parent stays `doing`.\n- `remove`: remove a task and its subtasks.\n- `replace_plan`: replace the board with a new tree.\nIf the tool rejects your input, try again one time."
                 },
                 "id": {
+                  "type": ["string", "integer"],
                   "description": "Necessary for `update`, `status`, `start`, `done` and `remove`. The task id from the board or the last result, for example `1` or `1a`."
                 },
                 "title": {
@@ -103,9 +104,11 @@
                   }
                 },
                 "parent": {
+                  "type": ["string", "integer"],
                   "description": "The parent id of the new subtask. Use it with `add`, or with `add_many` and `titles`. Do not use it with `tasks` or `items`."
                 },
                 "after": {
+                  "type": ["string", "integer"],
                   "description": "Optional, for a top-level `add`. The new task goes after this top-level task and its subtasks. Without it, or for an unknown or subtask id, it goes at the end."
                 },
                 "status": {
@@ -119,6 +122,7 @@
                 },
                 "order": {
                   "type": "array",
+                  "items": { "type": ["string", "integer"] },
                   "description": "Necessary for `reorder`. The top-level task ids in the new sequence. Subtasks move with their parent."
                 },
                 "filter": {

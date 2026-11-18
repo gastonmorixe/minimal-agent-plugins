@@ -319,6 +319,97 @@ export const PROSE_LEAVES: readonly ProseLeaf[] = [
   },
 ]
 
+/**
+ * One intended SCHEMA change: a key that a tool's `input_schema` property
+ * gains, with its exact value. It is not prose, so {@link PROSE_LEAVES} cannot
+ * allow it. Each entry names the tool, the property, the added key and value,
+ * and the reason.
+ *
+ * Remove an entry when main has the new goldens: the guard compares with the
+ * merge base, so after the change lands the entry matches nothing. Do not add
+ * a check that fails on a stale entry: on the push run to main the merge base
+ * is HEAD, and that check would turn main red.
+ */
+export interface SchemaAddition {
+  /** Tool name (`tools[i].name`). */
+  tool: string
+  /** Property of the tool's `input_schema.properties`. */
+  property: string
+  /** The key that the property gains. */
+  key: string
+  /** The exact value of the new key. */
+  value: unknown
+  /** Why the schema changed. */
+  source: string
+}
+
+/** Intended schema additions. Keep it narrow: each entry needs a reason. */
+export const SCHEMA_ADDITIONS: readonly SchemaAddition[] = [
+  // Strict OpenAI tools (ma-llm-openai-plugin/responses/strict-tools.ts) need
+  // a declared type on each property. Task's ids take a string or a positive
+  // integer (task_tool.ts isIdRef). Remove these entries after the change is
+  // on plugins main (follow-up PR).
+  ...["id", "parent", "after"].map((property) => ({
+    tool: "Task",
+    property,
+    key: "type",
+    value: ["string", "integer"],
+    source: "nullable strict tools: Task id type",
+  })),
+  {
+    tool: "Task",
+    property: "order",
+    key: "items",
+    value: { type: ["string", "integer"] },
+    source: "nullable strict tools: Task order item type",
+  },
+]
+
+/** A `shape` path of a key added to a tool property: `...tools[i].input_schema.properties.<p>{+<k>}`. */
+const ADDED_PROPERTY_KEY =
+  /^(.*\.tools\[\d+\])\.input_schema\.properties\.([^.{}[\]]+)\{\+([^,{}]+)\}$/
+
+/**
+ * True when a `shape` difference is exactly one {@link SCHEMA_ADDITIONS} entry:
+ * the tool at that path has the entry's name, the property gained only that
+ * key, the key was absent before, and its new value is the entry's value.
+ *
+ * @param path - The `shape` path from {@link leafDiff}.
+ * @param before - The merge-base golden.
+ * @param after - The current golden.
+ * @param additions - The allowlist (a test passes its own).
+ * @returns Whether the difference is allowed.
+ */
+export function isAllowedAddition(
+  path: string,
+  before: unknown,
+  after: unknown,
+  additions: readonly SchemaAddition[] = SCHEMA_ADDITIONS,
+): boolean {
+  const m = ADDED_PROPERTY_KEY.exec(path)
+  if (!m) return false
+  const [, toolPath, property, key] = m as unknown as [string, string, string, string]
+  const toolBefore = atPath(before, toolPath) as { name?: unknown } | undefined
+  const toolAfter = atPath(after, toolPath) as { name?: unknown } | undefined
+  if (toolBefore?.name !== toolAfter?.name) return false
+  const entry = additions.find(
+    (a) => a.tool === toolAfter?.name && a.property === property && a.key === key,
+  )
+  if (!entry) return false
+  const propBefore = atPath(before, `${toolPath}.input_schema.properties.${property}`)
+  const propAfter = atPath(after, `${toolPath}.input_schema.properties.${property}`)
+  if (!propBefore || !propAfter || typeof propBefore !== "object" || typeof propAfter !== "object")
+    return false
+  if (Object.hasOwn(propBefore, key)) return false
+  const { [key]: added, ...rest } = propAfter as Record<string, unknown>
+  // The rest of the property must be unchanged, except prose. Walk it as the
+  // golden walk does (same key and tag names), so a reworded description is
+  // prose here too, and a changed `<ma::...>` tag is still a problem.
+  const restDiffs = leafDiff(propBefore, rest, "$", property, maTagNames(before))
+  if (restDiffs.some((d) => d.kind !== "string")) return false
+  return JSON.stringify(added) === JSON.stringify(entry.value)
+}
+
 /** The trailing mode stamp of a tool_result, with the blank line before it. */
 const MODE_STAMP = /\n\n<ma::agent::mode-active [^<>]*\/>$/
 
@@ -377,10 +468,12 @@ export function goldenProblems(
   before: unknown,
   after: unknown,
   leaves: readonly ProseLeaf[] = PROSE_LEAVES,
+  additions: readonly SchemaAddition[] = SCHEMA_ADDITIONS,
 ): string[] {
   const out: string[] = []
   for (const d of leafDiff(before, after)) {
     if (d.kind === "string") continue
+    if (d.kind === "shape" && isAllowedAddition(d.path, before, after, additions)) continue
     const listed = leaves.some((leaf) => leaf.golden === name && leaf.path === d.path)
     if (listed && d.kind === "value") {
       const problem = proseLeafProblem(atPath(before, d.path), atPath(after, d.path))
@@ -790,5 +883,93 @@ describe("golden leaf diff: M6 mutation proof on real goldens (temp copy)", () =
       raw.replace("is not permitted in ASK mode.", "is not allowed in ASK mode."),
     )
     expect(words).toEqual([])
+  })
+})
+
+describe("golden leaf diff: SCHEMA_ADDITIONS (intended Task schema change)", () => {
+  /** A golden with one Task tool and one other tool, like the real request goldens. */
+  const golden = (task: Record<string, unknown>, other: Record<string, unknown>) => ({
+    requests: [
+      {
+        tools: [
+          { name: "Other", input_schema: { type: "object", properties: other } },
+          { name: "Task", input_schema: { type: "object", properties: task } },
+        ],
+      },
+    ],
+  })
+  const ID = { description: "The task id." }
+  const ORDER = { type: "array", description: "The ids." }
+  const before = golden({ id: ID, order: ORDER }, { id: ID, order: ORDER })
+  const typedId = { ...ID, type: ["string", "integer"] }
+  const typedOrder = { ...ORDER, items: { type: ["string", "integer"] } }
+
+  test("the exact listed additions on Task pass", () => {
+    const after = golden({ id: typedId, order: typedOrder }, { id: ID, order: ORDER })
+    expect(goldenProblems("g.json", before, after)).toEqual([])
+  })
+
+  test("kills 'any key': another added key at a listed property fails", () => {
+    const after = golden({ id: { ...ID, minimum: 1 }, order: ORDER }, { id: ID, order: ORDER })
+    expect(goldenProblems("g.json", before, after)).toEqual([
+      "shape $.requests[0].tools[1].input_schema.properties.id{+minimum}",
+    ])
+  })
+
+  test("kills 'any value': the listed key with another value fails", () => {
+    const after = golden({ id: { ...ID, type: "string" }, order: ORDER }, { id: ID, order: ORDER })
+    expect(goldenProblems("g.json", before, after)).toEqual([
+      "shape $.requests[0].tools[1].input_schema.properties.id{+type}",
+    ])
+  })
+
+  test("kills 'any tool': the same addition on another tool fails", () => {
+    const after = golden({ id: ID, order: ORDER }, { id: typedId, order: ORDER })
+    expect(goldenProblems("g.json", before, after)).toEqual([
+      "shape $.requests[0].tools[0].input_schema.properties.id{+type}",
+    ])
+  })
+
+  test("kills 'hides other changes': an addition plus a changed non-prose leaf fails", () => {
+    const after = golden(
+      { id: typedId, order: { ...typedOrder, minItems: 1 } },
+      { id: ID, order: ORDER },
+    )
+    expect(goldenProblems("g.json", before, after)).toEqual([
+      "shape $.requests[0].tools[1].input_schema.properties.order{+items,+minItems}",
+    ])
+  })
+
+  test("a Task description change still follows the prose rules", () => {
+    const reworded = { description: "The id of the task." }
+    const after = golden(
+      { id: { ...reworded, type: ["string", "integer"] }, order: ORDER },
+      {
+        id: ID,
+        order: ORDER,
+      },
+    )
+    expect(goldenProblems("g.json", before, after)).toEqual([])
+    const tagged = { description: "The id. <ma::agent::invented-tag />" }
+    const bad = golden(
+      { id: { ...tagged, type: ["string", "integer"] }, order: ORDER },
+      {
+        id: ID,
+        order: ORDER,
+      },
+    )
+    // An unknown tag in the description: the addition is not allowed, so the
+    // shape difference is reported (the prose rule still applies).
+    expect(goldenProblems("g.json", before, bad)).toEqual([
+      "shape $.requests[0].tools[1].input_schema.properties.id{+type}",
+    ])
+    expect(
+      isAllowedAddition("$.requests[0].tools[1].input_schema.properties.id{+type}", before, bad),
+    ).toBe(false)
+  })
+
+  test("with no allowlist, the same change fails (the entry is what allows it)", () => {
+    const after = golden({ id: typedId, order: typedOrder }, { id: ID, order: ORDER })
+    expect(goldenProblems("g.json", before, after, PROSE_LEAVES, []).length).toBe(2)
   })
 })

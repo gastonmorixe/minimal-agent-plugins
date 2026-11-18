@@ -38,6 +38,8 @@ import { sanitizeSchemaName, wantsStrictSchema } from "../chat/request-body.ts"
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
 
+import { toStrictParameters } from "./strict-tools.ts"
+
 // ---------------------------------------------------------------------------
 // Wire types
 // ---------------------------------------------------------------------------
@@ -474,6 +476,19 @@ function appendCanonicalMessage(
 function toResponsesTool(tool: CanonicalToolDefinition): OpenAIResponsesTool {
   if (tool.server) {
     return mapServerTool(tool.server)
+  }
+  // Do the strict conversion here, with null for each optional property (see
+  // strict-tools.ts). A tool that sets `strict: false` opts out, and a schema
+  // that cannot be converted goes unchanged: the server then normalizes it.
+  const strictParams = tool.strict === false ? undefined : toStrictParameters(tool.inputSchema)
+  if (strictParams !== undefined) {
+    return {
+      type: "function",
+      name: tool.name,
+      description: tool.description,
+      parameters: strictParams,
+      strict: true,
+    }
   }
   return {
     type: "function",
