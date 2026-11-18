@@ -52,6 +52,42 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-17: **`ma-acp-plugin` tells the client about a retry or quota
+  wait, and names what a target switch changed.**
+  - A wait. The encoder sent nothing for the `status` phases `retrying` and
+    `waiting_for_quota`, so an ACP client showed nothing while the session
+    waited, also for hours. Now a wait of 10 seconds or more gives one
+    notice (or its text fallback): the cause code, the time to the next try
+    as a duration, the reset time when core has it, the number of the next
+    try, and "To continue now, change the provider or the model." A shorter wait gives
+    nothing. A retry wait of one minute or more is a `warning`. After the
+    first retry notice of a prompt, only a wait of one minute or more gives
+    one more. All rules and text are in the new `wait-notice.ts`; the
+    encoder calls one function. No new ACP method and no `_meta` key.
+  - A switch. The notice of a target switch now names each changed value in
+    the order credential, provider, model, effort, for example `[target]
+    Changed credential to "second" (was "full")`. The title is "Credential
+    changed", "Provider changed", "Model changed", "Effort changed", or
+    "Target changed" for two or more. Before, a credential-only switch said
+    `Adopted model "m" (was "m")`. This needs the `fromTarget` and
+    `toTarget` fields of core; with an older core, and for an automatic
+    model adoption, the text is the same as before.
+  - The words of the wait notice are not the words of the TUI status row
+    for the same wait ("Retrying after ... — sleeping Ns"). The STE gate of
+    this repository reads each `description:` literal and does not accept
+    "waiting", "reset", "attempt" or "retrying" there. The notice has the
+    same facts: the cause code, the wait, and the number of the next try.
+  - A 429 with `Retry-After` is the phase `retrying`, not
+    `waiting_for_quota` (core `sdk/run-recovery.ts`). So the two phases get
+    the same treatment, and the wait time decides the severity of a retry.
+  - Not tested: a real client during a real wait of hours (the tests use a
+    mock endpoint with `Retry-After: 3600` and end the wait with a switch
+    after less than a second); a switch of the `provider` or `effort`
+    option during a wait in the real-process test (only `model`); an older
+    plugin with the newer core (by reading: it ignores the two new fields).
+    There is no update when a wait ends with no switch: the next update of
+    the prompt follows it.
+
 - 2026-11-17: **`ma-sub-agents-plugin`: a RUNNING worker follows a target
   switch of its lead, in place.** When the lead switches its credential,
   provider, model or effort, the plugin (event `target.didSwitch`) appends

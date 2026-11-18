@@ -319,6 +319,124 @@ describe("notices", () => {
   })
 })
 
+describe("a retry or quota wait (wait-notice.ts)", () => {
+  const quota: AgentEvent = {
+    type: "status",
+    phase: "waiting_for_quota",
+    attempt: 2,
+    nextDelayMs: 8_837_200,
+    resetAt: Date.UTC(2026, 10, 18, 3, 15, 0),
+    cause: "rate_limit_error",
+  }
+  const retry = (attempt: number, nextDelayMs: number): AgentEvent => ({
+    type: "status",
+    phase: "retrying",
+    attempt,
+    nextDelayMs,
+    cause: "network_error",
+  })
+
+  it("a quota wait gives one warning notice with the wait and how to continue", () => {
+    const { sent, feed } = setup({ clientNotices: true })
+    feed(quota, quota)
+    expect(sent).toEqual([
+      {
+        sessionUpdate: "notice",
+        severity: "warning",
+        title: "Waiting for the provider quota",
+        description:
+          "[wait] The provider quota is full (rate_limit_error). The session tries again in 2 h 28 min, at 2026-11-18T03:15:00Z (try 2). To continue now, change the provider or the model.",
+      },
+    ])
+  })
+
+  it("a client with no notice support gets the same text as a message chunk", () => {
+    const { sent, feed } = setup({ clientNotices: false })
+    feed(quota)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.sessionUpdate).toBe("agent_message_chunk")
+    expect(JSON.stringify(sent[0])).toContain(
+      "[wait] The provider quota is full (rate_limit_error)",
+    )
+  })
+
+  it("a short retry gives nothing, and the other phases give nothing", () => {
+    const { sent, feed } = setup({ clientNotices: true })
+    feed(
+      retry(2, 800),
+      { type: "status", phase: "sending" },
+      { type: "status", phase: "receiving" },
+      { type: "status", phase: "waiting_for_host", cause: "auth_error" },
+    )
+    expect(sent).toEqual([])
+  })
+
+  it("a wait notice does not change the tool call updates", () => {
+    const { sent, feed } = setup({ clientNotices: true })
+    feed(
+      {
+        type: "tool_call",
+        callId: "t1",
+        toolName: "Read",
+        input: { file_path: "a.ts" },
+        inputSummary: "a.ts",
+      },
+      retry(2, 20_000),
+      { type: "status", phase: "running_tool", toolName: "Read" },
+    )
+    expect(sent.map((u) => [u.sessionUpdate, u.status ?? u.title])).toEqual([
+      ["tool_call", "pending"],
+      ["notice", "Waiting to retry"],
+      ["tool_call_update", "in_progress"],
+    ])
+  })
+
+  it("the order for a client: the wait notice, then the switch (options, notice), then the answer", () => {
+    const { rt, sent, feed } = setup({ model: "alpha", clientNotices: true })
+    feed(quota)
+    rt.setModel("gamma")
+    feed(
+      {
+        type: "notice",
+        notice: {
+          kind: "model_adopted",
+          severity: "info",
+          from: "alpha",
+          to: "gamma",
+          effortReset: false,
+          effortFrom: null,
+          fromTarget: { credentialName: "full", providerId: "p1", model: "alpha" },
+          toTarget: { credentialName: "second", providerId: "p2", model: "gamma" },
+        },
+      },
+      { type: "text_delta", id: "m1", text: "DONE" },
+    )
+    expect(sent.map((u) => u.sessionUpdate)).toEqual([
+      "notice",
+      "config_option_update",
+      "notice",
+      "agent_message_chunk",
+    ])
+    expect(sent[0]?.title).toBe("Waiting for the provider quota")
+    expect(sent[2]).toMatchObject({
+      severity: "info",
+      title: "Target changed",
+      description:
+        '[target] Changed credential to "second" (was "full"), provider to "p2" (was "p1"), model to "gamma" (was "alpha").',
+    })
+  })
+
+  it("the next prompt reports its first wait again", () => {
+    const { sent, enc, feed } = setup({ clientNotices: true })
+    feed(retry(2, 20_000), retry(3, 20_000))
+    expect(sent.filter((u) => u.sessionUpdate === "notice")).toHaveLength(1)
+    enc.finishTurn("completed")
+    const before = sent.length
+    feed(retry(2, 20_000))
+    expect(sent.slice(before).map((u) => u.title)).toEqual(["Waiting to retry"])
+  })
+})
+
 describe("model_adopted (spec Q16 item 3)", () => {
   const adopted = (from: string, to: string, effortFrom: string | null): AgentEvent => ({
     type: "notice",

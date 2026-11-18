@@ -223,6 +223,61 @@ const PINNED_TEXT: readonly { name: string; notice: TurnNotice; text: string }[]
     text: '[model] Adopted model "b" (was "a") (effort reset from "high").',
   },
   {
+    name: "target switch, credential only (the model is the same)",
+    notice: {
+      kind: "model_adopted",
+      severity: "info",
+      from: "m1",
+      to: "m1",
+      effortReset: false,
+      effortFrom: null,
+      fromTarget: { credentialName: "full", providerId: "alpha", model: "m1", effort: "high" },
+      toTarget: { credentialName: "second", providerId: "alpha", model: "m1", effort: "high" },
+    } as TurnNotice,
+    text: '[target] Changed credential to "second" (was "full").',
+  },
+  {
+    name: "target switch, all four values, in the order of the chain",
+    notice: {
+      kind: "model_adopted",
+      severity: "info",
+      from: "m1",
+      to: "m2",
+      effortReset: false,
+      effortFrom: null,
+      fromTarget: { credentialName: "full", providerId: "alpha", model: "m1", effort: "high" },
+      toTarget: { credentialName: "second", providerId: "beta", model: "m2", effort: "low" },
+    } as TurnNotice,
+    text: '[target] Changed credential to "second" (was "full"), provider to "beta" (was "alpha"), model to "m2" (was "m1"), effort to "low" (was "high").',
+  },
+  {
+    name: "target switch to values that are not set",
+    notice: {
+      kind: "model_adopted",
+      severity: "info",
+      from: "m1",
+      to: "m2",
+      effortReset: true,
+      effortFrom: "high",
+      fromTarget: { credentialName: "full", providerId: "alpha", model: "m1", effort: "high" },
+      toTarget: { providerId: "alpha", model: "m2" },
+    } as TurnNotice,
+    text: '[target] Changed credential to the provider default (was "full"), model to "m2" (was "m1"), effort to the model default (was "high").',
+  },
+  {
+    name: "model_adopted with only one target (not a pair): the old text",
+    notice: {
+      kind: "model_adopted",
+      severity: "info",
+      from: "a",
+      to: "b",
+      effortReset: false,
+      effortFrom: null,
+      fromTarget: { model: "a" },
+    } as TurnNotice,
+    text: '[model] Adopted model "b" (was "a").',
+  },
+  {
     name: "model_adopt_failed",
     notice: {
       kind: "model_adopt_failed",
@@ -268,6 +323,33 @@ describe("notice title", () => {
       expect(toAcpNotice(n).title.length).toBeGreaterThan(0)
     }
   })
+  describe("a target switch", () => {
+    const from = { credentialName: "full", providerId: "alpha", model: "m1", effort: "high" }
+    const switched = (
+      toTarget: typeof from | { providerId: string; model: string },
+    ): TurnNotice => ({
+      kind: "model_adopted",
+      severity: "info",
+      from: "m1",
+      to: toTarget.model,
+      effortReset: false,
+      effortFrom: null,
+      fromTarget: from,
+      toTarget,
+    })
+    const cases: [string, Parameters<typeof switched>[0], string][] = [
+      ["only the credential", { ...from, credentialName: "second" }, "Credential changed"],
+      ["only the provider", { ...from, providerId: "beta" }, "Provider changed"],
+      ["only the model", { ...from, model: "m2" }, "Model changed"],
+      ["only the effort", { ...from, effort: "low" }, "Effort changed"],
+      ["two values", { ...from, credentialName: "second", providerId: "beta" }, "Target changed"],
+      ["no value (equal targets)", from, "Model changed"],
+    ]
+    for (const [name, to, title] of cases) {
+      it(`${name}: the title is "${title}"`, () => expect(noticeTitle(switched(to))).toBe(title))
+    }
+  })
+
   it("refuses to encode an empty title", () => {
     expect(() =>
       noticeUpdate(

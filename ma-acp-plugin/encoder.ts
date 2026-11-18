@@ -18,6 +18,9 @@
  *   encoder tracks every open tool call. It marks the oldest open call with
  *   the same tool name that is not yet running, else the oldest one that is
  *   not yet running. Each call gets `in_progress` once.
+ * - `status` phase `retrying` or `waiting_for_quota` → one notice for a long
+ *   wait (see `wait-notice.ts` for the rules and the text). Without it the
+ *   client shows nothing while the session waits.
  * - `tool_output` → `tool_call_update` with the (capped) text as content.
  * - `tool_result` → `tool_call_update` `completed` or `failed`.
  * - `turn_completed` → `usage_update`: `used` = that turn's input + cache
@@ -60,6 +63,7 @@ import {
   type StopDecision,
   type StopInputs,
 } from "./stop-reason.ts"
+import { createWaitNoticer } from "./wait-notice.ts"
 
 /** ACP `ToolKind`. */
 export type AcpToolKind =
@@ -288,6 +292,12 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
   const pushConfigOptions = (): void => {
     send({ sessionUpdate: "config_option_update", configOptions: buildConfigOptions(runtime) })
   }
+  // A long retry or quota wait gives a notice. All rules are in `wait-notice.ts`.
+  const waitNoticer = createWaitNoticer()
+  const sendWaitNotice = (status: Extract<AgentEvent, { type: "status" }>): void => {
+    const notice = waitNoticer.notice(status)
+    if (notice) sendNotice(notice)
+  }
 
   const encode = (event: AgentEvent): void => {
     switch (event.type) {
@@ -327,7 +337,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
         return
       }
       case "status": {
-        if (event.phase !== "running_tool") return
+        if (event.phase !== "running_tool") return sendWaitNotice(event)
         const id = nextToRun(event.toolName)
         const call = id === undefined ? undefined : openToolCalls.get(id)
         if (id === undefined || !call) return
@@ -419,6 +429,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
       lastError = null
       openToolCalls.clear()
       promptUsage = emptyPromptUsage()
+      waitNoticer.reset()
     }
     if (decision.notice) sendNotice(decision.notice)
     if (decision.kind === "error") {
