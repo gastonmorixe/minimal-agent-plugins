@@ -102,6 +102,16 @@ describe("provider-specific parts (SPEC 6.4)", () => {
     expect(withPre.systemPrompt.providerPreamble).toBeDefined()
   })
 
+  it("keeps the lead prompt-cache flags in the derived profile (M3)", () => {
+    const out = stripProviderSpecific({ ...withPre, cacheAnchor: true, thinkingHistory: "keep" })
+    expect(out.cacheAnchor).toBe(true)
+    expect(out.thinkingHistory).toBe("keep")
+    // An older profile without the fields: the derived copy has none either.
+    const old = stripProviderSpecific(withPre)
+    expect("cacheAnchor" in old).toBe(false)
+    expect("thinkingHistory" in old).toBe(false)
+  })
+
   it("derives only when both providers are known and differ", () => {
     expect(needsProviderDerive(withPre, "anthropic", "openai")).toBe(true)
     expect(needsProviderDerive(withPre, "anthropic", "anthropic")).toBe(false)
