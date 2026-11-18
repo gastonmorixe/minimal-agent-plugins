@@ -188,6 +188,32 @@ export const PRICING_GPT_6_SOL: MTokRate = {
   reasoningUSD: 10,
 }
 
+/**
+ * gpt-6.2-sol pricing (2026-11-17 models.dev, matches 6.1 Sol short-context
+ * Standard): $2 / $10, cached input $0.10, cache write $2.50.
+ */
+export const PRICING_GPT_6_2_SOL: MTokRate = {
+  inputUSD: 2,
+  outputUSD: 10,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.1,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 10,
+}
+
+/**
+ * gpt-6.2-astra pricing (2026-11-17 models.dev short-context Standard):
+ * $8 / $40, cached input $0.40, cache write $10.
+ */
+export const PRICING_GPT_6_2_ASTRA: MTokRate = {
+  inputUSD: 8,
+  outputUSD: 40,
+  cacheWriteUSD: 10,
+  cacheReadUSD: 0.4,
+  webSearchPerCallUSD: 0,
+  reasoningUSD: 40,
+}
+
 /** gpt-6-luna pricing (2026-09-29 model card): $0.10 / $0.50, cached $0.01. */
 export const PRICING_GPT_6_LUNA: MTokRate = {
   inputUSD: 0.1,

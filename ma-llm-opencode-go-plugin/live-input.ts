@@ -1,6 +1,6 @@
 /**
  * Snapshot of `modalities.input` per model from the live catalog
- * (https://opencode.ai/zen/go/v1/models, 2026-11-17, 32 models). Each list names the input
+ * (https://opencode.ai/zen/go/v1/models, 2026-11-18, 32 models). Each list names the input
  * types that the gateway takes for the model. Update it from the live
  * catalog when the gateway adds a model.
  *

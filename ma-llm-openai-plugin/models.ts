@@ -1,8 +1,9 @@
 /**
  * OpenAI model registry entries.
  *
- * Mirrors the public OpenAI API catalog (refreshed 2026-11-15 via live
- * `GET /v1/models`: o1, o1-pro, o3-mini, o4-mini and gpt-4.1-nano removed as
+ * Mirrors the public OpenAI API catalog (refreshed 2026-11-18 via live
+ * `GET /v1/models`: gpt-6.2-astra + gpt-6.2-sol added, both live with no
+ * shutdown date. 2026-11-15: o1, o1-pro, o3-mini, o4-mini and gpt-4.1-nano removed as
  * no longer listed; no new chat/coding SKUs. 2026-11-01: GPT-6.1 Terra added
  * from the 2026-11-01 card, GPT-6.1 Sol / GPT-6 Sol / GPT-6 Luna added
  * 2026-09-29) for GPT-6 Astra, the GPT-5.6 family, plus established gpt-5.5 / gpt-5.4 / gpt-4o / o-series
@@ -104,6 +105,10 @@ import {
   CAPS_GPT_6_1_SOL_RESPONSES,
   CAPS_GPT_6_1_TERRA_CHAT,
   CAPS_GPT_6_1_TERRA_RESPONSES,
+  CAPS_GPT_6_2_ASTRA_CHAT,
+  CAPS_GPT_6_2_ASTRA_RESPONSES,
+  CAPS_GPT_6_2_SOL_CHAT,
+  CAPS_GPT_6_2_SOL_RESPONSES,
   CAPS_GPT_6_ASTRA_CHAT,
   CAPS_GPT_6_ASTRA_RESPONSES,
   CAPS_GPT_6_LUNA_CHAT,
@@ -140,6 +145,8 @@ import {
   PRICING_GPT_5_PRO,
   PRICING_GPT_6_1_SOL,
   PRICING_GPT_6_1_TERRA,
+  PRICING_GPT_6_2_ASTRA,
+  PRICING_GPT_6_2_SOL,
   PRICING_GPT_6_ASTRA,
   PRICING_GPT_6_LUNA,
   PRICING_GPT_6_SOL,
@@ -190,6 +197,61 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     ids.push(spec.id)
   }
 
+  // GPT-6.2 Sol + GPT-6.2 Astra (2026-11-17, released 2026-11-17 per
+  // models.dev, live `GET /v1/models` 2026-11-18 with no shutdown date).
+  // Sourced from models.dev `openai` (effort ladders, knowledge cutoffs,
+  // pricing) — the only source carrying them this week.
+  register({
+    id: "gpt-6.2-astra",
+    aliases: ["astra-6.2"],
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-6.2 Astra",
+    knowledgeCutoff: "2026-05-18",
+    tags: ["gpt-6", "flagship", "reasoning", "production"],
+    capabilities: CAPS_GPT_6_2_ASTRA_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_2_ASTRA,
+    vendorIds: { firstParty: "gpt-6.2-astra" },
+  })
+  register({
+    id: "gpt-6.2-astra-chat",
+    aliases: ["astra-6.2-chat"],
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-6.2 Astra (Chat Completions)",
+    knowledgeCutoff: "2026-05-18",
+    tags: ["gpt-6", "flagship", "chat"],
+    capabilities: CAPS_GPT_6_2_ASTRA_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_2_ASTRA,
+    vendorIds: { firstParty: "gpt-6.2-astra" },
+  })
+  register({
+    id: "gpt-6.2-sol",
+    providerId: "openai",
+    surfaceId: "openai-responses",
+    displayName: "GPT-6.2 Sol",
+    knowledgeCutoff: "2026-06-01",
+    tags: ["gpt-6", "balanced", "reasoning", "production"],
+    capabilities: CAPS_GPT_6_2_SOL_RESPONSES,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_2_SOL,
+    vendorIds: { firstParty: "gpt-6.2-sol" },
+  })
+  register({
+    id: "gpt-6.2-sol-chat",
+    providerId: "openai",
+    surfaceId: "openai-chat-completions",
+    displayName: "GPT-6.2 Sol (Chat Completions)",
+    knowledgeCutoff: "2026-06-01",
+    tags: ["gpt-6", "balanced", "chat"],
+    capabilities: CAPS_GPT_6_2_SOL_CHAT,
+    estimateTokens: estimateOpenAITokens,
+    pricing: PRICING_GPT_6_2_SOL,
+    vendorIds: { firstParty: "gpt-6.2-sol" },
+  })
+
   // GPT-6 Astra (current flagship). Registered first so recommendSubagent
   // flagship tags resolve here. Dual surface (docs + Codex). ChatGPT
   // live (2026-09-08): work-mode slug `gpt-6-astra-wm` → astra.
@@ -222,7 +284,8 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
 
   // GPT-6.1 Sol (2026-09-29), GPT-6.1 Terra (2026-11-01), GPT-6 Sol and
   // GPT-6 Luna (2026-09-22). Sol sourced 2026-09-29, Terra 2026-11-01 from
-  // developers.openai.com model cards.
+  // developers.openai.com model cards. Registered after 6.2 so the short
+  // flagship/deep picks keep resolving to the newest generation.
   register({
     id: "gpt-6.1-sol",
     providerId: "openai",
@@ -607,6 +670,7 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   // gpt-4-turbo, gpt-3.5-turbo. Removed 2026-11-15 (shut down 2026-10-23,
   // gone from live /v1/models): o1, o1-pro, o3-mini, o4-mini, gpt-4.1-nano.
   // gpt-5-search-api is live but stays out of scope (search SKU).
+  // gpt-6.2-astra / gpt-6.2-sol registered above (added 2026-11-18).
 
   // GPT-5.1.
   register({

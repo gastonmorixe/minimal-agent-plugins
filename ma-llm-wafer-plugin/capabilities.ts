@@ -3,7 +3,7 @@
  *
  * Each model's capabilities are derived from the live `GET /v1/models`
  * response (the `wafer.capabilities` field) and mapped to the canonical
- * {@link Capabilities} shape. Snapshot date: 2026-11-15.
+ * {@link Capabilities} shape. Snapshot date: 2026-11-18 (ids/ctx/vision unchanged; live max_output_tokens + effort ladders noted but not yet mapped to canonical caps — see task notes).
  *
  * Mapping (live → Capabilities):
  * - `context_length` / `max_model_len` → `contextWindow`

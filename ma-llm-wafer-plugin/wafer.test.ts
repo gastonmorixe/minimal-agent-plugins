@@ -140,7 +140,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(adapter.displayName).toBe("Wafer")
   })
 
-  it("registers all 13 built-in models (live 2026-11-15)", () => {
+  it("registers all 13 built-in models (live 2026-11-18)", () => {
     setup()
     const ids = [
       "GLM-5.2",
@@ -207,7 +207,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
     expect(glm52.pricing.inputUSD).toBe(0.19) // 19 cents/mil
     expect(glm52.pricing.outputUSD).toBe(4.4)
 
-    // All 13 models pricing (live API 2026-11-15). Cache read uses the
+    // All 13 models pricing (live API 2026-11-18). Cache read uses the
     // microcents field when present (e.g. MiniMax-M3.1-Flash 1.5 cents).
     const pricingTable: Record<string, { input: number; output: number; cacheRead: number }> = {
       "GLM-5.2": { input: 0.19, output: 4.4, cacheRead: 0.18 },
@@ -216,9 +216,9 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
       "Kimi-K3": { input: 0.6, output: 15.0, cacheRead: 0.2 },
       "Kimi-K3.1-Pro": { input: 2.0, output: 10.0, cacheRead: 0.2 },
       "Kimi-K3.1-Pro-US": { input: 2.0, output: 10.0, cacheRead: 0.2 },
-      "MiniMax-M3.1-Flash": { input: 0.15, output: 0.6, cacheRead: 0.015 },
-      "DeepSeek-V4-Pro": { input: 0.28, output: 3.96, cacheRead: 0.044 },
-      "DeepSeek-V4.1-Flash": { input: 0.19, output: 0.65, cacheRead: 0.012 },
+      "MiniMax-M3.1-Flash": { input: 0.15, output: 0.6, cacheRead: 0.02 },
+      "DeepSeek-V4-Pro": { input: 0.28, output: 3.96, cacheRead: 0.04 },
+      "DeepSeek-V4.1-Flash": { input: 0.19, output: 0.65, cacheRead: 0.01 },
       "DeepSeek-V4.1-Flash-1017": { input: 0.13, output: 0.5, cacheRead: 0.008 },
       "DeepSeek-V4-Flash-0423": { input: 0.14, output: 0.28, cacheRead: 0.028 },
       "DeepSeek-V4-Flash-0731-Fast": { input: 0.13, output: 0.23, cacheRead: 0.028 },
@@ -464,7 +464,7 @@ describe("llm-wafer (OpenAI-compatible gateway, reuses llm-openai's wire layer)"
   })
 
   // ---------------------------------------------------------------------------
-  // Capability validation (live API 2026-11-15)
+  // Capability validation (live API 2026-11-18)
   // ---------------------------------------------------------------------------
 
   it("each model has correct capabilities", () => {

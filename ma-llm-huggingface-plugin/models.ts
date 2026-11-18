@@ -7,7 +7,7 @@
  * the `openai-chat-completions` surface — HuggingFace normalizes every
  * upstream model to the OpenAI Chat Completions wire format.
  *
- * A curated representative set is registered (snapshot as of **2026-11-15**
+ * A curated representative set is registered (snapshot as of **2026-11-18**
  * from live `/v1/models`); pricing + capabilities are taken from that fetch
  * (provider pricing USD/1M, OR-ed tools/structured across live backends,
  * context = max live `context_length`, image from

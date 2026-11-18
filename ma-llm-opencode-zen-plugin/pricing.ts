@@ -1,6 +1,7 @@
 /**
  * OpenCode Zen pricing in USD per 1M tokens, from the Zen docs. Live check
- * 2026-11-15. The 2026-11-15 additions are priced from models.dev `opencode`.
+ * 2026-11-18 (87 ids: +gpt-6.2-sol, +gpt-6.2-astra, +hy4-flash-free;
+ * -glm-5.3-flash-free, -minimax-m3.1-flash-free). The 2026-11-15 additions are priced from models.dev `opencode`.
  */
 import type { MTokRate } from "./lib/host-types.ts"
 
@@ -57,6 +58,8 @@ export const ZEN_PRICING: Record<string, MTokRate> = {
   "gpt-5-codex": rate(1.07, 8.5, 0.107),
   "gpt-5-nano": rate(0.05, 0.4, 0.005),
   "gpt-6-astra": rate(10, 50, 1, 12.5),
+  "gpt-6.2-astra": rate(8, 40, 0.4, 10),
+  "gpt-6.2-sol": rate(2, 10, 0.1, 2.5),
   "gpt-6-luna": rate(0.1, 0.5, 0.01, 0.125),
   "gpt-6-sol": rate(2, 10, 0.2, 2.5),
   "gpt-6.1-sol": rate(2, 10, 0.1, 2.5),
@@ -79,7 +82,6 @@ export const ZEN_PRICING: Record<string, MTokRate> = {
   "deepseek-v4-flash": rate(0.22, 0.66, 0.007),
   "glm-5.3": rate(1.4, 4.4, 0.26),
   "glm-5.3-flash": rate(0.15, 0.5, 0.03),
-  "glm-5.3-flash-free": rate(0, 0),
   "glm-5.2": rate(1.4, 4.4, 0.26),
   "glm-5.1": rate(1.4, 4.4, 0.26),
   "glm-5": rate(1, 3.2, 0.2),
@@ -108,7 +110,7 @@ for (const id of [
   "iceman-free",
   "inkling-2-small-free",
   "longcat-2.5-free",
-  "minimax-m3.1-flash-free",
+  "hy4-flash-free",
   "mimo-v2.6-flash-free",
   "nemotron-3.5-lightning-free",
   "nemotron-3.5-super-vl-free",

@@ -96,14 +96,14 @@ describe("llm-openrouter (OpenAI-compatible gateway, reuses llm-openai's wire la
     expect(adapter.displayName).toBe("OpenRouter")
   })
 
-  it("pins the curated 2026-11-15 catalog (ids, caps, pricing, role picks)", () => {
+  it("pins the curated 2026-11-18 catalog (ids, caps, pricing, role picks)", () => {
     const ids = registerOpenRouterModels(makeTestRegistry().models)
     expect(ids).toEqual([
       "moonshotai/kimi-k3.1-pro",
       "deepseek/deepseek-v4.1-flash",
       "anthropic/claude-sonnet-5.5",
       "anthropic/claude-opus-5.5",
-      "openai/gpt-6.1-sol",
+      "openai/gpt-6.2-sol",
       "x-ai/grok-4.7",
       "openai/gpt-4o-mini",
     ])
@@ -111,12 +111,12 @@ describe("llm-openrouter (OpenAI-compatible gateway, reuses llm-openai's wire la
     const kimi = resolveModel("moonshotai/kimi-k3.1-pro")
     expect(kimi.capabilities.maxOutputTokens).toBe(943_718)
     expect(kimi.capabilities.modalities.video).toBe(true)
-    expect(kimi.pricing?.inputUSD).toBe(2)
+    expect(kimi.pricing?.inputUSD).toBe(0.2403)
     const flash = resolveModel("deepseek/deepseek-v4.1-flash")
     expect(flash.capabilities.modalities.image).toBe(true)
     expect(flash.pricing?.outputUSD).toBe(0.2028)
     expect(resolveModel("anthropic/claude-opus-5.5").pricing?.inputUSD).toBe(4)
-    expect(resolveModel("openai/gpt-6.1-sol").pricing?.outputUSD).toBe(10)
+    expect(resolveModel("openai/gpt-6.2-sol").pricing?.outputUSD).toBe(10)
     expect(resolveModel("x-ai/grok-4.7").capabilities.maxOutputTokens).toBe(450_000)
     const recs = openrouterAdapter.recommendSubagentModels?.() ?? []
     expect(recs.find((r) => r.role === "scout")?.modelId).toBe("deepseek/deepseek-v4.1-flash")

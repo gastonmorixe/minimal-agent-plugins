@@ -306,6 +306,17 @@ export const CAPS_HY4: Capabilities = {
 }
 
 /**
+ * Hy4 Flash Free — 1_048_576 ctx, 65_536 output, text+image.
+ * Caps: models.dev opencode-go (2026-11-16). Surface: Chat (provider api
+ * `.../openai/v1`). Efforts: none | high (models.dev reasoning_options).
+ * Same shape as Hy4; free tier.
+ */
+export const CAPS_HY4_FLASH_FREE: Capabilities = {
+  ...chatBase(1_048_576, 65_536, M_TI),
+  ...thinkExtended(["none", "high"], "high"),
+}
+
+/**
  * LongCat 2.5 Free: 1M ctx, 262_144 output, text+image.
  * Caps: models.dev opencode-go (2026-11-02). Surface: Chat (provider api
  * `.../openai/v1`). Reasoning toggle only, mapped to none | medium like
@@ -582,6 +593,16 @@ export const CAPS_MINIMAX_M3_1_FLASH: Capabilities = {
 export const CAPS_STEP_5_PREVIEW: Capabilities = {
   ...chatBase(1_000_000, 65_536, M_TIV),
   ...thinkExtended(["low", "medium", "high"], "medium"),
+}
+
+/**
+ * Qwen4 Max — 1M ctx, 262_144 output, text+image+video.
+ * Caps: models.dev opencode-go (2026-11-16). Surface: docs endpoints (/v1/messages).
+ * Reasoning toggle + effort low | high | xhigh (models.dev reasoning_options).
+ */
+export const CAPS_QWEN4_MAX: Capabilities = {
+  ...msgBase(1_000_000, 262_144, M_TIV),
+  ...thinkAdaptive(["none", "low", "high", "xhigh"], "medium"),
 }
 
 // ---------------------------------------------------------------------------

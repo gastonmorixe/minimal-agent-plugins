@@ -6,7 +6,7 @@
  * maps to `webSearchPerCallUSD` unchanged. Cache read/write are set only when
  * the live row includes them (otherwise 0 — do not invent).
  *
- * Snapshot from GET https://openrouter.ai/api/v1/models as of 2026-11-15.
+ * Snapshot from GET https://openrouter.ai/api/v1/models as of 2026-11-18.
  * Models not registered here still work on the wire (the CLI doesn't gate on
  * the registry) but won't have a local cost estimate.
  *
@@ -33,10 +33,10 @@ export const PRICING_OR_GPT_4O_MINI: MTokRate = {
   webSearchPerCallUSD: 0,
 }
 
-/** moonshotai/kimi-k3.1-pro via OpenRouter (2026-11-15). */
+/** moonshotai/kimi-k3.1-pro via OpenRouter (2026-11-18). */
 export const PRICING_OR_KIMI_K31_PRO: MTokRate = {
-  inputUSD: 2,
-  outputUSD: 10,
+  inputUSD: 0.2403,
+  outputUSD: 8.4023,
   cacheWriteUSD: 0,
   cacheReadUSD: 0.2,
   webSearchPerCallUSD: 0,
@@ -80,6 +80,15 @@ export const PRICING_OR_CLAUDE_OPUS_55: MTokRate = {
 
 /** openai/gpt-6.1-sol via OpenRouter (2026-11-15). Base tier: prompts over 272K tokens bill 4/15 (cache 5/0.2) per the live `overrides` row. */
 export const PRICING_OR_GPT_61_SOL: MTokRate = {
+  inputUSD: 2,
+  outputUSD: 10,
+  cacheWriteUSD: 2.5,
+  cacheReadUSD: 0.1,
+  webSearchPerCallUSD: 0.01,
+}
+
+/** openai/gpt-6.2-sol via OpenRouter (2026-11-18). Base tier: prompts over 272K tokens bill 4/15 (cache 5/0.2) per the live `overrides` row (same as 6.1-sol). */
+export const PRICING_OR_GPT_62_SOL: MTokRate = {
   inputUSD: 2,
   outputUSD: 10,
   cacheWriteUSD: 2.5,

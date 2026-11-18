@@ -10,6 +10,7 @@
  */
 
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import { defaultCapabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 
 import { buildAnthropicHeaders } from "./headers.ts"
 import type { AuthResult, ModelEntry } from "./lib/host-types.ts"
@@ -62,8 +63,11 @@ export async function listAnthropicModels(auth: AuthResult): Promise<AnthropicMo
   }
   // The header builder needs a model entry only to read capabilities for beta
   // flag gating. Use the plugin-local catalog entry when registered; otherwise a
-  // minimal 1M-capable stub keeps the model-list GET self-contained (this is a
-  // cold, off-the-hot-path read, so a slightly generous flag set is harmless).
+  // full-shape stub keeps the model-list GET self-contained (a partial
+  // `{ contextWindow }`-only stub crashes `bodyCarriesThinking`, which reads
+  // `capabilities.thinking.adaptive`). A full default is still a slightly
+  // generous flag set for a cold read — harmless, except for the agentic
+  // header-only betas stripped below.
   const model: ModelEntry =
     findModel("claude-opus-4-8") ??
     ({
@@ -71,7 +75,7 @@ export async function listAnthropicModels(auth: AuthResult): Promise<AnthropicMo
       providerId: "anthropic",
       surfaceId: "anthropic-messages",
       displayName: "Claude Opus 4.8",
-      capabilities: { contextWindow: 1_000_000 } as ModelEntry["capabilities"],
+      capabilities: { ...defaultCapabilities(), contextWindow: 1_000_000 },
       pricing: {
         inputUSD: 0,
         outputUSD: 0,
@@ -80,8 +84,32 @@ export async function listAnthropicModels(auth: AuthResult): Promise<AnthropicMo
         webSearchPerCallUSD: 0,
       },
     } as ModelEntry)
+  // The models endpoint is not an agentic request: it rejects the
+  // conversation-only header-only betas (live 2026-11-18: 400 "Unexpected
+  // value(s) `tool-provenance-2026-10-26`"). Strip them via overrides so the
+  // GET stays a plain catalog read. Identity/context betas (oauth,
+  // claude-code, context-management, prompt-caching-scope) are accepted.
+  const reqWithOverrides: CanonicalRequest = {
+    ...req,
+    vendor: {
+      ...req.vendor,
+      anthropic: {
+        ...req.vendor?.anthropic,
+        betaOverrides: {
+          ...req.vendor?.anthropic?.betaOverrides,
+          remove: [
+            ...(req.vendor?.anthropic?.betaOverrides?.remove ?? []),
+            "tool-provenance-2026-10-26",
+            "thinking-binding-controls-2026-08-01",
+            "mid-conversation-tool-changes-2026-07-01",
+            "per-turn-control-2026-07-01",
+          ],
+        },
+      },
+    },
+  }
   const { headers } = buildAnthropicHeaders({
-    req,
+    req: reqWithOverrides,
     model,
     auth:
       auth.type === "oauth"

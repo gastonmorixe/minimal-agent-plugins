@@ -6,7 +6,7 @@
  * `adapter.ts`). Curated slugs each get their own `Capabilities` record
  * derived from live GET https://openrouter.ai/api/v1/models fields
  * (context_length, top_provider.max_completion_tokens,
- * architecture.input_modalities, supported_parameters) as of 2026-11-15.
+ * architecture.input_modalities, supported_parameters) as of 2026-11-18.
  * Ad-hoc / unknown slugs fall back to {@link CAPS_OPENROUTER_CHAT}.
  *
  * Convention: OpenRouter `file` input modality → `modalities.pdf` (documents),
@@ -275,6 +275,28 @@ export const CAPS_OR_CLAUDE_OPUS_55: Capabilities = {
  * seed only among sampling knobs (no temperature/top_p/stop/top_k).
  */
 export const CAPS_OR_GPT_61_SOL: Capabilities = {
+  ...orChatBase(1_050_000, 128_000, M_TIP, {
+    temperature: false,
+    topP: false,
+    topK: false,
+    seed: true,
+    stop: false,
+    tools: true,
+    structured: true,
+  }),
+  ...thinkReasoning(true),
+}
+
+/**
+ * openai/gpt-6.2-sol: ctx 1_050_000, max out 128_000, text+image+file,
+ * tools + structured + reasoning (+ include_reasoning),
+ * seed only among sampling knobs (no temperature/top_p/stop/top_k).
+ * Live 2026-11-18 (created 2026-11-17, canonical_slug
+ * openai/gpt-6.2-sol-20261117); same wire shape as the 6.1-sol row.
+ * Base tier: prompts over 272K tokens bill 4/15 (cache 5/0.2) per the live
+ * `overrides` row (unchanged from 6.1-sol).
+ */
+export const CAPS_OR_GPT_62_SOL: Capabilities = {
   ...orChatBase(1_050_000, 128_000, M_TIP, {
     temperature: false,
     topP: false,
