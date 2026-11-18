@@ -4,8 +4,9 @@
  * (a) Facts only: the provider gets the facts that core sends and the text
  *     has the right bytes. An old core sends no M3c facts: the text stays the
  *     old text byte for byte.
- * (b) The real Read tool (`executeTool` of core, imported by relative path as
- *     parity.test.ts does) with this provider as the text source.
+ * (b) The real Read tool (`executeTool` of core, imported through the
+ *     installed package directory as parity.test.ts does) with this provider
+ *     as the text source.
  */
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -14,11 +15,12 @@ import { join } from "node:path"
 
 import { afterAll, describe, expect, it } from "bun:test"
 
-import type { SyntheticFacts } from "../../minimal-agent-core/plugin-api/src/types/synthetic-text.ts"
-import { createSyntheticTextResolver } from "../../minimal-agent-core/src/agent/synthetic-text.ts"
-import { createDiagnostics } from "../../minimal-agent-core/src/diagnostics/hub.ts"
-import { executeTool } from "../../minimal-agent-core/src/tools/tools.ts"
-import { renderTruncatedNotice } from "../../minimal-agent-core/src/tools/truncation-parts.ts"
+import type { SyntheticFacts } from "@minimal-agent/core/plugin-api/types/synthetic-text"
+
+import { createSyntheticTextResolver } from "../node_modules/@minimal-agent/core/src/agent/synthetic-text.ts"
+import { createDiagnostics } from "../node_modules/@minimal-agent/core/src/diagnostics/hub.ts"
+import { executeTool } from "../node_modules/@minimal-agent/core/src/tools/tools.ts"
+import { renderTruncatedNotice } from "../node_modules/@minimal-agent/core/src/tools/truncation-parts.ts"
 
 import { createCoreToolsSyntheticProvider } from "./synthetic-text.ts"
 

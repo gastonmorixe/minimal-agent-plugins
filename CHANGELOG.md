@@ -27,6 +27,18 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   MA-02 line no longer says that every session has a transcript file: a host
   may keep the session in memory, and `SessionInfo` gives the id. The request
   goldens and the core system-prompt byte fixtures change in that line only.
+- 2026-11-18: **The gate now runs in a standalone clone.** Five test files
+  imported core source from a checkout next to this repo
+  (`../../minimal-agent-core/src/...`). That path exists only in the umbrella
+  monorepo. In a standalone clone the typecheck failed, and with a core
+  checkout placed next to the clone, the process had two copies of core and
+  core refused to load the second one. The tests now import through the
+  installed package directory (`../node_modules/@minimal-agent/core/src/...`),
+  which is the one core this repo installs in both layouts. Three type imports
+  that have a public subpath use it
+  (`@minimal-agent/core/plugin-api/types/synthetic-text`). New guard
+  `scripts/no-sibling-core-imports.test.ts` rejects the old form. No plugin
+  code changes, only tests.
 
 - 2026-11-18: **SessionInfo and SessionHistory read the calling session, not
   the process** (`ma-session-info-plugin`, `ma-session-history-plugin`). In

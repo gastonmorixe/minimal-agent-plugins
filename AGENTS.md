@@ -10,6 +10,12 @@ harness code lives in the sibling core remote, not here.
 
 - `bun run check` is the gate that must stay green (typecheck, oxlint, format,
   biome, tests).
+- A test that needs a core module with no public subpath imports it through
+  the installed package directory: `../node_modules/@minimal-agent/core/src/x.ts`.
+  Do not import from a sibling checkout (`../../minimal-agent-core/src/x.ts`):
+  that path exists only in the umbrella monorepo, and the gate must also pass
+  in a standalone clone. `scripts/no-sibling-core-imports.test.ts` rejects it.
+  A test that reads core files as data must skip when the checkout is absent.
 - `bun test` runs the whole-tree suite; `bun run test:plugins` fans out
   `bun --filter 'ma-*' test` in parallel.
 - This is a Bun workspace: every `ma-*-plugin` package is a workspace member.
