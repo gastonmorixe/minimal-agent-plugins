@@ -6,6 +6,25 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Added
+
+- 2026-11-18: **`ma-acp-plugin` sends the structured data of a tool result as
+  `rawOutput`.** The last `tool_call_update` of a call now carries
+  `rawOutput` when the tool outcome has `data` (core `tool_result` wire event,
+  M3). It does so also for a failed call. A tool result with no `data` gives
+  the same update as before. The plugin sets no size cap on `rawOutput`: core
+  caps the stored data at 16000 bytes.
+
+- 2026-11-18: **`ma-llm-cursor-plugin` reads the stored outcome of a tool
+  result for the wire text.** `toolResultToWireText` takes the body and the
+  plain-text annotations (`[truncated: ...]`, `[note: ...]`) from the stored
+  `outcome` (core `viewPersistedOutcome`), then runs the same strip regex as
+  before. The old path stays for a block with no or a bad `outcome` and for a
+  block with more than one text block. The text sent to Cursor is byte-equal
+  to the old path for every case of the parity test (four annotation kinds,
+  empty body, a body that holds `\n\n[note:`, truncated with a blob, a tasks
+  tag, media only).
+
 ### Fixed
 
 - 2026-11-15: **`ma-llm-openai-plugin` removes citation markers from the
