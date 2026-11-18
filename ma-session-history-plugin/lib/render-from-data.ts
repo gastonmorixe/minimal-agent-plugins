@@ -77,6 +77,8 @@ export function summaryFromFacts(kind: string, f: RecordFacts, parts: readonly B
       return `detach · pid ${f.pid} · ${f.reason}`
     case "round_checkpoint":
       return `round checkpoint · round ${f.round}`
+    case "target_switch":
+      return `target switch · model ${f.model}`
     default:
       return `unknown · ${parts[0]?.text ?? ""}`
   }

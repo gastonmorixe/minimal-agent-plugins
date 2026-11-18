@@ -39,6 +39,7 @@ import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { opencodeApiKeyAuth } from "./auth.ts"
 import { CAPS_OPENCODE_CHAT_FALLBACK } from "./capabilities.ts"
+import { opencodeMediaLimits } from "./input-formats.ts"
 import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthropic-request.ts"
 import type { CanonicalRequest } from "./lib/canonical-request.ts"
 import type {
@@ -254,6 +255,11 @@ export const opencodeAdapter: ProviderAdapter = {
     return validateOpenAIRequest(req, model)
   },
 
+  /** The model's input formats (`inputMimeTypes`, from the live catalog). */
+  mediaLimits(model: ModelEntry) {
+    return opencodeMediaLimits(model)
+  },
+
   async *run(
     req: CanonicalRequest,
     model: ModelEntry,
@@ -281,7 +287,9 @@ export const opencodeAdapter: ProviderAdapter = {
     if (model.surfaceId === "openai-chat-completions") {
       url = OPENCODE_CHAT_URL
       headers = { ...buildOpenAIHeaders({ auth: openAIAuth }), ...identity }
-      body = { ...buildOpenAIChatBody(mapped, model) }
+      // The gateway takes `video_url` on Chat (OpenCode docs); PDF goes as
+      // `file`, audio as `input_audio`, everything else as a placeholder.
+      body = { ...buildOpenAIChatBody(mapped, model, undefined, { video: true }) }
       body.stream = true
       body.stream_options = { include_usage: true }
       body.prompt_cache_key = cacheKey

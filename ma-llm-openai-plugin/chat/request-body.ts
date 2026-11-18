@@ -18,14 +18,18 @@
  */
 
 import type {
+  AudioBlock,
   CanonicalBlock,
   CanonicalMessage,
+  FileBlock,
   ToolResultBlock,
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type {
   CanonicalToolDefinition,
   ToolChoice,
 } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
+import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
+import { chatAudioFormat } from "@minimal-agent/core/plugin-api/llm/openai-chat"
 
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
@@ -75,6 +79,7 @@ export type OpenAIChatContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } }
   | { type: "input_audio"; input_audio: { data: string; format: string } }
+  | { type: "file"; file: { file_data?: string; file_id?: string; filename?: string } }
 
 export interface OpenAIChatTool {
   type: "function"
@@ -105,7 +110,7 @@ export function buildOpenAIChatBody(
 ): OpenAIChatRequestBody {
   const body: OpenAIChatRequestBody = {
     model: model.vendorIds?.firstParty ?? req.modelId,
-    messages: buildChatMessages(req),
+    messages: buildChatMessages(req, model.id),
   }
 
   if (req.tools && req.tools.length > 0) {
@@ -178,7 +183,7 @@ export function buildOpenAIChatBody(
   return body
 }
 
-function buildChatMessages(req: CanonicalRequest): OpenAIChatMessage[] {
+function buildChatMessages(req: CanonicalRequest, modelId: string): OpenAIChatMessage[] {
   const out: OpenAIChatMessage[] = []
   // System prefix → developer/system message at the head.
   if (req.system && req.system.length > 0) {
@@ -209,16 +214,16 @@ function buildChatMessages(req: CanonicalRequest): OpenAIChatMessage[] {
       // handle it for correctness.
       const nonResultBlocks = msg.content.filter((b) => b.type !== "tool_result")
       if (nonResultBlocks.length > 0) {
-        out.push(canonicalMessageToChat({ ...msg, content: nonResultBlocks }))
+        out.push(canonicalMessageToChat({ ...msg, content: nonResultBlocks }, modelId))
       }
     } else {
-      out.push(canonicalMessageToChat(msg))
+      out.push(canonicalMessageToChat(msg, modelId))
     }
   }
   return out
 }
 
-function canonicalMessageToChat(msg: CanonicalMessage): OpenAIChatMessage {
+function canonicalMessageToChat(msg: CanonicalMessage, modelId: string): OpenAIChatMessage {
   // role:"tool" — content is a string (or stringified array on the wire).
   if (msg.role === "tool") {
     const text = msg.content.map((b) => (b.type === "text" ? b.text : JSON.stringify(b))).join("\n")
@@ -243,14 +248,14 @@ function canonicalMessageToChat(msg: CanonicalMessage): OpenAIChatMessage {
       parts.push({ type: "text", text: block.text })
     } else if (block.type === "image") {
       const part = imageToChatPart(block)
-      if (part) parts.push(part)
+      parts.push(part ?? placeholderPart(block, modelId))
     } else if (block.type === "audio") {
-      if (block.source.kind === "base64") {
-        parts.push({
-          type: "input_audio",
-          input_audio: { data: block.source.data, format: block.source.format },
-        })
-      }
+      parts.push(audioToChatPart(block) ?? placeholderPart(block, modelId))
+    } else if (block.type === "file") {
+      parts.push(fileToChatPart(block) ?? placeholderPart(block, modelId))
+    } else if (block.type === "video") {
+      // Chat Completions has no video input part.
+      parts.push(placeholderPart(block, modelId))
     } else if (block.type === "tool_use") {
       toolCalls.push({
         id: block.id,
@@ -268,7 +273,6 @@ function canonicalMessageToChat(msg: CanonicalMessage): OpenAIChatMessage {
       toolResults.push({ tool_call_id: block.toolUseId, content: text })
     }
     // thinking blocks: OpenAI Chat has no concept; drop silently.
-    // file blocks: dropped (not supported on Chat).
   }
   // Note: `toolResults` are not emitted in this single message; callers
   // who need them should split tool_result blocks into their own
@@ -290,6 +294,39 @@ function canonicalMessageToChat(msg: CanonicalMessage): OpenAIChatMessage {
   }
   if (toolCalls.length > 0) result.tool_calls = toolCalls
   return result
+}
+
+/** The text part that replaces an attachment this encoder cannot send. */
+function placeholderPart(
+  block: Parameters<typeof unsupportedAttachmentText>[0],
+  modelId: string,
+): OpenAIChatContentPart {
+  return { type: "text", text: unsupportedAttachmentText(block, modelId).text }
+}
+
+/** Base64 audio as `input_audio`; the MIME type gives the `format` (wav, mp3). */
+function audioToChatPart(block: AudioBlock): OpenAIChatContentPart | null {
+  const src = block.source
+  if (src.kind !== "base64") return null
+  return { type: "input_audio", input_audio: { data: src.data, format: chatAudioFormat(src) } }
+}
+
+/**
+ * A file block as a Chat Completions `file` part. Chat takes PDF only: a
+ * base64 PDF goes as a data URL in `file_data`, a `file_id` goes as is. A url
+ * or a non-PDF file returns null (the caller sends a placeholder).
+ */
+function fileToChatPart(block: FileBlock): OpenAIChatContentPart | null {
+  const src = block.source
+  if (src.kind === "file_id") return { type: "file", file: { file_id: src.fileId } }
+  if (src.kind !== "base64" || src.mediaType.toLowerCase() !== "application/pdf") return null
+  return {
+    type: "file",
+    file: {
+      file_data: `data:${src.mediaType};base64,${src.data}`,
+      filename: src.filename ?? "document.pdf",
+    },
+  }
 }
 
 function imageToChatPart(block: {

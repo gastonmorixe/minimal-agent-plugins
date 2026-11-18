@@ -52,6 +52,47 @@ const MODALITIES_TEXT_IMAGE = {
   video: false,
 } as const
 
+// ---------------------------------------------------------------------------
+// Input MIME types (per model; the single source of truth for media gating)
+// ---------------------------------------------------------------------------
+
+/**
+ * Image formats xAI vision takes (jpg/jpeg and png only, 20 MiB each).
+ * https://docs.x.ai/developers/model-capabilities/images/understanding.md
+ */
+export const GROK_IMAGE_MIME_TYPES: readonly string[] = ["image/jpeg", "image/png"]
+
+/**
+ * Document formats the agentic models (grok-4.20, 4.5, 4.6, 4.7) take as a
+ * Responses `input_file`: PDF and text files (txt, md, csv, json). Office
+ * files, audio and video are not listed in the docs, so they are rejected.
+ * https://docs.x.ai/developers/model-capabilities/files/chat-with-files.md
+ */
+export const GROK_DOCUMENT_MIME_TYPES: readonly string[] = [
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+]
+
+/** Input types of a vision model on a surface with no file input (Chat). */
+export const GROK_INPUT_IMAGE: readonly string[] = [...GROK_IMAGE_MIME_TYPES]
+
+/** Input types of an agentic model on the Responses surface. */
+export const GROK_INPUT_IMAGE_DOCUMENT: readonly string[] = [
+  ...GROK_IMAGE_MIME_TYPES,
+  ...GROK_DOCUMENT_MIME_TYPES,
+]
+
+/** Agentic models on Responses: images plus PDF and text documents. */
+const MODALITIES_TEXT_IMAGE_PDF = {
+  image: true,
+  audio: false,
+  pdf: true,
+  video: false,
+} as const
+
 /** Reasoning models reject stop / presence / frequency penalties (xAI docs). */
 const REASONING_SAMPLING = {
   acceptsTemperature: true,
@@ -85,6 +126,7 @@ const CAPS_GROK_46_BASE: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE },
+  inputMimeTypes: GROK_INPUT_IMAGE,
   serverSideHistory: false,
   // live cli-chat-proxy 2026-09-12: supports_backend_search=true on 4.6
   serverTools: ["web_search"],
@@ -108,6 +150,9 @@ export const CAPS_GROK_46_RESPONSES: Capabilities = {
     visible: true,
     interleaved: true,
   },
+  // Agentic model: files go as Responses `input_file`.
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: GROK_INPUT_IMAGE_DOCUMENT,
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +188,7 @@ const CAPS_GROK_45_BASE: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE }, // live: input text+image, output text
+  inputMimeTypes: GROK_INPUT_IMAGE,
   serverSideHistory: false,
   // live 2026-09-12: supports_backend_search=true (baked CLI JSON still said false)
   serverTools: ["web_search"],
@@ -176,6 +222,9 @@ export const CAPS_GROK_45_RESPONSES: Capabilities = {
     interleaved: true,
   },
   serverSideHistory: false,
+  // Agentic model: files go as Responses `input_file`.
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: GROK_INPUT_IMAGE_DOCUMENT,
 }
 
 /** @deprecated use CAPS_GROK_45_CHAT or CAPS_GROK_45_RESPONSES */
@@ -220,6 +269,7 @@ export const CAPS_GROK_BUILD_CHAT: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE }, // live: text+image → text
+  inputMimeTypes: GROK_INPUT_IMAGE,
   serverSideHistory: false,
   serverTools: [],
 }
@@ -257,6 +307,7 @@ const CAPS_GROK_43_BASE: Capabilities = {
   structuredOutputs: true,
   assistantPrefill: false,
   modalities: { ...MODALITIES_TEXT_IMAGE }, // live: text+image → text
+  inputMimeTypes: GROK_INPUT_IMAGE,
   serverSideHistory: false,
   serverTools: [],
 }
@@ -281,9 +332,16 @@ export const CAPS_GROK_43_CHAT: Capabilities = {
   },
 }
 
+/** grok-4.20 reasoning on Responses: agentic, so files go as `input_file`. */
+export const CAPS_GROK_420_REASONING: Capabilities = {
+  ...CAPS_GROK_43_RESPONSES,
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: GROK_INPUT_IMAGE_DOCUMENT,
+}
+
 /** Multi-agent: effort controls agent count (low/medium/high/xhigh). */
 export const CAPS_GROK_420_MULTI_AGENT: Capabilities = {
-  ...CAPS_GROK_43_RESPONSES,
+  ...CAPS_GROK_420_REASONING,
   effort: { levels: ["low", "medium", "high", "xhigh"], default: "high" },
 }
 
@@ -300,9 +358,12 @@ export const CAPS_GROK_420_NON_REASONING: Capabilities = {
   acceptsTemperature: true,
   acceptsTopP: true,
   acceptsStopSequences: true,
+  // Registered on Responses and agentic (grok-4.20 family): files as `input_file`.
+  modalities: { ...MODALITIES_TEXT_IMAGE_PDF },
+  inputMimeTypes: GROK_INPUT_IMAGE_DOCUMENT,
 }
 
-/** Ad-hoc models: vision + tools so images/tools are not rejected. */
+/** Ad-hoc models: vision + tools so images/tools are not rejected (images only). */
 export const CAPS_GROK_GENERIC: Capabilities = {
   ...CAPS_GROK_45_CHAT,
   contextWindow: 256_000,

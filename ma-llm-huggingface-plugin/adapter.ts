@@ -36,6 +36,7 @@ import {
 } from "@minimal-agent/core/plugin-api/llm/openai-chat"
 import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
+  MediaLimits,
   ModelRegistrar,
   ProviderPlugin,
   ProviderSetupContext,
@@ -45,6 +46,7 @@ import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { huggingfaceApiKeyAuth } from "./auth.ts"
+import { huggingFaceMediaLimits } from "./input-formats.ts"
 import type {
   ModelEntry,
   ProviderAdapter,
@@ -90,6 +92,11 @@ export const huggingfaceAdapter: ProviderAdapter = {
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
+  },
+
+  /** Images only on vision models (`image_url`), core default sizes. */
+  mediaLimits(model: ModelEntry): MediaLimits {
+    return huggingFaceMediaLimits(model)
   },
 
   async *run(
