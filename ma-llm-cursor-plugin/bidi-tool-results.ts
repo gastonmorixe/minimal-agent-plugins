@@ -127,8 +127,13 @@ export function stripMaAgentWireAnnotations(text: string): string {
   return out.replace(/\n{3,}/g, "\n\n").trim()
 }
 
-/** Start of a harness tag. The strip regex deletes it. */
-const MA_AGENT_TAG_PREFIX = "<ma::agent::"
+/** True when `text` holds a harness opener or closer. Case-insensitive: the strip regexes use the i flag. */
+const hasHarnessLiteral = (text: string): boolean => /<\/?ma::agent::/i.test(text)
+
+/** True when the strip step deletes ALL of `text`, white space included (no trim hides a leftover). */
+const stripsToNothing = (text: string): boolean =>
+  stripMaAgentWireAnnotations(`\u0001${text}\u0001`) === "\u0001\u0001"
+
 /** Start of a harness closing tag. */
 const MA_AGENT_CLOSER_PREFIX = "</ma::agent::"
 
@@ -152,12 +157,15 @@ const PLAIN_TEXT_KINDS: Readonly<Record<string, string>> = {
  *   block, because the stored offsets refer to the first text block only.
  * - (c) The stored spans tile the text: the body, then each annotation, with
  *   nothing after the last annotation (so the content was not edited).
- * - (d) The body has no `<ma::agent::` text, so the strip regex finds no tag
+ * - (d) The body has no harness opener or closer (`<ma::agent::` or
+ *   `</ma::agent::`), in any letter case, so the strip regex finds no tag
  *   in the body (a tag opener in the body can swallow the text after it).
  * - (e) Each annotation is of a core kind. A plain-text kind
- *   (`output-truncated`, `output-streak`) has the right prefix and no
- *   `<ma::agent::` text. A tag kind starts with `<ma::agent::`, the strip regex
- *   deletes ALL of its text, and it has no closer inside it.
+ *   (`output-truncated`, `output-streak`) has the right prefix and no harness
+ *   opener or closer (any letter case). A tag kind starts with `<ma::agent::`
+ *   (any letter case). The strip step must remove ALL of its text, with no white
+ *   space left (no trim hides a leftover), and it has no closer inside it
+ *   except as its last text.
  * - (f) Each gap between two spans is `"\n\n"` or `"\n"`, and the newlines before
  *   each plain-text annotation (gaps of the tag annotations before it
  *   included) are at least two, and exactly `"\n\n"` when no tag lies between.
@@ -184,7 +192,7 @@ export function outcomeWireText(block: ToolResultBlock): string | undefined {
   if ((last === undefined ? view.bodyEnd : last.end) !== view.text.length) return undefined
 
   // (d)
-  if (view.body.includes(MA_AGENT_TAG_PREFIX)) return undefined
+  if (hasHarnessLiteral(view.body)) return undefined
 
   let out = view.body
   let previousEnd = view.bodyEnd
@@ -203,8 +211,8 @@ export function outcomeWireText(block: ToolResultBlock): string | undefined {
     if (!(CORE_ANNOTATION_KINDS as readonly string[]).includes(a.kind)) return undefined
     const prefix = PLAIN_TEXT_KINDS[a.kind]
     if (prefix === undefined) {
-      if (!a.text.startsWith(MA_AGENT_TAG_PREFIX)) return undefined
-      if (stripMaAgentWireAnnotations(a.text) !== "") return undefined
+      if (!/^<ma::agent::/i.test(a.text)) return undefined
+      if (!stripsToNothing(a.text)) return undefined
       // A closer is allowed only as the last text of the annotation.
       const closer = a.text.indexOf(MA_AGENT_CLOSER_PREFIX)
       if (closer !== -1) {
@@ -215,7 +223,7 @@ export function outcomeWireText(block: ToolResultBlock): string | undefined {
       sawTag = true
       continue
     }
-    if (!a.text.startsWith(prefix) || a.text.includes(MA_AGENT_TAG_PREFIX)) return undefined
+    if (!a.text.startsWith(prefix) || hasHarnessLiteral(a.text)) return undefined
     // (f) join
     if (!blankLead && (newlines < 2 || (!sawTag && gap !== "\n\n"))) return undefined
     out += `\n\n${a.text}`

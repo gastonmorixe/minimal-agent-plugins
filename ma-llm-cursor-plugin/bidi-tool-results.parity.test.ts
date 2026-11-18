@@ -340,3 +340,396 @@ describe("outcome reader parity: seeded mini-fuzz", () => {
     expect(newPath).toBeGreaterThan(30)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Round 2 (M3B1 fix 2): rows of the second review, built by hand.
+// ---------------------------------------------------------------------------
+
+/** Opener and closer text, built from parts (see the note at the top of the file). */
+const opener = (name: string, caseForm: "lower" | "upper" | "mixed" = "lower"): string =>
+  `${LT}${caseForm === "lower" ? "ma" : caseForm === "upper" ? "MA" : "Ma"}::${caseForm === "lower" ? "agent" : caseForm === "upper" ? "AGENT" : "Agent"}::${name}`
+const closer = (name: string): string => `${LT}/ma::agent::${name}>`
+
+const modeAsk = tag("mode-active", ' id="ask" since="2026-11-18T15:00:00.000Z"')
+const policyOf = (inner: string): string => tag("policy", "", inner)
+
+describe("outcome reader parity: second review rows (hand-built blocks)", () => {
+  const emojiHand = (
+    text: string,
+    bodyEnd: number,
+    spans: PersistedToolOutcome["annotations"],
+  ): ToolResultBlock => block(text, { v: 1, bodyEnd, annotations: spans })
+
+  interface Row {
+    id: string
+    what: string
+    block: ToolResultBlock
+    /** `true`: the old path must run. `undefined`: only the equality is checked. */
+    oldPath?: true
+  }
+  const rows: Row[] = [
+    {
+      id: "S1",
+      what: 'body ends with "\\n\\n" + plain annotation',
+      block: blockOf("x\n\n", [{ kind: "output-truncated", text: truncated }]),
+    },
+    {
+      id: "S1b",
+      what: "body ends with four newlines + tag + plain",
+      block: blockOf("x\n\n\n\n", [
+        { kind: "mode-active", text: modeAsk },
+        { kind: "output-truncated", text: truncated },
+      ]),
+    },
+    {
+      id: "S2",
+      what: "plain annotation text ends with CRLF, then a second plain annotation",
+      block: blockOf("x", [
+        { kind: "output-truncated", text: `${truncated}\r\n` },
+        { kind: "output-streak", text: streak },
+      ]),
+    },
+    {
+      id: "S2b",
+      what: "plain annotation text has CRLF inside",
+      block: blockOf("x", [{ kind: "output-truncated", text: "[truncated: a\r\nb]" }]),
+    },
+    {
+      id: "S3a",
+      what: "emoji body, bodyEnd after the whole pair",
+      block: blockOf("a\u{1F600}", [{ kind: "output-truncated", text: truncated }]),
+    },
+    {
+      id: "S3b",
+      what: "bodyEnd splits the surrogate pair",
+      block: emojiHand("a\u{1F600}\n\n[note: z]", 2, [
+        { kind: "output-streak", start: 5, end: 17 },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "S3c",
+      what: "span start inside the pair",
+      block: emojiHand("a\u{1F600}\n\n[note: z]", 1, [
+        { kind: "output-streak", start: 2, end: 17 },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "S3d",
+      what: "annotation text ends with a lone high surrogate, text continues",
+      block: emojiHand("b\n\n[note: \uD83D\uDE00 done", 1, [
+        { kind: "output-streak", start: 3, end: 12 },
+        { kind: "output-streak", start: 12, end: 18 },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "F1",
+      what: "uppercase opener in the body + policy annotation",
+      block: blockOf(`prose ${opener("policy", "upper")}> mentioned\nreal tail`, [
+        { kind: "policy", text: policyOf("Current local time: 10:30"), join: "\n" },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "F2",
+      what: "uppercase opener in the body + mode-active",
+      block: blockOf(`prose ${opener("mode-active", "upper")}> x\nreal tail`, [
+        { kind: "mode-active", text: modeAsk },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "F3",
+      what: "mixed-case opener in the body + truncated + policy",
+      block: blockOf(`see ${opener("policy", "mixed")}> here\nmore`, [
+        { kind: "output-truncated", text: truncated },
+        { kind: "policy", text: policyOf("Current local time: 10:30"), join: "\n" },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "G1",
+      what: "tag annotation, then a plain annotation with a closer",
+      block: blockOf("x", [
+        { kind: "mode-active", text: modeAsk },
+        { kind: "output-truncated", text: `[truncated: cut ${closer("mode-active")}` },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "G2",
+      what: "tag annotation, then a streak note with a closer",
+      block: blockOf("x", [
+        { kind: "mode-active", text: modeAsk },
+        { kind: "output-streak", text: `[note: seen ${closer("mode-active")} twice]` },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "H1",
+      what: "tag annotation with a trailing space, then plain",
+      block: blockOf("x", [
+        { kind: "mode-active", text: `${modeAsk} ` },
+        { kind: "output-truncated", text: truncated },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "H2",
+      what: "tag annotation with a trailing CRLF, then plain",
+      block: blockOf("x", [
+        { kind: "mode-active", text: `${modeAsk}\r\n` },
+        { kind: "output-truncated", text: truncated },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "H3",
+      what: "tag annotation with a leading TAB, then plain",
+      block: blockOf("x", [
+        { kind: "mode-active", text: `\t${modeAsk}` },
+        { kind: "output-truncated", text: truncated },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "H4",
+      what: "tag annotation with a trailing newline, then plain",
+      block: blockOf("x", [
+        { kind: "mode-active", text: `${modeAsk}\n` },
+        { kind: "output-truncated", text: truncated },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "H5",
+      what: "policy annotation (join newline) with a trailing space, then plain",
+      block: blockOf("x", [
+        { kind: "policy", text: `${policyOf("n")} `, join: "\n" },
+        { kind: "output-streak", text: streak },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "I1",
+      what: "plain annotation text with four inner newlines",
+      block: blockOf("x", [{ kind: "output-truncated", text: "[truncated: a\n\n\n\nb]" }]),
+    },
+    {
+      id: "I2",
+      what: "two tag annotations (join newline) between body and plain",
+      block: blockOf("x", [
+        { kind: "policy", text: policyOf("a"), join: "\n" },
+        { kind: "policy", text: policyOf("b"), join: "\n" },
+        { kind: "output-streak", text: streak },
+      ]),
+    },
+    {
+      id: "I3",
+      what: "empty body, plain only",
+      block: blockOf("", [{ kind: "output-truncated", text: truncated }]),
+    },
+    {
+      id: "I4",
+      what: "white space body, mode stamp without join, then plain",
+      block: blockOf("  \n", [
+        { kind: "mode-active", text: modeAsk, join: "" },
+        { kind: "output-truncated", text: truncated },
+      ]),
+    },
+    {
+      id: "I5",
+      what: "body is a CR only",
+      block: blockOf("\r", [{ kind: "output-truncated", text: truncated }]),
+    },
+    {
+      id: "I6",
+      what: "NBSP and U+2028 at the body edges",
+      block: blockOf("\u00a0x\u2028", [{ kind: "output-truncated", text: truncated }]),
+    },
+    {
+      id: "I7",
+      what: "body with a lowercase closer only + tag annotation + plain",
+      block: blockOf(`x ${closer("policy")} y`, [
+        { kind: "policy", text: policyOf("n"), join: "\n" },
+        { kind: "output-truncated", text: truncated },
+      ]),
+      oldPath: true,
+    },
+    {
+      id: "J1",
+      what: "streak note with an uppercase opener + a later policy annotation",
+      block: blockOf("x", [
+        { kind: "output-streak", text: `[note: ${opener("policy", "upper")}> seen]` },
+        { kind: "policy", text: policyOf("n"), join: "\n" },
+      ]),
+      oldPath: true,
+    },
+  ]
+
+  for (const r of rows) {
+    test(`${r.id}: same bytes as the old path (${r.what})`, () => {
+      same(r.block)
+      if (r.oldPath) expect(outcomeWireText(r.block)).toBeUndefined()
+    })
+  }
+
+  test("a tag annotation with no leftover keeps the new path", () => {
+    const b = blockOf("x", [
+      { kind: "mode-active", text: modeAsk },
+      { kind: "output-truncated", text: truncated },
+    ])
+    expect(outcomeWireText(b)).toBeDefined()
+    same(b)
+  })
+
+  test("an upper-case self-closing tag annotation is not removed by the strip step: old path", () => {
+    const upper = `${opener("mode-active", "upper")} id="ask" />`
+    const b = blockOf("x", [{ kind: "mode-active", text: upper }])
+    expect(outcomeWireText(b)).toBeUndefined()
+    same(b)
+  })
+})
+
+describe("outcome reader parity: grammar fuzz-lite (harness-shaped fragments)", () => {
+  test("300 seeded cases: new bytes === old bytes, new path taken in at least 20", () => {
+    const NAMES = [
+      "mode-active",
+      "policy",
+      "raw-output",
+      "output-preview",
+      "diagnostics",
+      "tasks",
+      "x",
+    ]
+    const WS = ["", "", "", " ", "  ", "\t", "\n", "\r\n", "\r", "\u00a0", "\u2028", "\n\n"]
+    const BITS = [
+      "a",
+      "b c",
+      "line",
+      truncated,
+      "[note: seen twice]",
+      ">",
+      "/",
+      "/>",
+      '"',
+      ' id="1"',
+      "\u{1F600}",
+      "\uD83D",
+      "ma::agent::",
+      LT,
+      `${LT}/`,
+    ]
+    let newPath = 0
+    let cases = 0
+    const started = performance.now()
+    for (let seed = 1; seed <= 300; seed++) {
+      let s = (seed * 2654435761) >>> 0
+      const rnd = (): number => {
+        s = (s * 1664525 + 1013904223) >>> 0
+        return s / 2 ** 32
+      }
+      const pick = <T>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)] as T
+      const OPEN = (n: string): string =>
+        pick([
+          `${LT}ma::agent::${n}`,
+          `${LT}MA::AGENT::${n}`,
+          `${LT}Ma::Agent::${n}`,
+          `${LT}ma::agent::${n.toUpperCase()}`,
+        ])
+      const CLOSE = (n: string): string =>
+        pick([`${LT}/ma::agent::${n}>`, `${LT}/MA::AGENT::${n}>`, `${LT}/ma::agent::${n}  >`])
+      const tagText = (): string => {
+        const n = pick(NAMES)
+        const k = rnd()
+        if (k < 0.35) {
+          return `${OPEN(n)}${pick(WS)}${pick(["", ' id="1"', ' a="x>y"', ' a="1" b="2"'])}${pick(["/>", " />", "/ >", ">"])}`
+        }
+        if (k < 0.7) {
+          return `${OPEN(n)}${pick(["", ' id="1"'])}>${pick(["", "x", "a\nb", LT, pick(BITS)])}${CLOSE(pick(NAMES))}`
+        }
+        return pick([OPEN(n), CLOSE(n), `${OPEN(n)} unterminated`, `${LT}ma::agent::`])
+      }
+      const anyText = (): string => {
+        const parts: string[] = []
+        const n = 1 + Math.floor(rnd() * 3)
+        for (let i = 0; i < n; i++) parts.push(rnd() < 0.5 ? tagText() : pick(BITS), pick(WS))
+        return parts.join("")
+      }
+      const JOIN = ["\n\n", "\n", ""]
+      const annotation = (): Part => {
+        const r = rnd()
+        if (r < 0.35) {
+          const kind = pick(["output-truncated", "output-streak"])
+          const prefix = kind === "output-truncated" ? "[truncated:" : "[note:"
+          return {
+            kind,
+            text: rnd() < 0.6 ? `${prefix} ${anyText()}]` : anyText(),
+            join: rnd() < 0.85 ? "\n\n" : pick(JOIN),
+          }
+        }
+        if (r < 0.9) {
+          return {
+            kind: pick(["mode-active", "policy", "raw-output", "output-preview", "diagnostics"]),
+            text: rnd() < 0.6 ? tagText() : anyText(),
+            join: pick(rnd() < 0.7 ? ["\n\n"] : JOIN),
+          }
+        }
+        return { kind: "ma-note", text: anyText(), join: pick(JOIN) }
+      }
+      const body = (): string => {
+        const r = rnd()
+        if (r < 0.25) return ""
+        if (r < 0.55) {
+          return pick([
+            "x",
+            "line 1\nline 2",
+            "a\n",
+            "a\n\n",
+            "  \n",
+            "\u00a0x\u2028",
+            "cut \u{1F600}",
+          ])
+        }
+        return `${pick(BITS)}${pick(WS)}${anyText()}${pick(WS)}`
+      }
+      const b = body()
+      const anns = Array.from({ length: Math.floor(rnd() * 4) }, annotation)
+      const blk = blockOf(b, anns)
+      cases++
+      if (outcomeWireText(blk) !== undefined) newPath++
+      same(blk)
+    }
+    expect(cases).toBe(300)
+    expect(newPath).toBeGreaterThanOrEqual(20)
+    expect(performance.now() - started).toBeLessThan(2000)
+  })
+})
+
+describe("outcome reader parity: large bodies finish in seconds", () => {
+  test("5 MB body + one output-truncated annotation: same bytes, under 5 s", () => {
+    const body = "line\n".repeat(1_000_000)
+    expect(body.length).toBe(5_000_000)
+    const b = blockOf(body, [{ kind: "output-truncated", text: truncated }])
+    expect(outcomeWireText(b)).toBeDefined()
+    const started = performance.now()
+    const got = toolResultToWireText(b)
+    const elapsed = performance.now() - started
+    expect(got).toBe(legacyToolResultToWireText(b))
+    expect(elapsed).toBeLessThan(5000)
+  })
+
+  test("1 MB body that ends with an unterminated opener: old path, same bytes, under 5 s", () => {
+    const body = `${"line\n".repeat(200_000)}tail ${opener("policy")} unterminated`
+    expect(body.length).toBeGreaterThan(1_000_000)
+    const b = blockOf(body, [{ kind: "output-truncated", text: truncated }])
+    expect(outcomeWireText(b)).toBeUndefined()
+    const started = performance.now()
+    const got = toolResultToWireText(b)
+    const elapsed = performance.now() - started
+    expect(got).toBe(legacyToolResultToWireText(b))
+    expect(elapsed).toBeLessThan(5000)
+  })
+})
