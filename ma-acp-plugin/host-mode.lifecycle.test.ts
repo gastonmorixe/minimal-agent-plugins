@@ -15,12 +15,12 @@ import { describe, expect, it } from "bun:test"
 
 import type { AgentEvent } from "@minimal-agent/core/sdk/events"
 
+import { createFakeRuntime, type ScriptedTurn } from "./__fixtures__/fake-runtime.ts"
 import {
-  createFakeRuntime,
-  type FakeRuntime,
-  type ScriptedTurn,
-} from "./__fixtures__/fake-runtime.ts"
-import { openInMemorySession, startInMemoryHost } from "./__fixtures__/in-memory-host.ts"
+  openExtSession,
+  openInMemorySession,
+  startInMemoryHost,
+} from "./__fixtures__/in-memory-host.ts"
 import { retryBoundaryText } from "./encoder.ts"
 
 const text = (t: string) => [{ type: "text", text: t }]
@@ -478,38 +478,6 @@ describe("systemPrompt (ACP unstable sessionCapabilities.systemPrompt)", () => {
     expect(await h2.exit).toBe(0)
   })
 })
-
-/** Start a host whose client advertises `features` (and, when set, `session.notices`). */
-async function openExtSession(rt: FakeRuntime, features: string[], notices = false) {
-  const h = startInMemoryHost(rt)
-  h.send({
-    jsonrpc: "2.0",
-    id: 1,
-    method: "initialize",
-    params: {
-      protocolVersion: 1,
-      clientCapabilities: {
-        ...(notices ? { session: { notices: {} } } : {}),
-        _meta: { "minimal-agent/ext": { version: 1, features } },
-      },
-    },
-  })
-  await h.reply(1)
-  h.send({ jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: "/work", mcpServers: [] } })
-  const sessionId = (await h.reply(2)).result?.sessionId as string
-  let nextId = 10
-  const prompt = async (meta?: Record<string, unknown>) => {
-    const id = nextId++
-    h.send({
-      jsonrpc: "2.0",
-      id,
-      method: "session/prompt",
-      params: { sessionId, prompt: text("go"), ...(meta ? { _meta: meta } : {}) },
-    })
-    return h.reply(id)
-  }
-  return { ...h, sessionId, prompt }
-}
 
 /** A completed turn whose final text is `t`, with 3 in and 2 out tokens. */
 const textTurn = (t: string): ScriptedTurn => ({

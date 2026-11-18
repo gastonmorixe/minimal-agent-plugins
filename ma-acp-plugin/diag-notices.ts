@@ -20,7 +20,7 @@
  *   break that starts a streak (`streak === 1`), or an actionable break
  *   after a break that was not actionable (the previous `cache.break` on
  *   this connection), or the first `cache.break` of the connection (it can
- *   have streak > 1, for example after a resume). The `streak` counts breaks of every cause, so an
+ *   have streak above 1, for example after a resume). The `streak` counts breaks of every cause, so an
  *   expected `ttl_expired` (streak 1) followed by a `prefix_changed`
  *   (streak 2) still sends the `prefix_changed`. The noticer keeps the
  *   last `actionable` value of each `cache.break` it sees, also the dropped
