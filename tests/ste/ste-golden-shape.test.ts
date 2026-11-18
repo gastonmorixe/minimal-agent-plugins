@@ -398,6 +398,59 @@ export function isAllowedAddition(
   return JSON.stringify(added) === JSON.stringify(entry.value)
 }
 
+/** A `shape` path of a key added to a message block: `$.requests[r].messages[m].content[b]{+<k>}`. */
+const ADDED_BLOCK_KEY =
+  /^\$\.requests\[(\d+)\]\.messages\[(\d+)\]\.content\[(\d+)\]\{\+([^,{}]+)\}$/
+
+/** Block types that never carry a cache marker. */
+const THINKING_TYPES: ReadonlySet<string> = new Set(["thinking", "redacted_thinking"])
+
+/** The `cache_control` of the last marked block of a message, or undefined. */
+function lastMarker(message: unknown): unknown {
+  const content = (message as { content?: unknown } | undefined)?.content
+  if (!Array.isArray(content)) return undefined
+  const marked = content.filter((b) => b && typeof b === "object" && "cache_control" in b)
+  return (marked.at(-1) as { cache_control?: unknown } | undefined)?.cache_control
+}
+
+/**
+ * True when a `shape` difference is the prompt-cache anchor marker, which core
+ * now sends by default (`cacheAnchor`, F1). It is not prose, so only this
+ * narrow rule allows it: the block gained only `cache_control`, the block is
+ * the last non-thinking block of the message just before the latest assistant
+ * message, the marker equals the tail marker of the same request, and the
+ * rest of the block is byte-identical.
+ *
+ * It matches nothing after the anchor default is on main (the merge base then
+ * has the marker). Remove it in a follow-up then, as for SCHEMA_ADDITIONS.
+ *
+ * @param path - The `shape` path from {@link leafDiff}.
+ * @param before - The merge-base golden.
+ * @param after - The current golden.
+ * @returns Whether the difference is the anchor marker.
+ */
+export function isAnchorMarkerAddition(path: string, before: unknown, after: unknown): boolean {
+  const m = ADDED_BLOCK_KEY.exec(path)
+  if (!m || m[4] !== "cache_control") return false
+  const [r, i, j] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const messages = atPath(after, `$.requests[${r}].messages`)
+  if (!Array.isArray(messages)) return false
+  const roles = messages.map((msg) => (msg as { role?: unknown }).role)
+  if (roles.lastIndexOf("assistant") - 1 !== i) return false
+  const content = (messages[i] as { content?: unknown }).content
+  if (!Array.isArray(content)) return false
+  const eligible = content
+    .map((b, k) => (THINKING_TYPES.has((b as { type?: string }).type ?? "") ? -1 : k))
+    .filter((k) => k >= 0)
+  if (eligible.at(-1) !== j) return false
+  const { cache_control: marker, ...rest } = content[j] as Record<string, unknown>
+  const blockBefore = atPath(before, `$.requests[${r}].messages[${i}].content[${j}]`)
+  if (JSON.stringify(rest) !== JSON.stringify(blockBefore)) return false
+  return (
+    marker !== undefined && JSON.stringify(marker) === JSON.stringify(lastMarker(messages.at(-1)))
+  )
+}
+
 /** The trailing mode stamp of a tool_result, with the blank line before it. */
 const MODE_STAMP = /\n\n<ma::agent::mode-active [^<>]*\/>$/
 
@@ -462,6 +515,7 @@ export function goldenProblems(
   for (const d of leafDiff(before, after)) {
     if (d.kind === "string") continue
     if (d.kind === "shape" && isAllowedAddition(d.path, before, after, additions)) continue
+    if (d.kind === "shape" && isAnchorMarkerAddition(d.path, before, after)) continue
     const listed = leaves.some((leaf) => leaf.golden === name && leaf.path === d.path)
     if (listed && d.kind === "value") {
       const problem = proseLeafProblem(atPath(before, d.path), atPath(after, d.path))
@@ -983,5 +1037,54 @@ describe("golden leaf diff: SCHEMA_ADDITIONS (intended schema change)", () => {
   test("with no allowlist, the same change fails (the entry is what allows it)", () => {
     const after = golden({ id: typedId, order: typedOrder }, { id: ID, order: ORDER })
     expect(goldenProblems("g.json", before, after, PROSE_LEAVES, []).length).toBe(2)
+  })
+})
+
+describe("golden leaf diff: the anchor marker (cacheAnchor ON by default)", () => {
+  const TAIL = { type: "ephemeral", ttl: "5m" }
+  const request = (anchor: unknown, at = 2) => {
+    const block = (text: string, k: number) =>
+      k === at && anchor !== undefined
+        ? { cache_control: anchor, type: "text", text }
+        : { type: "text", text }
+    return {
+      requests: [
+        {
+          messages: [
+            { role: "user", content: [block("u0", 0)] },
+            { role: "assistant", content: [block("a0", 1)] },
+            { role: "user", content: [block("u1", 2)] },
+            { role: "assistant", content: [block("a1", 3)] },
+            { role: "user", content: [{ cache_control: TAIL, type: "text", text: "u2" }] },
+          ],
+        },
+      ],
+    }
+  }
+  const before = request(undefined)
+
+  test("the marker on the message before the latest assistant passes", () => {
+    expect(goldenProblems("g.json", before, request(TAIL))).toEqual([])
+  })
+
+  test("kills 'any position': a marker on another message fails", () => {
+    expect(goldenProblems("g.json", before, request(TAIL, 0))).toEqual([
+      "shape $.requests[0].messages[0].content[0]{+cache_control}",
+    ])
+  })
+
+  test("kills 'any value': a marker that differs from the tail marker fails", () => {
+    expect(goldenProblems("g.json", before, request({ type: "ephemeral", ttl: "1h" }))).toEqual([
+      "shape $.requests[0].messages[2].content[0]{+cache_control}",
+    ])
+  })
+
+  test("kills 'hides other changes': a changed block text with the marker fails", () => {
+    const after = request(TAIL)
+    const msg = after.requests[0]?.messages[2]?.content[0] as { text: string }
+    msg.text = "changed"
+    expect(goldenProblems("g.json", before, after)).toEqual([
+      "shape $.requests[0].messages[2].content[0]{+cache_control}",
+    ])
   })
 })

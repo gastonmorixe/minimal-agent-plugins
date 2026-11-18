@@ -27,6 +27,10 @@
         {
           "content": [
             {
+              "cache_control": {
+                "ttl": "5m",
+                "type": "ephemeral"
+              },
               "text": "question four",
               "type": "text"
             }

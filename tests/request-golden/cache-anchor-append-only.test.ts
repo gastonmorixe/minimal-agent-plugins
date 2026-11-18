@@ -3,8 +3,9 @@
  * AgentCore: a 3-round tool loop with signed thinking on a keep-all model
  * (claude-opus-5-5, capability data from ma-llm-anthropic-plugin). Checks the
  * marker positions and count, and that the older messages are byte-identical
- * between consecutive requests. The default run (no flags) keeps today's
- * strip and one marker. No golden file: the checks are structural.
+ * between consecutive requests. The default run (no flags) has the anchor
+ * (ON by default) and keeps today's strip. With `cacheAnchor: false` it has
+ * one marker. No golden file: the checks are structural.
  */
 
 import { writeFileSync } from "node:fs"
@@ -134,10 +135,40 @@ describe("request golden: anchor + append-only thinking (F1/F2)", () => {
     }
   })
 
-  test("default (no flags): one tail marker and today's strip of older thinking", async () => {
+  test("default (no flags): the anchor is ON, today's strip of older thinking", async () => {
     const reqs = await requests({})
-    expect(reqs.map((r) => markers(r).length)).toEqual([1, 1, 1, 1])
+    expect(reqs.map(markers)).toEqual([
+      [[0, 0]],
+      [[2, 0]],
+      [
+        [2, 0],
+        [4, 0],
+      ],
+      [
+        [4, 0],
+        [6, 0],
+      ],
+    ])
     // Only the latest assistant turn keeps its thinking.
+    expect(reqs.map(thinkingCount)).toEqual([0, 1, 1, 1])
+    // F3 holds: 3 system markers + anchor + tail is 5, the cap keeps 4 (drops the anchor).
+    const wire = JSON.parse(
+      JSON.stringify({
+        model: "m",
+        max_tokens: 1,
+        system: reqs[3].system,
+        messages: reqs[3].messages,
+      }),
+    ) as AnthropicRequestBody
+    expect(countCacheMarkers(wire)).toBe(systemMarkers(reqs[3]) + 2)
+    capCacheMarkers(wire)
+    expect(countCacheMarkers(wire)).toBeLessThanOrEqual(4)
+    expect(markers(wire as unknown as Req)).toContainEqual([6, 0])
+  })
+
+  test("cacheAnchor: false: one tail marker and today's strip of older thinking", async () => {
+    const reqs = await requests({ cacheAnchor: false })
+    expect(reqs.map((r) => markers(r).length)).toEqual([1, 1, 1, 1])
     expect(reqs.map(thinkingCount)).toEqual([0, 1, 1, 1])
   })
 })
