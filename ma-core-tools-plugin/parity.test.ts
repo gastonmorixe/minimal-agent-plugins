@@ -12,7 +12,9 @@
  *     core fallback. The text equals the fixture text after the P4 STE
  *     rewrites (STE_SYNTHETIC) are applied to it.
  *
- * Core is imported by relative path in this test only.
+ * Core source is imported through the installed package directory
+ * (`node_modules/@minimal-agent/core`), never through a sibling checkout: see
+ * `scripts/no-sibling-core-imports.test.ts`.
  */
 
 import { readFileSync } from "node:fs"
@@ -23,25 +25,26 @@ import { describe, expect, it } from "bun:test"
 import type {
   SyntheticFacts,
   SyntheticKind,
-} from "../../minimal-agent-core/plugin-api/src/types/synthetic-text.ts"
-import type { SyntheticTextResolver } from "../../minimal-agent-core/src/agent/synthetic-text.ts"
+} from "@minimal-agent/core/plugin-api/types/synthetic-text"
+
+import type { SyntheticTextResolver } from "../node_modules/@minimal-agent/core/src/agent/synthetic-text.ts"
 import {
   binaryRejectedText,
   imageSummaryText,
   imageTooLargeText,
   unsupportedEmbeddingText,
   unsupportedImageModalityText,
-} from "../../minimal-agent-core/src/media/read-file.ts"
-import { formatBytes as coreFormatBytes } from "../../minimal-agent-core/src/media/types.ts"
+} from "../node_modules/@minimal-agent/core/src/media/read-file.ts"
+import { formatBytes as coreFormatBytes } from "../node_modules/@minimal-agent/core/src/media/types.ts"
 import {
   modeActiveStampText,
   modeChangeText,
   modeCliRefusalText,
   modeRefusalText,
-} from "../../minimal-agent-core/src/modes/mode-text.ts"
-import { ToolFeedbackTracker } from "../../minimal-agent-core/src/tools/feedback-tracker.ts"
-import { buildToolDefinitions } from "../../minimal-agent-core/src/tools/tool-definitions.ts"
-import * as T from "../../minimal-agent-core/src/tools/tool-result-text.ts"
+} from "../node_modules/@minimal-agent/core/src/modes/mode-text.ts"
+import { ToolFeedbackTracker } from "../node_modules/@minimal-agent/core/src/tools/feedback-tracker.ts"
+import { buildToolDefinitions } from "../node_modules/@minimal-agent/core/src/tools/tool-definitions.ts"
+import * as T from "../node_modules/@minimal-agent/core/src/tools/tool-result-text.ts"
 
 import { createCoreToolsSyntheticProvider, formatBytes, KINDS } from "./synthetic-text.ts"
 import { createCoreToolTextProvider } from "./tool-text.ts"

@@ -3,11 +3,11 @@ import { join } from "node:path"
 
 import { afterAll, beforeAll, expect, test } from "bun:test"
 
-import { PluginLoader } from "../../minimal-agent-core/src/plugins/loader.ts"
+import { PluginLoader } from "../node_modules/@minimal-agent/core/src/plugins/loader.ts"
 import {
   collectSystemPromptParts,
   resolveBaseIdentity,
-} from "../../minimal-agent-core/src/plugins/system-prompt-base.ts"
+} from "../node_modules/@minimal-agent/core/src/plugins/system-prompt-base.ts"
 
 import { toSte } from "./__fixtures__/ste-p4.ts"
 

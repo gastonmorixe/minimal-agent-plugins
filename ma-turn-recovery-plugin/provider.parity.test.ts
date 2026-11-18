@@ -24,39 +24,39 @@ import type {
 import {
   closeInterruptedToolCalls,
   repairOrphanedToolUse,
-} from "../../minimal-agent-core/src/agent/history-repair.ts"
-import { buildReflectionCheckpointBlock } from "../../minimal-agent-core/src/agent/reflection.ts"
-import type { SyntheticTextResolver } from "../../minimal-agent-core/src/agent/synthetic-text.ts"
+} from "../node_modules/@minimal-agent/core/src/agent/history-repair.ts"
+import { buildReflectionCheckpointBlock } from "../node_modules/@minimal-agent/core/src/agent/reflection.ts"
+import type { SyntheticTextResolver } from "../node_modules/@minimal-agent/core/src/agent/synthetic-text.ts"
 import {
   continueText,
   placeholderText,
-} from "../../minimal-agent-core/src/agent/synthetic-texts.ts"
-import type { ModalitySupport } from "../../minimal-agent-core/src/llm/capabilities.ts"
-import type { Message } from "../../minimal-agent-core/src/llm/messages.ts"
+} from "../node_modules/@minimal-agent/core/src/agent/synthetic-texts.ts"
+import type { ModalitySupport } from "../node_modules/@minimal-agent/core/src/llm/capabilities.ts"
+import type { Message } from "../node_modules/@minimal-agent/core/src/llm/messages.ts"
 import {
   checkMedia,
   checkMediaSet,
   type MediaLimits,
-} from "../../minimal-agent-core/src/media/limits.ts"
-import type { MediaRegistry } from "../../minimal-agent-core/src/media/registry.ts"
-import { resolveMediaTurn } from "../../minimal-agent-core/src/media/resolve.ts"
+} from "../node_modules/@minimal-agent/core/src/media/limits.ts"
+import type { MediaRegistry } from "../node_modules/@minimal-agent/core/src/media/registry.ts"
+import { resolveMediaTurn } from "../node_modules/@minimal-agent/core/src/media/resolve.ts"
 import {
   formatBytes as coreFormatBytes,
   type MediaItem,
   type MediaKind,
-} from "../../minimal-agent-core/src/media/types.ts"
+} from "../node_modules/@minimal-agent/core/src/media/types.ts"
 import {
   invokeSubprocess,
   pluginHandlerErrorText,
   subprocessOverflowText,
   unknownPluginToolText,
-} from "../../minimal-agent-core/src/plugins/loader/helpers.ts"
-import { NO_TOOLS_EXECUTOR } from "../../minimal-agent-core/src/runtime/noop-tools.ts"
+} from "../node_modules/@minimal-agent/core/src/plugins/loader/helpers.ts"
+import { NO_TOOLS_EXECUTOR } from "../node_modules/@minimal-agent/core/src/runtime/noop-tools.ts"
 import {
   buildInitialUserContent,
   nextRoundContent,
-} from "../../minimal-agent-core/src/sdk/agent-core-helpers.ts"
-import * as T from "../../minimal-agent-core/src/tools/tool-result-text.ts"
+} from "../node_modules/@minimal-agent/core/src/sdk/agent-core-helpers.ts"
+import * as T from "../node_modules/@minimal-agent/core/src/tools/tool-result-text.ts"
 
 import { RULE_HITS, RULE_NAMES, toSte } from "./__fixtures__/ste-p4.ts"
 import manifest from "./manifest.json"

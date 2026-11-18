@@ -12,8 +12,10 @@
  *     buildToolDefinitions([ma-core-tools-plugin provider]), and the provider
  *     owns every built-in tool name.
  *
- * Goldens are not compared here (request-golden.test.ts does that). Core is
- * imported by relative path in this test only.
+ * Goldens are not compared here (request-golden.test.ts does that). Core source
+ * is imported through the installed package directory
+ * (`node_modules/@minimal-agent/core`), never through a sibling checkout: see
+ * `scripts/no-sibling-core-imports.test.ts`.
  */
 
 import { describe, expect, it } from "bun:test"
@@ -21,15 +23,16 @@ import { describe, expect, it } from "bun:test"
 import type {
   SyntheticFacts,
   SyntheticKind,
-} from "../../../minimal-agent-core/plugin-api/src/types/synthetic-text.ts"
+} from "@minimal-agent/core/plugin-api/types/synthetic-text"
+
+import createBasePromptProvider from "../../ma-base-prompt-plugin/provider.ts"
+import { createCoreToolTextProvider } from "../../ma-core-tools-plugin/provider.ts"
 import {
   DEFAULT_REFLECTION_COOLDOWN_MS,
   DEFAULT_REFLECTION_INTERVAL,
-} from "../../../minimal-agent-core/src/agent/reflection.ts"
-import type { SyntheticTextResolver } from "../../../minimal-agent-core/src/agent/synthetic-text.ts"
-import { buildToolDefinitions } from "../../../minimal-agent-core/src/tools/tool-definitions.ts"
-import createBasePromptProvider from "../../ma-base-prompt-plugin/provider.ts"
-import { createCoreToolTextProvider } from "../../ma-core-tools-plugin/provider.ts"
+} from "../../node_modules/@minimal-agent/core/src/agent/reflection.ts"
+import type { SyntheticTextResolver } from "../../node_modules/@minimal-agent/core/src/agent/synthetic-text.ts"
+import { buildToolDefinitions } from "../../node_modules/@minimal-agent/core/src/tools/tool-definitions.ts"
 
 import { runScenario } from "./harness.ts"
 import { SCENARIOS } from "./scenarios.ts"
