@@ -28,6 +28,7 @@
  * @module llm/anthropic-request
  */
 
+import { capCacheMarkers } from "@minimal-agent/core/plugin-api/llm/anthropic-request"
 import {
   type CanonicalBlock,
   type CanonicalMessage,
@@ -239,6 +240,9 @@ export function buildAnthropicRequestBody(
   if (req.vendor?.anthropic?.cacheDiagnostics) {
     body.diagnostics = { previous_message_id: null }
   }
+
+  // F3: keep at most 4 cache markers (the API limit). No-op at 4 or fewer.
+  capCacheMarkers(body)
 
   return body
 }

@@ -30,6 +30,8 @@ const GOLDEN_PLATFORM = "macos" as const
 
 /** A scripted model reply for one round. */
 export interface ScriptedReply {
+  /** A signed thinking block before the text and tools (signature `sig-<round>`). */
+  thinking?: string
   text?: string
   tools?: Array<{ name: string; input: Record<string, unknown> }>
   stopReason?: string
@@ -215,6 +217,9 @@ function scriptedSend(
     round++
     const text = reply ? (reply.text ?? "") : "done"
     const blocks: Array<Record<string, unknown>> = []
+    if (reply?.thinking) {
+      blocks.push({ type: "thinking", thinking: reply.thinking, signature: `sig-${round}` })
+    }
     if (text) blocks.push({ type: "text", text })
     for (const [i, t] of (reply?.tools ?? []).entries()) {
       blocks.push({ type: "tool_use", id: `call-${round}-${i}`, name: t.name, input: t.input })
