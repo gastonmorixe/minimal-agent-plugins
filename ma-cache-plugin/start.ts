@@ -13,10 +13,11 @@
  * {@link resetAllDetectors}. The host sends that event only in a process with
  * one session (TUI, ACP), so a reset of all detectors is correct there.
  *
- * Diagnostics: each warning goes through `ctx.log.warn`, the plugin logger
- * of the loader. Its source is `cache.anomaly`, at warn severity. The loader
+ * Diagnostics: each warning goes through `ctx.log.warn`, and each info
+ * diagnostic (`server_miss`, `ttl_expired`) through `ctx.log.info`, the
+ * plugin logger of the loader. Its source is `cache.anomaly`. The loader
  * routes it to the session of the run that made the request, so each
- * frontend shows it in its own way.
+ * frontend shows it in its own way (the TUI and ACP show warnings only).
  *
  * @module cache/start
  */

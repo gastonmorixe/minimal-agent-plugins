@@ -1,12 +1,9 @@
-import { gzipSync } from "node:zlib"
-
 import { describe, expect, it } from "bun:test"
 
+import { COLD_SSE, drive, f, MARKED, recorder, usageSse } from "./__fixtures__/cache-test-kit.ts"
 import {
   ANOMALY_SOURCE,
   CacheAnomalyDetector,
-  type CacheFacts,
-  type CacheWarnSink,
   isStreakMilestone,
   snapshotRequest,
 } from "./detector.ts"
@@ -18,35 +15,6 @@ import {
   type WireObserver,
   type WireRequest,
 } from "./wire-watch.ts"
-
-interface Warning {
-  level: "warn" | "info"
-  source: string
-  message: string
-  sd?: Readonly<Record<string, string | number | boolean>>
-}
-
-function recorder(): CacheWarnSink & { warnings: Warning[]; infos: Warning[] } {
-  const warnings: Warning[] = []
-  const infos: Warning[] = []
-  return {
-    warnings,
-    infos,
-    warn(source, message, sd) {
-      warnings.push({ level: "warn", source, message, ...(sd ? { sd } : {}) })
-    },
-    info(source, message, sd) {
-      infos.push({ level: "info", source, message, ...(sd ? { sd } : {}) })
-    },
-  }
-}
-
-const BIG = { markers: 2, approxPrefixChars: 20_000, model: "m" }
-
-/** Facts of one turn: BIG, with these counts. */
-function f(read: number, write: number, extra: Partial<CacheFacts> = {}): CacheFacts {
-  return { ...BIG, read, write, ...extra }
-}
 
 describe("CacheAnomalyDetector", () => {
   it("a turn with cache markers and 0 cache reads gives exactly one warning", () => {
@@ -140,8 +108,10 @@ describe("CacheAnomalyDetector", () => {
     expect(sink.warnings).toHaveLength(1)
     expect(sink.warnings[0]?.message).toContain("turn 2 read 0 cached tokens, 0.8 s after turn 1")
     expect(sink.warnings[0]?.message).toContain(
-      "The server says: messages_changed (155827 tokens missed).",
+      "The server says: messages_changed (server-reported miss size: 155827 tokens).",
     )
+    expect(sink.warnings[0]?.message).toContain("wrote 166690 tokens to the cache")
+    expect(sink.warnings[0]?.message).not.toContain("tokens missed")
     expect(sink.warnings[0]?.sd).toEqual({
       code: "prefix_changed",
       turn: 2,
@@ -159,7 +129,9 @@ describe("CacheAnomalyDetector", () => {
     d.observe(f(22113, 30000))
     const miss = { reason: "messages_changed", missedTokens: 40000 }
     expect(d.observe(f(22113, 31000, { cacheMiss: miss }))).toEqual(["prefix_changed"])
-    expect(sink.warnings[0]?.message).toContain("read 22113 cached tokens but missed 40000")
+    expect(sink.warnings[0]?.message).toContain(
+      "read 22113 cached tokens, less than the server-reported miss size of 40000",
+    )
     // A small miss next to a large read is normal growth: no warning.
     const e = new CacheAnomalyDetector({ sink: recorder() })
     e.observe(f(22113, 300))
@@ -270,45 +242,6 @@ describe("extractCacheFacts", () => {
   })
 })
 
-/** One Messages request through a watcher. */
-function drive(
-  w: WireObserver,
-  opts: {
-    id: string
-    body: unknown
-    status?: number
-    sse: string
-    gzip?: boolean
-    session?: string
-    url?: string
-  },
-): void {
-  const req: WireRequest = {
-    id: opts.id,
-    url: opts.url ?? "https://api.example.test/v1/messages",
-    method: "POST",
-    headers: opts.session ? { "x-claude-code-session-id": opts.session } : {},
-    body: JSON.stringify(opts.body),
-  }
-  w.onRequest?.(req)
-  w.onResponse?.(req, { status: opts.status ?? 200, headers: {} })
-  const bytes = new TextEncoder().encode(opts.sse)
-  const payload = opts.gzip ? gzipSync(bytes) : bytes
-  // Two chunks, so a split usage line is joined again.
-  const mid = Math.floor(payload.byteLength / 2)
-  w.onChunk?.(req, payload.slice(0, mid))
-  w.onChunk?.(req, payload.slice(mid))
-  w.onEnd?.(req)
-}
-
-const MARKED = {
-  model: "m",
-  system: [{ type: "text", text: "x".repeat(20_000), cache_control: { type: "ephemeral" } }],
-  messages: [{ role: "user", content: "hi" }],
-}
-const COLD_SSE =
-  'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":5000,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}\n\n'
-
 describe("createWireWatch", () => {
   it("a marked request with a 0-read response reaches the detector, plain or gzip", () => {
     for (const gzip of [false, true]) {
@@ -342,7 +275,9 @@ describe("createWireWatch", () => {
     // Turn 1 writes. Turn 2 starts 600 s later: past 5m, inside the 1h TTL.
     drive(w, { id: "1", body: marked1h, sse: usageSse(0, 5000) })
     t = 600_000
-    drive(w, { id: "2", body: marked1h, sse: missSse })
+    // The system text changed, so the miss is on the client side.
+    const changed = { ...marked1h, system: [{ ...marked1h.system[0], text: "y".repeat(20_000) }] }
+    drive(w, { id: "2", body: changed, sse: missSse })
     expect(sink.infos).toEqual([])
     expect(sink.warnings.map((x) => x.sd)).toEqual([
       {
@@ -352,6 +287,7 @@ describe("createWireWatch", () => {
         written: 9000,
         reason: "messages_changed",
         missedTokens: 8000,
+        changed: "system",
       },
     ])
     expect(sink.warnings[0]?.message).toContain(
@@ -415,17 +351,35 @@ describe("start", () => {
     expect(stops).toBe(1)
   })
 
+  it("the same body with a read of 0 is info server_miss through ctx.log.info", () => {
+    let observer: WireObserver | undefined
+    const sink = recorder()
+    const stop = start({
+      log: sink,
+      host: { network: { observe: (o: WireObserver) => ((observer = o), () => {}) } },
+    })
+    if (!observer || !stop) throw new Error("no observer")
+    drive(observer, { id: "1", body: MARKED, sse: usageSse(5000, 100), session: "s1" })
+    drive(observer, {
+      id: "2",
+      body: MARKED,
+      sse: usageSse(0, 5100),
+      session: "s1",
+      resHeaders: { "request-id": "req_L3" },
+    })
+    expect(sink.warnings).toEqual([])
+    expect(sink.infos.map((x) => [x.source, x.sd?.code, x.sd?.requestId])).toEqual([
+      [ANOMALY_SOURCE, "server_miss", "req_L3"],
+    ])
+    stop()
+  })
+
   it("does not use a redacted session header as a key", () => {
     const base = { id: "x", method: "POST", url: "https://a.test/v1/messages", body: "" }
     expect(sessionKeyOf({ ...base, headers: { "x-session-id": "[REDACTED]" } })).toBe("")
     expect(sessionKeyOf({ ...base, headers: { "x-claude-code-session-id": "abc" } })).toBe("abc")
   })
 })
-
-/** One SSE response with these cache counts. */
-function usageSse(read: number, create: number): string {
-  return `event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":10,"cache_read_input_tokens":${read},"cache_creation_input_tokens":${create}}}}\n\n`
-}
 
 /** A started plugin with a fake network API, and a function to send one turn. */
 function startedPlugin() {
@@ -438,10 +392,16 @@ function startedPlugin() {
   if (!observer || !stopWatch) throw new Error("no observer")
   const w = observer
   let n = 0
+  // The system text changes on each turn, so a read of 0 inside the TTL is
+  // a client-side miss (prefix_changed), not a server_miss.
   const turn = (model: string, read: number, create: number, url?: string) =>
     drive(w, {
       id: `t${++n}`,
-      body: { ...MARKED, model },
+      body: {
+        ...MARKED,
+        model,
+        system: [{ ...MARKED.system[0], text: `${n} ${"x".repeat(20_000)}` }],
+      },
       sse: usageSse(read, create),
       session: "s1",
       ...(url ? { url } : {}),
