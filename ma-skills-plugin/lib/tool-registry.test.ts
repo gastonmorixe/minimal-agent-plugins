@@ -95,9 +95,15 @@ describe("script tool handler timeout and abort", () => {
     const selfPid = "$".repeat(2)
     writeFileSync(
       script,
-      `#!/bin/sh\nsleep 300 &\necho "${selfPid} $!" > "${join(dir, "pids")}"\nexec sleep 300\n`,
+      `#!/bin/sh\n[ -n "$SKILL_TEST_WARM" ] && exit 0\nsleep 300 &\necho "${selfPid} $!" > "${join(dir, "pids")}"\nexec sleep 300\n`,
     )
     chmodSync(script, 0o755)
+    // Run the new script once before the test. On macOS the first exec of a new
+    // executable file takes about 220 ms (the system scans it), and the next
+    // one about 12 ms. The timeout test gives the handler a short timeout, and
+    // without this run the script was killed before it wrote its pids when the
+    // machine was busy: "script did not write its pids".
+    Bun.spawnSync([script], { env: { PATH: process.env.PATH, SKILL_TEST_WARM: "1" } })
   })
   afterEach(() => {
     for (const pid of started.splice(0)) {
@@ -139,7 +145,8 @@ describe("script tool handler timeout and abort", () => {
   }
 
   test("timeout kills the script and its background child", async () => {
-    const run = handler(300).invoke({ trigger: { type: "tool", input: {} } })
+    // 500 ms is about 40 times the start of the warmed script.
+    const run = handler(500).invoke({ trigger: { type: "tool", input: {} } })
     const [script, bg] = await readPids()
     const r = await within(run, 3000)
     expect(r.is_error).toBe(true)
