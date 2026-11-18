@@ -255,7 +255,83 @@ const resumeFixture = (name: string, file: string): Scenario => ({
   keep: [-1],
 })
 
+/** The text that the outcome offsets refer to (SPEC v6.1 D8 rule 1). */
+const recordText = (content: unknown): string => {
+  if (typeof content === "string") return content
+  if (!Array.isArray(content)) return ""
+  const first = content.find((b) => (b as { type?: unknown })?.type === "text") as
+    | { text?: unknown }
+    | undefined
+  return typeof first?.text === "string" ? first.text : ""
+}
+
+/**
+ * SPEC v6.1 D8 rule 4 twin: one tool round, then the stored tool_result
+ * records are rewritten to the old form (no `outcome`) or to the new form (a
+ * valid `outcome` record: body to the end of the text, no spans). The run
+ * then resumes and sends one more request. The scenario throws when restore
+ * does not give the expected block (an outcome on the new twin, none on the
+ * old twin), so the twin golden compares a real outcome against none.
+ */
+const resumeToolResults = (name: string, withOutcome: boolean): Scenario => ({
+  name,
+  script: [{ tools: [bash("printf 'one\\ntwo\\n'")] }, { text: "done" }, { text: "after resume" }],
+  coreDeps: storeDeps,
+  run: async (ctx) => {
+    await ctx.turn("run it")
+    const path = join(sessionDir(ctx.root), `${SID}.jsonl`)
+    const rows = readFileSync(path, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as Record<string, unknown>)
+    let results = 0
+    for (const row of rows) {
+      if (row.kind !== "tool_result") continue
+      results++
+      delete row.outcome
+      if (withOutcome) {
+        const text = recordText(row.content)
+        row.outcome = { v: 1, bodyEnd: text.length, annotations: [], data: { lines: 2 } }
+      }
+    }
+    if (results !== 1) throw new Error(`${name}: expected 1 tool_result record, got ${results}`)
+    writeFileSync(path, `${rows.map((r) => JSON.stringify(r)).join("\n")}\n`)
+    const restored = loadSession(SID, sessionDir(ctx.root)).messages.flatMap((m) =>
+      Array.isArray(m.content) ? m.content : [],
+    )
+    const block = restored.find((b) => b.type === "tool_result") as
+      | Record<string, unknown>
+      | undefined
+    if (!block) throw new Error(`${name}: restore gave no tool_result block`)
+    const has = "outcome" in block
+    if (has !== withOutcome) {
+      throw new Error(`${name}: restored outcome present=${has}, want ${withOutcome}`)
+    }
+    const next = await resumeCore(ctx)
+    await ctx.turnOn(next, "continue")
+  },
+  keep: [-1],
+})
+
 export const EXTRA_SCENARIOS: Scenario[] = [
+  {
+    // D8 rule 4: the resumed tool_result comes from the stored record.
+    name: "resume-tool-result",
+    script: [
+      { tools: [bash("printf 'one\\ntwo\\n'")] },
+      { text: "done" },
+      { text: "after resume" },
+    ],
+    coreDeps: storeDeps,
+    run: async (ctx) => {
+      await ctx.turn("run it")
+      const next = await resumeCore(ctx)
+      await ctx.turnOn(next, "continue")
+    },
+    keep: [-1],
+  },
+  resumeToolResults("resume-old-tool-results", false),
+  resumeToolResults("resume-new-tool-results", true),
   resumeFixture("resume-old-compacted-tail", "old-compacted-tail.jsonl"),
   resumeFixture("resume-old-compacted-local", "old-compacted-local.jsonl"),
   resumeFixture("resume-new-compacted-tail", "new-compacted-tail.jsonl"),
