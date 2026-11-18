@@ -1,6 +1,14 @@
 /** Tests for the lead side of the target control channel. */
 
-import { mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -171,4 +179,54 @@ describe("appendControlLine", () => {
   it("refuses a directory at the path", () => {
     expect(() => appendControlLine(dir, "x")).toThrow()
   })
+
+  it("a file that was there with a wider mode gets mode 0600", () => {
+    const path = join(dir, "x.control.jsonl")
+    writeFileSync(path, "planted\n")
+    chmodSync(path, 0o644)
+    appendControlLine(path, "one")
+    expect(statSync(path).mode & 0o777).toBe(0o600)
+    expect(readFileSync(path, "utf8")).toBe("planted\none\n")
+  })
+
+  // The write runs in a child process with a time limit: an open that blocks
+  // (no O_NONBLOCK) cannot be stopped from inside its own process.
+  it.skipIf(process.platform === "win32")(
+    "a FIFO at the control path: the switch returns, and the worker counts as failed",
+    () => {
+      const fifo = controlPathFor(dir, "child-a")
+      expect(Bun.spawnSync(["mkfifo", fifo]).exitCode).toBe(0)
+      const script = `
+        import { childControl, writeSwitchLines } from ${JSON.stringify(join(import.meta.dir, "target-control-lead.ts"))}
+        const dir = process.env.CONTROL_DIR
+        const a = childControl(dir, "child-a")
+        const b = childControl(dir, "child-b")
+        const running = (sid, controlKeyId) => ({
+          sid,
+          status: { kind: "running", pid: 1, startedAt: "t", progress: {} },
+          controlKeyId,
+        })
+        const result = writeSwitchLines(
+          [running("child-a", a.keyId), running("child-b", b.keyId)],
+          { from: { model: "m1" }, to: { model: "m2" } },
+          { sessionsDir: dir, leadSid: "L", now: () => new Date(0) },
+        )
+        console.log(JSON.stringify(result))
+      `
+      const run = Bun.spawnSync([process.execPath, "-e", script], {
+        env: { ...process.env, CONTROL_DIR: dir },
+        timeout: 10_000,
+        stderr: "pipe",
+      })
+      // A blocked open ends here with a signal and no exit code.
+      expect({ exitCode: run.exitCode, stderr: run.stderr.toString() }).toEqual({
+        exitCode: 0,
+        stderr: "",
+      })
+      // The worker with the FIFO fails. The other worker still gets its line.
+      expect(JSON.parse(run.stdout.toString())).toEqual({ sent: 1, unreachable: 0, failed: 1 })
+      expect(fileOf("child-b").trim().split("\n")).toHaveLength(1)
+    },
+    20_000,
+  )
 })
