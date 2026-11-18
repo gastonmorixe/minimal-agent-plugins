@@ -22,12 +22,15 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   `viewPersistedOutcome`), then runs the same strip regex as before. It uses
   this path only when the result is provably the same as the old path: the
   outcome fits, the only text block is the first one, the spans cover the
-  text to its end, the body holds no `<ma::agent::` text, and every
-  annotation is a core kind with the expected text and joins. In every other
-  case (no or bad outcome, a plugin annotation, a harness tag in the body, an
-  edited text, a tasks board in the body) the old path runs. The text sent to
-  Cursor is byte-equal to the old path: a differential test (30000 cases, a
-  frozen copy of the old function) found no difference.
+  text to its end, the body and the plain-text annotations hold no harness
+  opener or closer (`<ma::agent::`, `</ma::agent::`, any letter case), and
+  every tag annotation is removed completely by the strip step with no white
+  space left. In every other case (no or bad outcome, a plugin annotation, a
+  harness tag in the body, an edited text, a tasks board in the body) the old
+  path runs. The text sent to Cursor is byte-equal to the old path: an
+  in-repo differential test (a frozen copy of the old function, the
+  adversarial inputs of the review, a 300-case grammar fuzz, and 5 MB and 1 MB
+  bodies) and a reviewer fuzz of 300000 cases found no difference.
 
 ### Fixed
 
