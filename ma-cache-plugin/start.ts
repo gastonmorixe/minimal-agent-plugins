@@ -6,6 +6,13 @@
  * that gets `ctx.host`. The fragment returns an empty string, so it adds no
  * text to the system prompt.
  *
+ * Target switch: a change of credential, provider, model or effort starts a
+ * cold cache. The detector key (session, model, endpoint) covers a model or
+ * endpoint change. A credential or effort change keeps all three, so the
+ * `target.didSwitch` event handler (`on_target_switch.ts`) calls
+ * {@link resetAllDetectors}. The host sends that event only in a process with
+ * one session (TUI, ACP), so a reset of all detectors is correct there.
+ *
  * Diagnostics: each warning goes through `ctx.log.warn`, the plugin logger
  * of the loader. Its source is `cache.anomaly`, at warn severity. The loader
  * routes it to the session of the run that made the request, so each
@@ -36,6 +43,23 @@ const SESSION_HEADERS = ["x-claude-code-session-id", "x-session-id"] as const
 
 /** Network APIs that already have a watcher (a loader can load two times in one process). */
 const attached = new WeakSet<object>()
+
+/**
+ * Reset functions of the started watchers. Module state: the event handler
+ * runs in a different call than the fragment, and both import this module.
+ */
+const resetters = new Set<() => void>()
+
+/**
+ * Forget the history of every detector. The next turn of each key starts
+ * fresh. It can hide one warning, and it never makes a false one.
+ *
+ * @returns The number of watchers that were reset.
+ */
+export function resetAllDetectors(): number {
+  for (const reset of resetters) reset()
+  return resetters.size
+}
 
 /** Most detectors kept at one time. The oldest goes first. */
 export const MAX_DETECTORS = 64
@@ -102,8 +126,11 @@ export function start(ctx: StartContext): (() => void) | undefined {
     return d
   }
   const stop = network.observe(createWireWatch(detectorFor))
+  const reset = () => detectors.clear()
+  resetters.add(reset)
   return () => {
     stop()
+    resetters.delete(reset)
     attached.delete(network)
   }
 }
