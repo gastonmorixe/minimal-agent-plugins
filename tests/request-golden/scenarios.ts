@@ -35,6 +35,29 @@ export const SCENARIOS: Scenario[] = [
     run: async ({ turn }) => turn("read the big file"),
   },
   {
+    // M3c 4c case A: only the per-line clamp cuts text; all lines are shown.
+    name: "read-truncated-long-lines",
+    script: [{ tools: [{ name: "Read", input: { file_path: "long-lines.txt" } }] }],
+    setup: (cwd) => {
+      const lines = Array.from({ length: 40 }, (_, i) =>
+        i === 5 || i === 17 || i === 30 ? "W".repeat(20_000) : `short line ${i + 1}`,
+      )
+      // No trailing newline: the shown-line count then equals the file lines.
+      writeFileSync(join(cwd, "long-lines.txt"), lines.join("\n"))
+    },
+    run: async ({ turn }) => turn("read the file with long lines"),
+  },
+  {
+    // M3c 4c case B: the byte cut is inside line 8 (20 lines of 8000 chars).
+    name: "read-truncated-partial-line",
+    script: [{ tools: [{ name: "Read", input: { file_path: "partial.txt" } }] }],
+    setup: (cwd) => {
+      const lines = Array.from({ length: 20 }, (_, i) => `L${i + 1}:`.padEnd(8000, "x"))
+      writeFileSync(join(cwd, "partial.txt"), lines.join("\n"))
+    },
+    run: async ({ turn }) => turn("read the file with wide lines"),
+  },
+  {
     name: "blob-spill",
     blobStore: true,
     script: [{ tools: [bash("seq 1 30000")] }],
