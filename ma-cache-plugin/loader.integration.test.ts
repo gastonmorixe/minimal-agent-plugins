@@ -140,4 +140,74 @@ describe("cache plugin via the real PluginLoader and network client", () => {
       void server.stop(true)
     }
   })
+
+  it("a response that streams across target.didSwitch is not counted in the new history", async () => {
+    // Request 2 of the old credential starts. The server holds its body open,
+    // the switch comes, then the body ends. Turn 3 (new credential) is cold.
+    let n = 0
+    let release: () => void = () => {}
+    const held = new Promise<void>((r) => {
+      release = r
+    })
+    const sse = (read: number, create: number) =>
+      `event: message_start\ndata: {"type":"message_start","message":{"usage":{"cache_read_input_tokens":${read},"cache_creation_input_tokens":${create}}}}\n\n`
+    const server = Bun.serve({
+      port: 0,
+      fetch: () => {
+        n++
+        if (n === 1) return new Response(sse(5000, 100))
+        if (n === 3) return new Response(sse(0, 5000))
+        // n === 2: send the headers now, the usage only after the switch.
+        const enc = new TextEncoder()
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            async start(c) {
+              c.enqueue(enc.encode(": open\n\n"))
+              await held
+              c.enqueue(enc.encode(sse(5000, 100)))
+              c.close()
+            },
+          }),
+          { headers: { "content-type": "text/event-stream" } },
+        )
+      },
+    })
+    const events: LogEvent[] = []
+    const diagnostics = { sessionId: undefined, emit: (e: LogEvent) => events.push(e) }
+    const loader = await PluginLoader.load({
+      roots: { user: [isolatedRoot("root-inflight")] },
+      logger: () => {},
+      diagnostics: diagnostics as unknown as PluginLoaderOptions["diagnostics"],
+    })
+    const body = JSON.stringify({
+      model: "inflight-model",
+      system: [{ type: "text", text: "x".repeat(20_000), cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: "hi" }],
+    })
+    const request = () =>
+      defaultNetworkClient.request({
+        label: "messages.send",
+        method: "POST",
+        url: `http://127.0.0.1:${server.port}/v1/messages`,
+        headers: { "content-type": "application/json", "x-claude-code-session-id": "s-inflight" },
+        body,
+      })
+    try {
+      await loader.getPromptBlocksAsync()
+      await (await request()).text()
+      const second = await request()
+      const draining = second.text()
+      loader.bus().emit("target.didSwitch", {
+        from: { model: "inflight-model", credentialName: "a" },
+        to: { model: "inflight-model", credentialName: "b" },
+      })
+      await Bun.sleep(50)
+      release()
+      await draining
+      await (await request()).text()
+      expect(events.filter((e) => e.source === "cache.anomaly")).toEqual([])
+    } finally {
+      void server.stop(true)
+    }
+  })
 })

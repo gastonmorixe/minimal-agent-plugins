@@ -49,11 +49,16 @@ export interface WireObserver {
   onError?(req: WireRequest, error: unknown): void
 }
 
+/** The current history epoch. It moves on each reset of the histories. */
+export type HistoryEpoch = () => number
+
 /** Largest response body (bytes) kept for one request. Usage is at the start and the end. */
 const MAX_BODY_BYTES = 8 * 1024 * 1024
 
 interface Pending {
   snapshot: RequestContextSnapshot
+  /** The history epoch at request time (see {@link HistoryEpoch}). */
+  epoch: number
   /** Response is 2xx. Unknown until `onResponse`. */
   ok: boolean
   /** Raw response bytes. Decoded at the end. */
@@ -136,15 +141,22 @@ function requestSnapshot(req: WireRequest): RequestContextSnapshot | undefined {
  * @param detectorFor - The detector for a request and its facts. The plugin
  *   keeps one detector for each session, model and endpoint, so two web
  *   sessions do not mix their turns, and a model switch starts a new history.
+ * @param epoch - The history epoch. A reset of the histories moves it. A
+ *   response is counted only when the epoch did not move after its request
+ *   started: a response of the old target that ends after a switch is not
+ *   part of the new history. Default: one epoch, no resets.
  */
 export function createWireWatch(
   detectorFor: (req: WireRequest, snapshot: RequestContextSnapshot) => CacheAnomalyDetector,
+  epoch: HistoryEpoch = () => 0,
 ): WireObserver {
   const pending = new Map<string, Pending>()
   return {
     onRequest(req) {
       const snapshot = requestSnapshot(req)
-      if (snapshot) pending.set(req.id, { snapshot, ok: false, chunks: [], size: 0 })
+      if (snapshot) {
+        pending.set(req.id, { snapshot, epoch: epoch(), ok: false, chunks: [], size: 0 })
+      }
     },
     onResponse(req, res) {
       const p = pending.get(req.id)
@@ -169,6 +181,9 @@ export function createWireWatch(
       const p = pending.get(req.id)
       pending.delete(req.id)
       if (!p?.ok || p.size === 0) return
+      // The histories were reset while this request was in flight (a target
+      // switch). Its usage belongs to the old target: drop it.
+      if (p.epoch !== epoch()) return
       const usage = extractUsage(decodeBody(p.chunks, p.size))
       // No usage: an aborted or unknown response. It is not a cache fact.
       if (!usage) return

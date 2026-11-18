@@ -355,3 +355,43 @@ describe("target.didSwitch reset", () => {
     expect(resetAllDetectors()).toBe(before - 1)
   })
 })
+
+describe("reset while a response is in flight", () => {
+  /** Start a request, then stream its usage only when `finish` is called. */
+  function inFlight(w: WireObserver, id: string, read: number, create: number) {
+    const req: WireRequest = {
+      id,
+      method: "POST",
+      url: "https://api.example.test/v1/messages",
+      headers: { "x-claude-code-session-id": "s1" },
+      body: JSON.stringify({ ...MARKED, model: "model-a" }),
+    }
+    w.onRequest?.(req)
+    w.onResponse?.(req, { status: 200, headers: {} })
+    return () => {
+      w.onChunk?.(req, new TextEncoder().encode(usageSse(read, create)))
+      w.onEnd?.(req)
+    }
+  }
+
+  it("a response of the old target that ends after the reset is not counted", () => {
+    let observer: WireObserver | undefined
+    const sink = recorder()
+    const stop = start({
+      log: sink,
+      host: { network: { observe: (o: WireObserver) => ((observer = o), () => {}) } },
+    })
+    if (!observer || !stop) throw new Error("no observer")
+    const w = observer
+    // Old credential: a warm cache that also writes a little.
+    inFlight(w, "a1", 5000, 100)()
+    // Request 2 of the old credential starts, then the switch comes mid-stream.
+    const finishOld = inFlight(w, "a2", 5000, 100)
+    onTargetSwitch({ event: "target.didSwitch", payload: {} })
+    finishOld()
+    // First turn on the new credential: a cold cache (0 read, a write). Correct.
+    inFlight(w, "b1", 0, 5000)()
+    expect(sink.warnings).toEqual([])
+    stop()
+  })
+})

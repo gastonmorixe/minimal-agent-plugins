@@ -125,8 +125,14 @@ export function start(ctx: StartContext): (() => void) | undefined {
     detectors.set(key, d)
     return d
   }
-  const stop = network.observe(createWireWatch(detectorFor))
-  const reset = () => detectors.clear()
+  // Moves on each reset, so a response that was in flight during the reset
+  // is not counted in the new history (createWireWatch drops it).
+  let epoch = 0
+  const stop = network.observe(createWireWatch(detectorFor, () => epoch))
+  const reset = () => {
+    epoch++
+    detectors.clear()
+  }
   resetters.add(reset)
   return () => {
     stop()
