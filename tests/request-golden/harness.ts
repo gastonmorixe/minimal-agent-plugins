@@ -167,12 +167,41 @@ const OUTPUT_CONFIG_FIELDS = [
   "thinking",
 ] as const
 
-function pick(opts: Record<string, unknown>): Record<string, unknown> {
+/**
+ * Internal tool_result keys. The encoders never send them on the wire, but the
+ * capture copies the canonical messages before the encoder runs. Drop them so
+ * the goldens record only wire-relevant data (leader decision L1).
+ */
+const TOOL_RESULT_INTERNAL_KEYS = ["outcome", "sideband"] as const
+
+function stripToolResultInternal(block: unknown): void {
+  if (!block || typeof block !== "object" || Array.isArray(block)) return
+  const b = block as Record<string, unknown>
+  if (b.type !== "tool_result") return
+  for (const k of TOOL_RESULT_INTERNAL_KEYS) delete b[k]
+}
+
+/** Remove the internal keys from tool_result blocks only. Other blocks keep all keys. */
+function stripInternalFromMessages(messages: unknown): void {
+  if (!Array.isArray(messages)) return
+  for (const msg of messages) {
+    stripToolResultInternal(msg)
+    if (msg && typeof msg === "object" && !Array.isArray(msg)) {
+      const content = (msg as Record<string, unknown>).content
+      if (Array.isArray(content)) for (const block of content) stripToolResultInternal(block)
+    }
+  }
+}
+
+/** Copy the captured fields of one send call (exported for the harness test). */
+export function pick(opts: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const k of [...CAPTURED_FIELDS, ...OUTPUT_CONFIG_FIELDS]) {
     if (opts[k] !== undefined) out[k] = opts[k]
   }
-  return JSON.parse(JSON.stringify(out))
+  const copy = JSON.parse(JSON.stringify(out)) as Record<string, unknown>
+  stripInternalFromMessages(copy.messages)
+  return copy
 }
 
 function scriptedSend(
