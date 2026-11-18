@@ -22,6 +22,17 @@ import {
 } from "./lifetime.ts"
 import { DEFAULT_LOCK_STALE_MS, isLockStale, type Release, tryAcquireLock } from "./spawn-lock.ts"
 
+/** The first output of a child: its whole result, written in one call. */
+async function firstOutput(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = stream.getReader()
+  try {
+    const { value } = await reader.read()
+    return value ? new TextDecoder().decode(value) : ""
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 let dir: string
 beforeEach(() => {
   const base = process.env.CDP_TEST_DIR ?? tmpdir()
@@ -157,12 +168,15 @@ describe("spawn lock", () => {
         Bun.spawn([process.execPath, fixture, p, startAt], { stdout: "pipe", stderr: "ignore" }),
       )
       try {
-        const outs = await Promise.all(kids.map((k) => new Response(k.stdout).text()))
-        await Promise.all(kids.map((k) => k.exited))
+        // Each fixture prints its result, then stays alive and holds the lock.
+        // Read the result while both are alive, so a late start cannot break a
+        // lock whose holder already exited (a dead pid makes the lock stale).
+        const outs = await Promise.all(kids.map((k) => firstOutput(k.stdout)))
         expect(outs.filter((o) => o === "got").length).toBe(1)
         expect(outs.filter((o) => o === "none").length).toBe(1)
       } finally {
-        for (const k of kids) if (k.exitCode === null) k.kill("SIGKILL")
+        for (const k of kids) k.kill("SIGKILL")
+        await Promise.all(kids.map((k) => k.exited))
       }
     }
   }, 30_000)
