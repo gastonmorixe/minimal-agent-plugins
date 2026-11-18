@@ -4,6 +4,7 @@
  * @module llm/providers/cursor/bidi-tool-results
  */
 
+import { viewPersistedOutcome } from "@minimal-agent/core/plugin-api"
 import type {
   CanonicalMessage,
   ToolResultBlock,
@@ -126,8 +127,47 @@ export function stripMaAgentWireAnnotations(text: string): string {
   return out.replace(/\n{3,}/g, "\n\n").trim()
 }
 
+/** Start of a harness tag. The strip regex deletes it. */
+const MA_AGENT_TAG_PREFIX = "<ma::agent::"
+/** Start of a tasks tag. The strip regex converts it, so it stays (MA-39298). */
+const MA_AGENT_TASKS_PREFIX = "<ma::agent::tasks"
+
+/**
+ * Model-facing text of a tool_result from its stored `outcome`, or `undefined`
+ * when the old path must run. The text is the body, then the plain-text
+ * annotations (`[truncated: ...]`, `[note: ...]`) in append order with the join
+ * "\n\n". Tag annotations are not added: the strip regex would delete them.
+ *
+ * Returns `undefined` (old path) when:
+ * - the block has no `outcome`, or `outcome` does not fit the content;
+ * - the block has more than one non-empty text block. The stored offsets refer
+ *   to the FIRST text block only (D8 rule 1), and the old path joins all of them.
+ */
+function outcomeWireText(block: ToolResultBlock): string | undefined {
+  if (block.outcome === undefined) return undefined
+  let textBlocks = 0
+  for (const c of block.content) {
+    if (c.type === "text" && c.text) textBlocks++
+  }
+  if (textBlocks > 1) return undefined
+  const view = viewPersistedOutcome(block.content, block.outcome)
+  if (view === undefined) return undefined
+  let out = view.body
+  for (const a of view.annotations) {
+    if (a.text.startsWith(MA_AGENT_TAG_PREFIX) && !a.text.startsWith(MA_AGENT_TASKS_PREFIX)) {
+      continue
+    }
+    out += `\n\n${a.text}`
+  }
+  return out
+}
+
 /** Flatten tool_result content to a single string for McpSuccess.content. */
 export function toolResultToWireText(block: ToolResultBlock): string {
+  const fromOutcome = outcomeWireText(block)
+  if (fromOutcome !== undefined) {
+    return stripMaAgentWireAnnotations(fromOutcome) || "(empty tool result)"
+  }
   const parts: string[] = []
   for (const c of block.content) {
     if (c.type === "text" && c.text) parts.push(c.text)
