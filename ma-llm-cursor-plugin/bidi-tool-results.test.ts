@@ -4,6 +4,9 @@
 
 import { describe, expect, test } from "bun:test"
 
+import type { PersistedToolOutcome } from "@minimal-agent/core/plugin-api"
+import type { ToolResultBlock } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
+
 import {
   extractTrailingFollowUpUserText,
   extractTrailingToolResults,
@@ -174,5 +177,169 @@ describe("MA-39298 tasks payloads survive Cursor strip", () => {
     expect(out).toBe("hello")
     expect(out).not.toContain("mode-active")
     expect(out).not.toContain("raw-output")
+  })
+})
+
+describe("toolResultToWireText outcome parity (M3b-1)", () => {
+  const LT = String.fromCharCode(60)
+  const tag = (name: string, attrs: string, inner?: string): string =>
+    inner === undefined
+      ? `${LT}ma::agent::${name}${attrs} />`
+      : `${LT}ma::agent::${name}${attrs}>${inner}${LT}/ma::agent::${name}>`
+
+  const mode = tag("mode-active", ' id="ask" since="2026-07-29T10:14:16.090Z"')
+  const raw = tag("raw-output", ' path="/tmp/x.raw" size="5.8kB" sha256="abc"')
+  const preview = tag(
+    "output-preview",
+    ' shown="15" total="156" tool="Read" path="/tmp/x.raw"',
+    "hint",
+  )
+  const truncated = "[truncated: showing 100 of 900 lines]"
+  const streak = "[note: the same output came 3 times]"
+
+  interface Part {
+    kind: string
+    text: string
+    join?: string
+  }
+
+  /** Build the stored text and the record outcome by the D6 join ("\n\n" default). */
+  const build = (body: string, parts: Part[]): { text: string; outcome: PersistedToolOutcome } => {
+    let text = body
+    const annotations: PersistedToolOutcome["annotations"] = []
+    for (const p of parts) {
+      text += text.length === 0 && p.join === "" ? "" : "\n\n"
+      const start = text.length
+      text += p.text
+      annotations.push({ kind: p.kind, start, end: text.length })
+    }
+    return { text, outcome: { v: 1, bodyEnd: body.length, annotations } }
+  }
+
+  const blocks = (text: string, outcome: PersistedToolOutcome) => {
+    const without: ToolResultBlock = {
+      type: "tool_result",
+      toolUseId: "call_1",
+      content: [{ type: "text", text }],
+    }
+    return { without, withOutcome: { ...without, outcome } satisfies ToolResultBlock }
+  }
+
+  const cases: Array<{ name: string; body: string; parts: Part[]; expected: string }> = [
+    {
+      name: "four annotation kinds in one outcome",
+      body: "line 1\nline 2",
+      parts: [
+        { kind: "output-preview", text: preview },
+        { kind: "output-truncated", text: truncated },
+        { kind: "output-streak", text: streak },
+        { kind: "mode-active", text: mode },
+      ],
+      expected: `line 1\nline 2\n\n${truncated}\n\n${streak}`,
+    },
+    {
+      name: "empty body with only a stamp",
+      body: "",
+      parts: [{ kind: "mode-active", text: mode, join: "" }],
+      expected: "(empty tool result)",
+    },
+    {
+      name: "body that contains a note-like text itself",
+      body: "first\n\n[note: this is body text]\nlast",
+      parts: [{ kind: "mode-active", text: mode }],
+      expected: "first\n\n[note: this is body text]\nlast",
+    },
+    {
+      name: "truncated + blob",
+      body: "head of output",
+      parts: [
+        { kind: "raw-output", text: raw },
+        { kind: "output-truncated", text: truncated },
+      ],
+      expected: `head of output\n\n${truncated}`,
+    },
+    {
+      name: "tasks paired tag in the body",
+      body: tag(
+        "tasks",
+        ' action="add_many" result="added_many" total="1" done="0" doing="0" todo="1" canceled="0"',
+        "\n#ce6b5b  todo      Phase 1\n",
+      ),
+      parts: [{ kind: "mode-active", text: mode }],
+      expected:
+        "OK added_many action=add_many total=1 done=0 doing=0 todo=1 canceled=0\n#ce6b5b  todo      Phase 1",
+    },
+    {
+      name: "body with trailing newline and a tag between",
+      body: "a\n",
+      parts: [
+        { kind: "raw-output", text: raw },
+        { kind: "output-streak", text: streak },
+      ],
+      expected: `a\n\n${streak}`,
+    },
+  ]
+
+  for (const c of cases) {
+    test(`parity: ${c.name}`, () => {
+      const { text, outcome } = build(c.body, c.parts)
+      const { without, withOutcome } = blocks(text, outcome)
+      expect(toolResultToWireText(withOutcome)).toBe(toolResultToWireText(without))
+      expect(toolResultToWireText(withOutcome)).toBe(c.expected)
+    })
+  }
+
+  test("parity: media-only content gives the empty marker in both paths", () => {
+    const image = {
+      type: "image",
+      source: { type: "base64", mediaType: "image/png", data: "AAAA" },
+    } as unknown as ToolResultBlock["content"][number]
+    const outcome: PersistedToolOutcome = { v: 1, bodyEnd: 0, annotations: [] }
+    const without: ToolResultBlock = { type: "tool_result", toolUseId: "c", content: [image] }
+    const withOutcome: ToolResultBlock = { ...without, outcome }
+    expect(toolResultToWireText(withOutcome)).toBe("(empty tool result)")
+    expect(toolResultToWireText(without)).toBe("(empty tool result)")
+    // Empty text block + image: same.
+    const emptyText = { ...without, content: [{ type: "text", text: "" } as const, image] }
+    expect(toolResultToWireText({ ...emptyText, outcome })).toBe(toolResultToWireText(emptyText))
+  })
+
+  test("parity: an outcome that does not fit gives the old result", () => {
+    const { text, outcome } = build("body", [{ kind: "output-truncated", text: truncated }])
+    const { without } = blocks(text, outcome)
+    const tooBig: ToolResultBlock = {
+      ...without,
+      outcome: { ...outcome, bodyEnd: text.length + 50 },
+    }
+    expect(toolResultToWireText(tooBig)).toBe(toolResultToWireText(without))
+    // Text changed after the outcome was stored: offsets point to other text.
+    const changed: ToolResultBlock = {
+      ...without,
+      content: [{ type: "text", text: "short" }],
+      outcome,
+    }
+    const changedWithout: ToolResultBlock = { ...changed, outcome: undefined }
+    delete changedWithout.outcome
+    expect(toolResultToWireText(changed)).toBe(toolResultToWireText(changedWithout))
+    expect(toolResultToWireText(changed)).toBe("short")
+  })
+
+  test("parity: no outcome gives the old result", () => {
+    const { text } = build("plain", [{ kind: "mode-active", text: mode }])
+    const { without } = blocks(text, { v: 1, bodyEnd: 0, annotations: [] })
+    expect(toolResultToWireText(without)).toBe("plain")
+  })
+
+  test("a block with two text blocks uses the old path", () => {
+    const block: ToolResultBlock = {
+      type: "tool_result",
+      toolUseId: "c",
+      content: [
+        { type: "text", text: "one" },
+        { type: "text", text: "two" },
+      ],
+      outcome: { v: 1, bodyEnd: 3, annotations: [] },
+    }
+    expect(toolResultToWireText(block)).toBe("one\ntwo")
   })
 })
