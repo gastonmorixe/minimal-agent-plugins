@@ -60,7 +60,11 @@ export interface ChildControl {
   readonly keyId: string
 }
 
-/** The control env and key id for a new worker of this lead process. */
+/**
+ * The control env and key id for a new worker of this lead process.
+ *
+ * @throws Error when `childSid` is not a plain id (see core `controlPathFor`)
+ */
 export function childControl(sessionsDir: string, childSid: string): ChildControl {
   const { secret } = state()
   return {
@@ -69,6 +73,25 @@ export function childControl(sessionsDir: string, childSid: string): ChildContro
       [ENV_TARGET_CONTROL_KEY]: deriveControlKey(secret, childSid),
     },
     keyId: controlKeyId(secret),
+  }
+}
+
+/**
+ * {@link childControl} for a spawn: a failure never stops the worker. The
+ * worker then starts with no control channel (it cannot follow a target
+ * switch), and `warn` gets one line with the cause. The line has no key.
+ */
+export function childControlOrNone(
+  sessionsDir: string,
+  childSid: string,
+  warn?: (message: string) => void,
+): ChildControl | null {
+  try {
+    return childControl(sessionsDir, childSid)
+  } catch (e) {
+    const cause = e instanceof Error ? e.message : String(e)
+    warn?.(`sub-agent starts with no target control channel: ${cause}`)
+    return null
   }
 }
 

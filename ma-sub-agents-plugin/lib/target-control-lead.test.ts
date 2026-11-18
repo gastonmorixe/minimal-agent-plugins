@@ -16,6 +16,7 @@ import {
 import {
   appendControlLine,
   childControl,
+  childControlOrNone,
   resetLeadControlForTests,
   writeSwitchLines,
 } from "./target-control-lead.ts"
@@ -62,6 +63,20 @@ describe("childControl", () => {
     expect(childControl(dir, "child-a").env[ENV_TARGET_CONTROL_KEY]).toBe(
       a.env[ENV_TARGET_CONTROL_KEY],
     )
+  })
+})
+
+describe("childControlOrNone", () => {
+  it("a bad worker id gives no control channel and one diagnostic, with no throw", () => {
+    const warnings: string[] = []
+    expect(childControlOrNone(dir, "../escape", (m) => warnings.push(m))).toBeNull()
+    expect(warnings).toEqual([
+      "sub-agent starts with no target control channel: target control: the worker id is not a plain id",
+    ])
+    expect(childControlOrNone(dir, "child-a", (m) => warnings.push(m))?.keyId).toMatch(
+      /^[0-9a-f]{16}$/,
+    )
+    expect(warnings).toHaveLength(1)
   })
 })
 
