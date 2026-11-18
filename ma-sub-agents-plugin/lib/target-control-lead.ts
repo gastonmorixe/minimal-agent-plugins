@@ -13,7 +13,15 @@
  */
 
 import { randomBytes } from "node:crypto"
-import { closeSync, constants, fstatSync, mkdirSync, openSync, writeSync } from "node:fs"
+import {
+  closeSync,
+  constants,
+  fchmodSync,
+  fstatSync,
+  mkdirSync,
+  openSync,
+  writeSync,
+} from "node:fs"
 import { dirname } from "node:path"
 
 import {
@@ -105,23 +113,33 @@ export interface SwitchLinesResult {
   readonly failed: number
 }
 
+// O_NOFOLLOW: a symlink at the path is an error, not a write to its target.
+// O_NONBLOCK: the open of a FIFO with no reader would block the lead. It fails with ENXIO.
+const APPEND_FLAGS =
+  constants.O_WRONLY |
+  constants.O_CREAT |
+  constants.O_APPEND |
+  constants.O_NOFOLLOW |
+  constants.O_NONBLOCK
+
 /**
- * Append one line to `path`. The file is made with mode 0600 at create, in
- * append mode, and a symlink at the path is refused. The path must be a
- * regular file of this user.
+ * Append one line to `path`. Any tool can put a file at the path first, so:
+ * the open does not block and does not follow a symlink, and the path must be
+ * a regular file of this user (checked on the open descriptor, before the
+ * write). The file gets mode 0600, also when it was there with a wider mode.
  *
  * @throws Error when the path is not a regular file of this user, or on an I/O error
  */
 export function appendControlLine(path: string, line: string): void {
   mkdirSync(dirname(path), { recursive: true })
-  const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | constants.O_NOFOLLOW
-  const fd = openSync(path, flags, 0o600)
+  const fd = openSync(path, APPEND_FLAGS, 0o600)
   try {
     const stat = fstatSync(fd)
     const uid = process.getuid?.()
     if (!stat.isFile() || (uid !== undefined && stat.uid !== uid)) {
       throw new Error("control file is not a regular file of this user")
     }
+    if ((stat.mode & 0o777) !== 0o600) fchmodSync(fd, 0o600)
     writeSync(fd, `${line}\n`)
   } finally {
     closeSync(fd)

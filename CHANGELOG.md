@@ -62,8 +62,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   credential or provider does not follow.
   - Each worker gets its own key at spawn (HMAC of a lead secret that is
     in memory only). A line needs a correct mac, the lead's session id and
-    a newer sequence number. It has no token, key or endpoint. The file is
-    made with mode 0600, and a symlink at its path is refused.
+    a newer sequence number. It has no token, key or endpoint.
+  - Any tool can put a file at the control path first. The lead's open
+    does not block and does not follow a symlink, and it writes only to a
+    regular file of this user, which gets mode 0600 (also a file that was
+    there with a wider mode). A FIFO, a symlink or a directory at the path
+    counts as a failed write for that worker; the other workers get their
+    line.
   - After a lead restart, the workers of the earlier lead process cannot
     be reached. The plugin says how many keep their old target.
   - Limit: this stops a one-step "append a line to this file" instruction.
