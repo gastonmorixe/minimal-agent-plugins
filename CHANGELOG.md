@@ -8,6 +8,14 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-18: **A session id in a plugin comes from the handler context first**
+  (`ma-tasks-plugin`, `ma-base-prompt-plugin`). The Task tool read the session
+  id from `ctx.env.MINIMAL_AGENT_SESSION_ID` only; it now takes
+  `ctx.agent.sessionId` first, so each web session keeps its own board. The
+  MA-02 line no longer says that every session has a transcript file: a host
+  may keep the session in memory, and `SessionInfo` gives the id. The request
+  goldens and the core system-prompt byte fixtures change in that line only.
+
 - 2026-11-18: **SessionInfo and SessionHistory read the calling session, not
   the process** (`ma-session-info-plugin`, `ma-session-history-plugin`). In
   the web host (many sessions in one process) SessionInfo showed
