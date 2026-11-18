@@ -8,6 +8,44 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-18: **The cache plugin names the cause of a cache miss and no
+  longer says "evicted" or "prefix likely changed" by guess** (`353ed8f`,
+  `ma-cache-plugin`). The detector takes one `CacheFacts` record for each
+  request, built from the wire bytes: the marker count, the longest marker
+  `ttl` (no `ttl` is 5 minutes), the prefix size, the start and end times, the
+  usage counts, and the server's own reason
+  (`message.diagnostics.cache_miss_reason`, sent with the
+  `cache-diagnosis-2026-04-07` beta). Codes: `markers_ignored_cold` and
+  `below_min_block_size` as before; `ttl_expired` at info level (a read of 0
+  after a gap above the TTL, so an idle time is not a warning);
+  `prefix_changed` at warning level (a read of 0 inside the TTL, or a server
+  miss larger than the read), with the server's reason in the text. The
+  codes `no_read_after_write` and `cache_evicted` are removed: the first said
+  "prefix changed" for a 485 s expiry, and the second said "evicted" for a
+  0.8 s miss. A run of misses warns again at 3, 10, 30, 100, ... misses with
+  the tokens written since the first, where before one warning per code hid
+  an 11-request run (about 2.1M tokens written). The turn number keeps
+  counting (it stopped at 4). Replay of 79 recorded session folders: every
+  warning was a real miss inside the TTL with a server reason. Not changed:
+  the reset on `target.didSwitch` (only the CLI sends it), so the web host
+  can still show one false `prefix_changed` after a credential or effort
+  switch. A later host event with the same facts can replace the wire
+  watcher: `research/team/walter/2026-11-18-cache-anomaly-per-provider.md`.
+- 2026-11-18: **`ma-acp-plugin` sends no notice for a diagnostic below warning
+  severity** (`353ed8f`, `diag-notices.ts`), so the cache plugin's info
+  `ttl_expired` stays out of the editor. The notice titles follow the new
+  cache codes (`prefix_changed`: "Prompt cache not read").
+- 2026-11-18: **Anthropic models declare whether they keep the thinking of
+  earlier turns, and the opencode go/zen Anthropic builders apply the cap of 4
+  `cache_control` markers** (`5ef298f`, Matthew). Part of the prompt-cache fix
+  in core (`00b1ac1`), behind flags that are OFF by default, so requests are
+  unchanged.
+- 2026-11-18: **A replay harness and six scrubbed worker fixtures for the
+  sub-agent lane view** (`0d6d56c`, `ma-sub-agents-plugin/lib/lane`, Frank).
+  Test code only. The fixture scrub test matches the user name only as a path
+  segment or before an `@` (`5061470`), because on a CI runner the user is
+  `runner`, an ordinary word in four fixtures.
+
 - 2026-11-18: **`ma-acp-plugin` sends the structured data of a tool result as
   `rawOutput`.** The last `tool_call_update` of a call now carries
   `rawOutput` when the tool outcome has `data` (core `tool_result` wire event,
@@ -33,6 +71,15 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   bodies) and a reviewer fuzz of 300000 cases found no difference.
 
 ### Fixed
+
+- 2026-11-18: **`ma-chrome-cdp-plugin` answers 503, not 400, when Chrome quits
+  during a request, and the fetch watchdog test no longer uses a fake process
+  id that could signal a real process group** (Frank).
+- 2026-11-18: **OpenAI tools are sent as strict, with nullable optional
+  properties** (`8de6c35`, Donald). The nulls of unused optional fields are
+  dropped before the tool runs, so the model no longer invents `""`, `offset`
+  or `timeout` values. `Task` `id`, `parent`, `after` and `order` accept a
+  string or an integer. 53 request goldens change only in those four Task keys.
 
 - 2026-11-18: **A target switch is visible to the model and in the
   footer.** Reported by the owner: after `/provider` to an other credential,
