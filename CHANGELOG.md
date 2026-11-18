@@ -39,6 +39,11 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   (`@minimal-agent/core/plugin-api/types/synthetic-text`). New guard
   `scripts/no-sibling-core-imports.test.ts` rejects the old form. No plugin
   code changes, only tests.
+- 2026-11-18: **The STE audit finds core in a standalone clone.** The audit
+  (`bun run ste:gate` and `tests/ste/`) read the core text files only from a
+  checkout next to this repo, and stopped when it was missing. It now uses
+  that checkout when it is there, else the installed `@minimal-agent/core`.
+  In the umbrella monorepo the two are the same directory.
 
 - 2026-11-18: **SessionInfo and SessionHistory read the calling session, not
   the process** (`ma-session-info-plugin`, `ma-session-history-plugin`). In

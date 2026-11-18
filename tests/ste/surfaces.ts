@@ -65,8 +65,19 @@ export function roleOf(s: Pick<Surface, "file" | "locator" | "kind">): Role {
 /** Default plugins root: two levels up from this file. */
 export const PLUGINS_ROOT = resolve(import.meta.dir, "..", "..")
 
-/** A sibling checkout of core is found next to the plugins root. */
-export const CORE_ROOT = resolve(PLUGINS_ROOT, "..", "minimal-agent-core")
+/** A checkout of core next to the plugins root (the umbrella monorepo layout). */
+const SIBLING_CORE = resolve(PLUGINS_ROOT, "..", "minimal-agent-core")
+
+/** The core that this repo installs. A standalone clone has only this one, at the pinned commit. */
+const INSTALLED_CORE = resolve(PLUGINS_ROOT, "node_modules", "@minimal-agent", "core")
+
+/**
+ * The core tree to audit: the sibling checkout when it is there, else the
+ * installed package. In the umbrella monorepo the two are the same directory.
+ * With neither, this is the sibling path, and `coreSurfaces` reports it.
+ */
+export const CORE_ROOT =
+  existsSync(SIBLING_CORE) || !existsSync(INSTALLED_CORE) ? SIBLING_CORE : INSTALLED_CORE
 
 const SKIP_DIRS = new Set(["node_modules", "tmp", ".tmp", "dist", "build", "goldens"])
 
@@ -403,11 +414,12 @@ const CORE_TEXT_FILES = [
 /**
  * Collect the model-facing surfaces of a core checkout.
  *
- * A missing core checkout is a failure, not an empty list: a CI run with only
- * the plugins repo would otherwise audit nothing and stay green. Set
- * `STE_ALLOW_MISSING_CORE=1` to opt out on purpose (a plugins-only checkout).
+ * A missing core tree is a failure, not an empty list: a run with no core
+ * would otherwise audit nothing and stay green. A plugins-only clone still has
+ * the installed core after `bun install`, so this fails only before an
+ * install. Set `STE_ALLOW_MISSING_CORE=1` to opt out on purpose.
  *
- * @param coreRoot - Core repo root. Defaults to the sibling folder.
+ * @param coreRoot - Core repo root. Defaults to `CORE_ROOT`.
  * @returns Surfaces with `file` prefixed by `core/`.
  */
 export function coreSurfaces(coreRoot: string = CORE_ROOT): Surface[] {
@@ -415,7 +427,7 @@ export function coreSurfaces(coreRoot: string = CORE_ROOT): Surface[] {
   if (!present) {
     if (process.env.STE_ALLOW_MISSING_CORE === "1") return []
     throw new Error(
-      `STE: no core checkout at ${coreRoot}. Set MA_PLUGINS_DIR or clone minimal-agent-core next to the plugins repo. Set STE_ALLOW_MISSING_CORE=1 to audit plugins only.`,
+      `STE: no core at ${coreRoot} and no installed @minimal-agent/core. Run bun install, or clone minimal-agent-core next to the plugins repo. Set STE_ALLOW_MISSING_CORE=1 to audit plugins only.`,
     )
   }
   const out: Surface[] = []
