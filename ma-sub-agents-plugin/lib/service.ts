@@ -27,7 +27,7 @@ import {
 } from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { type SubagentStore } from "./store.ts"
-import { childControl } from "./target-control-lead.ts"
+import { childControlOrNone } from "./target-control-lead.ts"
 import { clampTools } from "./tool-clamp.ts"
 import {
   err,
@@ -388,7 +388,7 @@ export async function spawnAgent(
   const id = deps.store.nextId()
   const resultPath = `${deps.sessionsDir}/${childSid}.result.json`
   // The worker's key for the target control channel (a switch of the lead reaches it).
-  const control = childControl(deps.sessionsDir, childSid)
+  const control = childControlOrNone(deps.sessionsDir, childSid, deps.warn)
   const logPath = `${deps.sessionsDir}/${childSid}.log`
   const streamPath = streamPathFor(deps.sessionsDir, childSid)
 
@@ -446,7 +446,7 @@ export async function spawnAgent(
     // The contract rides to the worker so its `ReportResult` handler can write
     // the files (`deliverables`) and refuse to finish while one is missing.
     extraEnv: {
-      ...control.env,
+      ...control?.env,
       [ENV_RESULT_PATH]: resultPath,
       ...(expectArtifacts ? { [ENV_EXPECT_ARTIFACTS]: JSON.stringify(expectArtifacts) } : {}),
     },
@@ -486,7 +486,7 @@ export async function spawnAgent(
     }),
     ...(clamp.lowered ? { modeLowered: { from: roleMode, to: mode } } : {}),
     ...(profileChoice?.derivedFrom ? { profileProvider: profileChoice.derivedFrom } : {}),
-    controlKeyId: control.keyId,
+    ...(control ? { controlKeyId: control.keyId } : {}),
   }
   deps.store.upsert(record)
   return ok(record)
