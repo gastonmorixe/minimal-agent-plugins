@@ -109,6 +109,17 @@ describe("formatSessionInfo", () => {
     expect(out).not.toContain("Uptime:")
   })
 
+  it("names the credential on its own line, after the model (a credential switch keeps the model)", () => {
+    const out = formatSessionInfo(base({ credentialName: "anthropic-plan-oauth-3" }))
+    const lines = out.split("\n")
+    const model = lines.findIndex((l) => l.startsWith("Model:"))
+    expect(lines[model + 1]).toBe("Credential: anthropic-plan-oauth-3")
+  })
+
+  it("has no Credential line when the host reports none (the provider default)", () => {
+    expect(formatSessionInfo(base())).not.toContain("Credential:")
+  })
+
   it("drops the effort/reasoning tail cleanly when unset", () => {
     const out = formatSessionInfo(base({ effort: undefined, reasoning: [], fast: false }))
     expect(out).toContain("Model: Opus 4.8 (claude-opus-4-8[1m]) · anthropic\n")

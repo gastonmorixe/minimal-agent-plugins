@@ -93,6 +93,21 @@ function num(kind: string, facts: SyntheticFacts, key: string): number {
   return v
 }
 
+/**
+ * An OPTIONAL boolean fact. `undefined` when the fact is absent or not a
+ * boolean (an old core does not send the M3c facts). Never throws.
+ */
+function optBool(facts: SyntheticFacts, key: string): boolean | undefined {
+  const v = facts[key]
+  return typeof v === "boolean" ? v : undefined
+}
+
+/** An OPTIONAL number fact. `undefined` when absent or not a number. Never throws. */
+function optNum(facts: SyntheticFacts, key: string): number | undefined {
+  const v = facts[key]
+  return typeof v === "number" ? v : undefined
+}
+
 // --- tool_output.preview (core src/prompts/runtime/output-preview*.md) ---
 
 const PREVIEW_HINT =
@@ -134,12 +149,65 @@ function truncationHint(tool: string, cutLine: number, maxToolOutputBytes: numbe
   }
 }
 
+/** The Read notice when the harness does not know the total lines (no offset hint, no line count). */
+function readUnknownTotalNotice(shownBytes: string, totalBytes: string): string {
+  return `[truncated: shown ${shownBytes} of ${totalBytes} bytes. The harness cut the output; the total number of lines is not known. Use Grep with a specific pattern, or Bash with sed -n/cut -c, to see the part that you need.]`
+}
+
+/**
+ * The Read notice when only the per-line clamp cut text: every line is shown,
+ * and no byte cut is inside a line.
+ */
+function readLongLinesNotice(
+  shownBytes: string,
+  totalBytes: string,
+  shownLines: string,
+  longLines: number,
+  lineCharCap: number,
+): string {
+  const cut = longLines === 1 ? "1 long line" : `${longLines} long lines`
+  return `[truncated: shown ${shownBytes} of ${totalBytes} bytes. All ${shownLines} lines are shown, but the harness cut ${cut} at about ${lineCharCap} characters (see "...(+Nch)"). Read cannot show the rest of a line. Use Grep with a specific pattern, or Bash with cut -c on that line.]`
+}
+
 function truncated(facts: SyntheticFacts): string {
   const k = "tool_output.truncated"
   const shownBytes = str(k, facts, "shownBytes")
   const cutLine = num(k, facts, "cutLine")
-  const hint = truncationHint(str(k, facts, "tool"), cutLine, num(k, facts, "maxToolOutputBytes"))
-  return `[truncated: shown ${shownBytes} of ${str(k, facts, "totalBytes")} bytes, ${str(k, facts, "shownLines")}/${str(k, facts, "totalLines")} lines, cut at byte ${shownBytes}, line ${cutLine}. ${hint}]`
+  const tool = str(k, facts, "tool")
+  const totalBytes = str(k, facts, "totalBytes")
+  const shownLines = str(k, facts, "shownLines")
+  // The M3c facts are optional: an old core does not send them, and then the
+  // text below is the old text byte for byte. Read only (other tools keep their text).
+  if (tool === "Read") {
+    // 1. Unknown total: no offset hint, no made-up line count.
+    if (optBool(facts, "totalLinesKnown") === false) {
+      return readUnknownTotalNotice(shownBytes, totalBytes)
+    }
+    // 2. Only the per-line clamp cut text: all lines are shown.
+    const longLines = optNum(facts, "longLines")
+    const lineCharCap = optNum(facts, "lineCharCap")
+    const nextOffset = optNum(facts, "nextOffset")
+    const totalLines = optNum(facts, "totalLines")
+    if (
+      optBool(facts, "cutMidLine") === true &&
+      optBool(facts, "lastLinePartial") === false &&
+      longLines !== undefined &&
+      longLines > 0 &&
+      lineCharCap !== undefined &&
+      nextOffset !== undefined &&
+      totalLines !== undefined &&
+      nextOffset >= totalLines
+    ) {
+      return readLongLinesNotice(shownBytes, totalBytes, shownLines, longLines, lineCharCap)
+    }
+    // 3. The byte cut is inside a line: continue at the start of that line.
+    if (optBool(facts, "lastLinePartial") === true && nextOffset !== undefined) {
+      const hint = `line ${cutLine} is partial. To continue, call Read with offset=${nextOffset}, which shows that line again from its start. Set limit if necessary.`
+      return `[truncated: shown ${shownBytes} of ${totalBytes} bytes, ${shownLines}/${str(k, facts, "totalLines")} lines, cut at byte ${shownBytes}, line ${cutLine}. ${hint}]`
+    }
+  }
+  const hint = truncationHint(tool, cutLine, num(k, facts, "maxToolOutputBytes"))
+  return `[truncated: shown ${shownBytes} of ${totalBytes} bytes, ${shownLines}/${str(k, facts, "totalLines")} lines, cut at byte ${shownBytes}, line ${cutLine}. ${hint}]`
 }
 
 // --- tool_output.streak (core streakNote) ---

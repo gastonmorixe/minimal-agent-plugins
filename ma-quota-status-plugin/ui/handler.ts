@@ -81,7 +81,10 @@ function resolveEffort(): string | undefined {
   const v = process.env.MINIMAL_AGENT_EFFORT
   return v && v !== "" ? v : undefined
 }
-const EFFORT = resolveEffort()
+// Read at each draw, not once at load: `/effort`, `/model` and `/provider`
+// change the live effort during the session, and the host writes the new
+// value to the env (cli `startup/live-target.ts`). A value read once at load
+// kept the boot effort in the footer for the whole session.
 
 /**
  * Shortened session-id anchor for the trailing footer segment.
@@ -201,7 +204,7 @@ export default async function handle(ctx: LiveAreaHandlerContext): Promise<strin
         cols: usableCols,
         sid: SID,
         name: AGENT_NAME,
-        effort: EFFORT,
+        effort: resolveEffort(),
         modelId: currentModelId(),
       },
       ctx.abort,
@@ -218,7 +221,7 @@ export default async function handle(ctx: LiveAreaHandlerContext): Promise<strin
     showOverage: SHOW_OVERAGE,
     overage: info.quota?.overage,
     contextWindow: info.contextWindow,
-    effort: EFFORT,
+    effort: resolveEffort(),
     modelLabel: info.modelLabel,
     sid: SID,
     name: AGENT_NAME,
