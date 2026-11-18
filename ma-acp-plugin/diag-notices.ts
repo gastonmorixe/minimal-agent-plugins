@@ -9,6 +9,9 @@
  *
  * Rules:
  * - Only a code in {@link DIAG_NOTICES} gives a notice. All other codes are dropped.
+ * - A diagnostic below warning severity (notice, info, debug) gives no
+ *   notice. For example the cache plugin's `ttl_expired` is info: an expected
+ *   miss after an idle time, not a problem for the user.
  * - A notice key (the code plus an optional sub-key from the diagnostic data)
  *   gives one notice for the life of the connection. So a cache anomaly that
  *   comes back each turn does not flood the editor.
@@ -24,6 +27,8 @@ import type { AcpNotice } from "./notices.ts"
 export interface DiagLike {
   readonly code: string
   readonly message: string
+  /** Syslog severity (0 emergency ... 4 warning ... 7 debug). Absent: treated as a warning. */
+  readonly severity?: number
   readonly data?: Readonly<Record<string, string | number | boolean>>
 }
 
@@ -39,9 +44,11 @@ interface DiagNoticeRule {
 const CACHE_TITLES: Readonly<Record<string, string>> = {
   markers_ignored_cold: "Prompt cache not used",
   below_min_block_size: "Prompt too short to cache",
-  no_read_after_write: "Prompt cache not read",
-  cache_evicted: "Prompt cache lost",
+  prefix_changed: "Prompt cache not read",
 }
+
+/** Syslog warning severity. A larger number is less severe. */
+const WARNING_SEVERITY = 4
 
 /** Diagnostic codes that become notices. */
 export const DIAG_NOTICES: Readonly<Record<string, DiagNoticeRule>> = {
@@ -68,6 +75,7 @@ export function createDiagNoticer(): { notice(diag: DiagLike): AcpNotice | undef
     notice(diag) {
       const rule = DIAG_NOTICES[diag.code]
       if (!rule) return undefined
+      if (diag.severity !== undefined && diag.severity > WARNING_SEVERITY) return undefined
       const sub = rule.subKey ? String(diag.data?.[rule.subKey] ?? "") : ""
       const key = `${diag.code}\u0000${sub}`
       if (sent.has(key)) return undefined

@@ -21,7 +21,7 @@
  * @module cache/start
  */
 
-import type { RequestContextSnapshot } from "./detector.ts"
+import type { RequestFacts } from "./detector.ts"
 import { CacheAnomalyDetector, type CacheWarnSink } from "./detector.ts"
 import { createWireWatch, type WireObserver, type WireRequest } from "./wire-watch.ts"
 
@@ -79,10 +79,9 @@ export function sessionKeyOf(req: WireRequest): string {
  * A cache is for one model on one endpoint. A switch of model, provider or
  * credential starts a cold cache, and the first turn after it reads 0. That
  * is correct, not a problem. With one key for each target, the history of
- * the old target does not make a false `no_read_after_write` or
- * `cache_evicted` warning.
+ * the old target does not make a false `prefix_changed` warning.
  */
-export function detectorKeyOf(req: WireRequest, snapshot: RequestContextSnapshot): string {
+export function detectorKeyOf(req: WireRequest, snapshot: RequestFacts): string {
   let origin = ""
   try {
     origin = new URL(req.url).origin
@@ -104,10 +103,7 @@ export function start(ctx: StartContext): (() => void) | undefined {
   attached.add(network)
   const models = ctx.host?.models
   const detectors = new Map<string, CacheAnomalyDetector>()
-  const detectorFor = (
-    req: WireRequest,
-    snapshot: RequestContextSnapshot,
-  ): CacheAnomalyDetector => {
+  const detectorFor = (req: WireRequest, snapshot: RequestFacts): CacheAnomalyDetector => {
     const key = detectorKeyOf(req, snapshot)
     let d = detectors.get(key)
     // Delete and set again: the map order is the use order (least recent first).

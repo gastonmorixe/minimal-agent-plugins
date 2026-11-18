@@ -775,8 +775,8 @@ describe("sampling (contract 5.f)", () => {
     }
     const evicted = {
       code: "cache.anomaly",
-      message: "cache: evicted",
-      data: { code: "cache_evicted" },
+      message: "cache: turn 3 read 0 cached tokens.",
+      data: { code: "prefix_changed" },
     }
     rt.turns.push({ events: [], outcome: "completed", diags: [cold, cold, { code: "other.code" }] })
     rt.turns.push({ events: [], outcome: "completed", diags: [cold, evicted] })
@@ -797,8 +797,8 @@ describe("sampling (contract 5.f)", () => {
       {
         sessionUpdate: "notice",
         severity: "warning",
-        title: "Prompt cache lost",
-        description: "cache: evicted",
+        title: "Prompt cache not read",
+        description: "cache: turn 3 read 0 cached tokens.",
       },
     ])
     h.end()
