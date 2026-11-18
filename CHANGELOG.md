@@ -8,6 +8,23 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-18: **A target switch is visible to the model and in the
+  footer.** Reported by Gaston: after `/provider` to an other credential,
+  the model answered "nothing changed", and the footer showed an old effort.
+  - `ma-session-info-plugin`: the model now gets one line at its next turn
+    (`turn.willStart` context) that names each value that a switch changed
+    (`/provider`, `/credential-name`, `/model`, `/effort`; event
+    `target.didSwitch`). Several switches before one turn give one line,
+    from the first to the last target; a switch there and back gives none.
+    The line has names only (credential name, provider id, model id,
+    effort), no secret.
+  - `SessionInfo` shows the credential of the live target on a
+    `Credential:` line, and takes the effort from the live target
+    (`ctx.queryTarget`) instead of the env copy.
+  - `ma-quota-status-plugin`: the footer reads the effort at each draw (it
+    read it once at load, so it kept the boot effort), and it draws again on
+    `target.didSwitch` (it waited for the next model response).
+
 - 2026-11-15: **`ma-llm-openai-plugin` removes citation markers from the
   answer text.** OpenAI models write a marker made of the private-use
   characters U+E200, U+E202 and U+E201 around `cite` and references like

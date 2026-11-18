@@ -170,10 +170,33 @@ export function estimateCostUSD(
   )
 }
 
+/** The live target as the host reports it (`ctx.queryTarget`). Read structurally. */
+interface LiveTarget {
+  credentialName?: string
+  providerId?: string
+  model: string
+  effort?: string
+}
+
+/**
+ * The live target of the session, from the host's `queryTarget` seam, or
+ * `undefined` on a host that does not report it. A target switch
+ * (`/provider`, `/model`, `/effort`) changes it during the session.
+ */
+function liveTarget(ctx: TUIContext): LiveTarget | undefined {
+  const seam = (ctx as { queryTarget?: () => LiveTarget | undefined }).queryTarget
+  try {
+    return seam?.()
+  } catch {
+    return undefined
+  }
+}
+
 /** Collect a full live snapshot of the current session/context state. */
 export async function gatherSessionInfo(ctx: TUIContext): Promise<SessionInfoSnapshot> {
   const nowMs = Date.now()
   const bits = resolveModelBits(ctx)
+  const target = liveTarget(ctx)
 
   // Session token counters via the session-info:read capability (the same
   // ctx.host seam this module already uses for `ctx.host.models`), not a
@@ -227,7 +250,9 @@ export async function gatherSessionInfo(ctx: TUIContext): Promise<SessionInfoSna
     modelId: bits.modelId,
     modelLabel: bits.modelLabel,
     providerId: bits.providerId,
-    effort: process.env.MINIMAL_AGENT_EFFORT || undefined,
+    // The live target wins: the env is a copy that a host writes after a switch.
+    ...(target?.credentialName ? { credentialName: target.credentialName } : {}),
+    effort: target ? target.effort : process.env.MINIMAL_AGENT_EFFORT || undefined,
     fast: resolveFastState(ctx, bits.modelId),
     reasoning: bits.reasoning,
     contextSize: tok.contextSize,
