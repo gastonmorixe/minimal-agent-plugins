@@ -51,6 +51,10 @@
         {
           "content": [
             {
+              "cache_control": {
+                "ttl": "5m",
+                "type": "ephemeral"
+              },
               "content": "",
               "is_error": false,
               "tool_use_id": "call-2-0",

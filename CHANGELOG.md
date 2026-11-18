@@ -6,6 +6,18 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Changed
+
+- 2026-11-18: **Request goldens: the prompt-cache anchor marker is on by
+  default.** Core now sends the anchor marker unless a layer turns it off
+  (`--no-cache-anchor`, `MINIMAL_AGENT_CACHE_ANCHOR=0`, or config
+  `"cacheAnchor": false`). 11 request goldens change only by one added
+  `cache_control` on the last block of the message before the latest
+  assistant turn. The wire cap of 4 markers still drops that anchor when the
+  system prompt has 3 markers. `cache-anchor-append-only.test.ts` now checks
+  the default (anchor on) and `cacheAnchor: false` (one marker).
+  `thinkingHistory` is unchanged and stays `strip` by default.
+
 ### Fixed
 
 - 2026-11-18: **A session id in a plugin comes from the handler context first**
