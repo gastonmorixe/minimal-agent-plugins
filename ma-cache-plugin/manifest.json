@@ -2,7 +2,7 @@
   "id": "cache",
   "name": "Cache",
   "version": "0.1.0",
-  "description": "Tells you when the prompt cache did not engage. The plugin monitors each provider request and its response. It looks for a request with cache marks and a response that did not read the cache. Then it sends one diagnostic with the source `cache.anomaly`. It sends one diagnostic for each type of cache error, and adds no text to the system prompt. The limits are in the `README.md` file, with the `target.didSwitch` event.",
+  "description": "Tells you each time that the prompt cache did not engage. The plugin monitors each provider request and its response. It looks for a response that did not read the cache of the turn before. Then it sends one `cache.didBreak` event and one diagnostic with the source `cache.break`, and adds no text to the system prompt. It also sends a diagnostic with the source `cache.anomaly` for the cause, not each time. The limits are in the `README.md` file, with the `target.didSwitch` event.",
   "capabilities": ["network:observe", "models:read"],
   "headless": {
     "promptFragments": [

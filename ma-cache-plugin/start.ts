@@ -13,22 +13,40 @@
  * {@link resetAllDetectors}. The host sends that event only in a process with
  * one session (TUI, ACP), so a reset of all detectors is correct there.
  *
- * Diagnostics: each warning goes through `ctx.log.warn`, and each info
- * diagnostic (`server_miss`, `ttl_expired`) through `ctx.log.info`, the
- * plugin logger of the loader. Its source is `cache.anomaly`. The loader
- * routes it to the session of the run that made the request, so each
- * frontend shows it in its own way (the TUI and ACP show warnings only).
+ * Diagnostics: each warning (`prefix_changed`, `server_miss`, the cold
+ * codes) goes through `ctx.log.warn`, and each info diagnostic
+ * (`ttl_expired`) through `ctx.log.info`, the plugin logger of the loader.
+ * Its source is `cache.anomaly`. The loader routes it to the session of the
+ * run that made the request, so each frontend shows it in its own way (the
+ * TUI shows warnings only).
+ *
+ * Break events: every cache break also goes to the bus as `cache.didBreak`
+ * through `ctx.emit` (a {@link CacheBreakPayload}), with the session, model
+ * and origin of its history. A frontend shows breaks from this event, not
+ * from the log level. A host without `ctx.emit` drops the events.
+ *
+ * Break diagnostic: every break also writes one diagnostic with source
+ * `cache.break` at notice level (`ctx.log.notice`), with the payload message
+ * and its scalar fields ({@link breakDiagData}). It is the same fact on the
+ * session-routed log, for a host without bus access (ACP turns it into a
+ * notice, `ma-acp-plugin/diag-notices.ts`). The TUI does not show notice
+ * diagnostics (it uses the bus event), so a break is not shown two times.
  *
  * @module cache/start
  */
 
-import type { RequestFacts } from "./detector.ts"
+import { CACHE_DID_BREAK, type CacheBreakPayload } from "@minimal-agent/core/plugin-api"
+
+import type { CacheDiagData, RequestFacts } from "./detector.ts"
 import { CacheAnomalyDetector, type CacheWarnSink } from "./detector.ts"
 import { createWireWatch, type WireObserver, type WireRequest } from "./wire-watch.ts"
 
 /** The slice of the fragment context this module reads. */
 export interface StartContext {
-  log: CacheWarnSink
+  /** The plugin logger. `notice` is optional: an older sink has none. */
+  log: CacheWarnSink & { notice?(source: string, message: string, sd?: CacheDiagData): void }
+  /** Bus emit of the fragment context. Optional: an older host has none. */
+  emit?: (channel: string, payload: unknown) => void
   host?: {
     network?: { observe(observer: WireObserver): () => void }
     models?: {
@@ -62,6 +80,41 @@ export function resetAllDetectors(): number {
   return resetters.size
 }
 
+/** Logger source of the break diagnostic. The loader prefixes the plugin id: `cache.break`. */
+export const BREAK_SOURCE = "break"
+
+/** Payload fields copied to the break diagnostic, in this order. */
+const BREAK_DIAG_FIELDS = [
+  "cause",
+  "turn",
+  "prevTurn",
+  "read",
+  "written",
+  "lost",
+  "expectedRead",
+  "gapSec",
+  "ttlSec",
+  "idle",
+  "changed",
+  "changedIndex",
+  "serverReason",
+  "serverMissedTokens",
+  "requestId",
+  "streak",
+  "streakLost",
+  "actionable",
+] as const satisfies readonly (keyof CacheBreakPayload)[]
+
+/** The structured data of the break diagnostic: the scalar payload fields that are set. */
+export function breakDiagData(payload: CacheBreakPayload): CacheDiagData {
+  const sd: Record<string, string | number | boolean> = {}
+  for (const k of BREAK_DIAG_FIELDS) {
+    const v = payload[k]
+    if (v !== undefined) sd[k] = v
+  }
+  return sd
+}
+
 /** Most detectors kept at one time. The oldest goes first. */
 export const MAX_DETECTORS = 64
 
@@ -83,13 +136,17 @@ export function sessionKeyOf(req: WireRequest): string {
  * the old target does not make a false `prefix_changed` warning.
  */
 export function detectorKeyOf(req: WireRequest, snapshot: RequestFacts): string {
-  let origin = ""
+  return [sessionKeyOf(req), snapshot.model, originOf(req)].join("\u0000")
+}
+
+/** The endpoint origin of a request, or "" for a bad URL. */
+function originOf(req: WireRequest): string {
   try {
-    origin = new URL(req.url).origin
+    return new URL(req.url).origin
   } catch {
     // A bad URL gives no endpoint part.
+    return ""
   }
-  return [sessionKeyOf(req), snapshot.model, origin].join("\u0000")
 }
 
 /**
@@ -117,6 +174,11 @@ export function start(ctx: StartContext): (() => void) | undefined {
       d = new CacheAnomalyDetector({
         sink: ctx.log,
         minPrefixTokens: (model) => models?.find(model)?.capabilities?.caching?.minPrefixTokens,
+        onBreak: (payload: CacheBreakPayload) => {
+          ctx.emit?.(CACHE_DID_BREAK, payload)
+          ctx.log.notice?.(BREAK_SOURCE, payload.message, breakDiagData(payload))
+        },
+        history: { sessionId: sessionKeyOf(req), model: snapshot.model, origin: originOf(req) },
       })
     }
     detectors.set(key, d)

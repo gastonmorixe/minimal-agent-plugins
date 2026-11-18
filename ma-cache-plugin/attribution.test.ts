@@ -115,7 +115,7 @@ describe("server_miss and prefix_changed attribution", () => {
     return { sink, w }
   }
 
-  it("the 087 shape (read 0, prefix unchanged) is server_miss at info, with the request id", () => {
+  it("the 087 shape (read 0, prefix unchanged) is server_miss at warn, with the request id", () => {
     const { sink, w } = watched()
     drive(w, { id: "086", body: REQ_086, sse: usageSse(211_620, 1_021) })
     drive(w, {
@@ -124,8 +124,8 @@ describe("server_miss and prefix_changed attribution", () => {
       sse: missSse(0, 213_492, "messages_changed", 167_395),
       resHeaders: { "request-id": "req_087" },
     })
-    expect(sink.warnings).toEqual([])
-    expect(sink.infos.map((x) => x.sd)).toEqual([
+    expect(sink.infos).toEqual([])
+    expect(sink.warnings.map((x) => x.sd)).toEqual([
       {
         code: "server_miss",
         turn: 2,
@@ -137,7 +137,7 @@ describe("server_miss and prefix_changed attribution", () => {
         requestId: "req_087",
       },
     ])
-    const msg = sink.infos[0]?.message ?? ""
+    const msg = sink.warnings[0]?.message ?? ""
     expect(msg).toContain(
       "likely a server-side miss: the prefix up to the previous marker is unchanged and the previous request read its cache",
     )
@@ -158,8 +158,14 @@ describe("server_miss and prefix_changed attribution", () => {
     expect(d.observe(f(0, 5000, { prefix: changed }))).toEqual(["prefix_changed"])
     expect(d.observe(f(0, 5000, { prefix: changed }))).toEqual(["server_miss"])
     expect(d.observe(f(0, 5000, { prefix: p087 }))).toEqual(["prefix_changed"])
-    expect(sink.warnings.map((w) => [w.sd?.streak, w.sd?.written])).toEqual([[1, 5000]])
-    expect(sink.infos.map((w) => w.sd?.code)).toEqual(["server_miss", "server_miss"])
+    const changedWarns = sink.warnings.filter((w) => w.sd?.code === "prefix_changed")
+    expect(changedWarns.map((w) => [w.sd?.streak, w.sd?.written])).toEqual([[1, 5000]])
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual([
+      "server_miss",
+      "prefix_changed",
+      "server_miss",
+    ])
+    expect(sink.infos).toEqual([])
   })
 
   it("a changed system is prefix_changed and the text says so", () => {
@@ -265,9 +271,9 @@ describe("server_miss and prefix_changed attribution", () => {
     const { sink, w } = watched()
     drive(w, { id: "1", body: REQ_086, sse: usageSse(0, 22_113) })
     drive(w, { id: "2", body: REQ_086, sse: usageSse(0, 24_585) })
-    expect(sink.warnings).toEqual([])
-    expect(sink.infos.map((x) => x.sd?.code)).toEqual(["server_miss"])
-    expect(sink.infos[0]?.message).toContain("unchanged and no thinking was removed")
+    expect(sink.infos).toEqual([])
+    expect(sink.warnings.map((x) => x.sd?.code)).toEqual(["server_miss"])
+    expect(sink.warnings[0]?.message).toContain("unchanged and no thinking was removed")
   })
 
   it("a thinking removal from an older message is prefix_changed", () => {
@@ -305,7 +311,7 @@ describe("server_miss and prefix_changed attribution", () => {
       sse: usageSse(0, 213_492),
       resHeaders: { "Request-Id": "req_upper" },
     })
-    expect(sink.infos.map((x) => [x.sd?.code, x.sd?.requestId])).toEqual([
+    expect(sink.warnings.map((x) => [x.sd?.code, x.sd?.requestId])).toEqual([
       ["server_miss", "req_upper"],
     ])
   })
