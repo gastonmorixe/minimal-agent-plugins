@@ -12,7 +12,8 @@
  *   onResponse not 2xx: ignore the request. Else note the content-encoding.
  *   onChunk    decode the bytes (gzip when the transport did not inflate them),
  *              and keep the usage fields of `message_start` / `message_delta`.
- *   onEnd      send the final usage and the request facts to the detector.
+ *   onEnd      send the facts (request, usage, the server's miss reason, and
+ *              the start and end times) to the detector.
  *
  * The watcher writes nothing itself. The detector writes through the injected
  * sink.
@@ -22,7 +23,7 @@
 
 import { gunzipSync } from "node:zlib"
 
-import type { CacheAnomalyDetector, CacheUsage, RequestContextSnapshot } from "./detector.ts"
+import type { CacheAnomalyDetector, CacheFacts, CacheMissReason, RequestFacts } from "./detector.ts"
 import { snapshotRequest } from "./detector.ts"
 
 /** The slice of a host wire request this module reads. */
@@ -52,11 +53,26 @@ export interface WireObserver {
 /** The current history epoch. It moves on each reset of the histories. */
 export type HistoryEpoch = () => number
 
+/** Wall clock in epoch ms. Injected so tests can set the gap between turns. */
+export type Clock = () => number
+
+/** The response side of {@link CacheFacts}, read from the response text. */
+export interface ResponseCacheFacts {
+  /** Anthropic `cache_read_input_tokens`. */
+  read?: number
+  /** Anthropic `cache_creation_input_tokens`. */
+  write?: number
+  /** Anthropic `message.diagnostics.cache_miss_reason` (cache-diagnosis beta). */
+  cacheMiss?: CacheMissReason
+}
+
 /** Largest response body (bytes) kept for one request. Usage is at the start and the end. */
 const MAX_BODY_BYTES = 8 * 1024 * 1024
 
 interface Pending {
-  snapshot: RequestContextSnapshot
+  snapshot: RequestFacts
+  /** Epoch ms when the request started. */
+  startedAt: number
   /** The history epoch at request time (see {@link HistoryEpoch}). */
   epoch: number
   /** Response is 2xx. Unknown until `onResponse`. */
@@ -66,44 +82,69 @@ interface Pending {
   size: number
 }
 
-/** Usage fields of a Messages response, from SSE text or a JSON body. */
-export function extractUsage(text: string): CacheUsage | undefined {
-  let usage: CacheUsage | undefined
+/** The miss reason of a `diagnostics` object, or undefined. */
+function missOf(diagnostics: unknown): CacheMissReason | undefined {
+  if (!diagnostics || typeof diagnostics !== "object") return undefined
+  const r = (diagnostics as { cache_miss_reason?: unknown }).cache_miss_reason
+  if (!r || typeof r !== "object") return undefined
+  const type = (r as { type?: unknown }).type
+  if (typeof type !== "string" || type.length === 0) return undefined
+  const missed = (r as { cache_missed_input_tokens?: unknown }).cache_missed_input_tokens
+  return { reason: type, ...(typeof missed === "number" ? { missedTokens: missed } : {}) }
+}
+
+/**
+ * Cache facts of a Messages response, from SSE text or a JSON body: the
+ * usage counts (`message_delta` repeats or adds to `message_start`, the last
+ * value wins) and the server's miss reason (`message_start.message.diagnostics`,
+ * or the top-level `diagnostics` of a JSON body).
+ *
+ * @returns Undefined when the text has no usage: an aborted or unknown response.
+ */
+export function extractCacheFacts(text: string): ResponseCacheFacts | undefined {
+  let facts: ResponseCacheFacts | undefined
   const take = (u: unknown): void => {
     if (!u || typeof u !== "object") return
     const rec = u as Record<string, unknown>
     const read = rec.cache_read_input_tokens
-    const create = rec.cache_creation_input_tokens
-    // `message_delta` usage repeats or adds to `message_start`. The last value wins.
-    usage = {
-      ...usage,
-      ...(typeof read === "number" ? { cache_read_input_tokens: read } : {}),
-      ...(typeof create === "number" ? { cache_creation_input_tokens: create } : {}),
+    const write = rec.cache_creation_input_tokens
+    facts = {
+      ...facts,
+      ...(typeof read === "number" ? { read } : {}),
+      ...(typeof write === "number" ? { write } : {}),
     }
   }
+  let miss: CacheMissReason | undefined
   const trimmed = text.trimStart()
   if (trimmed.startsWith("{")) {
     // Not streamed: one JSON message.
     try {
-      take((JSON.parse(trimmed) as { usage?: unknown }).usage)
+      const msg = JSON.parse(trimmed) as { usage?: unknown; diagnostics?: unknown }
+      take(msg.usage)
+      miss = missOf(msg.diagnostics)
     } catch {
       return undefined
     }
-    return usage
-  }
-  for (const line of text.split("\n")) {
-    if (!line.startsWith("data:")) continue
-    const data = line.slice(5).trim()
-    if (!data.includes("usage")) continue
-    try {
-      const ev = JSON.parse(data) as { usage?: unknown; message?: { usage?: unknown } }
-      take(ev.message?.usage)
-      take(ev.usage)
-    } catch {
-      // A malformed line is not a usage line.
+  } else {
+    for (const line of text.split("\n")) {
+      if (!line.startsWith("data:")) continue
+      const data = line.slice(5).trim()
+      if (!data.includes("usage") && !data.includes("diagnostics")) continue
+      try {
+        const ev = JSON.parse(data) as {
+          usage?: unknown
+          message?: { usage?: unknown; diagnostics?: unknown }
+        }
+        take(ev.message?.usage)
+        take(ev.usage)
+        miss = missOf(ev.message?.diagnostics) ?? miss
+      } catch {
+        // A malformed line is not a usage line.
+      }
     }
   }
-  return usage
+  if (!facts) return undefined
+  return miss ? { ...facts, cacheMiss: miss } : facts
 }
 
 /** Decode the response bytes. Gzip only when the bytes have the gzip magic number. */
@@ -120,7 +161,7 @@ function decodeBody(chunks: Uint8Array[], size: number): string {
 }
 
 /** Parse a request body. Undefined when it is not a JSON request with markers. */
-function requestSnapshot(req: WireRequest): RequestContextSnapshot | undefined {
+function requestSnapshot(req: WireRequest): RequestFacts | undefined {
   if (req.method !== "POST" || !req.body.includes("cache_control")) return undefined
   let body: unknown
   try {
@@ -132,7 +173,7 @@ function requestSnapshot(req: WireRequest): RequestContextSnapshot | undefined {
   const model = (body as { model?: unknown }).model
   if (typeof model !== "string") return undefined
   const snap = snapshotRequest(body, model)
-  return snap.breakpoints > 0 ? snap : undefined
+  return snap.markers > 0 ? snap : undefined
 }
 
 /**
@@ -145,17 +186,26 @@ function requestSnapshot(req: WireRequest): RequestContextSnapshot | undefined {
  *   response is counted only when the epoch did not move after its request
  *   started: a response of the old target that ends after a switch is not
  *   part of the new history. Default: one epoch, no resets.
+ * @param now - Wall clock for the request start and response end times.
  */
 export function createWireWatch(
-  detectorFor: (req: WireRequest, snapshot: RequestContextSnapshot) => CacheAnomalyDetector,
+  detectorFor: (req: WireRequest, snapshot: RequestFacts) => CacheAnomalyDetector,
   epoch: HistoryEpoch = () => 0,
+  now: Clock = Date.now,
 ): WireObserver {
   const pending = new Map<string, Pending>()
   return {
     onRequest(req) {
       const snapshot = requestSnapshot(req)
       if (snapshot) {
-        pending.set(req.id, { snapshot, epoch: epoch(), ok: false, chunks: [], size: 0 })
+        pending.set(req.id, {
+          snapshot,
+          startedAt: now(),
+          epoch: epoch(),
+          ok: false,
+          chunks: [],
+          size: 0,
+        })
       }
     },
     onResponse(req, res) {
@@ -184,10 +234,18 @@ export function createWireWatch(
       // The histories were reset while this request was in flight (a target
       // switch). Its usage belongs to the old target: drop it.
       if (p.epoch !== epoch()) return
-      const usage = extractUsage(decodeBody(p.chunks, p.size))
+      const res = extractCacheFacts(decodeBody(p.chunks, p.size))
       // No usage: an aborted or unknown response. It is not a cache fact.
-      if (!usage) return
-      detectorFor(req, p.snapshot).observe(usage, p.snapshot)
+      if (!res) return
+      const facts: CacheFacts = {
+        ...p.snapshot,
+        read: res.read ?? 0,
+        write: res.write ?? 0,
+        ...(res.cacheMiss ? { cacheMiss: res.cacheMiss } : {}),
+        requestStartedAt: p.startedAt,
+        respondedAt: now(),
+      }
+      detectorFor(req, p.snapshot).observe(facts)
     },
     onError(req) {
       pending.delete(req.id)
