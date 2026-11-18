@@ -738,7 +738,7 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
     }
   }, 60_000)
 
-  it("(k2) a model switch during a rate-limit wait: the prompt continues on the new model, with no cancel", async () => {
+  it("(k2) a model switch during a rate-limit wait: the client gets a wait notice, and the prompt continues on the new model, with no cancel", async () => {
     const name = "switch-in-wait"
     const a = spawnAgent(name, [], "allow_once", {
       toolCalls: 0,
@@ -758,6 +758,23 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       await Bun.sleep(300)
       expect(a.model.bodies.map((b) => b.model)).toEqual(["mock-small"])
 
+      // The client is told about the wait WHILE the session waits, before a switch.
+      const chunkTexts = (): string[] =>
+        updates(a)
+          .filter((u) => u.sessionUpdate === "agent_message_chunk")
+          .map((u) => (u.content as { text: string }).text)
+      const waitText = (): string | undefined => chunkTexts().find((t) => t.includes("[wait]"))
+      const w0 = Date.now()
+      while (waitText() === undefined) {
+        if (Date.now() - w0 > 10_000) throw new Error(`no wait notice: ${a.stderr()}`)
+        await Bun.sleep(20)
+      }
+      // This client did not advertise `session.notices`: the notice is a message chunk.
+      expect(waitText()).toBe(
+        "\n[wait] The request had an error (rate_limit_error). The session tries again in 1 h (try 2). To continue now, change the provider or the model.\n",
+      )
+      expect(chunkTexts().some((t) => t.includes("DONE"))).toBe(false)
+
       const switchedAt = Date.now()
       a.send({
         jsonrpc: "2.0",
@@ -773,6 +790,12 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       expect(Date.now() - switchedAt).toBeLessThan(10_000)
       expect(a.model.bodies.map((b) => b.model)).toEqual(["mock-small", "mock-big"])
       expect(JSON.stringify(updates(a))).toContain("DONE")
+      // One wait notice for the one wait, and it comes before the answer.
+      const texts = chunkTexts()
+      expect(texts.filter((t) => t.includes("[wait]"))).toHaveLength(1)
+      expect(texts.findIndex((t) => t.includes("[wait]"))).toBeLessThan(
+        texts.findIndex((t) => t.includes("DONE")),
+      )
       expect(await finish(a)).toBe(0)
     } finally {
       a.proc.kill("SIGKILL")

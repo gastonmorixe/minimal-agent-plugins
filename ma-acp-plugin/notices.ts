@@ -18,7 +18,7 @@
 
 import type { NoticeSeverity, TurnNotice } from "@minimal-agent/core/sdk/turn-notice"
 
-import { noticeDescription } from "./notice-text.ts"
+import { noticeDescription, targetChanges } from "./notice-text.ts"
 
 /** ACP `NoticeSeverity` values this plugin sends. */
 export type AcpNoticeSeverity = "info" | "warning" | "error"
@@ -69,8 +69,15 @@ export function noticeTitle(notice: TurnNotice): string {
       return "Stream interrupted"
     case "ask_denied":
       return "Question skipped"
-    case "model_adopted":
-      return "Model changed"
+    case "model_adopted": {
+      // A target switch names what changed. One value: its own title.
+      const changed = targetChanges(notice)
+      const only = changed.length === 1 ? changed[0] : undefined
+      if (changed.length > 1) return "Target changed"
+      return only
+        ? `${only.label[0]?.toUpperCase()}${only.label.slice(1)} changed`
+        : "Model changed"
+    }
     case "model_adopt_failed":
       return "Model not changed"
     case "stop_hook_capped":
