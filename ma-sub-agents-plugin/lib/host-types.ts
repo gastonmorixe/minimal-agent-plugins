@@ -81,6 +81,14 @@ export interface ModePolicyEntry {
   }
 }
 
+/** The lead's live target. Mirror of core `TargetSnapshot`. */
+export interface TargetSnapshot {
+  credentialName?: string
+  providerId?: string
+  model: string
+  effort?: string
+}
+
 /** Live mode + tool policy of the lead. Mirror of core `HostPolicySnapshot`. */
 export interface HostPolicySnapshot {
   /** Live mode id at call time, null = no mode (unrestricted). */
@@ -186,6 +194,12 @@ export interface TUIContext {
   host?: PluginHost
   /** Live mode + tool policy snapshot. Absent on older cores (SPEC T8). */
   queryHostPolicy?: () => HostPolicySnapshot | undefined
+  /**
+   * The lead's live target (credential, provider, model, effort). It follows
+   * a target switch during the session. Absent on older cores, and in a host
+   * with more sessions in one process.
+   */
+  queryTarget?: () => TargetSnapshot | undefined
   /** The lead's startup profile and its file path. Absent on older cores. */
   startupProfile?: () => { path: string; profile: StartupProfile } | undefined
   emitChain?: <T>(
