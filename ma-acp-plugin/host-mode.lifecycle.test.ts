@@ -765,6 +765,46 @@ describe("sampling (contract 5.f)", () => {
     expect(await h.exit).toBe(0)
   })
 
+  it("a cache.anomaly diag gives one notice per anomaly code for the connection", async () => {
+    const rt = createFakeRuntime()
+    const cold = {
+      code: "cache.anomaly",
+      message:
+        "cache: request had 2 cache_control marker(s) but the API returned 0 read + 0 write.",
+      data: { code: "markers_ignored_cold" },
+    }
+    const evicted = {
+      code: "cache.anomaly",
+      message: "cache: evicted",
+      data: { code: "cache_evicted" },
+    }
+    rt.turns.push({ events: [], outcome: "completed", diags: [cold, cold, { code: "other.code" }] })
+    rt.turns.push({ events: [], outcome: "completed", diags: [cold, evicted] })
+    const h = await openExtSession(rt, [], true)
+    await h.prompt()
+    await h.prompt()
+    const notices = h
+      .lines()
+      .map((m) => m.params?.update)
+      .filter((u) => u?.sessionUpdate === "notice")
+    expect(notices).toEqual([
+      {
+        sessionUpdate: "notice",
+        severity: "warning",
+        title: "Prompt cache not used",
+        description: cold.message,
+      },
+      {
+        sessionUpdate: "notice",
+        severity: "warning",
+        title: "Prompt cache lost",
+        description: "cache: evicted",
+      },
+    ])
+    h.end()
+    expect(await h.exit).toBe(0)
+  })
+
   it("without session.notices the diag notice falls back to answer text", async () => {
     const rt = createFakeRuntime()
     rt.turns.push({
