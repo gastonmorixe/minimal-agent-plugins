@@ -43,6 +43,18 @@ const NO_THINKING = {
   interleaved: false,
 } as const
 
+/**
+ * Thinking of earlier assistant turns (Anthropic "Thinking block preservation
+ * by model", https://platform.claude.com/docs/en/build-with-claude/extended-thinking):
+ * "Keep all prior turns: Claude Opus 4.5 and later Opus models, Claude Sonnet
+ * 4.6 and later Sonnet models, Claude Haiku 5.5, Claude Fable 5.2, Claude
+ * Mythos 5.2". Older Opus/Sonnet and Haiku through 4.5 keep only the turn in
+ * progress. Core keeps the history append-only only for keep-all models
+ * (`--thinking-history keep`).
+ */
+const PRIOR_THINKING_KEEP_ALL = "keep-all" as const
+const PRIOR_THINKING_LAST_TURN = "last-turn-only" as const
+
 const CACHING_FULL = {
   explicit: true,
   automatic: false,
@@ -172,6 +184,7 @@ export const CAPS_OPUS_48: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 /** Opus 4.7 — identical request surface to 4.8 (the announcement). */
@@ -238,6 +251,7 @@ export const CAPS_OPUS_45: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_BASIC],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 /**
@@ -267,6 +281,8 @@ export const CAPS_OPUS_45: Capabilities = {
 export const CAPS_FABLE_5: Capabilities = {
   ...CAPS_OPUS_48,
   speedFast: false,
+  // The thinking docs name only Fable 5.2 as keep-all; stay on today's strip.
+  priorThinking: PRIOR_THINKING_LAST_TURN,
 }
 
 /**
@@ -275,7 +291,11 @@ export const CAPS_FABLE_5: Capabilities = {
  * ladder, no fast tier). Pricing differs only on cache reads ($0.25/M,
  * see pricing.ts); caps stay shared with Fable 5.
  */
-export const CAPS_FABLE_5_1: Capabilities = { ...CAPS_OPUS_48, speedFast: false }
+export const CAPS_FABLE_5_1: Capabilities = {
+  ...CAPS_OPUS_48,
+  speedFast: false,
+  priorThinking: PRIOR_THINKING_LAST_TURN,
+}
 
 /**
  * Claude Fable 5.2 (`claude-fable-5-2`), live 2026-11-09 per
@@ -335,6 +355,7 @@ export const CAPS_OPUS_46: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 // Haiku 5.5 (first 1M Haiku; adaptive thinking; full effort ladder)
@@ -361,6 +382,7 @@ export const CAPS_HAIKU_55: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 /**
@@ -394,6 +416,7 @@ export const CAPS_SONNET_55: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 // ---------------------------------------------------------------------------
@@ -437,6 +460,7 @@ export const CAPS_SONNET_5: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 // ---------------------------------------------------------------------------
@@ -465,6 +489,7 @@ export const CAPS_SONNET_46: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_FULL],
+  priorThinking: PRIOR_THINKING_KEEP_ALL,
 }
 
 // ---------------------------------------------------------------------------
@@ -499,6 +524,7 @@ export const CAPS_SONNET_45: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE_PDF,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_BASIC],
+  priorThinking: PRIOR_THINKING_LAST_TURN,
 }
 
 // ---------------------------------------------------------------------------
@@ -537,4 +563,5 @@ export const CAPS_HAIKU_45: Capabilities = {
   inputMimeTypes: INPUT_MIME_IMAGE,
   serverSideHistory: false,
   serverTools: [...SERVER_TOOLS_BASIC],
+  priorThinking: PRIOR_THINKING_LAST_TURN,
 }

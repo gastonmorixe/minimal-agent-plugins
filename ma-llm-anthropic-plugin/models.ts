@@ -594,6 +594,9 @@ interface FamilyDefault {
  * objects the static catalog uses, so ad-hoc models stay consistent with their
  * cataloged siblings and cost accounting is as accurate as the family allows.
  */
+/** Ad-hoc Mythos ids: the Fable 5 surface, but keep-all prior thinking. */
+const CAPS_MYTHOS_ADHOC: Capabilities = { ...CAPS_FABLE_5, priorThinking: "keep-all" }
+
 function familyDefaultFor(modelId: string): FamilyDefault {
   if (modelId.includes("opus")) {
     return {
@@ -605,7 +608,15 @@ function familyDefaultFor(modelId: string): FamilyDefault {
   if (modelId.includes("haiku")) {
     return { capabilities: CAPS_HAIKU_45, pricing: ANTHROPIC_HAIKU_45, tags: ["haiku", "adhoc"] }
   }
-  if (modelId.includes("fable") || modelId.includes("mythos")) {
+  if (modelId.includes("mythos")) {
+    // Mythos keeps all prior thinking turns (Anthropic thinking docs), unlike Fable 5.
+    return {
+      capabilities: CAPS_MYTHOS_ADHOC,
+      pricing: ANTHROPIC_FABLE_5,
+      tags: ["fable", "adhoc"],
+    }
+  }
+  if (modelId.includes("fable")) {
     return { capabilities: CAPS_FABLE_5, pricing: ANTHROPIC_FABLE_5, tags: ["fable", "adhoc"] }
   }
   // Default + explicit "sonnet": assume the current Sonnet-class surface.
