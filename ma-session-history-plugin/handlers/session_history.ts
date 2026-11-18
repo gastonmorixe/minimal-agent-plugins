@@ -53,7 +53,7 @@ export default async function sessionHistory(ctx: HandlerContextSlice): Promise<
   const req = parsed.req
 
   try {
-    return await run(req, host, ctx.cwd)
+    return await run(req, host, ctx.cwd, ctx.agent?.sessionId)
   } catch (e) {
     return err(`SessionHistory failed: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -63,6 +63,7 @@ async function run(
   req: SessionHistoryRequest,
   host: PluginHostSlice,
   cwd: string,
+  self: string | undefined,
 ): Promise<ToolResultSlice> {
   const sessions = host.sessions
   if (!sessions) return err("sessions:read capability missing.")
@@ -79,7 +80,7 @@ async function run(
     }
 
     case "meta": {
-      const sid = await resolveSid(req.sid, sessions, cwd)
+      const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
       const meta = await sessions.meta(sid.sid)
       if (!meta) return err(unknownSid(sid.sid))
@@ -87,7 +88,7 @@ async function run(
     }
 
     case "window": {
-      const sid = await resolveSid(req.sid, sessions, cwd)
+      const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
       const w = await sessions.window(sid.sid, {
         anchor: req.anchor,
@@ -106,7 +107,7 @@ async function run(
       // sid undefined = cross-session search; "last" resolves to one sid.
       let sid: string | undefined
       if (req.sid !== undefined) {
-        const r = await resolveSid(req.sid, sessions, cwd)
+        const r = await resolveSid(req.sid, sessions, cwd, self)
         if (!r.ok) return err(r.error)
         sid = r.sid
       }
@@ -125,7 +126,7 @@ async function run(
     }
 
     case "tool_calls": {
-      const sid = await resolveSid(req.sid, sessions, cwd)
+      const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
       const r = await sessions.toolCalls(sid.sid, {
         tool: req.tool,
@@ -140,7 +141,7 @@ async function run(
     }
 
     case "blob": {
-      const sid = await resolveSid(req.sid, sessions, cwd)
+      const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
       const blobs = host.blobs
       if (!blobs) return err("blobs:read capability missing. Cannot read raw tool outputs.")
@@ -158,7 +159,7 @@ async function run(
     }
 
     case "dump": {
-      const sid = await resolveSid(req.sid, sessions, cwd)
+      const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
       const d = await dumpOf(sessions, sid.sid, req.format)
       if (!d) return err(unknownSid(sid.sid))
@@ -189,7 +190,8 @@ async function dumpOf(
 }
 
 // ---------------------------------------------------------------------------
-// sid resolution ("last" → newest session for this cwd, else newest overall;
+// sid resolution ("last" → this session when the host names it; "newest", or
+// "last" with no calling session → newest session for this cwd, else newest overall;
 // anything else → unique-prefix match against the index, e.g. "bc567526")
 // ---------------------------------------------------------------------------
 
@@ -199,8 +201,18 @@ async function resolveSid(
   sid: string,
   sessions: NonNullable<PluginHostSlice["sessions"]>,
   cwd: string,
+  self: string | undefined,
 ): Promise<SidResolution> {
-  if (sid === "last") {
+  if (sid === "last" && self !== undefined) {
+    // "last" is this session when the host names it. Never fall back to an
+    // other session: in a host with many sessions (the web host) the newest
+    // file is a different conversation, and its content would look like
+    // this session's own (owner, 11-18).
+    const own = await sessions.meta(self)
+    if (own) return { ok: true, sid: self }
+    return { ok: false, error: notPersisted(self) }
+  }
+  if (sid === "last" || sid === "newest") {
     const inCwd = await sessions.list({ cwd, limit: 1 })
     if (inCwd.items.length > 0) return { ok: true, sid: inCwd.items[0].sid }
     const anywhere = await sessions.list({ limit: 1 })
@@ -240,6 +252,13 @@ function ok(content: string, header: string): ToolResultSlice {
 
 function err(message: string): ToolResultSlice {
   return { kind: "tool_result", content: message, is_error: true }
+}
+
+function notPersisted(sid: string): string {
+  return (
+    `This session (${shortSid(sid)}) has no saved transcript: its host does not persist it, or not yet. ` +
+    `Use {action:"list"} to see saved sessions, or pass an explicit sid. {sid:"newest"} reads the newest saved session, which is a different session.`
+  )
 }
 
 function unknownSid(sid: string): string {

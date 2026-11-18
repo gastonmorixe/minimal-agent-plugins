@@ -6,6 +6,21 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Fixed
+
+- 2026-11-18: **SessionInfo and SessionHistory read the calling session, not
+  the process** (`ma-session-info-plugin`, `ma-session-history-plugin`). In
+  the web host (many sessions in one process) SessionInfo showed
+  "Session: unknown" and the boot default model, and SessionHistory's default
+  `last` opened the newest file on disk, an other session. SessionInfo now
+  reads the session id, version, model, effort and fast flag from the handler
+  context (`ctx.agent`, then `ctx.env`), and only then from `process.env`.
+  SessionHistory's `last` is the calling session (`ctx.agent.sessionId`); a
+  session with no saved transcript gets a clear error, not an other session.
+  The old behavior is `sid: "newest"`. The request goldens change only in the
+  SessionHistory `sid` description. Core gives each web session its own
+  identity through the new session plugin scope.
+
 ### Added
 
 - 2026-11-18: **The cache plugin names the cause of a cache miss and no

@@ -379,3 +379,27 @@ describe("SessionHistory: degraded environments", () => {
     expect(r.content).toContain("No saved sessions")
   })
 })
+
+describe("SessionHistory: 'last' is the calling session", () => {
+  function ctxAs(self: string, input: Record<string, unknown>): HandlerContextSlice {
+    return { ...ctx(input), agent: { sessionId: self } }
+  }
+
+  it("'last' resolves to the caller's own session when it has a transcript", async () => {
+    const r = await handler(ctxAs("sid-old", { action: "meta" }))
+    expect(r.is_error).toBeFalsy()
+    expect(r.content).toContain("Session: sid-old")
+  })
+
+  it("a caller with no transcript gets a clear error, not an other session", async () => {
+    const r = await handler(ctxAs("missing", { action: "window" }))
+    expect(r.is_error).toBe(true)
+    expect(r.content).toContain("no saved transcript")
+    expect(r.content).not.toContain("sid-new")
+  })
+
+  it("'newest' still reads the newest saved session", async () => {
+    const r = await handler(ctxAs("missing", { action: "meta", sid: "newest" }))
+    expect(r.content).toContain("Session: sid-new")
+  })
+})

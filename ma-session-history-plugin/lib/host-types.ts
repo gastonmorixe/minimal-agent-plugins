@@ -229,6 +229,8 @@ export interface HandlerContextSlice {
   trigger: { type: string } & Partial<ToolTriggerSlice>
   cwd: string
   host?: PluginHostSlice
+  /** The calling session. Mirror of the slice of `AgentContext` this plugin reads. */
+  agent?: { readonly sessionId: string }
 }
 
 export interface ToolResultSlice {

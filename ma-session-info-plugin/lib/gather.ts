@@ -9,9 +9,12 @@
  *
  * Decoupling choices (so this plugin commits independently of the in-flight
  * plugin-context seams):
- *  - Identity (session id, pid, version) comes from `process` + the
- *    `MINIMAL_AGENT_*` env the host exports at boot. The session id and pid do
- *    not change mid-session, so this is exact.
+ *  - Identity (session id, version, model, effort, fast) comes from the
+ *    handler context: `ctx.agent`, then `ctx.env`, which the host fills for
+ *    each call. Only then from `process.env`. A host with many sessions in one
+ *    process (the web host) gives each call the identity of its own session.
+ *    The process env has no session there, so reading it first gave the
+ *    wrong answer ("unknown", the boot model).
  *  - The current model is read OPPORTUNISTICALLY from the host's model-info
  *    seam when present (correct across mid-session switches) via a local
  *    structural type, so this file does not compile-depend on that seam's
@@ -51,6 +54,14 @@ interface LiveModelInfo {
   }
 }
 
+/**
+ * One `MINIMAL_AGENT_*` value: the handler env of this call first (the host
+ * fills it for the session of the call), then the process env.
+ */
+function envOf(ctx: TUIContext, key: string): string | undefined {
+  return ctx.env?.[key] || process.env[key] || undefined
+}
+
 interface ModelBits {
   modelId: string
   modelLabel: string
@@ -88,7 +99,7 @@ function reasoningOf(t: { adaptive: boolean; extended: boolean; interleaved: boo
  * server decides) — the same "honest fallback" as before.
  */
 function resolveFastState(ctx: TUIContext, modelId: string): boolean {
-  if (process.env.MINIMAL_AGENT_FAST !== "1") return false
+  if (envOf(ctx, "MINIMAL_AGENT_FAST") !== "1") return false
   try {
     const e = ctx.host?.models?.resolve(modelId)
     // Unregistered model OR no models capability: report the request as-is.
@@ -107,7 +118,6 @@ function resolveFastState(ctx: TUIContext, modelId: string): boolean {
 function resolveModelBits(ctx: TUIContext): ModelBits {
   const seam = (ctx as { queryModelInfo?: () => LiveModelInfo | undefined }).queryModelInfo
   const info = seam?.()
-  const _providerId = info?.providerId ?? process.env.MINIMAL_AGENT_PROVIDER
   if (info) {
     return {
       modelId: info.modelId,
@@ -125,7 +135,9 @@ function resolveModelBits(ctx: TUIContext): ModelBits {
     }
   }
 
-  const modelId = process.env.MINIMAL_AGENT_MODEL || "unknown"
+  // Fallback only: a host with the model-info seam never gets here. The env
+  // copy follows a CLI model switch; the boot `ctx.agent.model` does not.
+  const modelId = envOf(ctx, "MINIMAL_AGENT_MODEL") || ctx.agent?.model || "unknown"
   try {
     const e = ctx.host?.models?.resolve(modelId)
     if (!e) return { modelId, modelLabel: modelId, providerId: "unknown", reasoning: [] }
@@ -242,17 +254,17 @@ export async function gatherSessionInfo(ctx: TUIContext): Promise<SessionInfoSna
   }
 
   return {
-    sessionId: process.env.MINIMAL_AGENT_SESSION_ID || "unknown",
+    sessionId: ctx.agent?.sessionId || envOf(ctx, "MINIMAL_AGENT_SESSION_ID") || "unknown",
     pid: process.pid,
     hostname: hostname(),
-    agentVersion: process.env.MINIMAL_AGENT_VERSION || undefined,
-    agentName: process.env.MINIMAL_AGENT_AGENT_NAME || undefined,
+    agentVersion: ctx.agent?.version || envOf(ctx, "MINIMAL_AGENT_VERSION") || undefined,
+    agentName: envOf(ctx, "MINIMAL_AGENT_AGENT_NAME") || undefined,
     modelId: bits.modelId,
     modelLabel: bits.modelLabel,
     providerId: bits.providerId,
     // The live target wins: the env is a copy that a host writes after a switch.
     ...(target?.credentialName ? { credentialName: target.credentialName } : {}),
-    effort: target ? target.effort : process.env.MINIMAL_AGENT_EFFORT || undefined,
+    effort: target ? target.effort : envOf(ctx, "MINIMAL_AGENT_EFFORT") || undefined,
     fast: resolveFastState(ctx, bits.modelId),
     reasoning: bits.reasoning,
     contextSize: tok.contextSize,
