@@ -88,6 +88,14 @@ function goldenRows(name: string): string[] {
   return rows
 }
 
+/** Matches a user name only as a path segment or before an address sign. A bare
+ * match fails on a runner whose USER is an ordinary word ("runner"). */
+function userNameRe(user: string): RegExp | null {
+  if (user.length < 3) return null
+  const escaped = user.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`[/\\\\]${escaped}(?![A-Za-z0-9_])|(?<![A-Za-z0-9_])${escaped}@`, "i")
+}
+
 describe("replay golden: streamProgress at each step", () => {
   for (const name of Object.keys(LANE_FIXTURES)) {
     test(name, () => {
@@ -263,8 +271,20 @@ describe("fixture scrub check", () => {
     }
   })
 
+  test("the user-name needle hits a real path or address and skips an ordinary word", () => {
+    const re = userNameRe("runner")
+    expect(re?.test("/Users/runner/work/x")).toBe(true)
+    expect(re?.test("/home/runner/x")).toBe(true)
+    expect(re?.test("C:\\Users\\runner\\x")).toBe(true)
+    expect(re?.test("mail runner@example.test")).toBe(true)
+    expect(re?.test("mail me@runner.test")).toBe(false)
+    expect(re?.test("the runner uses it for stage plugin ids")).toBe(false)
+    expect(userNameRe("ab")).toBeNull()
+  })
+
   test("no fixture holds a home path, user name, key, bearer, api_key or email", () => {
     const user = process.env.USER ?? ""
+    const userRe = userNameRe(user)
     expect(scanned.length).toBeGreaterThanOrEqual(25)
     for (const file of scanned) {
       const text = readFileSync(file, "utf-8")
@@ -272,7 +292,9 @@ describe("fixture scrub check", () => {
       for (const needle of ["/Users/", "gaston", "sk-", "Bearer ", "api_key"]) {
         if (text.includes(needle)) hits.push(needle)
       }
-      if (user.length >= 3 && text.toLowerCase().includes(user.toLowerCase())) hits.push("$USER")
+      // The user name counts only as a path segment or an address part. A bare
+      // match fails on a runner whose USER is an ordinary word ("runner").
+      if (userRe?.test(text)) hits.push("$USER")
       if (/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/.test(text)) {
         hits.push("email")
       }
