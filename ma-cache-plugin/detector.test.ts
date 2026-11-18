@@ -5,101 +5,226 @@ import { describe, expect, it } from "bun:test"
 import {
   ANOMALY_SOURCE,
   CacheAnomalyDetector,
+  type CacheFacts,
   type CacheWarnSink,
+  isStreakMilestone,
   snapshotRequest,
 } from "./detector.ts"
 import onTargetSwitch from "./on_target_switch.ts"
 import { detectorKeyOf, MAX_DETECTORS, resetAllDetectors, sessionKeyOf, start } from "./start.ts"
-import { createWireWatch, extractUsage, type WireObserver, type WireRequest } from "./wire-watch.ts"
+import {
+  createWireWatch,
+  extractCacheFacts,
+  type WireObserver,
+  type WireRequest,
+} from "./wire-watch.ts"
 
 interface Warning {
+  level: "warn" | "info"
   source: string
   message: string
   sd?: Readonly<Record<string, string | number | boolean>>
 }
 
-function recorder(): CacheWarnSink & { warnings: Warning[] } {
+function recorder(): CacheWarnSink & { warnings: Warning[]; infos: Warning[] } {
   const warnings: Warning[] = []
+  const infos: Warning[] = []
   return {
     warnings,
+    infos,
     warn(source, message, sd) {
-      warnings.push({ source, message, ...(sd ? { sd } : {}) })
+      warnings.push({ level: "warn", source, message, ...(sd ? { sd } : {}) })
+    },
+    info(source, message, sd) {
+      infos.push({ level: "info", source, message, ...(sd ? { sd } : {}) })
     },
   }
 }
 
-const BIG = { breakpoints: 2, approxPrefixChars: 20_000, model: "m" }
+const BIG = { markers: 2, approxPrefixChars: 20_000, model: "m" }
+
+/** Facts of one turn: BIG, with these counts. */
+function f(read: number, write: number, extra: Partial<CacheFacts> = {}): CacheFacts {
+  return { ...BIG, read, write, ...extra }
+}
 
 describe("CacheAnomalyDetector", () => {
   it("a turn with cache markers and 0 cache reads gives exactly one warning", () => {
     const sink = recorder()
     const d = new CacheAnomalyDetector({ sink })
-    expect(d.observe({ cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, BIG)).toEqual([
-      "markers_ignored_cold",
-    ])
+    expect(d.observe(f(0, 0))).toEqual(["markers_ignored_cold"])
     expect(sink.warnings).toHaveLength(1)
     expect(sink.warnings[0]?.source).toBe(ANOMALY_SOURCE)
     expect(sink.warnings[0]?.sd).toEqual({ code: "markers_ignored_cold" })
   })
 
-  it("writes each code one time only", () => {
+  it("writes each cold code one time only", () => {
     const sink = recorder()
     const d = new CacheAnomalyDetector({ sink })
-    d.observe({}, BIG)
-    d.observe({}, BIG)
+    d.observe(f(0, 0))
+    d.observe(f(0, 0))
     expect(sink.warnings).toHaveLength(1)
   })
 
   it("a healthy cache gives no warning", () => {
     const sink = recorder()
     const d = new CacheAnomalyDetector({ sink })
-    d.observe({ cache_creation_input_tokens: 5000 }, BIG)
-    d.observe({ cache_read_input_tokens: 5000 }, BIG)
-    d.observe({ cache_read_input_tokens: 5200, cache_creation_input_tokens: 100 }, BIG)
+    d.observe(f(0, 5000))
+    d.observe(f(5000, 0))
+    d.observe(f(5200, 100))
     expect(sink.warnings).toEqual([])
+    expect(sink.infos).toEqual([])
   })
 
   it("a request without markers gives no warning", () => {
     const sink = recorder()
     const d = new CacheAnomalyDetector({ sink })
-    d.observe({}, { ...BIG, breakpoints: 0 })
+    d.observe({ ...f(0, 0), markers: 0 })
     expect(sink.warnings).toEqual([])
   })
 
   it("uses the injected per-model minimum for below_min_block_size", () => {
     const sink = recorder()
     const d = new CacheAnomalyDetector({ sink, minPrefixTokens: () => 10_000 })
-    expect(d.observe({}, BIG)).toEqual(["below_min_block_size"])
+    expect(d.observe(f(0, 0))).toEqual(["below_min_block_size"])
     expect(sink.warnings[0]?.message).toContain("10000-token cache minimum")
   })
 
-  it("finds no_read_after_write and cache_evicted", () => {
+  it("a read of 0 after a write, or after reads, is prefix_changed", () => {
     const sink = recorder()
     const d = new CacheAnomalyDetector({ sink })
-    d.observe({ cache_creation_input_tokens: 5000 }, BIG)
-    expect(d.observe({ cache_creation_input_tokens: 5000 }, BIG)).toEqual(["no_read_after_write"])
+    d.observe(f(0, 5000))
+    expect(d.observe(f(0, 5000))).toEqual(["prefix_changed"])
     const e = new CacheAnomalyDetector({ sink: recorder() })
-    e.observe({ cache_read_input_tokens: 1 }, BIG)
-    e.observe({ cache_read_input_tokens: 2 }, BIG)
-    expect(e.observe({ cache_creation_input_tokens: 9 }, BIG)).toContain("cache_evicted")
+    e.observe(f(1, 0))
+    e.observe(f(2, 0))
+    expect(e.observe(f(0, 9))).toEqual(["prefix_changed"])
+  })
+
+  it("a miss after a gap longer than the TTL is ttl_expired, at info level", () => {
+    // Frank's session, request 2: 485 s after request 1 ended, TTL 5m.
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    d.observe(f(0, 22113, { ttlSeconds: 300, requestStartedAt: 0, respondedAt: 10_000 }))
+    const codes = d.observe(
+      f(0, 24585, { ttlSeconds: 300, requestStartedAt: 495_000, respondedAt: 500_000 }),
+    )
+    expect(codes).toEqual(["ttl_expired"])
+    expect(sink.warnings).toEqual([])
+    expect(sink.infos.map((w) => w.sd)).toEqual([
+      { code: "ttl_expired", turn: 2, gapSec: 485, ttlSec: 300 },
+    ])
+    expect(sink.infos[0]?.message).toContain("expired: 485 s passed since turn 1 ended")
+  })
+
+  it("the same gap inside a 1h TTL is prefix_changed", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    d.observe(f(0, 5000, { ttlSeconds: 3600, respondedAt: 0 }))
+    expect(d.observe(f(0, 5000, { ttlSeconds: 3600, requestStartedAt: 485_000 }))).toEqual([
+      "prefix_changed",
+    ])
+    expect(sink.warnings[0]?.message).toContain("inside the 3600 s TTL")
+  })
+
+  it("prints the server's miss reason", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    d.observe(f(77741, 3000, { respondedAt: 1000 }))
+    d.observe(
+      f(0, 166690, {
+        requestStartedAt: 1800,
+        cacheMiss: { reason: "messages_changed", missedTokens: 155827 },
+      }),
+    )
+    expect(sink.warnings).toHaveLength(1)
+    expect(sink.warnings[0]?.message).toContain("turn 2 read 0 cached tokens, 0.8 s after turn 1")
+    expect(sink.warnings[0]?.message).toContain(
+      "The server says: messages_changed (155827 tokens missed).",
+    )
+    expect(sink.warnings[0]?.sd).toEqual({
+      code: "prefix_changed",
+      turn: 2,
+      streak: 1,
+      written: 166690,
+      reason: "messages_changed",
+      missedTokens: 155827,
+    })
+  })
+
+  it("a partial read with a larger server miss is prefix_changed", () => {
+    // Frank's R3 to R15: reads stay flat at an old anchor, the server says the rest missed.
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    d.observe(f(22113, 30000))
+    const miss = { reason: "messages_changed", missedTokens: 40000 }
+    expect(d.observe(f(22113, 31000, { cacheMiss: miss }))).toEqual(["prefix_changed"])
+    expect(sink.warnings[0]?.message).toContain("read 22113 cached tokens but missed 40000")
+    // A small miss next to a large read is normal growth: no warning.
+    const e = new CacheAnomalyDetector({ sink: recorder() })
+    e.observe(f(22113, 300))
+    expect(e.observe(f(22413, 300, { cacheMiss: { reason: "x", missedTokens: 10 } }))).toEqual([])
+  })
+
+  it("warns again at 3, 10 and 30 misses in a row, with the tokens written", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    d.observe(f(0, 1000))
+    for (let i = 0; i < 30; i++) d.observe(f(0, 1000))
+    expect(sink.warnings.map((w) => w.sd?.streak)).toEqual([1, 3, 10, 30])
+    expect(sink.warnings[3]?.message).toContain(
+      "30 misses in a row, 30000 tokens written to the cache since the first.",
+    )
+  })
+
+  it("a healthy read ends the streak, so the next miss warns as the first again", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    d.observe(f(0, 1000))
+    d.observe(f(0, 1000))
+    d.observe(f(0, 1000))
+    d.observe(f(2000, 10))
+    d.observe(f(0, 1000))
+    expect(sink.warnings.map((w) => w.sd?.streak)).toEqual([1, 1])
+  })
+
+  it("counts turns past 3 (the old counter stopped at 4)", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    for (let i = 0; i < 6; i++) d.observe(f(5000, 10))
+    d.observe(f(0, 5000))
+    expect(sink.warnings[0]?.sd?.turn).toBe(7)
+    expect(sink.warnings[0]?.message).toContain("turn 7 read 0")
+  })
+
+  it("isStreakMilestone: 1, 3, 10, 30, 100, 300, 1000", () => {
+    const hits = Array.from({ length: 1000 }, (_, i) => i + 1).filter(isStreakMilestone)
+    expect(hits).toEqual([1, 3, 10, 30, 100, 300, 1000])
   })
 })
 
 describe("snapshotRequest", () => {
-  it("counts markers in system, tools and nested blocks", () => {
+  it("counts markers in system, tools and nested blocks, and keeps the longest TTL", () => {
     const snap = snapshotRequest(
       {
         system: [{ type: "text", text: "abcd", cache_control: { type: "ephemeral" } }],
-        tools: [{ name: "t", cache_control: { type: "ephemeral" } }],
+        tools: [{ name: "t", cache_control: { type: "ephemeral", ttl: "1h" } }],
         messages: [{ role: "user", content: [{ type: "text", text: "xy", cache_control: {} }] }],
       },
       "m",
     )
-    expect(snap).toEqual({ breakpoints: 3, approxPrefixChars: 6, model: "m" })
+    expect(snap).toEqual({ markers: 3, approxPrefixChars: 6, model: "m", ttlSeconds: 3600 })
+  })
+
+  it("a marker without ttl is the 5 minute default; no marker gives no TTL", () => {
+    expect(
+      snapshotRequest({ system: [{ cache_control: { type: "ephemeral" } }] }, "m").ttlSeconds,
+    ).toBe(300)
+    expect(snapshotRequest({ system: [] }, "m").ttlSeconds).toBeUndefined()
   })
 })
 
-describe("extractUsage", () => {
+describe("extractCacheFacts", () => {
   it("reads message_start and message_delta usage from SSE, the last value wins", () => {
     const sse = [
       "event: message_start",
@@ -109,17 +234,39 @@ describe("extractUsage", () => {
       'data: {"type":"message_delta","usage":{"cache_read_input_tokens":3}}',
       "",
     ].join("\n")
-    expect(extractUsage(sse)).toEqual({
-      cache_read_input_tokens: 3,
-      cache_creation_input_tokens: 7,
+    expect(extractCacheFacts(sse)).toEqual({ read: 3, write: 7 })
+  })
+
+  it("reads the server's miss reason from message_start (the logged shape)", () => {
+    // From research/2026-11-18-session-ffcf4115-cache-anomalies/evidence.
+    const sse = [
+      "event: message_start",
+      'data: {"type":"message_start","message":{"id":"msg_1","usage":{"input_tokens":2,"cache_creation_input_tokens":166690,"cache_read_input_tokens":0,"output_tokens":4},"input_transformations":[],"diagnostics":{"cache_miss_reason":{"type":"messages_changed","cache_missed_input_tokens":155827}}}}',
+      "",
+    ].join("\n")
+    expect(extractCacheFacts(sse)).toEqual({
+      read: 0,
+      write: 166690,
+      cacheMiss: { reason: "messages_changed", missedTokens: 155827 },
     })
   })
 
+  it("a null or empty diagnostics gives no miss reason", () => {
+    const sse =
+      'data: {"type":"message_start","message":{"usage":{"cache_read_input_tokens":5},"diagnostics":null}}\n'
+    expect(extractCacheFacts(sse)).toEqual({ read: 5 })
+    const prev =
+      'data: {"type":"message_start","message":{"usage":{"cache_read_input_tokens":5},"diagnostics":{"previous_message_id":null}}}\n'
+    expect(extractCacheFacts(prev)).toEqual({ read: 5 })
+  })
+
   it("reads a JSON body, and gives undefined without usage", () => {
-    expect(extractUsage('{"usage":{"cache_read_input_tokens":4}}')).toEqual({
-      cache_read_input_tokens: 4,
-    })
-    expect(extractUsage("data: {}\n")).toBeUndefined()
+    expect(
+      extractCacheFacts(
+        '{"usage":{"cache_read_input_tokens":4},"diagnostics":{"cache_miss_reason":{"type":"model_changed"}}}',
+      ),
+    ).toEqual({ read: 4, cacheMiss: { reason: "model_changed" } })
+    expect(extractCacheFacts("data: {}\n")).toBeUndefined()
   })
 })
 
@@ -173,6 +320,59 @@ describe("createWireWatch", () => {
       )
       expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["markers_ignored_cold"])
     }
+  })
+
+  it("passes the server reason, the TTL and the times to the detector", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    let t = 0
+    const w = createWireWatch(
+      () => d,
+      () => 0,
+      () => t,
+    )
+    const marked1h = {
+      ...MARKED,
+      system: [
+        { type: "text", text: "x".repeat(20_000), cache_control: { type: "ephemeral", ttl: "1h" } },
+      ],
+    }
+    const missSse =
+      'event: message_start\ndata: {"type":"message_start","message":{"usage":{"cache_read_input_tokens":0,"cache_creation_input_tokens":9000},"diagnostics":{"cache_miss_reason":{"type":"messages_changed","cache_missed_input_tokens":8000}}}}\n\n'
+    // Turn 1 writes. Turn 2 starts 600 s later: past 5m, inside the 1h TTL.
+    drive(w, { id: "1", body: marked1h, sse: usageSse(0, 5000) })
+    t = 600_000
+    drive(w, { id: "2", body: marked1h, sse: missSse })
+    expect(sink.infos).toEqual([])
+    expect(sink.warnings.map((x) => x.sd)).toEqual([
+      {
+        code: "prefix_changed",
+        turn: 2,
+        streak: 1,
+        written: 9000,
+        reason: "messages_changed",
+        missedTokens: 8000,
+      },
+    ])
+    expect(sink.warnings[0]?.message).toContain(
+      "600.0 s after turn 1 ended (inside the 3600 s TTL)",
+    )
+  })
+
+  it("a 5m marker and a 485 s gap is ttl_expired at info level", () => {
+    const sink = recorder()
+    const d = new CacheAnomalyDetector({ sink })
+    let t = 0
+    const w = createWireWatch(
+      () => d,
+      () => 0,
+      () => t,
+    )
+    drive(w, { id: "1", body: MARKED, sse: usageSse(0, 22113) })
+    t = 485_000
+    drive(w, { id: "2", body: MARKED, sse: usageSse(0, 24585) })
+    expect(sink.warnings).toEqual([])
+    expect(sink.infos.map((x) => x.sd?.code)).toEqual(["ttl_expired"])
   })
 
   it("ignores requests without markers, and non-2xx responses", () => {
@@ -261,7 +461,7 @@ describe("target switch in one session", () => {
     expect(sink.warnings).toEqual([])
   })
 
-  it("a switch right after a cache write does not give no_read_after_write", () => {
+  it("a switch right after a cache write does not give prefix_changed", () => {
     const { sink, turn } = startedPlugin()
     turn("model-a", 0, 5000)
     turn("model-b", 0, 5000)
@@ -281,7 +481,7 @@ describe("target switch in one session", () => {
     turn("model-a", 5000, 0)
     turn("model-a", 5000, 0)
     turn("model-a", 0, 5000)
-    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["cache_evicted"])
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["prefix_changed"])
   })
 
   it("going back to an earlier model keeps that model's history", () => {
@@ -290,7 +490,7 @@ describe("target switch in one session", () => {
     turn("model-b", 0, 5000)
     // Back on A: A wrote on its last turn and reads 0 now, a real miss.
     turn("model-a", 0, 5000)
-    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["no_read_after_write"])
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["prefix_changed"])
   })
 
   it("keys on session, model and origin, and keeps at most MAX_DETECTORS", () => {
@@ -301,12 +501,12 @@ describe("target switch in one session", () => {
       headers: { "x-session-id": "s" },
       body: "",
     }
-    const snap = { breakpoints: 1, approxPrefixChars: 1, model: "m" }
+    const snap = { markers: 1, approxPrefixChars: 1, model: "m" }
     expect(detectorKeyOf(req, snap)).toBe("s\u0000m\u0000https://a.test")
     expect(detectorKeyOf({ ...req, url: "not a url" }, snap)).toBe("s\u0000m\u0000")
     // Over the cap, the oldest model's history goes: model 0 writes, then
     // MAX_DETECTORS other models push it out, so its next 0-read turn is a
-    // fresh start (no warning), not a no_read_after_write.
+    // fresh start (no warning), not a prefix_changed.
     const { sink, turn } = startedPlugin()
     turn("m0", 0, 5000)
     for (let i = 1; i <= MAX_DETECTORS; i++) turn(`m${i}`, 0, 5000)
@@ -334,7 +534,7 @@ describe("target.didSwitch reset", () => {
     turn("model-a", 5000, 0)
     turn("model-a", 5000, 0)
     turn("model-a", 0, 5000)
-    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["cache_evicted"])
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["prefix_changed"])
     stop()
   })
 
@@ -344,7 +544,7 @@ describe("target.didSwitch reset", () => {
     resetAllDetectors()
     turn("model-a", 0, 5000)
     turn("model-a", 0, 5000)
-    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["no_read_after_write"])
+    expect(sink.warnings.map((w) => w.sd?.code)).toEqual(["prefix_changed"])
     stop()
   })
 
