@@ -55,6 +55,7 @@ import {
   type OpenAIResponsesEvent,
   translateOpenAIResponsesStream,
 } from "./responses/response-stream.ts"
+import { strictToolSchemas } from "./responses/strict-tools.ts"
 import { fetchOpenAISessionInfo, setOpenAIRateLimits } from "./session-info.ts"
 import { openAIChatCompletionsCodec } from "./surface-codecs.ts"
 import { validateOpenAIRequest } from "./validate.ts"
@@ -191,7 +192,10 @@ export const openaiAdapter: ProviderAdapter = {
       // The strip runs on canonical events, after the network client handed
       // the raw bytes to its observers. The net-dbg capture keeps the markers.
       yield* stripCitationMarkers(
-        translateOpenAIResponsesStream(parseSse<OpenAIResponsesEvent>(response.body)),
+        translateOpenAIResponsesStream(
+          parseSse<OpenAIResponsesEvent>(response.body),
+          strictToolSchemas(req.tools ?? []),
+        ),
       )
       return
     }
