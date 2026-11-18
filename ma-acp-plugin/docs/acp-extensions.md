@@ -122,6 +122,7 @@ Status: "now" = planned in the current waves of `S/research/acp-controls-plan.md
 | e   | structuredOutput             | L3                 | feature `structuredOutput`                                                  | request `_meta["minimal-agent/outputSchema"]`, reply `_meta["minimal-agent/output"]`, see 5.e                                                                                            | Studio asks for JSON in the prompt text and parses the reply text best effort | Both                                                       | agent: done (patch D2, `P/structured-output.ts`, `P/host-mode.ts`). Advertised only when the runtime reports `capabilities.outputSchema` (core D1). The pinned core 82ff7e8 has no D1, so the feature is not advertised there (rule 4.7). Studio: done (D3) |
 | f   | temperature                  | L3                 | feature `sampling`                                                          | request `_meta["minimal-agent/sampling"] {temperature}`, see 5.f                                                                                                                         | Agent default sampling                                                        | Both                                                       | agent: done (patch D5, `P/host-mode.ts`). Advertised only when the runtime reports `capabilities.temperature` (core D4). The pinned core 82ff7e8 has no D4, so the feature is not advertised there (rule 4.7). Studio: done (D6)                            |
 | g   | notices                      | L1                 | client `clientCapabilities.session.notices: {}`                             | `session/update` `notice {severity, title, description?}`                                                                                                                                | Agent sends the notice as `agent_message_chunk` text                          | Agent sends. Studio does not advertise it today            | agent: done. Studio: later                                                                                                                                                                                                                                  |
+| h   | session resume               | L1                 | `agentCapabilities.sessionCapabilities.resume`                              | `session/resume {sessionId, cwd}`, reply `{configOptions}`, unknown id `-32002`                                                                                                          | Client sends `session/new`                                                    | Agent (when CLI has `resumeSession`)                       | agent: done. Studio: not used                                                                                                                                                                                                                               |
 
 ### 5.a usage
 
@@ -245,7 +246,7 @@ minimal-agent `initialize` result (after patches E1, M4, D2 and D5), on a CLI wh
   "agentCapabilities": {
     "loadSession": false,
     "promptCapabilities": { "image": false, "audio": false, "embeddedContext": false },
-    "sessionCapabilities": { "systemPrompt": { "mode": { "override": {} } } },
+    "sessionCapabilities": { "systemPrompt": { "mode": { "override": {} } }, "resume": {} },
     "_meta": {
       "minimal-agent/ext": { "version": 1, "features": ["usage", "structuredOutput", "sampling"] }
     }
@@ -255,7 +256,7 @@ minimal-agent `initialize` result (after patches E1, M4, D2 and D5), on a CLI wh
 }
 ```
 
-On a CLI with the pinned core 82ff7e8 (no M2 append, no D1/D4 setters), there is no `sessionCapabilities` key and `features` is `["usage"]`.
+On a CLI with the pinned core 82ff7e8 (no M2 append, no D1/D4 setters), there is no `systemPrompt` key and `features` is `["usage"]`. A CLI with no `HostRuntime.resumeSession` gives no `resume` key.
 
 ## 7. Compatibility test matrix
 

@@ -940,7 +940,10 @@ describe.skipIf(SKIP !== undefined)("ACP approval gate, real agent process", () 
       const ac = ((await a.reply(1)).result as { agentCapabilities: Json }).agentCapabilities
       // The CLI now resolves a core with M2/M3 (appendSystemPrompt, override)
       // and D1/D4 (per-run output schema, temperature), so every feature is on.
-      expect(ac.sessionCapabilities).toEqual({ systemPrompt: { mode: { override: {} } } })
+      // `resume` is there only on a CLI with `HostRuntime.resumeSession`.
+      const { resume, ...sessionCaps } = ac.sessionCapabilities as Json
+      expect(sessionCaps).toEqual({ systemPrompt: { mode: { override: {} } } })
+      expect(resume === undefined || JSON.stringify(resume) === "{}").toBe(true)
       expect((ac._meta as Json)["minimal-agent/ext"]).toEqual({
         version: 1,
         features: ["usage", "structuredOutput", "sampling"],

@@ -48,6 +48,9 @@
  * `temperature`. A core `agent.temperature-ignored` diag entry gives one
  * notice per turn.
  *
+ * `session/resume` reopens a saved session in place (no history replay),
+ * when the CLI runtime has `resumeSession`.
+ *
  * Deferred: `session/load` / `session/list` / plan / image input.
  *
  * @module host-mode
@@ -143,30 +146,54 @@ type OpenSessionWithOptions = (options?: {
 }) => Promise<HostSession>
 
 /**
- * Read `session/new` `systemPrompt {mode, content}` (ACP unstable,
+ * The CLI's `HostRuntime.resumeSession` (CLI `startup/run-host-mode.ts`):
+ * reopen a saved session in place, by its id. Not in core's `HostRuntime`
+ * type, so the plugin feature-detects it. An older CLI has none: then the
+ * agent does not advertise `sessionCapabilities.resume`.
+ */
+type ResumeSessionFn = (
+  sessionId: string,
+  options?: { readonly systemPrompt?: SystemPromptOption },
+) => Promise<HostSession>
+
+/** The CLI error `code` for an id with no saved session. */
+const SESSION_NOT_FOUND_CODE = "session.not-found"
+
+/** ACP `RESOURCE_NOT_FOUND`: the error for a `session/resume` of an unknown id. */
+const RESOURCE_NOT_FOUND = -32002
+
+/** The runtime's `resumeSession`, bound, or `undefined` when the CLI has none. */
+export function readResumeSession(runtime: unknown): ResumeSessionFn | undefined {
+  if (typeof runtime !== "object" || runtime === null) return undefined
+  const fn = (runtime as { resumeSession?: unknown }).resumeSession
+  return typeof fn === "function" ? (fn.bind(runtime) as ResumeSessionFn) : undefined
+}
+
+/**
+ * Read `session/new` (or `session/resume`) `systemPrompt {mode, content}` (ACP unstable,
  * `SystemPrompt`). Absent or `null`: no option. `mode` must be `append` or
  * `override`. `content` must be an array of `text` blocks, joined with a
  * blank line. Any other block type is -32602 (`promptCapabilities.image` is
  * false). Text that is empty after trim gives no option.
  */
-function readSystemPrompt(params: Record<string, unknown>): SystemPromptOption | undefined {
+function readSystemPrompt(
+  params: Record<string, unknown>,
+  method = "session/new",
+): SystemPromptOption | undefined {
   const raw = params.systemPrompt
   if (raw === undefined || raw === null) return undefined
   if (typeof raw !== "object" || Array.isArray(raw)) {
-    throw new RpcError(RPC_ERROR.invalidParams, "session/new: systemPrompt must be an object")
+    throw new RpcError(RPC_ERROR.invalidParams, `${method}: systemPrompt must be an object`)
   }
   const { mode, content } = raw as { mode?: unknown; content?: unknown }
   if (mode !== "append" && mode !== "override") {
     throw new RpcError(
       RPC_ERROR.invalidParams,
-      `session/new: unsupported systemPrompt mode ${JSON.stringify(mode)} (supported: "append", "override")`,
+      `${method}: unsupported systemPrompt mode ${JSON.stringify(mode)} (supported: "append", "override")`,
     )
   }
   if (!Array.isArray(content)) {
-    throw new RpcError(
-      RPC_ERROR.invalidParams,
-      "session/new: systemPrompt.content must be an array",
-    )
+    throw new RpcError(RPC_ERROR.invalidParams, `${method}: systemPrompt.content must be an array`)
   }
   const parts: string[] = []
   for (const block of content as unknown[]) {
@@ -174,7 +201,7 @@ function readSystemPrompt(params: Record<string, unknown>): SystemPromptOption |
     if (b?.type !== "text" || typeof b.text !== "string") {
       throw new RpcError(
         RPC_ERROR.invalidParams,
-        `session/new: unsupported systemPrompt content block type "${b?.type ?? "undefined"}" (only text is accepted)`,
+        `${method}: unsupported systemPrompt content block type "${b?.type ?? "undefined"}" (only text is accepted)`,
       )
     }
     parts.push(b.text)
@@ -364,6 +391,8 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
   // What the runtime can apply. Read once: the CLI fixes it per process.
   const caps = readRuntimeCapabilities(ctx.runtime)
   const advertisedExt = localExt((f) => runtimeSupportsFeature(caps, f))
+  // The CLI's in-place resume, or `undefined` (no `sessionCapabilities.resume`).
+  const resumeSession = readResumeSession(ctx.runtime)
   // Set at `session/new` only when approval is on.
   let gate: PermissionGate | undefined
   // True when approval is on but core did not load the gate hook.
@@ -374,6 +403,108 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
       throw new RpcError(RPC_ERROR.invalidParams, `unknown session: ${String(sessionId)}`)
     }
     return session
+  }
+
+  /**
+   * `session/new` and `session/resume`: check the params, open (or reopen)
+   * the one session, then build the encoder and the approval gate.
+   * `session/resume` reopens the saved session `sessionId` in place (its id,
+   * its history). It sends no history back (that is `session/load`). An id
+   * with no saved session is `-32002` (ACP resource not found), and the
+   * client can then send `session/new`.
+   */
+  async function setupSession(
+    rawParams: unknown,
+    method: "session/new" | "session/resume",
+  ): Promise<Record<string, unknown>> {
+    if (session) {
+      throw new RpcError(
+        RPC_ERROR.invalidRequest,
+        "a session is already open for this process (Level 1 is one session per process)",
+      )
+    }
+    // `rawParams` is the raw JSON-RPC params (transport.ts parses with
+    // JSON.parse, no schema), so `systemPrompt` is never stripped.
+    const params = paramsObject(rawParams, method)
+    let resumeId: string | undefined
+    if (method === "session/resume") {
+      if (!resumeSession) {
+        throw new RpcError(RPC_ERROR.methodNotFound, "session/resume is not supported")
+      }
+      resumeId = optionalString(params, "sessionId", method)
+      if (resumeId === undefined || resumeId === "") {
+        throw new RpcError(RPC_ERROR.invalidParams, `${method}: sessionId is required`)
+      }
+    }
+    const cwd = optionalString(params, "cwd", method)
+    if (cwd !== undefined && cwd !== ctx.cwd && samePathKey(cwd) !== samePathKey(ctx.cwd)) {
+      throw new RpcError(
+        RPC_ERROR.invalidParams,
+        `this process is fixed to cwd ${ctx.cwd}; a session with another cwd needs its own process`,
+      )
+    }
+    const systemPrompt = readSystemPrompt(params, method)
+    // Not advertised: reject, so the client never thinks it applied.
+    if (systemPrompt && !systemPromptSupported(caps, systemPrompt.mode)) {
+      throw new RpcError(
+        RPC_ERROR.invalidParams,
+        `${method}: systemPrompt mode "${systemPrompt.mode}" is not supported by this agent's runtime (not advertised in sessionCapabilities.systemPrompt); send the instructions in the prompt instead`,
+      )
+    }
+    const options = systemPrompt ? { systemPrompt } : undefined
+    let opened: HostSession
+    if (resumeId !== undefined && resumeSession) {
+      try {
+        opened = await resumeSession(resumeId, options)
+      } catch (e) {
+        if ((e as { code?: unknown } | null)?.code === SESSION_NOT_FOUND_CODE) {
+          throw new RpcError(RESOURCE_NOT_FOUND, `${method}: ${errorText(e)}`, {
+            sessionId: resumeId,
+          })
+        }
+        throw e
+      }
+    } else {
+      // See `OpenSessionWithOptions`: the pinned core types `openSession()`
+      // with no options. Pass options only when a system prompt is set.
+      const openSession = ctx.runtime.openSession.bind(ctx.runtime) as OpenSessionWithOptions
+      opened = await (options ? openSession(options) : openSession())
+    }
+    session = opened
+    // `ext` is the effective set from `initialize`. The encoder uses it
+    // to gate `_meta["minimal-agent/usage"]`.
+    const encoderOptions: SessionEncoderOptions = {
+      send: (update) => channel.notify("session/update", { sessionId: opened.sessionId, update }),
+      clientNotices,
+      runtime: ctx.runtime,
+      cwd: ctx.cwd,
+      ext,
+    }
+    encoder = createSessionEncoder(encoderOptions)
+    if (args.approval && !hookRegistered()) {
+      gateNotLoaded = true
+      ctx.stderr.write(`acp: warning: ${GATE_NOT_LOADED}\n`)
+    } else if (args.approval) {
+      const enc = encoder
+      gate = createPermissionGate({
+        request: (m, p, signal) => channel.request(m, p, signal),
+        sessionId: () => session?.sessionId,
+        deadlineMs: args.approvalTimeoutMs,
+        // Send the `tool_call` update before the request. A call inside
+        // a worker (`agentId`) has no update in this stream: do not wait.
+        beforeRequest: (payload) =>
+          payload.agentId === undefined
+            ? enc.toolCallSent(payload.toolUseId, TOOL_CALL_SENT_WAIT_MS)
+            : Promise.resolve(),
+        log: (msg) => ctx.log.debug("acp", msg),
+      })
+      setActiveGate(gate)
+    }
+    const configOptions = buildConfigOptions(ctx.runtime)
+    // `session/resume` answers with no `sessionId` (the client sent it).
+    return resumeId !== undefined
+      ? { configOptions }
+      : { sessionId: opened.sessionId, configOptions }
   }
 
   const channel = createRpcChannel({
@@ -410,6 +541,15 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
               systemPrompt: caps.systemPrompt.override ? { mode: { override: {} } } : {},
             }
           }
+          // `session/resume`: only when the CLI can reopen a saved session.
+          // `loadSession` stays false: there is no history replay.
+          if (resumeSession) {
+            const sessionCaps = (agentCapabilities.sessionCapabilities ?? {}) as Record<
+              string,
+              unknown
+            >
+            agentCapabilities.sessionCapabilities = { ...sessionCaps, resume: {} }
+          }
           // Merge: keep any `_meta` key a later patch adds here.
           const meta = (agentCapabilities._meta ?? {}) as Record<string, unknown>
           agentCapabilities._meta = { ...meta, [EXT_CAPABILITY_KEY]: advertisedExt }
@@ -420,68 +560,8 @@ const handler: HostModeHandler = async (ctx: HostModeContext): Promise<number> =
             authMethods: [],
           }
         },
-        "session/new": async (rawParams) => {
-          if (session) {
-            throw new RpcError(
-              RPC_ERROR.invalidRequest,
-              "a session is already open for this process (Level 1 is one session per process)",
-            )
-          }
-          // `rawParams` is the raw JSON-RPC params (transport.ts parses with
-          // JSON.parse, no schema), so `systemPrompt` is never stripped.
-          const newParams = paramsObject(rawParams, "session/new")
-          const cwd = optionalString(newParams, "cwd", "session/new")
-          if (cwd !== undefined && cwd !== ctx.cwd && samePathKey(cwd) !== samePathKey(ctx.cwd)) {
-            throw new RpcError(
-              RPC_ERROR.invalidParams,
-              `this process is fixed to cwd ${ctx.cwd}; a session with another cwd needs its own process`,
-            )
-          }
-          const systemPrompt = readSystemPrompt(newParams)
-          // Not advertised: reject, so the client never thinks it applied.
-          if (systemPrompt && !systemPromptSupported(caps, systemPrompt.mode)) {
-            throw new RpcError(
-              RPC_ERROR.invalidParams,
-              `session/new: systemPrompt mode "${systemPrompt.mode}" is not supported by this agent's runtime (not advertised in sessionCapabilities.systemPrompt); send the instructions in the prompt instead`,
-            )
-          }
-          // See `OpenSessionWithOptions`: the pinned core types `openSession()`
-          // with no options. Pass options only when a system prompt is set.
-          const openSession = ctx.runtime.openSession.bind(ctx.runtime) as OpenSessionWithOptions
-          const opened = await (systemPrompt ? openSession({ systemPrompt }) : openSession())
-          session = opened
-          // `ext` is the effective set from `initialize`. The encoder uses it
-          // to gate `_meta["minimal-agent/usage"]`.
-          const encoderOptions: SessionEncoderOptions = {
-            send: (update) =>
-              channel.notify("session/update", { sessionId: opened.sessionId, update }),
-            clientNotices,
-            runtime: ctx.runtime,
-            cwd: ctx.cwd,
-            ext,
-          }
-          encoder = createSessionEncoder(encoderOptions)
-          if (args.approval && !hookRegistered()) {
-            gateNotLoaded = true
-            ctx.stderr.write(`acp: warning: ${GATE_NOT_LOADED}\n`)
-          } else if (args.approval) {
-            const enc = encoder
-            gate = createPermissionGate({
-              request: (method, params, signal) => channel.request(method, params, signal),
-              sessionId: () => session?.sessionId,
-              deadlineMs: args.approvalTimeoutMs,
-              // Send the `tool_call` update before the request. A call inside
-              // a worker (`agentId`) has no update in this stream: do not wait.
-              beforeRequest: (payload) =>
-                payload.agentId === undefined
-                  ? enc.toolCallSent(payload.toolUseId, TOOL_CALL_SENT_WAIT_MS)
-                  : Promise.resolve(),
-              log: (msg) => ctx.log.debug("acp", msg),
-            })
-            setActiveGate(gate)
-          }
-          return { sessionId: opened.sessionId, configOptions: buildConfigOptions(ctx.runtime) }
-        },
+        "session/new": (rawParams) => setupSession(rawParams, "session/new"),
+        "session/resume": (rawParams) => setupSession(rawParams, "session/resume"),
         "session/set_config_option": async (rawParams) => {
           const method = "session/set_config_option"
           const params = paramsObject(rawParams, method)
