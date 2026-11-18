@@ -71,12 +71,69 @@ function padLabel(label: string, width: number): string {
   return label + " ".repeat(width - w)
 }
 
+/** Truncate plain text to `width` display columns, ending in `…` when cut. */
+function truncate(text: string, width: number): string {
+  if (displayWidth(text) <= width) return text
+  let out = ""
+  for (const ch of text) {
+    if (displayWidth(out + ch) > width - 1) break
+    out += ch
+  }
+  return `${out}…`
+}
+
 /** A `[R]` / `[E]` / `[~]` marker describing a totals block's provenance. */
 function provenanceMark(t: UsageTotals): string {
   if (t.turns === 0) return ""
   if (t.estimatedTurns === 0) return c.green("[R]")
   if (t.estimatedTurns === t.turns) return c.yellow("[E]")
   return c.yellow("[~]")
+}
+
+/** Longest label shown before truncating with `…`. */
+const MAX_LABEL = 30
+
+/** Column widths shared by every bar row so all sections line up. */
+interface RowLayout {
+  labelWidth: number
+  barCells: number
+  tokWidth: number
+  /** 0 when no row has a cost (the column is omitted). */
+  costWidth: number
+}
+
+/** A group of rows plus how to label them. */
+interface RowGroup {
+  rows: UsageBreakdownRow[]
+  labelFn: (k: string) => string
+}
+
+/**
+ * Compute one layout for all `groups`: the label column fits the longest label
+ * (capped so the bar keeps room), and the token/cost columns fit their widest
+ * values.
+ */
+function computeLayout(
+  groups: RowGroup[],
+  cols: number,
+  bar: { min: number; max: number },
+): RowLayout {
+  let longestLabel = 0
+  let tokWidth = 0
+  let costWidth = 0
+  for (const g of groups) {
+    for (const r of g.rows) {
+      longestLabel = Math.max(longestLabel, displayWidth(g.labelFn(r.key)))
+      tokWidth = Math.max(tokWidth, fmtTokens(r.totals.tokens).length)
+      if (r.totals.costUSD > 0) costWidth = Math.max(costWidth, fmtUSD(r.totals.costUSD).length)
+    }
+  }
+  // indent(2) + label + space + bar + space + tok + [2 + cost] + [2 + mark(3)]
+  const fixed = 2 + 1 + 1 + tokWidth + (costWidth ? 2 + costWidth : 0) + 5
+  const labelCap = Math.max(8, Math.min(MAX_LABEL, cols - fixed - bar.min))
+  const labelWidth = Math.min(Math.max(8, longestLabel), labelCap)
+  const barCells = Math.max(bar.min, Math.min(bar.max, cols - fixed - labelWidth))
+  return { labelWidth, barCells, tokWidth, costWidth }
 }
 
 /**
@@ -86,30 +143,29 @@ function provenanceMark(t: UsageTotals): string {
 function renderRow(
   row: UsageBreakdownRow,
   maxTokens: number,
-  opts: { labelWidth: number; barCells: number; tokWidth: number; labelFn: (k: string) => string },
+  layout: RowLayout,
+  labelFn: (k: string) => string,
 ): string {
-  const label = padLabel(c.cyan(opts.labelFn(row.key)), opts.labelWidth)
-  const { full, empty } = bar(row.totals.tokens, maxTokens, opts.barCells)
+  const label = padLabel(c.cyan(truncate(labelFn(row.key), layout.labelWidth)), layout.labelWidth)
+  const { full, empty } = bar(row.totals.tokens, maxTokens, layout.barCells)
   const barStr = c.lime(full) + c.dim(empty)
-  const tok = fmtTokens(row.totals.tokens).padStart(opts.tokWidth)
-  const cost = row.totals.costUSD > 0 ? `  ${c.dim(fmtUSD(row.totals.costUSD))}` : ""
-  const mark = row.totals.estimatedTurns > 0 ? `  ${provenanceMark(row.totals)}` : ""
-  return `  ${label} ${barStr} ${c.faintWhite(tok)}${cost}${mark}`
+  const tok = fmtTokens(row.totals.tokens).padStart(layout.tokWidth)
+  const costText = row.totals.costUSD > 0 ? fmtUSD(row.totals.costUSD) : ""
+  const hasMark = row.totals.estimatedTurns > 0
+  // Pad the cost column only when a marker follows, so lines carry no trailing blanks.
+  const costPad = hasMark ? " ".repeat(layout.costWidth - costText.length) : ""
+  const cost = layout.costWidth ? `  ${costText ? c.dim(costText) : ""}${costPad}` : ""
+  const mark = hasMark ? `  ${provenanceMark(row.totals)}` : ""
+  const line = `  ${label} ${barStr} ${c.faintWhite(tok)}${cost}${mark}`
+  return costText || hasMark ? line : `  ${label} ${barStr} ${c.faintWhite(tok)}`
 }
 
 /** Render a labeled breakdown section (a heading + bar rows). */
-function renderSection(
-  heading: string,
-  rows: UsageBreakdownRow[],
-  opts: { labelWidth: number; barCells: number; labelFn: (k: string) => string },
-): string[] {
-  if (rows.length === 0) return []
-  const maxTokens = rows.reduce((m, r) => Math.max(m, r.totals.tokens), 0)
-  const tokWidth = rows.reduce((m, r) => Math.max(m, fmtTokens(r.totals.tokens).length), 0)
+function renderSection(heading: string, group: RowGroup, layout: RowLayout): string[] {
+  if (group.rows.length === 0) return []
+  const maxTokens = group.rows.reduce((m, r) => Math.max(m, r.totals.tokens), 0)
   const out: string[] = [`  ${c.bold(heading)}`]
-  for (const row of rows) {
-    out.push(renderRow(row, maxTokens, { ...opts, tokWidth }))
-  }
+  for (const row of group.rows) out.push(renderRow(row, maxTokens, layout, group.labelFn))
   return out
 }
 
@@ -157,23 +213,14 @@ export function renderUsageReport(report: UsageReport, opts: RenderUsageOpts = {
   out.push(...renderTotalsLines(report.totals))
   out.push("")
 
-  const labelWidth = 14
-  const barCells = Math.max(8, Math.min(40, cols - labelWidth - 24))
+  const providers: RowGroup = { rows: report.byProvider, labelFn: (k) => k }
+  const models: RowGroup = { rows: report.byModel, labelFn: (k) => modelShort(k, opts) }
+  const layout = computeLayout([providers, models], cols, { min: 8, max: 40 })
 
-  const prov = renderSection("By provider", report.byProvider, {
-    labelWidth,
-    barCells,
-    labelFn: (k) => k,
-  })
+  const prov = renderSection("By provider", providers, layout)
   out.push(...prov)
   if (prov.length > 0) out.push("")
-  out.push(
-    ...renderSection("By model", report.byModel, {
-      labelWidth,
-      barCells,
-      labelFn: (k) => modelShort(k, opts),
-    }),
-  )
+  out.push(...renderSection("By model", models, layout))
   out.push("")
   return out
 }
@@ -206,21 +253,13 @@ export function renderUsageOverlay(
     )
   }
 
-  const labelWidth = 12
-  const barCells = Math.max(6, Math.min(24, cols - labelWidth - 22))
-  const rows = report.byModel.slice(0, maxRows)
-  const maxTokens = rows.reduce((m, r) => Math.max(m, r.totals.tokens), 0)
-  const tokWidth = rows.reduce((m, r) => Math.max(m, fmtTokens(r.totals.tokens).length), 0)
-  for (const row of rows) {
-    out.push(
-      renderRow(row, maxTokens, {
-        labelWidth,
-        barCells,
-        tokWidth,
-        labelFn: (k) => modelShort(k, opts),
-      }),
-    )
+  const group: RowGroup = {
+    rows: report.byModel.slice(0, maxRows),
+    labelFn: (k) => modelShort(k, opts),
   }
+  const layout = computeLayout([group], cols, { min: 6, max: 24 })
+  const maxTokens = group.rows.reduce((m, r) => Math.max(m, r.totals.tokens), 0)
+  for (const row of group.rows) out.push(renderRow(row, maxTokens, layout, group.labelFn))
   if (report.byModel.length > maxRows) {
     out.push(`  ${c.dim(`… +${report.byModel.length - maxRows} more model(s)`)}`)
   }
