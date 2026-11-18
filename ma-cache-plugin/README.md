@@ -47,6 +47,11 @@ Each code is sent at most one time for each history.
   (`markers_ignored_cold`, `below_min_block_size`) still work at once. A
   reset can hide a warning, and it never makes a false one. Also, a reset
   starts the "one time per code" count again.
+- **A response that is in flight during a reset is not counted.** The core
+  lets a switch come while a response of the old target still streams. Each
+  request records the reset epoch when it starts. If a reset came before
+  its response ends, the plugin drops that usage, because it belongs to the
+  old target. So the old target cannot seed the new history.
 
 ## Files
 
