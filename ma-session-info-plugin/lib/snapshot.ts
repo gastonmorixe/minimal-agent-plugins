@@ -60,6 +60,12 @@ export interface SessionInfoSnapshot {
   modelId: string
   modelLabel: string
   providerId: string
+  /**
+   * The stored credential that the next request uses, by name. Absent: the
+   * default credential of the provider, or a host that does not report it.
+   * Never a secret: only the name the user gave at login.
+   */
+  credentialName?: string
   /** Selected effort level (provider pass-through), when set. */
   effort?: string
   /** `--fast` / MINIMAL_AGENT_FAST is on. */
@@ -136,6 +142,9 @@ export function formatSessionInfo(s: SessionInfoSnapshot): string {
       modelTail.length ? ` · ${modelTail.join(" · ")}` : ""
     }`,
   )
+  // The credential is part of the target: `/provider` can change it with the
+  // same model, and the quota then belongs to an other account.
+  if (s.credentialName) lines.push(`Credential: ${s.credentialName}`)
 
   if (s.contextWindow && s.contextWindow > 0) {
     const frac = s.contextSize / s.contextWindow

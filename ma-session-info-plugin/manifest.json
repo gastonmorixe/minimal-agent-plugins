@@ -29,6 +29,30 @@
         },
         "interactive": false
       }
+    ],
+    "hooks": [
+      {
+        "id": "on_turn_will_start",
+        "channel": "turn.willStart",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_turn_will_start.ts",
+          "export": "default"
+        },
+        "priority": 60
+      }
+    ],
+    "events": [
+      {
+        "id": "on_target_switch",
+        "on": "target.didSwitch",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_target_switch.ts",
+          "export": "default"
+        }
+      }
     ]
-  }
+  },
+  "permissions": ["hooks:turn.willStart"]
 }
