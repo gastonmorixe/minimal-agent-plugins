@@ -22,7 +22,8 @@
  *   wait (see `wait-notice.ts` for the rules and the text). Without it the
  *   client shows nothing while the session waits.
  * - `tool_output` → `tool_call_update` with the (capped) text as content.
- * - `tool_result` → `tool_call_update` `completed` or `failed`.
+ * - `tool_result` → `tool_call_update` `completed` or `failed`. When the outcome
+ *   has structured `data`, the update also has it as `rawOutput`.
  * - `turn_completed` → `usage_update`: `used` = that turn's input + cache
  *   read + cache creation tokens (a PROXY for the context size, never a
  *   sum over turns), `size` = the model's `contextWindow`. No cost.
@@ -373,6 +374,7 @@ export function createSessionEncoder(options: SessionEncoderOptions): SessionEnc
           sessionUpdate: "tool_call_update",
           toolCallId: wire.toolCallId,
           status: toAcpToolStatus(wire.status),
+          ...(wire.data !== undefined ? { rawOutput: wire.data } : {}),
         })
         return
       }

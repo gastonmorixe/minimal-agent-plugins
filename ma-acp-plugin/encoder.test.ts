@@ -222,6 +222,50 @@ describe("tool updates (design section 6)", () => {
     })
   })
 
+  it("sends the data of a tool result as rawOutput in the last update", () => {
+    const { sent, feed } = setup()
+    feed({ type: "tool_result", id: "c1", name: "Read", isError: false, data: { a: 1 } })
+    expect(sent.at(-1)).toEqual({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c1",
+      status: "completed",
+      rawOutput: { a: 1 },
+    })
+  })
+
+  it("sends no rawOutput when the tool result has no data", () => {
+    const { sent, feed } = setup()
+    feed({ type: "tool_result", id: "c1", name: "Read", isError: false })
+    const update = sent.at(-1) as Update
+    expect(update).toEqual({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c1",
+      status: "completed",
+    })
+    expect("rawOutput" in update).toBe(false)
+  })
+
+  it("sends rawOutput for a failed tool result that has data", () => {
+    const { sent, feed } = setup()
+    feed({ type: "tool_result", id: "c2", name: "Bash", isError: true, data: { exitCode: 2 } })
+    expect(sent.at(-1)).toEqual({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "c2",
+      status: "failed",
+      rawOutput: { exitCode: 2 },
+    })
+  })
+
+  it("keeps falsy data: only undefined is skipped (null, 0, false, empty string, array)", () => {
+    for (const data of ["text", [1, 2], 0, false, "", null]) {
+      const { sent, feed } = setup()
+      feed({ type: "tool_result", id: "c3", name: "Read", isError: false, data })
+      const update = sent.at(-1) as Update
+      expect("rawOutput" in update).toBe(true)
+      expect(update.rawOutput).toEqual(data)
+    }
+  })
+
   it("derives locations for file tools only", () => {
     expect(toolLocations("Write", { file_path: "/abs/x" }, "/w")).toEqual([{ path: "/abs/x" }])
     expect(toolLocations("Edit", { file_path: "y" }, "/w")).toEqual([{ path: "/w/y" }])
