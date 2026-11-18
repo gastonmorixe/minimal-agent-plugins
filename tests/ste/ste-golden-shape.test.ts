@@ -343,27 +343,15 @@ export interface SchemaAddition {
   source: string
 }
 
-/** Intended schema additions. Keep it narrow: each entry needs a reason. */
-export const SCHEMA_ADDITIONS: readonly SchemaAddition[] = [
-  // Strict OpenAI tools (ma-llm-openai-plugin/responses/strict-tools.ts) need
-  // a declared type on each property. Task's ids take a string or a positive
-  // integer (task_tool.ts isIdRef). Remove these entries after the change is
-  // on plugins main (follow-up PR).
-  ...["id", "parent", "after"].map((property) => ({
-    tool: "Task",
-    property,
-    key: "type",
-    value: ["string", "integer"],
-    source: "nullable strict tools: Task id type",
-  })),
-  {
-    tool: "Task",
-    property: "order",
-    key: "items",
-    value: { type: ["string", "integer"] },
-    source: "nullable strict tools: Task order item type",
-  },
-]
+/**
+ * Intended schema additions. Keep it narrow: each entry needs a reason.
+ *
+ * Empty today. The Task id/parent/after/order types (nullable strict tools,
+ * plugins 8de6c35) used it until they landed on main; the merge base now has
+ * them. Add an entry here for the next intended schema change, and remove it
+ * in a follow-up after that change is on main.
+ */
+export const SCHEMA_ADDITIONS: readonly SchemaAddition[] = []
 
 /** A `shape` path of a key added to a tool property: `...tools[i].input_schema.properties.<p>{+<k>}`. */
 const ADDED_PROPERTY_KEY =
@@ -886,7 +874,26 @@ describe("golden leaf diff: M6 mutation proof on real goldens (temp copy)", () =
   })
 })
 
-describe("golden leaf diff: SCHEMA_ADDITIONS (intended Task schema change)", () => {
+describe("golden leaf diff: SCHEMA_ADDITIONS (intended schema change)", () => {
+  /** The Task entries that the strict-tools change used, as a test allowlist. */
+  const TASK_ADDITIONS: readonly SchemaAddition[] = [
+    ...["id", "parent", "after"].map((property) => ({
+      tool: "Task",
+      property,
+      key: "type",
+      value: ["string", "integer"],
+      source: "test",
+    })),
+    {
+      tool: "Task",
+      property: "order",
+      key: "items",
+      value: { type: ["string", "integer"] },
+      source: "test",
+    },
+  ]
+  const problems = (before: unknown, after: unknown) =>
+    goldenProblems("g.json", before, after, PROSE_LEAVES, TASK_ADDITIONS)
   /** A golden with one Task tool and one other tool, like the real request goldens. */
   const golden = (task: Record<string, unknown>, other: Record<string, unknown>) => ({
     requests: [
@@ -906,26 +913,26 @@ describe("golden leaf diff: SCHEMA_ADDITIONS (intended Task schema change)", () 
 
   test("the exact listed additions on Task pass", () => {
     const after = golden({ id: typedId, order: typedOrder }, { id: ID, order: ORDER })
-    expect(goldenProblems("g.json", before, after)).toEqual([])
+    expect(problems(before, after)).toEqual([])
   })
 
   test("kills 'any key': another added key at a listed property fails", () => {
     const after = golden({ id: { ...ID, minimum: 1 }, order: ORDER }, { id: ID, order: ORDER })
-    expect(goldenProblems("g.json", before, after)).toEqual([
+    expect(problems(before, after)).toEqual([
       "shape $.requests[0].tools[1].input_schema.properties.id{+minimum}",
     ])
   })
 
   test("kills 'any value': the listed key with another value fails", () => {
     const after = golden({ id: { ...ID, type: "string" }, order: ORDER }, { id: ID, order: ORDER })
-    expect(goldenProblems("g.json", before, after)).toEqual([
+    expect(problems(before, after)).toEqual([
       "shape $.requests[0].tools[1].input_schema.properties.id{+type}",
     ])
   })
 
   test("kills 'any tool': the same addition on another tool fails", () => {
     const after = golden({ id: ID, order: ORDER }, { id: typedId, order: ORDER })
-    expect(goldenProblems("g.json", before, after)).toEqual([
+    expect(problems(before, after)).toEqual([
       "shape $.requests[0].tools[0].input_schema.properties.id{+type}",
     ])
   })
@@ -935,7 +942,7 @@ describe("golden leaf diff: SCHEMA_ADDITIONS (intended Task schema change)", () 
       { id: typedId, order: { ...typedOrder, minItems: 1 } },
       { id: ID, order: ORDER },
     )
-    expect(goldenProblems("g.json", before, after)).toEqual([
+    expect(problems(before, after)).toEqual([
       "shape $.requests[0].tools[1].input_schema.properties.order{+items,+minItems}",
     ])
   })
@@ -949,7 +956,7 @@ describe("golden leaf diff: SCHEMA_ADDITIONS (intended Task schema change)", () 
         order: ORDER,
       },
     )
-    expect(goldenProblems("g.json", before, after)).toEqual([])
+    expect(problems(before, after)).toEqual([])
     const tagged = { description: "The id. <ma::agent::invented-tag />" }
     const bad = golden(
       { id: { ...tagged, type: ["string", "integer"] }, order: ORDER },
@@ -960,11 +967,16 @@ describe("golden leaf diff: SCHEMA_ADDITIONS (intended Task schema change)", () 
     )
     // An unknown tag in the description: the addition is not allowed, so the
     // shape difference is reported (the prose rule still applies).
-    expect(goldenProblems("g.json", before, bad)).toEqual([
+    expect(problems(before, bad)).toEqual([
       "shape $.requests[0].tools[1].input_schema.properties.id{+type}",
     ])
     expect(
-      isAllowedAddition("$.requests[0].tools[1].input_schema.properties.id{+type}", before, bad),
+      isAllowedAddition(
+        "$.requests[0].tools[1].input_schema.properties.id{+type}",
+        before,
+        bad,
+        TASK_ADDITIONS,
+      ),
     ).toBe(false)
   })
 
