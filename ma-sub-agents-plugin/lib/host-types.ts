@@ -62,6 +62,10 @@ export interface StartupProfile {
   readonly plugins: { readonly disable: readonly string[]; readonly enable: readonly string[] }
   readonly bare: boolean
   readonly tools: StartupProfileTools
+  /** Lead prompt-cache anchor flag. Absent in an older profile. */
+  readonly cacheAnchor?: boolean
+  /** Lead older-turn thinking mode. Absent in an older profile. */
+  readonly thinkingHistory?: "strip" | "keep"
 }
 
 /** One mode and its tool permissions. Mirror of core `ModePolicyEntry`. */
