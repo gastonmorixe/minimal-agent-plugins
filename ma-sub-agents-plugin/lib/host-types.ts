@@ -258,6 +258,15 @@ export interface LiveAreaHandlerContext {
   agent?: AgentContext
 }
 
+/** Runtime context passed to an events[] handler. Mirror of the slice we read. */
+export interface EventHandlerContext<TPayload = unknown> {
+  event: string
+  payload: TPayload
+  env: Record<string, string>
+  log: PluginLogger
+  agent?: AgentContext
+}
+
 /**
  * Runtime context passed to a hooks[] handler. Mirror of the host's
  * `HookHandlerContext`, narrowed to what this plugin's lifecycle hooks read.

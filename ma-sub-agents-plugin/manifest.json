@@ -346,6 +346,17 @@
         "timeoutMs": 2000
       }
     ],
+    "events": [
+      {
+        "id": "on_target_switch",
+        "on": "target.didSwitch",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/on_target_switch.ts",
+          "export": "default"
+        }
+      }
+    ],
     "turnAttachments": [
       {
         "id": "fleet_digest",
