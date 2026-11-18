@@ -20,6 +20,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-18: **A skills test no longer fails on a busy machine**
+  (`ma-skills-plugin/lib/tool-registry.test.ts`, "timeout kills the script and
+  its background child"). On macOS the first run of a new executable file
+  takes about 220 ms, and the test gave the handler a 300 ms timeout, so the
+  script could be killed before it wrote its pids. The test now runs the
+  script once first (the next start takes about 15 ms) and uses 500 ms. Only
+  the test changes.
 - 2026-11-18: **A session id in a plugin comes from the handler context first**
   (`ma-tasks-plugin`, `ma-base-prompt-plugin`). The Task tool read the session
   id from `ctx.env.MINIMAL_AGENT_SESSION_ID` only; it now takes
