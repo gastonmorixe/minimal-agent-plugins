@@ -1,5 +1,5 @@
 /**
- * Thinking history after a same-provider model switch (ACP A3, handoff 5.4).
+ * Thinking history after a target switch (ACP A3, handoff 5.4).
  *
  * The test drives the real path with no network. Core's `AgentCore` is built
  * through the production factory (`testing/test-core`). It sends through the
@@ -8,16 +8,15 @@
  *
  * Turn 1 runs on model A and returns a signed thinking block plus text. Then
  * `setModel(B)` switches to another Anthropic model. Turn 2 must send the
- * thinking block back byte for byte (text and signature), with the thinking
- * and effort config of model B.
+ * turn-1 answer WITHOUT its thinking block, with the thinking and effort
+ * config of model B.
  *
- * Provider rule (Anthropic Messages API, current docs, "Preserved thinking"
- * and the model migration guide): pass thinking blocks back unchanged on
- * every request, also after a model switch. The API drops, with no charge,
- * each block that the target model cannot read. Do not strip blocks on the
- * client: that can cause ordering or signature 400s, and a kept block is read
- * again when the conversation goes back to a model that can read it. So the
- * correct behavior is "keep".
+ * Rule (core `sdk/target-change.ts`, decided 2026-11-17): a thinking block
+ * belongs to the target that made it. It can be signed for one model,
+ * encrypted, or bound to one account. So each change of the target
+ * (credential, provider, model or effort) discards the thinking from before
+ * the change, the same for each provider. With no change of the target, the
+ * thinking block goes back byte for byte (the last test).
  *
  * The test lives in this repo, not in core: core's provider-decoupling
  * ratchet forbids provider ids in core code, tests included.
@@ -194,7 +193,7 @@ function seedCredential(): void {
 const prevAuthFile = process.env.MINIMAL_AGENT_AUTH_FILE
 let workDir = ""
 
-describe("thinking history after setModel (real Anthropic adapter, AgentCore)", () => {
+describe("thinking history after a target switch (real Anthropic adapter, AgentCore)", () => {
   beforeAll(async () => {
     workDir = mkdtempSync(join(tmpdir(), "ma-anthropic-thinking-switch-"))
     process.env.MINIMAL_AGENT_AUTH_FILE = join(workDir, "auth.jsonc")
@@ -219,7 +218,7 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
     if (workDir) rmSync(workDir, { recursive: true, force: true })
   })
 
-  it("keeps model A's signed thinking block unchanged in the turn-2 request to model B", async () => {
+  it("sends no thinking block of model A in the turn-2 request to model B", async () => {
     const signature = fakeSignature(MODEL_A)
     const { client, bodies } = recordingClient([
       sse(thinkingTurn(MODEL_A, signature)),
@@ -248,19 +247,19 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
     expect(first.model).toBe(MODEL_A)
     expect(second.model).toBe(MODEL_B)
 
-    // The turn-1 assistant message goes back with the thinking block first,
-    // byte for byte: same text, same signature (signed by model A).
+    // The turn-1 assistant message goes back with its text only. No thinking
+    // text and no signature of model A is in the request.
     const assistant = second.messages.find((m) => m.role === "assistant")
     const blocks = assistant?.content ?? []
-    expect(blocks.map((b) => b.type)).toEqual(["thinking", "text"])
-    expect(blocks[0]).toEqual({ type: "thinking", thinking: THOUGHT, signature })
+    expect(blocks.map((b) => b.type)).toEqual(["text"])
+    expect(JSON.stringify(second.messages)).not.toContain(signature)
+    expect(JSON.stringify(second.messages)).not.toContain(THOUGHT)
 
     // Thinking and effort config come from model B.
     expect(second.thinking).toEqual({ type: "adaptive" })
     expect(typeof second.output_config?.effort).toBe("string")
 
-    // The switch is safe, so the adapter raises no preflight issue. No ask is
-    // denied, and the request goes out unchanged (the provider rule).
+    // The adapter raises no preflight issue, so no ask is denied.
     expect(notices.filter((n) => n.kind === "ask_denied")).toEqual([])
   })
 
@@ -288,7 +287,8 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
 
     expect(asks).toBe(0)
     const assistant = (bodies[1] as WireBody).messages.find((m) => m.role === "assistant")
-    expect(assistant?.content[0]).toEqual({ type: "thinking", thinking: THOUGHT, signature })
+    expect(assistant?.content.map((b) => b.type)).toEqual(["text"])
+    expect(JSON.stringify(bodies[1])).not.toContain(signature)
   })
 
   it("has no preflight hook that can ask a person", () => {
@@ -320,6 +320,53 @@ describe("thinking history after setModel (real Anthropic adapter, AgentCore)", 
     expect(second.model).toBe("claude-sonnet-4-6")
     expect(second.output_config?.effort).not.toBe("xhigh")
     const assistant = second.messages.find((m) => m.role === "assistant")
-    expect(assistant?.content[0]).toMatchObject({ type: "thinking", thinking: THOUGHT })
+    expect(assistant?.content.map((b) => b.type)).toEqual(["text"])
+  })
+
+  it("an effort-only switch discards the thinking too", async () => {
+    const signature = fakeSignature(MODEL_A)
+    const { client, bodies } = recordingClient([
+      sse(thinkingTurn(MODEL_A, signature)),
+      sse(textTurn(MODEL_A)),
+    ])
+    const core = await buildTestCore({
+      auth: AUTH,
+      model: MODEL_A,
+      providerId: "anthropic",
+      networkClient: client,
+    })
+    core.setEffort("low")
+
+    await drain(core.run("Question one?"))
+    core.setEffort("high")
+    await drain(core.run("Question two?"))
+
+    const second = bodies[1] as WireBody
+    expect(second.model).toBe(MODEL_A)
+    expect(second.output_config?.effort).toBe("high")
+    const assistant = second.messages.find((m) => m.role === "assistant")
+    expect(assistant?.content.map((b) => b.type)).toEqual(["text"])
+  })
+
+  it("with no target switch, the signed thinking block goes back byte for byte", async () => {
+    const signature = fakeSignature(MODEL_A)
+    const { client, bodies } = recordingClient([
+      sse(thinkingTurn(MODEL_A, signature)),
+      sse(textTurn(MODEL_A)),
+    ])
+    const core = await buildTestCore({
+      auth: AUTH,
+      model: MODEL_A,
+      providerId: "anthropic",
+      networkClient: client,
+    })
+
+    await drain(core.run("Question one?"))
+    await drain(core.run("Question two?"))
+
+    const assistant = (bodies[1] as WireBody).messages.find((m) => m.role === "assistant")
+    const blocks = assistant?.content ?? []
+    expect(blocks.map((b) => b.type)).toEqual(["thinking", "text"])
+    expect(blocks[0]).toEqual({ type: "thinking", thinking: THOUGHT, signature })
   })
 })

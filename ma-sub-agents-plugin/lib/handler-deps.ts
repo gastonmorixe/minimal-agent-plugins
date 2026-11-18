@@ -57,6 +57,32 @@ function resolveLeadModel(ctx: TUIContext): string {
 }
 
 /**
+ * The lead's credential name and effort for a new worker.
+ *
+ * With `ctx.queryTarget` (a host that gives the live target), the values are
+ * the lead's target AT THIS SPAWN, so a worker that starts after the user
+ * switched the credential or the effort gets the new ones. An absent value
+ * there is real (the provider default credential, the model default
+ * effort): it never falls back to a stale boot value.
+ *
+ * With no `queryTarget` (an older core, or a host with more sessions in one
+ * process), the old sources apply: the env, then the lead's own argv.
+ */
+export function resolveLeadCredentialAndEffort(
+  ctx: Pick<TUIContext, "queryTarget" | "env">,
+  argv: readonly string[] = process.argv,
+): { credentialName: string; effort: string } {
+  const live = ctx.queryTarget?.()
+  if (live) {
+    return { credentialName: live.credentialName?.trim() ?? "", effort: live.effort?.trim() ?? "" }
+  }
+  return {
+    credentialName: resolveCredentialName(ctx.env, argv),
+    effort: resolveLeadEffort(ctx.env, argv),
+  }
+}
+
+/**
  * Resolve the LEAD's live provider id (e.g. `"grok"`), or `""` when unknown.
  *
  * Comes only from `ctx.queryModelInfo()?.providerId` — the same live snapshot
@@ -67,7 +93,8 @@ function resolveLeadModel(ctx: TUIContext): string {
  * lead on Grok, workers on OpenCode Go → CreditsError 401).
  */
 function resolveLeadProvider(ctx: TUIContext): string {
-  return ctx.queryModelInfo?.()?.providerId?.trim() || ""
+  // The live target first: it is the provider the lead sends to now.
+  return ctx.queryTarget?.()?.providerId?.trim() || ctx.queryModelInfo?.()?.providerId?.trim() || ""
 }
 
 /**
@@ -219,8 +246,8 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
   // Lead identity for child spawn: credential + effort + provider. Argv is the
   // lead process's own process.argv (workers re-invoke via resolveAgentBin).
   const leadProvider = resolveLeadProvider(ctx)
-  const defaultCredentialName = resolveCredentialName(ctx.env, process.argv)
-  const defaultEffort = resolveLeadEffort(ctx.env, process.argv)
+  const { credentialName: defaultCredentialName, effort: defaultEffort } =
+    resolveLeadCredentialAndEffort(ctx)
   return {
     store: new SubagentStore(leadSid, { dir: sessionsDir }),
     spawnDeps: realSpawnDeps(),
