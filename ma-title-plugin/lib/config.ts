@@ -55,11 +55,12 @@ export const DEFAULT_MIN_CHARS = 10
 export const DEFAULT_MAX_USD_PER_MTOK_IN = 1.0
 
 /**
- * Run modes that are ON when the user set nothing (SPEC §7.1). P1a: empty,
- * so the plugin is OFF by default. P1b changes this to `["repl"]`
- * (interactive only).
+ * Run modes that are ON when the user set nothing (SPEC §7.1). P1b: only
+ * `repl`, and only when the REPL is interactive (a TTY). One-shot,
+ * stream-json and host stay OFF; a sub-agent is always OFF (SPEC §7.4).
+ * To turn it off: `MINIMAL_AGENT_TITLE=0` or `plugins.title.enabled: false`.
  */
-export const DEFAULT_ON_MODES: readonly RunMode[] = []
+export const DEFAULT_ON_MODES: readonly RunMode[] = ["repl"]
 
 /** The parsed `plugins.title` block, with defaults. */
 export interface TitleConfig {

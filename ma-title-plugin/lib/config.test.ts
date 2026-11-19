@@ -21,11 +21,11 @@ function wrap(block: unknown): unknown {
 }
 
 describe("parseTitleConfig", () => {
-  test("defaults (P1a: default OFF, no modes set)", () => {
+  test("defaults (P1b: default ON in repl only, no modes set)", () => {
     const c = parseTitleConfig({})
     expect(c).toEqual(defaultTitleConfig())
     expect(c.modes).toBeUndefined()
-    expect(DEFAULT_ON_MODES).toEqual([])
+    expect(DEFAULT_ON_MODES).toEqual(["repl"])
     expect(c).toMatchObject({
       enabled: true,
       subagents: "off",

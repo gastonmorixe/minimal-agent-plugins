@@ -94,7 +94,7 @@ export function isSubagentRun(run: RunModeFact | undefined, env: NodeJS.ProcessE
  * kill switch (`--no-title` \> `MINIMAL_AGENT_TITLE=0`) → off; sub-agent
  * → off unless `subagents:"model"` and an opt-in; `--title` or
  * `MINIMAL_AGENT_TITLE=1` → on; `plugins.title.modes` set → on only for those
- * modes; else the defaults ({@link DEFAULT_ON_MODES}, empty in P1a; `repl`
+ * modes; else the defaults ({@link DEFAULT_ON_MODES}: `repl` in P1b; `repl`
  * also needs `interactive`).
  *
  * A sub-agent worker that inherits `MINIMAL_AGENT_TITLE=1` from the lead

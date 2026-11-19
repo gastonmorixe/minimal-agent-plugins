@@ -5,14 +5,17 @@ The plugin makes a short title for a session, for example
 time to a model of the session provider with a low cost. It saves the title
 in the session index. `ma sessions` then shows the title with a `✦` mark.
 
-The plugin is off by default.
+The plugin is on by default in the interactive REPL only. It is off by
+default in the one-shot, stream-json and host modes. It is always off in a
+sub-agent. To stop it, set `MINIMAL_AGENT_TITLE=0` or
+`"plugins": { "title": { "enabled": false } }` (see "Stop the plugin").
 
 ## How it operates
 
 1. The REPL sends the event `prompt.submitted` for each prompt.
 2. The handler does a check of the prompt. It stops when one of these
    conditions is true:
-   - The run mode is not on (see "Turn on the plugin").
+   - The run mode is not on (see "Run modes").
    - The session has a title.
    - The prompt starts with `/`.
    - The prompt has fewer than 10 characters.
@@ -35,18 +38,25 @@ sid does not go to the new sid. Thus, the first good prompt after a resume
 sends one new title request for the new sid. With `--resume-same-sid`, the
 sid does not change, the plugin finds the title and sends no request.
 
-## Turn on the plugin
+## Run modes
 
-Use one of these:
+When you set nothing, the plugin operates only in the interactive REPL
+(`repl` with a TTY). It does not operate in the one-shot, stream-json and
+host modes, and it does not operate in a sub-agent.
+
+To turn on the plugin in a different mode, use one of these:
 
 - Set `MINIMAL_AGENT_TITLE=1`. Then the plugin can operate in the run mode
-  of this process.
-- Add the run mode to `plugins.title.modes` in
-  `~/.minimal-agent/config.jsonc`:
+  of this process (not in a sub-agent).
+- Set the run modes in `plugins.title.modes` in
+  `~/.minimal-agent/config.jsonc`. This list replaces the default. For
+  example, this list turns on one-shot and the REPL:
 
 ```jsonc
-{ "plugins": { "title": { "modes": ["repl"] } } }
+{ "plugins": { "title": { "modes": ["repl", "one-shot"] } } }
 ```
+
+An empty list (`"modes": []`) turns off the plugin in all modes.
 
 The plugin does not operate with `--dry-run`.
 
@@ -55,24 +65,25 @@ The plugin does not operate with `--dry-run`.
 The plugin reads the block `plugins.title` in
 `~/.minimal-agent/config.jsonc`.
 
-| Key               | Type                            | Default | Rule                                                                                                                                   |
-| ----------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`         | boolean                         | `true`  | `false` stops the plugin.                                                                                                              |
-| `model`           | string                          | not set | A model id. It must be a model of the session provider. The provider must have a title profile.                                        |
-| `modes`           | list                            | not set | The run modes where the plugin operates: `repl`, `one-shot`, `stream-json`, `host`, `subagent`. When it is not set, the plugin is off. |
-| `subagents`       | `"off"`, `"derived"`, `"model"` | `"off"` | The rule for sub-agents (see "Sub-agents").                                                                                            |
-| `effort`          | `"low"`, `"medium"`, `"high"`   | not set | The effort of the title request. When it is not set, the title profile of the provider gives the effort.                               |
-| `maxUsdPerMTokIn` | number                          | `1.0`   | The maximum price in USD for each million input tokens.                                                                                |
-| `timeoutMs`       | integer                         | `10000` | The time limit of the request, from 1000 to 30000.                                                                                     |
-| `minChars`        | integer                         | `10`    | The minimum length of the prompt.                                                                                                      |
+| Key               | Type                            | Default | Rule                                                                                                                             |
+| ----------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`         | boolean                         | `true`  | `false` stops the plugin.                                                                                                        |
+| `model`           | string                          | not set | A model id. It must be a model of the session provider. The provider must have a title profile.                                  |
+| `modes`           | list                            | not set | The run modes where the plugin operates: `repl`, `one-shot`, `stream-json`, `host`, `subagent`. When it is not set: `repl` only. |
+| `subagents`       | `"off"`, `"derived"`, `"model"` | `"off"` | The rule for sub-agents (see "Sub-agents").                                                                                      |
+| `effort`          | `"low"`, `"medium"`, `"high"`   | not set | The effort of the title request. When it is not set, the title profile of the provider gives the effort.                         |
+| `maxUsdPerMTokIn` | number                          | `1.0`   | The maximum price in USD for each million input tokens.                                                                          |
+| `timeoutMs`       | integer                         | `10000` | The time limit of the request, from 1000 to 30000.                                                                               |
+| `minChars`        | integer                         | `10`    | The minimum length of the prompt.                                                                                                |
 
 The plugin ignores an unknown key. A value of the wrong type gets the
 default. The plugin writes a debug log line for each of these.
 
 Environment variables:
 
-- `MINIMAL_AGENT_TITLE=1`: turn on the plugin in the run mode of this process.
-- `MINIMAL_AGENT_TITLE=0`: stop the plugin (the kill switch).
+- `MINIMAL_AGENT_TITLE=1`: turn on the plugin in the run mode of this process
+  (not in a sub-agent).
+- `MINIMAL_AGENT_TITLE=0`: stop the plugin in all modes (the kill switch).
 - `MINIMAL_AGENT_TITLE_MODEL=<id>`: the model id. It is used before
   `plugins.title.model`.
 
@@ -136,7 +147,8 @@ of `ma sessions <sid>` shows it on a different line.
 
 ## Stop the plugin
 
-Use one of these:
+The plugin is on by default in the interactive REPL. To stop it, use one of
+these:
 
 - `MINIMAL_AGENT_TITLE=0`
 - `--disable-plugin title`

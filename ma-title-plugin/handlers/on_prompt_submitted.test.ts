@@ -266,14 +266,51 @@ describe("title handler: happy path", () => {
 })
 
 describe("title handler: gates (no call)", () => {
-  test("default OFF: no MINIMAL_AGENT_TITLE and no config modes", async () => {
+  test("default ON in the interactive repl: no MINIMAL_AGENT_TITLE and no config", async () => {
     const fake = makeHost()
     const t = createTitleHandler()
     const env = { MINIMAL_AGENT_HOME: baseEnv.MINIMAL_AGENT_HOME as string }
     await t.handler(makeCtx(fake, { env }).ctx)
     await t.idle()
+    expect(fake.requests).toHaveLength(1)
+    expect(fake.writes).toHaveLength(1)
+  })
+
+  test("default OFF in one-shot, stream-json, host: no env and no config", async () => {
+    const fake = makeHost()
+    const t = createTitleHandler()
+    const env = { MINIMAL_AGENT_HOME: baseEnv.MINIMAL_AGENT_HOME as string }
+    for (const mode of ["one-shot", "stream-json", "host"] as const) {
+      await t.handler(makeCtx(fake, { env, run: { mode, interactive: false } }).ctx)
+    }
+    await t.idle()
     expect(fake.requests).toHaveLength(0)
     expect(fake.writes).toHaveLength(0)
+    expect(t.stateFor(SID)).toBeUndefined()
+  })
+
+  test("default repl with MINIMAL_AGENT_TITLE=0 → off", async () => {
+    const fake = makeHost()
+    const t = createTitleHandler()
+    const env = {
+      MINIMAL_AGENT_HOME: baseEnv.MINIMAL_AGENT_HOME as string,
+      MINIMAL_AGENT_TITLE: "0",
+    }
+    await t.handler(makeCtx(fake, { env }).ctx)
+    await t.idle()
+    expect(fake.requests).toHaveLength(0)
+    expect(t.stateFor(SID)).toBeUndefined()
+  })
+
+  test("default repl with config plugins.title.enabled:false → off", async () => {
+    const dir = baseEnv.MINIMAL_AGENT_HOME as string
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, "config.jsonc"), '{ "plugins": { "title": { "enabled": false } } }')
+    const fake = makeHost()
+    const t = createTitleHandler()
+    await t.handler(makeCtx(fake, { env: { MINIMAL_AGENT_HOME: dir } }).ctx)
+    await t.idle()
+    expect(fake.requests).toHaveLength(0)
     expect(t.stateFor(SID)).toBeUndefined()
   })
 
