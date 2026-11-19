@@ -22,7 +22,8 @@
       "!**/native/build/**",
       "!**/PROMPT.md",
       "!**/prompts/**/*.md",
-      "!ma-fetch-plugin/docs/persistent-sessions-and-x.md"
+      "!ma-fetch-plugin/docs/persistent-sessions-and-x.md",
+      "!ma-fetch-plugin/handlers/fixtures"
     ]
   }
 }

@@ -1,0 +1,737 @@
+[Jump to content](#bodyContent)
+Main menu
+Main menu
+	move to sidebar
+	hide
+		Navigation
+			- [Main page](/wiki/Main_Page)
+- [Contents](/wiki/Wikipedia:Contents)
+- [Current events](/wiki/Portal:Current_events)
+- [Random article](/wiki/Special:Random)
+- [About Wikipedia](/wiki/Wikipedia:About)
+- [Contact us](//en.wikipedia.org/wiki/Wikipedia:Contact_us)
+		Contribute
+			- [Help](/wiki/Help:Contents)
+- [Learn to edit](/wiki/Help:Introduction)
+- [Community portal](/wiki/Wikipedia:Community_portal)
+- [Recent changes](/wiki/Special:RecentChanges)
+- [Upload file](/wiki/Wikipedia:File_upload_wizard)
+- [Special pages](/wiki/Special:SpecialPages)
+[![](/static/images/icons/enwiki-25.svg)
+		![Wikipedia](/static/images/mobile/copyright/wikipedia-wordmark-en-25.svg)
+		![The Free Encyclopedia](/static/images/mobile/copyright/wikipedia-tagline-en-25.svg)](/wiki/Main_Page)
+	[Search](/wiki/Special:Search)
+				Search
+Appearance
+			- [Donate](https://donate.wikimedia.org/?wmf_source=donate&wmf_medium=sidebar&wmf_campaign=en.wikipedia.org&uselang=en)
+- [Create account](/w/index.php?title=Special:CreateAccount&returnto=Database+normalization)
+- [Log in](/w/index.php?title=Special:UserLogin&returnto=Database+normalization)
+Personal tools
+			- [Donate](https://donate.wikimedia.org/?wmf_source=donate&wmf_medium=sidebar&wmf_campaign=en.wikipedia.org&uselang=en)
+- [Create account](/w/index.php?title=Special:CreateAccount&returnto=Database+normalization)
+- [Log in](/w/index.php?title=Special:UserLogin&returnto=Database+normalization)
+## Contents
+	move to sidebar
+	hide
+		- [(Top)](#)
+		- [1
+				Objectives](#Objectives)
+				Toggle Objectives subsection
+			- [1.1
+					Minimize redesign when extending the database structure](#Minimize_redesign_when_extending_the_database_structure)
+	- [2
+				Normal forms](#Normal_forms)
+	- [3
+				Example](#Example)
+				Toggle Example subsection
+			- [3.1
+					Initial data](#Initial_data)
+		- [3.2
+					Satisfying 1NF](#Satisfying_1NF)
+		- [3.3
+					Satisfying 2NF](#Satisfying_2NF)
+		- [3.4
+					Satisfying 3NF](#Satisfying_3NF)
+		- [3.5
+					Satisfying EKNF](#Satisfying_EKNF)
+		- [3.6
+					Satisfying 4NF](#Satisfying_4NF)
+		- [3.7
+					Satisfying ETNF](#Satisfying_ETNF)
+		- [3.8
+					Satisfying 5NF](#Satisfying_5NF)
+		- [3.9
+					Satisfying DKNF](#Satisfying_DKNF)
+		- [3.10
+					Satisfying 6NF](#Satisfying_6NF)
+	- [4
+				See also](#See_also)
+	- [5
+				Notes and references](#Notes_and_references)
+	- [6
+				Further reading](#Further_reading)
+	- [7
+				External links](#External_links)
+Toggle the table of contents
+# Database normalization
+35 languages
+				- [العربية](https://ar.wikipedia.org/wiki/%D8%AA%D8%B3%D9%88%D9%8A%D8%A9_%D9%82%D8%A7%D8%B9%D8%AF%D8%A9_%D8%A7%D9%84%D8%A8%D9%8A%D8%A7%D9%86%D8%A7%D8%AA)
+- [Azərbaycanca](https://az.wikipedia.org/wiki/Normal_forma)
+- [Català](https://ca.wikipedia.org/wiki/Normalitzaci%C3%B3_de_bases_de_dades)
+- [Čeština](https://cs.wikipedia.org/wiki/Normalizace_datab%C3%A1ze)
+- [Deutsch](https://de.wikipedia.org/wiki/Normalisierung_(Datenbank))
+- [Esperanto](https://eo.wikipedia.org/wiki/Datumbaza_normigo)
+- [Español](https://es.wikipedia.org/wiki/Normalizaci%C3%B3n_de_bases_de_datos)
+- [فارسی](https://fa.wikipedia.org/wiki/%D9%86%D8%B1%D9%85%D8%A7%D9%84%E2%80%8C%D8%B3%D8%A7%D8%B2%DB%8C_(%D9%BE%D8%A7%DB%8C%DA%AF%D8%A7%D9%87_%D8%AF%D8%A7%D8%AF%D9%87%E2%80%8C%D9%87%D8%A7))
+- [Suomi](https://fi.wikipedia.org/wiki/Tietokannan_normalisointi)
+- [Français](https://fr.wikipedia.org/wiki/Forme_normale_(bases_de_donn%C3%A9es_relationnelles))
+- [עברית](https://he.wikipedia.org/wiki/%D7%A0%D7%A8%D7%9E%D7%95%D7%9C_%D7%9E%D7%A1%D7%93_%D7%A0%D7%AA%D7%95%D7%A0%D7%99%D7%9D)
+- [Hrvatski](https://hr.wikipedia.org/wiki/Normalizacija_baze_podataka)
+- [Bahasa Indonesia](https://id.wikipedia.org/wiki/Normalisasi_pangkalan_data)
+- [Italiano](https://it.wikipedia.org/wiki/Normalizzazione_(informatica))
+- [日本語](https://ja.wikipedia.org/wiki/%E9%96%A2%E4%BF%82%E3%81%AE%E6%AD%A3%E8%A6%8F%E5%8C%96)
+- [한국어](https://ko.wikipedia.org/wiki/%EB%8D%B0%EC%9D%B4%ED%84%B0%EB%B2%A0%EC%9D%B4%EC%8A%A4_%EC%A0%95%EA%B7%9C%ED%99%94)
+- [Latviešu](https://lv.wikipedia.org/wiki/Datub%C4%81zes_normaliz%C4%81cija)
+- [Македонски](https://mk.wikipedia.org/wiki/%D0%9D%D0%BE%D1%80%D0%BC%D0%B0%D0%BB%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%98%D0%B0_%D0%BD%D0%B0_%D0%B1%D0%B0%D0%B7%D0%B8_%D0%BD%D0%B0_%D0%BF%D0%BE%D0%B4%D0%B0%D1%82%D0%BE%D1%86%D0%B8)
+- [Nederlands](https://nl.wikipedia.org/wiki/Databasenormalisatie)
+- [Norsk bokmål](https://no.wikipedia.org/wiki/Databasenormalisering)
+- [Polski](https://pl.wikipedia.org/wiki/Posta%C4%87_normalna_(bazy_danych))
+- [Português](https://pt.wikipedia.org/wiki/Normaliza%C3%A7%C3%A3o_de_dados)
+- [Русский](https://ru.wikipedia.org/wiki/%D0%9D%D0%BE%D1%80%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F_%D1%84%D0%BE%D1%80%D0%BC%D0%B0)
+- [Srpskohrvatski / српскохрватски](https://sh.wikipedia.org/wiki/Normalizacija_baze_podataka)
+- [Simple English](https://simple.wikipedia.org/wiki/Database_normalisation)
+- [Slovenčina](https://sk.wikipedia.org/wiki/Normaliz%C3%A1cia_(datab%C3%A1zy))
+- [Shqip](https://sq.wikipedia.org/wiki/Normalizimi_i_databaz%C3%ABs)
+- [Српски / srpski](https://sr.wikipedia.org/wiki/%D0%9D%D0%BE%D1%80%D0%BC%D0%B0%D0%BB%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%98%D0%B0_%D0%B1%D0%B0%D0%B7%D0%B0_%D0%BF%D0%BE%D0%B4%D0%B0%D1%82%D0%B0%D0%BA%D0%B0)
+- [Svenska](https://sv.wikipedia.org/wiki/Normalform_(databaser))
+- [தமிழ்](https://ta.wikipedia.org/wiki/%E0%AE%A4%E0%AE%B0%E0%AE%B5%E0%AF%81%E0%AE%A4%E0%AF%8D%E0%AE%A4%E0%AE%B3_%E0%AE%87%E0%AE%AF%E0%AE%B2%E0%AF%8D%E0%AE%AA%E0%AE%BE%E0%AE%95%E0%AF%8D%E0%AE%95%E0%AE%AE%E0%AF%8D)
+- [Tagalog](https://tl.wikipedia.org/wiki/Normalisasyon_(database))
+- [Türkçe](https://tr.wikipedia.org/wiki/Veritaban%C4%B1_normalizasyonu)
+- [Українська](https://uk.wikipedia.org/wiki/%D0%9D%D0%BE%D1%80%D0%BC%D0%B0%D0%BB%D1%96%D0%B7%D0%B0%D1%86%D1%96%D1%8F_%D0%B1%D0%B0%D0%B7_%D0%B4%D0%B0%D0%BD%D0%B8%D1%85)
+- [Tiếng Việt](https://vi.wikipedia.org/wiki/Chu%E1%BA%A9n_h%C3%B3a_d%E1%BB%AF_li%E1%BB%87u)
+- [中文](https://zh.wikipedia.org/wiki/%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A7%84%E8%8C%83%E5%8C%96)
+[Edit links](https://www.wikidata.org/wiki/Special:EntityPage/Q339072#sitelinks-wikipedia)
+			- [Article](/wiki/Database_normalization)
+- [Talk](/wiki/Talk:Database_normalization)
+	English
+			- [Read](/wiki/Database_normalization)
+- [Edit](/w/index.php?title=Database_normalization&action=edit)
+- [View history](/w/index.php?title=Database_normalization&action=history)
+Tools
+Tools
+	move to sidebar
+	hide
+		Actions
+			- [Read](/wiki/Database_normalization)
+- [Edit](/w/index.php?title=Database_normalization&action=edit)
+- [View history](/w/index.php?title=Database_normalization&action=history)
+		General
+			- [What links here](/wiki/Special:WhatLinksHere/Database_normalization)
+- [Related changes](/wiki/Special:RecentChangesLinked/Database_normalization)
+- [Upload file](//en.wikipedia.org/wiki/Wikipedia:File_Upload_Wizard)
+- [Permanent link](https://en.wikipedia.org/w/index.php?title=Database_normalization&oldid=1361644936)
+- [Page information](/w/index.php?title=Database_normalization&action=info)
+- [Cite this page](/w/index.php?title=Special:CiteThisPage&page=Database_normalization&id=1361644936&wpFormIdentifier=titleform)
+- [Get shortened URL](/w/index.php?title=Special:UrlShortener&url=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FDatabase_normalization)
+- [Switch to legacy parser](/w/index.php?title=Database_normalization&useparsoid=0)
+		- [Expand all](#)
+- [Edit interlanguage links](https://www.wikidata.org/wiki/Special:EntityPage/Q339072#sitelinks-wikipedia)
+		Print/export
+			- [Download as PDF](/w/index.php?title=Special:DownloadAsPdf&page=Database_normalization&action=show-download-screen)
+- [Printable version](/w/index.php?title=Database_normalization&printable=yes)
+		In other projects
+			- [Wikidata item](https://www.wikidata.org/wiki/Special:EntityPage/Q339072)
+Appearance
+	move to sidebar
+	hide
+Text
+- Small
+Standard
+Large
+This page always uses small font size
+Width
+- Standard
+Wide
+The content is as wide as possible for your browser window.
+Color
+- Automatic
+Light
+Dark
+This page is always in light mode.
+From Wikipedia, the free encyclopedia
+Reduction of data redundancy
+| [![icon](//upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Postscript-viewer-blue.svg/60px-Postscript-viewer-blue.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)](https://en.wikipedia.org/wiki/File:Postscript-viewer-blue.svg) | This article **needs attention from an expert in databases**.  See the [talk page](https://en.wikipedia.org/wiki/Talk:Database_normalization#Expanding_on_normal_forms_&_clarifying_terminology) for details. [WikiProject Databases](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Databases) may be able to help recruit an expert.  *(March 2018)* |
+**Database normalization** is the process of structuring a [relational database](https://en.wikipedia.org/wiki/Relational_database) in accordance with a series of ***[normal forms](#Normal_forms)*** to reduce [data redundancy](https://en.wikipedia.org/wiki/Data_redundancy) and improve [data integrity](https://en.wikipedia.org/wiki/Data_integrity). It was first proposed by [British](https://en.wikipedia.org/wiki/British_people) [computer scientist](https://en.wikipedia.org/wiki/Computer_scientist) [Edgar F. Codd](https://en.wikipedia.org/wiki/Edgar_F._Codd) as part of his [relational model](https://en.wikipedia.org/wiki/Relational_model).
+Normalization entails organizing the [columns](https://en.wikipedia.org/wiki/Column_(database)) (attributes) and [tables](https://en.wikipedia.org/wiki/Relation_(database)) (relations) of a database to ensure that their [dependencies](https://en.wikipedia.org/wiki/Dependency_theory_(database_theory)) are properly enforced by database integrity constraints. It is accomplished by applying some formal rules either by a process of *synthesis* (creating a new database design) or *decomposition* (improving an existing database design).
+## Objectives
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=1)]
+A basic objective of the first normal form defined by Codd in 1970 was to permit data to be queried and manipulated using a "universal data sub-language" grounded in [first-order logic](https://en.wikipedia.org/wiki/First-order_logic).[[1]](#cite_note-1) An example of such a language is [SQL](https://en.wikipedia.org/wiki/SQL), though it is one that Codd regarded as seriously flawed.[[2]](#cite_note-2)
+The objectives of normalization beyond 1NF (first normal form) were stated by Codd as:
+> 1. To free the collection of relations from undesirable insertion, update and deletion dependencies.
+>
+> 1. To reduce the need for restructuring the collection of relations, as new types of data are introduced, and thus increase the life span of application programs.
+>
+> 1. To make the relational model more informative to users.
+>
+> 1. To make the collection of relations neutral to the query statistics, where these statistics are liable to change as time goes by.
+— E.F. Codd, "Further Normalisation of the Data Base Relational Model"[[3]](#cite_note-3)
+[![](//upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Insertion_anomaly.svg/330px-Insertion_anomaly.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)](https://en.wikipedia.org/wiki/File:Insertion_anomaly.svg)An **insertion anomaly**. Until the new faculty member, Dr. Newsome, is assigned to teach at least one course, their details cannot be recorded.
+[![](//upload.wikimedia.org/wikipedia/commons/thumb/2/29/Update_anomaly.svg/330px-Update_anomaly.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)](https://en.wikipedia.org/wiki/File:Update_anomaly.svg)An **update anomaly**. Employee 519 is shown as having different addresses on different records.
+[![](//upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Deletion_anomaly.svg/330px-Deletion_anomaly.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)](https://en.wikipedia.org/wiki/File:Deletion_anomaly.svg)A **deletion anomaly**. All information about Dr. Giddens is lost if they temporarily cease to be assigned to any courses.
+When an attempt is made to modify (update, insert into, or delete from) a relation, the following undesirable side effects may arise in relations that have not been sufficiently normalized:
+Insertion anomalyThere are circumstances in which certain facts cannot be recorded at all. For example, each record in a "Faculty and Their Courses" relation might contain a Faculty ID, Faculty Name, Faculty Hire Date, and Course Code. Therefore, the details of any faculty member who teaches at least one course can be recorded, but a newly hired faculty member who has not yet been assigned to teach any courses cannot be recorded, except by setting the Course Code to [null](https://en.wikipedia.org/wiki/Null_(SQL)).
+Update anomalyThe same information can be expressed on multiple rows; therefore updates to the relation may result in logical inconsistencies. For example, each record in an "Employees' Skills" relation might contain an Employee ID, Employee Address, and Skill; thus a change of address for a particular employee may need to be applied to multiple records (one for each skill). If the update is only partially successful – the employee's address is updated on some records but not others – then the relation is left in an inconsistent state. Specifically, the relation provides conflicting answers to the question of what this particular employee's address is.
+Deletion anomalyUnder certain circumstances, the deletion of data representing certain facts necessitates the deletion of data representing completely different facts. The "Faculty and Their Courses" relation described in the previous example suffers from this type of anomaly, for if a faculty member temporarily ceases to be assigned to any courses, the last of the records on which that faculty member appears must be deleted, effectively also deleting the faculty member, unless the Course Code field is set to null.
+### Minimize redesign when extending the database structure
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=2)]
+A fully normalized database can be extended to accommodate new types of data with minimal changes to its existing structure. As a result, applications interacting with the database are minimally affected.
+Normalized relations and the relationships between them mirror real-world concepts and their interrelationships.
+## Normal forms
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=3)]
+Codd introduced the concept of normalization and what is now known as the [first normal form](https://en.wikipedia.org/wiki/First_normal_form) (1NF) in 1970.[[4]](#cite_note-Codd1970-4) Codd went on to define the [second normal form](https://en.wikipedia.org/wiki/Second_normal_form) (2NF) and [third normal form](https://en.wikipedia.org/wiki/Third_normal_form) (3NF) in 1971,[[5]](#cite_note-Codd,_E.F_1971-5) and Codd and [Raymond F. Boyce](https://en.wikipedia.org/wiki/Raymond_F._Boyce) defined the [Boyce–Codd normal form](https://en.wikipedia.org/wiki/Boyce–Codd_normal_form) (BCNF) in 1974.[[6]](#cite_note-CoddBCNF-6)
+[Ronald Fagin](https://en.wikipedia.org/wiki/Ronald_Fagin) introduced the [fourth normal form](https://en.wikipedia.org/wiki/Fourth_normal_form) (4NF) in 1977 and the [fifth normal form](https://en.wikipedia.org/wiki/Fifth_normal_form) (5NF) in 1979. [Christopher J. Date](https://en.wikipedia.org/wiki/Christopher_J._Date) introduced the [sixth normal form](https://en.wikipedia.org/wiki/Sixth_normal_form) (6NF) in 2003.
+Informally, a relational database relation is often described as "normalized" if it meets third normal form.[[7]](#cite_note-DateIntroDBSys-7) Most 3NF relations are free of insertion, updation, and deletion anomalies.
+The normal forms (from least normalized to most normalized) are:
+- UNF: [Unnormalized form](https://en.wikipedia.org/wiki/Unnormalized_form)
+- 1NF: [First normal form](https://en.wikipedia.org/wiki/First_normal_form)
+- 2NF: [Second normal form](https://en.wikipedia.org/wiki/Second_normal_form)
+- 3NF: [Third normal form](https://en.wikipedia.org/wiki/Third_normal_form)
+- EKNF: [Elementary key normal form](https://en.wikipedia.org/wiki/Elementary_key_normal_form)
+- BCNF: [Boyce–Codd normal form](https://en.wikipedia.org/wiki/Boyce–Codd_normal_form)
+- 4NF: [Fourth normal form](https://en.wikipedia.org/wiki/Fourth_normal_form)
+- ETNF: [Essential tuple normal form](https://en.wikipedia.org/wiki/Essential_tuple_normal_form)
+- 5NF: [Fifth normal form](https://en.wikipedia.org/wiki/Fifth_normal_form)
+- DKNF: [Domain-key normal form](https://en.wikipedia.org/wiki/Domain-key_normal_form)
+- 6NF: [Sixth normal form](https://en.wikipedia.org/wiki/Sixth_normal_form)
+| Constraint
+(informal description in parentheses) | [UNF](https://en.wikipedia.org/wiki/Unnormalized_form)
+(1970) | [1NF](https://en.wikipedia.org/wiki/1NF)
+(1970) | [2NF](https://en.wikipedia.org/wiki/2NF)
+(1971) | [3NF](https://en.wikipedia.org/wiki/3NF)
+(1971) | [EKNF](https://en.wikipedia.org/wiki/EKNF)
+(1982) | [BCNF](https://en.wikipedia.org/wiki/BCNF)
+(1974) | [4NF](https://en.wikipedia.org/wiki/4NF)
+(1977) | [ETNF](https://en.wikipedia.org/wiki/Essential_tuple_normal_form)
+(2012) | [5NF](https://en.wikipedia.org/wiki/5NF)
+(1979) | [DKNF](https://en.wikipedia.org/wiki/DKNF)
+(1981) | [6NF](https://en.wikipedia.org/wiki/6NF)
+(2003) |
+| Unique rows (no duplicate records)[[4]](#cite_note-Codd1970-4) | ![Maybe](//upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Brown_check.svg/20px-Brown_check.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) |
+| Scalar columns (columns cannot contain relations or composite values)[[5]](#cite_note-Codd,_E.F_1971-5) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) |
+| Every non-prime attribute has a full [functional dependency](https://en.wikipedia.org/wiki/Functional_dependency) on each [candidate key](https://en.wikipedia.org/wiki/Candidate_key) (attributes depend on the *whole* of every key)[[5]](#cite_note-Codd,_E.F_1971-5) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) |
+| Every non-trivial functional dependency either begins with a [superkey](https://en.wikipedia.org/wiki/Superkey) or ends with a prime attribute (attributes depend *only* on candidate keys)[[5]](#cite_note-Codd,_E.F_1971-5) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) |
+| Every non-trivial functional dependency either begins with a superkey or ends with an [elementary prime attribute](https://en.wikipedia.org/wiki/Elementary_key_normal_form) (a stricter form of 3NF) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | —N/a |
+| Every non-trivial functional dependency begins with a superkey (a stricter form of 3NF) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | —N/a |
+| Every non-trivial [multivalued dependency](https://en.wikipedia.org/wiki/Multivalued_dependency) begins with a superkey | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | —N/a |
+| Every [join dependency](https://en.wikipedia.org/wiki/Join_dependency) has a superkey component[[8]](#cite_note-8) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | —N/a |
+| Every join dependency has only superkey components | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | —N/a |
+| Every constraint is a consequence of domain constraints and key constraints | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) |
+| Every join dependency is trivial | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![No](//upload.wikimedia.org/wikipedia/commons/thumb/1/19/Dark_red_x.svg/20px-Dark_red_x.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | ![Yes](//upload.wikimedia.org/wikipedia/commons/thumb/2/26/Check-green.svg/20px-Check-green.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) |
+## Example
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=4)]
+| ![](//upload.wikimedia.org/wikipedia/en/thumb/b/b4/Ambox_important.svg/40px-Ambox_important.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) | This section **contains [instructions or advice](https://en.wikipedia.org/wiki/Wikipedia:What_Wikipedia_is_not#GUIDE)**. Wikipedia is not a guidebook; please help [rewrite such content](https://en.wikipedia.org/w/index.php?title=Database_normalization&action=edit) to be encyclopedic or move it to [Wikiversity](https://en.wikiversity.org/wiki/), [Wikibooks](https://en.wikibooks.org/wiki/), or [Wikivoyage](https://en.wikivoyage.org/wiki/).  *(March 2026)** ([Learn how and when to remove this message](https://en.wikipedia.org/wiki/Help:Maintenance_template_removal))* |
+Normalization is a database design technique, which is used to design a [relational database](https://en.wikipedia.org/wiki/Relational_database) table up to higher normal form.[[9]](#cite_note-9) The process is progressive, and a higher level of database normalization cannot be achieved unless the previous levels have been satisfied.[[10]](#cite_note-:0-10)
+That means that, having data in [unnormalized form](https://en.wikipedia.org/wiki/Unnormalized_form) (the least normalized) and aiming to achieve the highest level of normalization, the first step would be to ensure compliance to the [first normal form](https://en.wikipedia.org/wiki/First_normal_form), the second step would be to ensure compliance to the [second normal form](https://en.wikipedia.org/wiki/Second_normal_form), and so forth in the order mentioned above, until the data conforms to the [sixth normal form](https://en.wikipedia.org/wiki/Sixth_normal_form).
+However, normal forms beyond [4NF](https://en.wikipedia.org/wiki/4NF) are mainly of academic interest, as the problems they exist to solve rarely appear in practice.[[11]](#cite_note-11)
+*The data in the following example was intentionally designed to contradict most of the normal forms. In practice, it is often possible to skip some of the normalization steps because the data is already normalized to some extent. Fixing a violation of one normal form also often fixes a violation of a higher normal form. In the example, one table has been chosen for normalization at each step, meaning that at the end, some tables might not be sufficiently normalized.*
+### Initial data
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=5)]
+Let a database table exist with the following structure, describing a book:[[10]](#cite_note-:0-10)
+| Title | Author | Author Nationality | Format | Price | Subject | Pages | Thickness | Publisher | Publisher Country | Genre ID | Genre Name |
+| Beginning MySQL Database Design and Optimization | Chad Russell | American | Hardcover | 49.99 | | MySQL |
+| Database |
+| Design | | 520 | Thick | Apress | USA | 1 | Tutorial |
+For this example it is assumed that each book has only one author.
+A table that conforms to the relational model has a [primary key](https://en.wikipedia.org/wiki/Primary_key) which uniquely identifies a row. In our example, the primary key is a [composite key](https://en.wikipedia.org/wiki/Composite_key) of **{Title, Format}**, indicated by underlining:
+| Title | Author | Author Nationality | Format | Price | Subject | Pages | Thickness | Publisher | Publisher Country | Genre ID | Genre Name |
+| Beginning MySQL Database Design and Optimization | Chad Russell | American | Hardcover | 49.99 | | MySQL |
+| Database |
+| Design | | 520 | Thick | Apress | USA | 1 | Tutorial |
+### Satisfying 1NF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=6)]
+In the [first normal form](https://en.wikipedia.org/wiki/First_normal_form) each field contains a single value. A field may not contain a set of values or a nested record. **Subject** contains a set of subject values, meaning it does not comply. To solve the problem, the subjects are extracted into a separate **Subject** table:[[10]](#cite_note-:0-10)
+Book
+| Title | Author | Author Nationality | Format | Price | Pages | Thickness | Publisher | Publisher Country | Genre ID | Genre Name |
+| Beginning MySQL Database Design and Optimization | Chad Russell | American | Hardcover | 49.99 | 520 | Thick | Apress | USA | 1 | Tutorial |
+Title – Subject
+| Title | Subject name |
+| Beginning MySQL Database Design and Optimization | MySQL |
+| Beginning MySQL Database Design and Optimization | Database |
+| Beginning MySQL Database Design and Optimization | Design |
+Instead of one table in [unnormalized form](https://en.wikipedia.org/wiki/Unnormalized_form), there are now two tables conforming to the 1NF.
+### Satisfying 2NF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=7)]
+Recall that the **Book** table below has a [composite key](https://en.wikipedia.org/wiki/Composite_key) of **{Title, Format}**, which will not satisfy 2NF if some subset of that key is a determinant.  At this point in our design the **key** is not finalized as the [primary key](https://en.wikipedia.org/wiki/Primary_key), so it is called a [candidate key](https://en.wikipedia.org/wiki/Candidate_key). Consider the following table:
+Book
+| Title | Format | Author | Author Nationality | Price | Pages | Thickness | Publisher | Publisher Country | Genre ID | Genre Name |
+| Beginning MySQL Database Design and Optimization | Hardcover | Chad Russell | American | 49.99 | 520 | Thick | Apress | USA | 1 | Tutorial |
+| Beginning MySQL Database Design and Optimization | E-book | Chad Russell | American | 22.34 | 520 | Thick | Apress | USA | 1 | Tutorial |
+| The Relational Model for Database Management: Version 2 | E-book | E.F.Codd | British | 13.88 | 538 | Thick | Addison-Wesley | USA | 2 | Popular science |
+| The Relational Model for Database Management: Version 2 | Paperback | E.F.Codd | British | 39.99 | 538 | Thick | Addison-Wesley | USA | 2 | Popular science |
+All of the attributes that are not part of the candidate key depend on *Title*, but only *Price* also depends on *Format*. To conform to [2NF](https://en.wikipedia.org/wiki/2NF) and remove duplicates, every non-candidate-key attribute must depend on the whole candidate key, not just part of it.
+To normalize this table, make **{Title}** a (simple) candidate key (the primary key) so that every non-candidate-key attribute depends on the whole candidate key, and remove *Price* into a separate table so that its dependency on *Format* can be preserved:
+Book
+| Title | Author | Author Nationality | Pages | Thickness | Publisher | Publisher Country | Genre ID | Genre Name |
+| Beginning MySQL Database Design and Optimization | Chad Russell | American | 520 | Thick | Apress | USA | 1 | Tutorial |
+| The Relational Model for Database Management: Version 2 | E.F.Codd | British | 538 | Thick | Addison-Wesley | USA | 2 | Popular science |
+Price
+| Title | Format | Price |
+| Beginning MySQL Database Design and Optimization | Hardcover | 49.99 |
+| Beginning MySQL Database Design and Optimization | E-book | 22.34 |
+| The Relational Model for Database Management: Version 2 | E-book | 13.88 |
+| The Relational Model for Database Management: Version 2 | Paperback | 39.99 |
+Now, both the **Book** and **Price** tables conform to [2NF](https://en.wikipedia.org/wiki/2NF).
+### Satisfying 3NF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=8)]
+The **Book** table still has a transitive functional dependency ({Author Nationality} is dependent on {Author}, which is dependent on {Title}). Similar violations exist for publisher ({Publisher Country} is dependent on {Publisher}, which is dependent on {Title}) and for genre ({Genre Name} is dependent on {Genre ID}, which is dependent on {Title}). Hence, the **Book** table is not in 3NF. To resolve this, we can place {Author Nationality}, {Publisher Country}, and {Genre Name} in their own respective tables, thereby eliminating the transitive functional dependencies:
+Book
+| Title | Author | Pages | Thickness | Publisher | Genre ID |
+| Beginning MySQL Database Design and Optimization | Chad Russell | 520 | Thick | Apress | 1 |
+| The Relational Model for Database Management: Version 2 | E.F.Codd | 538 | Thick | Addison-Wesley | 2 |
+| Price
+| Title | Format | Price |
+| Beginning MySQL Database Design and Optimization | Hardcover | 49.99 |
+| Beginning MySQL Database Design and Optimization | E-book | 22.34 |
+| The Relational Model for Database Management: Version 2 | E-book | 13.88 |
+| The Relational Model for Database Management: Version 2 | Paperback | 39.99 | |
+Author
+| Author | Nationality |
+| Chad Russell | American |
+| E.F.Codd | British |
+Publisher
+| Publisher | Country |
+| Apress | USA |
+| Addison-Wesley | USA |
+Genre
+| Genre ID | Name |
+| 1 | Tutorial |
+| 2 | Popular science |
+### Satisfying EKNF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=9)]
+Main article: [Elementary key normal form](https://en.wikipedia.org/wiki/Elementary_key_normal_form)
+The elementary key normal form (EKNF) falls strictly between 3NF and BCNF and is not much discussed in the literature. It is intended *"to capture the salient qualities of both 3NF and BCNF"* while avoiding the problems of both (namely, that 3NF is "too forgiving" and BCNF is "prone to computational complexity"). Since it is rarely mentioned in literature, it is not included in this example.
+### Satisfying 4NF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=10)]
+Assume the database is owned by a book retailer franchise that has several franchisees that own shops in different locations. And therefore the retailer decided to add a table that contains data about availability of the books at different locations:
+Franchisee – Book – Location
+| Franchisee ID | Title | Location |
+| 1 | Beginning MySQL Database Design and Optimization | California |
+| 1 | Beginning MySQL Database Design and Optimization | Florida |
+| 1 | Beginning MySQL Database Design and Optimization | Texas |
+| 1 | The Relational Model for Database Management: Version 2 | California |
+| 1 | The Relational Model for Database Management: Version 2 | Florida |
+| 1 | The Relational Model for Database Management: Version 2 | Texas |
+| 2 | Beginning MySQL Database Design and Optimization | California |
+| 2 | Beginning MySQL Database Design and Optimization | Florida |
+| 2 | Beginning MySQL Database Design and Optimization | Texas |
+| 2 | The Relational Model for Database Management: Version 2 | California |
+| 2 | The Relational Model for Database Management: Version 2 | Florida |
+| 2 | The Relational Model for Database Management: Version 2 | Texas |
+| 3 | Beginning MySQL Database Design and Optimization | Texas |
+|  |
+As this table structure consists of a [compound primary key](https://en.wikipedia.org/wiki/Compound_key), it does not contain any non-key attributes and it is already in [BCNF](https://en.wikipedia.org/wiki/BCNF) (and therefore also satisfies all the previous [normal forms](#Normal_forms)). However, assuming that all available books are offered in each area, the **Title** is not unambiguously bound to a certain **Location** and therefore the table does not satisfy [4NF](https://en.wikipedia.org/wiki/4NF).
+That means that, to satisfy the [fourth normal form](https://en.wikipedia.org/wiki/Fourth_normal_form), this table needs to be decomposed as well:
+| Franchisee – Book
+| Franchisee ID | Title |
+| 1 | Beginning MySQL Database Design and Optimization |
+| 1 | The Relational Model for Database Management: Version 2 |
+| 2 | Beginning MySQL Database Design and Optimization |
+| 2 | The Relational Model for Database Management: Version 2 |
+| 3 | Beginning MySQL Database Design and Optimization |
+|  | | Franchisee – Location
+| Franchisee ID | Location |
+| 1 | California |
+| 1 | Florida |
+| 1 | Texas |
+| 2 | California |
+| 2 | Florida |
+| 2 | Texas |
+| 3 | Texas |
+|  | |
+Now, every record is unambiguously identified by a [superkey](https://en.wikipedia.org/wiki/Superkey), therefore [4NF](https://en.wikipedia.org/wiki/4NF) is satisfied.
+### Satisfying ETNF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=11)]
+Suppose the franchisees can also order books from different suppliers. Let the relation also be subject to the following constraint:
+- If a certain **supplier** supplies a certain **title**
+- and the **title** is supplied to the **franchisee**
+- and the **franchisee** is being supplied by the **supplier,**
+- then the **supplier** supplies the **title** to the **franchisee**.[[12]](#cite_note-:2-12)
+Supplier - Book - Franchisee
+| Supplier ID | Title | Franchisee ID |
+| 1 | Beginning MySQL Database Design and Optimization | 1 |
+| 2 | The Relational Model for Database Management: Version 2 | 2 |
+| 3 | Learning SQL | 3 |
+This table is in [4NF](https://en.wikipedia.org/wiki/4NF), but the Supplier ID is equal to the join of its projections: **{{Supplier ID, Title}, {Title, Franchisee ID}, {Franchisee ID, Supplier ID}}.** No component of that join dependency is a [superkey](https://en.wikipedia.org/wiki/Superkey) (the sole superkey being the entire heading), so the table does not satisfy the [ETNF](https://en.wikipedia.org/wiki/Essential_tuple_normal_form) and can be further decomposed:[[12]](#cite_note-:2-12)
+| Supplier – Book
+| Supplier ID | Title |
+| 1 | Beginning MySQL Database Design and Optimization |
+| 2 | The Relational Model for Database Management: Version 2 |
+| 3 | Learning SQL | | Book – Franchisee
+| Title | Franchisee ID |
+| Beginning MySQL Database Design and Optimization | 1 |
+| The Relational Model for Database Management: Version 2 | 2 |
+| Learning SQL | 3 | | Franchisee – Supplier
+| Supplier ID | Franchisee ID |
+| 1 | 1 |
+| 2 | 2 |
+| 3 | 3 | |
+The decomposition produces ETNF compliance.
+### Satisfying 5NF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=12)]
+To spot a table not satisfying the [5NF](https://en.wikipedia.org/wiki/5NF), it is usually necessary to examine the data thoroughly. Suppose the table from [4NF example](#Satisfying_4NF) with a little modification in data and let's examine if it satisfies [5NF](https://en.wikipedia.org/wiki/5NF):
+Franchisee – Book – Location
+| Franchisee ID | Title | Location |
+| 1 | Beginning MySQL Database Design and Optimization | California |
+| 1 | Learning SQL | California |
+| 1 | The Relational Model for Database Management: Version 2 | Texas |
+| 2 | The Relational Model for Database Management: Version 2 | California |
+|  |
+Decomposing this table lowers redundancies, resulting in the following two tables:
+| Franchisee – Book
+| Franchisee ID | Title |
+| 1 | Beginning MySQL Database Design and Optimization |
+| 1 | Learning SQL |
+| 1 | The Relational Model for Database Management: Version 2 |
+| 2 | The Relational Model for Database Management: Version 2 |
+|  | | Franchisee – Location
+| Franchisee ID | Location |
+| 1 | California |
+| 1 | Texas |
+| 2 | California |
+|  | |
+The query joining these tables would return the following data:
+Franchisee – Book – Location JOINed
+| Franchisee ID | Title | Location |
+| 1 | Beginning MySQL Database Design and Optimization | California |
+| 1 | Learning SQL | California |
+| 1 | The Relational Model for Database Management: Version 2 | California |
+| 1 | The Relational Model for Database Management: Version 2 | Texas |
+| 1 | Learning SQL | Texas |
+| 1 | Beginning MySQL Database Design and Optimization | Texas |
+| 2 | The Relational Model for Database Management: Version 2 | California |
+|  |
+The JOIN returns three more rows than it should; adding another table to clarify the relation results in three separate tables:
+| Franchisee – Book
+| Franchisee ID | Title |
+| 1 | Beginning MySQL Database Design and Optimization |
+| 1 | Learning SQL |
+| 1 | The Relational Model for Database Management: Version 2 |
+| 2 | The Relational Model for Database Management: Version 2 |
+|  | | Franchisee – Location
+| Franchisee ID | Location |
+| 1 | California |
+| 1 | Texas |
+| 2 | California |
+|  | | Location – Book
+| Location | Title |
+| California | Beginning MySQL Database Design and Optimization |
+| California | Learning SQL |
+| California | The Relational Model for Database Management: Version 2 |
+| Texas | The Relational Model for Database Management: Version 2 |
+|  | |
+What will the JOIN return now? It actually is not possible to join these three tables. That means it was not possible to decompose the **Franchisee – Book – Location** without data loss, therefore the table already satisfies [5NF](https://en.wikipedia.org/wiki/5NF).
+**Disclaimer** – the data used demonstrates the principle, but fails to remain true.
+In this case the data would best be decomposed into the following, with a surrogate key which we will call 'Store ID':
+| Store – Book
+| Store ID | Title |
+| 1 | Beginning MySQL Database Design and Optimization |
+| 1 | Learning SQL |
+| 2 | The Relational Model for Database Management: Version 2 |
+| 3 | The Relational Model for Database Management: Version 2 |
+|  | | Store – Franchisee – Location
+| Store ID | Franchisee ID | Location |
+| 1 | 1 | California |
+| 2 | 1 | Texas |
+| 3 | 2 | California |
+|  | |  |
+The JOIN will now return the expected result:
+Store – Book – Franchisee – Location JOINed
+| Store ID | Title | Franchisee ID | Location |
+| 1 | Beginning MySQL Database Design and Optimization | 1 | California |
+| 1 | Learning SQL | 1 | California |
+| 2 | The Relational Model for Database Management: Version 2 | 1 | Texas |
+| 3 | The Relational Model for Database Management: Version 2 | 2 | California |
+|  |
+[C.J. Date](https://en.wikipedia.org/wiki/C.J._Date) has argued that only a database in 5NF is truly "normalized".[[13]](#cite_note-13)
+### Satisfying DKNF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=13)]
+Let's have a look at the **Book** table from previous examples and see if it satisfies the [domain-key normal form](https://en.wikipedia.org/wiki/Domain-key_normal_form):
+Book
+| Title | **Pages** | Thickness | *Genre ID* | *Publisher ID* |
+| Beginning MySQL Database Design and Optimization | 520 | Thick | *1* | *1* |
+| The Relational Model for Database Management: Version 2 | 538 | Thick | *2* | *2* |
+| Learning SQL | 338 | Slim | *1* | *3* |
+| SQL Cookbook | 636 | Thick | *1* | *3* |
+Logically, **Thickness** is determined by number of pages. That means it depends on **Pages** which is not a key. Let's set an example convention saying a book up to 350 pages is considered "slim" and a book over 350 pages is considered "thick".
+This convention is technically a constraint but it is neither a domain constraint nor a key constraint; therefore we cannot rely on domain constraints and key constraints to keep the data integrity.
+In other words – nothing prevents us from putting, for example, "Thick" for a book with only 50 pages – and this makes the table violate [DKNF](https://en.wikipedia.org/wiki/DKNF).
+To solve this, a table holding enumeration that defines the **Thickness** is created, and that column is removed from the original table:
+| Thickness Enum
+| Thickness | Min pages | Max pages |
+| Slim | 1 | 350 |
+| Thick | 351 | 999,999,999,999 | | Book – Pages – Genre – Publisher
+| Title | Pages | *Genre ID* | *Publisher ID* |
+| Beginning MySQL Database Design and Optimization | 520 | *1* | *1* |
+| The Relational Model for Database Management: Version 2 | 538 | *2* | *2* |
+| Learning SQL | 338 | *1* | *3* |
+| SQL Cookbook | 636 | *1* | *3* | |
+That way, the domain integrity violation has been eliminated, and the table is in [DKNF](https://en.wikipedia.org/wiki/DKNF).
+Normalization does not prevent all cases of impossible/conflicting/unpredictable output.
+In this example, Min/Max pages of 1/350, 200/999,999,999,999 would lead to unpredictable results.
+It would therefore be better to specify and use only Min pages.
+### Satisfying 6NF
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=14)]
+A simple and intuitive definition of the [sixth normal form](https://en.wikipedia.org/wiki/Sixth_normal_form) is that *"a table is in [6NF](https://en.wikipedia.org/wiki/6NF) when **the row contains the Primary Key, and at most one other attribute"*****.**[[14]](#cite_note-14)
+That means, for example, the **Publisher** table designed while [creating the 1NF](#Satisfying_1NF):
+Publisher
+| Publisher ID | Name | Country |
+| 1 | Apress | USA |
+needs to be further decomposed into two tables:
+| Publisher
+| Publisher ID | Name |
+| 1 | Apress | | Publisher country
+| Publisher ID | Country |
+| 1 | USA | |
+The obvious drawback of 6NF is the proliferation of tables required to represent the information on a single entity. If a table in 5NF has one primary key column and N attributes, representing the same information in 6NF will require N tables; multi-field updates to a single conceptual record will require updates to multiple tables; and inserts and deletes will similarly require operations across multiple tables. For this reason, in databases intended to serve [online transaction processing](https://en.wikipedia.org/wiki/Online_transaction_processing) (OLTP) needs, 6NF should not be used.
+However, in [data warehouses](https://en.wikipedia.org/wiki/Data_warehouses), which do not permit interactive updates and which are specialized for fast query on large data volumes, certain DBMSs use an internal 6NF representation – known as a [columnar data store](https://en.wikipedia.org/wiki/Column-oriented_DBMS). In situations where the number of unique values of a column is far less than the number of rows in the table, column-oriented storage allow significant savings in space through data compression. Columnar storage also allows fast execution of range queries (e.g., show all records where a particular column is between X and Y, or less than X.)
+In all these cases, however, the database designer does not have to perform 6NF normalization manually by creating separate tables. Some DBMSs that are specialized for warehousing, such as [Sybase IQ](https://en.wikipedia.org/wiki/Sybase_IQ), use columnar storage by default, but the designer still sees only a single multi-column table. Other DBMSs, such as Microsoft SQL Server 2012 and later, let you specify a "columnstore index" for a particular table.[[15]](#cite_note-15)
+## See also
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=15)]
+- [Denormalization](https://en.wikipedia.org/wiki/Denormalization)
+- [Database refactoring](https://en.wikipedia.org/wiki/Database_refactoring)
+- [Lossless join decomposition](https://en.wikipedia.org/wiki/Lossless_join_decomposition)
+## Notes and references
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=16)]
+1. [↑](#cite_ref-1) "The adoption of a relational model of data ... permits the development of a universal data sub-language based on an applied predicate calculus. A first-order predicate calculus suffices if the collection of relations is in normal form. Such a language would provide a yardstick of linguistic power for all other proposed data languages, and would itself be a strong candidate for embedding (with appropriate syntactic modification) in a variety of host languages (programming, command- or problem-oriented)." Codd, ["A Relational Model of Data for Large Shared Data Banks"](https://dl.acm.org/doi/10.1145/362384.362685) [Archived](https://web.archive.org/web/20070612235326/http://www.acm.org/classics/nov95/toc.html) June 12, 2007, at the [Wayback Machine](https://en.wikipedia.org/wiki/Wayback_Machine), p. 381
+1. [↑](#cite_ref-2) Codd, E.F. Chapter 23, ["Serious Flaws in SQL"](https://dl.acm.org/doi/10.5555/77708.C1065772), in *The Relational Model for Database Management: Version 2*. Addison-Wesley (1990), pp. 371–389
+1. [↑](#cite_ref-3) Codd, E.F. "Further Normalisation of the Data Base Relational Model", p. 34
+1. [Jump up to: 1](#cite_ref-Codd1970_4-0) [2](#cite_ref-Codd1970_4-1) [Codd, E. F.](https://en.wikipedia.org/wiki/Edgar_F._Codd) (June 1970). ["A Relational Model of Data for Large Shared Data Banks"](https://doi.org/10.1145%2F362384.362685). *[Communications of the ACM](https://en.wikipedia.org/wiki/Communications_of_the_ACM)*. **13** (6): 377–387. [doi](https://en.wikipedia.org/wiki/Doi_(identifier)):[10.1145/362384.362685](https://doi.org/10.1145%2F362384.362685). [S2CID](https://en.wikipedia.org/wiki/S2CID_(identifier)) [207549016](https://api.semanticscholar.org/CorpusID:207549016).
+1. [Jump up to: 1](#cite_ref-Codd,_E.F_1971_5-0) [2](#cite_ref-Codd,_E.F_1971_5-1) [3](#cite_ref-Codd,_E.F_1971_5-2) [4](#cite_ref-Codd,_E.F_1971_5-3) Codd, E. F. "Further Normalization of the Data Base Relational Model". (Presented at Courant Computer Science Symposia Series 6, "Data Base Systems", New York City, May 24–25, 1971.) IBM Research Report RJ909 (August 31, 1971). Republished in Randall J. Rustin (ed.), *Data Base Systems: Courant Computer Science Symposia Series 6*. Prentice-Hall, 1972.
+1. [↑](#cite_ref-CoddBCNF_6-0) Codd, E. F. "Recent Investigations into Relational Data Base Systems". IBM Research Report RJ1385 (April 23, 1974). Republished in *Proc. 1974 Congress* (Stockholm, Sweden, 1974), N.Y.: North-Holland (1974).
+1. [↑](#cite_ref-DateIntroDBSys_7-0) Date, C. J. (1999). *An Introduction to Database Systems*. Addison-Wesley. p. 290.
+1. [↑](#cite_ref-8) Darwen, Hugh; Date, C. J.; Fagin, Ronald (2012). ["A Normal Form for Preventing Redundant Tuples in Relational Databases"](https://researcher.watson.ibm.com/researcher/files/us-fagin/icdt12.pdf) (PDF). *Proceedings of the 15th International Conference on Database Theory*. [EDBT/ICDT 2012 Joint Conference](http://edbticdt2012.dima.tu-berlin.de/). ACM International Conference Proceeding Series. [Association for Computing Machinery](https://en.wikipedia.org/wiki/Association_for_Computing_Machinery). p. 114. [doi](https://en.wikipedia.org/wiki/Doi_(identifier)):[10.1145/2274576.2274589](https://doi.org/10.1145%2F2274576.2274589). [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier)) [978-1-4503-0791-8](https://en.wikipedia.org/wiki/Special:BookSources/978-1-4503-0791-8). [OCLC](https://en.wikipedia.org/wiki/OCLC_(identifier)) [802369023](https://search.worldcat.org/oclc/802369023). [Archived](https://web.archive.org/web/20160306173449/http://researcher.watson.ibm.com/researcher/files/us-fagin/icdt12.pdf) (PDF) from the original on March 6, 2016. Retrieved May 22, 2018.
+1. [↑](#cite_ref-9) Kumar, Kunal; Azad, S. K. (October 2017). "Database normalization design pattern". *2017 4th IEEE Uttar Pradesh Section International Conference on Electrical, Computer and Electronics (UPCON)*. IEEE. pp. 318–322. [doi](https://en.wikipedia.org/wiki/Doi_(identifier)):[10.1109/upcon.2017.8251067](https://doi.org/10.1109%2Fupcon.2017.8251067). [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier)) [9781538630044](https://en.wikipedia.org/wiki/Special:BookSources/9781538630044). [S2CID](https://en.wikipedia.org/wiki/S2CID_(identifier)) [24491594](https://api.semanticscholar.org/CorpusID:24491594).
+1. [Jump up to: 1](#cite_ref-:0_10-0) [2](#cite_ref-:0_10-1) [3](#cite_ref-:0_10-2) ["Database normalization in MySQL: Four quick and easy steps"](https://web.archive.org/web/20170830224213/https://www.computerweekly.com/tutorial/Database-normalization-in-MySQL-Four-quick-and-easy-steps). *ComputerWeekly.com*. Archived from [the original](https://www.computerweekly.com/tutorial/Database-normalization-in-MySQL-Four-quick-and-easy-steps) on August 30, 2017. Retrieved March 23, 2021.
+1. [↑](#cite_ref-11) ["Database Normalization: 5th Normal Form and Beyond"](https://mariadb.com/kb/en/library/database-normalization-5th-normal-form-and-beyond/). *MariaDB KnowledgeBase*. Retrieved January 23, 2019.
+1. [Jump up to: 1](#cite_ref-:2_12-0) [2](#cite_ref-:2_12-1) Date, C. J. (December 21, 2015). [*The New Relational Database Dictionary: Terms, Concepts, and Examples*](https://books.google.com/books?id=Jx5UCwAAQBAJ&q=etnf%20normalization&pg=PT138). O'Reilly Media, Inc. p. 138. [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier)) [9781491951699](https://en.wikipedia.org/wiki/Special:BookSources/9781491951699).
+1. [↑](#cite_ref-13) Date, C. J. (December 21, 2015). [*The New Relational Database Dictionary: Terms, Concepts, and Examples*](https://books.google.com/books?id=Jx5UCwAAQBAJ&q=etnf%20normalization&pg=PT163). O'Reilly Media, Inc. p. 163. [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier)) [9781491951699](https://en.wikipedia.org/wiki/Special:BookSources/9781491951699).
+1. [↑](#cite_ref-14) ["normalization – Would like to Understand 6NF with an Example"](https://stackoverflow.com/questions/4824714/would-like-to-understand-6nf-with-an-example). *Stack Overflow*. Retrieved January 23, 2019.
+1. [↑](#cite_ref-15) Microsoft Corporation. Columnstore Indexes: Overview. [https://docs.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview](https://docs.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview) . Accessed March 23, 2020.
+## Further reading
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=17)]
+- Date, C. J. (1999), *[An Introduction to Database Systems](https://web.archive.org/web/20050404010227/http://www.aw-bc.com/catalog/academic/product/0%2C1144%2C0321197844%2C00.html)* (8th ed.). Addison-Wesley Longman. [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier)) [0-321-19784-4](https://en.wikipedia.org/wiki/Special:BookSources/0-321-19784-4).
+- Kent, W. (1983) *[A Simple Guide to Five Normal Forms in Relational Database Theory](https://www.bkent.net/Doc/simple5.htm)*, Communications of the ACM, vol. 26, pp. 120–125
+- H.-J. Schek, P. Pistor Data Structures for an Integrated Data Base Management and Information Retrieval System
+## External links
+[[edit](/w/index.php?title=Database_normalization&action=edit&section=18)]
+- Kent, William (February 1983). ["A Simple Guide to Five Normal Forms in Relational Database Theory"](https://www.bkent.net/Doc/simple5.htm). *Communications of the ACM*. **26** (2): 120–125. [doi](https://en.wikipedia.org/wiki/Doi_(identifier)):[10.1145/358024.358054](https://doi.org/10.1145%2F358024.358054). [S2CID](https://en.wikipedia.org/wiki/S2CID_(identifier)) [9195704](https://api.semanticscholar.org/CorpusID:9195704).
+- [Database Normalization Basics](http://databases.about.com/od/specificproducts/a/normalization.htm) [Archived](https://web.archive.org/web/20070205184226/http://databases.about.com/od/specificproducts/a/normalization.htm) February 5, 2007, at the [Wayback Machine](https://en.wikipedia.org/wiki/Wayback_Machine) by Mike Chapple (About.com)
+- [Database Normalization Intro](http://www.databasejournal.com/sqletc/article.php/1428511) [Archived](https://web.archive.org/web/20110928000244/http://www.databasejournal.com/sqletc/article.php/1428511) September 28, 2011, at the [Wayback Machine](https://en.wikipedia.org/wiki/Wayback_Machine), [Part 2](http://www.databasejournal.com/sqletc/article.php/26861_1474411_1) [Archived](https://web.archive.org/web/20110708233620/http://www.databasejournal.com/sqletc/article.php/26861_1474411_1) July 8, 2011, at the [Wayback Machine](https://en.wikipedia.org/wiki/Wayback_Machine)
+- [An Introduction to Database Normalization](https://mikehillyer.com/articles/an-introduction-to-database-normalization/) by Mike Hillyer.
+- [A tutorial on the first 3 normal forms](http://phlonx.com/resources/nf3/) by Fred Coulson
+- [Description of the database normalization basics](https://support.microsoft.com/kb/283878) by Microsoft
+- [Normalization in DBMS by Chaitanya (beginnersbook.com)](https://beginnersbook.com/2015/05/normalization-in-dbms/)
+- [A Step-by-Step Guide to Database Normalization](https://www.databasestar.com/normalization-in-dbms/)
+- [ETNF – Essential tuple normal form](http://researcher.watson.ibm.com/researcher/files/us-fagin/icdt12.pdf) [Archived](https://web.archive.org/web/20160306173449/http://researcher.watson.ibm.com/researcher/files/us-fagin/icdt12.pdf) March 6, 2016, at the [Wayback Machine](https://en.wikipedia.org/wiki/Wayback_Machine)
+| hide
+- [v](https://en.wikipedia.org/wiki/Template:Database_normalization)
+- [t](https://en.wikipedia.org/wiki/Template_talk:Database_normalization)
+- [e](https://en.wikipedia.org/wiki/Special:EditPage/Template:Database_normalization)
+[Database normalization](https://en.wikipedia.org/wiki/Database_normalization) |
+| - [Unnormalized form](https://en.wikipedia.org/wiki/Unnormalized_form) (UNF)
+- [First normal form](https://en.wikipedia.org/wiki/First_normal_form) (1NF)
+- [Second normal form](https://en.wikipedia.org/wiki/Second_normal_form) (2NF)
+- [Third normal form](https://en.wikipedia.org/wiki/Third_normal_form) (3NF)
+- [Elementary key normal form](https://en.wikipedia.org/wiki/Elementary_key_normal_form) (EKNF)
+- [Boyce–Codd normal form](https://en.wikipedia.org/wiki/Boyce–Codd_normal_form) (3.5NF / BCNF)
+- [Fourth normal form](https://en.wikipedia.org/wiki/Fourth_normal_form) (4NF)
+- [Fifth normal form](https://en.wikipedia.org/wiki/Fifth_normal_form) (5NF / PJNF)
+- [Domain-key normal form](https://en.wikipedia.org/wiki/Domain-key_normal_form) (DKNF)
+- [Sixth normal form](https://en.wikipedia.org/wiki/Sixth_normal_form) (6NF) |
+| [Dependencies](https://en.wikipedia.org/wiki/Dependency_theory_(database_theory))
+- [Functional dependency](https://en.wikipedia.org/wiki/Functional_dependency)
+- [Multivalued dependency](https://en.wikipedia.org/wiki/Multivalued_dependency)
+- [Join dependency](https://en.wikipedia.org/wiki/Join_dependency)
+- [Lossless join decomposition](https://en.wikipedia.org/wiki/Lossless_join_decomposition)
+- [Inclusion dependency](https://en.wikipedia.org/wiki/Inclusion_dependency) |
+| [Denormalization](https://en.wikipedia.org/wiki/Denormalization) |
+| hide
+- [v](https://en.wikipedia.org/wiki/Template:Database)
+- [t](https://en.wikipedia.org/wiki/Template_talk:Database)
+- [e](https://en.wikipedia.org/wiki/Special:EditPage/Template:Database)
+[Database](https://en.wikipedia.org/wiki/Database) |
+| Main | - [Requirements](https://en.wikipedia.org/wiki/Database#Major_database_usage_requirements)
+- [Theory](https://en.wikipedia.org/wiki/Database_theory)
+- [Database object](https://en.wikipedia.org/wiki/Database_object)
+- [Models](https://en.wikipedia.org/wiki/Database_model)
+- [Database management system](https://en.wikipedia.org/wiki/Database_management_system)
+- [Machine](https://en.wikipedia.org/wiki/Database_machine)
+- [Engine](https://en.wikipedia.org/wiki/Database_engine)
+- [Server](https://en.wikipedia.org/wiki/Database_server)
+- [Application](https://en.wikipedia.org/wiki/Database_application)
+- [Connection](https://en.wikipedia.org/wiki/Database_connection)
+- [datasource](https://en.wikipedia.org/wiki/Datasource)
+- [DSN](https://en.wikipedia.org/wiki/Data_Source_Name)
+- [Administrator](https://en.wikipedia.org/wiki/Database_administrator)
+- [Synonym](https://en.wikipedia.org/wiki/Synonym_(database))
+- [Lock](https://en.wikipedia.org/wiki/Lock_(database))
+- [Types](https://en.wikipedia.org/wiki/Category:Types_of_databases)
+- [Tools](https://en.wikipedia.org/wiki/Comparison_of_database_tools) |
+| [Languages](https://en.wikipedia.org/wiki/Database#Database_languages) | - [Data definition](https://en.wikipedia.org/wiki/Data_definition_language)
+- [Data manipulation](https://en.wikipedia.org/wiki/Data_manipulation_language)
+- [Query](https://en.wikipedia.org/wiki/Query_language)
+- [information retrieval](https://en.wikipedia.org/wiki/Information_retrieval_query_language) |
+| [Security](https://en.wikipedia.org/wiki/Database_security) | - [Activity monitoring](https://en.wikipedia.org/wiki/Database_activity_monitoring)
+- [Audit](https://en.wikipedia.org/wiki/Database_audit)
+- [Forensics](https://en.wikipedia.org/wiki/Database_forensics)
+- [Negative database](https://en.wikipedia.org/wiki/Negative_database) |
+| [Design](https://en.wikipedia.org/wiki/Database_design) | - [Entities and relationships](https://en.wikipedia.org/wiki/Entity–relationship_model) (and [Enhanced](https://en.wikipedia.org/wiki/Enhanced_entity–relationship_model) notation)
+- [Normalization](https://en.wikipedia.org/wiki/Database_normalization)
+- [Schema](https://en.wikipedia.org/wiki/Database_schema)
+- [Refactoring](https://en.wikipedia.org/wiki/Database_refactoring)
+- [Cardinality](https://en.wikipedia.org/wiki/Cardinality_(data_modeling)) |
+| Programming | - [Abstraction layer](https://en.wikipedia.org/wiki/Database_abstraction_layer)
+- [Object–relational mapping](https://en.wikipedia.org/wiki/Object–relational_mapping) |
+| Management | - [Virtualization](https://en.wikipedia.org/wiki/Database_virtualization)
+- [Tuning](https://en.wikipedia.org/wiki/Database_tuning)
+- [caching](https://en.wikipedia.org/wiki/Database_caching)
+- [Migration](https://en.wikipedia.org/wiki/Data_migration#Database_migration)
+- [Preservation](https://en.wikipedia.org/wiki/Database_preservation)
+- [Integrity](https://en.wikipedia.org/wiki/Database_integrity) |
+| [Lists of](https://en.wikipedia.org/wiki/Lists_of_databases) | - [Academic](https://en.wikipedia.org/wiki/List_of_academic_databases_and_search_engines)
+- [Biological](https://en.wikipedia.org/wiki/List_of_biological_databases)
+- [Biodiversity](https://en.wikipedia.org/wiki/List_of_biodiversity_databases)
+- [Facial expression](https://en.wikipedia.org/wiki/List_of_facial_expression_databases)
+- [Online](https://en.wikipedia.org/wiki/List_of_online_databases)
+- [Online music](https://en.wikipedia.org/wiki/List_of_online_music_databases)
+- [Online real estate](https://en.wikipedia.org/wiki/List_of_online_real_estate_databases) |
+| See also | - [Database-centric architecture](https://en.wikipedia.org/wiki/Database-centric_architecture)
+- [Intelligent database](https://en.wikipedia.org/wiki/Intelligent_database)
+- [Two-phase locking](https://en.wikipedia.org/wiki/Two-phase_locking)
+- [Locks with ordered sharing](https://en.wikipedia.org/wiki/Locks_with_ordered_sharing)
+- [Load file](https://en.wikipedia.org/wiki/Load_file)
+- [Publishing](https://en.wikipedia.org/wiki/Database_publishing)
+- [Halloween Problem](https://en.wikipedia.org/wiki/Halloween_Problem)
+- [Log shipping](https://en.wikipedia.org/wiki/Log_shipping) |
+| **![](//upload.wikimedia.org/wikipedia/commons/thumb/3/37/People_icon.svg/20px-People_icon.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) [WikiProject](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Databases)** **![](//upload.wikimedia.org/wikipedia/en/thumb/9/96/Symbol_category_class.svg/20px-Symbol_category_class.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) [Category](https://en.wikipedia.org/wiki/Category:Databases)** |
+| hide
+- [v](https://en.wikipedia.org/wiki/Template:Databases)
+- [t](https://en.wikipedia.org/wiki/Template_talk:Databases)
+- [e](https://en.wikipedia.org/wiki/Special:EditPage/Template:Databases)
+[Database management systems](https://en.wikipedia.org/wiki/Database) |
+| Types | - [Object-oriented](https://en.wikipedia.org/wiki/Object_database)
+- [comparison](https://en.wikipedia.org/wiki/Comparison_of_object_database_management_systems)
+- [Relational](https://en.wikipedia.org/wiki/Relational_database)
+- [list](https://en.wikipedia.org/wiki/List_of_relational_database_management_systems)
+- [comparison](https://en.wikipedia.org/wiki/Comparison_of_relational_database_management_systems)
+- [Key–value](https://en.wikipedia.org/wiki/Key–value_database)
+- [Column-oriented](https://en.wikipedia.org/wiki/Column-oriented_DBMS)
+- [list](https://en.wikipedia.org/wiki/List_of_column-oriented_DBMSes)
+- [Document-oriented](https://en.wikipedia.org/wiki/Document-oriented_database)
+- [Wide-column store](https://en.wikipedia.org/wiki/Wide-column_store)
+- [Graph](https://en.wikipedia.org/wiki/Graph_database)
+- [NoSQL](https://en.wikipedia.org/wiki/NoSQL)
+- [NewSQL](https://en.wikipedia.org/wiki/NewSQL)
+- [In-memory](https://en.wikipedia.org/wiki/In-memory_database)
+- [list](https://en.wikipedia.org/wiki/List_of_in-memory_databases)
+- [Multi-model](https://en.wikipedia.org/wiki/Multi-model_database)
+- [comparison](https://en.wikipedia.org/wiki/Comparison_of_multi-model_databases)
+- [Cloud](https://en.wikipedia.org/wiki/Cloud_database)
+- [Blockchain-based database](https://en.wikipedia.org/wiki/Blockchain-based_database?action=edit&redlink=1) |
+| Concepts | - [Database](https://en.wikipedia.org/wiki/Database)
+- [ACID](https://en.wikipedia.org/wiki/ACID)
+- [Armstrong's axioms](https://en.wikipedia.org/wiki/Armstrong's_axioms)
+- [Codd's 12 rules](https://en.wikipedia.org/wiki/Codd's_12_rules)
+- [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+- [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete)
+- [Data orientation](https://en.wikipedia.org/wiki/Data_orientation)
+- [Null](https://en.wikipedia.org/wiki/Null_(SQL))
+- [Candidate key](https://en.wikipedia.org/wiki/Candidate_key)
+- [Foreign key](https://en.wikipedia.org/wiki/Foreign_key)
+- [PACELC design principle](https://en.wikipedia.org/wiki/PACELC_design_principle)
+- [Superkey](https://en.wikipedia.org/wiki/Superkey)
+- [Surrogate key](https://en.wikipedia.org/wiki/Surrogate_key)
+- [Unique key](https://en.wikipedia.org/wiki/Unique_key) |
+| Objects | - [Relation](https://en.wikipedia.org/wiki/Relation_(database))
+- [table](https://en.wikipedia.org/wiki/Table_(database))
+- [column](https://en.wikipedia.org/wiki/Column_(database))
+- [row](https://en.wikipedia.org/wiki/Row_(database))
+- [View](https://en.wikipedia.org/wiki/View_(SQL))
+- [Transaction](https://en.wikipedia.org/wiki/Database_transaction)
+- [Transaction log](https://en.wikipedia.org/wiki/Transaction_log)
+- [Trigger](https://en.wikipedia.org/wiki/Database_trigger)
+- [Index](https://en.wikipedia.org/wiki/Database_index)
+- [Stored procedure](https://en.wikipedia.org/wiki/Stored_procedure)
+- [Cursor](https://en.wikipedia.org/wiki/Cursor_(databases))
+- [Partition](https://en.wikipedia.org/wiki/Partition_(database)) |
+| Components | - [Concurrency control](https://en.wikipedia.org/wiki/Concurrency_control)
+- [Data dictionary](https://en.wikipedia.org/wiki/Data_dictionary)
+- [JDBC](https://en.wikipedia.org/wiki/Java_Database_Connectivity)
+- [XQJ](https://en.wikipedia.org/wiki/XQuery_API_for_Java)
+- [ODBC](https://en.wikipedia.org/wiki/Open_Database_Connectivity)
+- [Query language](https://en.wikipedia.org/wiki/Query_language)
+- [Query optimizer](https://en.wikipedia.org/wiki/Query_optimization)
+- [Query rewriting system](https://en.wikipedia.org/wiki/Query_Rewriting)
+- [Query plan](https://en.wikipedia.org/wiki/Query_plan) |
+| Functions | - [Administration](https://en.wikipedia.org/wiki/Database_administration)
+- [Query optimization](https://en.wikipedia.org/wiki/Query_optimization)
+- [Replication](https://en.wikipedia.org/wiki/Replication_(computing)#DATABASE)
+- [Sharding](https://en.wikipedia.org/wiki/Shard_(database_architecture)) |
+| Related topics | - [Database models](https://en.wikipedia.org/wiki/Database_model)
+- [Database normalization](https://en.wikipedia.org/wiki/Database_normalization)
+- Database storage
+- [Distributed database](https://en.wikipedia.org/wiki/Distributed_database)
+- [Federated database system](https://en.wikipedia.org/wiki/Federated_database_system)
+- [Referential integrity](https://en.wikipedia.org/wiki/Referential_integrity)
+- [Relational algebra](https://en.wikipedia.org/wiki/Relational_algebra)
+- [Relational calculus](https://en.wikipedia.org/wiki/Relational_calculus)
+- [Relational model](https://en.wikipedia.org/wiki/Relational_model)
+- [Object–relational database](https://en.wikipedia.org/wiki/Object–relational_database)
+- [Transaction processing](https://en.wikipedia.org/wiki/Transaction_processing)
+- [List of SQL software and tools](https://en.wikipedia.org/wiki/List_of_SQL_software_and_tools) |
+| - ![](//upload.wikimedia.org/wikipedia/en/thumb/9/96/Symbol_category_class.svg/20px-Symbol_category_class.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) [Category](https://en.wikipedia.org/wiki/Category:Database_management_systems)
+- ![](//upload.wikimedia.org/wikipedia/commons/thumb/4/41/Global_thinking.svg/20px-Global_thinking.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail) [Outline](https://en.wikipedia.org/wiki/Outline_of_databases) |
+Retrieved from "[https://en.wikipedia.org/w/index.php?title=Database_normalization&oldid=1361644936](https://en.wikipedia.org/w/index.php?title=Database_normalization&oldid=1361644936)"
+[Categories](/wiki/Help:Category):
+- [Database normalization](/wiki/Category:Database_normalization)
+- [Database constraints](/wiki/Category:Database_constraints)
+- [Data management](/wiki/Category:Data_management)
+- [Data modeling](/wiki/Category:Data_modeling)
+- [Relational algebra](/wiki/Category:Relational_algebra)
+- [Database management systems](/wiki/Category:Database_management_systems)
+Hidden categories:
+- [Articles with short description](/wiki/Category:Articles_with_short_description)
+- [Short description matches Wikidata](/wiki/Category:Short_description_matches_Wikidata)
+- [Use American English from March 2026](/wiki/Category:Use_American_English_from_March_2026)
+- [All Wikipedia articles written in American English](/wiki/Category:All_Wikipedia_articles_written_in_American_English)
+- [Use mdy dates from March 2026](/wiki/Category:Use_mdy_dates_from_March_2026)
+- [Articles needing expert attention from March 2018](/wiki/Category:Articles_needing_expert_attention_from_March_2018)
+- [All articles needing expert attention](/wiki/Category:All_articles_needing_expert_attention)
+- [Databases articles needing expert attention](/wiki/Category:Databases_articles_needing_expert_attention)
+- [Webarchive template wayback links](/wiki/Category:Webarchive_template_wayback_links)
+- [Articles needing cleanup from March 2026](/wiki/Category:Articles_needing_cleanup_from_March_2026)
+- [All pages needing cleanup](/wiki/Category:All_pages_needing_cleanup)
+- [Articles containing how-to sections](/wiki/Category:Articles_containing_how-to_sections)
+	- This page was last edited on 29 June 2026, at 06:47 (UTC).
+	- Page was rendered with [Parsoid](https://www.mediawiki.org/wiki/Special:MyLanguage/Parsoid).
+	- Text is available under the [Creative Commons Attribution-ShareAlike 4.0 License](/wiki/Wikipedia:Text_of_the_Creative_Commons_Attribution-ShareAlike_4.0_International_License);
+additional terms may apply. By using this site, you agree to the [Terms of Use](https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use) and [Privacy Policy](https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy). Wikipedia® is a registered trademark of the [Wikimedia Foundation, Inc.](https://wikimediafoundation.org/), a non-profit organization.
+	- [Privacy policy](https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy)
+	- [About Wikipedia](/wiki/Wikipedia:About)
+	- [Disclaimers](/wiki/Wikipedia:General_disclaimer)
+	- [Contact Wikipedia](//en.wikipedia.org/wiki/Wikipedia:Contact_us)
+	- [Legal & safety contacts](https://foundation.wikimedia.org/wiki/Special:MyLanguage/Legal:Wikimedia_Foundation_Legal_and_Safety_Contact_Information)
+	- [Code of Conduct](https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Universal_Code_of_Conduct)
+	- [Developers](https://developer.wikimedia.org)
+	- [Statistics](https://stats.wikimedia.org/#/en.wikipedia.org)
+	- [Cookie statement](https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Cookie_statement)
+	- [Mobile view](//en.wikipedia.org/w/index.php?title=Database_normalization&mobileaction=toggle_view_mobile)
+- [Edit preview settings](#)
+	- [![Wikimedia Foundation](/static/images/footer/wikimedia.svg)](https://www.wikimedia.org/)
+	- [![Powered by MediaWiki](/w/resources/assets/mediawiki_compact.svg)](https://www.mediawiki.org/)
+Search
+						Search
+Toggle the table of contents
+Database normalization
+35 languages
+			[Add topic](#)

@@ -1,0 +1,186 @@
+[Sitemap](/sitemap/sitemap.xml)
+[Open in app](https://play.google.com/store/apps/details?id=com.medium.reader&referrer=utm_source%3DmobileNavBar&source=---top_nav_layout_nav-------------------------------------------)
+Sign up
+[Sign in](/m/signin?operation=login&redirect=https%3A%2F%2Fmedium.com%2F%40novaross%2Fyet-another-feature-specification-template-2e9407b643a7&source=post_page---top_nav_layout_nav-----------------------global_nav--------------------)
+[Medium Logo](/?source=---top_nav_layout_nav-------------------------------------------)
+Get app
+[Write](/m/signin?operation=register&redirect=https%3A%2F%2Fmedium.com%2Fnew-story&source=---top_nav_layout_nav-----------------------new_post_topnav--------------------)
+[Search](/search?source=---top_nav_layout_nav-------------------------------------------)
+Sign up
+[Sign in](/m/signin?operation=login&redirect=https%3A%2F%2Fmedium.com%2F%40novaross%2Fyet-another-feature-specification-template-2e9407b643a7&source=post_page---top_nav_layout_nav-----------------------global_nav--------------------)
+![Unknown user](https://miro.medium.com/v2/resize:fill:64:64/1*dmbNkD5D-u45r44go_cf0g.png)
+1. [Documentation Matters](/?source=post_page-----2e9407b643a7-----------------------------------------#b13b)
+1. [Documentation Types](/?source=post_page-----2e9407b643a7-----------------------------------------#0ee1)
+1. [Finding the Balance](/?source=post_page-----2e9407b643a7-----------------------------------------#4c39)
+1. [Documentation as Code](/?source=post_page-----2e9407b643a7-----------------------------------------#c90d)
+1. [Specification Template Structure](/?source=post_page-----2e9407b643a7-----------------------------------------#d993)
+1. [FeatureName.md](/?source=post_page-----2e9407b643a7-----------------------------------------#ea97)
+1. [Introduction](/?source=post_page-----2e9407b643a7-----------------------------------------#b1de)
+1. [Press Release](/?source=post_page-----2e9407b643a7-----------------------------------------#2846)
+1. [Functional Specification](/?source=post_page-----2e9407b643a7-----------------------------------------#3fa2)
+1. [Functional Requirements](/?source=post_page-----2e9407b643a7-----------------------------------------#fae3)
+1. [Non Functional Requirements](/?source=post_page-----2e9407b643a7-----------------------------------------#6462)
+1. [US1: Name of the User Story](/?source=post_page-----2e9407b643a7-----------------------------------------#8780)
+1. [Technical Specification](/?source=post_page-----2e9407b643a7-----------------------------------------#b096)
+1. [Architecture Overview](/?source=post_page-----2e9407b643a7-----------------------------------------#fb16)
+1. [APIs and Contracts](/?source=post_page-----2e9407b643a7-----------------------------------------#8a8a)
+1. [Models and Entities](/?source=post_page-----2e9407b643a7-----------------------------------------#7fa4)
+1. [Testing Strategy](/?source=post_page-----2e9407b643a7-----------------------------------------#cc63)
+1. [References](/?source=post_page-----2e9407b643a7-----------------------------------------#f758)
+1. [Meeting Minutes](/?source=post_page-----2e9407b643a7-----------------------------------------#b7be)
+1. [Date, Purpose](/?source=post_page-----2e9407b643a7-----------------------------------------#0d70)
+1. [TL;DR](/?source=post_page-----2e9407b643a7-----------------------------------------#d8b6)
+[![Ruslan Spivak](https://miro.medium.com/v2/resize:fill:80:80/0*2xLxxHEKR9aV0iuh)](/@novaross?source=post_page---post_author_sidebar--2e9407b643a7-----------------d9c090316837------------------------)
+## Ruslan Spivak
+Engineering Manager & Indie Builder. Curious about applying new tech to improve SDLC. Learning and sharing as I go. [https://www.rspdev.com/](https://www.rspdev.com/)
+[Spec](/tag/specs?source=post_page---header_tags--2e9407b643a7-----------------------------------------)
+[Sdd](/tag/sdd?source=post_page---header_tags--2e9407b643a7-----------------------------------------)
+[Claude Code](/tag/claude-code?source=post_page---header_tags--2e9407b643a7-----------------------------------------)
+[System Design](/tag/design-systems?source=post_page---header_tags--2e9407b643a7-----------------------------------------)
+# Yet Another Feature Specification Template
+[![Ruslan Spivak](https://miro.medium.com/v2/da:true/resize:fill:64:64/0*2xLxxHEKR9aV0iuh)](/@novaross?source=post_page---byline--2e9407b643a7-----------------------------------------)
+[Ruslan Spivak](/@novaross?source=post_page---byline--2e9407b643a7-----------------------------------------)
+8 min read
+·Mar 8, 2026
+--
+[Listen](/m/signin?actionUrl=https%3A%2F%2Fmedium.com%2Fplans%3Fdimension%3Dpost_audio_button%26postId%3D2e9407b643a7&operation=register&redirect=https%3A%2F%2Fmedium.com%2F%40novaross%2Fyet-another-feature-specification-template-2e9407b643a7&source=---header_actions--2e9407b643a7---------------------post_audio_button--------------------)
+Share
+*For TL;DR and link scroll to the bottom of the article*
+Press enter or click to view image in full size
+![]()
+## Documentation Matters
+Building a digital product is an iterative and incremental process. The product is usually built feature by feature while constantly prioritizing functionality which brings most value to the users at that point in time. To align development teams and to ensure that everyone is working towards the same goal, there is a need for clearly defined and documented requirements, behavior and solution design for each of the features. Morover, in a world where LLMs are used to write code based on specification (SDD), written documentation becomes even more important.
+In a [previous article](https://www.linkedin.com/pulse/case-study-focusing-effort-part-1-ruslan-spivak-spwof/) I have described how you can accelerate the development process by investing upfront effort in the design phase. In this article we will cover how you can make use of a practical specification template to effectively document the information which is required for fast development. This template can also be used by coding agents as part of the spec driven development workflow.
+## Documentation Types
+There are many types of documents which are used to capture software or a product from different angles: SRS (System Requirements Specification) document, PRD (Product Requirements Document), BRD (Business Requirements Document), FRD (Functional Requirements Specification) just to name a few. They are all oriented towards a common goal: documenting the requirements, intended system behavior and system design. The complexity of the documents varies based on type of software being developed, customer type and organization, and how “official” the documents need to be.
+It is important to have a clear agreed upon standard how each step of the software development life cycle is documented in your team. If such standard does not exist, each team member will try (or not) to invent something by himself and this can lead to fragmentation.
+## Finding the Balance
+As you may have experienced, creating and updating documentation takes effort and skill. There is a need for a practical way to manage documentation as part of everyday development workflow without the extra burden and overhead of creating and filling in multiple types of specialized documents. As always, in software development there is a trade off, a need for balance, a sweet spot where the documentation serves its purpose and does not become annoying for the people who maintain it.
+The proposed feature specification template is intended to capture the most practical information required for efficient development of a feature. It captures the essence of the requirements, design considerations, and anything related to delivering and maintaining a specific single feature. It is also structured in a way that encourages customer centric approach by shifting the perspective of the development team to prioritize user experience.
+The template which I am about to share has iteratively evolved over time, and has been successfully implemented in personal projects and by teams working on various digital products. It has also been used with coding agents like claude-code and copilot-cli to successfully build entire features based on specification alone.
+## Documentation as Code
+Based on my personal experience, practical and usable software documentation has the following properties:
+- Online, always up to date, (share link not file)
+- Stored together with the source code in the same repository
+- Easily searchable (CTRL+Shift+F)
+- Version controlled
+- Usable by LLMs and various coding agents
+[Markdown](https://en.wikipedia.org/wiki/Markdown) files commited to git in the same repository as the source code perfectly align with all of the above requirements.
+Suggested folder structure for features in a repository:
+```
+my-app\                    Repository of the app or component
+└─scr\                     Source code and any other files
+└─features\                Folder to hold the spec files
+  └─attachments\           Folder for attachments related to specs
+  └─my-first-feature.md    Spec file for first feature
+  └─my-second-feature.md   Spec file for second feature
+```
+Create a single specification markdown file for each of your features. Each specification file contains documentation for all of the user stories required for that feature. In case your product consists of more than one repository (backend, frontend, mobile app…), create a `my-product-docs` repository which holds the high level functional and technical specs for the product itself.
+When documentation is stored together with the source code, it makes it easy to treat it like code: When creating a new feature, create new spec and write new code. When enhancing an existing feature, enhance existing documentation and enhance the existing code. When fixing a bug, fix existing documentation and fix the code. By adopting this workflow, your commits contain code and documentation which explains the changes.
+## Specification Template Structure
+Below are the main sections of the specification template:
+- Introduction
+- Press Release
+- Functional Specification
+- Technical Specification
+- Testing Strategy
+- References
+- Meeting Minutes and ADR
+All of the sections are located in a single markdown file including meeting minutes and architectural decisions. This makes it easy to find all feature related information in a single document, for humans and for LLMs.
+When working with coding agents, creating separate files for functional (requirements) and technical (design) specs can have positive effects on context window size and hence the ability of the LLM to provide a higher quality response. However in practice, if your features are granular enough, a single markdown file which contains both functional and the technical specs works just fine and is easier to maintain (tested with claude-code and copilot-cli).
+You can download the template in Markdown format from the link below:
+[## GitHub - novaross/template-feature-specification: Yet Another Feature Specification Template
+### Yet Another Feature Specification Template. Contribute to novaross/template-feature-specification development by…
+github.com](https://github.com/novaross/template-feature-specification?source=post_page-----2e9407b643a7-----------------------------------------)
+You can use the template document as a starting point and modify it for your personal needs.
+Below is an explanation of each section of the template and how to fill it in.
+### [FeatureName.md](http://FeatureName.md)
+Use feature name as the name of the file which holds it. You can prefix the file name with a number (01-,02-) or with date (in YYYMMDD format) so that the various md files are automatically sorted in chronological order inside the features folder.
+Start the feature document with the feature name, author and the date.
+### Introduction
+The purpose of the introduction section is to onboard the readers of the document and to provide context. Shortly describe the contents of this document, and any relevant background information. Shortly describe the motivation for developing this feature, why it is required and how it addresses the needs of the users.
+The introduction section can be expanded to provide any additional information as required by your organization. For example team dependencies, priority, relevant stakeholders etc…
+### Press Release
+Writing a fictional press release is a software development approach in which teams “work backwards”. By writing a fake press release, team members envision the feature as if it already exists before even starting the development process. The goal of this approach is to shift developer perspective from writing code to building a product that delivers most value to the customer.
+The core of this approach is implemented by writing a fictional press release that describes the feature, its benefits, and the problem it solves for the customer. Writing a press release makes you think about the experience of the user when he is interacting with the feature and not about the technical details of implementing it.
+Use below template to write the fictional press release for the feature:
+- Product or Feature name: A clear and concise name for the product or the feature.
+- Target Users: Who is this feature intended for?
+- Problem Statement: What problem does this feature solve for the customer?
+- Benefits: What are the key advantages for the customer?
+- Call to Action: What do you want the customer to do after reading this press release?
+- FAQ (optional): Addressing potential questions about the provided functionality.
+Further down the development lifecycle, the fictional press release can be updated to describe the actual functionality and act as a real press release which can be published to the users together with the feature.
+Credit: [ProductPlan](https://www.productplan.com/glossary/working-backward-amazon-method/)
+## Functional Specification
+Functional specification describes what functions a system or component must perform. It describes the expected behavior of the system from the user’s perspective, requested properties of the system, inputs and outputs.
+Functional specification does not define the inner workings of the proposed system or a feature; it does not include specification of how the described functionality will be implemented.
+For QA engineers, the functional specification acts as the reference for how the implemented feature is supposed to work. It represents the desired state versus the actual observed behavior of the system.
+Include the following sub sections as part of the functional specification:
+- Functional requirements
+- Non functional requirements
+- User stories
+- UI/UX design (if applicable)
+It is advised to use visual diagrams to describe the system and the feature.
+Diagrams applicable for the functional specification include use case diagrams, user journey maps, wireframes, mockups, etc…
+[https://en.wikipedia.org/wiki/Use_case_diagram](https://en.wikipedia.org/wiki/Use_case_diagram)
+### Functional Requirements
+This is an optional section which can be used to capture any functional requirements as provided by the users. This can be filled in during initiation phase of feature development. Remove this section if it is not relevant.
+### Non Functional Requirements
+This is an optional section to document the non functional requirements for the feature. Remove this section if it is not relevant.
+### US1: Name of the User Story
+Functional specification consists of a set of user stories which describe the interactions between users and the system. Create a separate H3 section for each of the user stories which need to be developed as part of current feature. Numbering the user stories allows clear communication and easy reference.
+When working with coding agents like copilot-cli or claude-code, numbered user stories become easy to reference by their number in prompts:
+```
+Create a detailed plan to implement us1 as defined in @features/my-feature.md
+```
+## Technical Specification
+Technical specification describes how the system or the feature is implemented. Use this section to document system or feature architecture, high level and detailed design, definition of main system components, communication patterns, contracts, data models and any other technical considerations and details required for the implementation of the feature.
+### Architecture Overview
+If applicable, attach architecture diagrams which to visualize system components. Consider working with Mermaid diagrams in md files. Alternatively, attach images from diagrams created in draw.io.
+### APIs and Contracts
+Create API documentation for all new and updated endpoints.
+Describe communication patterns (sync/async) between various system components. Optionally add references to Open API specification YAML files. Remove this section if it is not relevant.
+### Models and Entities
+Provide documentation and structure for models, entities, database schemas, and migration strategies. Remove this section if it is not relevant.
+## Testing Strategy
+Use this section to describe how the new feature is to be tested. Describe which other parts of the system might be affected by implementing this feature. If applicable, create list of test scenarios and test cases which can be identified at the time of writing this document.
+## References
+List any relevant resources which were used during research and preparation of the solution. This can include links to articles, blog posts and any other documentation which is required for better understanding.
+## Meeting Minutes
+Use this section to capture meeting minutes, discussions and various decisions that were made with regards to this feature. Over time, meeting minutes and ADR provide valuable information and insight as to why and by whom certain decisions were made.
+### Date, Purpose
+Title example: 08.03.2026, Update Spec Template
+Attendees: Names of participants who attended the meeting
+Summary of topics and discussion held during the meeting
+Decisions that were made during the meeting
+Action items which were recorded during the meeting
+## TL;DR
+This article describes the motivation for and the technical approach to creating practical functional and technical specification documentation for a feature. The specification document is in markdown, lives in git together with your code and is tested to work with coding agents like claude-code.
+Use the provided template as a starting point, experiment and adjust to your needs.
+[## GitHub - novaross/template-feature-specification: Yet Another Feature Specification Template
+### Yet Another Feature Specification Template. Contribute to novaross/template-feature-specification development by…
+github.com](https://github.com/novaross/template-feature-specification/?source=post_page-----2e9407b643a7-----------------------------------------)
+[Spec](/tag/specs?source=post_page---footer_tags--2e9407b643a7-----------------------------------------)
+[Sdd](/tag/sdd?source=post_page---footer_tags--2e9407b643a7-----------------------------------------)
+[Claude Code](/tag/claude-code?source=post_page---footer_tags--2e9407b643a7-----------------------------------------)
+[System Design](/tag/design-systems?source=post_page---footer_tags--2e9407b643a7-----------------------------------------)
+--
+--
+[![Ruslan Spivak](https://miro.medium.com/v2/resize:fill:96:96/0*2xLxxHEKR9aV0iuh)](/@novaross?source=post_page---post_author_info--2e9407b643a7-----------------------------------------)
+[![Ruslan Spivak](https://miro.medium.com/v2/resize:fill:128:128/0*2xLxxHEKR9aV0iuh)](/@novaross?source=post_page---post_author_info--2e9407b643a7-----------------------------------------)
+[## Written by Ruslan Spivak](/@novaross?source=post_page---post_author_info--2e9407b643a7-----------------------------------------)
+[2 followers](/@novaross/followers?source=post_page---post_author_info--2e9407b643a7-----------------------------------------)
+·[1 following](/@novaross/following?source=post_page---post_author_info--2e9407b643a7-----------------------------------------)
+Engineering Manager & Indie Builder. Curious about applying new tech to improve SDLC. Learning and sharing as I go. [https://www.rspdev.com/](https://www.rspdev.com/)
+[Help](https://help.medium.com/hc/en-us?source=post_page-----2e9407b643a7-----------------------------------------)
+[Status](https://status.medium.com/?source=post_page-----2e9407b643a7-----------------------------------------)
+[About](/about?autoplay=1&source=post_page-----2e9407b643a7-----------------------------------------)
+[Careers](/jobs-at-medium/work-at-medium-959d1a85284e?source=post_page-----2e9407b643a7-----------------------------------------)
+[Press](mailto:REDACTED_FOR_FIXTURE)
+[Blog](https://blog.medium.com/?source=post_page-----2e9407b643a7-----------------------------------------)
+[Store](https://medium.com/store)
+[Privacy](https://policy.medium.com/medium-privacy-policy-f03bf92035c9?source=post_page-----2e9407b643a7-----------------------------------------)
+[Rules](https://policy.medium.com/medium-rules-30e5502c4eb4?source=post_page-----2e9407b643a7-----------------------------------------)
+[Terms](https://policy.medium.com/medium-terms-of-service-9db0094a1e0f?source=post_page-----2e9407b643a7-----------------------------------------)
+[Text to speech](https://speechify.com/medium?source=post_page-----2e9407b643a7-----------------------------------------)

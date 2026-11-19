@@ -1,0 +1,2169 @@
+- 
+
+        
+        - [Join/Login](/auth/)
+
+        
+        - [Business Software](/software/)
+
+        - [Open Source Software](/directory/)
+
+        - [For Vendors](/software/vendors/)
+
+        - [Blog](/blog/)
+
+        - [About](/about)
+
+        - More
+
+        - - [Articles](/articles/)
+
+    
+    
+
+    
+ 
+                
+                - [Create](/create)
+
+                
+                - [SourceForge Podcast](https://sourceforge.net/articles/category/sourceforge-podcast/)
+
+                
+                    - [Site Documentation](https://sourceforge.net/p/forge/documentation/Docs%20Home/)
+
+                
+                - [Subscribe to our Newsletter](/user/newsletters)
+
+                - [Support Request](/support)
+
+    
+
+    
+
+  
+  
+
+    
+
+        
+
+            [![SourceForge logo](https://a.fsdn.com/con/images/sandiego/sf-logo-full.svg)](/)
+            
+
+                
+                    
+
+                
+                [For Vendors](/software/vendors/)
+                
+                
+                    [Help](/support)
+                    [Create](/create/)
+                
+
+                
+                [Join](/user/registration)
+                [Login](/auth/)
+                
+            
+        
+    
+
+    
+
+        
+
+            [![SourceForge logo](https://a.fsdn.com/con/images/sandiego/sf-logo-full.svg)](/)
+            
+
+                
+            
+        
+    
+    
+
+        
+
+            
+                                                                                                                                                                                                                                                        
+            
+            
+
+                
+    
+        
+
+            [Business Software](/software/)
+            
+        
+        
+
+            [Open Source Software](/directory/)
+            
+        
+        
+
+            [SourceForge Podcast](https://sourceforge.net/articles/category/sourceforge-podcast/)
+        
+        
+
+            Resources
+            
+
+                  - [Articles](/articles/)
+
+                  
+                  - [Case Studies](/software/case-studies/)
+
+                  
+                  - [Blog](/blog/)
+
+            
+
+        
+    
+
+                
+
+                    Menu
+                    
+
+                        - [Help](/support)
+
+                        - [Create](/create)
+
+                        - [Join](/user/registration/)
+
+                        - [Login](/auth/)
+
+                    
+
+                
+                
+
+                    
+                        
+
+                    
+                
+            
+
+            
+
+                
+                    
+
+                
+                
+                    
+                
+                
+                
+                
+    
+    
+    
+
+      
+
+        
+
+        
+        
+        
+        
+        
+        
+            
+            
+
+        
+      
+    
+    
+    
+    
+                
+            
+        
+        
+    
+
+    
+
+    
+        
+    
+    
+        
+        
+        
+        
+        
+            
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+        
+        
+            
+                
+
+                
+
+                
+            
+        
+    
+
+    
+
+    
+    
+    
+
+    
+        
+    
+    
+    
+    
+    
+    
+
+    
+
+        
+
+            
+                
+                    
+    
+ 
+            
+            
+            
+            
+
+ 
+    
+    
+
+    
+
+    
+
+    
+        
+    
+
+        
+
+            - [Home](/)
+
+            - [Browse](/directory/)
+
+            
+            
+                
+                
+            
+            
+                
+            
+            
+                - [7-Zip](/p/sevenzip/)
+
+            
+                - Discussion
+
+            
+        
+
+    
+    
+    
+    
+        
+                
+                
+
+    
+
+    
+    
+    ![7-Zip](https://a.fsdn.com/allura/p/sevenzip/icon?1513717481&w=90)
+
+    
+    
+ 
+
+        
+        
+# The new compression algorithm of IPA/ZIP files by Apple
+
+        
+        
+## A free file archiver for extremely high compression
+
+        
+            
+            
+          
+        
+            
+            
+            
+
+                
+                Brought to you by:
+                
+                    [ipavlov](/u/ipavlov/profile/)
+                    
+                
+            
+            
+        
+
+        
+
+        
+    
+
+    
+
+                
+                
+    
+  
+            
+            
+        
+    
+
+        
+    
+
+                
+            
+        
+        
+
+            
+                
+
+  
+  
+    - [Summary](/projects/sevenzip/)
+
+  
+    - [Files](/projects/sevenzip/files/)
+
+  
+    - [Reviews](/projects/sevenzip/reviews/)
+
+  
+    - [Support](/projects/sevenzip/support)
+
+  
+    - [Wiki](/p/sevenzip/wiki/)
+
+  
+    - [Tickets ▾](/p/sevenzip/_list/tickets)
+        
+        
+            
+
+                
+                    - [Support Requests](/p/sevenzip/support-requests/)
+
+                
+                    - [Patches](/p/sevenzip/patches/)
+
+                
+                    - [Bugs](/p/sevenzip/bugs/)
+
+                
+                    - [Feature Requests](/p/sevenzip/feature-requests/)
+
+  
+    - [News](/p/sevenzip/news/)
+
+  
+    - [Discussion](/p/sevenzip/discussion/)
+
+  
+  
+
+            
+        
+        
+
+            
+
+    
+                
+                    
+[Menu
+    ▾
+    ▴](#)
+
+                        
+
+  
+    
+      
+      
+        
+        ****
+      
+    
+  
+    
+    
+      
+      
+        
+    
+      
+
+      
+    
+  - [**
+      
+      Create Topic](/p/sevenzip/discussion/create_topic/45797)
+
+  
+      
+        
+    
+  - [**
+      
+      Stats Graph](/p/sevenzip/discussion/stats)
+
+  
+      
+        
+    
+      
+
+      
+    
+    
+      
+### Forums
+
+    
+  
+      
+        
+    
+      
+
+      
+    
+  - [Open Discussion
+      29053](/p/sevenzip/discussion/45797/)
+
+  
+      
+        
+    
+  - [Help
+      8267](/p/sevenzip/discussion/45798/)
+
+  
+      
+        
+    
+      
+
+      
+    
+    
+      
+### Help
+
+    
+  
+      
+        
+    
+      
+
+      
+    
+  - [Formatting Help](/nf/markdown_syntax)
+
+  
+      
+    
+    
+      
+
+      
+    
+    
+
+                    
+
+                    
+                
+                
+                    
+                
+                
+
+                    
+## The new compression algorithm of IPA/ZIP files by Apple
+                        
+                        
+                            
+  
+  
+  [**](feed.rss)
+
+                    
+  
+
+Forum: [Open Discussion](/p/sevenzip/discussion/45797/)
+
+  
+Creator: 
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+    
+  
+Created: 
+    
+      2019-09-17
+    
+
+Updated: 
+    
+      2019-09-19
+    
+
+                    
+
+                        
+                        
+  
+
+  
+
+      
+        
+
+      
+      
+
+        
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#7115)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Hi I just encountered a ZIP/IPA file (iOS app) that seems to use Apples "new compression algorithm".
+
+In 7Zip the compression is shown as "WzAES" however if I try to extract a file from the archive that uses this method I am getting an "Unsupported Method" error respectively "Not supported compression type":
+
+```
+`Path = Payload\Dummy.app\Frameworks\Instabug.framework\_CodeSignature\CodeResources
+Folder = -
+Size = 28622
+Packed Size = 5531
+Modified = 2019-09-07 02:38:33
+Created =
+Accessed = 2019-09-07 02:38:45
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment =
+CRC = A571D7C5
+Method = WzAES
+Characteristics = UX : UTF8
+Host OS = Unix
+Version = 20
+Volume Index = 0
+Offset = 13465368
+`
+```
+
+Does anybody knows details on this compression?
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      - 
+
+    
+
+  
+
+    
+    
+
+      
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831&w=32)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#7115/3aca)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+I can look it.
+
+Please remove all another files from that archive and attach  here small archive with such file.
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#3fa7)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Thanks Igor. Here is the link to the file:
+
+ 
+            
+
+              
+            
+            
+  
+            
+                
+Last edit: Igor Pavlov 2019-09-17
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#5b51)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Please don't post such bad links for exe dowloading anymore.
+
+Just attach small archive file here instead.
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#e224)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Sorry I missed the add attachments button. I tried with drag&drop as in other forum software but sourceforge forum is still years away from normal functionality.
+
+Anyway if you got an exe file you clicked on th wrong button.  On such sites the larger button is always the wrong one (the advertising button).
+
+ 
+            
+
+              
+            
+            
+  
+            
+                
+Last edit: r_x 2019-09-17
+            
+          
+        
+        
+        
+        
+
+          
+            
+
+                
+                
+
+                    **
+                
+                    [534.ipa](/p/sevenzip/discussion/45797/thread/407a191c4f/e224/attachment/534.ipa)
+                
+                 
+
+                    
+                        
+
+                        [**](/p/sevenzip/discussion/45797/thread/407a191c4f/e224/attachment/534.ipa)
+                        
+                        
+                    
+                
+            
+          
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#28bc)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+it's not wzAES.
+
+it's some unusual  storing format with headers:
+
+`bvxn` signature 
+
+unpack size 4 bytes
+
+pack size 4 bytes
+
+2 another bytes 
+
+and then main data
+
+and `bvx$` at the end
+
+What program does it?
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#f49a)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+As I wrote the file has been created by the Apple App store system (server based system).
+
+Based on the term "bvxn" I found the following link:
+
+[https://github.com/file/file/blob/master/magic/Magdir/compress#L394](https://github.com/file/file/blob/master/magic/Magdir/compress#L394)
+
+If I understand it correctly bvxn means that it belongs to the LZFSE compression algorithm:
+
+[https://github.com/lzfse/lzfse](https://github.com/lzfse/lzfse)
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-17
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#e732)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Right.
+
+bvxn is LZFSE.
+
+And 7-Zip supports LZFSE already in another code.
+
+So probably I can try to call LZFSE code for zip too.
+
+I'll check it.
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-18
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#ab6b)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+LZFSE unpacking works for that archive.
+
+Where I can download more IPA examples with LZFSE compression for testing?
+
+Do you know why Apple uses WinZip's AES method ID (99) in ZIP for LZFSE compression?
+
+They could select any other method ID number instead.
+
+It's bad decision by compatibility reasons.
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-18
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#50a2)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+I don't know why Apple has reused an existing identifier. May be they have used Copy-and-Paste from an existing code and then forgot to change the ID? Or they really used the implementation and replaced the implementation for WinzipAES with their own - who knows.
+
+At the moment the only way I know to get such archives is to capture the HTTP traffic while the Apple app store is downloading them on an iPhone. 
+
+I don't know if there are any personal details included in the downloads, therefore I would like to keep them private.
+
+I can download a few apps, pack them together place it in my Dropbox and send you the download link.  Note that every typical iOS app has ~50MB. Therefore I will collect only a few of them.
+
+Is the Sourceforge "Send message" function working for your account?
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-18
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#7e8c)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+So is it some internal format for direct data transfer from Apple server to iPhone?
+
+And there are no public files for downloading?
+
+Is it common situation that some users capture these files as you?
+
+And how often Apple uses these IPA-LZFSE archives?
+
+Can you get some estimation:
+
+The usage for these ZIP-LZFSE in MBs (or number of archives) per user per day or per month.
+
+And how many users (iOS devices) are affected with that format?
+
+I just want to know some rough estimation how widely sycj  IPA-LZFSE archives are used.
+
+And why someone can need to capture and unpack it?
+
+What reasons and use cases?
+
+The "Send Message" works for my account.
+
+But you can write here. 
+
+It's better to discuss and upload/download only files without any private things.
+
+ 
+            
+
+              
+            
+            
+  
+            
+                
+Last edit: Igor Pavlov 2019-09-18
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-18
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#9749)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+I assume that there are other files available for download, however I am not an OSX user therefore I don't know any other usage of this algorithm.
+
+Regarding the iOS apps the usage was new to me (it seem to depend on other factor which format is used by Apple), however I found some old discussions back from 2017 that indicate that this format is used for multiple years:
+
+[https://sskaje.me/2017/08/unzip-with-lzfse-support/](https://sskaje.me/2017/08/unzip-with-lzfse-support/)
+
+Especially the message "unsupported compression method 99" seems to indicate that ipa archives,  using this method were already used by Apple in 2017.
+
+Therefore I assume we can say that this format is used for nearly every iOS app download at the moment. Therefore we are talking about  more than 1.4 billion active iOS devices multiplied by the number of app downloads per device. 
+
+However most users won't get in contact with those files as only on jailbroken iOS devices users have the ability to get their hands on such files (or alternatively you capture the file on the network level).
+
+The number of potential 7zip users is difficult to guess. I that most of the users who come in contact with such archives are OSX users (and 7zip is not that popular on that platform, right?).
+
+Typically security sensitive people like researchers, hackers, and so on are interested in accessing the content of IPA files.
+
+There is a related question on Stackoverflow which got 4k views in one year:
+
+[https://stackoverflow.com/questions/52422675/how-to-extract-contents-from-a-ipa-file-2018](https://stackoverflow.com/questions/52422675/how-to-extract-contents-from-a-ipa-file-2018)
+
+The one on Superuser is older and got 25k viewes:
+
+[https://superuser.com/questions/1222043/mac-osx-how-to-unzip-password-protected-zip-file](https://superuser.com/questions/1222043/mac-osx-how-to-unzip-password-protected-zip-file)
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-18
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#9595)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Is that LZFSE a default method in all new IPA files?
+
+Do most or another IPA files still use Deflate?
+
+Did you see Deflate and LZFSE in same IPA file?
+
+IPA is old format, 
+
+So did it work without LZFSE most of time in past?
+
+And LZFSE is some new feature there?
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-19
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#0852)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+> Is that LZFSE a default method in all new IPA files?
+
+It seem like LZFSE is used by all IPAs processes  by Apple and send directly to the devices. Development tools like Xcode still seem to create IPAs that use STORE only.
+
+> Do most or another IPA files still use Deflate?
+> 
+> Did you see Deflate and LZFSE in same IPA file?
+
+I don't know if Apple ever used Deflate, at the moment Apple seem not to use Deflate anymore.
+
+Also a lot of entries in an IPA that contains LZFSE compressed entries are still using STORE.
+
+> IPA is old format
+
+I would not call IPA a format, it is just a ZIP based transport container. There is also no specification on compression or even the exact content.
+
+> So did it work without LZFSE most of time in past?
+
+As I wrote that depends which tool created the IPA files. Apple processes the IPA files in their cloud and in that step it seems to change the compression to LZFSE. The old iTunes desktop app that allowed IPS download  (now deprecated)  never used LZFSE.
+
+> And LZFSE is some new feature there?
+> 
+> As you cansee from my links it first appearence was in 2017. However Apple was talking in the last presentation about "a new compression system" used for minimizing the app loadoad traffic. May be Apple now applies LZFSE to each an every IPA files they provide for download to current iOS devices.
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![Igor Pavlov](https://a.fsdn.com/allura/u/ipavlov/user_icon?1434850831)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [Igor Pavlov](/u/ipavlov/profile/)
+        
+     - *
+    
+      2019-09-19
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#e319)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+> Development tools like Xcode still seem to create IPAs that use STORE only.
+
+Why it's so?
+
+They don't need compression at all?
+
+Only container feature is required for them?
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+          
+
+            
+- ![r_x](https://a.fsdn.com/con/images/sandiego/icons/default-avatar.png)
+
+      
+      
+      
+      
+
+          
+
+            
+        
+            
+            [r_x](/u/r_x/profile/)
+        
+     - *
+    
+      2019-09-19
+    
+*
+
+            
+
+            
+            
+            [**](https://sourceforge.net/p/sevenzip/discussion/45797/thread/407a191c4f/#6a18)
+
+            
+
+                
+            
+          
+          
+
+          
+            
+
+            
+
+Because compiling, linking and building already requires enough CPU resources. Therefore compressing the app is not that important. 
+
+Compiling an app can be done hundred times a day, therefore you want to have it as fast as possible. 
+
+I assume Apple only use compression to minimize their budget spent on cloud servers (AFAIK Apple App store mostly runs on cloud servers like those from Amazon), according to an article I have read Apple pays dozens of million dollar per month for cloud services.
+
+ 
+            
+
+              
+            
+            
+  
+            
+          
+        
+        
+        
+        
+
+      
+
+        [**](#)
+        
+If you would like to refer to this comment somewhere else in this project, copy and paste the following link:
+        
+      
+    
+    
+
+      -
+
+          
+
+          
+        
+        
+      
+      
+
+      
+      
+
+  
+
+  
+---
+
+  
+[Log in](/auth/) to post a comment.
+
+                    
+                    
+                    
+                
+            
+
+        
+    
+      
+
+    
+
+    
+
+        
+
+            
+
+                
+
+                    
+SourceForge
+                    
+
+                    
+                        - [Create a Project](/create/)
+
+                    
+                        - [Open Source Software](/directory/)
+
+                        - [Business Software](/software/)
+
+                        
+                            
+                            - [Top Downloaded Projects](/top)
+
+                        
+
+                    
+
+                
+            
+            
+
+                
+
+                    
+Company
+                    
+
+                        - [About](/about)
+
+                        - [Team](/about/leadership)
+
+                        - SourceForge Headquarters
+
+                                1320 Columbia Street Suite 310
+
+                                San Diego, CA 92101
+
+                                +1 (858) 422-6466
+
+                        - 
+
+                    
+
+                
+            
+             
+
+                
+
+                    
+Resources
+                    
+
+                        
+                            - [Support](/support)
+
+                            - [Site Documentation](/p/forge/documentation/Docs%20Home/)
+
+                        
+                        - [Site Status](https://fosstodon.org/@sourceforgestatus)
+
+                        - [SourceForge Reviews](/reviews)
+
+                    
+
+                
+            
+            
+
+                [![SourceForge logo](https://a.fsdn.com/con/images/sandiego/sf-logo-full.svg)](/)
+            
+        
+    
+    
+
+        
+
+            
+                
+            
+        
+    
+
+        © 2026 Slashdot Media. All Rights Reserved.
+    
+    
+
+        
+
+    
+
+    [Terms](https://slashdotmedia.com/terms-of-use)
+    [Privacy](https://slashdotmedia.com/privacy-statement/)
+
+    
+    
+    
+
+    
+        [Opt Out](https://slashdotmedia.com/opt-out-choices/)
+    
+
+    
+        [Advertise](https://slashdotmedia.com/contact/)
+    
+    
+        
+    
+
+    
+    
+
+    
+    
+    
+        
+        
+  
+  
+      
+
+    
+    
+        
+    
+    
+    
+
+  
+
+    
+
+        
+    
+    
+
+      
+
+    
+    
+
+      
+
+      
+ 
+           
+          
+          
+              
+
+                  
+              
+          
+          
+        
+      
+
+        
+
+        
+        
+          
+            
+
+          
+        
+      
+    
+    
+    
+
+  
+  
+
+    
+
+  
+
+    
+
+    
+    
+        
+            
+    
+    
+    
+    
+    
+    
+
+      
+
+      ✕
+      
+
+        
+
+          
+
+            ![MongoDB Logo](https://a.fsdn.com/con/img/hi-logo.png)
+            ![MongoDB](https://a.fsdn.com/con/img/hi-text.png)
