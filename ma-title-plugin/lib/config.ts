@@ -10,7 +10,8 @@
  * so the plugin never fails at load because of its config.
  *
  * Env: `MINIMAL_AGENT_TITLE=0|1` (0 = kill switch, 1 = allow in the current
- * mode) and `MINIMAL_AGENT_TITLE_MODEL=<id>`. Args (P4): `--title` and
+ * mode), `MINIMAL_AGENT_TITLE_MODEL=<id>` and
+ * `MINIMAL_AGENT_TITLE_LANGUAGE=<name>`. Args (P4): `--title` and
  * `--no-title`. Precedence: args \> env \> config \> default.
  *
  * @module lib/config
@@ -23,6 +24,7 @@ import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-pat
 import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 import type { RunMode, TitleEffort } from "./host-types.ts"
+import { sanitizeLanguage } from "./input.ts"
 
 /** The key of the plugin block under `plugins`. */
 export const TITLE_CONFIG_KEY = "title"
@@ -30,6 +32,8 @@ export const TITLE_CONFIG_KEY = "title"
 export const TITLE_ENV = "MINIMAL_AGENT_TITLE"
 /** Env: model override. */
 export const TITLE_MODEL_ENV = "MINIMAL_AGENT_TITLE_MODEL"
+/** Env: title language override. */
+export const TITLE_LANGUAGE_ENV = "MINIMAL_AGENT_TITLE_LANGUAGE"
 /** Env: path of the config file (same as core). */
 export const CONFIG_PATH_ENV = "MINIMAL_AGENT_CONFIG"
 
@@ -86,6 +90,11 @@ export interface TitleConfig {
   timeoutMs: number
   /** Min clean prompt length (code points). Default `10`. */
   minChars: number
+  /**
+   * Title language (letters, spaces, hyphens; max 40 chars). Default unset:
+   * the language line tells the model to use the main language of the text.
+   */
+  language?: string
 }
 
 /** A debug log sink. */
@@ -123,6 +132,7 @@ const KNOWN_KEYS = new Set([
   "maxUsdPerMTokIn",
   "timeoutMs",
   "minChars",
+  "language",
 ])
 
 /**
@@ -211,6 +221,12 @@ export function parseTitleConfig(raw: unknown, debug: DebugLog = () => {}): Titl
     else bad("minChars")
   }
 
+  if (cfg.language !== undefined) {
+    const lang = sanitizeLanguage(cfg.language)
+    if (lang) out.language = lang
+    else bad("language")
+  }
+
   return out
 }
 
@@ -286,6 +302,8 @@ export interface TitleEnv {
   title?: boolean
   /** `MINIMAL_AGENT_TITLE_MODEL`, trimmed; unset when empty. */
   model?: string
+  /** `MINIMAL_AGENT_TITLE_LANGUAGE`, sanitized; unset when empty or bad. */
+  language?: string
 }
 
 /** The title switches from the CLI args (P4: `--title` / `--no-title`). */
@@ -302,6 +320,8 @@ export function readTitleEnv(env: NodeJS.ProcessEnv = process.env): TitleEnv {
   else if (flag === "1") out.title = true
   const model = env[TITLE_MODEL_ENV]?.trim()
   if (model) out.model = model
+  const language = sanitizeLanguage(env[TITLE_LANGUAGE_ENV])
+  if (language) out.language = language
   return out
 }
 
@@ -324,4 +344,12 @@ export function resolveTitleSwitch(
  */
 export function resolveModelOverride(config: TitleConfig, env: TitleEnv): string | undefined {
   return env.model ?? config.model
+}
+
+/**
+ * The title language after precedence: `MINIMAL_AGENT_TITLE_LANGUAGE` \>
+ * `plugins.title.language`. `undefined` = the default language line.
+ */
+export function resolveTitleLanguage(config: TitleConfig, env: TitleEnv): string | undefined {
+  return env.language ?? config.language
 }

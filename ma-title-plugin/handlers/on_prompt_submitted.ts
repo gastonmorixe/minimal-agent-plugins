@@ -24,7 +24,12 @@
  * @module handlers/on_prompt_submitted
  */
 
-import { loadTitleConfig, readTitleEnv, resolveModelOverride } from "../lib/config.ts"
+import {
+  loadTitleConfig,
+  readTitleEnv,
+  resolveModelOverride,
+  resolveTitleLanguage,
+} from "../lib/config.ts"
 import {
   checkEligibility,
   hasTitle,
@@ -60,7 +65,11 @@ export const TITLE_ATTEMPT_EVENT = "title.attempt"
  */
 export const TITLE_MAX_TOKENS = 256
 
-/** The system prompt (SPEC §5.3), inlined by a text import. */
+/**
+ * The system prompt (SPEC §5.3), inlined by a text import. It holds all the
+ * rules. The user message is the `<session>` block and one language line
+ * (`buildTitleInput`), the same layout as Claude Code.
+ */
 export const SYSTEM_PROMPT = systemPromptText.trim()
 
 /**
@@ -229,10 +238,11 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
         sessionProviderId = undefined
       }
     }
+    const titleEnv = readTitleEnv(env)
     const choice = selectTitleModel({
       models,
       sessionProviderId,
-      override: resolveModelOverride(config, readTitleEnv(env)),
+      override: resolveModelOverride(config, titleEnv),
       ...(config.effort ? { effort: config.effort } : {}),
       maxUsdPerMTokIn: config.maxUsdPerMTokIn,
     })
@@ -262,7 +272,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       purpose: "title",
       model: choice.modelId,
       system: SYSTEM_PROMPT,
-      userText: buildTitleInput(pre.text),
+      userText: buildTitleInput(pre.text, resolveTitleLanguage(config, titleEnv)),
       maxTokens: TITLE_MAX_TOKENS,
       timeoutMs: config.timeoutMs,
       thinking: "off",

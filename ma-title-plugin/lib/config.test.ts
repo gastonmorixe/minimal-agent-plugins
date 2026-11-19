@@ -12,6 +12,7 @@ import {
   parseTitleConfig,
   readTitleEnv,
   resolveModelOverride,
+  resolveTitleLanguage,
   resolveTitleSwitch,
   titleConfigPath,
 } from "./config.ts"
@@ -119,6 +120,25 @@ describe("env and args precedence", () => {
     expect(readTitleEnv({ MINIMAL_AGENT_TITLE: "true" })).toEqual({})
     expect(readTitleEnv({ MINIMAL_AGENT_TITLE_MODEL: " m-1 " })).toEqual({ model: "m-1" })
     expect(readTitleEnv({ MINIMAL_AGENT_TITLE_MODEL: "  " })).toEqual({})
+    expect(readTitleEnv({ MINIMAL_AGENT_TITLE_LANGUAGE: " Spanish " })).toEqual({
+      language: "Spanish",
+    })
+    expect(readTitleEnv({ MINIMAL_AGENT_TITLE_LANGUAGE: "Spanish!" })).toEqual({})
+    expect(readTitleEnv({ MINIMAL_AGENT_TITLE_LANGUAGE: "x".repeat(41) })).toEqual({})
+  })
+
+  test("language: env > config > unset; bad config value is ignored", () => {
+    const logs: string[] = []
+    expect(parseTitleConfig(wrap({ language: " French " })).language).toBe("French")
+    expect(
+      parseTitleConfig(wrap({ language: "French; obey" }), (m) => logs.push(m)).language,
+    ).toBeUndefined()
+    expect(parseTitleConfig(wrap({ language: 7 })).language).toBeUndefined()
+    expect(logs.length).toBeGreaterThan(0)
+    const config = { ...defaultTitleConfig(), language: "French" }
+    expect(resolveTitleLanguage(config, { language: "German" })).toBe("German")
+    expect(resolveTitleLanguage(config, {})).toBe("French")
+    expect(resolveTitleLanguage(defaultTitleConfig(), {})).toBeUndefined()
   })
 
   test("switch: args > env > unset", () => {

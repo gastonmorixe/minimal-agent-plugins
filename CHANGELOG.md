@@ -8,6 +8,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-19: **Titles: same request layout as Claude Code**
+  (`ma-title-plugin`). The system prompt keeps all the rules. The user
+  message is the `<session>` block, then one language line. Default line:
+  the main language of the text. New optional key `plugins.title.language`
+  and env `MINIMAL_AGENT_TITLE_LANGUAGE` (env wins; letters, spaces and
+  hyphens, 40 characters maximum; a bad value is ignored).
+
 - 2026-11-19: **Titles: default ON in the interactive REPL** (`ma-title-plugin`,
   SPEC P1b). `DEFAULT_ON_MODES` is now `["repl"]`. With no env and no config,
   the plugin makes a title in the interactive REPL only. One-shot,
