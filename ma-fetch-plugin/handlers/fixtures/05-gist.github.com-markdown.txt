@@ -1,0 +1,611 @@
+[Skip to content](#start-of-content)
+
+      
+    
+      
+      
+      
+
+  
+  
+  
+
+      
+
+            
+
+  
+
+    
+  
+    
+
+  
+    
+
+  
+    
+
+  
+
+  
+
+          
+    
+
+  
+
+  
+
+      
+
+  
+    
+
+        
+      
+        Search Gists
+    
+  
+
+    
+      
+
+      
+
+  
+    
+
+  
+    
+
+  
+
+    
+
+        
+    
+
+Search Gists
+
+    
+
+    
+
+  [All gists](/discover)
+
+  [Back to GitHub](https://github.com)
+
+    [Sign in](https://gist.github.com/auth/github?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba)
+      [Sign up](/join?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba&source=header-gist)
+
+  
+
+  
+
+    
+  
+    
+
+  
+    
+
+  
+    
+
+  
+
+    
+
+      [Sign in](https://gist.github.com/auth/github?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba)        [Sign up](/join?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba&source=header-gist)    
+
+      
+
+  
+        
+    
+
+        You signed in with another tab or window. Reload to refresh your session.
+        You signed out in another tab or window. Reload to refresh your session.
+        You switched accounts on another tab or window. Reload to refresh your session.
+
+      
+    
+
+Dismiss alert
+
+  
+
+    
+
+  
+
+    
+
+  
+
+    
+
+  
+
+        
+
+    
+
+      
+
+  
+
+    
+
+      
+Instantly share code, notes, and snippets.
+
+    
+  
+
+  
+
+    
+  
+
+  
+
+    
+
+      
+
+        [![@Raztor0](https://avatars.githubusercontent.com/u/6992821?s=64&v=4)](/Raztor0)
+      
+      
+
+        
+
+          
+# [Raztor0](/Raztor0)/**[com.apple.ZipMetadata.plist](/Raztor0/d51544fdd45ceee5dc592afc8e01bbba)**
+
+        
+
+        
+
+          Created
+          December 29, 2017 21:09
+        
+      
+    
+  
+  
+
+  
+
+  
+
+    
+  
+      
+    
+
+Show Gist options
+
+  
+
+    
+      
+          
+  
+
+    
+
+        - [Download ZIP](/Raztor0/d51544fdd45ceee5dc592afc8e01bbba/archive/1962b497282c3ce24c17cfcb374b88d824340329.zip)
+
+    
+
+      
+  
+  
+  
+
+      - [Star
+      
+          0
+          (0)](/login?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba)You must be signed in to star a gist
+
+        - [Fork
+      
+          0
+          (0)](/login?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba)You must be signed in to fork a gist
+
+  
+
+  
+
+    - Embed
+  
+    
+      
+    
+
+    
+
+    
+      
+
+  
+
+    
+
+      
+# Select an option
+
+        
+    
+    
+
+      
+    
+
+    
+  
+  
+      
+
+        
+          
+          
+
+            
+
+                
+  
+
+    
+
+        - Embed
+      Embed this gist in your website.
+
+        - Share
+      Copy sharable link for this gist.
+
+        - Clone via HTTPS
+      Clone using the web URL.
+
+    
+
+            
+            
+
+              
+## No results found
+
+            
+        
+      
+        [Learn more about clone URLs](https://docs.github.com/articles/which-remote-url-should-i-use)
+
+  
+    
+      
+        Clone this repository at &lt;script src=&quot;https://gist.github.com/Raztor0/d51544fdd45ceee5dc592afc8e01bbba.js&quot;&gt;&lt;/script&gt;
+
+    - Save Raztor0/d51544fdd45ceee5dc592afc8e01bbba to your computer and use it in GitHub Desktop.
+
+  
+
+  
+
+    
+
+  
+
+    [Code](/Raztor0/d51544fdd45ceee5dc592afc8e01bbba)
+      [Revisions
+        1](/Raztor0/d51544fdd45ceee5dc592afc8e01bbba/revisions)
+
+  
+
+  
+
+  
+
+    
+
+    
+  
+      
+    Embed
+  
+    
+      
+    
+
+    
+
+    
+      
+
+  
+
+    
+
+      
+# Select an option
+
+        
+    
+    
+
+      
+    
+
+    
+  
+  
+      
+
+        
+          
+          
+
+            
+
+                
+  
+
+    
+
+        - Embed
+      Embed this gist in your website.
+
+        - Share
+      Copy sharable link for this gist.
+
+        - Clone via HTTPS
+      Clone using the web URL.
+
+    
+
+            
+            
+
+              
+## No results found
+
+            
+        
+      
+        [Learn more about clone URLs](https://docs.github.com/articles/which-remote-url-should-i-use)
+
+  
+    
+      
+        Clone this repository at &lt;script src=&quot;https://gist.github.com/Raztor0/d51544fdd45ceee5dc592afc8e01bbba.js&quot;&gt;&lt;/script&gt;
+    
+  
+
+    
+      
+
+      
+
+  
+    
+
+  
+    
+
+  
+
+    
+
+  
+  
+      
+    
+
+      
+    
+
+  
+
+    
+
+          
+    
+
+Save Raztor0/d51544fdd45ceee5dc592afc8e01bbba to your computer and use it in GitHub Desktop.
+
+    
+
+    
+
+      [Download ZIP](/Raztor0/d51544fdd45ceee5dc592afc8e01bbba/archive/1962b497282c3ce24c17cfcb374b88d824340329.zip)
+    
+  
+
+  
+
+  
+
+    
+  
+
+      
+
+    com.apple.ZipMetadata.plist
+  
+
+        
+
+      
+
+      
+
+        
+
+          [Raw](/Raztor0/d51544fdd45ceee5dc592afc8e01bbba/raw/1962b497282c3ce24c17cfcb374b88d824340329/com.apple.ZipMetadata.plist)
+
+        
+        
+
+          
+            
+    
+
+          
+          [**
+              com.apple.ZipMetadata.plist
+            **](#file-com-apple-zipmetadata-plist)
+        
+      
+    
+    
+
+        
+
+  
+
+  
+
+        |  | <?xml version="1.0" encoding="UTF-8"?> |
+
+        |  | <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"> |
+
+        |  | <plist version="1.0"> |
+
+        |  | <dict> |
+
+        |  | <key>CreatorToolCommandLine</key> |
+
+        |  | <string>"ZipTool" "-c" "10485760" "-s" "-" "-m" "deflate" "extDirabhffjyemxgbjvwk" "znr4517765794991297945"</string> |
+
+        |  | <key>CreatorToolUUID</key> |
+
+        |  | <string>E2ECA9F4-FFF3-3A57-A037-F12BFE1B9748</string> |
+
+        |  | <key>RecordCount</key> |
+
+        |  | <integer>370</integer> |
+
+        |  | <key>StandardDirectoryPerms</key> |
+
+        |  | <integer>16877</integer> |
+
+        |  | <key>StandardFilePerms</key> |
+
+        |  | <integer>-32348</integer> |
+
+        |  | <key>TotalUncompressedBytes</key> |
+
+        |  | <integer>20584539</integer> |
+
+        |  | <key>Version</key> |
+
+        |  | <integer>2</integer> |
+
+        |  | </dict> |
+
+        |  | </plist> |
+
+  
+
+    
+
+  
+
+        
+        
+
+          
+
+            
+
+              
+
+            
+
+            
+
+              
+
+  
+    [Sign up for free](/join?source=comment-gist)
+    **to join this conversation on GitHub**.
+    Already have an account?
+    [Sign in to comment](/login?return_to=https%3A%2F%2Fgist.github.com%2FRaztor0%2Fd51544fdd45ceee5dc592afc8e01bbba)
+
+  
+
+            
+          
+        
+
+  
+
+    
+  
+
+  
+
+          
+
+  
+## Footer
+
+  
+
+  
+
+    
+
+      
+        
+    
+
+      
+        © 2026 GitHub, Inc.
+      
+    
+
+    
+
+      
+### Footer navigation
+
+      
+
+          - [Terms](https://docs.github.com/site-policy/github-terms/github-terms-of-service)
+
+          - [Privacy](https://docs.github.com/site-policy/privacy-policies/github-privacy-statement)
+
+          - [Security](https://github.com/security)
+
+          - [Status](https://www.githubstatus.com/)
+
+          - [Community](https://github.community/)
+
+          - [Docs](https://docs.github.com/)
+
+          - [Contact](https://support.github.com?tags=dotcom-footer)
+
+          - Manage cookies
+
+- Do not share my personal information
+
+      
+
+    
+  
+
+    
+
+  
+
+    
+    
+
+    
+      
+    
+
+    
+    You can’t perform that action at this time.

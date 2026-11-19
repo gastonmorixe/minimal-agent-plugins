@@ -1,0 +1,328 @@
+[Motion](/)
+
+[Docs](/docs)[Examples](/examples)[Tutorials](/tutorials)[AI Kit](/docs/ai-kit)[Motion+](/plus)
+
+[Docs](/docs)/[JavaScript](/docs/quick-start)
+
+# Get started with Motion
+
+Install Motion and animate HTML, SVG, or WebGL with springs.
+
+Copy pageCopy page
+DocsGet started with Motion
+
+ReactJavaScriptVueAIAI Kit
+
+[Get started](/docs/quick-start)
+Animations
+[animate](/docs/animate)
+[scroll](/docs/scroll)
+[Easing](/docs/easing-functions)
+[animateLayoutMotion+](/docs/layout-animations)
+[animateViewMotion+](/docs/animate-view)
+Gestures
+[hover](/docs/hover)
+[inView](/docs/inview)
+[press](/docs/press)
+[resize](/docs/resize)
+Effects
+[attrEffect](/docs/attr-effect)
+[propEffect](/docs/prop-effect)
+[styleEffect](/docs/style-effect)
+[svgEffect](/docs/svg-effect)
+Utils
+[delay](/docs/delay)
+[frame](/docs/frame)
+[mix](/docs/mix)
+[scrambleTextMotion+](/docs/scramble-text)
+[splitTextMotion+](/docs/split-text)
+[spring](/docs/spring)
+[stagger](/docs/stagger)
+[transform](/docs/transform)
+[wrap](/docs/wrap)
+Motion Values
+[mapValue](/docs/map-value)
+[motionValue](/docs/motion-value)
+[springValue](/docs/spring-value)
+[transformValue](/docs/transform-value)
+Integrations
+[Squarespace](/docs/squarespace)
+[WordPress](/docs/wordpress)
+[CSS](/docs/css)
+[Webflow](/docs/webflow)
+Guides
+[Performance](/docs/performance)
+[FAQs](/docs/faqs)
+[GSAP vs Motion](/docs/gsap-vs-motion)
+[Improvements to Web Animations API](/docs/improvements-to-the-web-animations-api-dx)
+[GSAP migration](/docs/migrate-from-gsap-to-motion)
+[Upgrade guide](/docs/upgrade-guide)
+
+Motion is an animation library that's easy to start and fun to master.
+
+Its unique hybrid engine combines the performance of the browser with the limitless potential of a JavaScript engine. This means you can animate anything, like:
+
+- **HTML/CSS**
+
+- **SVG** (like path drawing animations)
+
+- **WebGL **(3D graphics)
+
+The best part? It's also tiny, with a mini HTML/SVG version of the `animate()` function that's just 2.3kb!
+
+By the end of this quick guide, you'll have installed Motion and made your first animation.
+
+## [Install](#install)
+
+You can install Motion in two ways:
+
+1. A package manager like npm or Yarn (**most popular)**
+
+1. HTML `script` tag
+
+### [Package manager](#package-manager)
+
+Motion can be installed via the `"motion"` package.
+
+```
+`npm install motion`
+```
+
+Then imported in your JavaScript:
+
+```
+`import { animate, scroll } from "motion"`
+```
+
+### [`script` tag](#script-tag)
+
+It's possible to import Motion directly using a `script` tag. This is perfect if you're working with a basic HTML page, or using a no-code tool like Webflow.
+
+Import using the modern `import` syntax:
+
+```
+`<script type="module">
+  import { animate, scroll } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
+</script>`
+```
+
+Or you can add `Motion` as a global variable using the legacy include:
+
+```
+`<script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
+<script>
+  const { animate, scroll } = Motion
+</script>`
+```
+
+It's best practise to replace "latest" in these URLs with a specific version, like `11.11.13`. You can find the latest version in the site footer.
+
+### [Create an animation](#create-an-animation)
+
+The "Hello world!" of any animation library is a simple transform animation.
+
+Let's start by importing the `animate`[function](/docs/animate).
+
+```
+`import { animate } from "motion"`
+```
+
+`animate` can animate one or more elements. You can either use a [CSS selector](https://developer.mozilla.org/en-US/docs/Web/API/Element/querySelectorAll#obtaining_a_list_of_matches) (like `".my-class"`) or provide the elements directly:
+
+```
+`// CSS selector
+animate(".box", { rotate: 360 })
+
+// Elements
+const boxes = document.querySelectorAll(".box")
+
+animate(boxes, { rotate: 360 })`
+```
+
+You can see here we're setting `rotate` to `360`. This will rotate the element 360 degrees:
+
+>Live example[Open](https://examples.motion.dev/js/rotate)
+
+## [What can be animated?](#what-can-be-animated)
+
+Motion lets you animate anything:
+
+- **CSS properties** (like `opacity`, `transform` and `filter`)
+
+- **SVG attributes and paths**
+
+- **Independent transforms **(`x`, `rotateY` etc)
+
+- **JavaScript objects** (containing strings/colors/numbers)
+
+With Motion, you don't have to worry about achieving the best performance available. When a value can be hardware accelerated, like `opacity`, `filter` or `transform`, it will be.
+
+`animate` isn't limited to HTML. It can animate single values or any kind of object. For example, the rotation of a Three.js object:
+
+```
+`animate(
+  cube.rotation,
+  { y: rad(360), z: rad(360) },
+  { duration: 10, repeat: Infinity, ease: "linear" }
+)`
+```
+
+>Live example[Open](https://examples.motion.dev/js/three)
+
+## [Customising animations](#customising-animations)
+
+>Live example[Open](https://examples.motion.dev/js/options)
+
+Motion comes with smart defaults, so your animations should look and feel great out of the box. But you can further tweak options like:
+
+- **Duration** (how long the animation lasts)
+
+- **Delay **(how long it waits before starting)
+
+- **Easing** (how it speeds up and slows down)
+
+- **Repeat** (how it repeats, how many times, etc)
+
+```
+`animate(
+  element,
+  { scale: [0.4, 1] },
+  { ease: "circInOut", duration: 1.2 }
+);`
+```
+
+Motion also has amazing [spring animations](/docs/spring) for natural, kinetic animations:
+
+```
+`animate(
+  element,
+  { rotate: 90 },
+  { type: "spring", stiffness: 300 }
+);`
+```
+
+>Live example[Open](https://examples.motion.dev/js/spring)
+
+## [Stagger animations](#stagger-animations)
+
+When animating multiple elements, it can feel more natural or lively to offset the animations of each. This is called **staggering**.
+
+Motion provides a `stagger` function that can be used to dynamically set `delay`:
+
+```
+`import { animate, stagger } from "motion"
+
+animate(
+  "li",
+  { y: 0, opacity: 1 },
+  { delay: stagger(0.1) }
+)`
+```
+
+>Live example[Open](https://examples.motion.dev/js/stagger)
+
+## [Development tools](#development-tools)
+
+The [Motion AI Kit](/docs/ai-kit) provides visual editing and AI tools to enhance your animation development workflow, like inline bezier editing, CSS spring generation and more.
+
+>Motion+ · AI Kit
+### One click install for Cursor
+
+Add powerful animation skills and MCP to Cursor with one click. Motion AI Kit requires [Motion+](/plus) to install.
+
+[Add AI Kit](cursor://anysphere.cursor-deeplink/prompt?text=Install+the+Motion+AI+Kit+for+Cursor.%0A%0A1.+Ask+me+for+my+Motion%2B+API+key+if+MOTION_TOKEN+is+not+already+set+%28from+https%3A%2F%2Fmotion.dev%2Fdashboard%2Ftokens%29.%0A%0AConfigure+the+Motion+MCP+server+globally+for+Cursor%3A%0A%0AMOTION_TOKEN%3D%22%3Ctoken%3E%22+npx+-y+add-mcp+%5C%0A++%22npx+-y+https%3A%2F%2Fapi.motion.dev%2Fregistry.tgz%3Fpackage%3Dmotion-studio-mcp%26version%3Dlatest%22+%5C%0A++--name+motion+%5C%0A++--env+TOKEN%3D%22%24MOTION_TOKEN%22+%5C%0A++-y+-g+-a+cursor%0AThis+should+update+%7E%2F.cursor%2Fmcp.json.%0A%0AInstall+the+Motion+skills+into+%7E%2F.cursor%2Fskills%2F+by+fetching%3A+https%3A%2F%2Fapi.motion.dev%2Fregistry%2Fskills%2Fmotion-ai-kit%3Ftoken%3D%3Ctoken%3E+Parse+the+skill+files+from+the+bundle+and+write+them+to%3A%0A%0A%7E%2F.cursor%2Fskills%2Fmotion%2F%0AVerify%3A%0A%0A%7E%2F.cursor%2Fmcp.json+has+a+motion+server+with+env.TOKEN%0AThe+motion+skill+folder+exists+under+%7E%2F.cursor%2Fskills%2F%0ATell+me+to+fully+restart+Cursor.%0A%0ADo+not+touch+unrelated+skills+already+in+%7E%2F.cursor%2Fskills%2F.)
+Motion AI Kit is also available for Claude Code, Codex, and other popular agents. [See full installation guide](/docs/ai-kit-install).
+
+### [What's next?](#whats-next)
+
+You've just learned the basics of Motion and created a simple animation. But there's so much more to discover, like:
+
+- [**Keyframes and sequences**](/docs/animate): Create more complex animations
+
+- [**Controls**](/docs/animate): Pause, resume or change animations
+
+- [**Scroll-linked animations**](/docs/scroll)**:** Link values to scroll position
+
+- [**Scroll-triggered animations**](/docs/inview): Trigger animations when elements enter the viewport
+
+Or you can dive straight into our [examples](/examples?platform=js), which include copy & paste source code to add straight to your project.
+
+## Related topics
+
+- [animate→
+animate() runs easing and spring animations, hardware-accelerated where supported.](/docs/animate)
+- [scroll→
+scroll() binds animations to scroll progress, hardware-accelerated where supported.](/docs/scroll)
+- [hover→
+hover() fires callbacks when a hover gesture starts and ends.](/docs/hover)
+- [Basic animation→
+An example of using easing and duration options to customise a scale animation in Motion.](/tutorials/js-options)
+
+[Motion+380+ examplesLifetime updates
+Motion+
+## Level up your animations.
+
+Unlock 380+ premium examples, premium APIs, private Discord and GitHub, and a transition editor for your IDE. One-time purchase, lifetime updates.
+
+PricingOne-time payment, lifetime updates
+Get Motion+](/plus)
+
+[Nextanimate](/docs/animate)
+
+### Sponsors
+
+Motion is supported by the best in the industry.
+
+[Become a sponsor](/sponsor)
+
+### Subscribe
+
+Updates on new features and releases.
+
+Subscribe
+
+###### Site
+
+- [About](/about)
+- [Changelog](/changelog)
+- [Docs](/docs)
+- [Examples](/examples)
+- [Magazine](/magazine)
+- [Sponsor](/sponsor)
+- [Troubleshooting](/troubleshooting)
+- [Tutorials](/tutorials)
+
+###### Products
+
+- [AI Kit](/docs/ai-kit)
+- [CSS Studio](https://cssstudio.ai)
+- [Motion](/)
+- [Motion+](/plus)
+- [MotionScore](https://score.motion.dev)
+
+###### Most Popular
+
+- [React animation](/docs/react-animation)
+- [Layout animation](/docs/react-layout-animations)
+- [SVG animation](/docs/react-svg-animation)
+- [Motion component](/docs/react-motion-component)
+- [GSAP vs Motion](/docs/gsap-vs-motion)
+
+###### Docs
+
+- [JavaScript](/docs/quick-start)
+- [React](/docs/react)
+- [Vue](/docs/vue)
+- [AI Kit](/docs/ai-kit)
+
+###### Social
+
+- [Discord](/plus)
+- [GitHub](https://github.com/motiondivision/motion)
+- [X/Twitter](https://x.com/motiondotdev)
+- [YouTube](https://www.youtube.com/@motiondotdev)
+
+© 2026 Motion
+
++[Login](/login?redirect=%2Fdocs%2Fquick-start)[Purchase](/plus)
+[![MotionScore](https://api.motion.dev/score/badge?url=motion.dev)](https://score.motion.dev/site/motion.dev)

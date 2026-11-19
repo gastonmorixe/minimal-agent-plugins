@@ -1,0 +1,1087 @@
+[Skip to content](#_top)
+		
+
+	
+
+	
+
+		
+	
+  
+  
+  
+    
+      
+      
+    
+  
+  
+
+	
+	
+
+	
+	
+
+		
+	
+		
+			
+				
+			
+			Search
+		
+		
+	
+
+	
+	
+
+		
+
+			
+			[GitHub](https://github.com/withastro/astro)[Discord](https://astro.build/chat)
+		
+		
+		
+	
+	
+	Select theme
+	
+	
+
+	
+		DarkLightAuto
+	
+	
+	
+
+		
+			
+	Select language
+	
+	
+
+	
+		EnglishDeutschPortuguês do BrasilEspañol简体中文正體中文Françaisहिन्दीالعربية日本語한국어PolskiРусскийItaliano
+	
+	
+	
+
+		
+
+	
+
+	
+
+				
+	
+		
+	
+
+		
+	
+
+	
+
+				
+
+					
+
+						
+	
+	
+	
+
+		- [Tutorial](#__tab-tutorial)
+- [Guide](#__tab-guide)
+- [Reference](#__tab-reference)
+- [Ecosystem](#__tab-ecosystem)
+
+	
+
+	
+
+		
+		
+		
+
+	
+					
+
+	- [Introduction](/en/tutorial/0-introduction/)
+- [Unit 1 - Setup](/en/tutorial/1-setup/)
+- [Unit 2 - Pages](/en/tutorial/2-pages/)
+- [Unit 3 - Components](/en/tutorial/3-components/)
+- [Unit 4 - Layouts](/en/tutorial/4-layouts/)
+- [Unit 5 - Astro API](/en/tutorial/5-astro-api/)
+- [Unit 6 - Astro Islands](/en/tutorial/6-islands/)
+
+				
+
+	
+					
+
+	- Welcome, world!
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Why Astro?](/en/concepts/why-astro/)
+- [Islands architecture](/en/concepts/islands/)
+- [Courses](/en/astro-courses/)
+- Start a new project
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Installation](/en/install-and-setup/)
+- [Project structure](/en/basics/project-structure/)
+- [Develop and build](/en/develop-and-build/)
+- Configuration
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Configuration overview](/en/guides/configuring-astro/)
+- [Editor setup](/en/editor-setup/)
+- [TypeScript](/en/guides/typescript/)
+- [Environment variables](/en/guides/environment-variables/)
+- [Working with integrations](/en/guides/integrations/)
+- [Build with AI](/en/guides/build-with-ai/)
+- [Dev toolbar](/en/guides/dev-toolbar/)
+- Routing and navigation
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Pages](/en/basics/astro-pages/)
+- [Routing](/en/guides/routing/)
+- [Endpoints](/en/guides/endpoints/)
+- [Middleware](/en/guides/middleware/)
+- [Internationalization (i18n)](/en/guides/internationalization/)
+- [Prefetch](/en/guides/prefetch/)
+- [View transitions](/en/guides/view-transitions/)
+- Build your UI
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Components](/en/basics/astro-components/)
+- [Layouts](/en/basics/layouts/)
+- [Styles and CSS](/en/guides/styling/)
+- [Fonts](/en/guides/fonts/)
+- [Syntax Highlighting](/en/guides/syntax-highlighting/)
+- [Scripts and event handling](/en/guides/client-side-scripts/)
+- [Front-end frameworks](/en/guides/framework-components/)
+- Add content to your site
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Markdown](/en/guides/markdown-content/)
+- [Content collections](/en/guides/content-collections/)
+- [Images](/en/guides/images/)
+- [Data fetching](/en/guides/data-fetching/)
+- [Astro DB](/en/guides/astro-db/)
+- Server rendering
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [On-demand rendering](/en/guides/on-demand-rendering/)
+- [Server islands](/en/guides/server-islands/)
+- [Actions](/en/guides/actions/)
+- [Sessions](/en/guides/sessions/)
+- Upgrade
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Upgrade Astro](/en/upgrade-astro/)
+- Major upgrade guides
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [v6.0](/en/guides/upgrade-to/v6/)
+- [v5.0](/en/guides/upgrade-to/v5/)
+- [v4.0](/en/guides/upgrade-to/v4/)
+- [v3.0](/en/guides/upgrade-to/v3/)
+- [v2.0](/en/guides/upgrade-to/v2/)
+- [v1.0](/en/guides/upgrade-to/v1/)
+- [Troubleshooting](/en/guides/troubleshooting/)
+- How-to recipes
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Recipes overview](/en/recipes/)
+- [Installing a Vite or Rollup plugin](/en/recipes/add-yaml-support/)
+- [Analyze bundle size](/en/recipes/analyze-bundle-size/)
+- [Build a custom image component](/en/recipes/build-custom-img-component/)
+- [Build HTML forms in Astro pages](/en/recipes/build-forms/)
+- [Build forms with API routes](/en/recipes/build-forms-api/)
+- [Use Bun with Astro](/en/recipes/bun/)
+- [Call endpoints from the server](/en/recipes/call-endpoints/)
+- [Verify a Captcha](/en/recipes/captcha/)
+- [Customize file names in the build output](/en/recipes/customizing-output-filenames/)
+- [Build your Astro site with Docker](/en/recipes/docker/)
+- [Dynamically import images](/en/recipes/dynamically-importing-images/)
+- [Add icons to external links](/en/recipes/external-links/)
+- [Add i18n features](/en/recipes/i18n/)
+- [Create a dev toolbar app](/en/recipes/making-toolbar-apps/)
+- [Add last modified time](/en/recipes/modified-time/)
+- [Add reading time](/en/recipes/reading-time/)
+- [Add an RSS feed](/en/recipes/rss/)
+- [Share state between Astro components](/en/recipes/sharing-state/)
+- [Share state between islands](/en/recipes/sharing-state-islands/)
+- [Using streaming to improve page performance](/en/recipes/streaming-improve-page-performance/)
+- [Style rendered Markdown with Tailwind Typography](/en/recipes/tailwind-rendered-markdown/)
+- Migrate to Astro
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Site migration overview](/en/guides/migrate-to-astro/)
+- [Create React App](/en/guides/migrate-to-astro/from-create-react-app/)
+- [Docusaurus](/en/guides/migrate-to-astro/from-docusaurus/)
+- [Eleventy](/en/guides/migrate-to-astro/from-eleventy/)
+- [Gatsby](/en/guides/migrate-to-astro/from-gatsby/)
+- [GitBook](/en/guides/migrate-to-astro/from-gitbook/)
+- [Gridsome](/en/guides/migrate-to-astro/from-gridsome/)
+- [Hugo](/en/guides/migrate-to-astro/from-hugo/)
+- [Jekyll](/en/guides/migrate-to-astro/from-jekyll/)
+- [Next.js](/en/guides/migrate-to-astro/from-nextjs/)
+- [NuxtJS](/en/guides/migrate-to-astro/from-nuxtjs/)
+- [Pelican](/en/guides/migrate-to-astro/from-pelican/)
+- [SvelteKit](/en/guides/migrate-to-astro/from-sveltekit/)
+- [VuePress](/en/guides/migrate-to-astro/from-vuepress/)
+- [WordPress](/en/guides/migrate-to-astro/from-wordpress/)
+- [Contribute to Astro](/en/contribute/)
+
+				
+
+	
+					
+
+	- Astro Template Syntax
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Template expressions reference](/en/reference/astro-syntax/)
+- [Template directives reference](/en/reference/directives-reference/)
+- [Configuration Reference](/en/reference/configuration-reference/)
+- [CLI Commands](/en/reference/cli-reference/)
+- [Imports reference](/en/guides/imports/)
+- [Routing Reference](/en/reference/routing-reference/)
+- Runtime API
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Render context](/en/reference/api-reference/)
+- [astro:actions](/en/reference/modules/astro-actions/)
+- [astro/app](/en/reference/modules/astro-app/)
+- [astro:assets](/en/reference/modules/astro-assets/)
+- [astro:config](/en/reference/modules/astro-config/)
+- [astro:content](/en/reference/modules/astro-content/)
+- [astro:env](/en/reference/modules/astro-env/)
+- [astro:i18n](/en/reference/modules/astro-i18n/)
+- [astro:middleware](/en/reference/modules/astro-middleware/)
+- [astro:static-paths](/en/reference/modules/astro-static-paths/)
+- [astro:transitions](/en/reference/modules/astro-transitions/)
+- [astro/zod](/en/reference/modules/astro-zod/)
+- Other development APIs
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Integration API](/en/reference/integrations-reference/)
+- [Adapter API](/en/reference/adapter-reference/)
+- [Renderer API](/en/reference/renderer-reference/)
+- [Content Loader API](/en/reference/content-loader-reference/)
+- [Image Service API](/en/reference/image-service-reference/)
+- [Dev Toolbar App API](/en/reference/dev-toolbar-app-reference/)
+- [Session Driver API](/en/reference/session-driver-reference/)
+- [Font Provider API](/en/reference/font-provider-reference/)
+- [Container API (experimental)](/en/reference/container-reference/)
+- [Programmatic Astro API (experimental)](/en/reference/programmatic-reference/)
+- Experimental features
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Configuring experimental flags](/en/reference/experimental-flags/)
+- [Route caching](/en/reference/experimental-flags/route-caching/)
+- [Client prerendering](/en/reference/experimental-flags/client-prerender/)
+- [Intellisense for collections](/en/reference/experimental-flags/content-intellisense/)
+- [Chrome DevTools workspace](/en/reference/experimental-flags/chrome-devtools-workspace/)
+- [SVG optimization](/en/reference/experimental-flags/svg-optimization/)
+- [Queued rendering](/en/reference/experimental-flags/queued-rendering/)
+- [Rust compiler](/en/reference/experimental-flags/rust-compiler/)
+- [Advanced routing](/en/reference/experimental-flags/advanced-routing/)
+- [Logger](/en/reference/experimental-flags/logger/)
+- [Legacy flags](/en/reference/legacy-flags/)
+- [Error reference](/en/reference/error-reference/)
+
+				
+
+	
+					
+
+	- UI frameworks
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Alpine.js](/en/guides/integrations-guide/alpinejs/)
+- [Preact](/en/guides/integrations-guide/preact/)
+- [React](/en/guides/integrations-guide/react/)
+- [SolidJS](/en/guides/integrations-guide/solid-js/)
+- [Svelte](/en/guides/integrations-guide/svelte/)
+- [Vue](/en/guides/integrations-guide/vue/)
+- Adapters
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Cloudflare](/en/guides/integrations-guide/cloudflare/)
+- [Netlify](/en/guides/integrations-guide/netlify/)
+- [Node](/en/guides/integrations-guide/node/)
+- [Vercel](/en/guides/integrations-guide/vercel/)
+- Other official integrations
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [DB](/en/guides/integrations-guide/db/)
+- [Markdoc](/en/guides/integrations-guide/markdoc/)
+- [MDX](/en/guides/integrations-guide/mdx/)
+- [Partytown](/en/guides/integrations-guide/partytown/)
+- [Sitemap](/en/guides/integrations-guide/sitemap/)
+- Deployment guides
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Deployment overview](/en/guides/deploy/)
+- [AWS](/en/guides/deploy/aws/)
+- [AWS via Flightcontrol](/en/guides/deploy/aws-via-flightcontrol/)
+- [AWS via SST](/en/guides/deploy/aws-via-sst/)
+- [Azion](/en/guides/deploy/azion/)
+- [Buddy](/en/guides/deploy/buddy/)
+- [Cleavr](/en/guides/deploy/cleavr/)
+- [Clever Cloud](/en/guides/deploy/clever-cloud/)
+- [Cloudflare](/en/guides/deploy/cloudflare/)
+- [CloudRay](/en/guides/deploy/cloudray/)
+- [Deno Deploy](/en/guides/deploy/deno/)
+- [DeployHQ](/en/guides/deploy/deployhq/)
+- [EdgeOne Pages](/en/guides/deploy/edgeone-pages/)
+- [Firebase](/en/guides/deploy/firebase/)
+- [Fleek](/en/guides/deploy/fleek/)
+- [Fly.io](/en/guides/deploy/flyio/)
+- [GitHub Pages](/en/guides/deploy/github/)
+- [GitLab Pages](/en/guides/deploy/gitlab/)
+- [Google Cloud](/en/guides/deploy/google-cloud/)
+- [Heroku](/en/guides/deploy/heroku/)
+- [Hostinger](/en/guides/deploy/hostinger/)
+- [Juno](/en/guides/deploy/juno/)
+- [Microsoft Azure](/en/guides/deploy/microsoft-azure/)
+- [Netlify](/en/guides/deploy/netlify/)
+- [Railway](/en/guides/deploy/railway/)
+- [Render](/en/guides/deploy/render/)
+- [Seenode](/en/guides/deploy/seenode/)
+- [Sevalla](/en/guides/deploy/sevalla/)
+- [Stormkit](/en/guides/deploy/stormkit/)
+- [Surge](/en/guides/deploy/surge/)
+- [Vercel](/en/guides/deploy/vercel/)
+- [Zeabur](/en/guides/deploy/zeabur/)
+- [Zephyr Cloud](/en/guides/deploy/zephyr/)
+- [Zerops](/en/guides/deploy/zerops/)
+- Content management systems
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [CMS overview](/en/guides/cms/)
+- [ApostropheCMS](/en/guides/cms/apostrophecms/)
+- [Builder.io](/en/guides/cms/builderio/)
+- [ButterCMS](/en/guides/cms/buttercms/)
+- [Caisy](/en/guides/cms/caisy/)
+- [CloudCannon](/en/guides/cms/cloudcannon/)
+- [Contentful](/en/guides/cms/contentful/)
+- [Cosmic](/en/guides/cms/cosmic/)
+- [Craft CMS](/en/guides/cms/craft-cms/)
+- [Craft Cross CMS](/en/guides/cms/craft-cross-cms/)
+- [Crystallize](/en/guides/cms/crystallize/)
+- [DatoCMS](/en/guides/cms/datocms/)
+- [Decap CMS](/en/guides/cms/decap-cms/)
+- [Directus](/en/guides/cms/directus/)
+- [Drupal](/en/guides/cms/drupal/)
+- [Flotiq](/en/guides/cms/flotiq/)
+- [Front Matter CMS](/en/guides/cms/frontmatter-cms/)
+- [Ghost](/en/guides/cms/ghost/)
+- [GitCMS](/en/guides/cms/gitcms/)
+- [Hashnode](/en/guides/cms/hashnode/)
+- [Hygraph](/en/guides/cms/hygraph/)
+- [JekyllPad](/en/guides/cms/jekyllpad/)
+- [Keystatic](/en/guides/cms/keystatic/)
+- [KeystoneJS](/en/guides/cms/keystonejs/)
+- [Kontent.ai](/en/guides/cms/kontent-ai/)
+- [microCMS](/en/guides/cms/microcms/)
+- [Optimizely CMS](/en/guides/cms/optimizely/)
+- [Pages CMS](/en/guides/cms/pages-cms/)
+- [Payload CMS](/en/guides/cms/payload/)
+- [Prepr CMS](/en/guides/cms/preprcms/)
+- [Prismic](/en/guides/cms/prismic/)
+- [Sanity](/en/guides/cms/sanity/)
+- [Sitecore XM](/en/guides/cms/sitecore/)
+- [Sitepins](/en/guides/cms/sitepins/)
+- [Spinal](/en/guides/cms/spinal/)
+- [Statamic](/en/guides/cms/statamic/)
+- [Storyblok](/en/guides/cms/storyblok/)
+- [Strapi](/en/guides/cms/strapi/)
+- [StudioCMS](/en/guides/cms/studiocms/)
+- [Tina CMS](/en/guides/cms/tina-cms/)
+- [Umbraco](/en/guides/cms/umbraco/)
+- [Vault CMS](/en/guides/cms/vault-cms/)
+- [Wordpress](/en/guides/cms/wordpress/)
+- Backend services
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Backend services overview](/en/guides/backend/)
+- [Appwrite](/en/guides/backend/appwrite/)
+- [Firebase](/en/guides/backend/firebase/)
+- [Neon](/en/guides/backend/neon/)
+- [Prisma Postgres](/en/guides/backend/prisma-postgres/)
+- [Scalekit](/en/guides/backend/scalekit/)
+- [Sentry](/en/guides/backend/sentry/)
+- [Supabase](/en/guides/backend/supabase/)
+- [Turso](/en/guides/backend/turso/)
+- [Xata](/en/guides/backend/xata/)
+- Image and video hosting
+								
+							
+							
+	
+
+						
+						
+						
+
+	- [Media hosting overview](/en/guides/media/)
+- [Cloudinary](/en/guides/media/cloudinary/)
+- [Mux](/en/guides/media/mux/)
+- [E-commerce](/en/guides/ecommerce/)
+- [Authentication](/en/guides/authentication/)
+- [Testing](/en/guides/testing/)
+
+				
+
+	
+
+	
+
+	
+
+	
+
+	
+## Sponsored by
+
+	
+		
+	
+	
+
+	
+
+	
+		
+  
+  
+
+	
+
+	
+		
+	
+	
+	
+
+	
+
+	
+	
+
+	
+		
+	
+
+	
+
+	
+		
+	
+	
+	
+	
+	
+	
+	
+
+	
+
+	
+		
+	
+	
+	
+	
+
+	
+
+	
+
+	
+
+		
+			[GitHub](https://github.com/withastro/astro)[Discord](https://astro.build/chat)
+		
+	
+	
+	
+	
+	Select theme
+	
+	
+
+	
+		DarkLightAuto
+	
+	
+	
+
+	
+			
+	Select language
+	
+	
+
+	
+		EnglishDeutschPortuguês do BrasilEspañol简体中文正體中文Françaisहिन्दीالعربية日本語한국어PolskiРусскийItaliano
+	
+	
+	
+
+		
+
+	
+
+	
+## Sponsored by
+
+	
+		
+	
+	
+
+	
+
+	
+		
+  
+  
+
+	
+
+	
+		
+	
+	
+	
+
+	
+
+	
+	
+
+	
+		
+	
+
+	
+
+	
+		
+	
+	
+	
+	
+	
+	
+	
+
+	
+
+	
+		
+	
+	
+	
+	
+
+	
+
+					
+				
+			
+	
+
+			
+			
+
+	
+
+				
+
+					
+			
+
+				
+			
+
+				
+					
+						
+
+							On this page
+							
+	
+
+						
+						
+					
+					
+
+						
+
+	- [Overview](#_top)
+- [Prerequisites](#prerequisites)
+- [Create a new Astro project with Bun](#create-a-new-astro-project-with-bun)
+- [Install dependencies](#install-dependencies)
+- [Add Types](#add-types)
+- [CLI installation flags](#cli-installation-flags)
+				
+
+	- [Using integrations](#using-integrations)
+- [Use a theme or starter template](#use-a-theme-or-starter-template)
+- [Develop and build](#develop-and-build)
+				
+
+	- [Build and preview your site](#build-and-preview-your-site)
+- [Testing](#testing)
+- [Official Resources](#official-resources)
+- [Community Resources](#community-resources)
+
+					
+				
+			
+		
+
+			
+			
+
+				
+
+					
+			
+
+				
+## On this page
+
+				
+
+	- [Overview](#_top)
+- [Prerequisites](#prerequisites)
+- [Create a new Astro project with Bun](#create-a-new-astro-project-with-bun)
+- [Install dependencies](#install-dependencies)
+- [Add Types](#add-types)
+- [CLI installation flags](#cli-installation-flags)
+				
+
+	- [Using integrations](#using-integrations)
+- [Use a theme or starter template](#use-a-theme-or-starter-template)
+- [Develop and build](#develop-and-build)
+				
+
+	- [Build and preview your site](#build-and-preview-your-site)
+- [Testing](#testing)
+- [Official Resources](#official-resources)
+- [Community Resources](#community-resources)
+
+			
+		
+
+				
+				
+
+					
+
+	
+
+		
+
+			
+![Scrimba](/_astro/Scrimba.ByZ1pAIN_Z1aWGoT.webp)
+			
+![](/_astro/JamesQuick.BYVczE5K_Z27j1Lz.webp)
+		
+		
+## **Learn Astro** with James Q Quick
+
+		
+Build your first site with 35 interactive Scrimba lessons
+
+		[Get 20% off](https://scrimba.com/intro-to-astro-c00ar0fi5u?via=astro)
+	
+
+				
+			
+		
+				
+			
+	
+
+				
+				
+
+					
+					
+					
+								
+
+	
+
+									
+# Use Bun with Astro
+
+									
+
+								
+
+	
+
+									
+
+	
+										
+[Bun](https://bun.sh/) is an all-in-one JavaScript runtime & toolkit. See [Bun’s documentation](https://bun.sh/docs) for more information.
+
+Caution
+
+Using Bun with Astro may reveal rough edges. Some integrations may not work as expected. Consult [Bun’s official documentation for working with Astro](https://bun.sh/guides/ecosystem/astro) for details.
+
+If you have any problems using Bun, please [open an Issue on GitHub with Bun directly](https://github.com/oven-sh/bun/issues/new/choose).
+
+## Prerequisites
+
+[Section titled “Prerequisites”](#prerequisites)
+
+- Bun installed locally on your machine. See the [installation instructions](https://bun.sh/docs/installation) in Bun’s official documentation.
+
+## Create a new Astro project with Bun
+
+[Section titled “Create a new Astro project with Bun”](#create-a-new-astro-project-with-bun)
+
+Create a new Astro project with Bun using the following `create-astro` command:
+
+Terminal window
+```
+`
+
+bun create astro my-astro-project-using-bun`
+```
+
+## Install dependencies
+
+[Section titled “Install dependencies”](#install-dependencies)
+
+If you skipped the “Install dependencies?” step during the CLI wizard, then be sure to install your dependencies before continuing.
+
+Terminal window
+```
+`
+
+bun install`
+```
+
+## Add Types
+
+[Section titled “Add Types”](#add-types)
+
+Bun publishes the [`@types/bun`](https://www.npmjs.com/package/@types/bun) package, containing the runtime types for Bun.
+
+Install `@types/bun` using the following command:
+
+Terminal window
+```
+`
+
+bun add -d @types/bun`
+```
+
+## CLI installation flags
+
+[Section titled “CLI installation flags”](#cli-installation-flags)
+
+### Using integrations
+
+[Section titled “Using integrations”](#using-integrations)
+
+You can also use any of the official Astro integrations with the `astro add` command:
+
+Terminal window
+```
+`
+
+bun astro add react`
+```
+
+### Use a theme or starter template
+
+[Section titled “Use a theme or starter template”](#use-a-theme-or-starter-template)
+
+You can start a new Astro project based on an [official example](https://github.com/withastro/astro/tree/main/examples) or the main branch of any GitHub repository by passing a `--template` argument to the `create astro` command.
+
+Run the following command in your terminal, substituting the official Astro starter template name, or the GitHub username and repository of the theme you want to use:
+
+Terminal window
+```
+`
+
+# create a new project with an official example
+
+bun create astro@latest --template <example-name>
+
+# create a new project based on a GitHub repository’s main branch
+
+bun create astro@latest --template <github-username>/<github-repo>`
+```
+
+## Develop and build
+
+[Section titled “Develop and build”](#develop-and-build)
+
+To run the development server, use following command:
+
+Terminal window
+```
+`
+
+bun run dev`
+```
+
+### Build and preview your site
+
+[Section titled “Build and preview your site”](#build-and-preview-your-site)
+
+To build your site, use the following command:
+
+Terminal window
+```
+`
+
+bun run build`
+```
+
+When the build is finished, run the appropriate preview command (e.g. `bun run preview`) in your terminal and you can view the built version of your site locally in the same browser preview window.
+
+## Testing
+
+[Section titled “Testing”](#testing)
+
+Bun ships with a fast, built-in, Jest-compatible test runner through the [`bun test` command](https://bun.sh/docs/cli/test). You can also use any other [testing tools for Astro](/en/guides/testing/).
+
+## Official Resources
+
+[Section titled “Official Resources”](#official-resources)
+
+- [Build an app with Astro and Bun](https://bun.sh/guides/ecosystem/astro)
+
+## Community Resources
+
+[Section titled “Community Resources”](#community-resources)
+
+Using Bun with Astro? Add your blog post or video to this page!
+
+- [Using Bun with Astro and Cloudflare Pages](https://handerson.hashnode.dev/using-bun-with-astro-and-cloudflare-pages) - blog post
+
+									
+
+	
+	
+	
+	
+	
+	
+	Recipes
+
+									
+
+	
+
+	
+
+		
+
+			
+![Scrimba](/_astro/Scrimba.ByZ1pAIN_Z1aWGoT.webp)
+			
+![](/_astro/JamesQuick.BYVczE5K_Z27j1Lz.webp)
+		
+		
+## **Learn Astro** with James Q Quick
+
+		
+Build your first site with 35 interactive Scrimba lessons
+
+		[Get 20% off](https://scrimba.com/intro-to-astro-c00ar0fi5u?via=astro)
+	
+
+	
+
+		
+
+			[Edit page](https://github.com/withastro/docs/edit/main/src/content/docs/en/recipes/bun.mdx)
+			[Translate this page](https://contribute.docs.astro.build/guides/i18n/)
+		
+		
+	
+	
+
+	[Previous
+					
+
+					Build forms with API routes](/en/recipes/build-forms-api/)
+	[Next
+					
+
+					Call endpoints from the server](/en/recipes/call-endpoints/)
+
+	
+
+	[Contribute](/en/contribute/)
+
+	[Community](https://astro.build/chat)
+
+	[Sponsor](https://opencollective.com/astrodotbuild)

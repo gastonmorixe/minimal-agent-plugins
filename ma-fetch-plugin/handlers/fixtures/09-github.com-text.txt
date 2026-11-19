@@ -1,0 +1,545 @@
+Skip to content        
+
+       
+    You signed in with another tab or window. Reload to refresh your session. You signed out in another tab or window. Reload to refresh your session. You switched accounts on another tab or window. Reload to refresh your session.     Dismiss alert 
+ 
+ 
+
+ 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+      reactwg   /  react-native-new-architecture  Public 
+ 
+ 
+ 
+ 
+    Notifications  You must be signed in to change notification settings 
+ 
+    Fork 46  
+ 
+ 
+     Star  1.6k 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+  
+   
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ main
+
+
+
+
+
+BranchesTags
+
+
+
+
+
+
+
+
+
+
+Go to file
+
+Code
+Open more actions menu
+
+
+
+
+
+
+
+Folders and files
+
+
+
+NameName
+Last commit message
+
+Last commit date
+
+
+
+
+
+
+Latest commit
+
+ 
+
+
+
+
+
+History
+67 Commits
+
+
+67 Commits
+
+
+
+
+
+
+
+
+
+docs
+
+
+
+
+
+
+
+docs
+
+
+
+
+ 
+
+
+ 
+
+
+
+
+
+
+
+CODE_OF_CONDUCT.md
+
+
+
+
+
+
+
+CODE_OF_CONDUCT.md
+
+
+
+
+ 
+
+
+ 
+
+
+
+
+
+
+
+LICENSE
+
+
+
+
+
+
+
+LICENSE
+
+
+
+
+ 
+
+
+ 
+
+
+
+
+
+
+
+README.md
+
+
+
+
+
+
+
+README.md
+
+
+
+
+ 
+
+
+ 
+
+
+
+
+View all files
+
+
+
+
+
+
+
+
+Repository files navigation
+
+
+
+
+
+React Native New Architecture Working Group
+
+ 
+The intention of this repository is to coordinate and support the rollout of the React Native New Architecture. We have provided guides and a discussion space for this purpose.
+ 
+You can find New Architecture updates here.
+ 
+
+Guides
+
+ 
+
+Caution
+
+These guides are deprecated.
+ 
+You can find the most updated versions of them in the React Native website.
+ 
+ 
+ 
+How to enable the New Architecture 
+ 
+For Apps 
+ 
+Enable the New Architecture for Apps
+ 
+ 
+ 
+For Libraries 
+ 
+Make your library compatible with the New Architecture
+ 
+Convert Library to TurboModules/Fabric APIs 
+ 
+Additional information for Android
+ 
+Additional information for iOS
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+New Architecture Workflows 
+ 
+Create a Fabric Native Component
+ 
+Create a Turbo Native Module
+ 
+Using Codegen to write type-safe Fabric Components and Turbo Modules
+ 
+Writing cross-platform TurboModules with C++ 
+ 
+Supporting custom C++ types
+ 
+ 
+ 
+Using React 18 features
+ 
+Backwards compatibility 
+ 
+For Legacy Native Modules
+ 
+For Legacy Native Components
+ 
+ 
+ 
+ 
+ 
+Troubleshooting
+ 
+Appendix
+ 
+ 
+
+Discussion
+
+ 
+This repository is also a place for discussion and feedback on the New Architecture. You can access it by heading over to the Discussions Tab on Github.
+ 
+
+Sections
+
+ 
+We've created some sections to keep the discussion focused.
+ 
+ 
+ 
+ Title Topic 
+ 
+ 
+ 
+ Announcements 📣 General announcements about this working group. 
+ 
+ Deep Dive 🐳 Sharing deep dives and technical-specific topics 
+ 
+ Documentation 📚 A place to chat about the New Architecture documentation and migration material 
+ 
+ Libraries 🛠 A place to chat about 3rd party libraries and their migration story to the New Architecture 
+ 
+ Q&A 🤝 A place to ask the community for help on the New Architecture topics 
+ 
+ Releases 🏁 Updates on New Architecture in each release 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+About
+ 
+ Workgroup for the New React Native Architecture 
+ 
+Topics
+ 
+ 
+  react-native   fabric   working-group   turbomodule  
+ 
+ 
+Resources
+ 
+     Readme  
+ 
+License
+ 
+     MIT license  
+ 
+Code of conduct
+ 
+     Code of conduct  
+  
+ 
+ 
+ 
+ 
+ Uh oh! 
+ 
+ 
+
+There was an error while loading. Please reload this page.
+ 
+
+ 
+ 
+ 
+ 
+  
+    Activity 
+ 
+    Custom properties 
+ 
+Stars
+ 
+    1.6k stars 
+ 
+Watchers
+ 
+    195 watching 
+ 
+Forks
+ 
+    46 forks 
+ 
+  Report repository  
+ 
+ 
+ 
+ 
+ 
+ 
+ Releases
+ 
+No releases published
+ 
+ 
+ 
+ 
+  
+ Packages 0
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Uh oh! 
+ 
+ 
+
+There was an error while loading. Please reload this page.
+ 
+
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+ Uh oh! 
+ 
+ 
+
+There was an error while loading. Please reload this page.
+ 
+
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+  
+ Contributors 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Uh oh! 
+ 
+ 
+
+There was an error while loading. Please reload this page.
+ 
+
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
+  
+  
+ 
+ 
+   
+         You can’t perform that action at this time.

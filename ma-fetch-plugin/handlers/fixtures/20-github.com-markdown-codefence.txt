@@ -1,0 +1,563 @@
+[Skip to content](#start-of-content)
+## Navigation Menu
+[Sign in](/login?return_to=https%3A%2F%2Fgithub.com%2Fhighlightjs%2Fhighlight.js)Appearance settings
+- Platform
+- AI CODE CREATION
+- [GitHub CopilotWrite better code with AI](https://github.com/features/copilot)
+- [GitHub Copilot appDirect agents from issue to merge](https://github.com/features/ai/github-app)
+- [MCP RegistryIntegrate external tools](https://github.com/mcp)
+- DEVELOPER WORKFLOWS
+- [ActionsAutomate any workflow](https://github.com/features/actions)
+- [CodespacesInstant dev environments](https://github.com/features/codespaces)
+- [IssuesPlan and track work](https://github.com/features/issues)
+- [Code ReviewManage code changes](https://github.com/features/code-review)
+- [Code QualityEnforce quality at merge](https://github.com/features/code-quality)
+- APPLICATION SECURITY
+- [GitHub Advanced SecurityFind and fix vulnerabilities](https://github.com/security/advanced-security)
+- [Code securitySecure your code as you build](https://github.com/security/advanced-security/code-security)
+- [Secret protectionStop leaks before they start](https://github.com/security/advanced-security/secret-protection)
+- EXPLORE
+- [Why GitHub](https://github.com/why-github)
+- [Documentation](https://docs.github.com)
+- [Blog](https://github.blog)
+- [Changelog](https://github.blog/changelog)
+- [Marketplace](https://github.com/marketplace)
+[View all features](https://github.com/features)
+- Solutions
+- BY COMPANY SIZE
+- [Enterprises](https://github.com/enterprise)
+- [Small and medium teams](https://github.com/team)
+- [Startups](https://github.com/enterprise/startups)
+- [Nonprofits](https://github.com/solutions/industry/nonprofits)
+- BY USE CASE
+- [App Modernization](https://github.com/solutions/use-case/app-modernization)
+- [DevSecOps](https://github.com/solutions/use-case/devsecops)
+- [DevOps](https://github.com/solutions/use-case/devops)
+- [CI/CD](https://github.com/solutions/use-case/ci-cd)
+- [View all use cases](https://github.com/solutions/use-case)
+- BY INDUSTRY
+- [Healthcare](https://github.com/solutions/industry/healthcare)
+- [Financial services](https://github.com/solutions/industry/financial-services)
+- [Manufacturing](https://github.com/solutions/industry/manufacturing)
+- [Government](https://github.com/solutions/industry/government)
+- [View all industries](https://github.com/solutions/industry)
+[View all solutions](https://github.com/solutions)
+- Resources
+- EXPLORE BY TOPIC
+- [AI](https://github.com/resources/articles?topic=ai)
+- [Software Development](https://github.com/resources/articles?topic=software-development)
+- [DevOps](https://github.com/resources/articles?topic=devops)
+- [Security](https://github.com/resources/articles?topic=security)
+- [View all topics](https://github.com/resources/articles)
+- EXPLORE BY TYPE
+- [Customer stories](https://github.com/customer-stories)
+- [Events & webinars](https://github.com/resources/events)
+- [Ebooks & reports](https://github.com/resources/whitepapers)
+- [Business insights](https://github.com/solutions/executive-insights)
+- [GitHub Skills](https://skills.github.com)
+- SUPPORT & SERVICES
+- [Documentation](https://docs.github.com)
+- [Customer support](https://support.github.com)
+- [Community forum](https://github.com/orgs/community/discussions)
+- [Trust center](https://github.com/trust-center)
+- [Partners](https://github.com/partners)
+[View all resources](https://github.com/resources)
+- Open Source
+- COMMUNITY
+- [GitHub SponsorsFund open source developers](https://github.com/open-source/sponsors)
+- PROGRAMS
+- [Security Lab](https://securitylab.github.com)
+- [Maintainer Community](https://maintainers.github.com)
+- [Accelerator](https://github.com/open-source/accelerator)
+- [GitHub Stars](https://stars.github.com)
+- [Archive Program](https://archiveprogram.github.com)
+- REPOSITORIES
+- [Topics](https://github.com/topics)
+- [Trending](https://github.com/trending)
+- [Collections](https://github.com/collections)
+- Enterprise
+- ENTERPRISE SOLUTIONS
+- [Enterprise platformAI-powered developer platform](https://github.com/enterprise)
+- AVAILABLE ADD-ONS
+- [GitHub Advanced SecurityEnterprise-grade security features](https://github.com/security/advanced-security)
+- [Copilot for BusinessEnterprise-grade AI features](https://github.com/features/copilot/copilot-business)
+- [Premium SupportEnterprise-grade 24/7 support](https://github.com/enterprise/premium-support)
+- [Pricing](https://github.com/pricing)
+Type / to search
+[Sign in](/login?return_to=https%3A%2F%2Fgithub.com%2Fhighlightjs%2Fhighlight.js)[Sign up](/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E&source=header-repo&source_repo=highlightjs%2Fhighlight.js)Appearance settings
+        You signed in with another tab or window. Reload to refresh your session.
+        You signed out in another tab or window. Reload to refresh your session.
+        You switched accounts on another tab or window. Reload to refresh your session.
+Dismiss alert
+### Uh oh!
+There was an error while loading. Please reload this page.
+      [highlightjs](/highlightjs)
+    /
+    **
+      [highlight.js](/highlightjs/highlight.js)
+    **
+    Public
+  - [Notifications](/login?return_to=%2Fhighlightjs%2Fhighlight.js)    You must be signed in to change notification settings
+  - [Fork
+    3.7k](/login?return_to=%2Fhighlightjs%2Fhighlight.js)
+  - [Star
+          25k](/login?return_to=%2Fhighlightjs%2Fhighlight.js)
+      - [Code](/highlightjs/highlight.js)
+      - [Issues
+          78](/highlightjs/highlight.js/issues)
+      - [Pull requests
+          59](/highlightjs/highlight.js/pulls)
+      - [Actions](/highlightjs/highlight.js/actions)
+      - [Projects](/highlightjs/highlight.js/projects)
+      - [Wiki](/highlightjs/highlight.js/wiki)
+      - [Security and quality
+          2](/highlightjs/highlight.js/security)
+      - [Insights](/highlightjs/highlight.js/pulse)
+Additional navigation options
+        - [Code](/highlightjs/highlight.js)
+        - [Issues](/highlightjs/highlight.js/issues)
+        - [Pull requests](/highlightjs/highlight.js/pulls)
+        - [Actions](/highlightjs/highlight.js/actions)
+        - [Projects](/highlightjs/highlight.js/projects)
+        - [Wiki](/highlightjs/highlight.js/wiki)
+        - [Security and quality](/highlightjs/highlight.js/security)
+        - [Insights](/highlightjs/highlight.js/pulse)
+main
+[Branches](/highlightjs/highlight.js/branches)[Tags](/highlightjs/highlight.js/tags)
+Go to fileCode
+Open more actions menu
+## Folders and files
+| Name | Name | Last commit message | Last commit date |
+| ## Latest commit
+## History
+[6,783 Commits](/highlightjs/highlight.js/commits/main/)
+6,783 Commits |
+| [.github](/highlightjs/highlight.js/tree/main/.github) | [.github](/highlightjs/highlight.js/tree/main/.github) |  |  |
+| [demo](/highlightjs/highlight.js/tree/main/demo) | [demo](/highlightjs/highlight.js/tree/main/demo) |  |  |
+| [docs](/highlightjs/highlight.js/tree/main/docs) | [docs](/highlightjs/highlight.js/tree/main/docs) |  |  |
+| [extra](/highlightjs/highlight.js/tree/main/extra) | [extra](/highlightjs/highlight.js/tree/main/extra) |  |  |
+| [src](/highlightjs/highlight.js/tree/main/src) | [src](/highlightjs/highlight.js/tree/main/src) |  |  |
+| [test](/highlightjs/highlight.js/tree/main/test) | [test](/highlightjs/highlight.js/tree/main/test) |  |  |
+| [tools](/highlightjs/highlight.js/tree/main/tools) | [tools](/highlightjs/highlight.js/tree/main/tools) |  |  |
+| [types](/highlightjs/highlight.js/tree/main/types) | [types](/highlightjs/highlight.js/tree/main/types) |  |  |
+| [.dockerignore](/highlightjs/highlight.js/blob/main/.dockerignore) | [.dockerignore](/highlightjs/highlight.js/blob/main/.dockerignore) |  |  |
+| [.editorconfig](/highlightjs/highlight.js/blob/main/.editorconfig) | [.editorconfig](/highlightjs/highlight.js/blob/main/.editorconfig) |  |  |
+| [.eslintrc.js](/highlightjs/highlight.js/blob/main/.eslintrc.js) | [.eslintrc.js](/highlightjs/highlight.js/blob/main/.eslintrc.js) |  |  |
+| [.eslintrc.lang.js](/highlightjs/highlight.js/blob/main/.eslintrc.lang.js) | [.eslintrc.lang.js](/highlightjs/highlight.js/blob/main/.eslintrc.lang.js) |  |  |
+| [.git-blame-ignore-revs](/highlightjs/highlight.js/blob/main/.git-blame-ignore-revs) | [.git-blame-ignore-revs](/highlightjs/highlight.js/blob/main/.git-blame-ignore-revs) |  |  |
+| [.gitattributes](/highlightjs/highlight.js/blob/main/.gitattributes) | [.gitattributes](/highlightjs/highlight.js/blob/main/.gitattributes) |  |  |
+| [.gitignore](/highlightjs/highlight.js/blob/main/.gitignore) | [.gitignore](/highlightjs/highlight.js/blob/main/.gitignore) |  |  |
+| [.mocharc.json](/highlightjs/highlight.js/blob/main/.mocharc.json) | [.mocharc.json](/highlightjs/highlight.js/blob/main/.mocharc.json) |  |  |
+| [.readthedocs.yaml](/highlightjs/highlight.js/blob/main/.readthedocs.yaml) | [.readthedocs.yaml](/highlightjs/highlight.js/blob/main/.readthedocs.yaml) |  |  |
+| [.tokeignore](/highlightjs/highlight.js/blob/main/.tokeignore) | [.tokeignore](/highlightjs/highlight.js/blob/main/.tokeignore) |  |  |
+| [CHANGES.md](/highlightjs/highlight.js/blob/main/CHANGES.md) | [CHANGES.md](/highlightjs/highlight.js/blob/main/CHANGES.md) |  |  |
+| [CONTRIBUTING.md](/highlightjs/highlight.js/blob/main/CONTRIBUTING.md) | [CONTRIBUTING.md](/highlightjs/highlight.js/blob/main/CONTRIBUTING.md) |  |  |
+| [CONTRIBUTORS.md](/highlightjs/highlight.js/blob/main/CONTRIBUTORS.md) | [CONTRIBUTORS.md](/highlightjs/highlight.js/blob/main/CONTRIBUTORS.md) |  |  |
+| [Dockerfile](/highlightjs/highlight.js/blob/main/Dockerfile) | [Dockerfile](/highlightjs/highlight.js/blob/main/Dockerfile) |  |  |
+| [LICENSE](/highlightjs/highlight.js/blob/main/LICENSE) | [LICENSE](/highlightjs/highlight.js/blob/main/LICENSE) |  |  |
+| [MAINTAINERS_GUIDE.md](/highlightjs/highlight.js/blob/main/MAINTAINERS_GUIDE.md) | [MAINTAINERS_GUIDE.md](/highlightjs/highlight.js/blob/main/MAINTAINERS_GUIDE.md) |  |  |
+| [NOTICE.txt](/highlightjs/highlight.js/blob/main/NOTICE.txt) | [NOTICE.txt](/highlightjs/highlight.js/blob/main/NOTICE.txt) |  |  |
+| [README.CDN.md](/highlightjs/highlight.js/blob/main/README.CDN.md) | [README.CDN.md](/highlightjs/highlight.js/blob/main/README.CDN.md) |  |  |
+| [README.md](/highlightjs/highlight.js/blob/main/README.md) | [README.md](/highlightjs/highlight.js/blob/main/README.md) |  |  |
+| [SECURITY.md](/highlightjs/highlight.js/blob/main/SECURITY.md) | [SECURITY.md](/highlightjs/highlight.js/blob/main/SECURITY.md) |  |  |
+| [SUPPORTED_LANGUAGES.md](/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md) | [SUPPORTED_LANGUAGES.md](/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md) |  |  |
+| [VERSION_10_BREAKING_CHANGES.md](/highlightjs/highlight.js/blob/main/VERSION_10_BREAKING_CHANGES.md) | [VERSION_10_BREAKING_CHANGES.md](/highlightjs/highlight.js/blob/main/VERSION_10_BREAKING_CHANGES.md) |  |  |
+| [VERSION_10_UPGRADE.md](/highlightjs/highlight.js/blob/main/VERSION_10_UPGRADE.md) | [VERSION_10_UPGRADE.md](/highlightjs/highlight.js/blob/main/VERSION_10_UPGRADE.md) |  |  |
+| [VERSION_11_UPGRADE.md](/highlightjs/highlight.js/blob/main/VERSION_11_UPGRADE.md) | [VERSION_11_UPGRADE.md](/highlightjs/highlight.js/blob/main/VERSION_11_UPGRADE.md) |  |  |
+| [package-lock.json](/highlightjs/highlight.js/blob/main/package-lock.json) | [package-lock.json](/highlightjs/highlight.js/blob/main/package-lock.json) |  |  |
+| [package.json](/highlightjs/highlight.js/blob/main/package.json) | [package.json](/highlightjs/highlight.js/blob/main/package.json) |  |  |
+| [tsconfig.json](/highlightjs/highlight.js/blob/main/tsconfig.json) | [tsconfig.json](/highlightjs/highlight.js/blob/main/tsconfig.json) |  |  |
+| View all files |
+## Repository files navigation
+-
+- [README](#)
+- [Contributing](#)
+- [BSD-3-Clause license](#)
+- [Security](#)
+More items
+# Highlight.js
+[![latest version](https://camo.githubusercontent.com/d343418c1b72ad68d067d1a4777c593604e44ed3732f084db7c35a339cc6a06a/68747470733a2f2f62616467656e2e6e65742f6e706d2f762f686967686c696768742e6a733f6c6162656c3d6c6174657374)](https://www.npmjs.com/package/highlight.js)
+[![license](https://camo.githubusercontent.com/1905671c2d6af601fbd5e8578eef74e01f4079026d96b5fb0d4b82c7c4ca594c/68747470733a2f2f62616467656e2e6e65742f6769746875622f6c6963656e73652f686967686c696768746a732f686967686c696768742e6a733f636f6c6f723d6379616e)](https://github.com/highlightjs/highlight.js/blob/main/LICENSE)
+[![install size](https://camo.githubusercontent.com/8dc48677c075e1b3aea51978ab8c1ffdbf05cdf6e1c0e1bef64191b1c81b595c/68747470733a2f2f62616467656e2e6e65742f7061636b61676570686f6269612f696e7374616c6c2f686967686c696768742e6a733f6c6162656c3d6e706d2b696e7374616c6c)](https://packagephobia.now.sh/result?p=highlight.js)
+[![minified](https://camo.githubusercontent.com/cbe9009b8536e6eadb7ca2db1edd6ce74848e3d07ef61952c20ee73b3ad31544/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f73697a652f686967686c696768746a732f63646e2d72656c656173652f6275696c642f686967686c696768742e6d696e2e6a733f6c6162656c3d6d696e6966696564)](https://camo.githubusercontent.com/cbe9009b8536e6eadb7ca2db1edd6ce74848e3d07ef61952c20ee73b3ad31544/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f73697a652f686967686c696768746a732f63646e2d72656c656173652f6275696c642f686967686c696768742e6d696e2e6a733f6c6162656c3d6d696e6966696564)
+[![NPM downloads weekly](https://camo.githubusercontent.com/9fd1f9dc5721f86ba14f5d8409db869ba567eb08a5599be83fa17dac5d6f5535/68747470733a2f2f62616467656e2e6e65742f6e706d2f64772f686967686c696768742e6a733f6c6162656c3d6e706d2b646f776e6c6f61647326636f6c6f723d707572706c65)](https://www.npmjs.com/package/highlight.js)
+[![jsDelivr CDN downloads](https://camo.githubusercontent.com/359aeb9563b3459119181ad7e5a92b86156a20cac3c999af3d697a7619b519b1/68747470733a2f2f62616467656e2e6e65742f6a7364656c6976722f686974732f67682f686967686c696768746a732f63646e2d72656c656173653f6c6162656c3d6a7344656c6976722b43444e26636f6c6f723d707572706c65)](https://www.jsdelivr.com/package/gh/highlightjs/cdn-release)
+[![ci status](https://camo.githubusercontent.com/e2b79110dd91042948ebbb482f5bf55eed318a52ebb065ce71c9e82aa00290c7/68747470733a2f2f62616467656e2e6e65742f6769746875622f636865636b732f686967686c696768746a732f686967686c696768742e6a732f6d61696e3f6c6162656c3d6275696c64)](https://github.com/highlightjs/highlight.js/actions/workflows/tests.js.yml)
+[![CodeQL](https://github.com/highlightjs/highlight.js/workflows/CodeQL/badge.svg)](https://github.com/highlightjs/highlight.js/actions/workflows/github-code-scanning/codeql)
+[![vulnerabilities](https://camo.githubusercontent.com/6ecac02c7143a9bf688922dd149ddaf6d0ade8029e959105cb6c2aa0440c4bda/68747470733a2f2f62616467656e2e6e65742f736e796b2f686967686c696768746a732f686967686c696768742e6a73)](https://snyk.io/test/github/highlightjs/highlight.js?targetFile=package.json)
+[![discord](https://camo.githubusercontent.com/24881078d11df6f788ee1e3370ad16fad306d90815c7aafe404a099b0301f718/68747470733a2f2f62616467656e2e6e65742f62616467652f69636f6e2f646973636f72643f69636f6e3d646973636f7264266c6162656c26636f6c6f723d70696e6b)](https://discord.gg/M24EbU7ja9)
+[![open issues](https://camo.githubusercontent.com/4a55915ee956a12d59b7be58c01cf064f065befb95d7cd75de30f29d3bbd7fa6/68747470733a2f2f62616467656e2e6e65742f6769746875622f6f70656e2d6973737565732f686967686c696768746a732f686967686c696768742e6a733f6c6162656c3d697373756573)](https://github.com/highlightjs/highlight.js/issues)
+[![help welcome issues](https://camo.githubusercontent.com/d05a6ec3bf41fd62060d1beb1bece3abde02ac0dcdfe9092d9a8cf3d90756fb4/68747470733a2f2f62616467656e2e6e65742f6769746875622f6c6162656c2d6973737565732f686967686c696768746a732f686967686c696768742e6a732f68656c7025323077656c636f6d652f6f70656e)](https://github.com/highlightjs/highlight.js/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+welcome%22)
+[![good first issue](https://camo.githubusercontent.com/f13ccac599e6368d905d2dfe9190a02bfd6165601850c17b63276ef511e234c6/68747470733a2f2f62616467656e2e6e65742f6769746875622f6c6162656c2d6973737565732f686967686c696768746a732f686967686c696768742e6a732f676f6f64253230666972737425323069737375652f6f70656e)](https://github.com/highlightjs/highlight.js/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
+Highlight.js is a syntax highlighter written in JavaScript. It works in
+the browser as well as on the server. It can work with pretty much any
+markup, doesn’t depend on any other frameworks, and has automatic language
+detection.
+**Contents**
+- [Basic Usage](#basic-usage)
+- [In the Browser](#in-the-browser)
+- [Plaintext Code Blocks](#plaintext-code-blocks)
+- [Ignoring a Code Block](#ignoring-a-code-block)
+- [Node.js on the Server](#nodejs-on-the-server)
+- [Supported Languages](#supported-languages)
+- [Custom Usage](#custom-usage)
+- [Using custom HTML](#using-custom-html)
+- [Using with Vue.js](#using-with-vuejs)
+- [Using Web Workers](#using-web-workers)
+- [Importing the Library](#importing-the-library)
+- [Node.js CommonJS Modules / `require`](#nodejs-commonjs-modules--require)
+- [Node.js ES6 Modules / `import`](#nodejs-es6-modules--import)
+- [Browser ES6 Modules](#browser-es6-modules)
+- [Getting the Library](#getting-the-library)
+- [Fetch via CDN](#fetch-via-cdn)
+- [cdnjs (link)](#cdnjs-link)
+- [jsdelivr (link)](#jsdelivr-link)
+- [unpkg (link)](#unpkg-link)
+- [Download prebuilt CDN assets](#download-prebuilt-cdn-assets)
+- [Download from our website](#download-from-our-website)
+- [Install via NPM package](#install-via-npm-package)
+- [Build from Source](#build-from-source)
+- [Requirements](#requirements)
+- [License](#license)
+- [Links](#links)
+---
+#### Upgrading to Version 11
+As always, major releases do contain breaking changes which may require action from users.  Please read [VERSION_11_UPGRADE.md](https://github.com/highlightjs/highlight.js/blob/main/VERSION_11_UPGRADE.md) for a detailed summary of breaking changes and any actions you may need to take.
+#### Support for older versions
+Please see [SECURITY.md](https://github.com/highlightjs/highlight.js/blob/main/SECURITY.md) for long-term support information.
+---
+## Basic Usage
+### In the Browser
+The bare minimum for using highlight.js on a web page is linking to the
+library along with one of the themes and calling [`highlightAll`](http://highlightjs.readthedocs.io/en/latest/api.html#highlightall):
+```
+<link rel="stylesheet" href="/path/to/styles/default.min.css">
+<script src="/path/to/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+```
+This will find and highlight code inside of `<pre><code>` tags; it tries
+to detect the language automatically. If automatic detection doesn’t
+work for you, or you simply prefer to be explicit, you can specify the language manually by using the `class` attribute:
+```
+<pre><code class="language-html">...</code></pre>
+```
+#### Plaintext Code Blocks
+To apply the Highlight.js styling to plaintext without actually highlighting it, use the `plaintext` language:
+```
+<pre><code class="language-plaintext">...</code></pre>
+```
+#### Ignoring a Code Block
+To skip highlighting of a code block completely, use the `nohighlight` class:
+```
+<pre><code class="nohighlight">...</code></pre>
+```
+### Node.js on the Server
+The bare minimum to auto-detect the language and highlight some code.
+```
+// load the library and ALL languages
+hljs = require('highlight.js');
+html = hljs.highlightAuto('<h1>Hello World!</h1>').value
+```
+To load only a "common" subset of popular languages:
+```
+hljs = require('highlight.js/lib/common');
+```
+To highlight code with a specific language, use `highlight`:
+```
+html = hljs.highlight('<h1>Hello World!</h1>', {language: 'xml'}).value
+```
+See [Importing the Library](#importing-the-library) for more examples of `require` vs `import` usage, etc.  For more information about the result object returned by `highlight` or `highlightAuto` refer to the [api docs](https://highlightjs.readthedocs.io/en/latest/api.html).
+## Supported Languages
+Highlight.js supports over 180 languages in the core library.  There are also 3rd party
+language definitions available to support even more languages. You can find the full list of supported languages in [SUPPORTED_LANGUAGES.md](https://github.com/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md).
+## Custom Usage
+If you need a bit more control over the initialization of
+Highlight.js, you can use the [`highlightElement`](http://highlightjs.readthedocs.io/en/latest/api.html#highlightelement) and [`configure`](http://highlightjs.readthedocs.io/en/latest/api.html#configure)
+functions. This allows you to better control *what* to highlight and *when*.
+For example, here’s the rough equivalent of calling [`highlightAll`](http://highlightjs.readthedocs.io/en/latest/api.html#highlightall) but doing the work manually instead:
+```
+document.addEventListener('DOMContentLoaded', (event) => {
+  document.querySelectorAll('pre code').forEach((el) => {
+    hljs.highlightElement(el);
+  });
+});
+```
+Please refer to the documentation for [`configure`](http://highlightjs.readthedocs.io/en/latest/api.html#configure) options.
+### Using custom HTML
+We strongly recommend `<pre><code>` wrapping for code blocks. It's quite
+semantic and "just works" out of the box with zero fiddling. It is possible to
+use other HTML elements (or combos), but you may need to pay special attention to
+preserving linebreaks.
+Let's say your markup for code blocks uses divs:
+```
+<div class='code'>...</div>
+```
+To highlight such blocks manually:
+```
+// first, find all the div.code blocks
+document.querySelectorAll('div.code').forEach(el => {
+  // then highlight each
+  hljs.highlightElement(el);
+});
+```
+Without using a tag that preserves linebreaks (like `pre`) you'll need some
+additional CSS to help preserve them.  You could also [pre and post-process line
+breaks with a plug-in](https://github.com/highlightjs/highlight.js/issues/2559), but *we recommend using CSS*.
+To preserve linebreaks inside a `div` using CSS:
+```
+div.code {
+  white-space: pre;
+}
+```
+### Using with Vue.js
+See [highlightjs/vue-plugin](https://github.com/highlightjs/vue-plugin) for a simple Vue plugin that works great with Highlight.js.
+An example of `vue-plugin` in action:
+```
+  <div id="app">
+    <!-- bind to a data property named `code` -->
+    <highlightjs autodetect :code="code" />
+    <!-- or literal code works as well -->
+    <highlightjs language='javascript' code="var x = 5;" />
+  </div>
+```
+### Using Web Workers
+You can run highlighting inside a web worker to avoid freezing the browser
+window while dealing with very big chunks of code.
+In your main script:
+```
+addEventListener('load', () => {
+  const code = document.querySelector('#code');
+  const worker = new Worker('worker.js');
+  worker.onmessage = (event) => { code.innerHTML = event.data; }
+  worker.postMessage(code.textContent);
+});
+```
+In worker.js:
+```
+onmessage = (event) => {
+  importScripts('<path>/highlight.min.js');
+  const result = self.hljs.highlightAuto(event.data);
+  postMessage(result.value);
+};
+```
+## Importing the Library
+First, you'll likely be installing the library via `npm` or `yarn` -- see [Getting the Library](#getting-the-library).
+### Node.js CommonJS Modules / `require`
+Requiring the top-level library will load all languages:
+```
+// require the highlight.js library, including all languages
+const hljs = require('./highlight.js');
+const highlightedCode = hljs.highlightAuto('<span>Hello World!</span>').value
+```
+For a smaller footprint, load our common subset of languages (the same set used for our default web build).
+```
+const hljs = require('highlight.js/lib/common');
+```
+For the smallest footprint, load only the languages you need:
+```
+const hljs = require('highlight.js/lib/core');
+hljs.registerLanguage('xml', require('highlight.js/lib/languages/xml'));
+const highlightedCode = hljs.highlight('<span>Hello World!</span>', {language: 'xml'}).value
+```
+### Node.js ES6 Modules / `import`
+The default import will register all languages:
+```
+import hljs from 'highlight.js';
+```
+It is more efficient to import only the library and register the languages you need:
+```
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+hljs.registerLanguage('javascript', javascript);
+```
+If your build tool processes CSS imports, you can also import the theme directly as a module:
+```
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github.css';
+```
+### Browser ES6 Modules
+*Note: For now you'll want to install `@highlightjs/cdn-assets` package instead of `highlight.js`.
+See [Download prebuilt CDN assets](#download-prebuilt-cdn-assets)*
+To import the library and register only those languages that you need:
+```
+import hljs from './assets/js/@highlightjs/cdn-assets/es/core.js';
+import javascript from './assets/js/@highlightjs/cdn-assets/es/languages/javascript.min.js';
+hljs.registerLanguage('javascript', javascript);
+```
+To import the library and register all languages:
+```
+import hljs from './assets/js/@highlightjs/cdn-assets/es/highlight.js';
+```
+*Note: The path to these files will vary depending on where you have installed/copied them
+within your project or site. The above path is only an example.*
+You can also use [`importmap`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap) to import in similar way as Node:
+```
+<script type="importmap">
+{
+	"imports": {
+		"@highlightjs": "./assets/js/@highlightjs/cdn-assets/es/"
+	}
+}
+</script>
+```
+Use the above code in your HTML. After that, your JavaScript can import using the named key from
+your `importmap`, for example `@highlightjs` in this case:
+```
+import hljs from '@highlightjs/core.js';
+import javascript from '@highlightjs/languages/javascript.min.js';
+hljs.registerLanguage('javascript', javascript);
+```
+*Note: You can also import directly from fully static URLs, such as our very own pre-built ES6 Module CDN resources. See [Fetch via CDN](#fetch-via-cdn) for specific examples.*
+## Getting the Library
+You can get highlight.js as a hosted, or custom-build, browser script or
+as a server module. Right out of the box the browser script supports
+both AMD and CommonJS, so if you wish you can use RequireJS or
+Browserify without having to build from source. The server module also
+works perfectly fine with Browserify, but there is the option to use a
+build specific to browsers rather than something meant for a server.
+**Do not link to GitHub directly.** The library is not supposed to work straight
+from the source, it requires building. If none of the pre-packaged options
+work for you refer to the [building documentation](http://highlightjs.readthedocs.io/en/latest/building-testing.html).
+**On Almond.** You need to use the optimizer to give the module a name. For
+example:
+```
+r.js -o name=hljs paths.hljs=/path/to/highlight out=highlight.js
+```
+### Fetch via CDN
+A prebuilt version of Highlight.js bundled with many common languages is hosted by several popular CDNs.
+When using Highlight.js via CDN you can use Subresource Integrity for additional security.  For details
+see [DIGESTS.md](https://github.com/highlightjs/cdn-release/blob/main/DIGESTS.md).
+#### cdnjs ([link](https://cdnjs.com/libraries/highlight.js))
+##### Common JS
+```
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/styles/default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/languages/go.min.js"></script>
+```
+##### ES6 Modules
+```
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/styles/dark.min.css">
+<script type="module">
+import hljs from 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/es/highlight.min.js';
+//  and it's easy to individually load additional languages
+import go from 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/es/languages/go.min.js';
+hljs.registerLanguage('go', go);
+</script>
+```
+#### jsdelivr ([link](https://www.jsdelivr.com/package/gh/highlightjs/cdn-release))
+##### Common JS
+```
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.2/build/styles/default.min.css">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.2/build/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.2/build/languages/go.min.js"></script>
+```
+##### ES6 Modules
+```
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.2/build/styles/default.min.css">
+<script type="module">
+import hljs from 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.2/build/es/highlight.min.js';
+//  and it's easy to individually load additional languages
+import go from 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.2/build/es/languages/go.min.js';
+hljs.registerLanguage('go', go);
+</script>
+```
+#### unpkg ([link](https://unpkg.com/browse/@highlightjs/cdn-assets/))
+##### Common JS
+```
+<link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.11.2/styles/default.min.css">
+<script src="https://unpkg.com/@highlightjs/cdn-assets@11.11.2/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script src="https://unpkg.com/@highlightjs/cdn-assets@11.11.2/languages/go.min.js"></script>
+```
+##### ES6 Modules
+```
+<link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.11.2/styles/default.min.css">
+<script type="module">
+import hljs from 'https://unpkg.com/@highlightjs/cdn-assets@11.11.2/es/highlight.min.js';
+//  and it's easy to individually load & register additional languages
+import go from 'https://unpkg.com/@highlightjs/cdn-assets@11.11.2/es/languages/go.min.js';
+hljs.registerLanguage('go', go);
+</script>
+```
+**Note:** *The CDN-hosted `highlight.min.js` package doesn't bundle every language.* It would be
+very large. You can find our list of "common" languages that we bundle by default on our [download page](https://highlightjs.org/download/).
+### Download prebuilt CDN assets
+You can also download and self-host the same assets we serve up via our own CDNs.  We publish those builds to the [cdn-release](https://github.com/highlightjs/cdn-release) GitHub repository.  You can easily pull individual files off the CDN endpoints with `curl`, etc; if say you only needed `highlight.min.js` and a single CSS file.
+There is also an npm package [@highlightjs/cdn-assets](https://www.npmjs.com/package/@highlightjs/cdn-assets) if pulling the assets in via `npm` or `yarn` would be easier for your build process.
+### Download from our website
+The [download page](https://highlightjs.org/download/) can quickly generate a custom single-file minified bundle including only the languages you desire.
+**Note:** [Building from source](#build-from-source) can produce slightly smaller builds than the website download.
+### Install via NPM package
+Our NPM package including all supported languages can be installed with NPM or Yarn:
+```
+npm install highlight.js
+# or
+yarn add highlight.js
+```
+There is also another npm package [@highlightjs/cdn-assets](https://www.npmjs.com/package/@highlightjs/cdn-assets) that contains prebuilt CDN assets including [ES6 Modules that can be imported in browser](#browser-es6-modules):
+```
+npm install @highlightjs/cdn-assets
+# or
+yarn add @highlightjs/cdn-assets
+```
+Alternatively, you can build the NPM package from source.
+### Build from Source
+The [current source code](https://github.com/highlightjs/) is always available on GitHub.
+```
+node tools/build.js -t node
+node tools/build.js -t browser :common
+node tools/build.js -t cdn :common
+```
+See our [building documentation](http://highlightjs.readthedocs.io/en/latest/building-testing.html) for more information.
+## Requirements
+Highlight.js works on all modern browsers and currently supported Node.js versions.  You'll need the following software to contribute to the core library:
+- Node.js >= 12.x
+- npm >= 6.x
+## License
+Highlight.js is released under the BSD License. See our [LICENSE](https://github.com/highlightjs/highlight.js/blob/main/LICENSE) file
+for details.
+## Links
+The official website for the library is [https://highlightjs.org/](https://highlightjs.org/).
+Further in-depth documentation for the API and other topics is at
+[http://highlightjs.readthedocs.io/](http://highlightjs.readthedocs.io/).
+A list of the Core Team and contributors can be found in the [CONTRIBUTORS.md](https://github.com/highlightjs/highlight.js/blob/main/CONTRIBUTORS.md) file.
+## About
+JavaScript syntax highlighter with language auto-detection and zero dependencies.
+[highlightjs.org/](https://highlightjs.org/)
+### Topics
+[hacktoberfest](/topics/hacktoberfest)[highlighting](/topics/highlighting)[javascript](/topics/javascript)[language-grammars](/topics/language-grammars)[syntax-highlighter](/topics/syntax-highlighter)[syntax-highlighting](/topics/syntax-highlighting)
+### Resources
+[Readme](#readme-ov-file)
+[BSD-3-Clause license](#BSD-3-Clause-1-ov-file)
+### Contributing
+[Contributing](#contributing-ov-file)
+### Security policy
+[Security policy](#security-ov-file)
+[Activity](/highlightjs/highlight.js/activity)
+[Custom properties](/highlightjs/highlight.js/custom-properties)
+### Stars
+**25.0k** stars
+### Watchers
+**295** watching
+### Forks
+[**3.7k** forks](/highlightjs/highlight.js/forks)
+[Report repository](/contact/report-content?content_url=https%3A%2F%2Fgithub.com%2Fhighlightjs%2Fhighlight.js&report=highlightjs+%28user%29)
+## Releases
+## Used by
+## Contributors
+## Languages
+## Footer
+        © 2026 GitHub, Inc.
+### Footer navigation
+          - [Terms](https://docs.github.com/site-policy/github-terms/github-terms-of-service)
+          - [Privacy](https://docs.github.com/site-policy/privacy-policies/github-privacy-statement)
+          - [Security](https://github.com/security)
+          - [Status](https://www.githubstatus.com/)
+          - [Community](https://github.community/)
+          - [Docs](https://docs.github.com/)
+          - [Contact](https://support.github.com?tags=dotcom-footer)
+          - Manage cookies
+- Do not share my personal information
+    You can’t perform that action at this time.

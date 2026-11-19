@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js s-healthcheck"><head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Cash Secured Put: Overview & Strategic Considerations | SoFi</title>
+  <!-- KEEP THE FOLLOWING THREE SCRIPTS ABOVE wp_head call -->
+  <script crossorigin="anonymous" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- DO NOT MINIFY THE BELOW FILES. iOS has issues! -->
+  <script type="text/javascript" crossorigin="anonymous" src="https://d32ijn7u0aqfv4.cloudfront.net/libraries/bower_components/webcomponentsjs/v2/custom-elements-es5-adapter.js"></script>
+  <script type="text/javascript" crossorigin="anonymous" src="https://d32ijn7u0aqfv4.cloudfront.net/libraries/bower_components/webcomponentsjs/v2/webcomponents-loader.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://d32ijn7u0aqfv4.cloudfront.net/libraries/wp-react/master-4564/builder-css/builder.min.css">  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+	<!-- This site is optimized with the Yoast SEO Premium plugin v26.2 (Yoast SEO v26.2) - https://yoast.com/wordpress/plugins/seo/ -->
+	<meta name="description" content="Cash-secured puts are an options strategy where the investor collects a premium by selling a put while setting aside enough cash to buy the stock if assigned. Learn more.">
+	<link rel="canonical" href="https://www.sofi.com/learn/content/cash-secured-put/">
+	<meta property="og:locale" content="en_US">
+	<meta property="og:type" content="article">
+	<meta property="og:title" content="Strategic Overview: What Is a Cash-Secured Put? | SoFi">
+	<meta property="og:description" content="Cash-secured puts are an options strategy where the investor collects a premium by selling a put while setting aside enough cash to buy the stock if assigned. Learn more.">
+	<meta property="og:url" content="https://www.sofi.com/learn/content/cash-secured-put/">
+	<meta property="og:site_name" content="SoFi">
+	<meta property="article:publisher" content="https://www.facebook.com/SoFi">
+	<meta property="article:published_time" content="2026-05-18T16:00:17+00:00">
+	<meta property="article:modified_time" content="2026-05-20T16:15:45+00:00">
+	<meta property="og:image" content="https://d32ijn7u0aqfv4.cloudfront.net/wp/wp-content/uploads/raw/SOIN1021456_780x440_mobile.jpeg">
+	<meta property="og:image:width" content="780">
+	<meta property="og:image:height" content="440">
+	<meta property="og:image:type" content="image/jpeg">
+	<meta name="author" content="Laurel Tincher">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:creator" content="@SoFi">
+	<meta name="twitter:site" content="@SoFi">
+	<meta name="twitter:label1" content="Written by">
+	<meta name="twitter:data1" content="Laurel Tincher">
+	<meta name="twitter:label2" content="Est. reading time">
+	<meta name="twitter:data2" content="20 minutes">
+	<!-- / Yoast SEO Premium plugin. -->
+
+
+<link rel="dns-prefetch" href="//d32ijn7u0aqfv4.cloudfront.net">
+<link rel="alternate" type="application/rss+xml" title="SoFi » Feed" href="https://www.sofi.com/learn/feed/">
+    <script>
+      (function(h,o,u,n,d) {
+        h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
+        d=o.createElement(u);d.async=1;d.src=n
+        n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
+      })(window,document,'script','https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js','DD_RUM')
+      DD_RUM.onReady(function() {
+        DD_RUM.init({
+          clientToken: 'pub346aa021e965843c43f563f0bf19854f',
+          applicationId: 'fe840617-2662-4673-a92b-f6ef57f384ad',
+          service: 'wordpress',
+          env: 'production',
+          site: 'datadoghq.com',
+          sessionReplaySampleRate: 0,
+        })
+      })
+    </script>
+        <script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" type="text/javascript" charset="UTF-8" data-domain-script="24cdcf72-0bb7-4281-832f-a3c0971510ee">
+    </script>
+    <script type="text/javascript">
+      function initPrivacyOptionsLink() {
+        // When the user is unauthenticated, update the "Your privacy options" link in the footer to open the OneTrust privacy modal
+        // instead of take the user to their SoFi privacy preferences in profile settings
+        const privacyOptionsLink = document.querySelector('#privacy-options-link');
+        // There is no easy way to test this locally; test within kraken or staging
+        fetch("/verify-session?returnBody=true&nocache=true")
+        .then((response) => { return response.json(); } )
+        .then((jsonData) => {
+          if(!jsonData.isSessionAlive){
+            privacyOptionsLink.addEventListener('click', function(event) {
+              // Prevent the default link behavior. The browser will not take the user to their SoFi privacy preferences in profile settings
+              event.preventDefault();
+
+              // Open the OneTrust privacy modal
+              // See: https://developer.onetrust.com/onetrust/docs/javascript-api#show-preference-center
+              window.OneTrust.ToggleInfoDisplay();
+            });
+          }
+        });
+      }
+      document.addEventListener('DOMContentLoaded', initPrivacyOptionsLink);
+
+      function OptanonWrapper() {
+        /**
+         * When a user navigates to a new page, switches tabs, closes the tab, minimizes or closes the browser, or, on mobile, switches from the browser
+         * to a different app, opt the user into cookies if they haven't interacted with the cookie banner CTAs.
+         * See: https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event#sending_end-of-session_analytics_on_transitioning_to_hidden
+         */
+        function optUserIntoCookiesIfCTAsNotClicked() {
+          if (document.visibilityState !== 'hidden') {
+            return;
+          }
+
+          // https://developer.onetrust.com/onetrust/docs/javascript-api#is-optanonalertboxclosed-cookie-set
+          const userClickedCTA = OneTrust.IsAlertBoxClosed();
+          // https://developer.mozilla.org/en-US/docs/Web/API/Navigator/globalPrivacyControl
+          const isGPCEnabled = navigator.globalPrivacyControl === true;
+
+          if (!userClickedCTA && !isGPCEnabled) {
+            // If the user didn't click either of the CTAs, and the user has not enabled GPC in their browser, opt the user into cookies
+            // See documentation for OneTrust.AllowAll: https://developer.onetrust.com/onetrust/docs/javascript-api#allow-all-consent
+            window.OneTrust.AllowAll();
+          } else if (isGPCEnabled) {
+            // Respect the user's browser setting for GPC
+            // See documentation for OneTrust.RejectAll: https://developer.onetrust.com/onetrust/docs/javascript-api#reject-all-consent
+            window.OneTrust.RejectAll();
+          }
+        }
+        window.addEventListener('visibilitychange', optUserIntoCookiesIfCTAsNotClicked);
+
+        // Any logged out page in sofi.com/learn with the query parameter ?privacy_options=true should automatically open the OneTrust preference center
+        if (window.location.search.indexOf('privacy_options=true') !== -1) {
+          // See documentation for OneTrust.ToggleInfoDisplay: https://developer.onetrust.com/onetrust/docs/javascript-api#show-preference-center
+          window.OneTrust.ToggleInfoDisplay();
+        }
+      }
+    </script>
+    <script type="text/javascript">
+    function getCookie(name) {
+      var cookies = window.document.cookie.split(";");
+      if (cookies) {
+        for (i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i];
+          if (cookie.match("^ *" + name + "=")) {
+            var value = cookie.trim().replace(name + "=", "");
+            return value;
+          }
+        }
+      }
+      return null;
+    }
+
+    function isBlank(value) {
+      return !value;
+    }
+
+    function getDefaultConsentGroups() {
+      var consentParams = getOneTrustCookieValue();
+      if (consentParams) {
+        var consentGroups = consentParams
+          .get("groups")
+          .split(",")
+          .map(function(str) {
+            return str.split(":");
+          })
+          .reduce(function(map, arr) {
+            map[arr[0]] = arr[1];
+            return map;
+          }, {});
+        return consentGroups;
+      } else {
+        return null;
+      }
+    }
+
+    function evaluateGPCSignal() {
+      var consentParams = getOneTrustCookieValue();
+      if (consentParams && !isBlank(consentParams.get("groups"))) {
+        var gpcFlag = consentParams.get("browserGpcFlag");
+        if (gpcFlag === "1") {
+          // GPC is enabled and the user has not consented
+          return false;
+        } else {
+          // GPC is not enabled.
+          return true;
+        }
+      } else {
+        return true;
+      }
+    }
+
+    function getOneTrustCookieValue() {
+      var oneTrustCookie = getCookie("OptanonConsent");
+      if (oneTrustCookie) {
+        var consentParams = new URLSearchParams(decodeURIComponent(oneTrustCookie));
+        return consentParams;
+      } else {
+        return null;
+      }
+    }
+
+    function evalDefaultConsents() {
+      // these represent the consent groups defined by onetrust; if all three aren't present && == 1
+      // then we assume the user is opted out.
+      var allConsents = [
+        "C0001",
+        "C0002",
+        "C0003",
+        "C0004",
+        "C0005",
+        "SPD_BG",
+        "SSPD_BG",
+        "PO2"
+      ];
+      var consentGroups = getDefaultConsentGroups();
+      if (consentGroups) {
+        var consents = Object.entries(consentGroups)
+          .filter(function(tuple) {
+            return allConsents.includes(tuple[0]);
+          })
+          .map(function(tuple) {
+            if (tuple[1] == "1") {
+              return true;
+            } else {
+              return false;
+            }
+          });
+        // if there only exist the C0001 consent group, and no others, the user is assumed to be opted out
+        if (Object.keys(consentGroups).length == 1 && "C0001" in consentGroups) {
+          return false;
+        }
+        if (
+          Object.keys(consentGroups).length == 2 &&
+          "C0001" in consentGroups &&
+          "C0003" in consentGroups
+        ) {
+          return false;
+        }
+        // if there is any rejected consent assume the user is opted out
+        if (
+          consents.every(function(value) {
+            return value == true;
+          })
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
+    function evalLoggedInPref() {
+      var pref = getCookie("SOFI_GMPREF");
+      if (pref === "OPT_OUT") {
+        return false;
+      } else {
+        return true;
+      }
+    }
+
+    function evalConsentPreferences(eval_type) {
+      var consentState = "OPT_OUT";
+      if (evalDefaultConsents() && evaluateGPCSignal() && evalLoggedInPref()) {
+        consentState = "OPT_IN";
+      }
+      if (eval_type) {
+        dataLayer.push({event: eval_type, user_consent_state: consentState});
+      } else {
+        // if 'event' is passed upon dataLayer init, user_consent_state is not registered as a variable
+        // instead it is ignored by GTM
+        dataLayer.push({user_consent_state: consentState});
+      }
+    }
+
+    var mainDomain = document.location.hostname.match(/(([^.\/]+\.[^.\/]{2,3}\.[^.\/]{2})|(([^.\/]+\.)[^.\/]{2,4}))(\/.*)?$/)[1];
+
+    try{
+      dataLayer.push({'baseDomain': mainDomain.toLowerCase()});
+    } catch(err) {
+      dataLayer = [{'baseDomain': mainDomain.toLowerCase()}];
+    }
+
+    evalConsentPreferences();
+
+    window.addEventListener("OneTrustGroupsUpdated", (event) => {
+      evalConsentPreferences("update_ot_consent");
+    });
+
+    var muid = getCookie('SOFI_MUID');
+    if (muid) { dataLayer.push({'muid': muid}); }
+
+    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0], j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src= '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f); })(window,document,'script','dataLayer','GTM-WLSZML');
+  </script>
+  <style id="wp-img-auto-sizes-contain-inline-css" type="text/css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<link rel="stylesheet" id="soficss-css" href="https://d32ijn7u0aqfv4.cloudfront.net/dist/rcweb/css/sofiv4-wrapper.21f64521.css" type="text/css" media="all">
+<style id="classic-theme-styles-inline-css" type="text/css">
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+/*# sourceURL=/wp-includes/css/classic-themes.min.css */
+</style>
+<style id="global-styles-inline-css" type="text/css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+
+<!-- be_ixf, sdk, gho-->
+<meta name="be:sdk" content="php_sdk_1.5.10">
+<meta name="be:timer" content="56ms">
+<meta name="be:orig_url" content="https%3A%2F%2Fwww.sofi.com%2Flearn%2Fcontent%2Fcash-secured-put%2F">
+<meta name="be:norm_url" content="https%3A%2F%2Fwww.sofi.com%2Flearn%2Fcontent%2Fcash-secured-put%2F">
+<meta name="be:capsule_url" content="https%3A%2F%2Fixfd1-api.bc0a.com%2Fapi%2Fixf%2F1.0.0%2Fget_capsule%2Ff00000000299355%2F906736930">
+<meta name="be:api_dt" content="py_2026;pm_05;pd_22;ph_15;pmh_51;p_epoch:1779465087305">
+<meta name="be:mod_dt" content="py_2026;pm_05;pd_22;ph_15;pmh_51;p_epoch:1779465087305">
+<meta name="be:diag" content="REDACTED_FOR_FIXTURE">
+<meta name="be:messages" content="false">
+<style>
+.be-ix-link-block {}
+</style>
+  <link rel="profile" href="https://gmpg.org/xfn/11">
+  <link rel="stylesheet" type="text/css" href="https://d32ijn7u0aqfv4.cloudfront.net/libraries/corporate-polymer-library/master-1793/es6-bundled/css/truffles.css"><link rel="stylesheet" type="text/css" href="https://d32ijn7u0aqfv4.cloudfront.net/libraries/corporate-polymer-library/master-1793/es6-bundled/css/sp-rc-article-style.css">
+    <script>
+      function injectLink(linkToFile) {
+        link = document.createElement("link");
+        link.rel = "import";
+        link.href=linkToFile;
+        document.head.appendChild(link);
+      }injectLink("https://d32ijn7u0aqfv4.cloudfront.net/libraries/corporate-polymer-library/master-1793/rc-es5-bundled/cpl-shell.html");injectLink("https://d32ijn7u0aqfv4.cloudfront.net/libraries/corporate-polymer-library/master-1793/rc-es5-bundled/cpl-rc-core.html");
+    </script>
+    <!-- Start VWO Async SmartCode -->
+  <link rel="preconnect" href="https://dev.visualwebsiteoptimizer.com">
+  <script type="text/javascript" id="vwoCode">
+  window._vwo_code || (function() {
+  var account_id=733531,
+  version=2.0,
+  settings_tolerance=2000,
+  hide_element='body',
+  hide_element_style = 'opacity:0 !important;filter:alpha(opacity=0) !important;background:none !important',
+  /* DO NOT EDIT BELOW THIS LINE */
+  f=false,w=window,d=document,v=d.querySelector('#vwoCode'),cK='_vwo_'+account_id+'_settings',cc={};try{var c=JSON.parse(localStorage.getItem('_vwo_'+account_id+'_config'));cc=c&&typeof c==='object'?c:{}}catch(e){}var stT=cc.stT==='session'?w.sessionStorage:w.localStorage;code={use_existing_jquery:function(){return typeof use_existing_jquery!=='undefined'?use_existing_jquery:undefined},library_tolerance:function(){return typeof library_tolerance!=='undefined'?library_tolerance:undefined},settings_tolerance:function(){return cc.sT||settings_tolerance},hide_element_style:function(){return'{'+(cc.hES||hide_element_style)+'}'},hide_element:function(){return typeof cc.hE==='string'?cc.hE:hide_element},getVersion:function(){return version},finish:function(){if(!f){f=true;var e=d.getElementById('_vis_opt_path_hides');if(e)e.parentNode.removeChild(e)}},finished:function(){return f},load:function(e){var t=this.getSettings(),n=d.createElement('script'),i=this;if(t){n.textContent=t;d.getElementsByTagName('head')[0].appendChild(n);if(!w.VWO||VWO.caE){stT.removeItem(cK);i.load(e)}}else{n.fetchPriority='high';n.src=e;n.type='text/javascript';n.onerror=function(){_vwo_code.finish()};d.getElementsByTagName('head')[0].appendChild(n)}},getSettings:function(){try{var e=stT.getItem(cK);if(!e){return}e=JSON.parse(e);if(Date.now()>e.e){stT.removeItem(cK);return}return e.s}catch(e){return}},init:function(){if(d.URL.indexOf('__vwo_disable__')>-1)return;var e=this.settings_tolerance();w._vwo_settings_timer=setTimeout(function(){_vwo_code.finish();stT.removeItem(cK)},e);var t=d.currentScript,n=d.createElement('style'),i=this.hide_element(),r=t&&!t.async&&i?i+this.hide_element_style():'',c=d.getElementsByTagName('head')[0];n.setAttribute('id','_vis_opt_path_hides');v&&n.setAttribute('nonce',v.nonce);n.setAttribute('type','text/css');if(n.styleSheet)n.styleSheet.cssText=r;else n.appendChild(d.createTextNode(r));c.appendChild(n);this.load('https://dev.visualwebsiteoptimizer.com/j.php?a='+account_id+'&u='+encodeURIComponent(d.URL)+'&vn='+version)}};w._vwo_code=code;code.init();})();
+  </script>
+  <!-- End VWO Async SmartCode -->
+  <style type="text/css">.page-list ul {
+  list-style-type: disc;
+  padding-left: 36px;
+}
+
+.page-list ol {
+  list-style-type: decimal;
+  padding-left: 36px;
+}
+
+.page-list li {
+  padding-bottom: 12px;
+  display: list-item;
+}
+
+#toc_container {
+    background: #ffffff none repeat scroll 0 0;
+    border: 1px solid #aaa;
+    border-top-width: thick;
+    border-top-color: #006B87 !important;
+    display: table;
+    font-size: 1em;
+    margin-top: 32px;
+    margin-right: auto;
+    padding: 20px;
+    width: 100%;
+}
+.toc_title {
+    font-weight: 700;
+}
+.toc_list {
+    columns: 2;
+    line-height: 175%;
+}
+#toc_container li, #toc_container ul, #toc_container ul li{
+    list-style: outside none none !important;
+}
+/* This media query adjusts the columns for smaller screens */
+@media (max-width: 767px) {
+    .toc_list {
+        columns: 1;
+        line-height: 175%;
+    }
+}
+.toc_li::before {
+    content: "📖";
+    margin-right: 8px; /* Added for spacing */
+}</style>
+    <script type="application/ld+json">
+    {
+      "@context": "http://schema.org",
+      "@type": "Article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://www.sofi.com/learn/content/cash-secured-put/"
+      },
+      "headline": "Strategic Overview: What Is a Cash-Secured Put?",
+      "articleBody": "
+
+Table of Contents Put Options Recap Whats the Difference Between a Put and a Cash-Secured Put? Example of a Cash-Secured Put How to Sell a Cash-Secured Put: a Step-by-Step Example Key Decisions When Selling Cash-Secured Puts What Are the Risks and Rewards of Cash-Secured Puts? FAQ
+
+A cash-secured put is an options trading strategy commonly used by investors to generate income by selling put options while setting aside enough cash to buy the stock if assigned. This strategy can be beneficial to the investor if they expect the stocks price to experience limited movement or remain neutral.
+
+Some investors may use this strategy to purchase a stock they believe has long-term potential, but may be available in the short-term at a lower price. This strategy will allow them to generate some income while waiting for the price to drop to their price target for buying.
+
+This strategy is suitable for investors with a neutral-to-bullish outlook or who believe a stock may drop in price over the short term but increase in the long term. The strategy will generate some income while allowing the investor to set a price where they would be willing to buy the stock. The premium earned will also reduce the cost of the stock.
+
+
+  Key Points
+  
+    
+      A cash-secured put strategy involves selling put options and holding cash (or margin balances) to retain the ability to purchase the underlying stock in the event the price drops below the strike.
+      Cash-secured puts provide upfront income from the premiums received from selling the put option. However, the cash used to secure the put may not be withdrawn until expiration or the seller buys back the put option.
+      Cash-secured put writers can select their market entry price (i.e., the strike price minus the premium received) in the event the stock price were to drop. If the stock price falls, the investor keeps the premium and can purchase stock at the lower (strike) price.
+      Premiums from cash-secured puts offer limited protection against stock price declines, which helps offset potential losses in whole or in part.
+      Cash-secured puts expose the seller to potentially substantial losses if the stock price drops to 0, equal to the strike price minus the premium received.
+    
+  
+
+
+Put Options Recap
+
+A put is a type of option that gives purchasers the right, but not the obligation, to sell shares of an underlying asset or stock at a specific, prearranged price, called the strike price, by a certain date, called the expiration date. In contrast, a call option gives buyers the right, but not obligation, to buy the underlying asset or stock at the strike price by expiration.
+
+Put Option Buyer
+
+An investor who purchases a put option (i.e., holds a long position in the option) anticipates that the underlying stock may depreciate or drop. For example, an option trader who believes a stocks price will drop might purchase a put option with an expiration date that follows the anticipated decline.
+
+If the stock price does indeed drop, the value of the put option will increase and they might sell it for a gain. Or they may choose to exercise the put if it falls below the strike price.
+
+Put options essentially allow buyers to pursue a bearish strategy for the underlying asset or stock without the operational complexity or risk of selling the underlying asset or stock short in the market.
+
+Put Option Seller
+
+Put option writers (or sellers), on the other hand, typically sell put options when they anticipate that the price of the underlying asset will not drop below the strike price, allowing them to keep the premium they collected for selling the option, when the option expires worthless.
+
+Unlike put buyers, however, the seller takes on the obligation to buy the stock at the strike price if the option is exercised. They face the risk of having to purchase the stock at a price thats higher than its market value.
+
+The chart below shows the profit and loss curve from selling a put option.
+
+
+
+
+
+Whats the Difference Between a Put and a Cash-Secured Put?
+
+There are essentially two main types of puts for option sellers: Naked puts and cash-secured puts.
+
+A naked (or uncovered) put is a very high-risk options strategy that involves writing a put without having enough cash set aside to cover the position if assigned. The options seller collects a premium upfront, but risks having to purchase the underlying stock, even if the price were to fall to zero, with money they may not have. They may face a margin call to pay for the stock that has lost a large amount of value in the market.
+
+In a cash-secured put strategy, the seller collects a premium upfront when the option is sold and sets aside enough cash to buy the stock if assigned. The cash-secured part means you must set aside enough cash to purchase 100 shares of the stock at the strike price for each contract sold.
+
+A cash-secured put strategy can still expose an investor to substantial risk if the price falls to zero. However, unlike with a naked put, an investor using a cash-secured put strategy has the cash held to buy the stock. These investors often seek assignment in order to acquire shares of a stock at a lower price, in addition to generating income.
+
+For a cash-secured put, sellers choose a put that is at- or out-of-the-money, such as one with a lower strike price than the current stock price.
+
+As mentioned above, selling cash-secured puts is a neutral to moderately bullish options trading strategy that involves selling a put option with the expectation that it will either expire worthless or the underlying security temporarily drops in price, providing an opportunity for the seller to purchase the security at the lower price. In many cases, the seller hopes the stock will dip just enough for the option to be exercised, allowing them to buy the stock at a lower cost.
+
+Example of a Cash-Secured Put
+
+The main goal in employing a cash-secured put trading strategy is typically to generate income while gaining the ability to buy stock if it drops to the strike price of the option sold. If, for example, you had cash to buy 100 shares of Company X stock and were looking for ways to pursue additional income, while waiting for its price to drop slightly, you might consider selling a cash-secured put.
+
+Heres what that might look like in practice:
+
+You have $640 you would like to invest in 100 shares of Company X stock. Company X is currently trading at $6.00. You could buy the stock, but to generate a little extra money, you decide to sell the put option with a $0.08-per-share premium at a strike price of $6.00 and 9 days to expiration. Since standard options contracts typically represent 100 shares, you receive a total of $8 for the option. To secure the put for potential assignment, you set aside $600 for the duration of the option contract.
+
+Lets say that Company X stocks price only falls to $6.10, so it expires worthless. In this scenario, youve earned a total of $8 by selling the cash-secured put option and you still have the cash to buy the stock at the current market price.
+
+Max profit: The ideal outcome in this strategy is that Company X stocks price drops to the strike price of $6.00. In that scenario, you have the cash to buy the stock at the strike price ($600) and you get the $8 premium.
+
+Max loss: The main risk from selling a cash-secured put is that the stock price may drop to lower than the strike price. In this scenario, lets assume the stock price drops to $5.50. The put option will be exercised and you will need to purchase 100 shares of the stock for $600. The 100 shares of stock will only be worth $550 if you were to sell it. Your loss is $50 ($600 - $550). This risk is slightly offset by the $8 collected by selling the option.
+
+In a worst case scenario, the stock price could move to $0 and you could lose the entire stock value, while keeping the $8 premium you received by selling the cash-secured put. If your long term outlook on the stock was positive, then you may still be OK holding the stock at this lower price level. If you only purchased the stock to support the cash-secured put strategy, this loss would be realized as a loss of the capital invested.
+
+Break even: If the stock price drops below the strike price by the amount of the premium, the investor breaks even on the trade. In this scenario $5.92 ($6.00 - $0.08) is the break-even stock price.
+
+Income generated: When selling a cash-secured put, the premium received is income to the portfolio. In this scenario, the income generated is the premium of $8, which is realized at the time the put is sold.
+
+Upside risk: If the investor was intending to buy the stock for their portfolio and decides to sell a cash-secured put as their strategy, they would miss out on large stock price increases. In this scenario, the profit is limited to the premium received.
+
+Recommended: How to Sell Options for Premium
+
+How to Sell a Cash-Secured Put: a Step-by-Step Example
+
+A cash-secured put strategy consists of a defined sequence of steps that combine holding (or depositing) enough cash to buy the stock at the strike price while also selling a put option against it. Here is how to implement the strategy in a way that may help you generate additional income from cash holdings.
+
+Step 1: Hold Enough Cash to Buy at Least 100 Shares of the Underlying Stock
+
+First, you need to ensure that you have enough cash held to buy at least 100 shares of the stock you intend to write the put option upon. This minimum is required since options contracts typically represent 100 shares of the underlying security. Holding this cash is what secures your obligation if the put buyer decides to exercise the option.
+
+Step 2: Sell-to-Open One Put Option Contract
+
+Once you hold the required cash, you place a sell-to-open order for a put option against that cash. This creates an obligation for you to buy 100 shares for each put contract sold at the specified strike price if the option buyer chooses to exercise the contract.
+
+Step 3: Choose a Strike Price and Expiration Date
+
+Selecting the strike price and the expiration date is a key decision in cash-secured put writing.
+
+
+  
+    Strike price: Choose a price below the current market price if you want to be able retain some additional potential profit while collecting premium.
+    Expiration date: Shorter expirations (e.g., 30–60 days) can offer frequent income opportunities, but may require more active management. Longer expirations typically provide higher premiums but may tie up your cash longer.
+  
+
+
+Both choices depend on your outlook for the stock and your income goals.
+
+Step 4: Collect the Premium
+
+After submitting the sell-to-open order, youll receive the option premium — the cash payment from the buyer of the put option. This premium is yours to keep regardless of whether the option is exercised. It effectively pays you to keep your cash on hold during the period you wrote the put.
+
+Step 5: Manage the Outcome at Expiration
+
+When the put option approaches expiration, there are a few possible outcomes:
+
+
+  
+    Option expires worthless: If the stock stays above the strike price, the option likely expires worthless and you keep both your cash and the premium.
+    Option is exercised: If the stock price falls below the strike price, the buyer may exercise the option. You would then buy shares at the strike price and still keep the premium received.
+    Rolling the option: Some investors choose to buy back the expiring put and sell a new one with a later expiration or different strike price if they want to continue generating income without using their cash.
+  
+
+
+Key Decisions When Selling Cash-Secured Puts
+
+There are a number of factors that could influence the value of an option. When writing a cash-secured put and choosing the contracts strike price and expiration, its important to understand the fundamentals of how options are priced.
+
+Basic Options Valuation
+
+When determining an options strike price and expiration, its helpful to break down an options value into two main value buckets: intrinsic value and extrinsic value. An options price is the sum of its intrinsic value and extrinsic value:
+
+
+  
+    Options Price = Intrinsic Value + Extrinsic Value
+  
+
+An options intrinsic value is the tangible value that would be realized if it was exercised in the current moment. For a put option, it is the difference between the options strike price and the current price of the options underlying stock price.
+
+
+  
+    Put Option Intrinsic Value = Strike Price - Current Price of the Underlying Stock
+  
+
+An options extrinsic value is the difference between its market value (or premium) and intrinsic value.
+
+
+  
+    Put Option Extrinsic Value = Option Market Value - Intrinsic Value
+  
+
+An options estimated market value is influenced by its time until expiration and the anticipated volatility of the stock price between now and expiration.
+
+As the time until expiration decreases, the time value of the option will decay since there is less time for the stocks price to potentially move below the strike and make the put option in the money. This concept is called time decay. In a cash-secured put, the writer typically wants the options time value to decay to zero so they are able to keep the full premium.
+
+One other thing to note is that the closer the strike is to the current stock price, the more extrinsic value there will be in the option. This is because the option requires a smaller stock price movement to become in the money.
+
+As with any trade, the decision comes down to a risk vs. reward tradeoff. The reward is the amount of premium that will be collected and the risk is the likelihood that the stock price will go below the strike price (minus the value of the premium collected) in the days leading up until expiration.
+
+Choosing a Strike Price
+
+In terms of the strike price, there are a few potential considerations an investor might evaluate. Typically, the investor would sell an out-of-the-money put to give the stock price room to move downward before they would be obligated to buy it.
+
+
+  
+    The investor should generally be aware that as an options strike price becomes further away from the current stock price, there will be a smaller chance that the option may expire in the money, thus reducing that options value (the premium that could be received when selling the option contract).
+    The investor might have a target price where they would be willing to buy the stock if it reached that level. Using this price as the strike price would meet that target.
+    The investor might have a feel for the range of prices they believe the stock will stay between based on historical pricing, fundamentals, upcoming events, or other insights.
+    The investor might not want to sell a put that is already in the money unless they have a belief that the stock price will go up before expiration, or if they are willing to buy the stock at a loss to the current stock price in order to collect more premium than an out-of-the-money put would provide.
+  
+
+
+Choosing an Expiration
+
+In terms of the expiration date, there are also a few potential considerations an investor might evaluate. Typically, the investor would sell a put that is between 15-60 days from expiration to balance the tradeoff between premium received vs. the time and volatility value or amount of time for the stock price to move.
+
+
+  
+    The investor should generally be aware that as the expiration becomes further into the future, there will be more time for the stock price to move. That will typically translate into an increased option value or premium that could be received when selling the contract.
+    Its possible that short duration contracts may not yield enough premium income to overcome the risk of a quick, unexpected stock price movement.
+    The investor might not want to have the prolonged exposure of a long-duration covered call, or they may notice that there is a diminishing return value for selling option contracts that expire too far into the future.
+    The investor might know that an event is coming up and want to ensure their covered call is not exposed to the potential price movement from that event.
+  
+
+
+Final Decision and Selling the Put
+
+In practice, the cash-secured put writer will want to look at the options chain to see the tradeoffs between the amount of premium they can receive or the potential reward for the risk associated with trading an option with a particular strike and expiration. The investor will use these inputs along with the other objectives they have for their portfolio and choose a put to sell.
+
+When selling a cash-secured put, note that you will be able to sell one put when holding enough cash to buy 100 shares of stock in your portfolio. In order to keep the strategy balanced, you can either hold or deposit more cash and sell more cash-secured puts or sell less cash-secured puts.
+
+&#128161; Quick Tip: When selling an option on SoFis option trading platform, the SoFi app will guide you through the process and let you know if you are trying to sell more puts than you have the cash to cover.
+
+What Are the Risks and Rewards of Cash-Secured Puts?
+
+Using a cash-secured put strategy could serve specific purposes for income generation or improving market entry price. As with any trading strategy, investors need to keep in mind that cash-secured put gains (along with any other gains or losses realized by the strategy) are subject to capital gains taxes.
+
+Here are several pros and cons of the covered call strategy to consider.
+
+Potential Rewards
+
+There are a few potential key rewards associated with cash-secured puts:
+
+
+  
+    Investors can earn income by keeping the premiums they collect from selling the options contracts. Depending on how often they sell cash-secured puts, this can lead to recurring income opportunities.
+    Investors can determine an adequate and potentially discounted purchase price for the stocks they would purchase and use that for the strike of the put option to be sold. If the option is exercised, an investor will realize their intended stock purchase price from the sale (as well as the premium).
+    The premium the investor receives for the sold put will help offset a potential decline in a stocks price. This provides limited downside protection, though losses can still occur. The losses, however, may be less than if the stock were purchased directly, given the limited cushion provided by the premium.
+    Cash-secured puts may be permitted in certain IRA accounts, subject to account eligibility and approval requirements.
+  
+
+
+Potential Risks
+
+There are also a few drawbacks to using a cash-secured put strategy:
+
+
+  
+    If the stock price falls below the strike price, the investor will experience a loss in their equity holding value after being assigned and buying the stock at the strike price. Cash-secured puts expose an investor to potential substantial losses if the stock price drops to 0 that are equal to the strike price minus the premium received. This is an inherent trade-off of the strategy that was described above.
+    Investors that sell cash-secured puts must accept the obligation to buy the stock at the strike price if the buyer exercises the option.
+    Although, using cash-secured puts provides income from the premiums received from selling the put option. The cash used to secure the put is restricted from withdrawal unless they buy back the put option. This limits the investors flexibility to respond to price movements. (Be aware that unsecured, short puts present too much risk in SoFi member portfolios and are not allowed.)
+    Investors could forgo upside if a stocks price rises and they were intending to purchase the stock.
+  
+
+
+The Takeaway
+
+A cash-secured put may be attractive to some investors as its a way to generate additional income from cash that is being held on a platform. If an investor expects a small dip in the stock price, cash-secured puts are one possible way to generate income while an investor waits for a stock to drop to their desired entry price. That said, as with all trading strategies, outcomes may vary based on market conditions and timing. There are no guarantees, and the strategy involves trade-offs between income potential and downside risk.
+
+
+
+
+
+
+
+FAQ
+
+Are cash-secured puts free money?
+
+Cash-secured puts are not free money. They can generate income from the premiums received for the cash-secured put, but they can also expose the investor to downside risk if the stocks value decreases significantly or the option is exercised when the price falls below the strike.
+
+Are cash-secured puts profitable?
+
+Cash-secured puts can allow you to generate income, but results depend on the performance of the underlying stock and the terms of the option contract. If the option expires unexercised, the seller keeps the premium and their cash. The strategy tends to work best in neutral to moderately bullish markets, and profitability may depend on strike price and expiration the seller has chosen.
+
+What happens when a cash-secured put expires?
+
+If a cash-secured put expires without being exercised, nothing happens: the option just expires worthless. The seller keeps the premium received, which is a benefit of the strategy. Because an option is only that — an option to execute a trade at a predetermined price for a select period of time — if the stock price remains above the strike price the option will expire worthless.
+
+If the stock price goes below the strike price, the options buyer will exercise the option. This obligates the option writer to buy the stock at the strike price. This technically happens the evening of expiration and on the following trading day, the cash-secured put seller will use the secured cash to purchase the stock and the option position will no longer exist. With this stock position, the investor can choose to sell or hold the stock.
+
+Do you need 100 shares of stock for cash-secured puts?
+
+No. Unlike a covered call option, the investor does not have to hold stock. Instead, they need to hold cash to secure the put option that they are selling. You can easily calculate the amount of cash you need to hold to secure a put by multiplying the strike price for the put option that you are choosing to sell by 100.
+
+What is better, cash-secured puts or covered calls?
+
+It is difficult to say which strategy will generally be better for an investor. If an investor wants to hold a stock position because they believe it is beneficial to their portfolio to hold the stock, then a covered call option makes the most sense.
+
+Conversely, if the investor prefers to hold cash in their portfolio and is willing to purchase the stock at the strike price where they are selling the put, then a cash-secured put option makes the most sense.
+
+As with all investing, the strategy that the investor employs should align with their outlook for the marketplace.
+
+What are good stocks for cash-secure puts?
+
+Generally speaking, the cash-secured put strategy works well for stocks where the investor has a neutral to slightly bullish outlook. If their outlook hypothesis holds, then they will get to collect the premium they have sold.
+
+If an investor has a slightly bearish outlook in the short term, but an overall bullish outlook, then a cash-secured put may also be a good strategy for them to consider.
+
+
+
+
+
+
+
+
+
+SOIN-Q226-066",
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://d32ijn7u0aqfv4.cloudfront.net/wp/wp-content/uploads/raw/SOIN1021456_1560x880_desktop.jpg",
+        "height": 1560,
+        "width": 880
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Laurel Tincher", 
+"sameAs": ["https://laureltincher.com/"," https://www.linkedin.com/in/laureltincher/"],
+        "url": "https://www.sofi.com/learn/authors/laurel-tincher/",
+        "description": "Laurel Tincher is an entrepreneur and investor with a passion for climate solutions, emerging industries, and storytelling. With experience spanning climate tech, blockchain, event production, and other industries, she is known for her creative and forward-thinking approach to problem-solving and strategic investments. Based in Los Angeles, Laurel is dedicated to making a positive impact while building innovative projects.",
+        "image": "https://www.sofi.com/learn/s3uswest2://sofi-wordpress-prod/wp/wp-content/uploads/raw/Laurel-Tincher-96x96.jpg"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "SoFi",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://d32ijn7u0aqfv4.cloudfront.net/wp/wp-content/uploads/20180912134202/sofi_logo1.png",
+          "width": 140,
+          "height": 49
+        }
+      },
+      "datePublished": "2026-05-18T09:00:17-07:00",
+      "dateModified": "2026-05-20T09:15:45-07:00",
+      "description": "Cash-secured puts are an options strategy where the investor collects a premium by selling a put while setting aside enough cash to buy the stock if assigned. Learn more."
+    }
+    </script>
+  <script src="https://public.flourish.studio/resources/embed.js"></script><noscript>&lt;img src="https://public.flourish.studio/story/2936531/thumbnail" width="100%" alt="visualization" /&gt;</noscript>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [{
+    "@type": "Question",
+    "name": "What’s the Difference Between a Put and a Cash-Secured Put?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "There are essentially two main types of puts for option sellers: Naked puts and cash-secured puts."
+    }
+  },{
+    "@type": "Question",
+    "name": "What Are the Risks and Rewards of Cash-Secured Puts?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Using a cash-secured put strategy could serve specific purposes for income generation or improving market entry price. As with any trading strategy, investors need to keep in mind that cash-secured put gains (along with any other gains or losses realized by the strategy) are subject to capital gains taxes."
+    }
+  },{
+    "@type": "Question",
+    "name": "Are cash-secured puts free money?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Cash-secured puts are not “free money.” They can generate income from the premiums received for the cash-secured put, but they can also expose the investor to downside risk if the stock’s value decreases significantly or the option is exercised when the price falls below the strike."
+    }
+  },{
+    "@type": "Question",
+    "name": "Are cash-secured puts profitable?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Cash-secured puts can allow you to generate income, but results depend on the performance of the underlying stock and the terms of the option contract. If the option expires unexercised, the seller keeps the premium and their cash. The strategy tends to work best in neutral to moderately bullish markets, and profitability may depend on strike price and expiration the seller has chosen."
+    }
+  },{
+    "@type": "Question",
+    "name": "What happens when a cash-secured put expires?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "If a cash-secured put expires without being exercised, nothing happens: the option just expires worthless. The seller keeps the premium received, which is a benefit of the strategy. Because an option is only that — an option to execute a trade at a predetermined price for a select period of time — if the stock price remains above the strike price the option will expire worthless.
+
+If the stock price goes below the strike price, the option’s buyer will exercise the option. This obligates the option writer to buy the stock at the strike price. This technically happens the evening of expiration and on the following trading day, the cash-secured put seller will use the secured cash to purchase the stock and the option position will no longer exist. With this stock position, the investor can choose to sell or hold the stock."
+    }
+  },{
+    "@type": "Question",
+    "name": "Do you need 100 shares of stock for cash-secured puts?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. Unlike a covered call option, the investor does not have to hold stock. Instead, they need to hold cash to secure the put option that they are selling. You can easily calculate the amount of cash you need to hold to secure a put by multiplying the strike price for the put option that you are choosing to sell by 100."
+    }
+  },{
+    "@type": "Question",
+    "name": "What is better, cash-secured puts or covered calls?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "It is difficult to say which strategy will generally be better for an investor. If an investor wants to hold a stock position because they believe it is beneficial to their portfolio to hold the stock, then a covered call option makes the most sense.
+
+Conversely, if the investor prefers to hold cash in their portfolio and is willing to purchase the stock at the strike price where they are selling the put, then a cash-secured put option makes the most sense.
+
+As with all investing, the strategy that the investor employs should align with their outlook for the marketplace."
+    }
+  },{
+    "@type": "Question",
+    "name": "What are good stocks for cash-secure puts?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Generally speaking, the cash-secured put strategy works well for stocks where the investor has a neutral to slightly bullish outlook. If their outlook hypothesis holds, then they will get to collect the premium they have sold.
+
+If an investor has a slightly bearish outlook in the short term, but an overall bullish outlook, then a cash-secured put may also be a good strategy for them to consider."
+    }
+  }]
+}
+</script>  <!-- Start VWO Async SmartCode -->
+  <link rel="preconnect" href="https://dev.visualwebsiteoptimizer.com">
+  <script type="text/javascript" id="vwoCode">
+    window._vwo_code || (function() {
+      var account_id=733531,
+        version=2.0,
+        settings_tolerance=2000,
+        hide_element='body',
+        hide_element_style = 'opacity:0 !important;filter:alpha(opacity=0) !important;background:none !important',
+        /* DO NOT EDIT BELOW THIS LINE */
+        f=false,w=window,d=document,v=d.querySelector('#vwoCode'),cK='_vwo_'+account_id+'_settings',cc={};try{var c=JSON.parse(localStorage.getItem('_vwo_'+account_id+'_config'));cc=c&&typeof c==='object'?c:{}}catch(e){}var stT=cc.stT==='session'?w.sessionStorage:w.localStorage;code={use_existing_jquery:function(){return typeof use_existing_jquery!=='undefined'?use_existing_jquery:undefined},library_tolerance:function(){return typeof library_tolerance!=='undefined'?library_tolerance:undefined},settings_tolerance:function(){return cc.sT||settings_tolerance},hide_element_style:function(){return'{'+(cc.hES||hide_element_style)+'}'},hide_element:function(){return typeof cc.hE==='string'?cc.hE:hide_element},getVersion:function(){return version},finish:function(){if(!f){f=true;var e=d.getElementById('_vis_opt_path_hides');if(e)e.parentNode.removeChild(e)}},finished:function(){return f},load:function(e){var t=this.getSettings(),n=d.createElement('script'),i=this;if(t){n.textContent=t;d.getElementsByTagName('head')[0].appendChild(n);if(!w.VWO||VWO.caE){stT.removeItem(cK);i.load(e)}}else{n.fetchPriority='high';n.src=e;n.type='text/javascript';n.onerror=function(){_vwo_code.finish()};d.getElementsByTagName('head')[0].appendChild(n)}},getSettings:function(){try{var e=stT.getItem(cK);if(!e){return}e=JSON.parse(e);if(Date.now()>e.e){stT.removeItem(cK);return}return e.s}catch(e){return}},init:function(){if(d.URL.indexOf('__vwo_disable__')>-1)return;var e=this.settings_tolerance();w._vwo_settings_timer=setTimeout(function(){_vwo_code.finish();stT.removeItem(cK)},e);var t=d.currentScript,n=d.createElement('style'),i=this.hide_element(),r=t&&!t.async&&i?i+this.hide_element_style():'',c=d.getElementsByTagName('head')[0];n.setAttribute('id','_vis_opt_path_hides');v&&n.setAttribute('nonce',v.nonce);n.setAttribute('type','text/css');if(n.styleSheet)n.styleSheet.cssText=r;else n.appendChild(d.createTextNode(r));c.appendChild(n);this.load('https://dev.visualwebsiteoptimizer.com/j.php?a='+account_id+'&u='+encodeURIComponent(d.URL)+'&vn='+version)}};w._vwo_code=code;code.init();})();
+  </script>
+  <!-- End VWO Async SmartCode -->
+  		<style type="text/css" id="wp-custom-css">
+			.constrain-content a:link {
+    text-decoration-line: underline;
+}		</style>
+		  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1">
+      <meta property="og:image" content="https://d32ijn7u0aqfv4.cloudfront.net/wp/wp-content/uploads/raw/SOIN1021456_1560x880_desktop.jpg">
+  
+  <!-- DO NOT preload too many fonts. Preloading comes at the render time sacrifice. -->
+  <link rel="preload" href="https://d32ijn7u0aqfv4.cloudfront.net/assets/fonts/TTNorms.woff2" as="font" type="font/woff2" crossorigin="">
+  <link rel="preload" href="https://d32ijn7u0aqfv4.cloudfront.net/assets/fonts/TTNorms-bold.woff2" as="font" type="font/woff2" crossorigin="">
+<script src="https://d32ijn7u0aqfv4.cloudfront.net/libraries/bower_components/webcomponentsjs/v2/webcomponents-lite.js"></script><link href="https://d32ijn7u0aqfv4.cloudfront.net/libraries/corporate-polymer-library/master-1793/rc-es5-bundled/cpl-shell.html"><link href="https://d32ijn7u0aqfv4.cloudfront.net/libraries/corporate-polymer-library/master-1793/rc-es5-bundled/cpl-rc-core.html"><script src="https://dev.visualwebsiteoptimizer.com/j.php?a=733531&amp;u=https%3A%2F%2Fwww.sofi.com%2Flearn%2Fcontent%2Fcash-secured-put%2F&amp;vn=2" type="text/javascript"></script><script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script></head>
+
+<body class="wp-singular post-template-default single single-post postid-73450 single-format-standard wp-theme-sofi-v4 l-body-max-page-width post-cash-secured-put"><form></form><form></form><iframe></iframe><img src="/measure/pixel/refer?referrer=undefined"><script src="https://ws.audioeye.com/ae.js" type="text/javascript" async=""></script></body></html>

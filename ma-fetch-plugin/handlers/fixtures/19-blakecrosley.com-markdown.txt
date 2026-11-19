@@ -1,0 +1,953 @@
+[Skip to content](#main)
+
+  
+  
+
+    
+    
+
+      
+
+        
+
+          [Blake Crosley](/)
+        
+
+        
+
+          
+          
+            English
+            
+              
+            
+          
+          
+            
+              
+              
+              
+            
+          
+        
+
+        
+
+          [About](/about)
+          [Work](/#work)
+          [Writing](/writing)
+          [Guides](/guides)
+          [Contact](/#contact)
+        
+
+        
+
+  
+  
+    English
+    
+      
+    
+  
+
+  
+  
+- [English](/blog/tvos-focus-engine-swiftui)
+- [简体中文](/zh-Hans/blog/tvos-focus-engine-swiftui)
+- [繁體中文](/zh-Hant/blog/tvos-focus-engine-swiftui)
+- [Français](/fr/blog/tvos-focus-engine-swiftui)
+- [Deutsch](/de/blog/tvos-focus-engine-swiftui)
+- [日本語](/ja/blog/tvos-focus-engine-swiftui)
+- [한국어](/ko/blog/tvos-focus-engine-swiftui)
+- [Polski](/pl/blog/tvos-focus-engine-swiftui)
+- [Português](/pt-BR/blog/tvos-focus-engine-swiftui)
+- [Español](/es/blog/tvos-focus-engine-swiftui)
+
+      
+    
+
+    
+    
+
+      
+
+        [About](/about)
+        [Work](/#work)
+        [Writing](/writing)
+        [Guides](/guides)
+        [Contact](/#contact)
+      
+    
+
+    
+    
+
+      
+[English](/blog/tvos-focus-engine-swiftui)[简体中文](/zh-Hans/blog/tvos-focus-engine-swiftui)[繁體中文](/zh-Hant/blog/tvos-focus-engine-swiftui)[Français](/fr/blog/tvos-focus-engine-swiftui)[Deutsch](/de/blog/tvos-focus-engine-swiftui)[日本語](/ja/blog/tvos-focus-engine-swiftui)[한국어](/ko/blog/tvos-focus-engine-swiftui)[Polski](/pl/blog/tvos-focus-engine-swiftui)[Português](/pt-BR/blog/tvos-focus-engine-swiftui)[Español](/es/blog/tvos-focus-engine-swiftui)
+    
+  
+
+  
+  
+
+    
+
+  
+
+    
+
+      
+
+        
+
+          1. [Home](/)
+
+          1. [Writing](/writing)
+
+          
+          1. [Design Engineering](/writing/design-engineering)
+
+          
+          
+          1. [Apple Ecosystem Series](/writing/series/apple-ecosystem)
+
+          
+          1. tvOS Focus Engine: SwiftUI Patterns for the Siri Remote
+
+        
+
+      
+      
+# tvOS Focus Engine: SwiftUI Patterns for the Siri Remote
+
+      
+
+        May 02, 2026
+        12 min read
+        
+      
+      
+      
+
+        
+        tvos
+        
+        swiftui
+        
+        apple-tv
+        
+        focus-engine
+        
+        siri-remote
+        
+        accessibility
+        
+      
+      
+    
+
+    
+    
+    
+
+    
+
+      
+Apple TV is the only Apple platform without a touch surface. The user navigates by directional swipes and button presses on the Siri Remote, and every interaction goes through the focus engine: a system that decides which element receives focus next based on geometry, hierarchy, and the developer’s declared focus structure[1](#fn:1). SwiftUI on tvOS exposes a focused (forgive the pun) vocabulary for working with the engine: `.focusable`, `@FocusState`, `.focused`, `.focusSection`, `.prefersDefaultFocus`, and `.focusEffectDisabled`. Apps that adopt the vocabulary feel native; apps that fight it produce the experience of a remote that refuses to navigate where the user expects.
+
+The post walks the focus engine API surface with the patterns that ship. The frame is “what the engine assumes and how SwiftUI lets you cooperate,” because focus design that works on iOS through tap-and-scroll often fails on tvOS, and the cluster’s [Apple Platform Matrix](/blog/apple-platform-matrix) post argued that tvOS earns its slot only with focus-aware UI.
+
+**TL;DR**
+
+- The focus engine resolves focus by geometry: it picks the closest focusable view in the swipe direction[1](#fn:1). Apps cooperate by declaring focusable views, focus sections, and default-focus targets.
+
+- `@FocusState` (with `.focused(_:equals:)`) is the SwiftUI primitive for programmatic focus control. The same property wrapper works on iOS, macOS, watchOS, and tvOS, but tvOS is where it earns its keep[2](#fn:2).
+
+- `.focusSection()` groups multiple focusable views into a single focus target for between-section navigation, then lets the engine pick within the section[3](#fn:3). Use it for button rows, card grids, sidebar sections.
+
+- `.prefersDefaultFocus(_:in:)` declares which view receives focus when the user enters a context (a screen, a popover, a tab). Pair with `@Namespace` to scope the default[4](#fn:4).
+
+- The system focus effect (the highlight that grows around the focused view) is automatic. Disable it with `.focusEffectDisabled()` only when implementing a custom focus visual; otherwise the platform-native effect is the right one.
+
+## How The Focus Engine Decides
+
+The focus engine processes swipe input from the Siri Remote and resolves “where does focus go next?” through a hierarchical search[1](#fn:1):
+
+1. Read the swipe direction (up, down, left, right).
+
+1. Within the current focus context, find focusable views whose frames are in that direction relative to the currently-focused view.
+
+1. Pick the geometrically-closest one along the swipe axis (with a small bias toward staying aligned with the current view’s center).
+
+1. If no focusable view is in that direction, the swipe is consumed without moving focus.
+
+The implication: the visual layout of focusable views matters as much as their logical hierarchy. Two buttons offset diagonally produce ambiguous navigation; two buttons aligned vertically produce predictable up/down. The HIG-recommended pattern for grids and lists is alignment first, decoration second.
+
+Apps participate in the engine through SwiftUI’s focus modifiers. The default behavior is that views with explicit interactive intent (`Button`, `NavigationLink`, `TextField`) are focusable; static views (`Text`, `Image`, container views like `VStack`) are not.
+
+## Making Custom Views Focusable
+
+The `.focusable()` modifier marks a view as a focus target[5](#fn:5). The optional Boolean parameter conditions the focusability:
+
+```
+`struct PosterCard: View {
+    let movie: Movie
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        VStack {
+            Image(movie.posterName)
+                .resizable()
+                .aspectRatio(2/3, contentMode: .fit)
+            Text(movie.title)
+                .font(.headline)
+        }
+        .focusable(true)
+        .focused($isFocused)
+        .scaleEffect(isFocused ? 1.1 : 1.0)
+        .animation(.spring(), value: isFocused)
+    }
+}
+`
+```
+
+The view becomes a focus target the engine can land on. The pattern is right for clickable cards, custom buttons, and any composite view that should accept the user’s attention. Without `.focusable()`, the cluster of `Image` + `Text` would be skipped by the engine.
+
+## `@FocusState` and `.focused(_:equals:)` for Programmatic Control
+
+When the app needs to *direct* focus (after a navigation transition, after a search submit, after dismissing a modal), `@FocusState` is the SwiftUI primitive[2](#fn:2):
+
+```
+`struct LoginView: View {
+    enum Field { case username, password, submit }
+    @FocusState private var focusedField: Field?
+    @State private var username = ""
+    @State private var password = ""
+
+    var body: some View {
+        VStack {
+            TextField("Username", text: $username)
+                .focused($focusedField, equals: .username)
+
+            SecureField("Password", text: $password)
+                .focused($focusedField, equals: .password)
+
+            Button("Sign In") { /* ... */ }
+                .focused($focusedField, equals: .submit)
+        }
+        .onAppear {
+            focusedField = .username
+        }
+    }
+}
+`
+```
+
+The `@FocusState` enum value tracks which field is focused; assigning a new value programmatically moves focus to the corresponding view. The `Hashable` enum case is the convention; multiple fields with the same case value would be ambiguous.
+
+For a single focusable view, `@FocusState var isFocused: Bool` plus `.focused($isFocused)` is the simpler form. The Boolean variant is right when the question is “is *this view* focused?”; the enum variant is right for “which view in this set?”.
+
+## `.focusSection()` For Grouping
+
+Without `.focusSection()`, every focusable view participates in the engine’s geometric search at the same level. With it, a container becomes a focus group: navigation to/from the section is one decision, navigation within the section is another[3](#fn:3). Note that `.focusSection()` is tvOS- and macOS-only; it has no effect on iOS, iPadOS, watchOS, or visionOS.
+
+```
+`HStack {
+    VStack {
+        Button("Settings") { ... }
+        Button("Profile") { ... }
+        Button("Logout") { ... }
+    }
+    .focusSection()
+
+    VStack {
+        ContentList(items: items)
+    }
+    .focusSection()
+}
+`
+```
+
+The two `VStack`s become navigable as units. The user swipes right from the sidebar to land in the content area; once there, the engine handles within-area navigation. Without `.focusSection()`, swipes from a sidebar button might land on an arbitrary content item that happens to be geometrically closest, producing UX that feels random.
+
+The right pattern: every UI region with internal focus structure (sidebars, card grids, tab bars, pagination controls) gets a `.focusSection()` modifier on its container. The engine then navigates between sections at the macro level and within sections at the micro level.
+
+## `.prefersDefaultFocus(_:in:)` For Initial Focus
+
+When a screen appears or a popover opens, *something* needs initial focus. Without explicit guidance, the engine picks the first focusable view in the layout, which is often wrong (the back button instead of the primary action, an obscure list cell instead of the play button)[4](#fn:4).
+
+```
+`struct MovieDetailView: View {
+    let movie: Movie
+    @Namespace private var detailNamespace
+
+    var body: some View {
+        VStack {
+            HStack {
+                Button("Back") { ... }
+                Spacer()
+            }
+
+            PosterImage(movie: movie)
+
+            Button("Play") { ... }
+                .prefersDefaultFocus(in: detailNamespace)
+
+            Button("Add to Watchlist") { ... }
+        }
+        .focusScope(detailNamespace)
+    }
+}
+`
+```
+
+The `@Namespace` plus `.focusScope()` defines the focus boundary, and `.prefersDefaultFocus(in:)` declares the preferred initial focus within that scope. When the screen appears, focus lands on Play.
+
+The pattern is the right one for any view that the user enters with an obvious “what to do first” expectation: Play on a movie detail page, Sign In on a login screen, Get Started on an onboarding screen.
+
+## Custom Focus Effects (And When To Disable The Default)
+
+The system focus effect is the soft-edged glow that grows around a focused view. It scales the view slightly, adds a subtle shadow, and animates with the platform’s standard timing. For most apps, the default is correct; it matches every other tvOS app and lets users learn the platform’s vocabulary.
+
+For apps that need a custom focus visual (a brand-specific glow, a content-aware effect, a focus ring that conflicts with the default), `.focusEffectDisabled()` opts out of the system treatment[6](#fn:6):
+
+```
+`Button {
+    play(movie)
+} label: {
+    PosterImage(movie: movie)
+        .overlay(focusBorder)
+        .scaleEffect(isFocused ? 1.05 : 1.0)
+}
+.focusEffectDisabled()
+.focused($isFocused)
+`
+```
+
+The custom view is responsible for indicating focus visually; the system no longer interferes. The trade-off: every focus visual must be designed and implemented by the app rather than inherited. For most apps, the system effect is the right choice.
+
+## Common tvOS Focus Failures
+
+Three patterns that produce poor tvOS UX:
+
+**Buttons that don’t accept focus.** A custom button rendered as `HStack { Image; Text }` without `.focusable()` is invisible to the engine. The Siri Remote’s swipes skip it. Fix: wrap interactive content in `Button` (which provides focus participation by default) or apply `.focusable()` explicitly.
+
+**Focus traps.** A view that accepts focus but provides no path out (no left/right/up/down sibling that’s focusable, no escape via Menu button) leaves the user stuck. Fix: every focus context should have a documented exit path. The `.focusSection()` pattern helps because it gives the engine a unit to escape to.
+
+**Default focus on the wrong element.** A movie detail screen that opens with focus on Back instead of Play is friction the user pays on every visit. Fix: declare `.prefersDefaultFocus(in:)` on the primary action.
+
+**Custom focus effects that aren’t accessible.** A focus ring that’s just a 1pt color border at low contrast fails accessibility. The system focus effect is high-contrast and motion-tested; custom replacements need the same care. The cluster’s [Accessibility as platform](/blog/accessibility-platform-features) post covers the broader principle.
+
+## When tvOS Earns The Slot
+
+The cluster’s [Apple Platform Matrix](/blog/apple-platform-matrix) argued that tvOS is the platform with the smallest install base relative to iOS, and apps need a real “lean back” or “couch-mode” use case to justify the engineering investment. The focus engine is part of that investment: a tvOS app that doesn’t honor the focus vocabulary feels like an iPad app stretched across a TV. The investment is real because the API surface is real; the engineering work is meaningful because the engine actually decides where focus goes.
+
+Apps that earn their tvOS slot tend to share three properties:
+1. **Content consumed at TV-watching distance.** Streaming, photo slideshows, controller-driven games.
+2. **Sparse interaction model.** A few primary actions per screen, navigated with directional input.
+3. **Lean-back use case.** The user is on a couch, possibly multitasking with another device, possibly half-watching.
+
+For apps in those categories, the focus-engine investment is right. For apps that don’t fit (productivity tools, fine-grained creative apps, anything text-input-heavy), the right call is to skip tvOS, as the matrix post recommends.
+
+## What This Pattern Means For tvOS Apps
+
+Three takeaways.
+
+1. **Build focus intent into the layout, not into a post-hoc fix.** Where will the user start? Where can they go from there? What’s the primary action? Designing a screen on tvOS starts with the focus flow, not the visual composition. The visual follows.
+
+1. **Use `.focusSection()` aggressively for any region with internal structure.** The default geometric navigation is often wrong for grids, sidebars, tab bars. The section modifier is small and the difference is large.
+
+1. **Keep the system focus effect unless you have a real reason to replace it.** Custom focus visuals are real engineering work plus accessibility work plus testing across all themes. The system effect is the right default; reach for `.focusEffectDisabled()` only when the design genuinely needs a custom treatment.
+
+The full Apple Ecosystem cluster: typed [App Intents](/blog/app-intents-are-apples-new-api-to-your-app); [MCP servers](/blog/mcp-server-living-alongside-ios-app); the [routing question](/blog/app-intents-vs-mcp-tools-frontier); [Foundation Models](/blog/foundation-models-on-device-llm); the [runtime vs tooling LLM distinction](/blog/foundation-models-agentic-workflow); [three surfaces](/blog/three-surfaces-ios-app); the [single source of truth pattern](/blog/single-source-of-truth-pattern); [Two MCP Servers](/blog/xcode-mcp-claude-code); [hooks for Apple development](/blog/hooks-apple-development); [Live Activities](/blog/live-activities-state-machine); the [watchOS runtime](/blog/watchos-runtime-contract); [SwiftUI internals](/blog/what-swiftui-is-made-of); [RealityKit’s spatial mental model](/blog/realitykit-spatial-mental-model); [SwiftData schema discipline](/blog/swiftdata-schema-discipline); [Liquid Glass patterns](/blog/liquid-glass-swiftui-patterns); [multi-platform shipping](/blog/shipping-swiftui-app-five-apple-platforms); [the platform matrix](/blog/apple-platform-matrix); [Vision framework](/blog/vision-framework-built-in); [Symbol Effects](/blog/symbol-effects-vocabulary); [Core ML inference](/blog/core-ml-on-device-inference); [Writing Tools API](/blog/writing-tools-api-adoption); [Swift Testing](/blog/swift-testing-vs-xctest); [Privacy Manifest](/blog/privacy-manifest-deep-dive); [Accessibility as platform](/blog/accessibility-platform-features); [SF Pro typography](/blog/sf-pro-typography-system); [visionOS spatial patterns](/blog/visionos-spatial-patterns); [Speech framework](/blog/speech-framework-vs-sfspeechrecognizer); [SwiftData migrations](/blog/swiftdata-migrations-guide); [what I refuse to write about](/blog/what-i-refuse-to-write-about). The hub is at the [Apple Ecosystem Series](/writing/series/apple-ecosystem). For broader iOS-with-AI-agents context, see the [iOS Agent Development guide](/guides/ios-agent-development).
+
+## FAQ
+
+### Does `.focusable()` work on iOS?
+
+Yes, but its behavior on iOS targets keyboard and pointer interactions (Bluetooth keyboard, iPadOS pointer, iPad Magic Keyboard), not the focus-engine-driven navigation tvOS uses. The same code can be used cross-platform; the user-facing interaction differs. On tvOS, `.focusable()` is the primary path. On iOS, it’s a supplemental affordance for accessibility.
+
+### What’s the difference between `.focusable()` and `Button`?
+
+`Button` is a higher-level construct that includes focusability, action handling, the system button style, and accessibility traits. `.focusable()` is the low-level marker that just makes a view a focus target. Use `Button` when the view is logically a button; use `.focusable()` when you’re building a custom interactive view (a poster card, a tile in a grid) that doesn’t fit the button mental model.
+
+### Can I have multiple `.prefersDefaultFocus` declarations?
+
+Yes, scoped by `@Namespace`. Each focus scope can have its own preferred default. The pattern is right for nested contexts (a popover within a screen, a tab within a sidebar): each scope picks its own initial focus.
+
+### How do I handle focus in a list with many items?
+
+Lists in SwiftUI are focusable by default; the engine handles up/down navigation through cells automatically. For custom list-like layouts, wrap each cell in a `Button` or apply `.focusable()`, then place the entire list inside a `.focusSection()` so the engine treats the list as a unit relative to other UI regions.
+
+### What does the Menu button do in the focus model?
+
+The Siri Remote’s Menu button is the dismiss/back action across tvOS. It pops the navigation stack, exits modals, returns to the parent context. SwiftUI handles it automatically through `NavigationStack` and standard modal dismissal; apps don’t typically intercept it. For custom dismissal logic, the `onExitCommand` view modifier captures the press.
+
+### How does this relate to the cluster’s other platform posts?
+
+tvOS focus engine is the platform-specific navigation surface, parallel to visionOS’s gaze-and-pinch (covered in [visionOS spatial patterns](/blog/visionos-spatial-patterns)) and iOS’s tap-and-scroll. Each platform has its own input metaphor; the cluster’s [Apple Platform Matrix](/blog/apple-platform-matrix) post argues that platform inclusion requires honoring that metaphor, and the focus engine is what tvOS demands.
+
+## References
+
+---
+
+1. Apple Developer: [App Programming Guide for tvOS, Controlling the User Interface with the Apple TV Remote](https://developer.apple.com/library/archive/documentation/General/Conceptual/AppleTV_PG/WorkingwiththeAppleTVRemote.html). The focus engine model and the geometric resolution rules. [↩](#fnref:1)[↩](#fnref2:1)[↩](#fnref3:1)
+
+1. Apple Developer Documentation: [`@FocusState`](https://developer.apple.com/documentation/swiftui/focusstate). The property wrapper for tracking and programmatically directing focus across SwiftUI platforms. [↩](#fnref:2)[↩](#fnref2:2)
+
+1. Apple Developer Documentation: [`focusSection()`](https://developer.apple.com/documentation/swiftui/view/focussection()). The view modifier that groups focusable descendants into a single focus target for between-section navigation. [↩](#fnref:3)[↩](#fnref2:3)
+
+1. Apple Developer Documentation: [`prefersDefaultFocus(_:in:)`](https://developer.apple.com/documentation/swiftui/view/prefersdefaultfocus(_:in:)) and [`focusScope(_:)`](https://developer.apple.com/documentation/swiftui/view/focusscope(_:)). The default-focus declaration paired with namespace-scoped focus boundaries. [↩](#fnref:4)[↩](#fnref2:4)
+
+1. Apple Developer Documentation: [`focusable(_:)`](https://developer.apple.com/documentation/swiftui/view/focusable(_:)). The view modifier marking a view as a focus target with optional conditional Boolean. [↩](#fnref:5)
+
+1. Apple Developer Documentation: [`focusEffectDisabled(_:)`](https://developer.apple.com/documentation/swiftui/view/focuseffectdisabled(_:)). The opt-out for the system focus effect (Bool default `true`); pair with custom focus visuals when needed. [↩](#fnref:6)
+
+    
+
+    
+
+    
+    
+    
+
+  
+## Apple Ecosystem Series
+
+  
+
+    [Series Hub
+      5 essays on shipping SwiftUI apps across Apple platforms in 2026 — App Intents, MCP, Liquid Glass, multi-platform, HealthKit.](/writing/series/apple-ecosystem)
+    
+    
+    
+    [App Intents
+      Apple's typed API for system AI on Siri, Spotlight, and Apple Intelligence](/blog/app-intents-are-apples-new-api-to-your-app)
+    
+    
+    
+    [MCP Server Alongside iOS
+      Get Bananas exposed to Claude Desktop and Apple Intelligence via iCloud Drive](/blog/mcp-server-living-alongside-ios-app)
+    
+    
+    
+    [Liquid Glass Patterns
+      Three patterns from Return: glass on text, mirror reflection, HUD overlays](/blog/liquid-glass-swiftui-patterns)
+    
+    
+    
+    [Five Platforms, Three Shared Files
+      How Return ships across iPhone, iPad, Mac, Watch, and Apple TV](/blog/shipping-swiftui-app-five-apple-platforms)
+    
+    
+    
+    [HealthKit Patterns on iOS 26
+      Authorization, sample types, and the trap that locks users out](/blog/healthkit-swiftui-patterns-ios-26)
+    
+    
+  
+
+    
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+## Apple Ecosystem
+    Post 27 of 42
+
+  
+
+    
+    
+    
+    
+    1. [App Intents Are Apple's New API to Your App](/blog/app-intents-are-apples-new-api-to-your-app)
+
+    
+    
+    
+    
+    1. [HealthKit + SwiftUI on iOS 26: Authorization, Sample Types, and Cross-Platform Patterns](/blog/healthkit-swiftui-patterns-ios-26)
+
+    
+    
+    
+    
+    1. [Liquid Glass in SwiftUI: Three Patterns From Shipping Return on iOS 26](/blog/liquid-glass-swiftui-patterns)
+
+    
+    
+    
+    
+    1. [MCP Server Alongside an iOS App: Two Agent Ecosystems, One List](/blog/mcp-server-living-alongside-ios-app)
+
+    
+    
+    
+    
+    1. [Five Apple Platforms, Three Shared Files: How Return Actually Ships Cross-Platform SwiftUI](/blog/shipping-swiftui-app-five-apple-platforms)
+
+    
+    
+    
+    
+    1. [SwiftData's Real Cost Is Schema Discipline](/blog/swiftdata-schema-discipline)
+
+    
+    
+    
+    
+    1. [Foundation Models On-Device LLM: The Tool Protocol](/blog/foundation-models-on-device-llm)
+
+    
+    
+    
+    
+    1. [Live Activities Are a State Machine, Not a Badge](/blog/live-activities-state-machine)
+
+    
+    
+    
+    
+    1. [RealityKit And The Spatial Mental Model](/blog/realitykit-spatial-mental-model)
+
+    
+    
+    
+    
+    1. [watchOS Runtime Is a Contract, Not a Background Task](/blog/watchos-runtime-contract)
+
+    
+    
+    
+    
+    1. [App Intents vs MCP: The Routing Question](/blog/app-intents-vs-mcp-tools-frontier)
+
+    
+    
+    
+    
+    1. [What SwiftUI Is Made Of](/blog/what-swiftui-is-made-of)
+
+    
+    
+    
+    
+    1. [Hooks For Apple Development: Patterns That Save The Project](/blog/hooks-apple-development)
+
+    
+    
+    
+    
+    1. [Three Surfaces: Human, Apple Intelligence, Agent](/blog/three-surfaces-ios-app)
+
+    
+    
+    
+    
+    1. [What I Refuse To Write About](/blog/what-i-refuse-to-write-about)
+
+    
+    
+    
+    
+    1. [Single Source Of Truth: SwiftData, MCP, iCloud](/blog/single-source-of-truth-pattern)
+
+    
+    
+    
+    
+    1. [Foundation Models Agentic Workflow: In-App Vs Tooling LLM](/blog/foundation-models-agentic-workflow)
+
+    
+    
+    
+    
+    1. [Apple Vision Framework: On-Device CV Most Devs Skip](/blog/vision-framework-built-in)
+
+    
+    
+    
+    
+    1. [Swift Testing: The Framework Replacing XCTest, and What Stays In XCTest](/blog/swift-testing-vs-xctest)
+
+    
+    
+    
+    
+    1. [The Privacy Manifest Deep Dive: What Counts As Data Collection](/blog/privacy-manifest-deep-dive)
+
+    
+    
+    
+    
+    1. [visionOS Spatial Patterns Beyond the Window](/blog/visionos-spatial-patterns)
+
+    
+    
+    
+    
+    1. [Core ML On-Device Inference: The Patterns That Actually Ship](/blog/core-ml-on-device-inference)
+
+    
+    
+    
+    
+    1. [SF Pro: Variable Axes, Optical Sizing, And The Dynamic Type Contract](/blog/sf-pro-typography-system)
+
+    
+    
+    
+    
+    1. [Apple's New Speech Framework: SpeechAnalyzer vs SFSpeechRecognizer](/blog/speech-framework-vs-sfspeechrecognizer)
+
+    
+    
+    
+    
+    1. [Writing Tools API: How Apps Plug Into Apple Intelligence's Writing Layer](/blog/writing-tools-api-adoption)
+
+    
+    
+    
+    
+    1. [The Apple Platform Matrix: Which Targets Deserve Which App](/blog/apple-platform-matrix)
+
+    
+    
+    
+    
+    1. tvOS Focus Engine: SwiftUI Patterns for the Siri Remote
+
+    
+    
+    
+    
+    1. [SwiftData Migrations: Lightweight vs Custom, And When You Don't Need a V2](/blog/swiftdata-migrations-guide)
+
+    
+    
+    
+    
+    1. [Accessibility As Platform: Personal Voice, Live Speech, Eye Tracking, Music Haptics](/blog/accessibility-platform-features)
+
+    
+    
+    
+    
+    1. [Symbol Effects: SwiftUI's Built-In Animation Vocabulary For Every Icon](/blog/symbol-effects-vocabulary)
+
+    
+    
+    
+    
+    1. [SwiftUI Layout Protocol: Building Custom Layouts From sizeThatFits To placeSubviews](/blog/swiftui-layout-protocol-deep-dive)
+
+    
+    
+    
+    
+    1. [AVFoundation HDR And Apple Log: Pro Video Workflows On iPhone](/blog/avfoundation-hdr-apple-log)
+
+    
+    
+    
+    
+    1. [@Observable Internals: The Macro, The Registrar, And What ObservableObject Got Wrong](/blog/observable-internals-swiftui)
+
+    
+    
+    
+    
+    1. [HealthKit Workout Lifecycle: HKWorkoutSession States And The iOS 26 Cross-Platform Surface](/blog/watchos-workout-lifecycle)
+
+    
+    
+    
+    
+    1. [Custom SF Symbols: The Variable Template And The Three Required Sources](/blog/custom-sf-symbols-creation)
+
+    
+    
+    
+    
+    1. [Genmoji and NSAdaptiveImageGlyph: Inline Emoji on iOS 18+](/blog/genmoji-nsadaptiveimageglyph)
+
+    
+    
+    
+    
+    1. [Foundation Models Use Cases: General vs Content Tagging](/blog/foundation-models-use-cases)
+
+    
+    
+    
+    
+    1. [Image Playground API: SwiftUI Sheet, Programmatic Image Creator, And Style Control](/blog/image-playground-api-integration)
+
+    
+    
+    
+    
+    1. [App Intents 2.0 in iOS 26: Visual Intelligence and Snippets](/blog/app-intents-2-ios-26-additions)
+
+    
+    
+    
+    
+    1. [Foundation Models Custom Adapters: When To Train One](/blog/foundation-models-custom-adapters)
+
+    
+    
+    
+    
+    1. [Metal 4 Essentials: What The New Core API Actually Changes](/blog/metal-4-essentials)
+
+    
+    
+    
+    
+    1. [Apple Silicon TBDR: What App Developers Actually Get](/blog/apple-silicon-tbdr)
+
+    
+  
+
+  
+  
+    Show all 42 posts in series
+    Show fewer
+  
+  
+
+    
+
+  
+## Related Posts
+
+  
+
+    
+    
+    
+    
+    
+    [### SF Pro: Variable Axes, Optical Sizing, And The Dynamic Type Contract
+
+      
+Apple's system font ships with three variable axes and continuous optical sizing. The vocabulary that makes typography w…
+
+      12 min read](/blog/sf-pro-typography-system)
+    
+    
+    
+    
+    
+    [### Accessibility As Platform: Personal Voice, Live Speech, Eye Tracking, Music Haptics
+
+      
+Personal Voice, Live Speech, Eye Tracking, Music Haptics, Vocal Shortcuts: accessibility as platform features, not app r…
+
+      14 min read](/blog/accessibility-platform-features)
+    
+    
+    
+    
+    
+    [### The Design Engineer's Agent Stack
+
+      
+Design engineers need agent infrastructure that enforces visual consistency, typography discipline, color compliance, an…
+
+      14 min read](/blog/design-engineers-agent-stack)
+    
+  
+
+    
+
+  
+  
+  
+  [← Previous
+    SwiftData Migrations: Lightweight vs Custom, And When You Don't Need a V2](/blog/swiftdata-migrations-guide)
+  
+  
+  
+  
+  [Next →
+    The Apple Platform Matrix: Which Targets Deserve Which App](/blog/apple-platform-matrix)
+  
+
+    
+
+      [← Back to all posts](/blog)
+    
+  
+
+  
+
+  
+  
+
+    
+
+      
+
+        
+
+          [Blake Crosley](/)
+          
+Designer, developer, and maker of things.
+
+        
+        
+
+          
+
+            
+### Navigate
+
+            
+
+              [About](/about)
+              [Work](/#work)
+              [Writing](/writing)
+              [Guides](/guides)
+              [Contact](/#contact)
+            
+          
+          
+
+            
+### Guides
+
+            
+
+              [Claude Code](/guides/claude-code)
+              [Midjourney](/guides/midjourney)
+              [Design Principles](/guides/design)
+              [Obsidian](/guides/obsidian)
+              [Suno](/guides/suno)
+            
+          
+          
+
+            
+### Projects
+
+            
+
+              [941 Apps](https://941apps.com)
+              [Ace Citizenship](https://acecitizenship.app)
+              [ResumeGeni](https://resumegeni.com)
+              [941 Return](https://941return.com)
+              [Banana List](https://941getbananas.com)
+              [Tappy Color](/work/tappy-color)
+              [h3arted](https://h3arted.com)
+              [Dream of Electric](https://dreamofelectric.com)
+            
+          
+          
+
+            
+### Connect
+
+            
+
+              [[email protected]](/cdn-cgi/l/email-protection#40222c212b2500797471213030336e232f2d)
+              [LinkedIn](https://www.linkedin.com/in/blakecrosley/)
+              [Instagram](https://www.instagram.com/dream_of_electric/)
+            
+          
+        
+      
+      
+
+        
+© 2026 Blake Crosley. All rights reserved.
+
+        
+Pasadena, California
