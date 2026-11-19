@@ -1,0 +1,13 @@
+{
+  "name": "ma-title-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "check": "bun run ../scripts/check.ts",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "peerDependencies": {
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#e196449bf2d3c2ea6f8c45b785815b223e0c1200"
+  }
+}

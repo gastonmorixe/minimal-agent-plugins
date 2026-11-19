@@ -427,6 +427,7 @@ export async function spawnAgent(
     id,
     task,
     model,
+    ...(req.agent ? { role: req.agent } : {}),
     ...(provider ? { provider } : {}),
     ...(effort ? { effort } : {}),
     // Always scrub when we did not pin an effort flag: the lead's

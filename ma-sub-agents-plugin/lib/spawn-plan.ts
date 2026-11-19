@@ -19,6 +19,21 @@ export const ENV_DEPTH = "MINIMAL_AGENT_SUBAGENT_DEPTH"
 export const ENV_LEAD = "MINIMAL_AGENT_SUBAGENT_LEAD"
 export const ENV_ID = "MINIMAL_AGENT_SUBAGENT_ID"
 /**
+ * The worker role (the agent type, for example `worker` or `explorer`). Core
+ * writes it to the session index line (`IndexRecord.role`) for the session
+ * catalog. Always set: the role, or `""` when {@link SpawnInput.role} is not
+ * given. The plan env is an overlay over the parent env, so a depth-2 worker
+ * would else keep the role of its parent worker (core reads `""` as no role).
+ */
+export const ENV_ROLE = "MINIMAL_AGENT_SUBAGENT_ROLE"
+/**
+ * The child's own session id ({@link SpawnInput.childSid}). Core
+ * `isPinnedSubagentSid` reads it: the sub-agent env lineage goes only to the
+ * session with this sid (not to a fork or a nested `ma` run in the worker).
+ * Always set, so the value of a parent worker never leaks to its child.
+ */
+export const ENV_SID = "MINIMAL_AGENT_SUBAGENT_SID"
+/**
  * The lead's OS pid. The worker's lead watch (`lead-watch.ts`) polls it and
  * exits when the lead is gone, also after a SIGKILL that ran no lead cleanup.
  */
@@ -61,6 +76,8 @@ export interface SpawnInput {
   readonly leadPid?: number
   /** Short handle id (`"A2"`) — stamped into the child env for its own self-id. */
   readonly id: SubagentId
+  /** The agent type (`worker`, `explorer`, …), stamped as {@link ENV_ROLE}. Optional. */
+  readonly role?: string
   /** The delegation prompt (objective + boundaries). */
   readonly task: string
   /**
@@ -265,6 +282,12 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
     [ENV_LEAD]: input.leadSid,
     [ENV_ID]: input.id,
     ...input.extraEnv,
+    // Always set (also to ""), so the role of a parent worker cannot leak.
+    // Spread after extraEnv so a caller cannot change the role.
+    [ENV_ROLE]: input.role?.trim() ?? "",
+    // The pinned child sid (the same value as `--session-id`). Spread after
+    // extraEnv so a caller cannot point the lineage at a wrong session.
+    [ENV_SID]: input.childSid,
     // No profile: keep the old env channel (lead disables + worker-only set).
     // Spread after extraEnv so an extraEnv entry cannot clobber it.
     ...(withProfile

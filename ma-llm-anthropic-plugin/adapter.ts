@@ -27,6 +27,7 @@ import type {
   ProviderStartupContext,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import type { UtilityModelRecommendation } from "@minimal-agent/core/plugin-api/types/plugin"
 import { parseSse } from "@minimal-agent/core/plugin-api/utils/sse-parser"
 
 import { fetchAnthropicAccountPlan } from "./account-plan.ts"
@@ -49,13 +50,19 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import { findModelByTags } from "./lib/registry.ts"
+import { findModel, findModelByTags } from "./lib/registry.ts"
 import { listAnthropicModels } from "./list-models.ts"
 import { anthropicMediaLimits } from "./media-limits.ts"
 import { prepareMediaUploads, retryInlineAfterMissingFile } from "./media-upload.ts"
 import { registerAnthropicAdHocModelInto, registerAnthropicModels } from "./models.ts"
 import { anthropicOAuthLogin } from "./oauth-login.ts"
 import { type AnthropicRequestBody, buildAnthropicRequestBody } from "./request-body.ts"
+import {
+  type AnthropicMessageWire,
+  asEventStream,
+  isJsonMessageResponse,
+  messageToStreamEvents,
+} from "./response-message.ts"
 import { type AnthropicStreamEvent, translateAnthropicStream } from "./response-stream.ts"
 import {
   fetchAnthropicSessionInfo,
@@ -445,10 +452,29 @@ function applyWireExtras(
 // ---------------------------------------------------------------------------
 
 /**
- * Anthropic Messages adapter. Singleton; register once at module
- * load.
+ * The cheap "utility" model order for short side calls (session titles), first
+ * choice first (title SPEC §4.1, §4.3; research 03-providers.md §1).
+ * - `claude-haiku-5-5`: $0.10 / $0.50 per M tokens (prompt of 100k or less),
+ *   https://docs.claude.com/en/docs/about-claude/pricing (`ANTHROPIC_HAIKU_55`).
+ * - `claude-haiku-4-5-20251001`: $1 / $5 per M tokens, same URL
+ *   (`ANTHROPIC_HAIKU_45`). Use it only when Haiku 5.5 is not registered.
+ * Both models accept `output_config.format` json_schema
+ * (https://docs.claude.com/en/docs/build-with-claude/structured-outputs).
  */
-export const anthropicAdapter: ProviderAdapter = {
+export const ANTHROPIC_UTILITY_MODEL_ORDER: readonly string[] = [
+  "claude-haiku-5-5",
+  "claude-haiku-4-5-20251001",
+]
+
+/**
+ * Anthropic Messages adapter. Singleton; register once at module
+ * load. The local `ProviderAdapter` mirror has no `recommendUtilityModel`
+ * yet, so the type adds it here (host contract: plugin-api
+ * `ProviderAdapterView.recommendUtilityModel?`).
+ */
+export const anthropicAdapter: ProviderAdapter & {
+  recommendUtilityModel(): UtilityModelRecommendation | undefined
+} = {
   id: "anthropic",
   displayName: "Anthropic",
   surfaces: ["anthropic-messages"] satisfies ReadonlyArray<SurfaceId>,
@@ -667,9 +693,12 @@ export const anthropicAdapter: ProviderAdapter = {
     // Per-request recorder: commits fingerprint → msg id only on a clean
     // message_stop, so aborted / failed / interleaved attempts never leak.
     const chain = cacheDiagnosis ? new ResponseChainRecorder() : undefined
-    for await (const ev of translateAnthropicStream(
-      parseSse<AnthropicStreamEvent>(response.body),
-    )) {
+    // `stream: false` gives one JSON `Message` (title side call, compaction).
+    // Change it into the same event sequence, then use the same translator.
+    const wireEvents = isJsonMessageResponse(req.stream, response.headers)
+      ? asEventStream(messageToStreamEvents(await response.json<AnthropicMessageWire>()))
+      : parseSse<AnthropicStreamEvent>(response.body)
+    for await (const ev of translateAnthropicStream(wireEvents)) {
       chain?.observe(ev)
       yield ev
     }
@@ -696,6 +725,38 @@ export const anthropicAdapter: ProviderAdapter = {
       if (model) recs.push({ role, modelId: model.id })
     }
     return recs
+  },
+
+  /**
+   * Recommend the cheap utility model for short side calls (session titles).
+   * Pure: no network. Reason: Haiku is the fastest and cheapest Anthropic
+   * model, and it accepts JSON-schema output. Order:
+   * {@link ANTHROPIC_UTILITY_MODEL_ORDER} (Haiku 5.5, then Haiku 4.5). The
+   * first model of the order that is in the local catalog wins. `undefined`
+   * when none is registered (then the provider has no title profile: no title).
+   * `thinkingOff`: a title call with `thinking:{mode:"off"}` sends
+   * `{type:"disabled"}` on Haiku 5.5 (adaptive) and no `thinking` field on
+   * Haiku 4.5 (no default thinking).
+   * `effort: "low"`: a title is a short task (title SPEC §4.3 item 6).
+   * `stream: "off"`: `run()` reads a non-stream JSON `Message` when the
+   * request has `stream: false` (./response-message.ts), for each credential
+   * type. Claude Code itself sends a non-stream Messages request with the plan
+   * credential (its quota probe: `__fixtures__/quota.req-body.json` has no
+   * `stream` field, `quota.req-meta.json` has `accept: application/json`).
+   */
+  recommendUtilityModel(): UtilityModelRecommendation | undefined {
+    for (const id of ANTHROPIC_UTILITY_MODEL_ORDER) {
+      const model = findModel(id)
+      if (!model) continue
+      return {
+        modelId: model.id,
+        structured: model.capabilities.structuredOutputs ? "json_schema" : "none",
+        thinkingOff: true,
+        effort: "low",
+        stream: "off",
+      }
+    }
+    return undefined
   },
 }
 

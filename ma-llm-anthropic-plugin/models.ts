@@ -242,7 +242,9 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     providerId: "anthropic",
     surfaceId: "anthropic-messages",
     displayName: "Claude Haiku 5.5",
-    tags: ["haiku", "1m-context", "fast", "production"],
+    // `utility`: the cheap side-call model (session titles). The first entry
+    // with this tag wins a host `findModelByTags(["utility"])` lookup.
+    tags: ["haiku", "1m-context", "fast", "production", "utility"],
     capabilities: CAPS_HAIKU_55,
     estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_HAIKU_55,
@@ -536,7 +538,9 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     surfaceId: "anthropic-messages",
     displayName: "Claude Haiku 4.5",
     knowledgeCutoff: "2025-02",
-    tags: ["haiku", "fast", "production"],
+    // `utility` fallback: registered after Haiku 5.5, so a tag lookup picks it
+    // only when Haiku 5.5 is not registered.
+    tags: ["haiku", "fast", "production", "utility"],
     capabilities: CAPS_HAIKU_45,
     estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_HAIKU_45,

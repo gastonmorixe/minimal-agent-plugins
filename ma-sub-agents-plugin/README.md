@@ -250,7 +250,11 @@ The supervisor also publishes presence rows (the lead and each worker) to
 The lead sets these for each worker. Do not set them by hand:
 `MINIMAL_AGENT_SUBAGENT_DEPTH`, `MINIMAL_AGENT_SUBAGENT_LEAD`,
 `MINIMAL_AGENT_SUBAGENT_ID`, `MINIMAL_AGENT_SUBAGENT_RESULT_PATH`,
-`MINIMAL_AGENT_LEAD_PID`. It also pins `MINIMAL_AGENT_MODEL`,
+`MINIMAL_AGENT_LEAD_PID`, `MINIMAL_AGENT_SUBAGENT_ROLE` (the agent type, or
+`""` for an inline task; always set, so a parent role does not leak) and
+`MINIMAL_AGENT_SUBAGENT_SID` (the child session id, the same value as
+`--session-id`). `extraEnv` cannot change the role, the sid or the lead pid.
+It also pins `MINIMAL_AGENT_MODEL`,
 `MINIMAL_AGENT_PROVIDER` and `MINIMAL_AGENT_EFFORT` so the lead's values do not
 leak into a worker that asked for something else.
 
