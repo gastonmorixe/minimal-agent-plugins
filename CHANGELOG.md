@@ -8,6 +8,37 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-19: **Titles: the provider title profile only; Anthropic reads
+  non-stream replies** (`ma-title-plugin`, `ma-llm-anthropic-plugin`). The
+  title plugin uses only `host.models.utilityFor(<session provider>)`. A
+  provider with no title profile gets no title request (`stopReason:
+  "no-model"`). The `utility` and `haiku` tag steps, the session model step,
+  `allowSessionModel` and `allowOtherProvider` are removed. The model
+  override must be a model of the session provider. The effort comes from the
+  profile; the new key `plugins.title.effort` replaces it. The output limit is
+  256 tokens (it was 128). The Anthropic `recommendUtilityModel()` now gives
+  `effort: "low"` and `stream: "off"`. The Anthropic adapter reads a
+  non-stream JSON reply when the request has `stream: false` (new
+  `response-message.ts`); before, it read only SSE.
+
+- 2026-11-19: **New `ma-title-plugin`: a short AI title for each session**
+  (`ma-title-plugin`, `ma-llm-anthropic-plugin`). On the first typed prompt
+  (10 or more characters, not a `/` command, `source: "user"`), the plugin
+  sends one request to the utility model of the session provider with a JSON
+  schema, thinking off and effort low. It saves the title as a `kind:
+  "title"` line in `index-meta.jsonl`; `ma sessions` shows it with `✦`.
+  Default OFF: turn it on with `MINIMAL_AGENT_TITLE=1` or
+  `plugins.title.modes`. Kill switch `MINIMAL_AGENT_TITLE=0`. Sub-agents make
+  no title. It sends only the first prompt (max 2000 characters) to the
+  session provider; a model of another provider needs
+  `allowOtherProvider: true`. Max 2 requests for each session in each
+  process; a price ceiling of $1 for each million input tokens. Cost on
+  `claude-haiku-5-5`: about $0.0001 for each title. Each attempt sends one
+  `title.attempt` event. The Anthropic plugin declares its utility model:
+  new `recommendUtilityModel()` (`ANTHROPIC_UTILITY_MODEL_ORDER`:
+  `claude-haiku-5-5`, then `claude-haiku-4-5-20251001`) and the tag
+  `utility` on these two models. Details in `ma-title-plugin/README.md`.
+
 - 2026-11-18: **The cache plugin reports every prompt-cache break as a fact,
   and frontends show breaks from that fact, not from the log severity**
   (`ma-cache-plugin`, `ma-acp-plugin`). Before, the cause chose the log
@@ -99,6 +130,17 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   identity through the new session plugin scope.
 
 ### Added
+
+- 2026-11-19: **The sub-agent plugin stamps the worker role and the worker
+  sid in the worker env** (`ma-sub-agents-plugin`, `lib/spawn-plan.ts`).
+  `MINIMAL_AGENT_SUBAGENT_ROLE` is now always set: the agent type (for
+  example `worker` or `explorer`), or `""` for an inline task, so a depth-2
+  worker does not keep the role of its parent worker. New
+  `MINIMAL_AGENT_SUBAGENT_SID` is the child session id (the same value as
+  `--session-id`); core gives the sub-agent lineage only to the session with
+  this sid. Both are set after `extraEnv`, so a caller cannot change them.
+  Core writes them to the session index (`role`), and the CLI `sessions`
+  view shows the role under the lead.
 
 - 2026-11-18: **The cache plugin tells a likely server-side cache miss
   apart from a client-side prompt change** (`ma-cache-plugin`). The wire

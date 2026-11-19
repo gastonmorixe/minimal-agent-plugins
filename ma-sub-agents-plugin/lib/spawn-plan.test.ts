@@ -11,6 +11,8 @@ import {
   ENV_ID,
   ENV_LEAD,
   ENV_LEAD_PID,
+  ENV_ROLE,
+  ENV_SID,
   mergeDisabledPlugins,
   type SpawnInput,
   STARTUP_PROFILE_FLAG,
@@ -362,7 +364,8 @@ describe("buildSpawnPlan: lead pid for the worker lead watch (fix-3d)", () => {
 
   it("keeps the existing lineage keys next to the lead pid", () => {
     const r = buildSpawnPlan(input())
-    if (!r.ok) throw new Error(r.error)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
     expect(r.value.env[ENV_LEAD]).toBe("ba0ad20f-1111-4111-8111-111111111111")
     expect(r.value.env[ENV_DEPTH]).toBe("1")
     expect(r.value.env[ENV_ID]).toBe("A2")
@@ -393,5 +396,70 @@ describe("buildSpawnPlan tool clamp (SPEC R6, R9)", () => {
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.value.argv).not.toContain("--no-tools")
+  })
+})
+
+describe("buildSpawnPlan role env", () => {
+  it("stamps MINIMAL_AGENT_SUBAGENT_ROLE when a role is given", () => {
+    const r = buildSpawnPlan(input({ role: " explorer " }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(ENV_ROLE).toBe("MINIMAL_AGENT_SUBAGENT_ROLE")
+    expect(r.value.env[ENV_ROLE]).toBe("explorer")
+  })
+
+  it("sets the role env to empty when no role is given (P4b m2: no leak from a parent worker)", () => {
+    const r = buildSpawnPlan(input())
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_ROLE]).toBe("")
+    const blank = buildSpawnPlan(input({ role: "   " }))
+    expect(blank.ok && blank.value.env[ENV_ROLE]).toBe("")
+  })
+
+  it("a depth-2 spawn from a worker env does not keep the parent role", () => {
+    // The parent worker runs with ROLE=reviewer; the launcher merges the
+    // plan env OVER the parent env, so the plan must blank the key.
+    const parentEnv = { [ENV_ROLE]: "reviewer", [ENV_SID]: "parent-sid" }
+    const r = buildSpawnPlan(input({ depth: 2 }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const childEnv = { ...parentEnv, ...r.value.env }
+    expect(childEnv[ENV_ROLE]).toBe("")
+    expect(childEnv[ENV_SID]).toBe(r.value.argv[r.value.argv.indexOf("--session-id") + 1])
+  })
+})
+
+describe("buildSpawnPlan sid env", () => {
+  it("stamps MINIMAL_AGENT_SUBAGENT_SID with the pinned child sid", () => {
+    const r = buildSpawnPlan(input())
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(ENV_SID).toBe("MINIMAL_AGENT_SUBAGENT_SID")
+    const pinned = r.value.argv[r.value.argv.indexOf("--session-id") + 1]
+    expect(pinned).toBeDefined()
+    expect(r.value.env[ENV_SID]).toBe(pinned)
+  })
+
+  it("extraEnv cannot change the sid env", () => {
+    const r = buildSpawnPlan(input({ extraEnv: { [ENV_SID]: "other" } }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_SID]).not.toBe("other")
+  })
+
+  it("extraEnv cannot change the role env or the sid env (P4c m5)", () => {
+    const withRole = buildSpawnPlan(
+      input({ role: "explorer", extraEnv: { [ENV_ROLE]: "lead", [ENV_SID]: "other" } }),
+    )
+    expect(withRole.ok).toBe(true)
+    if (!withRole.ok) return
+    expect(withRole.value.env[ENV_ROLE]).toBe("explorer")
+    expect(withRole.value.env[ENV_SID]).not.toBe("other")
+    // No role: still "" (a caller cannot set one through extraEnv).
+    const noRole = buildSpawnPlan(input({ extraEnv: { [ENV_ROLE]: "lead" } }))
+    expect(noRole.ok).toBe(true)
+    if (!noRole.ok) return
+    expect(noRole.value.env[ENV_ROLE]).toBe("")
   })
 })

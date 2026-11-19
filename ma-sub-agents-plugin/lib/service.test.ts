@@ -91,6 +91,31 @@ describe("spawnAgent", () => {
     expect(ENV_EXPECT_ARTIFACTS in (envs[0] ?? {})).toBe(false)
   })
 
+  it("sets the role env from the agent type, an empty role env for an inline spawn, and the sid env", async () => {
+    const envs: Record<string, string>[] = []
+    const pinned: string[] = []
+    const reviewer: WorkerDefinition = { name: "reviewer", isolation: "fresh" }
+    const deps = makeDeps(dir, {
+      resolveDefinition: (n) => (n === "reviewer" ? reviewer : undefined),
+      spawnDeps: {
+        launch: (argv, opts) => {
+          envs.push(opts.env)
+          pinned.push(argv[argv.indexOf("--session-id") + 1] ?? "")
+          return 7003
+        },
+      },
+    })
+    await spawnAgent({ task: "review", agent: "reviewer" }, deps)
+    await spawnAgent({ task: "inline" }, deps)
+    expect(envs[0]?.MINIMAL_AGENT_SUBAGENT_ROLE).toBe("reviewer")
+    // P4b m2: an inline spawn blanks the role (no leak from a parent worker).
+    expect(envs[1]?.MINIMAL_AGENT_SUBAGENT_ROLE).toBe("")
+    // P4b: each spawn stamps its own child sid (core isPinnedSubagentSid).
+    expect(pinned[0]).toMatch(/\S/u)
+    expect(envs[0]?.MINIMAL_AGENT_SUBAGENT_SID).toBe(pinned[0])
+    expect(envs[1]?.MINIMAL_AGENT_SUBAGENT_SID).toBe(pinned[1])
+  })
+
   it("rejects a relative expectArtifacts path with a teaching error, and launches nothing", async () => {
     const deps = makeDeps(dir)
     const r = await spawnAgent({ task: "x", expectArtifacts: ["research/f.md"] }, deps)
