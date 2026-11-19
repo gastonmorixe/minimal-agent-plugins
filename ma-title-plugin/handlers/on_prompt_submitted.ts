@@ -8,8 +8,8 @@
  *
  * Flow (the handler returns at once; the side call is not awaited):
  * 1. Eligibility (T1 `checkEligibility`, rules 1-8): run-mode gate (default
- *    OFF in P1a), captured sid, in-flight guard, slash, short text,
- *    `source:"user"`, max 2 attempts.
+ *    ON only in the interactive REPL), captured sid, in-flight guard,
+ *    slash, short text, `source:"user"`, max 2 attempts.
  * 2. Title state: `sessionMeta.getTitle(sid)`; a `user`/`ai` title → done.
  * 3. Model choice (`lib/model-select.ts`); none → no call, diagnostics
  *    `no-model` / `over-ceiling`.

@@ -8,6 +8,14 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-19: **Titles: default ON in the interactive REPL** (`ma-title-plugin`,
+  SPEC P1b). `DEFAULT_ON_MODES` is now `["repl"]`. With no env and no config,
+  the plugin makes a title in the interactive REPL only. One-shot,
+  stream-json and host stay off by default. A sub-agent is always off, also
+  with an inherited `MINIMAL_AGENT_TITLE=1`. To stop it: `MINIMAL_AGENT_TITLE=0`
+  or `"plugins": { "title": { "enabled": false } }`. `plugins.title.modes`
+  replaces the default list.
+
 - 2026-11-19: **Titles: the provider title profile only; Anthropic reads
   non-stream replies** (`ma-title-plugin`, `ma-llm-anthropic-plugin`). The
   title plugin uses only `host.models.utilityFor(<session provider>)`. A

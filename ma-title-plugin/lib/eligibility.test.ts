@@ -47,7 +47,12 @@ function aiTitle(title: string): SessionTitleState {
 
 describe("checkEligibility: rules 1-9 (table)", () => {
   const cases: Array<[string, Partial<EligibilityInput>, number, string]> = [
-    ["rule 1: default OFF in P1a (no env, no config)", { env: {} }, 1, "mode:default-off"],
+    [
+      "rule 1: default OFF in one-shot (no env, no config)",
+      { env: {}, run: { mode: "one-shot", interactive: false } },
+      1,
+      "mode:default-off",
+    ],
     ["rule 1: no run fact (old host)", { run: undefined }, 1, "mode:no-run-fact"],
     ["rule 1: dry run", { run: { ...REPL, dryRun: true } }, 1, "mode:dry-run"],
     ["rule 1: kill switch", { env: { MINIMAL_AGENT_TITLE: "0" } }, 1, "mode:kill-switch"],
@@ -211,10 +216,58 @@ describe("resolveModeGate: run modes (SPEC §7.1, §7.3)", () => {
   const gate = (run: RunModeFact | undefined, env: NodeJS.ProcessEnv, config = cfg) =>
     resolveModeGate({ run, env, config })
 
-  test("P1a default: OFF in each mode", () => {
-    for (const mode of ["repl", "one-shot", "stream-json", "host", "subagent"] as const) {
-      expect(gate({ mode, interactive: mode === "repl" }, {}).allowed).toBe(false)
+  test("P1b default: ON in the interactive repl (no env, no config)", () => {
+    expect(gate(REPL, {})).toEqual({ allowed: true, reason: "default-on" })
+    expect(checkEligibility(input({ env: {} })).eligible).toBe(true)
+  })
+
+  test("P1b default: OFF in a repl that is not interactive", () => {
+    expect(gate({ mode: "repl", interactive: false }, {})).toEqual({
+      allowed: false,
+      reason: "default-off",
+    })
+  })
+
+  test("P1b default: OFF in one-shot, stream-json, host", () => {
+    for (const mode of ["one-shot", "stream-json", "host"] as const) {
+      for (const interactive of [false, true]) {
+        expect(gate({ mode, interactive }, {})).toEqual({ allowed: false, reason: "default-off" })
+      }
     }
+  })
+
+  test("P1b default: OFF in subagent (no env, no config)", () => {
+    expect(gate({ mode: "subagent", interactive: false }, {})).toEqual({
+      allowed: false,
+      reason: "subagent-off",
+    })
+  })
+
+  test("MINIMAL_AGENT_TITLE=0 turns the default repl OFF", () => {
+    expect(gate(REPL, { MINIMAL_AGENT_TITLE: "0" })).toEqual({
+      allowed: false,
+      reason: "kill-switch",
+    })
+  })
+
+  test("config enabled:false turns the default repl OFF", () => {
+    expect(gate(REPL, {}, { ...cfg, enabled: false })).toEqual({
+      allowed: false,
+      reason: "plugin-disabled",
+    })
+  })
+
+  test("config modes override the default: [] turns the repl OFF", () => {
+    expect(gate(REPL, {}, { ...cfg, modes: [] })).toEqual({
+      allowed: false,
+      reason: "not-in-config-modes",
+    })
+  })
+
+  test("config modes override the default: [one-shot] turns one-shot ON", () => {
+    const config = { ...cfg, modes: ["one-shot" as const] }
+    expect(gate({ mode: "one-shot", interactive: false }, {}, config).allowed).toBe(true)
+    expect(gate(REPL, {}, config).allowed).toBe(false)
   })
 
   test("MINIMAL_AGENT_TITLE=1 allows repl, one-shot, stream-json, host", () => {
@@ -256,7 +309,10 @@ describe("resolveModeGate: run modes (SPEC §7.1, §7.3)", () => {
   })
 
   test("other MINIMAL_AGENT_TITLE values are ignored", () => {
-    expect(gate(REPL, { MINIMAL_AGENT_TITLE: "yes" }).reason).toBe("default-off")
+    expect(gate(REPL, { MINIMAL_AGENT_TITLE: "yes" }).reason).toBe("default-on")
+    expect(
+      gate({ mode: "one-shot", interactive: false }, { MINIMAL_AGENT_TITLE: "yes" }).reason,
+    ).toBe("default-off")
   })
 })
 
