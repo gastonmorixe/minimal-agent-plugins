@@ -34,12 +34,8 @@ import {
   formatBinaryWithheld,
   persistBinaryBody,
 } from "../lib/binary.ts"
-import {
-  applyCleanup,
-  CLEANUP_LEVELS,
-  type CleanupLevel,
-  isCleanableFormat,
-} from "../lib/cleanup.ts"
+import { CLEANUP_LEVELS, type CleanupLevel } from "../lib/cleanup.ts"
+import { cleanupForFormat } from "../lib/cleanup-format.ts"
 import {
   type FetchConfig,
   type FetchFormat,
@@ -307,12 +303,12 @@ function truncLine(line: string, max: number): string {
 export { cleanupBasic as normalizeMarkdown } from "../lib/cleanup.ts"
 
 /**
- * Apply the configured cleanup level iff the format is markdown/text.
- * Pass-through for HTML / links / original (newlines are significant).
+ * Apply the configured cleanup level to every format (`lib/cleanup-format.ts`):
+ * whitespace, and `<style>`/`<script>` blocks replaced by a stub. `<pre>`,
+ * `<textarea>` and markdown code are kept as they are.
  */
-function maybeCleanup(content: string, format: FetchFormat, level: CleanupLevel): string {
-  if (!isCleanableFormat(format)) return content
-  return applyCleanup(content, level)
+function maybeCleanup(content: string, format: FetchFormat | "value", level: CleanupLevel): string {
+  return cleanupForFormat(content, format, level)
 }
 
 /** Build the body lines (`display` field) - first N lines, width-clamped. */
@@ -332,7 +328,8 @@ export function buildDisplayBody(content: string, lines: number = PREVIEW_LINES)
  *  transcript sees may reveal which engine served the page. Backend
  *  identity lives only in the operator's config + the plugin README. */
 export function buildDisplayFooter(opts: {
-  format: FetchFormat
+  /** The page format, or `value` for the result of an `eval` call. */
+  format: FetchFormat | "value"
   size: number
   lineCount: number
   truncated?: boolean
@@ -638,8 +635,14 @@ export async function runWithDeps(
   //
   // Then strip oversized `data:*;base64,…` URIs (L0 producer scrub). Core
   // re-scrubs as a safety net; doing it here keeps plugin `display` clean.
-  let content = maybeCleanup(result.stdout, input.format, cleanup)
-  if (input.format === "markdown" || input.format === "text" || input.format === "html") {
+  //
+  // An `eval` call in `value` mode returns the JSON value of the expression,
+  // not a page: `format` does not apply. That text is data, so it only gets
+  // the safe whitespace pass, and the footer names it `value`.
+  const isEvalValue = Boolean(input.evalExpr) && (input.evalMode ?? "value") === "value"
+  const shown: FetchFormat | "value" = isEvalValue ? "value" : input.format
+  let content = maybeCleanup(result.stdout, shown, cleanup)
+  if (shown === "markdown" || shown === "text" || shown === "html") {
     content = stripDataUris(content)
   }
   const size = Buffer.byteLength(content, "utf-8")
@@ -649,7 +652,7 @@ export async function runWithDeps(
   const displayBody = buildDisplayBody(content, PREVIEW_LINES)
   const truncated = lineCount > PREVIEW_LINES
   const displayFooter = buildDisplayFooter({
-    format: input.format,
+    format: shown,
     size,
     lineCount,
     truncated,

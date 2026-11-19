@@ -77,7 +77,7 @@
                   "type": "string",
                   "enum": ["off", "basic", "aggressive"],
                   "default": "basic",
-                  "description": "The whitespace changes for `markdown` and `text`. The default is `basic`: keep one empty line where the page has more.\n- `aggressive`: change each sequence of whitespace to one space and remove empty lines.\n- `off`: no changes."
+                  "description": "The whitespace changes, for each format. The default is `basic`: keep one empty line where the page has more.\n- `aggressive`: change each sequence of whitespace to one space and remove empty lines.\n- `off`: no changes."
                 },
                 "session": {
                   "type": "string",

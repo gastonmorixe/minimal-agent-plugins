@@ -576,19 +576,34 @@ describe("runWithDeps - normalizer is format-gated", () => {
     expect(r.content).toBe("line1\n\nline2\n\nline3")
   })
 
-  test("html: passthrough (newlines are syntactically meaningful inside <pre>)", async () => {
+  test("html: blank runs collapsed (<pre> and <textarea> are kept, see lib/html-cleanup)", async () => {
     const r = await runWithFormat("html")
-    expect(r.content).toBe(noisyStdout)
+    expect(r.content).toBe("line1\n\nline2\n\nline3")
   })
 
-  test("links: passthrough", async () => {
+  test("links: blank runs collapsed (cleanup runs for every format)", async () => {
     const r = await runWithFormat("links")
-    expect(r.content).toBe(noisyStdout)
+    expect(r.content).toBe("line1\n\nline2\n\nline3")
   })
 
-  test("original: passthrough for text (raw byte stream from backend)", async () => {
+  test("original: blank runs collapsed for a non-HTML body", async () => {
     const r = await runWithFormat("original")
-    expect(r.content).toBe(noisyStdout)
+    expect(r.content).toBe("line1\n\nline2\n\nline3")
+  })
+
+  test("cleanup level off keeps the bytes for every format", async () => {
+    for (const format of ["markdown", "text", "html", "links", "original"] as const) {
+      const spawnFn: SpawnFn = () => fakeProc({ stdout: noisyStdout, exitCode: 0 })
+      const r = await runWithDeps(
+        fakeCtx({ url: "https://example.com" }),
+        defaultConfig(),
+        { url: "https://example.com", format, waitUntil: "load", timeoutSec: 30 },
+        { spawnFn, existsFn: () => true },
+        "off",
+      )
+      expectToolResult(r)
+      expect(r.content).toBe(noisyStdout)
+    }
   })
 })
 
@@ -714,9 +729,13 @@ describe("runWithDeps - cleanup level", () => {
     expect(r.content).toBe("# Title\nBy Author\n- [Link 1](#)\n- [Link 2](#)\nBody paragraph.")
   })
 
-  test("aggressive on html: still passthrough (format-gated)", async () => {
-    // Cleanup is ONLY applied to markdown/text regardless of level.
+  test("aggressive on html: drops all blank lines like markdown", async () => {
     const r = await runAt("aggressive", "html")
+    expect(r.content).toBe("# Title\nBy Author\n- [Link 1](#)\n- [Link 2](#)\nBody paragraph.")
+  })
+
+  test("off on html: verbatim stdout", async () => {
+    const r = await runAt("off", "html")
     expect(r.content).toBe(wrapped)
   })
 })
