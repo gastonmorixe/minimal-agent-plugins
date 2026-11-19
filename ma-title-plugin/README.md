@@ -65,16 +65,17 @@ The plugin does not operate with `--dry-run`.
 The plugin reads the block `plugins.title` in
 `~/.minimal-agent/config.jsonc`.
 
-| Key               | Type                            | Default | Rule                                                                                                                             |
-| ----------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`         | boolean                         | `true`  | `false` stops the plugin.                                                                                                        |
-| `model`           | string                          | not set | A model id. It must be a model of the session provider. The provider must have a title profile.                                  |
-| `modes`           | list                            | not set | The run modes where the plugin operates: `repl`, `one-shot`, `stream-json`, `host`, `subagent`. When it is not set: `repl` only. |
-| `subagents`       | `"off"`, `"derived"`, `"model"` | `"off"` | The rule for sub-agents (see "Sub-agents").                                                                                      |
-| `effort`          | `"low"`, `"medium"`, `"high"`   | not set | The effort of the title request. When it is not set, the title profile of the provider gives the effort.                         |
-| `maxUsdPerMTokIn` | number                          | `1.0`   | The maximum price in USD for each million input tokens.                                                                          |
-| `timeoutMs`       | integer                         | `10000` | The time limit of the request, from 1000 to 30000.                                                                               |
-| `minChars`        | integer                         | `10`    | The minimum length of the prompt.                                                                                                |
+| Key               | Type                            | Default | Rule                                                                                                                                  |
+| ----------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`         | boolean                         | `true`  | `false` stops the plugin.                                                                                                             |
+| `model`           | string                          | not set | A model id. It must be a model of the session provider. The provider must have a title profile.                                       |
+| `modes`           | list                            | not set | The run modes where the plugin operates: `repl`, `one-shot`, `stream-json`, `host`, `subagent`. When it is not set: `repl` only.      |
+| `subagents`       | `"off"`, `"derived"`, `"model"` | `"off"` | The rule for sub-agents (see "Sub-agents").                                                                                           |
+| `effort`          | `"low"`, `"medium"`, `"high"`   | not set | The effort of the title request. When it is not set, the title profile of the provider gives the effort.                              |
+| `maxUsdPerMTokIn` | number                          | `1.0`   | The maximum price in USD for each million input tokens.                                                                               |
+| `timeoutMs`       | integer                         | `10000` | The time limit of the request, from 1000 to 30000.                                                                                    |
+| `minChars`        | integer                         | `10`    | The minimum length of the prompt.                                                                                                     |
+| `language`        | string                          | not set | A language name for the title, for example `Spanish`: letters, spaces and hyphens, 40 characters maximum. Else the plugin ignores it. |
 
 The plugin ignores an unknown key. A value of the wrong type gets the
 default. The plugin writes a debug log line for each of these.
@@ -86,6 +87,8 @@ Environment variables:
 - `MINIMAL_AGENT_TITLE=0`: stop the plugin in all modes (the kill switch).
 - `MINIMAL_AGENT_TITLE_MODEL=<id>`: the model id. It is used before
   `plugins.title.model`.
+- `MINIMAL_AGENT_TITLE_LANGUAGE=<name>`: the title language. It is used
+  before `plugins.title.language`. The plugin ignores a bad value.
 
 ## The model
 
@@ -129,6 +132,21 @@ $0.001). To stop this, set `maxUsdPerMTokIn` to `0.5`.
 - The plugin sends only the text of the first prompt that the user typed.
   It does not send an assistant text, a tool output or image data.
 - It removes `<ma::…>` tags.
+- The request has the same layout as Claude Code. The system prompt has the
+  rules (`prompts/system.md`). The user message is the text in a
+  `<session>` block, then one language line:
+
+  ```text
+  <session>
+  what are the latest news?
+  </session>
+
+  Write the title in the main language of the text in <session>. One word or code name in another language does not change it. The language of these instructions does not change it.
+  ```
+
+  With a language (`plugins.title.language` or
+  `MINIMAL_AGENT_TITLE_LANGUAGE`), the last line is: `Write the title in
+  Spanish. Keep technical terms and code names as they are.`
 - When the text has more than 2000 characters, it sends the first 1500
   characters and the last 400 characters.
 - It sends the text to the provider of the session, with the credentials of

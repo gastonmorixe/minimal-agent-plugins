@@ -1,5 +1,6 @@
 /**
- * Title input: clean, cap and wrap the first user prompt (SPEC §5.4).
+ * Title input: clean, cap and wrap the first user prompt, then add one
+ * language line (SPEC §5.4).
  *
  * Pure functions, no IO. Lengths are counted in Unicode code points, so a cut
  * never splits a surrogate pair (astral CJK, emoji).
@@ -77,7 +78,45 @@ export function wrapSession(text: string): string {
   return `<session>\n${safe}\n</session>`
 }
 
-/** Full input pipeline: clean, cap, wrap. Use it for the title request. */
-export function buildTitleInput(promptText: string): string {
-  return wrapSession(capInput(cleanPromptText(promptText)))
+/** Max length (code points) of a language name. */
+export const LANGUAGE_MAX_CHARS = 40
+/** A language name: letters, spaces and hyphens only. */
+const LANGUAGE_RE = /^[\p{L}\p{M}][\p{L}\p{M} -]*$/u
+
+/**
+ * Clean a language name: trim, max {@link LANGUAGE_MAX_CHARS} code points,
+ * letters, spaces and hyphens only. A bad value gives `undefined`.
+ */
+export function sanitizeLanguage(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const v = value.trim()
+  if (v === "" || codePointLength(v) > LANGUAGE_MAX_CHARS) return undefined
+  return LANGUAGE_RE.test(v) ? v : undefined
+}
+
+/**
+ * The default language line (same meaning as the Claude Code line): the
+ * model uses the main language of the session text.
+ */
+export const DEFAULT_LANGUAGE_LINE =
+  "Write the title in the main language of the text in <session>. One word or code name in another language does not change it. The language of these instructions does not change it."
+
+/**
+ * The language line after the `<session>` block. A set language gives a fixed
+ * line for that language. Unset or bad gives {@link DEFAULT_LANGUAGE_LINE}.
+ */
+export function languageLine(language?: string): string {
+  const lang = sanitizeLanguage(language)
+  if (!lang) return DEFAULT_LANGUAGE_LINE
+  return `Write the title in ${lang}. Keep technical terms and code names as they are.`
+}
+
+/**
+ * Full input pipeline: clean, cap, wrap, then one language line. Use it for
+ * the user message of the title request. The layout is the same as Claude
+ * Code: `<session>\n{text}\n</session>\n\n{language line}`. The rules are in
+ * the system prompt.
+ */
+export function buildTitleInput(promptText: string, language?: string): string {
+  return `${wrapSession(capInput(cleanPromptText(promptText)))}\n\n${languageLine(language)}`
 }
