@@ -339,8 +339,9 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
     `cd: no such directory: ${str("tool_text.Bash.cd_no_dir", f, "path")}`,
   "tool_text.Bash.output_cap": (f) =>
     `[output exceeded ${str("tool_text.Bash.output_cap", f, "maxBytes")} bytes: the harness stopped the command and truncated the output]`,
+  // `clamped` is true when core decreased the input to its maximum.
   "tool_text.Bash.timed_out": (f) =>
-    `[timed out after ${str("tool_text.Bash.timed_out", f, "timeoutMs")}ms]`,
+    `[timed out after ${str("tool_text.Bash.timed_out", f, "timeoutMs")}ms${optBool(f, "clamped") ? " (clamped to the max)" : ""}]`,
   // A null exit code has no `exitCode` fact. The old text printed "null".
   "tool_text.Bash.exit_code": (f) =>
     `Exit code ${f.exitCode === undefined ? "null" : String(f.exitCode)}`,

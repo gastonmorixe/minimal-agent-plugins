@@ -460,7 +460,8 @@ const ROWS: Record<string, Row> = {
 const STE_PARAMS: Record<string, Record<string, string>> = {
   Bash: {
     command: "The command to run.",
-    timeout: "Optional. The time limit in milliseconds. The tool sets no maximum.",
+    timeout:
+      "Optional. The time limit in milliseconds. The default is 120000 (2 minutes). The maximum is 600000 (10 minutes): the tool decreases a larger value. For longer work, use `BackgroundRun`.",
     description: "A short description of the command.",
   },
   Read: {
@@ -671,6 +672,21 @@ describe("synthetic text parity table", () => {
       }
     })
   }
+})
+
+describe("tool_text.Bash.timed_out: a clamped limit", () => {
+  it("names the clamp only when core sends `clamped: true`", () => {
+    const calls: SyntheticKind[] = []
+    const t = strict(calls)
+    expect(T.bashTimedOutText(t, 200)).toBe("[timed out after 200ms]")
+    expect(T.bashTimedOutText(t, 600_000, true)).toBe(
+      "[timed out after 600000ms (clamped to the max)]",
+    )
+    expect(provider.text("tool_text.Bash.timed_out", { timeoutMs: 200, clamped: false })).toBe(
+      "[timed out after 200ms]",
+    )
+    expect(calls).toEqual(["tool_text.Bash.timed_out", "tool_text.Bash.timed_out"])
+  })
 })
 
 describe("STE_SYNTHETIC rules", () => {
