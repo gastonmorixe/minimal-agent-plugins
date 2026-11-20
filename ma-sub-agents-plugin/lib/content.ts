@@ -104,7 +104,7 @@ export function statusDetail(r: SubagentRecord, nowMs: number): string {
   const resolved = r.status.kind === "running" ? r.status.progress.model : undefined
   const model = resolved && resolved !== r.model ? resolved : r.model || resolved || "default"
   const lines = [
-    `${r.id} (${r.type}) · model ${model} · isolation ${r.isolation} · depth ${r.depth}`,
+    `${r.id} (${r.type}) · model ${model}${r.effort ? ` · effort ${r.effort}` : ""} · isolation ${r.isolation} · depth ${r.depth}`,
     `status: ${statusText(r.status, nowMs)}`,
     `session: ${r.sid}`,
     ...(r.inherit ? [r.inherit] : []),

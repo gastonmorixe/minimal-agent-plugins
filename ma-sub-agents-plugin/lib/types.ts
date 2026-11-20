@@ -314,6 +314,8 @@ export interface SubagentRecord {
   readonly type: string
   /** Resolved model id the worker runs on. */
   readonly model: string
+  /** Reasoning effort the worker runs with. Unset: the model default applies. */
+  readonly effort?: string
   /** The delegation prompt (objective + boundaries). */
   readonly task: string
   /** Context isolation tier used at spawn. */

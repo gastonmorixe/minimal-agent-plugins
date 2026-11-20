@@ -33,6 +33,17 @@ function shortSid(sid: string): string {
   return sid.replace(/-/g, "").slice(0, 4)
 }
 
+/**
+ * Short model + effort tag for a row: `opus:high`, `haiku`, `sonnet:max`.
+ * The tier word comes from the model id; the effort is appended when set.
+ */
+export function modelTag(model: string | undefined, effort: string | undefined): string {
+  const m = (model ?? "").toLowerCase()
+  const tier = ["opus", "sonnet", "haiku", "fable"].find((t) => m.includes(t)) ?? model ?? ""
+  if (!tier) return effort ?? ""
+  return effort ? `${tier}:${effort}` : tier
+}
+
 /** Seconds without a stream event before a running row shows `idle`. */
 export const IDLE_HINT_SEC = 60
 
@@ -191,9 +202,11 @@ export function renderWidget(
     const spin = spinFor(r.status, opts.tick, ansi)
     const id = color(ansi, ANSI.BOLD, r.id.padEnd(3))
     const label = color(ansi, ANSI.LGRAY, r.label.padEnd(9).slice(0, 9))
+    const tag = modelTag(r.model, r.effort)
+    const tagCol = tag ? color(ansi, ANSI.DIM, ` ${clip(tag, 13).padEnd(13)}`) : ""
     const el = color(ansi, ANSI.DGRAY, elapsedFor(r, opts.nowMs).padStart(5))
     const detail = rowDetail(r, ansi, opts.nowMs)
-    lines.push(`   ${spin} ${id} ${label} ${el}  ${detail}`)
+    lines.push(`   ${spin} ${id} ${label}${tagCol} ${el}  ${detail}`)
   }
   if (ordered.length > shown.length) {
     const more = ordered.length - shown.length
