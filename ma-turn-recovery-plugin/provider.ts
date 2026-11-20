@@ -11,6 +11,11 @@
  * Long texts live in `prompts/*.md`, loaded by text import and filled by
  * {@link fill}. An unknown kind or a missing required fact throws.
  *
+ * The tag line of a turn marker or a continue nudge comes from the sideband
+ * API, the third argument `sb` of `text` (design 40 step 10). The `.md` file
+ * keeps only the prose. {@link tagged} joins the two with one line feed.
+ * With no `sb` or no codec, the tag is "" and the text is the prose only.
+ *
  * The `compact.*` texts are a byte-equal move of the old core text
  * (tests/text-parity/fixtures/compact.json, core context-compact.ts), not
  * STE-rewritten yet. provider.compact.parity.test.ts pins the bytes.
@@ -18,6 +23,7 @@
  * @module ma-turn-recovery-plugin/provider
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 import type {
   SyntheticFacts,
   SyntheticKind,
@@ -108,6 +114,22 @@ const SESSION_NO_EXECUTOR = "this session has no tool executor"
 const HOOK_DENIED_TURN_WILL_STOP = "The turn.willStop hook did not let the turn stop."
 const MODE_NO_EXECUTOR =
   "The Mode tool call reached the dispatcher. The agent loop must handle this tool call first. Report a bug. Refer to the `Mode` interceptor in `src/loops/tool-round.ts`."
+
+/**
+ * The tag line of `kind` (rendered by `sb`) above the filled prose `md`,
+ * joined by one line feed. No `sb` or no codec: the prose only, with no
+ * leading line feed.
+ */
+function tagged(
+  sb: SidebandApi | undefined,
+  kind: string,
+  md: string,
+  attrs?: Record<string, string | number>,
+): string {
+  const tag = sb?.render(kind, attrs ? { attrs } : {}) ?? ""
+  const prose = fill(md)
+  return tag === "" ? prose : `${tag}\n${prose}`
+}
 
 /** A required string fact. Throws when absent or not a string. */
 function str(kind: SyntheticKind, facts: SyntheticFacts, key: string): string {
@@ -233,20 +255,20 @@ function schemaErrors(kind: SyntheticKind, facts: SyntheticFacts): string {
 }
 
 /** The text of one owned kind. Throws on a kind it does not own. */
-function render(kind: SyntheticKind, facts: SyntheticFacts): string {
+function render(kind: SyntheticKind, facts: SyntheticFacts, sb?: SidebandApi): string {
   switch (kind) {
     case "continue.max_tokens":
-      return fill(outputTruncatedMd)
+      return tagged(sb, "max-tokens-continue", outputTruncatedMd)
     case "continue.stream_interrupted":
-      return fill(streamInterruptedContinueMd)
+      return tagged(sb, "stream-interrupted", streamInterruptedContinueMd)
     case "assistant.placeholder":
       return fill(placeholderMd)
     case "runtime.turn_aborted":
-      return fill(turnAbortedMd)
+      return tagged(sb, "turn-aborted", turnAbortedMd)
     case "runtime.session_resumed":
-      return fill(sessionResumedMd)
+      return tagged(sb, "session-resumed", sessionResumedMd)
     case "runtime.stream_interrupted":
-      return fill(streamInterruptedMd)
+      return tagged(sb, "stream-interrupted", streamInterruptedMd)
     case "tool_result.aborted": {
       if (facts.site === "orphan") return ABORTED_ORPHAN
       if (facts.site === "runtime") return ABORTED_RUNTIME

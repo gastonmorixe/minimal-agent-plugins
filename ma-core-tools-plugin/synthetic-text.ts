@@ -9,9 +9,14 @@
  * A missing fact or a kind this plugin does not own throws. The core
  * resolver catches it, uses its own text and records a diagnostic.
  *
+ * Tags (`output-preview`, `mode-active`, `mode-change`) come from the
+ * sideband API, the third argument `sb` of `text` (design 40 step 10). With
+ * no `sb` or no codec, the text of these kinds is "".
+ *
  * @module ma-core-tools-plugin/synthetic-text
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 import type {
   SyntheticFacts,
   SyntheticKind,
@@ -119,13 +124,19 @@ function previewRecover(rawPath: string): string {
   return `The harness saved the full output at ${rawPath}. If this preview is not sufficient, Read that path. For build or test errors, Read the tail of that path.`
 }
 
-function preview(facts: SyntheticFacts): string {
+/** The `output-preview` tag: the codec renders it, the hint is its body. No codec gives "". */
+function preview(facts: SyntheticFacts, sb: SidebandApi | undefined): string {
   const k = "tool_output.preview"
   const rawPath = typeof facts.rawPath === "string" ? facts.rawPath : ""
   const recover = rawPath ? ` ${previewRecover(rawPath)}` : ""
   const hint = `${facts.bash === true ? PREVIEW_HINT_BASH : PREVIEW_HINT}${recover}`
-  const pathAttr = rawPath ? ` path="${rawPath}"` : ""
-  return `<ma::agent::output-preview shown="${str(k, facts, "shown")}" total="${str(k, facts, "total")}" tool="${str(k, facts, "tool")}"${pathAttr}>${hint}</ma::agent::output-preview>`
+  const attrs = {
+    shown: str(k, facts, "shown"),
+    total: str(k, facts, "total"),
+    tool: str(k, facts, "tool"),
+    ...(rawPath ? { path: rawPath } : {}),
+  }
+  return sb?.render("output-preview", { attrs, body: hint }) ?? ""
 }
 
 // --- tool_output.truncated (core truncatedOutputNotice + truncationHint) ---
@@ -330,8 +341,13 @@ function modeCliRefusal(f: SyntheticFacts): string {
   throw new Error(`${k}: unknown reason ${reason}`)
 }
 
-/** One text builder per kind. */
-const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
+/**
+ * One text builder per kind. `sb` is the sideband API of the session (third
+ * argument of `text`). A builder that has a tag renders it with `sb`.
+ */
+const TEXT: Readonly<
+  Record<string, (facts: SyntheticFacts, sb: SidebandApi | undefined) => string>
+> = {
   "tool_output.preview": preview,
   "tool_output.truncated": truncated,
   "tool_output.streak": streak,
@@ -399,10 +415,16 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
   "tool_text.Grep.error": (f) => `Grep error: ${str("tool_text.Grep.error", f, "detail")}`,
   "tool_text.Grep.no_matches": () => "No matches found.",
   "mode.refusal": modeRefusal,
-  "mode.active_stamp": (f) =>
-    `<ma::agent::mode-active id="${str("mode.active_stamp", f, "id")}" since="${str("mode.active_stamp", f, "since")}" />`,
-  "mode.change": (f) =>
-    `<ma::agent::mode-change from="${str("mode.change", f, "from")}" to="${str("mode.change", f, "to")}" at="${str("mode.change", f, "at")}" />`,
+  "mode.active_stamp": (f, sb) => {
+    const k = "mode.active_stamp"
+    const attrs = { id: str(k, f, "id"), since: str(k, f, "since") }
+    return sb?.render("mode-active", { attrs }) ?? ""
+  },
+  "mode.change": (f, sb) => {
+    const k = "mode.change"
+    const attrs = { from: str(k, f, "from"), to: str(k, f, "to"), at: str(k, f, "at") }
+    return sb?.render("mode-change", { attrs }) ?? ""
+  },
   "tool_output.binary_withheld": binaryWithheld,
   "tool_text.Bash.aborted": () => "[aborted by user]",
   "tool_text.Write.not_read": notRead("Write"),
@@ -422,10 +444,10 @@ const TEXT: Readonly<Record<string, (facts: SyntheticFacts) => string>> = {
 export function createCoreToolsSyntheticProvider(): SyntheticTextProvider {
   return {
     kinds: KINDS,
-    text(kind: SyntheticKind, facts: SyntheticFacts): string {
+    text(kind: SyntheticKind, facts: SyntheticFacts, sb?: SidebandApi): string {
       const build = Object.hasOwn(TEXT, kind) ? TEXT[kind] : undefined
       if (build === undefined) throw new Error(`ma-core-tools-plugin: kind not owned: ${kind}`)
-      return build(facts)
+      return build(facts, sb)
     },
   }
 }

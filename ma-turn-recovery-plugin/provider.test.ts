@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
 import type { SyntheticKind } from "@minimal-agent/core/plugin-api/types/synthetic-text"
+
+import { pluginSideband } from "../tests/support/sideband.ts"
 
 import { createTurnRecoveryProvider } from "./provider.ts"
 
@@ -149,5 +152,41 @@ describe("turn recovery contract", () => {
   })
   test("handler_error without detail throws", () => {
     expect(() => p.text("tool_result.handler_error", {})).toThrow()
+  })
+})
+
+describe("turn-recovery tag lines come from the sideband API (design 40 step 10)", () => {
+  const tagged: [SyntheticKind, Record<string, number>, string, Record<string, number>?][] = [
+    ["runtime.turn_aborted", {}, "turn-aborted"],
+    ["runtime.session_resumed", {}, "session-resumed"],
+    ["runtime.stream_interrupted", {}, "stream-interrupted"],
+    ["continue.stream_interrupted", {}, "stream-interrupted"],
+    ["continue.max_tokens", {}, "max-tokens-continue"],
+  ]
+  test("real codec: the tag line, one line feed, then the prose", async () => {
+    const sb = await pluginSideband()
+    for (const [kind, facts, sbKind, attrs] of tagged) {
+      const tag = sb.render(sbKind, attrs ? { attrs } : {})
+      expect(tag.length).toBeGreaterThan(0)
+      const out = p.text(kind, facts, sb)
+      expect(out).toBe(`${tag}\n${p.text(kind, facts, NO_SIDEBAND)}`)
+      expect(sb.startsWith(out, { kinds: [sbKind] })).toBe(true)
+      if (attrs) expect(sb.attrs(sb.find(out)[0]!)).toEqual(attrs)
+    }
+  })
+  test("NO_SIDEBAND and no sb: the prose only, with no stray line feed", () => {
+    for (const [kind, facts] of tagged) {
+      for (const out of [p.text(kind, facts, NO_SIDEBAND), p.text(kind, facts)]) {
+        expect(out.length).toBeGreaterThan(0)
+        expect(out).not.toMatch(/^\s/)
+        expect(out.startsWith("<")).toBe(false)
+      }
+    }
+    expect(p.text("runtime.turn_aborted", {}, NO_SIDEBAND)).toStartWith(
+      "The user stopped the previous turn before it finished.",
+    )
+  })
+  test("NO_SIDEBAND: a missing fact still throws", () => {
+    expect(() => p.text("tool_result.handler_error", {}, NO_SIDEBAND)).toThrow()
   })
 })
