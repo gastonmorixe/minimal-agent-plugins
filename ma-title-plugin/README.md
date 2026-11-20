@@ -119,6 +119,7 @@ Providers:
 | Provider  | Title profile                                                                                 |
 | --------- | --------------------------------------------------------------------------------------------- |
 | Anthropic | `claude-haiku-5-5` (alternative `claude-haiku-4-5-20251001`), effort `low`, no stream request |
+| OpenAI    | `gpt-6-luna`, effort `low`, streaming Responses API                                           |
 | Other     | No title profile. No title.                                                                   |
 
 When `claude-haiku-5-5` is not in the model list, the plugin uses

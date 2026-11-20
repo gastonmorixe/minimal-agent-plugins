@@ -9,7 +9,7 @@ import { describe, expect, it } from "bun:test"
 
 import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 
-import { bootstrapOpenAI, openaiProviderPlugin } from "./adapter.ts"
+import { bootstrapOpenAI, openaiAdapter, openaiProviderPlugin } from "./adapter.ts"
 import {
   buildOpenAIApiKeyCredential,
   OPENAI_API_KEY_AUTH,
@@ -28,6 +28,7 @@ import {
   resolveModel,
   resolveProvider,
 } from "./openai.test-helpers.ts"
+import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
 
 // ---------------------------------------------------------------------------
 // Registry + bootstrap
@@ -323,6 +324,45 @@ describe("bootstrapOpenAI", () => {
     expect(findModel("gpt-5.6-chat")?.surfaceId).toBe("openai-chat-completions")
     expect(findModel("gpt-4o")?.surfaceId).toBe("openai-chat-completions")
     expect(findModel("o3")?.surfaceId).toBe("openai-responses")
+  })
+})
+
+describe("OpenAI title profile", () => {
+  it("uses Luna at low effort with strict structured output for titles", () => {
+    const profile = openaiAdapter.recommendUtilityModel()
+    expect(profile).toEqual({
+      modelId: "gpt-6-luna",
+      effort: "low",
+      structured: "json_schema",
+      stream: "required",
+    })
+    if (!profile) throw new Error("OpenAI is missing its title profile")
+    const model = resolveModel(profile.modelId)
+    expect(model.providerId).toBe("openai")
+    expect(model.surfaceId).toBe("openai-responses")
+    expect(model.capabilities.structuredOutputs).toBe(true)
+
+    const schema = {
+      type: "object",
+      properties: { title: { type: "string" } },
+      required: ["title"],
+      additionalProperties: false,
+    }
+    const request: CanonicalRequest = {
+      modelId: model.id,
+      purpose: "title",
+      messages: [userText("Explain why basil leaves wilt")],
+      thinking: { mode: "off" },
+      effort: profile.effort,
+      stream: profile.stream === "required",
+      outputFormat: { type: "json_schema", name: "session_title", schema, strict: true },
+    }
+    expect(buildOpenAIResponsesBody(request, model)).toMatchObject({
+      model: "gpt-6-luna",
+      reasoning: { effort: "low" },
+      stream: true,
+      text: { format: { type: "json_schema", name: "session_title", schema, strict: true } },
+    })
   })
 })
 
