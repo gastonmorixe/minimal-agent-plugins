@@ -33,6 +33,22 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   loses control characters and escape sequences before it is painted. It is
   never written to the presence record and never goes to a peer. A host with
   no `title` method gives the footer as before.
+- 2026-11-20: **Sub-agents: soft budget tags, SIGTERM grace and salvage**
+  (`ma-sub-agents-plugin`). A worker gets a `budget` sideband tag in a tool
+  result at 75 % (`warn`) and 90 % (`final`) of its deadline, or near its
+  `maxTurns` (env `MINIMAL_AGENT_SUBAGENT_BUDGET` and
+  `MINIMAL_AGENT_SUBAGENT_STARTED_AT`). At the deadline or at `maxTurns`, the
+  supervisor sends SIGTERM one time and gives a 60 s grace. The worker runs
+  one wrap-up turn that can call only `SubAgentsReportResult` (env
+  `MINIMAL_AGENT_WRAP_UP_TOOLS`), then the supervisor sends SIGKILL. A
+  `maxTokens` trip gets no grace (SIGKILL at once). A worker that ends in the
+  grace with no result is `failed` with the limit text, and its final message
+  (max 8000 characters) is kept as `salvage` for `AgentResult`. The digest and
+  the canceled linked task tell the lead about the salvage. `AgentStatus` and
+  `ListAgents` show `stopping` in the grace. The probe reads the stream before
+  the sentinel, so a sentinel written at the run end is not missed. The
+  ma-hooks and ma-background READMEs now name the core file-lock listener as a
+  fan-out listener.
 
 - 2026-11-19: **Titles: same request layout as Claude Code**
   (`ma-title-plugin`). The system prompt keeps all the rules. The user

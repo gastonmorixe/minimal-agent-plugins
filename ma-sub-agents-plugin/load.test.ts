@@ -153,3 +153,35 @@ describe("SpawnAgent validation", () => {
     }
   })
 })
+
+describe("budget warning contribution (Design A)", () => {
+  const raw = RAW as unknown as {
+    toolResultTransforms?: { id: string; entry: string }
+    sideband?: {
+      kind: string
+      placement: string
+      direction: string
+      trust: string
+      body: string
+      attrs: Record<string, { type: string; values?: string[] }>
+    }[]
+  }
+
+  it("declares the budget sideband kind with placement tool-result", () => {
+    const kind = raw.sideband?.find((k) => k.kind === "budget")
+    expect(kind).toBeDefined()
+    expect(kind?.placement).toBe("tool-result")
+    expect(kind?.direction).toBe("to-model")
+    expect(kind?.trust).toBe("harness")
+    expect(kind?.body).toBe("text")
+    expect(Object.keys(kind?.attrs ?? {})).toEqual(["elapsed", "remaining", "turns-left", "level"])
+    expect(kind?.attrs.level?.values).toEqual(["warn", "final"])
+  })
+
+  it("declares toolResultTransforms; the entry loads and is a factory", async () => {
+    expect(raw.toolResultTransforms?.id).toBe("budget")
+    const entry = raw.toolResultTransforms?.entry ?? ""
+    const mod = (await import(join(import.meta.dir, entry))) as { default: unknown }
+    expect(typeof mod.default).toBe("function")
+  })
+})

@@ -318,6 +318,16 @@ export function supervisorDepsFromCtx(ctx: LiveAreaHandlerContext): SupervisorDe
         // already gone
       }
     },
+    // SIGTERM at a limit: the worker runs one final turn that calls
+    // ReportResult, then exits. The SIGKILL above is the fallback at the grace
+    // end (DEFAULT_GRACE_SEC), because the worker can swallow SIGTERM.
+    terminate: (pid) => {
+      try {
+        process.kill(pid, "SIGTERM")
+      } catch {
+        // already gone
+      }
+    },
     sessionsDir,
     leadSid,
     now: () => new Date(),

@@ -110,7 +110,11 @@ function fleetRow(r: SubagentRecord, ansi: boolean, nowMs: number): string {
   const s = r.status
   if (s.kind === "running") {
     const el = fmtElapsed(nowMs - Date.parse(s.startedAt))
-    trail = `${el}  ${color(ansi, ANSI.DGRAY, `${s.progress.tools} tools ${GLYPHS.bullet} ${fmtSpend(s.progress)}`)}`
+    // In the grace after the SIGTERM at a limit, say so (same as the widget).
+    const untilMs = s.grace ? Date.parse(s.grace.until) : Number.NaN
+    const left = Number.isFinite(untilMs) ? Math.max(0, Math.ceil((untilMs - nowMs) / 1000)) : 0
+    const stopping = s.grace ? `  ${color(ansi, ANSI.GOLD, `stopping · SIGKILL in ${left}s`)}` : ""
+    trail = `${el}  ${color(ansi, ANSI.DGRAY, `${s.progress.tools} tools ${GLYPHS.bullet} ${fmtSpend(s.progress)}`)}${stopping}`
   } else if (s.kind === "done") {
     trail = `${color(ansi, ANSI.DIM, clip(s.result.short, 28))} ${color(ansi, ANSI.DGRAY, "→")} ${color(ansi, ANSI.LGRAY, `SubAgentsAgentResult ${r.id}`)}`
   } else if (s.kind === "incomplete") {

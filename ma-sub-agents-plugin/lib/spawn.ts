@@ -35,7 +35,14 @@ import {
   streamReader,
 } from "./stream.ts"
 import type { WorkerProbe } from "./supervisor.ts"
-import { err, ok, type Progress, type Result, type ResultDigest } from "./types.ts"
+import {
+  err,
+  ok,
+  type Progress,
+  type Result,
+  type ResultDigest,
+  SALVAGE_MAX_CHARS,
+} from "./types.ts"
 
 /**
  * Where a worker's stdout (its stream-json event lines) is captured. Not
@@ -55,6 +62,37 @@ export const ENV_RESULT_PATH = "MINIMAL_AGENT_SUBAGENT_RESULT_PATH"
  * handler reads it to write `deliverables` and to enforce the contract.
  */
 export const ENV_EXPECT_ARTIFACTS = "MINIMAL_AGENT_SUBAGENT_EXPECT_ARTIFACTS"
+
+/**
+ * Env key carrying the worker's effective budget as JSON:
+ * `{ deadlineSec, maxTurns?, maxTokens? }`. `deadlineSec` is the effective
+ * deadline of the supervisor (the explicit budget, else the 1800 s default),
+ * so an unbudgeted worker gets the soft warnings too. The worker-side budget
+ * stamp (`lib/budget-warning.ts`) reads it. The lead spawn path always sets it.
+ */
+export const ENV_BUDGET = "MINIMAL_AGENT_SUBAGENT_BUDGET"
+
+/**
+ * Env key carrying the lead clock start of the worker (ISO), taken before the
+ * launch. The worker measures elapsed time from it. The worker boot time is
+ * part of the elapsed time, so a warning comes slightly early (safe).
+ */
+export const ENV_STARTED_AT = "MINIMAL_AGENT_SUBAGENT_STARTED_AT"
+
+/**
+ * The ReportResult tool name as the model sees it on the wire. The manifest
+ * name is `ReportResult` with no `explicitName`, so the core loader adds the
+ * plugin prefix (`deriveCamelName("Sub-agents")` = `SubAgents`). The request
+ * goldens show this name.
+ */
+export const REPORT_RESULT_TOOL = "SubAgentsReportResult"
+
+/**
+ * Env key (read by the cli `headless-wrap-up.ts`): a comma-separated list of
+ * the tools that the SIGTERM wrap-up turn keeps. The spawn plan pins it to
+ * {@link REPORT_RESULT_TOOL}, so the final turn can only report the result.
+ */
+export const ENV_WRAP_UP_TOOLS = "MINIMAL_AGENT_WRAP_UP_TOOLS"
 
 // ---------------------------------------------------------------------------
 // Injected dependencies (DIP — fakes in tests, real OS calls in prod)
@@ -176,6 +214,16 @@ export interface ProbeTarget {
  */
 export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
   const alive = deps.pidAlive(target.pid)
+  // READ ORDER: the stream FIRST, the sentinel SECOND. The worker writes its
+  // sentinel (ReportResult) BEFORE the stream gets `run_finished`. So when this
+  // probe sees the run end, the sentinel read after it also sees the sentinel.
+  // The other order can see "run ended, no sentinel" in a small window, and
+  // in the grace that gives `failed` for a worker that did report.
+  //
+  // The stream-json stdout is the primary telemetry source. It is read
+  // incrementally (only new bytes per tick). The transcript stays the fallback
+  // for an old worker launched without a stream file.
+  const stream = target.streamPath ? deps.readStream?.(target.streamPath) : undefined
   const rawResult = deps.readResult(target.resultPath)
   // FIX 3: a worker can CLAIM artifacts in its sentinel without writing them.
   // Cross-check the sentinel's own `artifacts[]` and prepend a loud warning to
@@ -191,10 +239,6 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
       ? deps.missingArtifacts?.(target.expectArtifacts)
       : undefined
 
-  // The stream-json stdout is the primary telemetry source. It is read
-  // incrementally (only new bytes per tick). The transcript stays the fallback
-  // for an old worker launched without a stream file.
-  const stream = target.streamPath ? deps.readStream?.(target.streamPath) : undefined
   // Read progress alive AND dead: a fast worker can exit (or write its
   // sentinel) before any tick saw it running, and the final counts must
   // still come from its stream / transcript.
@@ -229,10 +273,16 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
   // precedence). Exit-only: while alive a "final" message may just be mid-turn
   // chatter. The stream's `result.text` is the exact final answer; the
   // transcript parse is the fallback.
-  const distilled = result
+  // Read the FULL text, then clip it here at SALVAGE_MAX_CHARS, so the probe
+  // can tell when it clipped (AgentResult then says so).
+  const fullText = result
     ? undefined
-    : ((stream ? streamFinalText(stream) : undefined) ??
+    : ((stream ? streamFinalText(stream, Number.POSITIVE_INFINITY) : undefined) ??
       deps.readFinalText?.(target.transcriptPath))
+  const distilledClipped = fullText !== undefined && fullText.length > SALVAGE_MAX_CHARS
+  const distilled = distilledClipped
+    ? `${fullText.slice(0, SALVAGE_MAX_CHARS - 1).trimEnd()}…`
+    : fullText
   // A worker that exited producing NOTHING — no sentinel AND no distillable
   // final message — is where a crash hides. The stream already named the cause
   // structurally above (`runFailed`: `error` + `run_finished: failed`, written
@@ -246,6 +296,7 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
     ...(progress ? { progress } : {}),
     ...(result ? { result } : {}),
     ...(distilled ? { distilled } : {}),
+    ...(distilled && distilledClipped ? { distilledClipped: true } : {}),
     ...(missingArtifacts && missingArtifacts.length > 0 ? { missingArtifacts } : {}),
     ...(exitCode !== undefined ? { exitCode } : {}),
     ...(crash ? { crash } : {}),
@@ -452,7 +503,8 @@ export function realProbeDeps(): ProbeDeps {
     readProgress,
     readFinalText: (path) => {
       try {
-        return parseFinalText(readFileSync(path, "utf-8"))
+        // No clip here: probeWorker clips at SALVAGE_MAX_CHARS and marks it.
+        return parseFinalText(readFileSync(path, "utf-8"), Number.POSITIVE_INFINITY)
       } catch {
         return undefined
       }

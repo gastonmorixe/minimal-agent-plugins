@@ -16,9 +16,13 @@
 
 import { describe, expect, it } from "bun:test"
 
-import type { TUIContext } from "../lib/host-types.ts"
+import type { LiveAreaHandlerContext, TUIContext } from "../lib/host-types.ts"
 
-import { resolveLeadCredentialAndEffort, serviceDepsFromCtx } from "./handler-deps.ts"
+import {
+  resolveLeadCredentialAndEffort,
+  serviceDepsFromCtx,
+  supervisorDepsFromCtx,
+} from "./handler-deps.ts"
 
 const LEAD = "11111111-1111-4111-8111-111111111111"
 
@@ -451,5 +455,55 @@ describe("the lead's live target at each spawn (ctx.queryTarget)", () => {
       credentialName: "from-argv",
       effort: "high",
     })
+  })
+})
+
+describe("supervisorDepsFromCtx signals (grace phase)", () => {
+  const supCtx = (): LiveAreaHandlerContext =>
+    ({
+      ...makeCtx({ env: { MINIMAL_AGENT_SUBAGENT_NO_PRESENCE: "1" } }),
+      tick: 0,
+    }) as unknown as LiveAreaHandlerContext
+
+  /** Record the signal of each process.kill call; do not send it. */
+  function withKillSpy(run: () => void): [number, NodeJS.Signals | number | undefined][] {
+    const calls: [number, NodeJS.Signals | number | undefined][] = []
+    const real = process.kill
+    process.kill = ((pid: number, sig?: NodeJS.Signals | number) => {
+      calls.push([pid, sig])
+      return true
+    }) as typeof process.kill
+    try {
+      run()
+    } finally {
+      process.kill = real
+    }
+    return calls
+  }
+
+  it("terminate sends SIGTERM and kill sends SIGKILL", () => {
+    const deps = supervisorDepsFromCtx(supCtx())
+    expect(deps?.terminate).toBeDefined()
+    const calls = withKillSpy(() => {
+      deps?.terminate?.(424_242)
+      deps?.kill(424_242)
+    })
+    expect(calls).toEqual([
+      [424_242, "SIGTERM"],
+      [424_242, "SIGKILL"],
+    ])
+  })
+
+  it("terminate does not throw when the pid is gone", () => {
+    const deps = supervisorDepsFromCtx(supCtx())
+    const real = process.kill
+    process.kill = (() => {
+      throw new Error("ESRCH")
+    }) as typeof process.kill
+    try {
+      expect(() => deps?.terminate?.(424_242)).not.toThrow()
+    } finally {
+      process.kill = real
+    }
   })
 })

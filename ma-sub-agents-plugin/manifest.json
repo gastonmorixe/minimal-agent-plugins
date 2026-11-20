@@ -6,6 +6,23 @@
   "capabilities": ["models:read"],
   "description": "Delegation: spawn background minimal-agent sub-agents, steer them, review their work and fold the results back. A sub-agent is a real headless agent process with its own session id. A 1s heartbeat supervises it: it collects the exits, paints a live fleet widget, and gives the result of each finished sub-agent between turns. State stays at ~/.minimal-agent/sessions/<leadSid>.subagents.jsonl. To disable it, set MINIMAL_AGENT_DISABLE_SUBAGENTS=1.",
   "permissions": ["hooks:agent.willStop", "hooks:agent.didStart"],
+  "toolResultTransforms": { "id": "budget", "entry": "./handlers/budget_transforms.ts" },
+  "sideband": [
+    {
+      "kind": "budget",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "elapsed": { "type": "int" },
+        "remaining": { "type": "int" },
+        "turns-left": { "type": "int" },
+        "level": { "type": "enum", "values": ["warn", "final"] }
+      },
+      "body": "text",
+      "trust": "harness",
+      "summary": "Soft budget warning for a sub-agent worker: elapsed and remaining seconds, turns left, level."
+    }
+  ],
   "headless": {
     "tools": [
       {

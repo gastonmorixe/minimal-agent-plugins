@@ -12,6 +12,7 @@
  */
 
 import { ENV_LEAD_PID } from "./lead-watch.ts"
+import { ENV_BUDGET, ENV_STARTED_AT, ENV_WRAP_UP_TOOLS, REPORT_RESULT_TOOL } from "./spawn.ts"
 import { err, type Isolation, ok, type Result, type SessionId, type SubagentId } from "./types.ts"
 
 /** Env keys the plan stamps so a child knows its lineage + depth. */
@@ -136,6 +137,13 @@ export interface SpawnInput {
   readonly cwd: string
   /** Extra env to merge (e.g. tool allow/deny markers a future gate reads). */
   readonly extraEnv?: Record<string, string>
+  /**
+   * The worker budget env (`ENV_BUDGET`, `ENV_STARTED_AT`) from
+   * `budgetEnv()` in `budget-warning.ts`. The plan spreads these two keys after
+   * {@link extraEnv}, so a caller cannot change them. When absent, both keys
+   * are set to "", so the budget of a parent worker cannot leak to its child.
+   */
+  readonly budgetEnv?: Readonly<Record<string, string>>
   /**
    * Path of the startup profile the child boots with (SPEC 4.4). Emitted as
    * `--startup-profile <path>` for both isolation tiers (SPEC 4.6), unless
@@ -288,6 +296,13 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
     // The pinned child sid (the same value as `--session-id`). Spread after
     // extraEnv so a caller cannot point the lineage at a wrong session.
     [ENV_SID]: input.childSid,
+    // The soft budget warnings. Always set (also to ""), after extraEnv, so a
+    // caller cannot change them and a parent worker's budget cannot leak.
+    [ENV_BUDGET]: input.budgetEnv?.[ENV_BUDGET] ?? "",
+    [ENV_STARTED_AT]: input.budgetEnv?.[ENV_STARTED_AT] ?? "",
+    // The SIGTERM wrap-up turn keeps only the ReportResult tool (wire name).
+    // Spread after extraEnv so a caller cannot change it.
+    [ENV_WRAP_UP_TOOLS]: REPORT_RESULT_TOOL,
     // No profile: keep the old env channel (lead disables + worker-only set).
     // Spread after extraEnv so an extraEnv entry cannot clobber it.
     ...(withProfile

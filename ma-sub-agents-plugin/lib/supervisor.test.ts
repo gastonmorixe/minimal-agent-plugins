@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import { type Effect, supervisorTick, type WorkerProbe } from "./supervisor.ts"
+import { DEFAULT_GRACE_SEC, type Effect, supervisorTick, type WorkerProbe } from "./supervisor.ts"
 import {
   type Progress,
   type ResultDigest,
@@ -39,6 +39,13 @@ function running(startedAt = NOW): SubagentStatus {
 
 function tick(records: SubagentRecord[], probes: Record<string, WorkerProbe>, nowMs = NOW_MS) {
   return supervisorTick({ records, probes: new Map(Object.entries(probes)), now: NOW, nowMs })
+}
+
+/** Trip a limit (SIGTERM + grace), then tick again after the grace ends. */
+function tripAndExpire(records: SubagentRecord[], probes: Record<string, WorkerProbe>) {
+  const first = tick(records, probes)
+  expect(first.effects.map((e) => e.type)).toEqual(["signal"])
+  return tick(first.records, probes, NOW_MS + DEFAULT_GRACE_SEC * 1000)
 }
 
 describe("supervisorTick — running transitions", () => {
@@ -405,9 +412,11 @@ describe("supervisorTick — tasks linkage", () => {
 })
 
 describe("supervisorTick — budget", () => {
-  it("trips a deadline: emits a stop effect and marks failed(timeout)", () => {
+  it("trips a deadline: SIGTERM, then after the grace a stop effect and failed(timeout)", () => {
     const started = new Date(NOW_MS - 120_000).toISOString() // 2 min ago
-    const out = tick([rec("A1", running(started), 60)], { A1: { alive: true, progress: PROG } })
+    const out = tripAndExpire([rec("A1", running(started), 60)], {
+      A1: { alive: true, progress: PROG },
+    })
     const st = out.records[0]?.status
     expect(st?.kind).toBe("failed")
     if (st?.kind === "failed") expect(st.error).toMatch(/timed out/i)
@@ -427,7 +436,9 @@ describe("supervisorTick — budget", () => {
   // ceiling, through the SAME stop + failed(timeout) terminal path.
   it("reaps an UNBUDGETED worker past the default hard deadline (B-083)", () => {
     const started = new Date(NOW_MS - 31 * 60_000).toISOString() // 31 min ago, no budget
-    const out = tick([rec("A1", running(started))], { A1: { alive: true, progress: PROG } })
+    const out = tripAndExpire([rec("A1", running(started))], {
+      A1: { alive: true, progress: PROG },
+    })
     const st = out.records[0]?.status
     expect(st?.kind).toBe("failed")
     if (st?.kind === "failed") expect(st.error).toMatch(/timed out/i)
@@ -528,9 +539,9 @@ describe("supervisorTick — sentinel while alive (Dorothy A1/A2 harness bug)", 
     expect(out.effects).toEqual([])
   })
 
-  it("alive WITHOUT a sentinel past deadline still fails (B-083 preserved)", () => {
+  it("alive WITHOUT a sentinel past deadline still fails after the grace (B-083 preserved)", () => {
     const started = new Date(NOW_MS - 120_000).toISOString()
-    const out = tick([rec("A1", running(started), 60)], {
+    const out = tripAndExpire([rec("A1", running(started), 60)], {
       A1: { alive: true, progress: PROG },
     })
     expect(out.records[0]?.status.kind).toBe("failed")
@@ -615,8 +626,8 @@ describe("supervisorTick — turn and token budgets", () => {
     ...(budget ? { budget } : {}),
   })
 
-  it("stops a worker that starts a turn past maxTurns", () => {
-    const out = tick([withBudget({ maxTurns: 3 })], {
+  it("stops a worker that starts a turn past maxTurns (after the grace)", () => {
+    const out = tripAndExpire([withBudget({ maxTurns: 3 })], {
       A1: { alive: true, progress: { tools: 5, tokens: 10, turns: 4 } },
     })
     const st = out.records[0]?.status
@@ -627,7 +638,7 @@ describe("supervisorTick — turn and token budgets", () => {
       type: "stop",
       id: subagentId("A1"),
       pid: 4242,
-      reason: "budget",
+      reason: "grace ended",
     })
   })
 
@@ -638,7 +649,7 @@ describe("supervisorTick — turn and token budgets", () => {
     expect(out.records[0]?.status.kind).toBe("running")
   })
 
-  it("stops a worker past maxTokens of generated output", () => {
+  it("stops a worker past maxTokens of generated output at once (no grace)", () => {
     const out = tick([withBudget({ maxTokens: 1000 })], {
       A1: { alive: true, progress: { tools: 1, tokens: 90_000, output: 1200 } },
     })
@@ -646,6 +657,12 @@ describe("supervisorTick — turn and token budgets", () => {
     expect(st?.kind === "failed" && st.error).toBe(
       "budget exceeded: 1200 output tokens with maxTokens 1000",
     )
+    expect(out.effects[0]).toEqual({
+      type: "stop",
+      id: subagentId("A1"),
+      pid: 4242,
+      reason: "budget",
+    })
   })
 
   it("does not count context tokens toward maxTokens", () => {

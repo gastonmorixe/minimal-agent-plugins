@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { readMesh } from "./presence.ts"
 import { type ProbeDeps } from "./spawn.ts"
 import { SubagentStore } from "./store.ts"
+import { DEFAULT_GRACE_SEC } from "./supervisor.ts"
 import { runSupervisor, type SupervisorDeps } from "./supervisor-shell.ts"
 import { type ResultDigest, type SubagentRecord, sessionId, subagentId } from "./types.ts"
 
@@ -152,9 +153,59 @@ describe("runSupervisor", () => {
       status: { ...r.status, startedAt: "2026-05-30T11:58:00.000Z" },
       budget: { deadlineSec: 60 },
     })
-    const deps = makeDeps(store, { pidAlive: () => true, readResult: () => undefined })
+    const terminated: number[] = []
+    const deps = makeDeps(
+      store,
+      { pidAlive: () => true, readResult: () => undefined },
+      { terminate: (pid) => terminated.push(pid) },
+    )
+    // Tick 1: the deadline sends SIGTERM once; the worker stays running.
     runSupervisor(deps)
-    expect(store.get("A1")?.status.kind).toBe("failed")
-    expect(deps.killed).toEqual([4242])
+    expect(store.get("A1")?.status.kind).toBe("running")
+    expect(terminated).toEqual([4242])
+    expect(deps.killed).toEqual([])
+    // Tick 2, still in the grace: no second SIGTERM, no kill.
+    runSupervisor(deps)
+    expect(terminated).toEqual([4242])
+    expect(deps.killed).toEqual([])
+    // Tick 3, after the grace: SIGKILL and failed(timeout).
+    const late = makeDeps(
+      store,
+      { pidAlive: () => true, readResult: () => undefined },
+      {
+        terminate: (pid) => terminated.push(pid),
+        now: () => new Date(Date.parse("2026-05-30T12:00:00.000Z") + DEFAULT_GRACE_SEC * 1000),
+      },
+    )
+    runSupervisor(late)
+    const st = store.get("A1")?.status
+    expect(st?.kind).toBe("failed")
+    if (st?.kind === "failed") expect(st.error).toBe("timed out (budget deadline exceeded)")
+    expect(late.killed).toEqual([4242])
+    expect(terminated).toEqual([4242])
+  })
+
+  it("a worker that reports in the grace ends done, with no SIGKILL for the deadline", () => {
+    const store = new SubagentStore(LEAD, { dir })
+    const r = running("A1", 4242)
+    if (r.status.kind !== "running") throw new Error("expected running status")
+    store.upsert({
+      ...r,
+      status: { ...r.status, startedAt: "2026-05-30T11:58:00.000Z" },
+      budget: { deadlineSec: 60 },
+    })
+    const terminated: number[] = []
+    let result: ResultDigest | undefined
+    const deps = makeDeps(
+      store,
+      { pidAlive: () => true, readResult: () => result },
+      { terminate: (pid) => terminated.push(pid) },
+    )
+    runSupervisor(deps)
+    expect(terminated).toEqual([4242])
+    result = RESULT
+    runSupervisor(deps)
+    expect(store.get("A1")?.status.kind).toBe("done")
+    expect(terminated).toEqual([4242])
   })
 })
