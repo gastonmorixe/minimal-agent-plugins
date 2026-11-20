@@ -1,0 +1,354 @@
+{
+  "code": {
+    "ma-acp-plugin/host-mode.ts": {
+      "bracket-notice": 1
+    },
+    "ma-ask-mode-plugin/PROMPT.md": {
+      "prompt-file": 2
+    },
+    "ma-base-prompt-plugin/prompts/loop-safety/ack.md": {
+      "prompt-file": 1
+    },
+    "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md": {
+      "prompt-file": 2
+    },
+    "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md": {
+      "prompt-file": 2
+    },
+    "ma-base-prompt-plugin/prompts/tool-output-conventions.md": {
+      "prompt-file": 2
+    },
+    "ma-core-tools-plugin/prompts/tools/mode.md": {
+      "prompt-file": 1
+    },
+    "ma-core-tools-plugin/synthetic-text.ts": {
+      "tag-literal": 5,
+      "bracket-notice": 11
+    },
+    "ma-diagnostics-plugin/lib/format-notes.ts": {
+      "bracket-notice": 1
+    },
+    "ma-diagnostics-plugin/manifest.json": {
+      "prompt-file": 1
+    },
+    "ma-diff-view-plugin/PROMPT.md": {
+      "prompt-file": 1
+    },
+    "ma-diff-view-plugin/manifest.json": {
+      "prompt-file": 1
+    },
+    "ma-emit-output-plugin/PROMPT.md": {
+      "prompt-file": 3
+    },
+    "ma-fetch-plugin/handlers/fetch.ts": {
+      "bracket-notice": 1
+    },
+    "ma-fetch-plugin/lib/backend.ts": {
+      "bracket-notice": 1
+    },
+    "ma-fetch-plugin/lib/binary.ts": {
+      "tag-literal": 3
+    },
+    "ma-fetch-plugin/lib/data-uri.ts": {
+      "tag-literal": 2,
+      "tag-regex": 1
+    },
+    "ma-fetch-plugin/lib/html-cleanup.ts": {
+      "tag-literal": 1
+    },
+    "ma-intercom-plugin/PROMPT.md": {
+      "prompt-file": 1
+    },
+    "ma-intercom-plugin/handlers/inbox_attachment.ts": {
+      "tag-literal": 1
+    },
+    "ma-intercom-plugin/lib/mention/PROMPTS.ts": {
+      "tag-literal": 2
+    },
+    "ma-intercom-plugin/lib/sanitize.ts": {
+      "tag-regex": 1
+    },
+    "ma-intercom-plugin/manifest.json": {
+      "prompt-file": 1
+    },
+    "ma-interleave-thinking-plugin/PROMPT.md": {
+      "prompt-file": 1
+    },
+    "ma-interleave-thinking-plugin/manifest.json": {
+      "prompt-file": 1
+    },
+    "ma-llm-anthropic-plugin/adapter.ts": {
+      "tag-search": 2
+    },
+    "ma-llm-cursor-plugin/bidi-tool-results.ts": {
+      "tag-literal": 1,
+      "tag-regex": 6,
+      "bracket-notice": 2
+    },
+    "ma-llm-cursor-plugin/request-body.ts": {
+      "bracket-notice": 4
+    },
+    "ma-llm-openai-plugin/responses/compact.ts": {
+      "tag-literal": 1
+    },
+    "ma-memory-plugin/PROMPT.md": {
+      "prompt-file": 1
+    },
+    "ma-memory-plugin/lib/format.ts": {
+      "bracket-notice": 1
+    },
+    "ma-memory-plugin/lib/parse.ts": {
+      "bracket-notice": 1
+    },
+    "ma-memory-plugin/lib/save-echo.ts": {
+      "tag-literal": 1
+    },
+    "ma-memory-plugin/lib/short-term-snapshot.ts": {
+      "tag-literal": 1
+    },
+    "ma-memory-plugin/manifest.json": {
+      "prompt-file": 3
+    },
+    "ma-session-history-plugin/lib/dump-from-data.ts": {
+      "tag-literal": 2,
+      "tag-regex": 1
+    },
+    "ma-skills-plugin/lib/tool-registry.ts": {
+      "bracket-notice": 1
+    },
+    "ma-sub-agents-plugin/lib/attachment.ts": {
+      "tag-literal": 2
+    },
+    "ma-sub-agents-plugin/lib/lane/scrub-fixture.ts": {
+      "bracket-notice": 1
+    },
+    "ma-tasks-plugin/lib/attachment.ts": {
+      "tag-literal": 1
+    },
+    "ma-tasks-plugin/lib/model-render.ts": {
+      "tag-literal": 1
+    },
+    "ma-tasks-plugin/manifest.json": {
+      "prompt-file": 1
+    },
+    "ma-tasks-plugin/prompts/results-compact.md": {
+      "prompt-file": 1
+    },
+    "ma-title-plugin/lib/input.ts": {
+      "tag-regex": 2,
+      "tag-search": 1
+    },
+    "ma-turn-recovery-plugin/prompts/output-truncated.md": {
+      "prompt-file": 1
+    },
+    "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md": {
+      "prompt-file": 2
+    },
+    "ma-turn-recovery-plugin/prompts/session-resumed.md": {
+      "prompt-file": 1
+    },
+    "ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md": {
+      "prompt-file": 1
+    },
+    "ma-turn-recovery-plugin/prompts/stream-interrupted.md": {
+      "prompt-file": 1
+    },
+    "ma-turn-recovery-plugin/prompts/turn-aborted.md": {
+      "prompt-file": 1
+    },
+    "ma-turn-recovery-plugin/provider.ts": {
+      "bracket-notice": 2
+    },
+    "scripts/ste-parity.ts": {
+      "tag-regex": 1
+    },
+    "tests/ste/ste-rules.ts": {
+      "tag-regex": 2
+    }
+  },
+  "tests": {
+    "ma-agents-md-plugin/integration.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-core-tools-plugin/manifest.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-core-tools-plugin/parity.test.ts": {
+      "tag-literal": 8,
+      "tag-search": 1,
+      "bracket-notice": 3
+    },
+    "ma-core-tools-plugin/synthetic-text.truncated.test.ts": {
+      "bracket-notice": 7
+    },
+    "ma-fetch-plugin/handlers/fetch.run.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-fetch-plugin/lib/binary.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-fetch-plugin/lib/cleanup-format.test.ts": {
+      "tag-regex": 1
+    },
+    "ma-fetch-plugin/lib/data-uri.test.ts": {
+      "tag-literal": 2
+    },
+    "ma-fetch-plugin/lib/html-cleanup.test.ts": {
+      "tag-regex": 3
+    },
+    "ma-intercom-plugin/handlers.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-intercom-plugin/lib/beat.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-intercom-plugin/lib/mention/PROMPTS.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-intercom-plugin/lib/mention/rewrite.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-intercom-plugin/lib/render.test.ts": {
+      "tag-literal": 2
+    },
+    "ma-intercom-plugin/lib/sanitize.test.ts": {
+      "tag-literal": 7
+    },
+    "ma-intercom-plugin/lib/teams-compat.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-intercom-plugin/lib/teams.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-llm-anthropic-plugin/adapter.cache-diagnosis.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-llm-anthropic-plugin/anthropic.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-llm-clinepass-plugin/input-formats.test.ts": {
+      "bracket-notice": 2
+    },
+    "ma-llm-cursor-plugin/bidi-tool-results.parity.test.ts": {
+      "bracket-notice": 15
+    },
+    "ma-llm-cursor-plugin/bidi-tool-results.test.ts": {
+      "tag-literal": 4,
+      "bracket-notice": 2
+    },
+    "ma-llm-cursor-plugin/input-formats.test.ts": {
+      "bracket-notice": 5
+    },
+    "ma-llm-cursor-plugin/mcp-contract.test.ts": {
+      "bracket-notice": 1
+    },
+    "ma-llm-generic-endpoint-plugin/input-formats.test.ts": {
+      "bracket-notice": 1
+    },
+    "ma-llm-grok-plugin/input-formats.test.ts": {
+      "bracket-notice": 2
+    },
+    "ma-llm-huggingface-plugin/input-formats.test.ts": {
+      "bracket-notice": 2
+    },
+    "ma-llm-meta-plugin/input-formats.test.ts": {
+      "bracket-notice": 3
+    },
+    "ma-llm-ollama-plugin/input-formats.test.ts": {
+      "bracket-notice": 4
+    },
+    "ma-llm-openai-plugin/input-formats.test.ts": {
+      "bracket-notice": 6
+    },
+    "ma-llm-opencode-go-plugin/input-formats.test.ts": {
+      "bracket-notice": 8
+    },
+    "ma-llm-opencode-zen-plugin/input-formats.test.ts": {
+      "bracket-notice": 8
+    },
+    "ma-llm-openrouter-plugin/input-formats.test.ts": {
+      "bracket-notice": 2
+    },
+    "ma-llm-wafer-plugin/input-formats.test.ts": {
+      "bracket-notice": 2
+    },
+    "ma-memory-plugin/handlers/memory.test.ts": {
+      "tag-literal": 1,
+      "bracket-notice": 3
+    },
+    "ma-memory-plugin/integration.test.ts": {
+      "tag-literal": 2
+    },
+    "ma-memory-plugin/lib/format.test.ts": {
+      "bracket-notice": 1
+    },
+    "ma-memory-plugin/lib/save-echo.test.ts": {
+      "tag-literal": 2
+    },
+    "ma-memory-plugin/lib/short-term-snapshot.test.ts": {
+      "tag-literal": 2
+    },
+    "ma-memory-plugin/lib/store.test.ts": {
+      "bracket-notice": 3
+    },
+    "ma-slash-menu-plugin/providers/actions.test.ts": {
+      "bracket-notice": 2
+    },
+    "ma-sub-agents-plugin/lib/attachment.test.ts": {
+      "tag-literal": 2,
+      "tag-search": 2
+    },
+    "ma-tasks-plugin/handlers/planning_fragment.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-tasks-plugin/handlers/task_tool.api-simplify.test.ts": {
+      "tag-literal": 4
+    },
+    "ma-tasks-plugin/handlers/task_tool.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-tasks-plugin/integration.test.ts": {
+      "tag-literal": 1
+    },
+    "ma-tasks-plugin/lib/attachment.test.ts": {
+      "tag-literal": 3,
+      "tag-search": 4
+    },
+    "ma-tasks-plugin/lib/model-render.test.ts": {
+      "tag-literal": 4
+    },
+    "ma-title-plugin/lib/eligibility.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-title-plugin/lib/input.test.ts": {
+      "tag-literal": 4
+    },
+    "ma-title-plugin/lib/sanitize.test.ts": {
+      "tag-literal": 3
+    },
+    "ma-turn-recovery-plugin/provider.parity.test.ts": {
+      "bracket-notice": 3
+    },
+    "ma-usage-plugin/lib/overlay.test.ts": {
+      "bracket-notice": 1
+    },
+    "scripts/prompt-audit.test.ts": {
+      "tag-regex": 2
+    },
+    "tests/prompt-audit/prompt-audit.test.ts": {
+      "tag-regex": 1
+    },
+    "tests/ste/ste-golden-shape.test.ts": {
+      "tag-literal": 27,
+      "tag-regex": 4,
+      "tag-search": 2
+    },
+    "tests/ste/ste-rules.test.ts": {
+      "tag-literal": 1
+    },
+    "tests/ste/ste-spans.test.ts": {
+      "tag-literal": 2,
+      "bracket-notice": 1
+    }
+  }
+}

@@ -239,10 +239,18 @@ const CASES: EncoderCase[] = [
         id: "cursor-auto",
         vendorIds: { cursor: "default" },
       }
-      const body = buildCursorAgentRunBody(
-        { ...request(m), modelId: "cursor-auto" } as never,
-        model as never,
-      )
+      // The protobuf has the workspace path (process.cwd()). A fixed fake path keeps
+      // the substring checks independent of the checkout directory name.
+      const cwdSpy = spyOn(process, "cwd").mockReturnValue("/fake/workspace")
+      let body: Uint8Array
+      try {
+        body = buildCursorAgentRunBody(
+          { ...request(m), modelId: "cursor-auto" } as never,
+          model as never,
+        )
+      } finally {
+        cwdSpy.mockRestore()
+      }
       // Byte view as a latin1 string: one char per byte, so equal strings mean equal bytes.
       return Buffer.from(body).toString("latin1")
     },
