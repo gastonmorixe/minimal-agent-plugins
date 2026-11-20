@@ -475,6 +475,7 @@ export async function spawnAgent(
     label,
     type,
     model,
+    ...(effort ? { effort } : {}),
     task,
     isolation,
     workspace: "inherit-cwd",

@@ -223,4 +223,10 @@ describe("MIN-4: AgentStatus and ListAgents show the grace", () => {
   it("AgentResult of a worker in the grace says that it is stopping", () => {
     expect(resultText(inGrace())).toContain("stopping")
   })
+  it("names the effort in the status line when the record has one", () => {
+    expect(statusDetail({ ...inGrace(), effort: "high" }, NOW_MS)).toContain("· effort high ·")
+  })
+  it("omits effort when the record has none", () => {
+    expect(statusDetail(inGrace(), NOW_MS)).not.toContain("effort")
+  })
 })

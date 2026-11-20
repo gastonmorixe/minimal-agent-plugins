@@ -15,7 +15,7 @@ import {
   sessionId,
   subagentId,
 } from "./types.ts"
-import { renderWidget } from "./widget.ts"
+import { modelTag, renderWidget } from "./widget.ts"
 
 // The display tests below check styled bytes: install the test kit (S41).
 beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
@@ -238,5 +238,24 @@ describe("renderWidget — stream telemetry", () => {
       { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD },
     )
     expect(writing).toContain("✎ The fix is")
+  })
+})
+
+describe("fleet row model tag", () => {
+  it("shows the model tier and effort on each row", () => {
+    const records = [
+      { ...rec("A1", "explorer", running({ tools: 1, tokens: 10 })), model: "claude-opus-4-8", effort: "high" },
+      { ...rec("A2", "worker", running({ tools: 1, tokens: 10 })), model: "claude-haiku-4-5" },
+    ]
+    const out = renderWidget(records, { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD }) as string
+    expect(out).toContain("opus:high")
+    expect(out).toContain("haiku")
+    expect(out).not.toContain("haiku:")
+  })
+
+  it("modelTag handles missing model and effort", () => {
+    expect(modelTag(undefined, undefined)).toBe("")
+    expect(modelTag(undefined, "max")).toBe("max")
+    expect(modelTag("some-other", undefined)).toBe("some-other")
   })
 })
