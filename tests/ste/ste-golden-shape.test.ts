@@ -451,6 +451,26 @@ export function isAnchorMarkerAddition(path: string, before: unknown, after: unk
   )
 }
 
+/** A `value` path of a cache marker TTL: `...cache_control.ttl`. */
+const CACHE_TTL_PATH = /\.cache_control\.ttl$/
+
+/**
+ * True when a `value` difference is the prompt-cache TTL default, which core
+ * changed from "5m" to "1h" (core 193077b8). Only that exact change is allowed.
+ *
+ * It matches nothing after the 1h default is on main (the merge base then has
+ * "1h"). Remove it in a follow-up then, as for SCHEMA_ADDITIONS.
+ *
+ * @param path - The `value` path from {@link leafDiff}.
+ * @param before - The merge-base golden.
+ * @param after - The current golden.
+ * @returns Whether the difference is the TTL default change.
+ */
+export function isCacheTtlDefaultChange(path: string, before: unknown, after: unknown): boolean {
+  if (!CACHE_TTL_PATH.test(path)) return false
+  return atPath(before, path) === "5m" && atPath(after, path) === "1h"
+}
+
 /** The trailing mode stamp of a tool_result, with the blank line before it. */
 const MODE_STAMP = /\n\n<ma::agent::mode-active [^<>]*\/>$/
 
@@ -516,6 +536,7 @@ export function goldenProblems(
     if (d.kind === "string") continue
     if (d.kind === "shape" && isAllowedAddition(d.path, before, after, additions)) continue
     if (d.kind === "shape" && isAnchorMarkerAddition(d.path, before, after)) continue
+    if (d.kind === "value" && isCacheTtlDefaultChange(d.path, before, after)) continue
     const listed = leaves.some((leaf) => leaf.golden === name && leaf.path === d.path)
     if (listed && d.kind === "value") {
       const problem = proseLeafProblem(atPath(before, d.path), atPath(after, d.path))
@@ -1086,5 +1107,29 @@ describe("golden leaf diff: the anchor marker (cacheAnchor ON by default)", () =
     expect(goldenProblems("g.json", before, after)).toEqual([
       "shape $.requests[0].messages[2].content[0]{+cache_control}",
     ])
+  })
+})
+
+describe("cache TTL default change (5m to 1h)", () => {
+  const req = (ttl: string, extra: Record<string, unknown> = {}) => ({
+    requests: [
+      {
+        system: [{ type: "text", text: "s", cache_control: { type: "ephemeral", ttl, ...extra } }],
+      },
+    ],
+  })
+  const path = "$.requests[0].system[0].cache_control.ttl"
+
+  test("allows only 5m to 1h on a cache_control.ttl leaf", () => {
+    expect(isCacheTtlDefaultChange(path, req("5m"), req("1h"))).toBe(true)
+    expect(goldenProblems("g.json", req("5m"), req("1h"))).toEqual([])
+  })
+
+  test("rejects other TTL values and other leaves", () => {
+    expect(isCacheTtlDefaultChange(path, req("1h"), req("5m"))).toBe(false)
+    expect(isCacheTtlDefaultChange(path, req("5m"), req("2h"))).toBe(false)
+    expect(goldenProblems("g.json", req("5m"), req("2h"))).toEqual([`value ${path}`])
+    const typePath = "$.requests[0].system[0].cache_control.type"
+    expect(isCacheTtlDefaultChange(typePath, req("5m"), req("5m", { type: "other" }))).toBe(false)
   })
 })
