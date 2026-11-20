@@ -1,0 +1,1 @@
+By default, the tool loop has no limit on the number of tool steps. A long task can continue for many steps and not stop. Examples: a change of many files, a full code inspection, or a long investigation.

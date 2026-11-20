@@ -138,6 +138,7 @@ when the manifest sets it.
 | [`ma-hooks-plugin/`](./ma-hooks-plugin) | `hooks` | Runs shell and HTTP hooks from `hooks.json`. Adds `/hooks`. |
 | [`ma-dry-run-plugin/`](./ma-dry-run-plugin) | `dry-run` | Off by default. Prints the full model request as JSON and does not send it (`--dry-run`). |
 | [`ma-interleave-thinking-plugin/`](./ma-interleave-thinking-plugin) | `interleave-thinking` | Off by default. Hides `<ma::emit::interleave-thinking>` spans from the output. |
+| [`ma-reflection-checkpoint-plugin/`](./ma-reflection-checkpoint-plugin) | `reflection-checkpoint` | Off by default. Adds a soft reflection checkpoint after each N tool rounds (default 50), with a cooldown that Esc skips. The model can skip the next K checkpoints with `<ma::emit::reflection-ack />`. |
 | [`ma-security-plugin/`](./ma-security-plugin) | `security` | Off by default. A skeleton for secret redaction and a tool guard. Adds `SecurityStatus` and `/security`. |
 | [`ma-policy-ref-plugin/`](./ma-policy-ref-plugin) | `policy-ref` | Off by default. A reference policy plugin, used as a test fixture. |
 | [`ma-agent-cloud/`](./ma-agent-cloud) | `minimal-agent-cloud` | Off by default. The connector to the cloud backend. Adds `CloudStatus`, `CloudLogin`, `CloudPush`. |
