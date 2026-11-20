@@ -180,12 +180,18 @@ describe("external plugin prompt audit", () => {
     // "harness"/"leverage" are verb-only bans. The noun "the harness" (this
     // runtime's name) is fine, so skip a hit preceded by an article/possessive.
     // The lookbehind is case-insensitive so "The harness" at a sentence start is
-    // also exempt.
+    // also exempt. Also exempt the literal enum VALUE `"trust": "harness"` of a
+    // manifest sideband entry (core `SidebandKindSpec.trust`): it is a wire value,
+    // not prose.
+    const isTrustEnumValue = (file: PromptFile, match: RegExpExecArray): boolean =>
+      basename(file.rel) === "manifest.json" &&
+      match[0] === "harness" &&
+      /"trust"\s*:\s*"$/.test(file.text.slice(Math.max(0, match.index - 16), match.index))
     const aiVerbs = violations(
       modelFacingFiles(),
       /(?<![Tt]he\s|[Aa]n?\s|[Tt]his\s|[Tt]hat\s|[Oo]ur\s|[Ii]ts\s|[Yy]our\s|[Tt]heir\s)\b(?:leverages?|leveraging|harnesse?s?|harnessing)\b/g,
       "AI verb (use plain wording)",
-      isStyleRulesPlugin,
+      (file, match) => isStyleRulesPlugin(file) || isTrustEnumValue(file, match),
     )
     expect([...aiWords, ...aiVerbs]).toEqual([])
   })
