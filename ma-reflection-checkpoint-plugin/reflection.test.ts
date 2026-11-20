@@ -14,14 +14,29 @@ import { afterAll, beforeEach, describe, expect, it } from "bun:test"
 import reflectionAckHandler, { ackNotice, parseAck } from "./handlers/ack.ts"
 import { COUNTDOWN_ID, onDidBatch } from "./handlers/did-batch.ts"
 import loopSafetyFragment from "./handlers/fragment.ts"
-import { DEFAULT_COOLDOWN_MS, DEFAULT_INTERVAL, loadConfig } from "./lib/config.ts"
+import onRunEnd from "./handlers/run-end.ts"
+import {
+  DEFAULT_COOLDOWN_MS,
+  DEFAULT_INTERVAL,
+  loadConfig,
+  pluginConfig,
+  resetConfigCache,
+} from "./lib/config.ts"
 import type {
   CountdownRequest,
   CountdownResult,
   HookContext,
+  RunModeFact,
   TUIContext,
 } from "./lib/host-types.ts"
-import { resetAllState } from "./lib/state.ts"
+import {
+  hasState,
+  MAX_SESSIONS,
+  resetAllState,
+  sessionCount,
+  sessionKey,
+  stateFor,
+} from "./lib/state.ts"
 import { attachmentText, loopSafetyText } from "./lib/text.ts"
 import manifest from "./manifest.json"
 
@@ -37,15 +52,23 @@ function envWith(extra: Record<string, string> = {}): Record<string, string> {
   }
 }
 
-/** A hook context with a fake countdown that records its calls. */
+/** The run fact of an interactive REPL. */
+const REPL: RunModeFact = { mode: "repl", interactive: true }
+
+/**
+ * A hook context with a fake countdown that records its calls. The default
+ * run is an interactive REPL; pass `null` for a host with no run fact.
+ */
 function hookCtx(
   env: Record<string, string>,
   result: CountdownResult = "elapsed",
+  run: RunModeFact | null = REPL,
 ): HookContext & { calls: CountdownRequest[] } {
   const calls: CountdownRequest[] = []
   return {
     env,
     abort: new AbortController().signal,
+    ...(run ? { run } : {}),
     calls,
     countdown: async (req) => {
       calls.push(req)
@@ -69,7 +92,10 @@ async function runRounds(ctx: HookContext, from: number, to: number): Promise<nu
   return fired
 }
 
-beforeEach(() => resetAllState())
+beforeEach(() => {
+  resetAllState()
+  resetConfigCache()
+})
 
 describe("round modulo", () => {
   it("fires at each multiple of the default interval (50)", async () => {
@@ -144,6 +170,31 @@ describe("cooldown", () => {
   })
 })
 
+describe("run that is not interactive", () => {
+  const env = envWith({ MINIMAL_AGENT_REFLECTION_INTERVAL: "2" })
+
+  for (const [name, run] of [
+    ["one-shot", { mode: "one-shot", interactive: false }],
+    ["stream-json", { mode: "stream-json", interactive: false }],
+    ["sub-agent", { mode: "subagent", interactive: false }],
+    ["no run fact", null],
+  ] as const) {
+    it(`${name}: no wait, attachment with 0 seconds`, async () => {
+      const ctx = hookCtx(env, "elapsed", run)
+      const r = await onDidBatch({ results: [], round: 2 }, ctx)
+      expect(ctx.calls).toEqual([])
+      expect(r?.additionalContext[0]).toContain('round="2" cooldown-applied-seconds="0"')
+    })
+  }
+
+  it("interactive REPL: waits through the countdown", async () => {
+    const ctx = hookCtx(env, "elapsed", REPL)
+    const r = await onDidBatch({ results: [], round: 2 }, ctx)
+    expect(ctx.calls).toHaveLength(1)
+    expect(r?.additionalContext[0]).toContain('cooldown-applied-seconds="60"')
+  })
+})
+
 describe("ack", () => {
   const env = envWith({ MINIMAL_AGENT_REFLECTION_INTERVAL: "2" })
 
@@ -185,10 +236,51 @@ describe("ack", () => {
     expect(await runRounds(ctx, 1, 4)).toEqual([4])
   })
 
+  it("run end: an ack in the last response of run N does not go into run N+1", async () => {
+    const ctx = hookCtx(env)
+    expect(await runRounds(ctx, 1, 3)).toEqual([2])
+    // The last response of run N is text only and has an ack.
+    await reflectionAckHandler(ackCtx(env, { "silence-for": "3" }))
+    onRunEnd(undefined, ctx)
+    // Run N+1: the checkpoints fire.
+    expect(await runRounds(ctx, 1, 4)).toEqual([2, 4])
+  })
+
+  it("run end: an ack in the first response of run N+1 stays", async () => {
+    const ctx = hookCtx(env)
+    expect(await runRounds(ctx, 1, 3)).toEqual([2])
+    onRunEnd(undefined, ctx)
+    await reflectionAckHandler(ackCtx(env, { "silence-for": "1" }))
+    expect(await runRounds(ctx, 1, 4)).toEqual([4])
+  })
+
+  it("run end deletes the state of the session only", async () => {
+    const other = { ...env, MINIMAL_AGENT_SESSION_ID: "s-other" }
+    await reflectionAckHandler(ackCtx(env, { "silence-for": "2" }))
+    await reflectionAckHandler(ackCtx(other, { "silence-for": "2" }))
+    onRunEnd(undefined, { env })
+    expect(hasState(sessionKey(undefined, env))).toBe(false)
+    expect(stateFor(sessionKey(undefined, other)).silenceRemaining).toBe(2)
+  })
+
   it("shows a reason-less notice", () => {
     expect(ackNotice({ silenceFor: 1, reason: "" })).toContain(
       "reflection ack: skip the next 1 reflection checkpoint\x1b",
     )
+  })
+})
+
+describe("session map", () => {
+  it("keeps at most MAX_SESSIONS entries and drops the oldest (LRU)", () => {
+    stateFor("first").silenceRemaining = 4
+    for (let i = 0; i < MAX_SESSIONS - 1; i++) stateFor(`s-${i}`)
+    // A read makes "first" the newest, so "s-0" is now the oldest.
+    expect(stateFor("first").silenceRemaining).toBe(4)
+    stateFor("new")
+    expect(sessionCount()).toBe(MAX_SESSIONS)
+    expect(hasState("first")).toBe(true)
+    expect(hasState("s-0")).toBe(false)
+    expect(hasState("s-1")).toBe(true)
   })
 })
 
@@ -242,6 +334,19 @@ describe("config", () => {
     ).toEqual({ interval: 7, cooldownMs: 5000 })
   })
 
+  it("pluginConfig reads one time for each process", async () => {
+    const first = envWith({ MINIMAL_AGENT_REFLECTION_INTERVAL: "3" })
+    const later = envWith({ MINIMAL_AGENT_REFLECTION_INTERVAL: "5" })
+    expect(pluginConfig(first).interval).toBe(3)
+    expect(pluginConfig(later).interval).toBe(3)
+    // The fragment and the hook use the same value.
+    expect(loopSafetyFragment({ env: later })).toContain("after each 3 tool steps")
+    const ctx = hookCtx(later)
+    expect(await runRounds(ctx, 1, 6)).toEqual([3, 6])
+    resetConfigCache()
+    expect(pluginConfig(later).interval).toBe(5)
+  })
+
   it("ignores bad values", () => {
     const env = envWith({
       MINIMAL_AGENT_REFLECTION_INTERVAL: "-3",
@@ -259,6 +364,13 @@ describe("manifest", () => {
   it("declares the hook, the fragment and the inline tag", () => {
     expect(manifest.permissions).toContain("hooks:tool.didBatch")
     expect(manifest.headless.hooks[0]?.channel).toBe("tool.didBatch")
+    expect(manifest.permissions).toContain("hooks:turn.didEnd")
+    expect(manifest.permissions).toContain("hooks:turn.aborted")
+    expect(manifest.headless.hooks.map((h) => h.channel)).toEqual([
+      "tool.didBatch",
+      "turn.didEnd",
+      "turn.aborted",
+    ])
     expect(manifest.headless.promptFragments[0]?.placement).toBe("afterInstructions")
     expect(manifest.headless.tools[0]?.trigger).toEqual({
       type: "inline_tag",

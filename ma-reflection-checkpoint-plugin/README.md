@@ -26,7 +26,9 @@ enable it, set this value in `~/.minimal-agent/config.jsonc`:
    through `ctx.countdown`. The terminal shows
    `reflection @ round N · Ns remaining · press Esc to skip`. Esc stops the
    wait, and the run continues. An abort of the turn stops the wait, and
-   the plugin adds no text. A headless host waits a plain timer.
+   the plugin adds no text. The plugin waits only in an interactive run
+   (`ctx.run.interactive`). In a run that is not interactive (one-shot,
+   stream-json, host mode, sub-agent), it does not wait, and `S` is 0.
 3. The plugin returns the checkpoint text as `additionalContext`. Core adds
    it to the user content of the next model request:
    `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="S" />`
@@ -34,7 +36,9 @@ enable it, set this value in `~/.minimal-agent/config.jsonc`:
    user). `S` is the time that the plugin waited.
 4. A prompt fragment (`afterInstructions`) adds the "Tool loop safety"
    section to the system prompt. The section gives the configured interval
-   and cooldown. The loader makes the fragment one time at boot.
+   and cooldown. The loader makes the fragment one time at boot. The plugin
+   reads the config one time for each process, so the section and the
+   checkpoint use the same values.
 
 ## The ack
 
@@ -53,10 +57,14 @@ of the tag, the user sees one dim line:
 - No `silence-for`: K is 1.
 - `silence-for="0"` or a bad value: no change.
 - A new run sets the count to 0, but an ack in the first response of the
-  new run stays.
+  new run stays. An ack in the last response of a run does not go into the
+  next run. The `turn.didEnd` / `turn.aborted` listener clears the count at
+  the end of each run. If the host sends no such event, a `round` that goes
+  down (a new run) clears the count.
 
-The plugin keeps the count for each session id. Core keeps no reflection
-state.
+The plugin keeps the count for each session id (at most 256 sessions, LRU).
+The run-end listener deletes the entry of the session. Core keeps no
+reflection state.
 
 ## Config
 
@@ -78,6 +86,7 @@ The plugin ignores a value that is not a number of 0 or more.
 | `manifest.json`              | The hook, the prompt fragment and the inline tag. |
 | `handlers/did-batch.ts`      | The `tool.didBatch` listener (the checkpoint).    |
 | `handlers/ack.ts`            | The `reflection-ack` inline-tag handler.          |
+| `handlers/run-end.ts`        | The run-end listener (clears the count).          |
 | `handlers/fragment.ts`       | The "Tool loop safety" prompt fragment.           |
 | `lib/config.ts`              | The config reader.                                |
 | `lib/state.ts`               | The silence count for each session.               |

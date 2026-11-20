@@ -8,6 +8,8 @@
  *   output and gives the handler the attributes, and the real hook bus
  *   gives `round`, `ctx.abort` and `ctx.countdown` to the listener, which
  *   returns the attachment as `additionalContext`.
+ * - An ack tag split across two stream chunks still sets the count, and
+ *   `turn.didEnd` clears the count at the end of a run.
  *
  * @module reflection-checkpoint/loader.integration.test
  */
@@ -84,6 +86,7 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         logger: () => {},
         enabledPluginIds: new Set([ID]),
         sessionId: "s-int",
+        runMode: () => ({ mode: "repl", interactive: true }),
         countdown: async (req) => {
           countdowns.push(req)
           return "skipped"
@@ -122,6 +125,66 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         const ctx = r4.additionalContext.map((e) => (typeof e === "string" ? e : e.text))
         expect(ctx).toHaveLength(1)
         expect(ctx[0]).toContain('<ma::agent::reflection-checkpoint round="4"')
+      } finally {
+        loader.hooks().dispose()
+      }
+    })
+  })
+
+  it("ack tag split across stream chunks; turn.didEnd ends the run", async () => {
+    await withEnv(ENV, async () => {
+      const countdowns: string[] = []
+      const loader = await PluginLoader.load({
+        roots: { user: [isolatedRoot("split")] },
+        logger: () => {},
+        enabledPluginIds: new Set([ID]),
+        sessionId: "s-split",
+        runMode: () => ({ mode: "repl", interactive: true }),
+        countdown: async (req) => {
+          countdowns.push(req.label)
+          return "elapsed"
+        },
+      })
+      try {
+        const bus = loader.hooks()
+        const signal = new AbortController().signal
+        const fired = async (from: number, to: number): Promise<number[]> => {
+          const out: number[] = []
+          for (let round = from; round <= to; round++) {
+            const r = await bus.emitChain("tool.didBatch", { results: [], round }, { signal })
+            if (r.additionalContext.length > 0) out.push(round)
+          }
+          return out
+        }
+
+        let out = ""
+        const stream = new PluginStream((c) => (out += c), loader, tmp)
+        for (const chunk of [
+          "Go. <ma::emit::reflec",
+          'tion-ack silence-for="2" reason="x" /> Done.',
+        ]) {
+          const p = stream.feed(chunk)
+          if (p) await p
+        }
+        await stream.end()
+        expect(out).not.toContain("<ma::emit::")
+        expect(out).not.toContain("reflection-ack silence-for")
+        expect(out).toContain("skip the next 2 reflection checkpoints (x)")
+        expect(out).toContain("Go. ")
+        expect(out).toContain(" Done.")
+
+        // The count is 2: rounds 2 and 4 are silenced, round 6 fires.
+        expect(await fired(1, 6)).toEqual([6])
+        expect(countdowns).toEqual(["reflection @ round 6"])
+
+        // An ack in the last response of the run, then the run ends.
+        const p = stream.feed('<ma::emit::reflection-ack silence-for="5" />')
+        if (p) await p
+        await stream.end()
+        bus.emitAsync("turn.didEnd", { ok: true })
+        await new Promise((r) => setTimeout(r, 0))
+        // The next run: the old ack does not silence the checkpoints.
+        expect(await fired(1, 4)).toEqual([2, 4])
       } finally {
         loader.hooks().dispose()
       }

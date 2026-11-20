@@ -8,7 +8,7 @@
  *
  * Source of truth in the host: `plugin-api/src/types/plugin.ts`
  * (`TUIContext`, `TUITrigger`, `TUIResult`, `HookHandlerContext`,
- * `CountdownFn`, `PromptFragmentContext`) and `src/sdk/lifecycle.ts`
+ * `CountdownFn`, `RunModeFact`, `PromptFragmentContext`) and `src/sdk/lifecycle.ts`
  * (`ToolDidBatchPayload`).
  *
  * @module lib/host-types
@@ -33,6 +33,13 @@ export interface CountdownRequest {
 /** Host countdown with skip. Mirror of `CountdownFn`. */
 export type CountdownFn = (request: CountdownRequest) => Promise<CountdownResult>
 
+/** Run-mode fact. Mirror of `RunModeFact` (we read `interactive`). */
+export interface RunModeFact {
+  mode: string
+  /** True only for a REPL with stdin and stdout on a TTY. */
+  interactive: boolean
+}
+
 /** The plugin-scoped logger slice this plugin uses. Mirror of `PluginLogger`. */
 export interface PluginLogger {
   info(message: string, data?: Record<string, unknown>): void
@@ -43,6 +50,8 @@ export interface HookContext {
   env: Record<string, string>
   abort: AbortSignal
   agent?: AgentContext
+  /** Run-mode fact. `undefined` when the host gives none (treat as not interactive). */
+  run?: RunModeFact
   countdown: CountdownFn
   log?: PluginLogger
 }

@@ -14,6 +14,11 @@
  * attachment and does not wait. A value that is not a finite number of 0 or
  * more is ignored. This module never throws: a bad config gives the defaults.
  *
+ * The handlers read the config through {@link pluginConfig}: one read for
+ * each process. The prompt fragment (at boot) and the hook and the ack (later)
+ * thus use the same values, also when the file or the env changes during the
+ * session.
+ *
  * @module lib/config
  */
 
@@ -107,4 +112,26 @@ export function loadConfig(
   out.interval = nonNegative(env[ENV_INTERVAL]) ?? out.interval
   out.cooldownMs = nonNegative(env[ENV_COOLDOWN_MS]) ?? out.cooldownMs
   return out
+}
+
+let cached: ReflectionConfig | undefined
+
+/**
+ * The config of this process: {@link loadConfig} on the first call, then the
+ * same value. The handlers use it, so the prompt section and the checkpoint
+ * agree.
+ *
+ * @param env - The env to read on the first call.
+ * @returns The resolved config (a copy).
+ */
+export function pluginConfig(
+  env: Record<string, string | undefined> = process.env,
+): ReflectionConfig {
+  cached ??= loadConfig(env)
+  return { ...cached }
+}
+
+/** Forget the config of this process. For tests. */
+export function resetConfigCache(): void {
+  cached = undefined
 }
