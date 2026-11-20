@@ -244,7 +244,11 @@ describe("renderWidget — stream telemetry", () => {
 describe("fleet row model tag", () => {
   it("shows the model tier and effort on each row", () => {
     const records = [
-      { ...rec("A1", "explorer", running({ tools: 1, tokens: 10 })), model: "claude-opus-4-8", effort: "high" },
+      {
+        ...rec("A1", "explorer", running({ tools: 1, tokens: 10 })),
+        model: "claude-opus-4-8",
+        effort: "high",
+      },
       { ...rec("A2", "worker", running({ tools: 1, tokens: 10 })), model: "claude-haiku-4-5" },
     ]
     const out = renderWidget(records, { ansi: false, tick: 0, nowMs: NOW, leadSid: LEAD }) as string
