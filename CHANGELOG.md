@@ -229,6 +229,23 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-20: **New opt-in plugin `ma-reflection-checkpoint-plugin`**
+  (id `reflection-checkpoint`, off by default). The reflection checkpoint
+  and the loop-safety text were in core. Now this plugin has them. After
+  each `interval` tool rounds of a run (default 50), the `tool.didBatch`
+  listener waits `cooldownMs` (default 60000) through `ctx.countdown` (Esc
+  stops the wait, an abort ends it with no text). Then it returns
+  `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="S" />`
+  and the reflection prompt as `additionalContext`. An `afterInstructions`
+  prompt fragment adds the "Tool loop safety" section with the configured
+  values. The model writes
+  `<ma::emit::reflection-ack silence-for="K" reason="..." />` to skip the
+  next K checkpoints. The scanner removes the tag, and the user sees one dim
+  line with K and the reason. The silence count is in the plugin, one for
+  each session. Config: `plugins["reflection-checkpoint"].interval` and
+  `.cooldownMs`, or `MINIMAL_AGENT_REFLECTION_INTERVAL` and
+  `MINIMAL_AGENT_REFLECTION_COOLDOWN_MS`. `interval` 0 turns it off. Unit
+  tests and a test through the real `PluginLoader` and `PluginStream`.
 - 2026-11-19: **The sub-agent plugin stamps the worker role and the worker
   sid in the worker env** (`ma-sub-agents-plugin`, `lib/spawn-plan.ts`).
   `MINIMAL_AGENT_SUBAGENT_ROLE` is now always set: the agent type (for
