@@ -81,8 +81,10 @@ function rowDetail(r: SubagentRecord, ansi: boolean, nowMs: number): string {
       const idleMs = p.lastEventAt !== undefined ? nowMs - p.lastEventAt : 0
       // A tool call can run long legitimately, so only flag a silent stream
       // when no tool is in flight.
-      const idle =
-        p.phase !== "tool" && idleMs >= IDLE_HINT_SEC * 1000
+      // In the grace after SIGTERM at a limit, say so: the worker is stopping.
+      const idle = s.grace
+        ? ` ${color(ansi, ANSI.GOLD, "stopping")}`
+        : p.phase !== "tool" && idleMs >= IDLE_HINT_SEC * 1000
           ? ` ${color(ansi, ANSI.GOLD, `idle ${fmtElapsed(idleMs)}`)}`
           : ""
       const act = clip(liveActivity(p, nowMs), 40)

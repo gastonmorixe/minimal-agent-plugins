@@ -157,7 +157,9 @@ and ma-speak. Fan-out listeners never count as owners of the signal. If the
 host has its own untagged listener, the host keeps control. If only fan-out
 listeners exist, each one removes itself and raises the signal again, so the
 default action still ends the process. It never calls
-`process.exit`. Core has a child registry (`src/infra/child-registry.ts`),
+`process.exit`. The core file-lock signal listener also carries the fan-out
+tag. When it is the last listener, it removes its locks and calls
+`process.exit` (130 for SIGINT, 143 for SIGTERM), not the default action. Core has a child registry (`src/infra/child-registry.ts`),
 but the plugin API does not export it and it covers `exit` only.
 
 ## Disable scope

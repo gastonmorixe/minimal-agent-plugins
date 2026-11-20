@@ -3,10 +3,10 @@
  *
  * It gathers a probe per active worker (injected OS), runs the PURE tick,
  * persists the fleet when it changed, executes the resulting {@link Effect}s
- * (emit a bus event, inject a digest as a between-turns prompt, kill a
- * timed-out pid), and returns the live widget string. All side-effects are
- * injected so this is unit-testable without a real process or bus; the
- * heartbeat handler supplies the real implementations.
+ * (emit a bus event, inject a digest as a between-turns prompt, SIGTERM a
+ * worker at a limit, kill a pid after the grace), and returns the live widget
+ * string. All side-effects are injected so this is unit-testable without a
+ * real process or bus; the heartbeat handler supplies the real implementations.
  *
  * @module sub-agents/lib/supervisor-shell
  */
@@ -24,8 +24,14 @@ export interface SupervisorDeps {
   readonly probeDeps: ProbeDeps
   /** Emit on the plugin bus (the heartbeat passes `ctx.emit`). */
   readonly emit: (channel: string, payload?: unknown) => void
-  /** Kill a pid (for budget-tripped workers). */
+  /** Kill a pid (SIGKILL: the grace ended, or the worker already reported). */
   readonly kill: (pid: number) => void
+  /**
+   * Send SIGTERM to a pid at a limit, so the worker can report before the
+   * grace ends. Optional: without it, no SIGTERM goes out, and the SIGKILL at
+   * the grace end still reaps the worker.
+   */
+  readonly terminate?: (pid: number) => void
   /** Where child `.result.json` sentinels live. */
   readonly sessionsDir: string
   readonly leadSid: string
@@ -83,6 +89,10 @@ export function runSupervisor(deps: SupervisorDeps): string | null {
     nowMs: now.getTime(),
   })
 
+  // Persist first, then run the effects. Known gap (accepted): if the lead
+  // dies between the two, the stored `grace` marker has no SIGTERM behind it.
+  // The next lead continues the grace and sends only the SIGKILL at its end
+  // (at most DEFAULT_GRACE_SEC later), so the worker gets no wrap-up turn.
   if (out.changed) deps.store.replaceAll(out.records)
   for (const e of out.effects) runEffect(e, deps)
 
@@ -130,6 +140,14 @@ function runEffect(e: Effect, deps: SupervisorDeps): void {
     case "stop":
       try {
         deps.kill(e.pid)
+      } catch {
+        // pid already gone — the next tick reaps it.
+      }
+      break
+    case "signal":
+      // The reducer emits this once per worker (the `grace` marker latches it).
+      try {
+        deps.terminate?.(e.pid)
       } catch {
         // pid already gone — the next tick reaps it.
       }

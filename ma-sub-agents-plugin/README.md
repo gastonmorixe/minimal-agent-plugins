@@ -79,10 +79,81 @@ is past one. The worker ends `failed` with the reason, for example
 `maxTokens` counts output, not context size, because context re-counts the
 same prefix every turn. `maxTurns` and `maxTokens` read the worker's event
 stream, so they do not apply to a worker launched before streams existed, and
-`maxTokens` cannot trip on a provider that reports no output tokens. A limit
-can overshoot by what the worker does within one tick. A worker that already
-called `ReportResult`, or whose run already ended, is never stopped for its
-budget.
+`maxTokens` cannot trip on a provider that reports no output tokens. A worker
+that already called `ReportResult`, or whose run already ended, is never
+stopped for its budget.
+
+How much a limit can overshoot:
+
+- `maxTokens`: by what the worker generates within one tick (1 s). A
+  `maxTokens` trip gets NO grace: the supervisor sends SIGKILL at once and the
+  worker is `failed`. The reason: the trip comes in the middle of a response,
+  and a wrap-up turn uses the full model `max_tokens`, so one wrap-up response
+  can be larger than the whole budget.
+- `maxTurns`: by at most one final response (the wrap-up turn of the grace).
+- deadline: by at most the grace (60 s) plus one tick.
+
+### Grace, wrap-up and salvage
+
+At the deadline or at `maxTurns`, the supervisor first sends SIGTERM one time
+and gives a grace of `DEFAULT_GRACE_SEC` (60 s):
+
+- The worker stays `running`. The widget, `AgentStatus`, `ListAgents` and
+  `AgentResult` show `stopping`, with the limit and the time to the SIGKILL.
+- On SIGTERM, the worker stops its retry loop and runs one final (wrap-up)
+  turn. The lead sets `MINIMAL_AGENT_WRAP_UP_TOOLS=SubAgentsReportResult` in
+  the worker env (a caller `extraEnv` cannot change it), so that turn can use
+  `SubAgentsReportResult` and no other tool. The worker force-exits after
+  45 s or a second SIGTERM.
+- If the worker reports in the grace, it ends `done` (or `incomplete`, with
+  the normal rules).
+- If the run ends or the worker exits with no result, also with a clean
+  outcome `truncated`, the worker is `failed` with the limit text. A crash
+  text, when known, follows the limit text (`...; then <crash>`).
+- If the grace ends, the supervisor sends SIGKILL and the worker is `failed`
+  with the limit text.
+- Salvage: the final message of a `failed` worker in the grace stays on the
+  status. `AgentResult` shows it as `--- salvaged findings ---`, not
+  verified. The text is clipped at 8000 characters (`SALVAGE_MAX_CHARS`), and
+  `AgentResult` says when it is clipped. The digest between turns tells the
+  lead to read it with `SubAgentsAgentResult` before it re-spawns the work. A
+  linked task is canceled, with the reason
+  `<limit text> (final message salvaged; read it with SubAgentsAgentResult)`.
+- Known gap: the store is written before the SIGTERM goes out. If the lead
+  dies between the two, the next lead continues the grace and sends only the
+  SIGKILL at its end, so the worker gets no wrap-up turn.
+
+### Soft budget warnings
+
+Before the hard stop, the worker gets a warning in a tool result, so it can
+call `ReportResult` with its partial work.
+
+- The lead sets two env keys at spawn: `MINIMAL_AGENT_SUBAGENT_BUDGET` (JSON
+  `{ deadlineSec, maxTurns?, maxTokens? }`, with the effective deadline, so the
+  30-minute default applies too) and `MINIMAL_AGENT_SUBAGENT_STARTED_AT` (ISO).
+  A caller `extraEnv` cannot change them.
+- In the worker, a `stamp` stage of the core tool-result chain
+  (`handlers/budget_transforms.ts`, manifest `toolResultTransforms`) adds one
+  `budget` sideband tag at the tail of a tool result:
+  - `warn` at 75 % of the deadline, or when the turns left are at most
+    `min(max(3, ceil(10 % of maxTurns)), floor(maxTurns / 2))`.
+  - `final` at 90 % of the deadline, or when one turn or less is left and
+    `maxTurns` is more than 2.
+- Each level comes once. `final` can come first and then `warn` never comes.
+- Turns come from the worker's own `<sid>.stream.ndjson` (`turn_started.turn`),
+  the same count that the supervisor uses for `maxTurns`.
+- The stage is in the chain only when `MINIMAL_AGENT_SUBAGENT_RESULT_PATH` is
+  set. A lead is not changed.
+
+Example:
+
+```
+<ma::agent::budget elapsed="1350" remaining="450" turns-left="5" level="warn">You used most of your time or turns. Complete your work quickly. Then use SubAgentsReportResult.</ma::agent::budget>
+```
+
+Limits: the clock starts on the lead before the launch, so the warning comes
+1-3 s early. A worker in one long tool call sees no warning until the call ends.
+The worker gets no warning for `maxTokens`.
 
 ## Specialists
 
@@ -144,7 +215,7 @@ SpawnAgent ──▶ guard ──▶ subagent.willSpawn ──▶ launch child �
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `done`       | The worker called `ReportResult`, or it ended cleanly and its final answer was recovered. A recovered answer is marked as best-effort.                |
 | `incomplete` | It reported `incomplete: true`, a contracted artifact is missing or empty, or it exited with nothing. Any summary it wrote is kept for `AgentResult`. |
-| `failed`     | Its event stream reported a failed or aborted run, it exited non-zero, it crashed at boot, or it passed its deadline.                                 |
+| `failed`     | Its event stream reported a failed or aborted run, it exited non-zero, it crashed at boot, or it did not report in the grace after a limit.           |
 | `stopped`    | The lead called `StopAgent`, or the lead shut down.                                                                                                   |
 
 Precedence: a `ReportResult` sentinel wins over everything else. A failure
@@ -180,7 +251,8 @@ Two behaviors follow from it:
 - **A run that ended is finalized at once.** If the stream wrote its final
   line but the process lingers (an open child process, a slow flush), the
   worker is finalized and its pid stopped. It does not hold a slot until the
-  deadline.
+  deadline. In the grace after a limit, a run end with no result is `failed`
+  (see [Grace, wrap-up and salvage](#grace-wrap-up-and-salvage)).
 - **A quiet worker is flagged.** The widget shows `idle 1m30` when no event
   arrived for 60 seconds and no tool call is in flight. A long tool call is
   not flagged.

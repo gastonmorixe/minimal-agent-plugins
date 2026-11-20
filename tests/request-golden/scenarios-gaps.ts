@@ -68,4 +68,31 @@ export const GAP_SCENARIOS: Scenario[] = [
     keep: [-1],
   },
   WAVE_TWO_READS,
+  {
+    // Worker only (sub-agents Design A): the budget stamp stage adds a
+    // `<ma::agent::budget ... level="warn">` tag at the tool_result tail,
+    // after the core mode-active stamp. The worker stream file says turn 2
+    // started, and maxTurns 4 gives 2 turns left (warn at <= floor(4 / 2) = 2,
+    // final only at 1 left), so `warn`. The start is in the future, so elapsed is 0 and
+    // remaining is the full 1800 s (no clock in the golden). The harness
+    // restores the env after the run.
+    name: "subagent-budget-warn",
+    script: [{ tools: [{ name: "Read", input: { file_path: "note.txt" } }] }],
+    setup: (cwd) => {
+      writeFileSync(`${cwd}/note.txt`, "hi\n")
+      process.env.MINIMAL_AGENT_SUBAGENT_RESULT_PATH = `${cwd}/../worker-sid.result.json`
+      // The own stream file (sid from the sentinel name): turn 2 started.
+      writeFileSync(
+        `${cwd}/../worker-sid.stream.ndjson`,
+        `${JSON.stringify({ type: "turn_started", turn: 1 })}\n${JSON.stringify({ type: "turn_started", turn: 2 })}\n`,
+      )
+      process.env.MINIMAL_AGENT_SUBAGENT_BUDGET = JSON.stringify({ deadlineSec: 1800, maxTurns: 4 })
+      process.env.MINIMAL_AGENT_SUBAGENT_STARTED_AT = "2100-01-01T00:00:00.000Z"
+    },
+    run: async ({ turn, modes }) => {
+      modes.setMode("ask")
+      await turn("read a file as a budgeted worker")
+    },
+    keep: [-1],
+  },
 ]

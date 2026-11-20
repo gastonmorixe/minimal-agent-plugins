@@ -7,7 +7,13 @@
  */
 
 import { fmtElapsed, fmtSpend } from "./style.ts"
-import { fleetStats, type Progress, type SubagentRecord, type SubagentStatus } from "./types.ts"
+import {
+  fleetStats,
+  type Progress,
+  SALVAGE_MAX_CHARS,
+  type SubagentRecord,
+  type SubagentStatus,
+} from "./types.ts"
 
 /** `· 4 turns` / `· 2 failed` / `· 1m12`, the stream facts a status line adds. */
 function streamFacts(c: { turns?: number; toolErrors?: number; durationMs?: number }): string {
@@ -37,6 +43,18 @@ function nowDoing(p: Progress, nowMs: number): string {
   }
 }
 
+/**
+ * ` · stopping (limit: …, SIGKILL in 42s)` while the worker is in the grace
+ * after the SIGTERM at a limit, else "". Same signal as the widget `stopping`.
+ */
+export function graceNote(s: SubagentStatus, nowMs: number): string {
+  if (s.kind !== "running" || !s.grace) return ""
+  const untilMs = Date.parse(s.grace.until)
+  const left = Number.isFinite(untilMs) ? Math.max(0, Math.ceil((untilMs - nowMs) / 1000)) : 0
+  const error = s.grace.error.length > 60 ? `${s.grace.error.slice(0, 59)}…` : s.grace.error
+  return ` · stopping (limit: ${error}, SIGKILL in ${left}s)`
+}
+
 function statusText(s: SubagentStatus, nowMs: number): string {
   switch (s.kind) {
     case "queued":
@@ -47,7 +65,7 @@ function statusText(s: SubagentStatus, nowMs: number): string {
       const idleMs = p.lastEventAt !== undefined ? nowMs - p.lastEventAt : 0
       const idle =
         p.phase !== "tool" && idleMs >= 60_000 ? ` · no event for ${fmtElapsed(idleMs)}` : ""
-      return `running ${el} · ${p.tools} tools · ${fmtSpend(p)}${streamFacts(p)}${nowDoing(p, nowMs)}${idle}`
+      return `running ${el} · ${p.tools} tools · ${fmtSpend(p)}${streamFacts(p)}${nowDoing(p, nowMs)}${idle}${graceNote(s, nowMs)}`
     }
     case "done":
       return `done · ${fmtSpend(s.result)} · ${s.result.tools} tools${streamFacts(s.result)}`
@@ -145,12 +163,18 @@ export function resultText(r: SubagentRecord): string {
       return `Warning: sub-agent ${r.id} (${r.type}) finished WITHOUT a deliverable: ${r.status.reason}. This is not a success. The worker exited cleanly but produced no result summary${spent}. Treat the work as unverified: inspect its log/transcript, and re-spawn with a clearer task (and, if it was a file-producing job, set expectArtifacts) if you still need it.`
     }
     case "failed":
+      if (r.status.salvage) {
+        const clipped = r.status.salvageClipped
+          ? ` The text is clipped at ${SALVAGE_MAX_CHARS} characters. For the full text, read the stream file ${r.sid}.stream.ndjson in the sessions folder.`
+          : ""
+        return `Sub-agent ${r.id} (${r.type}) failed: ${r.status.error}. It wrote no result sentinel. Its final message is below. It is not verified and possibly not complete.${clipped} Read it before you decide whether a re-run is necessary.\n\n--- salvaged findings ---\n${r.status.salvage}`
+      }
       return `Sub-agent ${r.id} failed: ${r.status.error}. No result was recorded on the fleet status. If you still need the work, re-spawn with a clearer task or a different model (or inspect the worker's session log/result sentinel on disk if one was written before the failure).`
     case "stopped":
       return `Sub-agent ${r.id} was stopped${r.status.reason ? `: ${r.status.reason}` : ""}. No result was recorded on the fleet status.`
     case "queued":
     case "running":
-      return `Sub-agent ${r.id} is still ${r.status.kind}. No final result yet. Check SubAgentsAgentStatus ${r.id} or wait for the digest that arrives between turns when it finishes.`
+      return `Sub-agent ${r.id} is still ${r.status.kind}${r.status.kind === "running" && r.status.grace ? ` (stopping: it hit a limit and has a short time to report, ${r.status.grace.error})` : ""}. No final result yet. Check SubAgentsAgentStatus ${r.id} or wait for the digest that arrives between turns when it finishes.`
     default: {
       throw new Error(`unhandled status kind: ${String(r.status satisfies never)}`)
     }

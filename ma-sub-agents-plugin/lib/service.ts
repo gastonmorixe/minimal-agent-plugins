@@ -11,6 +11,7 @@
  * @module sub-agents/lib/service
  */
 
+import { budgetEnv } from "./budget-warning.ts"
 import { approvalFailureText } from "./error-text.ts"
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
 import type { HostPolicySnapshot, StartupProfile } from "./host-types.ts"
@@ -420,6 +421,8 @@ export async function spawnAgent(
   const inherit = deps.inherit !== false
   const profileChoice = inherit && lead ? chooseProfile(lead, provider, childSid, deps) : undefined
   if (profileChoice && "error" in profileChoice) return err(profileChoice.error)
+  // The worker clock start, taken before the launch (soft budget warnings).
+  const budgetStartIso = deps.now().toISOString()
   const planResult = buildSpawnPlan({
     agentBin: deps.agentBin,
     childSid,
@@ -451,6 +454,10 @@ export async function spawnAgent(
       [ENV_RESULT_PATH]: resultPath,
       ...(expectArtifacts ? { [ENV_EXPECT_ARTIFACTS]: JSON.stringify(expectArtifacts) } : {}),
     },
+    // The effective budget and the start time, for the worker-side soft
+    // warnings (`handlers/budget_transforms.ts`). The plan pins them over
+    // `extraEnv`, so no caller entry can change them.
+    budgetEnv: budgetEnv(budget, budgetStartIso),
     // Used by the plan only when no profile is passed (old env channel).
     ...(deps.disabledPlugins ? { inheritedDisabledPlugins: deps.disabledPlugins } : {}),
     ...(profileChoice ? { startupProfilePath: profileChoice.path } : {}),

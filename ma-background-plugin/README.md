@@ -164,7 +164,10 @@ count is 0, the fan-out runs its callbacks, removes itself, and raises the
 signal again. The next fan-out does the same, and after the last one the
 default action ends the host. When an untagged listener exists (the CLI one
 calls `process.exit`), the fan-out leaves the exit to that listener. The
-fan-out runs once for each shutdown.
+fan-out runs once for each shutdown. The core file-lock signal listener is
+also a fan-out listener (same tag). When it is the last listener, it removes
+its locks and calls `process.exit` (130 for SIGINT, 143 for SIGTERM), so the
+end is then that exit, not the default action.
 
 ## Persistence (durable, colocated, complete)
 

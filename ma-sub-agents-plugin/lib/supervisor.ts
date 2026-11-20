@@ -38,6 +38,8 @@ export interface WorkerProbe {
    * no structured `result` sentinel was written. Lower precedence than `result`.
    */
   readonly distilled?: string
+  /** True when `distilled` was clipped at `SALVAGE_MAX_CHARS`. */
+  readonly distilledClipped?: boolean
   /**
    * Of the worker's contracted `expectArtifacts`, the paths that are missing or
    * empty. Non-empty ⇒ the deliverable contract was not met (FIX 4).
@@ -77,6 +79,18 @@ export type Effect =
       readonly pid: number
       readonly reason: string
     }
+  | {
+      /**
+       * Ask the worker to stop politely (SIGTERM) at a limit. The worker then
+       * runs one final turn that calls ReportResult. The reducer emits it ONCE
+       * per worker: the `grace` marker on the running status latches it.
+       */
+      readonly type: "signal"
+      readonly id: SubagentId
+      readonly pid: number
+      readonly sig: "SIGTERM"
+      readonly reason: string
+    }
 
 /** Input to {@link supervisorTick}. */
 export interface TickInput {
@@ -112,8 +126,14 @@ export function completionDigest(r: SubagentRecord): string {
         : ` Inspect it with SubAgentsAgentResult ${r.id} and re-spawn if you still need the work.`
       return `Sub-agent ${r.id} (${r.label}) finished INCOMPLETE: deliverable contract not met (${clip(r.status.reason, 120)}). Not a clean success.${salvaged}`
     }
-    case "failed":
-      return `Sub-agent ${r.id} (${r.label}) failed: ${clip(r.status.error, 160)}.`
+    case "failed": {
+      // A grace failure can keep the final message (`salvage`). Say so, or the
+      // lead re-spawns the same work and pays for it two times.
+      const salvaged = r.status.salvage
+        ? ` Its final message was salvaged (not verified). Read it with SubAgentsAgentResult ${r.id} before you re-spawn the work.`
+        : ""
+      return `Sub-agent ${r.id} (${r.label}) failed: ${clip(r.status.error, 160)}.${salvaged}`
+    }
     case "stopped":
       return `Sub-agent ${r.id} (${r.label}) was stopped${r.status.reason ? `: ${clip(r.status.reason, 120)}` : ""}.`
     case "queued":
@@ -168,6 +188,15 @@ function stripIncompleteMarker(short: string): string | undefined {
 export const DEFAULT_DEADLINE_SEC = 30 * 60 // 30 minutes
 
 /**
+ * Grace period (seconds) between the SIGTERM at a limit and the SIGKILL. On
+ * SIGTERM the worker stops its retry loop, runs ONE final turn that calls
+ * ReportResult, and exits (it force-exits after 45 s or a second SIGTERM). 60 s
+ * covers that with a margin. The SIGKILL stays as the fallback, because a
+ * worker can swallow SIGTERM (see `handler-deps.ts`).
+ */
+export const DEFAULT_GRACE_SEC = 60
+
+/**
  * Shorter no-progress window after which a worker would be treated as stalled.
  *
  * FOLLOW-UP (B-083, stall watchdog): a true stall watchdog needs a
@@ -187,8 +216,9 @@ export const DEFAULT_STALL_SEC = 5 * 60 // 5 minutes (reserved for the follow-up
  * The effective wall-clock deadline (seconds) for a worker: its explicit
  * `budget.deadlineSec` when set and positive, else the hard {@link
  * DEFAULT_DEADLINE_SEC} (B-083). A non-positive budget is treated as "unset".
+ * Exported: the spawn path gives the same value to the worker (`ENV_BUDGET`).
  */
-function effectiveDeadlineSec(r: SubagentRecord): number {
+export function effectiveDeadlineSec(r: Pick<SubagentRecord, "budget">): number {
   const explicit = r.budget?.deadlineSec
   return explicit !== undefined && explicit > 0 ? explicit : DEFAULT_DEADLINE_SEC
 }
@@ -219,13 +249,33 @@ function deadlineExceeded(r: SubagentRecord, startedAt: string, nowMs: number): 
  * tokens cannot trip `maxTokens`.
  */
 export function budgetExceeded(r: SubagentRecord, p: Progress): string | undefined {
+  return budgetTrip(r, p)?.error
+}
+
+/** Which budget limit tripped, and its failure text. */
+export interface BudgetTrip {
+  readonly limit: "maxTurns" | "maxTokens"
+  readonly error: string
+}
+
+/**
+ * Like {@link budgetExceeded}, but also tells which limit tripped. `maxTokens`
+ * is checked FIRST: it is a cost cap, and its trip gets no grace (see `step`).
+ */
+export function budgetTrip(r: SubagentRecord, p: Progress): BudgetTrip | undefined {
   const b = r.budget
   if (!b) return undefined
-  if (b.maxTurns !== undefined && b.maxTurns > 0 && (p.turns ?? 0) > b.maxTurns) {
-    return `budget exceeded: started turn ${p.turns} with maxTurns ${b.maxTurns}`
-  }
   if (b.maxTokens !== undefined && b.maxTokens > 0 && (p.output ?? 0) > b.maxTokens) {
-    return `budget exceeded: ${p.output} output tokens with maxTokens ${b.maxTokens}`
+    return {
+      limit: "maxTokens",
+      error: `budget exceeded: ${p.output} output tokens with maxTokens ${b.maxTokens}`,
+    }
+  }
+  if (b.maxTurns !== undefined && b.maxTurns > 0 && (p.turns ?? 0) > b.maxTurns) {
+    return {
+      limit: "maxTurns",
+      error: `budget exceeded: started turn ${p.turns} with maxTurns ${b.maxTurns}`,
+    }
   }
   return undefined
 }
@@ -288,6 +338,12 @@ function step(
     return { status, effects }
   }
 
+  // 1a. GRACE PHASE: the worker got SIGTERM at a limit (step 1c or 2) and has
+  //     time to report. Step 1 above already finishes it when its sentinel
+  //     appears. The limits are NOT checked again, so the SIGTERM goes out only
+  //     once per worker.
+  if (s.grace) return stepGrace(r, s, s.grace, probe, now, nowMs)
+
   // 1b. RUN ENDED WHILE ALIVE: the worker's event stream wrote its final line
   //     (`result`, or a failed `run_finished`), so the run is over and only the
   //     process lingers (an open child such as obscura-worker, a slow flush).
@@ -301,47 +357,33 @@ function step(
     }
   }
 
-  // 1c. TURN / TOKEN BUDGET: stream telemetry gives live counts, so a worker
-  //     past `budget.maxTurns` or `budget.maxTokens` is stopped through the
-  //     same stop + terminal path as the deadline. Checked after the sentinel
-  //     and run-ended paths, so a worker that already handed its work back is
-  //     never killed for its budget.
-  const over = budgetExceeded(r, probe?.progress ?? s.progress)
-  if (over) {
-    const status: SubagentStatus = { kind: "failed", endedAt: now, error: over }
-    return {
-      status,
-      effects: [
-        { type: "stop", id: r.id, pid: s.pid, reason: "budget" },
-        ...terminalEffects(r, status, now),
-      ],
-    }
-  }
+  // 1c. TURN / TOKEN BUDGET: stream telemetry gives live counts. Checked after
+  //     the sentinel and run-ended paths, so a worker that already handed its
+  //     work back is never stopped for its budget.
+  //   - maxTurns: the SAME grace as the deadline (SIGTERM first, SIGKILL after
+  //     DEFAULT_GRACE_SEC). The work done so far has value, and the wrap-up
+  //     adds ONE turn only (the worker can call ReportResult and nothing else).
+  //   - maxTokens: NO grace. SIGKILL and `failed` at once (the old hard path).
+  //     The trip is usually in the middle of a response, and the wrap-up turn
+  //     uses the full model `max_tokens` (and a retry). One wrap-up response
+  //     can be much larger than the whole budget, so a grace breaks the cap.
+  const trip = budgetTrip(r, probe?.progress ?? s.progress)
+  if (trip?.limit === "maxTokens") return hardBudgetStop(r, s, probe, trip.error, now)
+  if (trip) return startGrace(r, s, probe, trip.error, "budget", now, nowMs)
 
-  // 2. Deadline tripped → ask the shell to kill, mark failed(timeout). This now
-  //    fires for UNBUDGETED workers too, via the DEFAULT_DEADLINE_SEC fallback
-  //    in `deadlineExceeded` (B-083): a worker wedged mid-finalize (e.g. stuck at
-  //    ReportResult) used to be exempt and leaked its concurrency slot forever.
-  //    Routed through the SAME stop + terminalEffects path as an explicit budget
-  //    so the pid is actually killed and the record transitions to failed WITH
-  //    terminal effects emitted (no B-087-style bypass).
+  // 2. Deadline tripped → SIGTERM and a grace period (step 1a), then SIGKILL
+  //    and failed(timeout). This fires for UNBUDGETED workers too, via the
+  //    DEFAULT_DEADLINE_SEC fallback in `deadlineExceeded` (B-083): a worker
+  //    wedged mid-finalize (e.g. stuck at ReportResult) used to be exempt and
+  //    leaked its concurrency slot forever. The grace end goes through the SAME
+  //    stop + terminalEffects path as before (no B-087-style bypass).
   //    Only reached when there is NO sentinel — step 1 already salvaged that case.
   if (deadlineExceeded(r, s.startedAt, nowMs)) {
     const hadBudget = (r.budget?.deadlineSec ?? 0) > 0
-    const status: SubagentStatus = {
-      kind: "failed",
-      endedAt: now,
-      error: hadBudget
-        ? "timed out (budget deadline exceeded)"
-        : `timed out (no progress, exceeded ${DEFAULT_DEADLINE_SEC}s default hard deadline, likely wedged)`,
-    }
-    return {
-      status,
-      effects: [
-        { type: "stop", id: r.id, pid: s.pid, reason: "deadline" },
-        ...terminalEffects(r, status, now),
-      ],
-    }
+    const error = hadBudget
+      ? "timed out (budget deadline exceeded)"
+      : `timed out (no progress, exceeded ${DEFAULT_DEADLINE_SEC}s default hard deadline, likely wedged)`
+    return startGrace(r, s, probe, error, "deadline", now, nowMs)
   }
   // 3. No probe this tick → leave unchanged (transient: shell couldn't read).
   if (!probe) return { status: s, effects: [] }
@@ -352,6 +394,122 @@ function step(
   }
   // 5. Exited (no sentinel already handled above). Decide the terminal status.
   return finalizeRunning(r, s, probe, now)
+}
+
+type Running = Extract<SubagentStatus, { kind: "running" }>
+type Grace = NonNullable<Running["grace"]>
+type StepResult = { status: SubagentStatus; effects: Effect[] }
+
+// No special case for exit 143 (the exit after our SIGTERM): production has no
+// exit code (the spawn is fire-and-forget, `realProbeDeps` has no `exitCode`),
+// so such a branch never runs. A sentinel always finishes the worker in step 1.
+
+/**
+ * The `failed` status of a limit (deadline, maxTurns, maxTokens) and its
+ * terminal effects. The ONE place that builds it, for the grace end, a run
+ * end in the grace, and the hard maxTokens stop. `probe` (when known) adds
+ * the exit code, a crash text, and the distilled final message as `salvage`.
+ */
+function limitFailed(
+  r: SubagentRecord,
+  error: string,
+  probe: WorkerProbe | undefined,
+  now: string,
+): StepResult {
+  const salvage = probe?.distilled?.trim()
+  // A crash text (log signature) after the limit stays visible. An exit code
+  // of 0 is a clean end, so a crash text then is not the cause.
+  const crash = probe?.crash && probe.exitCode !== 0 ? `; then ${probe.crash}` : ""
+  const status: SubagentStatus = {
+    kind: "failed",
+    endedAt: now,
+    error: `${error}${crash}`,
+    ...(probe?.exitCode !== undefined ? { exitCode: probe.exitCode } : {}),
+    ...(salvage ? { salvage } : {}),
+    ...(salvage && probe?.distilledClipped ? { salvageClipped: true } : {}),
+  }
+  return { status, effects: terminalEffects(r, status, now) }
+}
+
+/** `limitFailed`, plus a `stop` (SIGKILL) effect first when the pid can be alive. */
+function limitFailedAndStop(
+  r: SubagentRecord,
+  s: Running,
+  error: string,
+  probe: WorkerProbe | undefined,
+  reason: string,
+  now: string,
+): StepResult {
+  const { status, effects } = limitFailed(r, error, probe, now)
+  if (probe && !probe.alive) return { status, effects }
+  return { status, effects: [{ type: "stop", id: r.id, pid: s.pid, reason }, ...effects] }
+}
+
+/**
+ * The maxTokens trip: SIGKILL and `failed` at once, with no grace (see step
+ * 1c). The distilled text is not read while the worker is alive, so there is
+ * no salvage here.
+ */
+function hardBudgetStop(
+  r: SubagentRecord,
+  s: Running,
+  probe: WorkerProbe | undefined,
+  error: string,
+  now: string,
+): StepResult {
+  return limitFailedAndStop(r, s, error, probe, "budget", now)
+}
+
+/**
+ * Enter the grace phase: one SIGTERM effect, and the worker stays `running`
+ * with a `grace` marker. No terminal effects yet. A worker that is already
+ * gone skips the grace and fails at once with `error`.
+ */
+function startGrace(
+  r: SubagentRecord,
+  s: Running,
+  probe: WorkerProbe | undefined,
+  error: string,
+  reason: string,
+  now: string,
+  nowMs: number,
+): StepResult {
+  if (probe && !probe.alive) return limitFailed(r, error, probe, now)
+  const until = new Date(nowMs + DEFAULT_GRACE_SEC * 1000).toISOString()
+  const progress = probe?.progress ?? s.progress
+  return {
+    status: { ...s, progress, grace: { until, error } },
+    effects: [{ type: "signal", id: r.id, pid: s.pid, sig: "SIGTERM", reason }],
+  }
+}
+
+/**
+ * One tick in the grace phase. The sentinel path ran before this, so here
+ * there is NO sentinel.
+ *  - The run ended (also cleanly, for example outcome `truncated` after the
+ *    wrap-up turn), or the process exited: `failed` with the limit text, so
+ *    the lead sees that the limit caused it. The distilled final message
+ *    stays on the status as `salvage`. Stop a lingering pid.
+ *  - The grace ended: SIGKILL (the `stop` effect) and `failed` with the limit text.
+ */
+function stepGrace(
+  r: SubagentRecord,
+  s: Running,
+  grace: Grace,
+  probe: WorkerProbe | undefined,
+  now: string,
+  nowMs: number,
+): StepResult {
+  if (probe && (!probe.alive || probe.runEnded)) {
+    return limitFailedAndStop(r, s, grace.error, probe, "grace: run ended", now)
+  }
+  const untilMs = Date.parse(grace.until)
+  if (!Number.isFinite(untilMs) || nowMs >= untilMs) {
+    // The probe of an alive worker has no distilled text, so no salvage here.
+    return limitFailedAndStop(r, s, grace.error, undefined, "grace ended", now)
+  }
+  if (!probe?.progress) return { status: s, effects: [] }
+  return { status: { ...s, progress: probe.progress }, effects: [] }
 }
 
 /**
@@ -538,6 +696,9 @@ function spendOf(
   return { tokens: p.tokens, tools: p.tools, ...outputOf(p), ...streamCountsOf(p) }
 }
 
+/** Added to the cancel reason of a linked task when a failed worker has a salvage. */
+export const SALVAGED_TASK_NOTE = " (final message salvaged; read it with SubAgentsAgentResult)"
+
 /** Effects emitted on any active→terminal transition: a bus signal + a lead digest. */
 function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string): Effect[] {
   const withStatus: SubagentRecord = { ...r, status: next }
@@ -565,7 +726,7 @@ function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string):
     const status = next.kind === "done" ? "done" : "canceled"
     const reason =
       next.kind === "failed"
-        ? next.error
+        ? `${next.error}${next.salvage ? SALVAGED_TASK_NOTE : ""}`
         : next.kind === "incomplete"
           ? `no deliverable: ${next.reason}`
           : next.kind === "stopped"

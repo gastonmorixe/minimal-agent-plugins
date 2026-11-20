@@ -94,6 +94,19 @@ describe("renderWidget", () => {
     expect(lines[3]).toContain("AgentResult A1") // done row points at the result
   })
 
+  it("shows 'stopping' on a running row in the grace after SIGTERM", () => {
+    const base = running({ tools: 3, tokens: 900, lastActivity: "writing report" })
+    if (base.kind !== "running") throw new Error("expected running status")
+    const grace = { until: "2026-05-30T12:01:00.000Z", error: "timed out" }
+    const out = renderWidget([rec("A1", "worker", { ...base, grace })], {
+      ansi: false,
+      tick: 0,
+      nowMs: NOW,
+      leadSid: LEAD,
+    })
+    expect(out).toContain("stopping")
+  })
+
   it("shows the incomplete count in the header and a ⚠ no-deliverable row (FIX 7)", () => {
     const records = [
       rec("A1", "worker", running({ tools: 2, tokens: 500 })),

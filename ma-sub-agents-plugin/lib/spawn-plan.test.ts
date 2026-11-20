@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test"
 
 import { renderFor } from "../../tests/support/prompt-render.ts"
+import manifest from "../manifest.json" with { type: "json" }
 
 import { renderResultProtocol } from "./prompts.ts"
+import { ENV_BUDGET, ENV_STARTED_AT, ENV_WRAP_UP_TOOLS, REPORT_RESULT_TOOL } from "./spawn.ts"
 import {
   buildSpawnPlan,
   composePrompt,
@@ -461,5 +463,74 @@ describe("buildSpawnPlan sid env", () => {
     expect(noRole.ok).toBe(true)
     if (!noRole.ok) return
     expect(noRole.value.env[ENV_ROLE]).toBe("")
+  })
+})
+
+describe("budget env (soft warnings)", () => {
+  const budgetEnv = {
+    [ENV_BUDGET]: '{"deadlineSec":600}',
+    [ENV_STARTED_AT]: "2026-01-01T00:00:00.000Z",
+  }
+
+  it("passes the budget env to the child", () => {
+    const r = buildSpawnPlan(input({ budgetEnv }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_BUDGET]).toBe('{"deadlineSec":600}')
+    expect(r.value.env[ENV_STARTED_AT]).toBe("2026-01-01T00:00:00.000Z")
+  })
+
+  it("extraEnv cannot change the budget env", () => {
+    const r = buildSpawnPlan(
+      input({ budgetEnv, extraEnv: { [ENV_BUDGET]: '{"deadlineSec":1}', [ENV_STARTED_AT]: "x" } }),
+    )
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_BUDGET]).toBe('{"deadlineSec":600}')
+    expect(r.value.env[ENV_STARTED_AT]).toBe("2026-01-01T00:00:00.000Z")
+  })
+
+  it("no budget env: both keys are blank, so a parent budget cannot leak", () => {
+    const r = buildSpawnPlan(input({ extraEnv: { [ENV_BUDGET]: '{"deadlineSec":1}' } }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_BUDGET]).toBe("")
+    expect(r.value.env[ENV_STARTED_AT]).toBe("")
+  })
+})
+
+describe("wrap-up tools env (MAJ-1)", () => {
+  it("pins MINIMAL_AGENT_WRAP_UP_TOOLS to the ReportResult wire name", () => {
+    const r = buildSpawnPlan(input())
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(ENV_WRAP_UP_TOOLS).toBe("MINIMAL_AGENT_WRAP_UP_TOOLS")
+    expect(r.value.env[ENV_WRAP_UP_TOOLS]).toBe(REPORT_RESULT_TOOL)
+  })
+
+  it("extraEnv cannot change the wrap-up tools env", () => {
+    const r = buildSpawnPlan(input({ extraEnv: { [ENV_WRAP_UP_TOOLS]: "Bash,Edit" } }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.env[ENV_WRAP_UP_TOOLS]).toBe(REPORT_RESULT_TOOL)
+  })
+
+  it("the wire name follows the core auto-prefix rule for the manifest tool", () => {
+    // Core computeEffectiveName: camelName ?? deriveCamelName(name), then the tool name.
+    const m = manifest as unknown as {
+      name: string
+      camelName?: string
+      headless: { tools: { trigger: { tool?: { name: string; explicitName?: boolean } } }[] }
+    }
+    const tool = m.headless.tools.find((t) => t.trigger.tool?.name === "ReportResult")?.trigger.tool
+    expect(tool).toBeDefined()
+    expect(tool?.explicitName).toBeUndefined()
+    const prefix =
+      m.camelName ??
+      m.name
+        .split(/[\s-]+/)
+        .map((t) => t.charAt(0).toUpperCase() + t.slice(1))
+        .join("")
+    expect(`${prefix}${tool?.name}`).toBe(REPORT_RESULT_TOOL)
   })
 })

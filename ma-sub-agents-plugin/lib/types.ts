@@ -128,6 +128,14 @@ export interface Progress {
 export const ZERO_PROGRESS: Progress = { tools: 0, tokens: 0 }
 
 /**
+ * The maximum length (characters) of a worker's distilled final message (the
+ * `distilled` done result and the `salvage` text). Larger than a digest line,
+ * because a wrap-up message with findings is often long. Longer text is
+ * clipped with `…`, and a failed status then has `salvageClipped`.
+ */
+export const SALVAGE_MAX_CHARS = 8000
+
+/**
  * The distilled deliverable a worker returns. This is the ONLY worker content
  * that crosses back into the lead's context, and it is bounded.
  */
@@ -200,6 +208,18 @@ export type SubagentStatus =
       readonly pid: number
       readonly startedAt: string
       readonly progress: Progress
+      /**
+       * Set when the supervisor sent SIGTERM at a limit (deadline, maxTurns or
+       * maxTokens) and gives the worker a grace period to report. The worker
+       * stays `running` until `until`; then the supervisor sends SIGKILL and
+       * records `failed` with `error`. Absent on a normal running worker.
+       */
+      readonly grace?: {
+        /** ISO time when the grace ends. */
+        readonly until: string
+        /** The failure text if the worker does not report in the grace. */
+        readonly error: string
+      }
     }
   | { readonly kind: "done"; readonly endedAt: string; readonly result: ResultDigest }
   | {
@@ -238,6 +258,14 @@ export type SubagentStatus =
       readonly endedAt: string
       readonly error: string
       readonly exitCode?: number
+      /**
+       * The distilled final message of a worker that the grace phase failed
+       * (a limit, then a run end with no sentinel). The status stays `failed`
+       * with the limit text, but the lead still gets the text in `AgentResult`.
+       */
+      readonly salvage?: string
+      /** True when `salvage` was clipped at {@link SALVAGE_MAX_CHARS}. */
+      readonly salvageClipped?: boolean
     }
   | { readonly kind: "stopped"; readonly endedAt: string; readonly reason?: string }
 
