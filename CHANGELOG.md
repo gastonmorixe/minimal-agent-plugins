@@ -8,6 +8,16 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-19: **Intercom footer shows the session title** (`ma-intercom-plugin`).
+  The footer line is now `⇆ intercom · 2 online · 1 busy · <title>`. The title
+  is the saved title of this session (user, then AI, then derived). The beat
+  slot reads it on each beat (every 5 s) with the new `sessions:read` method
+  `title(sid)`, so a new or renamed title shows at the next beat. It also
+  shows when no peer is online (`⇆ intercom · 0 online · <title>`). The title
+  loses control characters and escape sequences before it is painted. It is
+  never written to the presence record and never goes to a peer. A host with
+  no `title` method gives the footer as before.
+
 - 2026-11-19: **Titles: same request layout as Claude Code**
   (`ma-title-plugin`). The system prompt keeps all the rules. The user
   message is the `<session>` block, then one language line. Default line:

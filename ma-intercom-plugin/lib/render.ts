@@ -173,20 +173,20 @@ export function renderRosterDisplay(rows: readonly RosterRow[]): string {
 }
 
 /**
- * The ambient footer line, or null when no peers are reachable.
+ * The ambient footer line, or null when there are no reachable peers and no title.
  *
- * The footer leads with the REACHABLE count (online + stale), never the raw
- * total: a graveyard of dead/offline sessions in the presence dir must never
- * inflate the headline number (the "606 peers" bug). When there are reachable
- * peers we add a faint trailer for how many others are merely known-but-gone, so
- * the information isn't lost, just not shouted.
+ * The footer leads with the reachable count, never the raw total. When peers
+ * are reachable, it also shows how many others are known-but-gone. The local
+ * session's saved title, when present, is displayed after the counts.
  */
-export function renderFooter(counts: RosterCounts): string | null {
+export function renderFooter(counts: RosterCounts, sessionTitle?: string | null): string | null {
   const reachable = counts.online + counts.busy + counts.idle
-  if (reachable === 0) return null
+  const title = sanitizeTerminalLine(sessionTitle ?? "").trim()
+  if (reachable === 0 && !title) return null
   const parts: string[] = [green(`${reachable} online`)]
   if (counts.busy > 0) parts.push(yellow(`${counts.busy} busy`))
-  if (counts.other > 0) parts.push(dim(`${counts.other} gone`))
+  if (reachable > 0 && counts.other > 0) parts.push(dim(`${counts.other} gone`))
+  if (title) parts.push(title)
   return `${magenta("⇆ intercom")} ${dim("·")} ${parts.join(dim(" · "))}`
 }
 
