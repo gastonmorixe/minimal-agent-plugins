@@ -81,9 +81,9 @@ describe("turn recovery texts (bytes pinned)", () => {
 })
 
 describe("turn recovery contract", () => {
-  test("lists the 28 kinds", () => {
-    expect(p.kinds).toHaveLength(28)
-    expect(new Set(p.kinds).size).toBe(28)
+  test("lists the 26 kinds", () => {
+    expect(p.kinds).toHaveLength(26)
+    expect(new Set(p.kinds).size).toBe(26)
   })
   test("never returns empty", () => {
     const cases: Array<[SyntheticKind, Record<string, string>]> = [
@@ -109,7 +109,6 @@ describe("turn recovery contract", () => {
     expect(() => p.text("tool_text.Bash.error", { detail: "x" })).toThrow()
   })
   test("a missing required fact throws", () => {
-    expect(() => p.text("runtime.reflection_checkpoint", { round: 1 })).toThrow()
     expect(() => p.text("tool_result.unknown_tool", {})).toThrow()
     expect(() => p.text("tool_result.no_executor", {})).toThrow()
     expect(() => p.text("tool_result.no_executor", { name: "Bash" })).toThrow()

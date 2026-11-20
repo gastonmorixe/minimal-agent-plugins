@@ -25,7 +25,6 @@ import {
   closeInterruptedToolCalls,
   repairOrphanedToolUse,
 } from "../node_modules/@minimal-agent/core/src/agent/history-repair.ts"
-import { buildReflectionCheckpointBlock } from "../node_modules/@minimal-agent/core/src/agent/reflection.ts"
 import type { SyntheticTextResolver } from "../node_modules/@minimal-agent/core/src/agent/synthetic-text.ts"
 import {
   continueText,
@@ -237,24 +236,8 @@ const RUN: Record<string, Run> = {
       ),
     ),
   streamInterruptedAttachmentText: async (t) => {
-    const out = await nextRoundContent(
-      {
-        promptContributors: [],
-        reflectionInterval: 0,
-        reflectionCooldownMs: 0,
-        reflectionSilenceRemaining: 0,
-        text: t,
-      },
-      [],
-      true,
-      1,
-      {},
-    )
+    const out = await nextRoundContent({ promptContributors: [], text: t }, [], true, {})
     return firstText(out.content as Array<{ type: string; text?: string }>)
-  },
-  reflectionCheckpointAttachmentText: (t, a) => {
-    const b = buildReflectionCheckpointBlock(n(a[0]), n(a[1]) * 1000, t)
-    return b.type === "text" ? b.text : ""
   },
   outputTruncatedAttachmentText: (t) => continueText(t, true),
   streamInterruptedContinueAttachmentText: (t) => continueText(t, false),
@@ -274,7 +257,6 @@ const RUN: Record<string, Run> = {
   toolAbortedByUserResult: (t) => T.abortedText(t),
   unknownToolResult: (t, a) => T.unknownToolText(t, s(a[0])),
   modeToolDispatcherBugResult: (t) => T.modeNoExecutorText(t),
-  reflectionAckToolResult: (t) => T.reflectionAckText(t),
   lockTimeoutResult: (t, a) => T.lockTimeoutText(t, s(a[0]), s(a[1])),
   lockAcquireFailedResult: (t, a) => T.lockFailedText(t, s(a[0]), s(a[1])),
   // P3.7 kinds (old text: core 56fc856 inline strings), through the core call sites.
@@ -387,7 +369,7 @@ const NO_CALL_SITE = new Set(["mediaNotSentMarker"])
 
 describe("turn-recovery parity with the old core texts", () => {
   it("covers every fixture entry of an owned kind", () => {
-    expect(rows.length).toBeGreaterThanOrEqual(28)
+    expect(rows.length).toBeGreaterThanOrEqual(26)
     for (const e of rows) {
       if (NO_CALL_SITE.has(e.fn)) continue
       expect(RUN[e.fn], `${e.file} ${e.fn}`).toBeDefined()

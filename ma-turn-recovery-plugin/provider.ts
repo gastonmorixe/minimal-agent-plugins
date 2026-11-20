@@ -30,7 +30,6 @@ import compactTailCheckpointMd from "./prompts/compact-tail-checkpoint.tmpl.md" 
   type: "text",
 }
 import outputTruncatedMd from "./prompts/output-truncated.md" with { type: "text" }
-import reflectionCheckpointMd from "./prompts/reflection-checkpoint.tmpl.md" with { type: "text" }
 import placeholderMd from "./prompts/response-truncated-placeholder.md" with { type: "text" }
 import sessionResumedMd from "./prompts/session-resumed.md" with { type: "text" }
 import streamInterruptedMd from "./prompts/stream-interrupted.md" with { type: "text" }
@@ -47,8 +46,6 @@ export const KINDS: readonly SyntheticKind[] = [
   "runtime.turn_aborted",
   "runtime.session_resumed",
   "runtime.stream_interrupted",
-  "runtime.reflection_checkpoint",
-  "runtime.reflection_ack_result",
   "tool_result.aborted",
   "tool_result.interrupted_by_stop",
   "tool_result.unknown_tool",
@@ -109,8 +106,6 @@ const POLICY_DENIED_TOOL_WILL_INVOKE = "A lifecycle policy hook prevented this t
 const CANCELED_SUBPROCESS = "The plugin tool call was stopped."
 const SESSION_NO_EXECUTOR = "this session has no tool executor"
 const HOOK_DENIED_TURN_WILL_STOP = "The turn.willStop hook did not let the turn stop."
-const REFLECTION_ACK_RESULT =
-  "reflection-ack applied. Next time, write this tag as inline text in your response body. Do not write it as a tool call."
 const MODE_NO_EXECUTOR =
   "The Mode tool call reached the dispatcher. The agent loop must handle this tool call first. Report a bug. Refer to the `Mode` interceptor in `src/loops/tool-round.ts`."
 
@@ -252,13 +247,6 @@ function render(kind: SyntheticKind, facts: SyntheticFacts): string {
       return fill(sessionResumedMd)
     case "runtime.stream_interrupted":
       return fill(streamInterruptedMd)
-    case "runtime.reflection_checkpoint":
-      return fill(reflectionCheckpointMd, {
-        round: num(kind, facts, "round"),
-        cooldownSec: num(kind, facts, "cooldownSec"),
-      })
-    case "runtime.reflection_ack_result":
-      return REFLECTION_ACK_RESULT
     case "tool_result.aborted": {
       if (facts.site === "orphan") return ABORTED_ORPHAN
       if (facts.site === "runtime") return ABORTED_RUNTIME

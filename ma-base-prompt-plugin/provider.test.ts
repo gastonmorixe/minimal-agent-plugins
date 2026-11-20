@@ -99,18 +99,11 @@ describe("base prompt provider", () => {
       new Set([...read(name).matchAll(/%%([A-Za-z0-9_.-]+\??)%%/g)].map((m) => m[1]))
     expect(names("identity.neutral.md")).toEqual(new Set())
     expect(names("instructions.md")).toEqual(new Set(["agentHome"]))
-    expect(names("loop-safety/checkpoint-cooldown.tmpl.md")).toEqual(
-      new Set(["interval", "cooldownSec"]),
-    )
-    expect(names("loop-safety/checkpoint-plain.tmpl.md")).toEqual(new Set(["interval"]))
-    for (const f of ["heading.md", "intro.md", "ack.md"]) {
-      expect(names(`loop-safety/${f}`)).toEqual(new Set())
-    }
     expect(names("tool-output-conventions.md")).toEqual(new Set(["agentHome"]))
   })
 
-  test("the provider declares the 3 system slots as data", () => {
-    expect(createProvider().slots).toEqual(["instructions", "loopSafety", "toolOutputConventions"])
+  test("the provider declares the 2 system slots as data", () => {
+    expect(createProvider().slots).toEqual(["instructions", "toolOutputConventions"])
   })
 
   test("fill replaces each name and throws on a name with no value", () => {
@@ -119,6 +112,8 @@ describe("base prompt provider", () => {
   })
 })
 
+// The core fixture still holds the old reflection facts and the old
+// loopSafety text. The provider ignores the facts and gives no loopSafety part.
 interface GridEntry {
   ctx: {
     reflectionInterval: number
@@ -185,7 +180,8 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
       const parts = createProvider().instructionParts?.(c) ?? []
       const bySlot = new Map(parts.map((p) => [p.slot, p.text]))
       expect(parts.length).toBe(bySlot.size)
-      for (const slot of ["instructions", "loopSafety", "toolOutputConventions"] as const) {
+      expect(bySlot.has("loopSafety" as never)).toBe(false)
+      for (const slot of ["instructions", "toolOutputConventions"] as const) {
         const want = entry[slot]
         if (want === null) {
           expect(bySlot.has(slot)).toBe(false)
@@ -200,7 +196,6 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
     const p = createProvider()
     for (const entry of [...system.grid, ...system.grid.toReversed()]) {
       const got = new Map((p.instructionParts?.(entry.ctx) ?? []).map((x) => [x.slot, x.text]))
-      expect(got.get("loopSafety") ?? null).toBe(entry.loopSafety)
       expect(got.get("toolOutputConventions") ?? null).toBe(entry.toolOutputConventions)
     }
   })
@@ -231,8 +226,6 @@ describe("MA-02 does not promise a transcript file that may not exist", () => {
     )
     const [part] =
       provider.instructionParts?.({
-        reflectionInterval: 50,
-        reflectionCooldownMs: 60000,
         blobStoreEnabled: false,
         agentHome: "/home/x",
       }) ?? []
