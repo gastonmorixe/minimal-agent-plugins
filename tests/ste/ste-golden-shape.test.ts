@@ -41,6 +41,13 @@ import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
+import {
+  DELETED_GOLDENS,
+  isAllowedRemoval,
+  SECTION_REMOVALS,
+  type SectionRemoval,
+  withoutSection,
+} from "./golden-removals.ts"
 import { PLUGINS_ROOT } from "./surfaces.ts"
 
 /** Golden folder, relative to the plugins root. */
@@ -510,10 +517,17 @@ export function goldenProblems(
   after: unknown,
   leaves: readonly ProseLeaf[] = PROSE_LEAVES,
   additions: readonly SchemaAddition[] = SCHEMA_ADDITIONS,
+  removals: readonly SectionRemoval[] = SECTION_REMOVALS,
 ): string[] {
   const out: string[] = []
   for (const d of leafDiff(before, after)) {
     if (d.kind === "string") continue
+    if (
+      d.kind === "tag" &&
+      d.key === "text" &&
+      isAllowedRemoval(atPath(before, d.path), atPath(after, d.path), removals)
+    )
+      continue
     if (d.kind === "shape" && isAllowedAddition(d.path, before, after, additions)) continue
     if (d.kind === "shape" && isAnchorMarkerAddition(d.path, before, after)) continue
     const listed = leaves.some((leaf) => leaf.golden === name && leaf.path === d.path)
@@ -559,7 +573,8 @@ describe("golden leaf diff against the merge base", () => {
 
   test("no golden was deleted since the merge base", () => {
     const now = new Set(GOLDENS)
-    expect([...BASE_GOLDENS].filter((name) => !now.has(name))).toEqual([])
+    const deleted = new Set(DELETED_GOLDENS.map((d) => d.golden))
+    expect([...BASE_GOLDENS].filter((name) => !now.has(name) && !deleted.has(name))).toEqual([])
     const added = GOLDENS.filter((name) => !BASE_GOLDENS.has(name))
     if (added.length > 0)
       console.log(`[ste-golden-shape] new goldens, not compared: ${added.join(", ")}`)
@@ -925,6 +940,30 @@ describe("golden leaf diff: M6 mutation proof on real goldens (temp copy)", () =
       raw.replace("is not permitted in ASK mode.", "is not allowed in ASK mode."),
     )
     expect(words).toEqual([])
+  })
+})
+
+describe("golden leaf diff: SECTION_REMOVALS (intended section removal)", () => {
+  const rule: readonly SectionRemoval[] = [{ heading: "# B", source: "test" }]
+  const g = (text: string) => ({ requests: [{ system: [{ type: "text", text }] }] })
+  const before = '# A\n\na\n\n# B\n\n<ma::x a="1" />\n\n# C\n\nc'
+  const problems = (after: string, removals = rule) =>
+    goldenProblems("g.json", g(before), g(after), PROSE_LEAVES, SCHEMA_ADDITIONS, removals)
+
+  test("the removal of the listed section with its tags is allowed", () => {
+    expect(problems("# A\n\na\n\n# C\n\nc")).toEqual([])
+  })
+  test("a last section can go", () => {
+    expect(withoutSection("# A\n\na\n\n# B\n\nb", "# B")).toBe("# A\n\na")
+  })
+  test("an unlisted section removal is still a tag problem", () => {
+    expect(problems("# A\n\na\n\n# C\n\nc", [])).toEqual(["tag $.requests[0].system[0].text"])
+  })
+  test("a removal with one more change is still a tag problem", () => {
+    expect(problems("# A\n\nX\n\n# C\n\nc")).toEqual(["tag $.requests[0].system[0].text"])
+  })
+  test("each listed deleted golden has a source", () => {
+    for (const d of DELETED_GOLDENS) expect(d.source.length).toBeGreaterThan(0)
   })
 })
 

@@ -46,10 +46,10 @@ export const TEST_KINDS: Record<string, SidebandKind> = {
     { kind: { type: "enum", values: ["tail", "local"] } },
     { placement: "turn" },
   ),
-  reflectionAck: decl(
-    "reflection-ack",
-    { reason: S, "silence-for": I },
-    { direction: "from-model", placement: "inline", legacy: ["ma::agent::reflection-ack"] },
+  inlineAck: decl(
+    "inline-ack",
+    { reason: S, count: I },
+    { direction: "from-model", placement: "inline", legacy: ["ma::agent::inline-ack"] },
   ),
   memorySaved: decl("memory-saved", { id: S }, { body: "text", placement: "turn" }),
   blockEscaped: decl(

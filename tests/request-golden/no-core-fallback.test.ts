@@ -27,10 +27,6 @@ import type {
 
 import createBasePromptProvider from "../../ma-base-prompt-plugin/provider.ts"
 import { createCoreToolTextProvider } from "../../ma-core-tools-plugin/provider.ts"
-import {
-  DEFAULT_REFLECTION_COOLDOWN_MS,
-  DEFAULT_REFLECTION_INTERVAL,
-} from "../../node_modules/@minimal-agent/core/src/agent/reflection.ts"
 import type { SyntheticTextResolver } from "../../node_modules/@minimal-agent/core/src/agent/synthetic-text.ts"
 import { buildToolDefinitions } from "../../node_modules/@minimal-agent/core/src/tools/tool-definitions.ts"
 
@@ -89,12 +85,10 @@ function checkSystem(
   const parts =
     baseProvider.instructionParts?.({
       agentHome: home,
-      reflectionInterval: DEFAULT_REFLECTION_INTERVAL,
-      reflectionCooldownMs: DEFAULT_REFLECTION_COOLDOWN_MS,
       // Core sends the tool-output-conventions slot when the executor has an
       // enabled blob store (follow-up 15b). The harness gives one per scenario.
       blobStoreEnabled: scenario.blobStore === true,
-    } as never) ?? []
+    }) ?? []
   const block = textOf(system?.[1]) ?? ""
   for (const p of parts) {
     if (!block.includes(p.text)) {

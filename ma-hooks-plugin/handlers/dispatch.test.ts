@@ -42,6 +42,7 @@ function ctx(
     env: {},
     abort: new AbortController().signal,
     priority: 50,
+    countdown: async () => "elapsed",
     emit,
     log: {
       emergency: noop,

@@ -6,6 +6,22 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Removed
+
+- 2026-11-20: **The core reflection references** (BREAKING). Core
+  1268672 removed the loop-safety slot, the reflection texts and the
+  `reflection_ack` notice kind. The plugins now follow: `ma-acp-plugin` has no
+  `reflection_ack` notice title or text, `ma-sideband-plugin` has no
+  `reflection-ack` and `reflection-checkpoint` level rows, and
+  `ma-sub-agents-plugin` has no `loopSafety` system-prompt part (the inherit
+  summary has no `-loop` code). The request goldens lose the
+  `# Tool loop safety` section, and the `round-50-reflection-checkpoint`
+  scenario and its golden are gone. The text-parity, template-parity and STE
+  data lose the rows of the deleted prompt files, and the STE golden-shape
+  guard allows this one section removal and this one deleted golden
+  (`tests/ste/golden-removals.ts`). The opt-in checkpoint is now in
+  `ma-reflection-checkpoint-plugin`.
+
 ### Changed
 
 - 2026-11-20: **The Intercom footer paints the session title faint**

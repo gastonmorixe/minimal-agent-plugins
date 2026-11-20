@@ -29,7 +29,6 @@ const PART_CODES: readonly (readonly [StartupProfilePartName, string])[] = [
   ["identity", "id"],
   ["providerPreamble", "pre"],
   ["instructions", "instr"],
-  ["loopSafety", "loop"],
   ["toolOutputConventions", "toolconv"],
   ["sessionContext", "ctx"],
 ]
@@ -122,7 +121,7 @@ function toolsPart(lead: StartupProfileTools | undefined): string {
 
 /**
  * The SPEC R12 short form, e.g.
- * `inherit: sys(-instr,-loop,-toolconv) agents-md:off plugin-prompts:off tools:lead mode:ask`.
+ * `inherit: sys(-instr,-toolconv) agents-md:off plugin-prompts:off tools:lead mode:ask`.
  * Pure.
  */
 export function inheritSummary(input: InheritSummaryInput): string {

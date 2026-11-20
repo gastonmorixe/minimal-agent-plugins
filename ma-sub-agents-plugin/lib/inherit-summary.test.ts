@@ -33,7 +33,6 @@ describe("inheritSummary (SPEC R12)", () => {
       ...BASE,
       systemPrompt: {
         instructions: { kind: "omit" },
-        loopSafety: { kind: "omit" },
         toolOutputConventions: { kind: "omit" },
       },
       noAgentsMd: true,
@@ -41,7 +40,7 @@ describe("inheritSummary (SPEC R12)", () => {
       tools: { kind: "list", names: ["Read"] },
     }
     expect(inheritSummary({ state: "on", profile, leadTools: profile.tools, mode: "ask" })).toBe(
-      "inherit: sys(-instr,-loop,-toolconv) agents-md:off plugin-prompts:off tools:lead mode:ask",
+      "inherit: sys(-instr,-toolconv) agents-md:off plugin-prompts:off tools:lead mode:ask",
     )
   })
 

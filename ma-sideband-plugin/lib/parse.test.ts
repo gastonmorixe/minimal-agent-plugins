@@ -52,11 +52,11 @@ describe("parse v2 and legacy forms", () => {
     expect(k("ma::context::compaction")).toBe("compaction")
   })
   test("L1 step 1: registered legacy alias first", () => {
-    const n = codec.parse('<ma::agent::reflection-ack reason="r" />')
+    const n = codec.parse('<ma::agent::inline-ack reason="r" />')
     expect(n[0]).toMatchObject({
-      kind: "reflection-ack",
+      kind: "inline-ack",
       form: "v1",
-      legacyQname: "ma::agent::reflection-ack",
+      legacyQname: "ma::agent::inline-ack",
     })
   })
   test("sys role: kind is role, name is attr; entities decoded", () => {
@@ -110,17 +110,12 @@ describe("scanner", () => {
     sc.end()
     return { out, raws }
   }
-  const input =
-    'before <ma::agent::reflection-ack reason="r">body</ma::agent::reflection-ack> after'
+  const input = 'before <ma::agent::inline-ack reason="r">body</ma::agent::inline-ack> after'
   test("any split gives same events", () => {
     for (let i = 0; i <= input.length; i++) {
       const r = run([input.slice(0, i), input.slice(i)])
-      expect(r.out.join("|").replace(/\|T:/g, "").replace(/^T:/, "")).toContain(
-        "N:reflection-ack:body",
-      )
-      expect(r.raws).toEqual([
-        '<ma::agent::reflection-ack reason="r">body</ma::agent::reflection-ack>',
-      ])
+      expect(r.out.join("|").replace(/\|T:/g, "").replace(/^T:/, "")).toContain("N:inline-ack:body")
+      expect(r.raws).toEqual(['<ma::agent::inline-ack reason="r">body</ma::agent::inline-ack>'])
     }
   })
   test("text and raw concatenation equals input", () => {
@@ -139,7 +134,7 @@ describe("scanner", () => {
     expect(r.out.map((s) => s.slice(2)).join("")).toBe(t)
   })
   test("unterminated capture flushes as text at end", () => {
-    const t = "x <ma::agent::reflection-ack reason='r'>never closed"
+    const t = "x <ma::agent::inline-ack reason='r'>never closed"
     const r = run([t.slice(0, 10), t.slice(10)])
     expect(r.raws).toEqual([])
     expect(r.out.map((s) => s.slice(2)).join("")).toBe(t)

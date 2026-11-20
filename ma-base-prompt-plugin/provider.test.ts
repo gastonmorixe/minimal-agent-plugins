@@ -112,17 +112,12 @@ describe("base prompt provider", () => {
   })
 })
 
-// The core fixture still holds the old reflection facts and the old
-// loopSafety text. The provider ignores the facts and gives no loopSafety part.
 interface GridEntry {
   ctx: {
-    reflectionInterval: number
-    reflectionCooldownMs: number
     blobStoreEnabled: boolean
     agentHome: string
   }
   instructions: string | null
-  loopSafety: string | null
   toolOutputConventions: string | null
 }
 interface SystemFixture {
@@ -140,19 +135,18 @@ const system: SystemFixture = {
   grid: oldSystem.grid.map((g) => ({
     ...g,
     instructions: steOrNull(g.instructions),
-    loopSafety: steOrNull(g.loopSafety),
     toolOutputConventions: steOrNull(g.toolOutputConventions),
   })),
 }
 
 describe("byte parity with the core system fixture (P4 STE text)", () => {
-  test("the grid has 8 entries", () => expect(system.grid).toHaveLength(8))
+  test("the grid has 2 entries", () => expect(system.grid).toHaveLength(2))
 
   test("each STE rewrite hits the fixture, and no old text is left", () => {
     const all = [
       oldSystem.identity,
       oldSystem.instructionsTemplate,
-      ...oldSystem.grid.flatMap((g) => [g.instructions, g.loopSafety, g.toolOutputConventions]),
+      ...oldSystem.grid.flatMap((g) => [g.instructions, g.toolOutputConventions]),
     ].filter((t): t is string => t !== null)
     for (const [i, rule] of STE_REWRITES.entries()) {
       expect(
@@ -175,12 +169,11 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
 
   for (const entry of system.grid) {
     const c = entry.ctx
-    const name = `interval=${c.reflectionInterval} cooldownMs=${c.reflectionCooldownMs} blob=${c.blobStoreEnabled}`
+    const name = `blob=${c.blobStoreEnabled}`
     test(`each slot equals the fixture (${name})`, () => {
       const parts = createProvider().instructionParts?.(c) ?? []
       const bySlot = new Map(parts.map((p) => [p.slot, p.text]))
       expect(parts.length).toBe(bySlot.size)
-      expect(bySlot.has("loopSafety" as never)).toBe(false)
       for (const slot of ["instructions", "toolOutputConventions"] as const) {
         const want = entry[slot]
         if (want === null) {
