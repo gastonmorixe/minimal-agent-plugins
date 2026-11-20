@@ -215,5 +215,40 @@
         "refreshOn": ["title.saved"]
       }
     ]
-  }
+  },
+  "sideband": [
+    {
+      "kind": "intercom-inbox",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "count": {
+          "type": "int"
+        },
+        "interrupt": {
+          "type": "int"
+        }
+      },
+      "body": "text",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "New messages from peer sessions."
+    },
+    {
+      "kind": "intercom-peer",
+      "direction": "to-model",
+      "placement": "inline",
+      "attrs": {
+        "name": {
+          "type": "string"
+        },
+        "sid": {
+          "type": "string"
+        }
+      },
+      "body": "text",
+      "trust": "harness",
+      "summary": "Mention of a peer session."
+    }
+  ]
 }

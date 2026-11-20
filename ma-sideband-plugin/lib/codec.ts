@@ -1,3 +1,5 @@
+import { trailingStart } from "./legacy-text.ts"
+import { v1Qname } from "./levels.ts"
 import { neutralizeText } from "./neutralize.ts"
 import { makeContext, parseText } from "./parse.ts"
 import { renderV1 } from "./render.ts"
@@ -30,8 +32,10 @@ export default function createCodec(registry: ReadonlySidebandRegistry): Sideban
   return {
     id: "xml-ma-v1",
     render: (kind, msg) => renderV1(kind, msg),
-    parse: (text) => parseText(text, makeContext(registry)),
-    scanner: () => createScanner(registry),
+    parse: (text, opts) => parseText(text, makeContext(registry), opts),
+    scanner: (opts) => createScanner(registry, opts),
+    name: (kind) => v1Qname(kind),
+    trailingStart: (text) => trailingStart(text),
     neutralize: (untrusted) => neutralizeText(untrusted),
     example: (kind, msg) => renderV1(kind, msg ?? kind.example ?? buildExample(kind)),
   }

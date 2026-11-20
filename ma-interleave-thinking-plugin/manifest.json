@@ -20,5 +20,16 @@
         "interactive": false
       }
     ]
-  }
+  },
+  "sideband": [
+    {
+      "kind": "interleave-thinking",
+      "direction": "from-model",
+      "placement": "inline",
+      "attrs": {},
+      "body": "text",
+      "trust": "untrusted",
+      "summary": "Thinking text that the model writes between tool calls."
+    }
+  ]
 }

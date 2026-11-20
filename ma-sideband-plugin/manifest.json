@@ -6,5 +6,27 @@
   "required": true,
   "provides": ["sideband.codec"],
   "embeddable": true,
-  "sidebandCodec": { "id": "xml-ma-v1", "entry": "./lib/codec.ts" }
+  "sidebandCodec": { "id": "xml-ma-v1", "entry": "./lib/codec.ts" },
+  "sideband": [
+    {
+      "kind": "plugins",
+      "direction": "to-model",
+      "placement": "system",
+      "attrs": {},
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Read only: old system prompt wrapper of the plugin sections (v1 ma::plugins). No emitter today."
+    },
+    {
+      "kind": "tui-preview",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {},
+      "body": "text",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Read only: old preview block at the end of a tool result (v1 ma::tui-preview, bare tui-preview). No emitter today."
+    }
+  ]
 }

@@ -39,5 +39,102 @@
         "compact.local_checkpoint"
       ]
     }
+  ],
+  "sideband": [
+    {
+      "kind": "turn-aborted",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {},
+      "body": "none",
+      "trust": "harness",
+      "summary": "The user stopped the previous turn."
+    },
+    {
+      "kind": "session-resumed",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {},
+      "body": "none",
+      "trust": "harness",
+      "summary": "The session started again with work that is not complete."
+    },
+    {
+      "kind": "stream-interrupted",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {},
+      "body": "none",
+      "trust": "harness",
+      "summary": "The provider closed the previous response before it was complete."
+    },
+    {
+      "kind": "reflection-checkpoint",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "round": {
+          "type": "int"
+        },
+        "cooldown-applied-seconds": {
+          "type": "int"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Soft checkpoint after a number of tool rounds."
+    },
+    {
+      "kind": "reflection-ack",
+      "direction": "from-model",
+      "placement": "inline",
+      "attrs": {
+        "silence-for": {
+          "type": "int"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "untrusted",
+      "summary": "The model acknowledges a checkpoint and asks for silence for K checkpoints."
+    },
+    {
+      "kind": "max-tokens-continue",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {},
+      "body": "none",
+      "trust": "harness",
+      "summary": "The previous response stopped at the output token limit. Continue.",
+      "legacy": ["ma::agent::output-truncated"]
+    },
+    {
+      "kind": "wrap-up",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {},
+      "body": "text",
+      "trust": "harness",
+      "summary": "Host note for the final short turn of a run."
+    },
+    {
+      "kind": "compaction",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "kind": {
+          "type": "enum",
+          "values": ["tail", "local", "remote", "remote-empty"]
+        },
+        "enc": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Marker of a context compaction."
+    }
   ]
 }

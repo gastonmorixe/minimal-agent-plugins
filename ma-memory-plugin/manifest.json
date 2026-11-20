@@ -122,5 +122,46 @@
       "path": "./ui/setup.ts",
       "export": "default"
     }
-  }
+  },
+  "sideband": [
+    {
+      "kind": "memory",
+      "direction": "from-model",
+      "placement": "inline",
+      "attrs": {},
+      "body": "text",
+      "trust": "untrusted",
+      "summary": "The model asks the harness to save a memory entry."
+    },
+    {
+      "kind": "memory-saved",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "scope": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "evicted": {
+          "type": "int"
+        }
+      },
+      "body": "text",
+      "trust": "harness",
+      "summary": "Echo of a saved memory entry.",
+      "legacyBodyEscaped": true
+    },
+    {
+      "kind": "short-term-memory",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {},
+      "body": "text",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Snapshot of the short-term memory entries."
+    }
+  ]
 }

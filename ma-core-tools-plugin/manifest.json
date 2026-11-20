@@ -3,6 +3,7 @@
   "name": "Core tools text",
   "version": "0.1.0",
   "required": true,
+  "provides": ["sideband.kinds.core"],
   "description": "Owns the model-facing text of the built-in tools: their descriptions, their results, the tool output notices and the mode texts.",
   "capabilities": [],
   "toolText": [
@@ -67,6 +68,191 @@
         "tool_text.FilesStats.not_enabled",
         "mode.cli_refusal"
       ]
+    }
+  ],
+  "sideband": [
+    {
+      "kind": "mode-active",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "id": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Stamp of the active mode on a tool result: mode id and start time."
+    },
+    {
+      "kind": "mode-change",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Mode change between two turns: old mode, new mode, time."
+    },
+    {
+      "kind": "output-preview",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "shown": {
+          "type": "int"
+        },
+        "total": {
+          "type": "int"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "body": "text",
+      "trust": "harness",
+      "summary": "Tool output was cut: lines shown, total lines, tool, saved path, and a hint."
+    },
+    {
+      "kind": "raw-output",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Path, size and hash of the saved full tool output."
+    },
+    {
+      "kind": "diagnostics",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "count": {
+          "type": "int"
+        },
+        "scope": {
+          "type": "enum",
+          "values": ["ad-hoc"]
+        }
+      },
+      "body": "text",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Diagnostic notes from plugins about a tool call."
+    },
+    {
+      "kind": "policy",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {},
+      "body": "text",
+      "trust": "harness",
+      "summary": "Harness policy text for the model."
+    },
+    {
+      "kind": "binary-result",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "mime": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "enum",
+          "values": ["base64"]
+        },
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Summary of a binary tool result, with the base64 body when it is small."
+    },
+    {
+      "kind": "redacted-asset",
+      "direction": "to-model",
+      "placement": "inline",
+      "attrs": {
+        "kind": {
+          "type": "string"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "chars-removed": {
+          "type": "int"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Stub for one embedded asset that the harness removed."
+    },
+    {
+      "kind": "context-sanitizer",
+      "direction": "to-model",
+      "placement": "tool-result",
+      "attrs": {
+        "removed": {
+          "type": "int"
+        },
+        "kinds": {
+          "type": "string"
+        },
+        "chars-removed": {
+          "type": "int"
+        },
+        "saved": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Footer: count and size of the embedded assets that the harness removed."
     }
   ]
 }

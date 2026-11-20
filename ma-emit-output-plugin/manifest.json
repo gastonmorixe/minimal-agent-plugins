@@ -27,5 +27,26 @@
       "path": "./ui/setup.ts",
       "export": "default"
     }
-  }
+  },
+  "sideband": [
+    {
+      "kind": "output",
+      "direction": "from-model",
+      "placement": "inline",
+      "attrs": {
+        "path": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "body": "text",
+      "trust": "untrusted",
+      "summary": "The model shows a full tool output or file to the user."
+    }
+  ]
 }
