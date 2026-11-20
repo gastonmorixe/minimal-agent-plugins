@@ -62,6 +62,14 @@ export interface TUIContext {
   stderr: NodeJS.WriteStream
   /** Boot-time agent identity. Optional only on the legacy back-compat path. */
   agent?: AgentContext
+  /** Run-mode fact (core `TUIContext.run`). `undefined` on an older core. */
+  run?: RunFact
+}
+
+/** The run-mode fact (structural mirror of core `RunModeFact`). */
+export interface RunFact {
+  readonly mode: string
+  readonly interactive: boolean
 }
 
 /** A handler's return value. Mirror of `src/plugins/types.ts:TUIResult`. */

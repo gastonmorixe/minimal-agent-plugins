@@ -4,7 +4,9 @@
  * Validates the input, resolves the timeout against config (ceiling + infinite
  * gate), starts a detached runner via the service, and returns IMMEDIATELY with
  * a handle. The job runs in the background, the model keeps working and is
- * nudged between turns when it finishes.
+ * nudged between turns when it finishes. In a headless run (`-p`,
+ * `stream-json`, a worker) the `turn.willStop` hook keeps the turn open
+ * instead, and the result says so.
  *
  * Thin shell: validate, resolve config, service, render.
  *
@@ -14,6 +16,7 @@
 import { loadBgConfig } from "../lib/config.ts"
 import { formatDuration, parseDuration } from "../lib/duration.ts"
 import { serviceDepsFromCtx } from "../lib/handler-deps.ts"
+import { isHeadlessRun, waitDisabled } from "../lib/headless-wait.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { jobBlock, jobHeaderContent } from "../lib/render.ts"
 import { startJob } from "../lib/service.ts"
@@ -79,7 +82,7 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     `Started background job ${rec.id} (pid ${rec.runnerPid}): \`${rec.command}\`. ` +
     `It runs in the background. You are not blocked. It ${timeoutNote}. ` +
     `Check it with BackgroundStatus ${rec.id} or read output with BackgroundLogs ${rec.id}. ` +
-    `Stop it with BackgroundStop ${rec.id}. You'll get a one-line digest between turns when it finishes.`
+    `Stop it with BackgroundStop ${rec.id}. ${finishNote(ctx)}`
 
   const nowMs = Date.parse(rec.spawnedAt)
   return {
@@ -88,6 +91,18 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     displayHeader: jobHeaderContent(rec, nowMs),
     display: jobBlock(rec, nowMs),
   }
+}
+
+/** The headless note (ASD-STE100): a headless run has no digest between turns. */
+export const HEADLESS_NOTE =
+  "This run is headless: the turn stays open until the job is complete. Do the other work, or read the job with BackgroundLogs."
+
+/** The last sentence of the result: the digest note, or the headless note. */
+function finishNote(ctx: TUIContext): string {
+  // The core gives `ctx.run` on a tool context. An older core gives none:
+  // then only the worker env decides.
+  if (isHeadlessRun(ctx.run, undefined, ctx.env) && !waitDisabled(ctx.env)) return HEADLESS_NOTE
+  return "You'll get a one-line digest between turns when it finishes."
 }
 
 export default handler

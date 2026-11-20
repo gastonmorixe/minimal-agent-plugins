@@ -10,10 +10,16 @@
  */
 
 import { loadBgConfig } from "../lib/config.ts"
-import { fileSize, readFileMaybe, storeFromCtx } from "../lib/handler-deps.ts"
+import {
+  fileSize,
+  readFileMaybe,
+  realReconcileIO,
+  serviceDepsFromCtx,
+} from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { type LogIO, readLog } from "../lib/log-read.ts"
 import { dim, statusWord } from "../lib/render.ts"
+import { runReconcile } from "../lib/service.ts"
 import { parseLogsRequest } from "../lib/validate.ts"
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
@@ -28,8 +34,8 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
   const req = parsed.value
 
   const config = loadBgConfig(ctx.env as NodeJS.ProcessEnv)
-  const store = storeFromCtx(ctx)
-  if (!store) {
+  const deps = serviceDepsFromCtx(ctx, config)
+  if (!deps) {
     return {
       kind: "tool_result",
       content: "BackgroundLogs: no session id available.",
@@ -37,7 +43,10 @@ const handler = async (ctx: TUIContext): Promise<TUIResult> => {
     }
   }
 
-  const rec = store.get(req.id)
+  // Reconcile this job only, so the status is current. The model reads the
+  // output here, so its end is reported: the heartbeat and the headless stop
+  // hook do not give its digest again. Other jobs do not change.
+  const rec = runReconcile(deps, realReconcileIO(), req.id).records.find((r) => r.id === req.id)
   if (!rec) {
     return {
       kind: "tool_result",

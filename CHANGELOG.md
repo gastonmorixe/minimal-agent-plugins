@@ -25,6 +25,30 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   is no core or CLI change: the scheduler already supports `refreshOn`. A
   test in `tests/` checks that the event name and the `refreshOn` list stay
   equal.
+- 2026-11-20: **Background jobs: a headless run waits for its jobs**
+  (`ma-background-plugin`, `ma-sub-agents-plugin`). A headless run (`-p`,
+  `stream-json`, a sub-agent worker) exited when its turn ended, and the
+  runner then killed its jobs ("harness exited"). A new `turn.willStop`
+  hook (`handlers/on_turn_will_stop.ts`, `lib/headless-wait.ts`, priority
+  40, `timeoutMs` 25 min, permission `hooks:turn.willStop`) acts only when
+  `ctx.run.interactive` is false and the mode is `one-shot`, `stream-json`
+  or `subagent` (fallback with no `ctx.run`: payload `agentId` or
+  `MINIMAL_AGENT_WRAP_UP_TOOLS`). It polls the reconcile pass each second
+  (unref'd timers) until the session's jobs end, then halts with their
+  digests, so the model gets one more round. It stops at once on the hook
+  abort (the turn signal on a core that gives it), SIGTERM, SIGINT or SIGHUP
+  (fan-out tagged listener, owner-count rule). The max wait
+  `MINIMAL_AGENT_BG_HEADLESS_WAIT_MS` (default 20 min, max 24 min) is a
+  total for each turn and session (reset on a new turn and on an allow with
+  no running job); a worker also stops at its budget deadline minus 60 s.
+  At the deadline one "continues to run" halt (singular and plural forms),
+  then an allow when nothing changed. Opt out:
+  `MINIMAL_AGENT_BG_HEADLESS_WAIT=0` or `MINIMAL_AGENT_DISABLE_BGJOBS=1`.
+  BackgroundLogs now reconciles the job it reads (`runReconcile` gets an
+  optional `onlyId`). In a headless run the BackgroundRun result says that
+  the turn stays open (core `TUIContext.run`; an older core: workers only).
+  The worker result protocol gets one sentence (prompt-bytes fixtures
+  updated). PROMPT.md and the request goldens do not change.
 - 2026-11-20: **Fetch: concurrency-safe calls without a named session**
   (`ma-fetch-plugin`, SPEC D6-D8). The manifest sets
   `trigger.tool.concurrencySafe: true`. The handler export
