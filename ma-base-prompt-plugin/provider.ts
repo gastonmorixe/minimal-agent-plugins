@@ -1,6 +1,6 @@
 /**
- * Base prompt provider. Owns the identity and the 3 system slots
- * (instructions, loopSafety, toolOutputConventions). Reads the data files
+ * Base prompt provider. Owns the identity and the 2 system slots
+ * (instructions, toolOutputConventions). Reads the data files
  * lazily (first use), trims them, keeps the raw text, and renders each slot
  * from the facts ctx at each call.
  *
@@ -18,11 +18,6 @@ import type {
 
 import identityNeutralMd from "./prompts/identity.neutral.md" with { type: "text" }
 import instructionsMd from "./prompts/instructions.md" with { type: "text" }
-import loopAckMd from "./prompts/loop-safety/ack.md" with { type: "text" }
-import loopCooldownMd from "./prompts/loop-safety/checkpoint-cooldown.tmpl.md" with { type: "text" }
-import loopPlainMd from "./prompts/loop-safety/checkpoint-plain.tmpl.md" with { type: "text" }
-import loopHeadingMd from "./prompts/loop-safety/heading.md" with { type: "text" }
-import loopIntroMd from "./prompts/loop-safety/intro.md" with { type: "text" }
 import toolOutputConventionsMd from "./prompts/tool-output-conventions.md" with { type: "text" }
 
 /** Returns the raw text of one data file of `prompts/`, by path under `prompts/`. */
@@ -32,16 +27,11 @@ export type BaseTextReader = (name: string) => string
 const TEXTS: Readonly<Record<string, string>> = {
   "identity.neutral.md": identityNeutralMd,
   "instructions.md": instructionsMd,
-  "loop-safety/ack.md": loopAckMd,
-  "loop-safety/checkpoint-cooldown.tmpl.md": loopCooldownMd,
-  "loop-safety/checkpoint-plain.tmpl.md": loopPlainMd,
-  "loop-safety/heading.md": loopHeadingMd,
-  "loop-safety/intro.md": loopIntroMd,
   "tool-output-conventions.md": toolOutputConventionsMd,
 }
 
 /** The slots this provider owns. */
-const SLOTS: readonly SystemPromptSlot[] = ["instructions", "loopSafety", "toolOutputConventions"]
+const SLOTS: readonly SystemPromptSlot[] = ["instructions", "toolOutputConventions"]
 
 /** Reader over the text imports of this plugin. */
 const textImportReader: BaseTextReader = (name) => {
@@ -74,27 +64,6 @@ export function createBaseProvider(readText: BaseTextReader): SystemPromptBasePr
     return text
   }
 
-  /** Same join as core buildLoopSafetyParagraph. "" when the interval is 0. */
-  const loopSafety = (interval: number, cooldownMs: number): string => {
-    if (!(interval > 0)) return ""
-    const checkpoint =
-      cooldownMs > 0
-        ? fill(read("loop-safety/checkpoint-cooldown.tmpl.md"), {
-            interval,
-            cooldownSec: Math.round(cooldownMs / 1000),
-          })
-        : fill(read("loop-safety/checkpoint-plain.tmpl.md"), { interval })
-    return [
-      read("loop-safety/heading.md"),
-      "",
-      read("loop-safety/intro.md"),
-      "",
-      checkpoint,
-      "",
-      read("loop-safety/ack.md"),
-    ].join("\n")
-  }
-
   return {
     slots: SLOTS,
     identity() {
@@ -106,8 +75,6 @@ export function createBaseProvider(readText: BaseTextReader): SystemPromptBasePr
       const parts: SystemPromptPart[] = [
         { slot: "instructions", text: fill(read("instructions.md"), { agentHome: ctx.agentHome }) },
       ]
-      const loop = loopSafety(ctx.reflectionInterval, ctx.reflectionCooldownMs)
-      if (loop.length > 0) parts.push({ slot: "loopSafety", text: loop })
       if (ctx.blobStoreEnabled) {
         parts.push({
           slot: "toolOutputConventions",

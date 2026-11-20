@@ -374,17 +374,6 @@
       ]
     },
     {
-      "fn": "reflectionAckToolResult",
-      "file": "src/tools/PROMPTS.ts",
-      "proposedKind": "runtime.reflection_ack_result",
-      "cases": [
-        {
-          "args": [],
-          "text": "reflection-ack applied. Next time, write this tag as inline text in your response body, not as a tool call."
-        }
-      ]
-    },
-    {
       "fn": "streakNote",
       "file": "src/tools/PROMPTS.ts",
       "proposedKind": "tool_output.streak",
@@ -601,21 +590,6 @@
         {
           "args": [],
           "text": "<ma::agent::output-truncated />\nYour previous response was cut off at the max_tokens output ceiling. Continue exactly from where you stopped. Do not repeat what you already wrote. If you were about to call a tool, issue that tool call now."
-        }
-      ]
-    },
-    {
-      "fn": "reflectionCheckpointAttachmentText",
-      "file": "src/agent/PROMPTS.ts",
-      "proposedKind": "runtime.reflection_checkpoint",
-      "cases": [
-        {
-          "args": [50, 60],
-          "text": "<ma::agent::reflection-checkpoint round=\"50\" cooldown-applied-seconds=\"60\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
-        },
-        {
-          "args": [100, 0],
-          "text": "<ma::agent::reflection-checkpoint round=\"100\" cooldown-applied-seconds=\"0\" />\nSoft checkpoint, not a stop signal. Briefly consider whether you are still on track, then continue, change strategy, or pause and ask the user. Write `<ma::agent::reflection-ack silence-for=\"K\" reason=\"...\" />` as inline text anywhere in your response body (not a tool call) to suppress the next K checkpoints (skipping both the cooldown and this attachment)."
         }
       ]
     },
