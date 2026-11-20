@@ -28,6 +28,7 @@ import {
 } from "@minimal-agent/core/plugin-api/llm/errors"
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type {
+  ProviderAdapterView,
   ProviderPlugin,
   ProviderSetupContext,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
@@ -71,10 +72,21 @@ import {
  * OpenAI adapter (Chat Completions + Responses). Singleton; register
  * once at module load via {@link bootstrapOpenAI}.
  */
-export const openaiAdapter: ProviderAdapter = {
+export const openaiAdapter: ProviderAdapter &
+  Required<Pick<ProviderAdapterView, "recommendUtilityModel">> = {
   id: "openai",
   displayName: "OpenAI",
   surfaces: ["openai-chat-completions", "openai-responses"] satisfies ReadonlyArray<SurfaceId>,
+
+  /** Use the low-cost Responses model for short, structured session titles. */
+  recommendUtilityModel() {
+    return {
+      modelId: "gpt-6-luna",
+      structured: "json_schema",
+      effort: "low",
+      stream: "required",
+    }
+  },
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)
