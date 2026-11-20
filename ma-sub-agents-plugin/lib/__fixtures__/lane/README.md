@@ -38,9 +38,9 @@ Notes on each category:
 - `stalled`: no stream event for about 19 minutes after the last tool; the
   lead stopped it (`No event for 19 minutes (stalled stream)…`). The stream
   has no end line.
-- `notice`: the only real notice with a kind other than `reflection_ack`
-  (`refusal`, severity `error`, stream line 117). The other 55 notices in the
-  sessions folder are `reflection_ack` with no message, and they all are in
+- `notice`: the only real notice with a kind other than an old checkpoint
+  notice (`refusal`, severity `error`, stream line 117). The other 55 notices in
+  the sessions folder are of that old kind with no message, and they all are in
   streams above 130 KB. The worker also ends `incomplete` (a missing
   contracted artifact).
 - `incomplete`: the worker called `ReportResult` with `incomplete: true`

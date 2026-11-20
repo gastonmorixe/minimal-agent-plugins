@@ -40,7 +40,6 @@ export type StartupProfilePartName =
   | "identity"
   | "providerPreamble"
   | "instructions"
-  | "loopSafety"
   | "toolOutputConventions"
   | "sessionContext"
 

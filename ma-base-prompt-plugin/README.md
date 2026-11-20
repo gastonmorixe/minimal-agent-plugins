@@ -1,8 +1,8 @@
 # ma-base-prompt-plugin
 
-Provides the base system prompt (`systemPromptBase`, required): the neutral identity and the 3 system slots (`instructions`, `loopSafety`, `toolOutputConventions`), rendered from the core facts ctx.
+Provides the base system prompt (`systemPromptBase`, required): the neutral identity and the 2 system slots (`instructions`, `toolOutputConventions`), rendered from the core facts ctx. The opt-in reflection checkpoint text is in `ma-reflection-checkpoint-plugin`.
 
-- `prompts/`: the text, as data (`identity.neutral.md`, `instructions.md`, `loop-safety/*.md`, `tool-output-conventions.md`).
+- `prompts/`: the text, as data (`identity.neutral.md`, `instructions.md`, `tool-output-conventions.md`).
 - `provider.ts`: default export makes a provider. It reads each file lazily, trims and keeps it, and fills `%%name%%` with a local `fill()`.
 - `__fixtures__/`: the exact old core strings. Tests compare bytes against them.
 - This plugin is the only owner of this text. Core holds no copy. `provider.test.ts` checks the bytes against `tests/text-parity/fixtures/system.json`.

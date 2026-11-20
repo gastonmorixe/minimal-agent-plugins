@@ -13,8 +13,6 @@ const AGENT_KINDS = [
   "policy",
   "raw-output",
   "redacted-asset",
-  "reflection-ack",
-  "reflection-checkpoint",
   "session-resumed",
   "short-term-memory",
   "stream-interrupted",

@@ -59,8 +59,6 @@ export function noticeTitle(notice: TurnNotice): string {
       return "Output limit reached, continuing"
     case "max_tokens_capped":
       return "Output limit reached"
-    case "reflection_ack":
-      return "Reflection acknowledged"
     case "stream_interrupted_salvaged":
       return "Stream interrupted, tool calls kept"
     case "stream_interrupted_continuing":

@@ -63,6 +63,7 @@ function hookCtx(channel: string, cwd: string): HookHandlerContext {
     env: {},
     abort: new AbortController().signal,
     priority: 50,
+    countdown: async () => "elapsed",
     emit: noop,
     log,
   }

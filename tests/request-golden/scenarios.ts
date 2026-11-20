@@ -98,12 +98,6 @@ export const SCENARIOS: Scenario[] = [
     script: [{ text: "partial answer", stopReason: "max_tokens" }, { text: "rest" }],
     run: async ({ turn }) => turn("write a long answer"),
   },
-  {
-    name: "round-50-reflection-checkpoint",
-    script: Array.from({ length: 52 }, () => ({ tools: [bash("true")] })),
-    keep: [0, 49, 50, 51],
-    run: async ({ turn }) => turn("do many rounds"),
-  },
   ...EXTRA_SCENARIOS,
   ...GAP_SCENARIOS,
 ]

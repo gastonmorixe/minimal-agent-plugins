@@ -36,7 +36,7 @@ describe("example", () => {
     }
   })
   test("from-model example is read by the scanner", () => {
-    const k = K.reflectionAck!
+    const k = K.inlineAck!
     const sc = codec.scanner()
     const got: string[] = []
     let text = ""
@@ -44,7 +44,7 @@ describe("example", () => {
     sc.onText((t) => (text += t))
     sc.write(codec.example(k))
     sc.end()
-    expect(got).toEqual(["reflection-ack"])
+    expect(got).toEqual(["inline-ack"])
     expect(text).toBe("")
   })
 })

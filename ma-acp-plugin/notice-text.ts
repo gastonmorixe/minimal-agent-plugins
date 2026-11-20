@@ -65,11 +65,6 @@ export function noticeDescription(notice: TurnNotice): string {
       return `[max_tokens] Response hit the max_tokens ceiling; auto-continuing (${notice.attempt}/${notice.cap}).`
     case "max_tokens_capped":
       return `[max_tokens] Response hit the max_tokens ceiling ${notice.cap} times in a row; stopping. Consider narrowing the request or raising max_tokens.`
-    case "reflection_ack": {
-      const suffix = notice.reason.length > 0 ? ` \u2014 ${notice.reason}` : ""
-      const via = notice.fromToolFallback ? " (from tool_use fallback)" : ""
-      return `reflection ack: silencing next ${notice.silenceFor} checkpoint${notice.silenceFor === 1 ? "" : "s"}${suffix}${via}`
-    }
     case "stream_interrupted_salvaged": {
       const n = notice.completedToolCalls
       return `[stream] Provider closed the response without a terminal event after ${n} complete tool call${n === 1 ? "" : "s"}; salvaged closed tools, discarded partials, and continuing from local state. Do not repeat those tool calls.`

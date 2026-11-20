@@ -26,7 +26,7 @@ describe("text-parity fixtures", () => {
     const f = load("system.json")
     expect((f.identity as string).length).toBeGreaterThan(0)
     expect((f.instructionsTemplate as string).length).toBeGreaterThan(0)
-    expect((f.grid as unknown[]).length).toBe(8)
+    expect((f.grid as unknown[]).length).toBe(2)
   })
 
   test("synthetic.json holds entries with cases and text", () => {

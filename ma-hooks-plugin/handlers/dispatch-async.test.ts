@@ -54,6 +54,7 @@ function ctx(channel: string, cwd: string, sessionId: string): HookHandlerContex
     env: {},
     abort: new AbortController().signal,
     priority: 50,
+    countdown: async () => "elapsed",
     emit: noop,
     log: {
       emergency: noop,

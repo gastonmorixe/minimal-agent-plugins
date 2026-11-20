@@ -79,7 +79,7 @@ Core asks these plugins for the text that the model or the user reads.
 
 | Directory | Id | Purpose |
 | --- | --- | --- |
-| [`ma-base-prompt-plugin/`](./ma-base-prompt-plugin) | `ma-base-prompt-plugin` | Required. The base system prompt: the neutral identity, the instructions, loop safety, and the tool output conventions. |
+| [`ma-base-prompt-plugin/`](./ma-base-prompt-plugin) | `ma-base-prompt-plugin` | Required. The base system prompt: the neutral identity, the instructions, and the tool output conventions. |
 | [`ma-core-tools-plugin/`](./ma-core-tools-plugin) | `ma-core-tools-plugin` | Required. The text of the 8 built-in tools: descriptions, results, output notices, and mode texts. |
 | [`ma-turn-recovery-plugin/`](./ma-turn-recovery-plugin) | `turn-recovery` | Required. The text that core uses to recover a turn: continue nudges, the assistant placeholder, and turn markers. |
 | [`ma-prompt-template-plugin/`](./ma-prompt-template-plugin) | `ma-prompt-template-plugin` | Required. Fills the `%%name%%` placeholders in plugin prompt files. |

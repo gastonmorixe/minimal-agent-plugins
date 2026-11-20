@@ -152,11 +152,9 @@
     "word": "any",
     "files": [
       "ma-agent-cloud/PROMPT.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
       "ma-memory-plugin/prompts/framing.global.md",
       "ma-session-history-plugin/manifest.json",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
+      "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
   {
@@ -211,12 +209,9 @@
     "word": "ask",
     "files": [
       "ma-ask-mode-plugin/PROMPT.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
       "ma-chrome-cdp-plugin/PROMPT.md",
       "ma-file-lock-plugin/PROMPT.md",
       "ma-sub-agents-plugin/lib/library.ts",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
       "ma-turn-recovery-plugin/prompts/session-resumed.md"
     ]
   },
@@ -242,22 +237,11 @@
   },
   {
     "word": "attachment",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-memory-plugin/manifest.json",
-      "ma-tasks-plugin/prompts/results-compact.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
-    ]
+    "files": ["ma-memory-plugin/manifest.json", "ma-tasks-plugin/prompts/results-compact.md"]
   },
   {
     "word": "attribution",
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
-  },
-  {
-    "word": "audit",
-    "files": ["ma-base-prompt-plugin/prompts/loop-safety/intro.md"]
   },
   {
     "word": "authenticates",
@@ -274,13 +258,6 @@
   {
     "word": "autocomplete",
     "files": ["ma-slash-menu-plugin/manifest.json"]
-  },
-  {
-    "word": "autonomous",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/intro.md"
-    ]
   },
   {
     "word": "avoid",
@@ -405,14 +382,6 @@
     "files": ["ma-llm-cursor-plugin/prompts/tool-catalog.md"]
   },
   {
-    "word": "briefly",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
-    ]
-  },
-  {
     "word": "broadcast",
     "files": ["ma-intercom-plugin/manifest.json"]
   },
@@ -441,9 +410,6 @@
     "files": [
       "ma-agent-cloud/PROMPT.md",
       "ma-ask-mode-plugin/PROMPT.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-diagnostics-plugin/manifest.json",
       "ma-emit-output-plugin/PROMPT.md",
@@ -460,7 +426,6 @@
       "ma-turn-recovery-plugin/manifest.json",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
       "ma-turn-recovery-plugin/prompts/output-truncated.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
       "ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md"
     ]
   },
@@ -691,13 +656,6 @@
       "ma-turn-recovery-plugin/prompts/compact-local-stub.md",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
       "ma-turn-recovery-plugin/prompts/session-resumed.md"
-    ]
-  },
-  {
-    "word": "cooldown",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
     ]
   },
   {
@@ -1112,8 +1070,6 @@
       "ma-agent-writing-style-plugin/PROMPT.md",
       "ma-ask-mode-plugin/PROMPT.md",
       "ma-background-plugin/manifest.json",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
       "ma-config-plugin/manifest.json",
       "ma-fetch-plugin/PROMPT.md",
       "ma-quota-status-plugin/manifest.json",
@@ -1284,10 +1240,7 @@
   },
   {
     "word": "fixed",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/intro.md",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
-    ]
+    "files": ["ma-turn-recovery-plugin/prompts/compact-summary-system.md"]
   },
   {
     "word": "fixes",
@@ -1367,12 +1320,7 @@
   },
   {
     "word": "goal",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
-    ]
+    "files": ["ma-turn-recovery-plugin/prompts/compact-summary-system.md"]
   },
   {
     "word": "grant",
@@ -1599,16 +1547,12 @@
   {
     "word": "inline",
     "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
       "ma-base-prompt-plugin/prompts/tool-output-conventions.md",
       "ma-emit-output-plugin/PROMPT.md",
       "ma-memory-plugin/PROMPT.md",
       "ma-memory-plugin/manifest.json",
       "ma-slash-menu-plugin/manifest.json",
-      "ma-tps-plugin/manifest.json",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
+      "ma-tps-plugin/manifest.json"
     ]
   },
   {
@@ -2283,12 +2227,7 @@
   },
   {
     "word": "pause",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/turn-aborted.md"
-    ]
+    "files": ["ma-turn-recovery-plugin/prompts/turn-aborted.md"]
   },
   {
     "word": "paused",
@@ -2363,11 +2302,7 @@
   },
   {
     "word": "plain",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/ack.md",
-      "ma-emit-output-plugin/PROMPT.md",
-      "ma-tasks-plugin/prompts/results-compact.md"
-    ]
+    "files": ["ma-emit-output-plugin/PROMPT.md", "ma-tasks-plugin/prompts/results-compact.md"]
   },
   {
     "word": "plainly",
@@ -2647,10 +2582,6 @@
     "files": ["ma-sub-agents-plugin/PROMPT.md"]
   },
   {
-    "word": "refactor",
-    "files": ["ma-base-prompt-plugin/prompts/loop-safety/intro.md"]
-  },
-  {
     "word": "reference",
     "files": ["ma-ask-mode-plugin/PROMPT.md", "ma-policy-ref-plugin/manifest.json"]
   },
@@ -2766,10 +2697,7 @@
   },
   {
     "word": "research",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/intro.md",
-      "ma-sub-agents-plugin/lib/library.ts"
-    ]
+    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "resets",
@@ -2863,14 +2791,6 @@
   {
     "word": "roster",
     "files": ["ma-intercom-plugin/manifest.json"]
-  },
-  {
-    "word": "rounds",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/intro.md"
-    ]
   },
   {
     "word": "routes",
@@ -3210,24 +3130,13 @@
     "word": "still",
     "files": [
       "ma-agent-cloud/PROMPT.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
+      "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
   {
     "word": "stop-reason",
     "files": ["ma-acp-plugin/manifest.json"]
-  },
-  {
-    "word": "strategy",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
-    ]
   },
   {
     "word": "streaming",
@@ -3470,14 +3379,6 @@
     "files": ["ma-agent-writing-style-plugin/PROMPT.md"]
   },
   {
-    "word": "toward",
-    "files": [
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md",
-      "ma-base-prompt-plugin/prompts/loop-safety/checkpoint-plain.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md"
-    ]
-  },
-  {
     "word": "trailing",
     "files": ["ma-memory-plugin/prompts/summarize.tmpl.md"]
   },
@@ -3658,19 +3559,11 @@
     "files": ["ma-intercom-plugin/manifest.json"]
   },
   {
-    "word": "wall-clock",
-    "files": ["ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md"]
-  },
-  {
     "word": "warning",
     "files": [
       "ma-sub-agents-plugin/lib/library.ts",
       "ma-sub-agents-plugin/prompts/provider-profile.tmpl.md"
     ]
-  },
-  {
-    "word": "watches",
-    "files": ["ma-base-prompt-plugin/prompts/loop-safety/checkpoint-cooldown.tmpl.md"]
   },
   {
     "word": "wave",
@@ -3699,7 +3592,7 @@
   },
   {
     "word": "why",
-    "files": ["ma-agent-cloud/PROMPT.md", "ma-base-prompt-plugin/prompts/loop-safety/ack.md"]
+    "files": ["ma-agent-cloud/PROMPT.md"]
   },
   {
     "word": "wire",

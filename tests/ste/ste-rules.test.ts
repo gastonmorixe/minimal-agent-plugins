@@ -196,7 +196,7 @@ describe("ste rules", () => {
 
   test("clean STE text has no findings", () => {
     const text = [
-      "# Tool loop safety",
+      "# Tool loop",
       "",
       "The tool loop has no fixed limit on the number of rounds.",
       "Read the file before you write it.",
