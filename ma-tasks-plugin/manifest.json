@@ -223,5 +223,43 @@
       "path": "./ui/setup.ts",
       "export": "default"
     }
-  }
+  },
+  "sideband": [
+    {
+      "kind": "tasks",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "action": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "total": {
+          "type": "int"
+        },
+        "done": {
+          "type": "int"
+        },
+        "doing": {
+          "type": "int"
+        },
+        "todo": {
+          "type": "int"
+        },
+        "canceled": {
+          "type": "int"
+        }
+      },
+      "body": "text",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Snapshot of the task board.",
+      "legacyBodyEscaped": true
+    }
+  ]
 }

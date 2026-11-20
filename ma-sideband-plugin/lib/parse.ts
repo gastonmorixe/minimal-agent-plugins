@@ -1,5 +1,12 @@
+import { readLegacyText } from "./legacy-text.ts"
+import { v1AttrDeclName } from "./levels.ts"
 import { decodeBackslash, decodeRefs } from "./refs.ts"
-import type { ReadonlySidebandRegistry, SidebandKind, SidebandNode } from "./types.ts"
+import type {
+  ReadonlySidebandRegistry,
+  SidebandKind,
+  SidebandNode,
+  SidebandParseOptions,
+} from "./types.ts"
 
 const SEG = "[A-Za-z0-9_][A-Za-z0-9_.-]*"
 const MA_RE = new RegExp(`ma(?::${SEG}|(?:::${SEG})+)`, "iy")
@@ -7,6 +14,9 @@ const BARE_RE = /(?:mode-change|memory-saved|short-term-memory|tui-preview)(?![A
 const ATTR_RE = new RegExp(SEG, "y")
 const WS_RE = /[ \t\r\n]/
 const BARE_NAMES = ["mode-change", "memory-saved", "short-term-memory", "tui-preview"]
+// Longest text that can still be an opener prefix ("ma::" or a bare name).
+// A longer rest cannot be a prefix, so the check never reads past it (M1).
+const PREFIX_MAX = Math.max("ma::".length, ...BARE_NAMES.map((n) => n.length))
 const KIND_NAME_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const A2: Record<string, string> = { "ma::plugin::memory::short-term": "short-term-memory" }
 const LEVELS = new Set(["agent", "emit", "sys", "context", "plugin"])
@@ -40,7 +50,8 @@ interface QnameHit {
   end: number
 }
 
-function matchQname(text: string, at: number): QnameHit | undefined {
+/** Match a qname at `at` (v1, v2 or bare). */
+export function matchQname(text: string, at: number): QnameHit | undefined {
   MA_RE.lastIndex = at
   const m = MA_RE.exec(text)
   if (m) return { text: m[0], end: at + m[0].length }
@@ -50,8 +61,10 @@ function matchQname(text: string, at: number): QnameHit | undefined {
   return undefined
 }
 
-function isOpenerPrefix(rest: string): boolean {
-  const low = rest.toLowerCase()
+/** True when `text` from `at` to its end is a strict start of an opener name. */
+function isOpenerPrefix(text: string, at: number): boolean {
+  if (text.length - at > PREFIX_MAX) return false
+  const low = text.slice(at).toLowerCase()
   if (/^ma:{0,2}$/.test(low)) return true
   return BARE_NAMES.some((n) => n.startsWith(low))
 }
@@ -217,11 +230,14 @@ export function parseAt(
 ): ParseAtResult {
   const hit = matchQname(text, pos + 1)
   if (!hit) {
-    return isOpenerPrefix(text.slice(pos + 1))
+    return isOpenerPrefix(text, pos + 1)
       ? { status: "incomplete", phase: "open" }
       : { status: "none" }
   }
-  if (hit.end >= text.length || /^:{1,2}$/.test(text.slice(hit.end)))
+  if (
+    hit.end >= text.length ||
+    (text.length - hit.end <= 2 && /^:{1,2}$/.test(text.slice(hit.end)))
+  )
     return { status: "incomplete", phase: "open" }
   const kind = mapQname(hit.text, ctx)
   if (kind === undefined) return { status: "none" }
@@ -232,13 +248,19 @@ export function parseAt(
   const open = readOpen(text, hit.end, form, bs)
   if (open.status === "none") return { status: "none" }
   if (open.status === "incomplete") return { status: "incomplete", phase: "open" }
-  const attrs = Object.fromEntries(open.attrs)
+  const attrs: Record<string, string> = {}
+  for (const [name, value] of open.attrs) {
+    // v1 wire name to declared name (`chars_removed` -> `chars-removed`, design 3.1)
+    const key = form === "v2" ? name : v1AttrDeclName(decl, name)
+    if (!Object.hasOwn(attrs, key)) attrs[key] = value
+  }
   const node: SidebandNode = {
     kind,
     attrs,
     selfClosing: open.empty,
     form,
     span: { start: pos, end: open.end },
+    open: { start: pos, end: open.end },
   }
   if (form !== "v2") node.legacyQname = hit.text
   if (open.empty) return { status: "node", node, end: open.end }
@@ -251,28 +273,66 @@ export function parseAt(
   }
   node.body = decodeBody(text.slice(open.end, close.bodyEnd), form, decl)
   node.span = { start: pos, end: close.end }
+  node.close = { start: close.bodyEnd, end: close.end }
   return { status: "node", node, end: close.end }
 }
 
-/** Parse text into top-level nodes in text order. Never throws. */
-export function parseText(text: string, ctx: ParseContext): SidebandNode[] {
-  const nodes: SidebandNode[] = []
+function shift(n: SidebandNode, by: number): SidebandNode {
+  n.span = { start: n.span.start + by, end: n.span.end + by }
+  if (n.open) n.open = { start: n.open.start + by, end: n.open.end + by }
+  if (n.close) n.close = { start: n.close.start + by, end: n.close.end + by }
+  return n
+}
+
+function parseTop(text: string, ctx: ParseContext, nested: boolean, out: SidebandNode[]): void {
   const noClose = new Set<string>()
-  try {
-    let pos = 0
-    for (;;) {
-      const i = text.indexOf("<", pos)
-      if (i < 0) break
-      const r = parseAt(text, i, ctx, undefined, noClose)
-      if (r.status === "node") {
-        nodes.push(r.node)
-        pos = r.end
-      } else {
-        pos = i + 1
+  let pos = 0
+  for (;;) {
+    const i = text.indexOf("<", pos)
+    if (i < 0) break
+    const r = parseAt(text, i, ctx, undefined, noClose)
+    if (r.status === "node") {
+      out.push(r.node)
+      const { open, close } = r.node
+      if (nested && open && close && close.start > open.end) {
+        const inner: SidebandNode[] = []
+        parseTop(text.slice(open.end, close.start), ctx, true, inner)
+        for (const n of inner) out.push(shift(n, open.end))
       }
+      pos = r.end
+    } else {
+      pos = i + 1
+    }
+  }
+}
+
+/**
+ * Parse text into nodes in text order. Never throws. Default: top-level
+ * nodes only. `nested` also gives the nodes in a body (after their parent).
+ * `legacyText` also gives the old bracket notices (form `v1-text`).
+ * `kinds` keeps only the nodes of these kinds.
+ */
+export function parseText(
+  text: string,
+  ctx: ParseContext,
+  opts: SidebandParseOptions = {},
+): SidebandNode[] {
+  let nodes: SidebandNode[] = []
+  try {
+    parseTop(text, ctx, opts.nested === true, nodes)
+    if (opts.legacyText === true) {
+      const legacy = readLegacyText(text).filter(
+        (l) => !nodes.some((n) => l.span.start < n.span.end && n.span.start < l.span.end),
+      )
+      if (legacy.length > 0)
+        nodes = [...nodes, ...legacy].sort((a, b) => a.span.start - b.span.start)
     }
   } catch {
-    return nodes
+    // never throws: give the nodes found so far
+  }
+  if (opts.kinds !== undefined) {
+    const want = new Set(opts.kinds)
+    return nodes.filter((n) => want.has(n.kind))
   }
   return nodes
 }

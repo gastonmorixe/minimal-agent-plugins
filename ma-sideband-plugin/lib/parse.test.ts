@@ -153,3 +153,37 @@ describe("hostile input", () => {
     expect(performance.now() - t0).toBeLessThan(1000)
   })
 })
+
+describe("linear time on HTML-like text (M1)", () => {
+  // Before the fix, each `<` that is not a tag copied the rest of the buffer:
+  // 192 KB of `<div>a</div>` took about 1.6 s. Core TagScanner takes about 1 ms.
+  const html = (kb: number) => "<div>a</div>".repeat(Math.ceil((kb * 1024) / 12))
+  const time = (f: () => void): number => {
+    f() // warm up
+    const t0 = performance.now()
+    f()
+    return performance.now() - t0
+  }
+  const scan = (t: string) => () => {
+    const s = codec.scanner()
+    s.onText(() => {})
+    s.write(t)
+    s.end()
+  }
+  const small = html(48)
+  const big = html(192)
+  test("parse: 192 KB below 50 ms and ratio 48 KB to 192 KB below 8", () => {
+    if (process.env.CI) return
+    const a = time(() => codec.parse(small))
+    const b = time(() => codec.parse(big))
+    expect(b).toBeLessThan(50)
+    expect(b / Math.max(a, 0.5)).toBeLessThan(8)
+  })
+  test("scanner: 192 KB below 50 ms and ratio 48 KB to 192 KB below 8", () => {
+    if (process.env.CI) return
+    const a = time(scan(small))
+    const b = time(scan(big))
+    expect(b).toBeLessThan(50)
+    expect(b / Math.max(a, 0.5)).toBeLessThan(8)
+  })
+})

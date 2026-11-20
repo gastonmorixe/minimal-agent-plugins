@@ -10,5 +10,77 @@
     "identity": true,
     "slots": ["instructions", "toolOutputConventions"]
   },
-  "capabilities": []
+  "capabilities": [],
+  "sideband": [
+    {
+      "kind": "behavior",
+      "direction": "to-model",
+      "placement": "system",
+      "attrs": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "System prompt section of role behavior."
+    },
+    {
+      "kind": "context",
+      "direction": "to-model",
+      "placement": "system",
+      "attrs": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "System prompt section of role context."
+    },
+    {
+      "kind": "emit",
+      "direction": "to-model",
+      "placement": "system",
+      "attrs": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "System prompt section of role emit."
+    },
+    {
+      "kind": "mode",
+      "direction": "to-model",
+      "placement": "system",
+      "attrs": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "System prompt section of role mode."
+    },
+    {
+      "kind": "tool",
+      "direction": "to-model",
+      "placement": "system",
+      "attrs": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "body": "raw",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "System prompt section of role tool."
+    }
+  ]
 }

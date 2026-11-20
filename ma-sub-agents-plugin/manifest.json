@@ -21,6 +21,35 @@
       "body": "text",
       "trust": "harness",
       "summary": "Soft budget warning for a sub-agent worker: elapsed and remaining seconds, turns left, level."
+    },
+    {
+      "kind": "subagents",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "active": {
+          "type": "int"
+        },
+        "done": {
+          "type": "int"
+        },
+        "incomplete": {
+          "type": "int"
+        },
+        "failed": {
+          "type": "int"
+        },
+        "tokens": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        }
+      },
+      "body": "text",
+      "layout": "block",
+      "trust": "harness",
+      "summary": "Snapshot of the sub-agent fleet."
     }
   ],
   "headless": {
