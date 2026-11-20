@@ -1,2 +1,1 @@
-<ma::agent::stream-interrupted />
 The provider closed its previous response before the response was complete. The stream had no terminal event. Your partial output above is already in the transcript. Continue exactly from the point where you stopped. Do not write again what you already wrote. If your next step was a tool call, make that tool call now.

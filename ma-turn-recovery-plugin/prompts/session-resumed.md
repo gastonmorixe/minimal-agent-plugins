@@ -1,4 +1,3 @@
-<ma::agent::session-resumed />
 This session started again, and it has work that is not complete. Your previous conversation is in the transcript above. Continue exactly from the point where you stopped.
 
 - Do not explain your plan again.

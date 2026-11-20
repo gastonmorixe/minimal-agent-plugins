@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
-import { describe, expect, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "bun:test"
 
 import { createCoreToolsSyntheticProvider } from "../../ma-core-tools-plugin/synthetic-text.ts"
 import {
@@ -21,6 +21,7 @@ import {
 } from "../../ma-tasks-plugin/lib/model-render.ts"
 import type { Task } from "../../ma-tasks-plugin/lib/parse.ts"
 import { createTurnRecoveryProvider } from "../../ma-turn-recovery-plugin/provider.ts"
+import { pluginSideband } from "../../tests/support/sideband.ts"
 
 import createCodec from "./codec.ts"
 import { TEST_KINDS as K, makeRegistry } from "./testing.ts"
@@ -182,7 +183,6 @@ const D = {
   sessionResumed: m("session-resumed"),
   streamInterrupted: m("stream-interrupted"),
   maxTokens: m("max-tokens-continue"),
-  reflection: m("reflection-checkpoint"),
   memorySaved: m("memory-saved"),
   shortTerm: m("short-term-memory"),
   tasks: m("tasks"),
@@ -276,6 +276,11 @@ describe("parity: core emitters (literals)", () => {
 describe("parity: plugin emitters (called)", () => {
   const core = createCoreToolsSyntheticProvider()
   const rec = createTurnRecoveryProvider()
+  // The providers render their tags with the session API (design 40 step 10).
+  let sb: Awaited<ReturnType<typeof pluginSideband>>
+  beforeAll(async () => {
+    sb = await pluginSideband()
+  })
 
   test("core-tools output-preview (raw attrs, raw path)", () => {
     const close = "</ma::agent::output-preview>"
@@ -284,7 +289,7 @@ describe("parity: plugin emitters (called)", () => {
       { shown: 1, total: 2, tool: "Bash", bash: true },
     ]
     for (const facts of rows) {
-      const out = core.text("tool_output.preview", facts)
+      const out = core.text("tool_output.preview", facts, sb)
       const body = out.slice(out.indexOf("the user saw"), -close.length)
       const { bash: _bash, rawPath, ...rest } = facts
       const attrs = rawPath === undefined ? rest : { ...rest, path: rawPath }
@@ -293,21 +298,18 @@ describe("parity: plugin emitters (called)", () => {
   })
   test("core-tools mode-active and mode-change (raw)", () => {
     expect(r(D.modeActive, { id: SP, since: "s" })).toBe(
-      core.text("mode.active_stamp", { id: SP, since: "s" }),
+      core.text("mode.active_stamp", { id: SP, since: "s" }, sb),
     )
     expect(r(D.modeChange, { from: SP, to: "b", at: "t" })).toBe(
-      core.text("mode.change", { from: SP, to: "b", at: "t" }),
+      core.text("mode.change", { from: SP, to: "b", at: "t" }, sb),
     )
   })
   test("turn-recovery tag lines", () => {
-    expect(r(D.turnAborted)).toBe(line1(rec.text("runtime.turn_aborted", {})))
-    expect(r(D.sessionResumed)).toBe(line1(rec.text("runtime.session_resumed", {})))
-    expect(r(D.streamInterrupted)).toBe(line1(rec.text("runtime.stream_interrupted", {})))
-    expect(r(D.streamInterrupted)).toBe(line1(rec.text("continue.stream_interrupted", {})))
-    expect(r(D.maxTokens)).toBe(line1(rec.text("continue.max_tokens", {})))
-    expect(r(D.reflection, { round: 3, "cooldown-applied-seconds": 60 })).toBe(
-      line1(rec.text("runtime.reflection_checkpoint", { round: 3, cooldownSec: 60 })),
-    )
+    expect(r(D.turnAborted)).toBe(line1(rec.text("runtime.turn_aborted", {}, sb)))
+    expect(r(D.sessionResumed)).toBe(line1(rec.text("runtime.session_resumed", {}, sb)))
+    expect(r(D.streamInterrupted)).toBe(line1(rec.text("runtime.stream_interrupted", {}, sb)))
+    expect(r(D.streamInterrupted)).toBe(line1(rec.text("continue.stream_interrupted", {}, sb)))
+    expect(r(D.maxTokens)).toBe(line1(rec.text("continue.max_tokens", {}, sb)))
   })
   test("fetch binary-result (3 forms, E3)", () => {
     const tag = (s: string) => s.split("\n\n")[0]!

@@ -45,6 +45,7 @@ import {
 import { ToolFeedbackTracker } from "../node_modules/@minimal-agent/core/src/tools/feedback-tracker.ts"
 import { buildToolDefinitions } from "../node_modules/@minimal-agent/core/src/tools/tool-definitions.ts"
 import * as T from "../node_modules/@minimal-agent/core/src/tools/tool-result-text.ts"
+import { pluginSideband } from "../tests/support/sideband.ts"
 
 import { createCoreToolsSyntheticProvider, formatBytes, KINDS } from "./synthetic-text.ts"
 import { createCoreToolTextProvider } from "./tool-text.ts"
@@ -73,13 +74,15 @@ const kindOf = (e: FixtureEntry): string => e.proposedKind.split("{")[0] ?? ""
 const rows = entries.filter((e) => OWN.has(kindOf(e)))
 
 const provider = createCoreToolsSyntheticProvider()
+/** The real codec: the provider renders its tags with it (design 40 step 10). */
+const sb = await pluginSideband()
 
 /** A resolver that asks only this provider. The core fallback fails the test. */
 function strict(calls: SyntheticKind[]): SyntheticTextResolver {
   return {
     resolve(kind: SyntheticKind, facts: SyntheticFacts): string {
       calls.push(kind)
-      const text = provider.text(kind, facts)
+      const text = provider.text(kind, facts, sb)
       if (text === "") throw new Error(`empty text for ${kind}`)
       return text
     },

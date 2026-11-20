@@ -22,7 +22,7 @@
       "prompt-file": 1
     },
     "ma-core-tools-plugin/synthetic-text.ts": {
-      "tag-literal": 5,
+      "tag-literal": 2,
       "bracket-notice": 11
     },
     "ma-diagnostics-plugin/lib/format-notes.ts": {
@@ -138,22 +138,7 @@
       "tag-regex": 2,
       "tag-search": 1
     },
-    "ma-turn-recovery-plugin/prompts/output-truncated.md": {
-      "prompt-file": 1
-    },
     "ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md": {
-      "prompt-file": 2
-    },
-    "ma-turn-recovery-plugin/prompts/session-resumed.md": {
-      "prompt-file": 1
-    },
-    "ma-turn-recovery-plugin/prompts/stream-interrupted-continue.md": {
-      "prompt-file": 1
-    },
-    "ma-turn-recovery-plugin/prompts/stream-interrupted.md": {
-      "prompt-file": 1
-    },
-    "ma-turn-recovery-plugin/prompts/turn-aborted.md": {
       "prompt-file": 1
     },
     "ma-turn-recovery-plugin/provider.ts": {

@@ -56,6 +56,7 @@ import {
   nextRoundContent,
 } from "../node_modules/@minimal-agent/core/src/sdk/agent-core-helpers.ts"
 import * as T from "../node_modules/@minimal-agent/core/src/tools/tool-result-text.ts"
+import { pluginSideband } from "../tests/support/sideband.ts"
 
 import { RULE_HITS, RULE_NAMES, toSte } from "./__fixtures__/ste-p4.ts"
 import manifest from "./manifest.json"
@@ -77,6 +78,8 @@ interface FixtureEntry {
 const entries = (JSON.parse(readFileSync(FIXTURE, "utf8")) as { entries: FixtureEntry[] }).entries
 
 const provider = createTurnRecoveryProvider()
+/** The real codec: the provider renders its tag lines with it (design 40 step 10). */
+const sb = await pluginSideband()
 const OWNED: ReadonlySet<string> = new Set(provider.kinds)
 
 /** The base kind of a proposedKind (`tool_result.aborted{site:orphan}`, `continue.*`). */
@@ -105,7 +108,7 @@ function live(calls: Calls): SyntheticTextResolver {
     resolve(kind, facts) {
       if (!OWNED.has(kind)) return ""
       calls.push({ kind, facts })
-      const out = provider.text(kind, facts)
+      const out = provider.text(kind, facts, sb)
       expect(out.length).toBeGreaterThan(0)
       return out
     },

@@ -7,6 +7,8 @@ import { getDiagnosticBus, type LogEvent } from "@minimal-agent/core/host/diagno
 import { PluginLoader } from "@minimal-agent/core/host-kit/plugin-loader"
 import { SYNTHETIC_KINDS } from "@minimal-agent/core/plugin-api/types/synthetic-text"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import { createCoreToolsSyntheticProvider } from "./synthetic-text.ts"
 import { createCoreToolTextProvider } from "./tool-text.ts"
 
@@ -65,7 +67,8 @@ describe("ma-core-tools-plugin manifest", () => {
     ).toEqual([])
     const providers = loader.syntheticTextProviders()
     const own = providers.find((p) => p.kinds.includes("mode.change"))
-    expect(own?.text("mode.change", { from: "default", to: "ask", at: "T" })).toBe(
+    const sb = await pluginSideband()
+    expect(own?.text("mode.change", { from: "default", to: "ask", at: "T" }, sb)).toBe(
       '<ma::agent::mode-change from="default" to="ask" at="T" />',
     )
   })

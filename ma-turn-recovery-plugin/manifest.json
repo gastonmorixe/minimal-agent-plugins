@@ -69,38 +69,6 @@
       "summary": "The provider closed the previous response before it was complete."
     },
     {
-      "kind": "reflection-checkpoint",
-      "direction": "to-model",
-      "placement": "turn",
-      "attrs": {
-        "round": {
-          "type": "int"
-        },
-        "cooldown-applied-seconds": {
-          "type": "int"
-        }
-      },
-      "body": "none",
-      "trust": "harness",
-      "summary": "Soft checkpoint after a number of tool rounds."
-    },
-    {
-      "kind": "reflection-ack",
-      "direction": "from-model",
-      "placement": "inline",
-      "attrs": {
-        "silence-for": {
-          "type": "int"
-        },
-        "reason": {
-          "type": "string"
-        }
-      },
-      "body": "none",
-      "trust": "untrusted",
-      "summary": "The model acknowledges a checkpoint and asks for silence for K checkpoints."
-    },
-    {
       "kind": "max-tokens-continue",
       "direction": "to-model",
       "placement": "turn",
