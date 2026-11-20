@@ -3,12 +3,37 @@
  * tables do not pin. Each one uses a fixture plugin under fixtures/.
  */
 
+import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { Scenario } from "./harness.ts"
 
 const FIXTURES = join(import.meta.dir, "fixtures")
 const bash = (command: string) => ({ name: "Bash", input: { command } })
+
+/**
+ * A wave: one model response with 2 concurrency-safe calls (Read, Read)
+ * under concurrency cap 2. The next request must hold the tool_use blocks
+ * and the tool_result blocks in call order. `wave.test.ts` also runs it
+ * with cap 1 and expects the same bytes.
+ */
+export const WAVE_TWO_READS: Scenario = {
+  name: "wave-two-reads",
+  script: [
+    {
+      tools: [
+        { name: "Read", input: { file_path: "a.txt" } },
+        { name: "Read", input: { file_path: "b.txt" } },
+      ],
+    },
+  ],
+  setup: (cwd) => {
+    writeFileSync(join(cwd, "a.txt"), "alpha\n")
+    writeFileSync(join(cwd, "b.txt"), "bravo\n")
+  },
+  coreDeps: () => ({ maxConcurrentToolCalls: 2 }),
+  run: async ({ turn }) => turn("read the two files"),
+}
 
 export const GAP_SCENARIOS: Scenario[] = [
   {
@@ -42,4 +67,5 @@ export const GAP_SCENARIOS: Scenario[] = [
     run: async ({ turn }) => turn("run bash under a broken approval hook"),
     keep: [-1],
   },
+  WAVE_TWO_READS,
 ]
