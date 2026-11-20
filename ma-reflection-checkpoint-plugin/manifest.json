@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "The plugin adds a soft reflection checkpoint after each N tool steps (default 50). Before the next model request, the plugin waits (default 60 s, Esc stops this time) and adds a `<ma::agent::reflection-checkpoint />` text. The model can write `<ma::emit::reflection-ack silence-for=\"K\" reason=\"...\" />` to prevent the next K checkpoints. By default, the plugin is off (`manifest.enabled` is `false`). To enable it, set `plugins[\"reflection-checkpoint\"].enabled` to `true` in `~/.minimal-agent/config.jsonc`.",
   "enabled": false,
-  "permissions": ["hooks:tool.didBatch"],
+  "permissions": ["hooks:tool.didBatch", "hooks:turn.didEnd", "hooks:turn.aborted"],
   "headless": {
     "promptFragments": [
       {
@@ -29,6 +29,24 @@
           "export": "default"
         },
         "priority": 0
+      },
+      {
+        "id": "run_end",
+        "channel": "turn.didEnd",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/run-end.ts",
+          "export": "default"
+        }
+      },
+      {
+        "id": "run_aborted",
+        "channel": "turn.aborted",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/run-end.ts",
+          "export": "default"
+        }
       }
     ],
     "tools": [

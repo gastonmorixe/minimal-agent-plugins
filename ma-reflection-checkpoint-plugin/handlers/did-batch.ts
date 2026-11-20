@@ -5,16 +5,20 @@
  * request:
  *
  * 1. When an ack silenced this checkpoint, decrement the count and do nothing.
- * 2. Else wait the cooldown through `ctx.countdown` (the terminal host shows
- *    "label · Ns remaining · press Esc to skip"; a headless host waits a
- *    plain timer). An abort of the turn ends the wait and adds no text.
+ * 2. Else, in an interactive run (`ctx.run.interactive`), wait the cooldown
+ *    through `ctx.countdown` (the terminal host shows
+ *    "label · Ns remaining · press Esc to skip"). An abort of the turn ends
+ *    the wait and adds no text. A run that is not interactive (one-shot,
+ *    stream-json, host, sub-agent, or no run fact) does not wait: no person
+ *    can use the time. This is the same as the no-op gate of the old core.
+ *    The attachment then has `cooldown-applied-seconds="0"`.
  * 3. Return the checkpoint attachment as `additionalContext`. Core adds it to
  *    the user content of the next request.
  *
  * @module handlers/did-batch
  */
 
-import { loadConfig } from "../lib/config.ts"
+import { pluginConfig } from "../lib/config.ts"
 import type { DidBatchResult, HookContext, ToolDidBatchPayload } from "../lib/host-types.ts"
 import { sessionKey, stateFor } from "../lib/state.ts"
 import { attachmentText } from "../lib/text.ts"
@@ -49,12 +53,14 @@ export async function onDidBatch(
 ): Promise<DidBatchResult> {
   const round = payload?.round
   if (typeof round !== "number" || !Number.isInteger(round) || round < 1) return undefined
-  const { interval, cooldownMs } = loadConfig(ctx.env)
+  const { interval, cooldownMs } = pluginConfig(ctx.env)
   if (interval <= 0) return undefined
 
   const state = stateFor(sessionKey(ctx.agent, ctx.env))
-  // A new run starts at round 1 again: clear an old count, but keep an ack
-  // that the first response of this run wrote.
+  // The run-end hook (`handlers/run-end.ts`) clears the state at the end of
+  // each run. Fallback for a host with no run-end event: a new run starts at
+  // round 1 again, so clear an old count, but keep an ack that the first
+  // response of this run wrote.
   if (round <= state.lastRound && !state.ackSinceBatch) state.silenceRemaining = 0
   state.lastRound = round
   state.ackSinceBatch = false
@@ -66,7 +72,7 @@ export async function onDidBatch(
   }
 
   let appliedMs = 0
-  if (cooldownMs > 0) {
+  if (cooldownMs > 0 && ctx.run?.interactive === true) {
     const start = deps.now()
     const result = await ctx.countdown({
       id: COUNTDOWN_ID,

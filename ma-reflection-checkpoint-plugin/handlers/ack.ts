@@ -14,7 +14,7 @@
  * @module handlers/ack
  */
 
-import { loadConfig } from "../lib/config.ts"
+import { pluginConfig } from "../lib/config.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { sessionKey, stateFor } from "../lib/state.ts"
 
@@ -46,7 +46,7 @@ export function ackNotice(ack: ReflectionAck): string {
 /** The manifest inline-tag entry. */
 export default async function reflectionAckHandler(ctx: TUIContext): Promise<TUIResult> {
   if (ctx.trigger.type !== "inline_tag") return { kind: "rendered", ansi: "" }
-  if (loadConfig(ctx.env).interval <= 0) return { kind: "rendered", ansi: "" }
+  if (pluginConfig(ctx.env).interval <= 0) return { kind: "rendered", ansi: "" }
   const ack = parseAck(ctx.trigger.attrs)
   if (!ack) return { kind: "rendered", ansi: "" }
   const state = stateFor(sessionKey(ctx.agent, ctx.env))

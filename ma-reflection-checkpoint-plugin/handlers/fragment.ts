@@ -8,12 +8,12 @@
  * @module handlers/fragment
  */
 
-import { loadConfig } from "../lib/config.ts"
+import { pluginConfig } from "../lib/config.ts"
 import type { FragmentContext } from "../lib/host-types.ts"
 import { loopSafetyText } from "../lib/text.ts"
 
 /** The manifest prompt-fragment entry. */
 export default function loopSafetyFragment(ctx: FragmentContext): string {
-  const { interval, cooldownMs } = loadConfig(ctx.env)
+  const { interval, cooldownMs } = pluginConfig(ctx.env)
   return loopSafetyText(interval, cooldownMs)
 }
