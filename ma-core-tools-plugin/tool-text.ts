@@ -38,7 +38,8 @@ export const TOOLS: readonly string[] = [
 const PARAMS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   Bash: {
     command: "The command to run.",
-    timeout: "Optional. The time limit in milliseconds. The tool sets no maximum.",
+    timeout:
+      "Optional. The time limit in milliseconds. The default is 120000 (2 minutes). The maximum is 600000 (10 minutes): the tool decreases a larger value. For longer work, use `BackgroundRun`.",
     description: "A short description of the command.",
   },
   Read: {
