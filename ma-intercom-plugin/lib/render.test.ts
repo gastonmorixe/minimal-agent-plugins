@@ -79,6 +79,37 @@ describe("renderFooter", () => {
       "⇆ intercom · 0 online · Fix the footer",
     )
   })
+
+  // The title is faint: SGR 2 (the `dim` style) around the text, closed with
+  // SGR 22 at the end of the line. The test kit writes these exact bytes.
+  const faint = (s: string): string => `\x1b[2m${s}\x1b[22m`
+
+  test("paints the title faint, last on the line", () => {
+    expect((renderFooter(counts, "Fix the footer") ?? "").endsWith(faint("Fix the footer"))).toBe(
+      true,
+    )
+  })
+
+  test("paints the title faint when there are no reachable peers", () => {
+    expect((renderFooter(noPeers, "Fix the footer") ?? "").endsWith(faint("Fix the footer"))).toBe(
+      true,
+    )
+  })
+
+  test("a title cannot end the faint style early or start another style", () => {
+    // The escape sequences go away before the style is added.
+    const footer = renderFooter(counts, "Fix\x1b[22m the \x1b[1mfooter\x1b[0m") ?? ""
+    expect(footer.endsWith(faint("Fix the footer"))).toBe(true)
+    expect(footer.slice(footer.lastIndexOf("\x1b[2mFix"))).toBe(faint("Fix the footer"))
+  })
+
+  test("the other segments keep their own styles (only the title is new)", () => {
+    const withTitle = renderFooter(counts, "Fix the footer") ?? ""
+    const without = renderFooter(counts) ?? ""
+    // The title adds one separator and one faint block. Nothing else changes.
+    expect(withTitle.startsWith(without)).toBe(true)
+    expect(withTitle.slice(without.length)).toBe(`\x1b[2m · \x1b[22m${faint("Fix the footer")}`)
+  })
 })
 
 describe("arrivalLabel", () => {

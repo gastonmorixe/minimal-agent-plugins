@@ -192,6 +192,20 @@ event bus. The event has these fields: `sid`, `purpose`, `model`,
 error, `stopReason` is `exception`. When the index write has an error,
 `stopReason` is `write-failed`.
 
+## The `title.saved` event
+
+After the plugin wrote a title, it sends one `title.saved` event on the same
+bus. The event has the fields `sid`, `title` and `source` (always `ai`). It is
+a signal to refresh a screen. The plugin sends it after the write, and only
+when it wrote a title. An error in the emit does not change the result of the
+write.
+
+A live-area slot that names `title.saved` in `refreshOn` runs at once. The
+`intercom_beat` slot of `ma-intercom-plugin` does this, so the footer shows the
+new title with no wait for the next timer tick. The event is a hint, not the
+source of truth: a slot reads the title with `sessions.title(sid)`. A resumed
+session has a title but sends no event, so a slot must keep its timer.
+
 ## Files
 
 - `manifest.json`: the event `prompt.submitted` with `"host": true`, and the

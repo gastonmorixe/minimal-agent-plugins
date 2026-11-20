@@ -8,6 +8,23 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-20: **The Intercom footer paints the session title faint**
+  (`ma-intercom-plugin`). `renderFooter` wraps the title in the `dim` style
+  (SGR 2, closed with SGR 22). The title is sanitized first, so it cannot
+  close the faint style early or start a style of its own. The other
+  segments keep their styles. The footer text and its width do not change.
+- 2026-11-20: **A new title shows in the Intercom footer at once**
+  (`ma-title-plugin`, `ma-intercom-plugin`). After `setTitle` wrote an AI
+  title, the title plugin sends one `title.saved` event
+  (`{sid, title, source: "ai"}`) on the plugin bus. It sends no event when it
+  wrote no title, and an error in the emit does not change the result of the
+  write. The `intercom_beat` slot now has `"refreshOn": ["title.saved"]`, so
+  the host scheduler runs it again at once and the footer shows
+  `⇆ intercom · N online · <title>` with no wait of up to 5 s. The 5 s timer
+  stays: it shows the title of a resumed session, which has no event. There
+  is no core or CLI change: the scheduler already supports `refreshOn`. A
+  test in `tests/` checks that the event name and the `refreshOn` list stay
+  equal.
 - 2026-11-20: **Fetch: concurrency-safe calls without a named session**
   (`ma-fetch-plugin`, SPEC D6-D8). The manifest sets
   `trigger.tool.concurrencySafe: true`. The handler export

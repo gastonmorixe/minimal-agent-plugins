@@ -211,7 +211,8 @@
         "order": 90,
         "refreshMs": 5000,
         "timeoutMs": 4000,
-        "placeholder": "⇆ intercom ·"
+        "placeholder": "⇆ intercom ·",
+        "refreshOn": ["title.saved"]
       }
     ]
   }

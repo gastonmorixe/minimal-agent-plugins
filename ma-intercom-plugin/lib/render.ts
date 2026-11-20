@@ -177,7 +177,9 @@ export function renderRosterDisplay(rows: readonly RosterRow[]): string {
  *
  * The footer leads with the reachable count, never the raw total. When peers
  * are reachable, it also shows how many others are known-but-gone. The local
- * session's saved title, when present, is displayed after the counts.
+ * session's saved title, when present, is displayed after the counts, in faint
+ * text (the `dim` style). The title is sanitized first, so it cannot close the
+ * faint style early or start a style of its own.
  */
 export function renderFooter(counts: RosterCounts, sessionTitle?: string | null): string | null {
   const reachable = counts.online + counts.busy + counts.idle
@@ -186,7 +188,7 @@ export function renderFooter(counts: RosterCounts, sessionTitle?: string | null)
   const parts: string[] = [green(`${reachable} online`)]
   if (counts.busy > 0) parts.push(yellow(`${counts.busy} busy`))
   if (reachable > 0 && counts.other > 0) parts.push(dim(`${counts.other} gone`))
-  if (title) parts.push(title)
+  if (title) parts.push(dim(title))
   return `${magenta("⇆ intercom")} ${dim("·")} ${parts.join(dim(" · "))}`
 }
 
