@@ -82,6 +82,8 @@ export interface BeatDeps {
   readonly nowMs: number
   readonly thresholds: Thresholds
   readonly probe: LivenessProbe
+  /** Saved title of this session, displayed locally only. */
+  readonly sessionTitle?: string | null
   /** Publish this session's presence record (atomic write). */
   readonly publish: (rec: PresenceRecord) => void
   /** Read all presence records (own feed + adapted sub-agents feed, merged by caller). */
@@ -170,7 +172,7 @@ export function runBeat(deps: BeatDeps): BeatResult {
     selfSid: deps.self.sid,
   })
   const counts = rosterCounts(rows)
-  return { footer: renderFooter(counts), counts, woke, fresh: fresh ?? [] }
+  return { footer: renderFooter(counts, deps.sessionTitle), counts, woke, fresh: fresh ?? [] }
 }
 
 export type { Liveness }

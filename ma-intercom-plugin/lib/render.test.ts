@@ -23,6 +23,7 @@ import {
   peerLabelDisplay,
   renderArrivalLines,
   renderArrivalText,
+  renderFooter,
   renderInspectText,
   renderRosterDisplay,
   renderRosterText,
@@ -54,6 +55,31 @@ function env(over: Partial<Envelope> = {}): Envelope {
     ...over,
   } as Envelope
 }
+
+describe("renderFooter", () => {
+  const counts: RosterCounts = { total: 3, online: 0, busy: 1, idle: 1, other: 1 }
+  const noPeers: RosterCounts = { total: 0, online: 0, busy: 0, idle: 0, other: 0 }
+
+  test("shows the local title after the roster counts on the same line", () => {
+    const title = "  Fix \x1b[31mthe\x1b[0m\nfooter  "
+    const footer = renderFooter(counts, title) ?? ""
+    expect(noAnsi(footer)).toBe("⇆ intercom · 2 online · 1 busy · 1 gone · Fix the footer")
+    expect(footer).not.toContain("\x1b[31m")
+  })
+
+  test("omits the title separator when there is no saved title", () => {
+    expect(noAnsi(renderFooter(counts, " \n ") ?? "")).toBe(
+      "⇆ intercom · 2 online · 1 busy · 1 gone",
+    )
+    expect(renderFooter(noPeers)).toBeNull()
+  })
+
+  test("still shows a saved title when there are no reachable peers", () => {
+    expect(noAnsi(renderFooter(noPeers, "Fix the footer") ?? "")).toBe(
+      "⇆ intercom · 0 online · Fix the footer",
+    )
+  })
+})
 
 describe("arrivalLabel", () => {
   test("singular vs plural", () => {

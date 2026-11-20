@@ -121,6 +121,8 @@ export interface SessionsReadApi {
     limit?: number
     offset?: number
   }): Promise<{ items: readonly SessionIndexEntry[]; total: number }>
+  /** Fast saved-title lookup. Optional on hosts that predate this method. */
+  title?(sid: string): string | null
   meta(sid: string): Promise<SessionMetaView | null>
   window(sid: string, opts: WindowOpts): Promise<RecordWindow | null>
 }
@@ -264,6 +266,8 @@ export interface LiveAreaHandlerContext {
   emit?: (channel: string, payload?: unknown) => void
   /** Boot-time agent identity. Optional only on the legacy back-compat path. */
   agent?: AgentContext
+  /** Capability host for the slot's declared `sessions:read` capability. */
+  host?: PluginHost
 }
 
 export type LiveAreaHandler = (

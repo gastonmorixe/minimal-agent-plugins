@@ -66,15 +66,12 @@ export default async function beat(ctx: LiveAreaHandlerContext): Promise<string 
     thresholds.heartbeatMs * 2,
   )
 
-  // Presence publish + roster read + inbox read all go through the Transport
-  // port (Ports & Adapters). The live-area context carries no `ctx.host`, so
-  // there's no transport registry here today: this is the local fs adapter,
-  // byte-identical to the prior direct fs calls. When the cloud bridge lands it
-  // relays remote presence into the same dirs, so this read picks them up
-  // unchanged (and the footer counts them).
+  // Presence, roster, and inbox use the local transport. The saved title is
+  // read separately through the host and never included in presence.
   const transport = makeLocalFsTransport(env, self.sid)
   const deps: BeatDeps = {
     self,
+    sessionTitle: ctx.host?.sessions?.title?.(self.sid),
     state: {
       phase,
       activity: state.activity,

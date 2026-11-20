@@ -13,6 +13,7 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import beat from "./handlers/beat.ts"
 import { type BeatDeps, runBeat } from "./lib/beat.ts"
 import { resolveThresholds } from "./lib/config.ts"
 import { readCursor, writeCursor } from "./lib/cursors.ts"
@@ -98,6 +99,41 @@ function svc(self: SelfIdentity, nowMs: number, alive: (pid: number) => boolean)
     pidAlive: alive,
   }
 }
+
+describe("current session title in the live footer", () => {
+  it("reads the active session on each beat without publishing its title", async () => {
+    const sid = "aaaaaaaa-1"
+    let saved: string | null = null
+    const ctx = {
+      packageDir: import.meta.dir,
+      cwd: home,
+      env: { MINIMAL_AGENT_HOME: home },
+      abort: new AbortController().signal,
+      stderr: process.stderr,
+      tick: 1,
+      agent: { sessionId: sid, pid: process.pid, model: "m", version: "0.1.0" },
+      host: {
+        capabilities: ["sessions:read"],
+        sessions: {
+          title: (target: string) => (target === sid ? saved : null),
+          list: async () => ({ items: [], total: 0 }),
+          meta: async () => null,
+          window: async () => null,
+        },
+      },
+    }
+
+    expect(await beat(ctx)).toBeNull()
+    saved = "Fix the footer"
+    expect(await beat(ctx)).toEndWith("Fix the footer")
+    saved = "Renamed session"
+    expect(await beat(ctx)).toEndWith("Renamed session")
+    expect(readPresenceDir(presenceDir(env))).toHaveLength(1)
+    expect(readPresenceDir(presenceDir(env))[0]).not.toHaveProperty("title")
+    saved = null
+    expect(await beat(ctx)).toBeNull()
+  })
+})
 
 describe("two sessions discover each other", () => {
   it("after both beat, each sees the other in the roster", () => {
