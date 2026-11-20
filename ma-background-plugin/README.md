@@ -169,6 +169,32 @@ also a fan-out listener (same tag). When it is the last listener, it removes
 its locks and calls `process.exit` (130 for SIGINT, 143 for SIGTERM), so the
 end is then that exit, not the default action.
 
+## Headless runs: the turn waits for the jobs
+
+A headless run (`-p`, `stream-json`, a sub-agent worker) has no live area, so
+no digest comes between turns, and the process exits when the turn ends. Then
+the runner kills each job. To prevent this, the `turn.willStop` hook
+(`handlers/on_turn_will_stop.ts`, logic in `lib/headless-wait.ts`) acts only
+when `ctx.run.interactive` is false and the mode is `one-shot`, `stream-json`
+or `subagent` (not `host`). With no `ctx.run`, a worker id in the payload or
+`MINIMAL_AGENT_WRAP_UP_TOOLS` marks a headless run. If jobs of the session
+run, the hook polls the reconcile pass each second until they end, then halts
+the stop with their digests. The model then gets one more round to read the
+output. If the jobs were complete before the stop (no wait), the halt says
+"Background jobs of this run are complete." A BackgroundLogs call reconciles
+the job that it reads, so a job that the model already read gives no halt.
+The wait stops at once on the turn abort (`ctx.abort`), SIGTERM, SIGINT or
+SIGHUP (the signal listener has the fan-out tag). The max wait
+`MINIMAL_AGENT_BG_HEADLESS_WAIT_MS` (default 20 min, max 24 min) is a total
+for each turn, not for each stop: a job that never ends holds the turn for
+about one max wait, also when the model starts more jobs. The total resets on
+a new turn and on an allow with no running job. A worker also stops at its
+budget deadline minus 60 s. At the deadline the hook halts with "continues to
+run", and the next stops do not wait again. The hook `timeoutMs` (25 min) is
+larger than the max wait. Set `MINIMAL_AGENT_BG_HEADLESS_WAIT=0` to disable
+the wait. In a headless run, the BackgroundRun result says that the turn stays
+open (the core gives `ctx.run` on the tool context).
+
 ## Persistence (durable, colocated, complete)
 
 Everything lives under the session directory, so it travels with the transcript

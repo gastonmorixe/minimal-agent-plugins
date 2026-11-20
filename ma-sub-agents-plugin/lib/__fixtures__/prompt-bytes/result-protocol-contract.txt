@@ -2,6 +2,8 @@
 
 You are a leaf sub-agent. You cannot delegate. The harness denies the SubAgentsSpawnAgent tool and the Task hand-off to you, and they bounce. Do every step yourself in this session with your own tools.
 
+Do not stop your turn to wait for a background job. Read it with BackgroundStatus or BackgroundLogs, or use Bash in the foreground.
+
 The lead requires these files. Each one must exist and not be empty at the end of your work:
 
 - /work/findings.md

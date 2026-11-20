@@ -156,13 +156,17 @@ export interface ReconcileResult {
  * run the pure reducer, persist if changed, and forget any job that became
  * terminal (closing its pipe in the registry). Returns the records + effects so
  * the heartbeat shell can run the effects (inject digests) and render.
+ *
+ * `onlyId`: probe only that job. The other jobs get no probe, so they do not
+ * change, and their digests stay for the heartbeat or the stop hook.
  */
-export function runReconcile(deps: ServiceDeps, io: ReconcileIO): ReconcileResult {
+export function runReconcile(deps: ServiceDeps, io: ReconcileIO, onlyId?: string): ReconcileResult {
   const records = deps.store.all()
 
   const probes = new Map<string, JobProbe>()
   for (const r of records) {
     if (!isActive(r.status)) continue
+    if (onlyId !== undefined && r.id !== onlyId) continue
     const sidecar = io.readSidecar(r.statusPath)
     probes.set(r.id, {
       runnerAlive: io.runnerAlive(r.runnerPid),

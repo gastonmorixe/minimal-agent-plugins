@@ -6,7 +6,7 @@
  * The registry is a module singleton, so each test resets it to stay isolated.
  */
 
-import { mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -16,7 +16,7 @@ import { resetRegistryForTests } from "../lib/registry.ts"
 import { BgJobStore } from "../lib/store.ts"
 
 import bgLogs from "./bg_logs.ts"
-import bgRun from "./bg_run.ts"
+import bgRun, { HEADLESS_NOTE } from "./bg_run.ts"
 import bgStatus from "./bg_status.ts"
 import bgStop from "./bg_stop.ts"
 
@@ -83,6 +83,20 @@ function contentOf(r: { content: string }): string {
 }
 
 describe("BackgroundRun", () => {
+  test("a headless run gets the headless note, an interactive run the digest note", async () => {
+    const base = ctx({ command: "echo hi" })
+    const worker = await bgRun({ ...base, env: { ...base.env, MINIMAL_AGENT_WRAP_UP_TOOLS: "X" } })
+    expect(contentOf(worker as { content: string })).toContain(HEADLESS_NOTE)
+    // A plain -p run: the core gives the run fact on the tool ctx.
+    const oneShot = await bgRun({
+      ...base,
+      run: { mode: "one-shot", interactive: false },
+    } as typeof base)
+    expect(contentOf(oneShot as { content: string })).toContain(HEADLESS_NOTE)
+    const repl = await bgRun({ ...base, run: { mode: "repl", interactive: true } } as typeof base)
+    expect(contentOf(repl as { content: string })).toContain("digest between turns")
+  })
+
   test("starts a job and persists a running record", async () => {
     const res = await bgRun(ctx({ command: "echo hello" }))
     expect(res.kind).toBe("tool_result")
@@ -141,6 +155,31 @@ describe("BackgroundStatus", () => {
 })
 
 describe("BackgroundLogs", () => {
+  test(
+    "reconciles the job it reads, and only that job",
+    async () => {
+      await bgRun(ctx({ command: "echo read-me" }))
+      await bgRun(ctx({ command: "echo other" }))
+      const sidecarDone = (id: string): boolean => {
+        const path = store().get(id)?.statusPath
+        if (!path || !existsSync(path)) return false
+        return (JSON.parse(readFileSync(path, "utf8")) as { phase?: string }).phase !== "running"
+      }
+      // Wait on the runner sidecars only: no status call, so no reconcile pass.
+      expect(await waitFor(() => sidecarDone("j1") && sidecarDone("j2"), POLL_DEADLINE_MS)).toBe(
+        true,
+      )
+      expect(store().get("j1")?.status.kind).toBe("running")
+      const res = await bgLogs(ctx({ id: "j1" }))
+      expect(contentOf(res as { content: string })).toContain("read-me")
+      // The read job is now terminal in the store: its end is reported.
+      expect(store().get("j1")?.status.kind).toBe("exited")
+      // The other job does not change: its digest stays for the heartbeat or the stop hook.
+      expect(store().get("j2")?.status.kind).toBe("running")
+    },
+    TEST_TIMEOUT_MS,
+  )
+
   test(
     "returns captured output after completion",
     async () => {
