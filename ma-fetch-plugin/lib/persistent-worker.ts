@@ -219,6 +219,8 @@ export class PersistentWorkerClient {
   private state: WorkerState | null = null
   private nextId = 1
   private serial: Promise<void> = Promise.resolve()
+  /** Calls in the serial chain (one runs, the others wait). */
+  private inFlight = 0
   private readonly deps: Required<
     Pick<PersistentWorkerDeps, "existsFn" | "parentExitHook" | "setTimeoutFn" | "clearTimeoutFn">
   > &
@@ -243,12 +245,26 @@ export class PersistentWorkerClient {
       : { running: false }
   }
 
+  /**
+   * True when a call is in the serial chain. Cheap: one counter read. A
+   * concurrency-safe Fetch call uses it to take the one-shot path, and does
+   * not wait behind the call that runs (SPEC D8).
+   */
+  busy(): boolean {
+    return this.inFlight > 0
+  }
+
   call(
     config: FetchConfig,
     input: BackendCallInput,
     signal: AbortSignal,
   ): Promise<PersistentCallResult> {
-    const task = this.serial.then(() => this.callSerialized(config, input, signal))
+    this.inFlight++
+    const task = this.serial
+      .then(() => this.callSerialized(config, input, signal))
+      .finally(() => {
+        this.inFlight--
+      })
     this.serial = task.then(
       () => {},
       () => {},
@@ -587,6 +603,11 @@ export function callPersistentBackend(
 ): Promise<PersistentCallResult> {
   moduleClient ??= new PersistentWorkerClient()
   return moduleClient.call(config, input, signal)
+}
+
+/** True when the module worker has a call in its serial chain. Does not start a worker. */
+export function persistentWorkerBusy(): boolean {
+  return moduleClient?.busy() ?? false
 }
 
 /** Test/operator cleanup hook. The next eligible call starts a clean worker. */

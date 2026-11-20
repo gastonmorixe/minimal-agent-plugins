@@ -45,7 +45,12 @@ import {
 } from "../lib/config.ts"
 import { stripDataUris } from "../lib/data-uri.ts"
 import { classifyBackendFailure, FetchError, writeTraceLog } from "../lib/errors.ts"
-import { callPersistentBackend, type PersistentCallResult } from "../lib/persistent-worker.ts"
+import { type FifoSemaphore, oneShotSlots } from "../lib/one-shot-slots.ts"
+import {
+  callPersistentBackend,
+  type PersistentCallResult,
+  persistentWorkerBusy,
+} from "../lib/persistent-worker.ts"
 import { slots } from "../lib/style.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
@@ -353,6 +358,29 @@ export function buildDisplayFooter(opts: {
   return main
 }
 
+/**
+ * Core asks this after admission, on the final input of the call (SPEC D6,
+ * D7). A call is concurrency-safe only when it has no named session:
+ * `session` is `""`, or `session` is absent and the config sets no default
+ * session. A call with a session is a serial call, because two calls on one
+ * session directory can write the same cookies at the same time. If this
+ * function throws (for example, a bad config file), core makes the call
+ * serial.
+ */
+export function concurrencySafe(input: Record<string, unknown>): boolean {
+  return concurrencySafeWith(input, loadFetchConfig)
+}
+
+/** {@link concurrencySafe} with an injectable config loader (for tests). */
+export function concurrencySafeWith(
+  input: Record<string, unknown>,
+  loadConfig: () => FetchConfig,
+): boolean {
+  if (input.session === "") return true
+  if (input.session !== undefined) return false
+  return !loadConfig().defaults.session
+}
+
 /** Default export: the tool handler the loader will invoke. */
 /** Latched once the engine resolves, so a found binary never flips Fetch off. */
 let engineSeen = false
@@ -425,6 +453,54 @@ export interface FetchRunDeps extends BackendDeps {
     input: BackendCallInput,
     signal: AbortSignal,
   ) => Promise<PersistentCallResult>
+  /** Test seam: is the persistent worker busy? Defaults to the module worker. */
+  persistentBusy?: () => boolean
+  /** Test seam: the cap on one-shot processes. Defaults to the module semaphore. */
+  oneShotSlots?: FifoSemaphore
+}
+
+/**
+ * Start a one-shot backend call after it gets a slot from the cap. The slot
+ * wait comes first, so the per-call timeout and the watchdog in
+ * `callBackend` start only when the process starts. An abort while the call
+ * waits gives an aborted result, and the call releases nothing. A call that
+ * gets a slot releases it in `finally`, also when `callBackend` throws.
+ */
+export async function callOneShotBackend(
+  ctx: TUIContext,
+  config: FetchConfig,
+  input: BackendCallInput,
+  deps: FetchRunDeps,
+): Promise<Awaited<ReturnType<typeof callBackend>>> {
+  const lease = await (deps.oneShotSlots ?? oneShotSlots()).acquire(ctx.abort)
+  if (!lease) {
+    return {
+      ok: false,
+      exitCode: 130,
+      stdout: "",
+      stdoutBytes: new Uint8Array(),
+      stderr: "request aborted while it waited for a fetch slot",
+      backend: `${config.backend}.ts`,
+      aborted: true,
+      abortReason: "signal",
+    }
+  }
+  try {
+    return await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
+  } finally {
+    lease.release()
+  }
+}
+
+/**
+ * A concurrency-safe call (no named session) does not wait behind the call
+ * that runs in the persistent worker. When the worker is busy, it uses the
+ * one-shot path (SPEC D8). Accessibility output has no one-shot path, so it
+ * always uses the worker.
+ */
+function workerBusyForSafeCall(input: BackendCallInput, deps: FetchRunDeps): boolean {
+  if (input.storageDir || input.format === "accessibility") return false
+  return (deps.persistentBusy ?? persistentWorkerBusy)()
 }
 
 /** Whether a call can use the private persistent worker transport. */
@@ -462,7 +538,11 @@ export async function runWithDeps(
   // An injected one-shot spawn without a persistent seam is an explicit test or
   // caller override. Keep that path one-shot so the generic backend abstraction
   // remains independently testable.
-  if (persistentEligible(config, input) && (deps.persistentCall || !deps.spawnFn)) {
+  if (
+    persistentEligible(config, input) &&
+    (deps.persistentCall || !deps.spawnFn) &&
+    !workerBusyForSafeCall(input, deps)
+  ) {
     const persistent = await (deps.persistentCall ?? callPersistentBackend)(
       config,
       input,
@@ -481,10 +561,10 @@ export async function runWithDeps(
         input.format,
       )
     } else {
-      result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
+      result = await callOneShotBackend(ctx, config, input, deps)
     }
   } else {
-    result = await callBackend(ctx.packageDir, config, input, ctx.abort, deps)
+    result = await callOneShotBackend(ctx, config, input, deps)
   }
 
   if (result.scriptMissing || result.binUnavailable) {

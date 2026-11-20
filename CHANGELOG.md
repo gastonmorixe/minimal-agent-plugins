@@ -8,6 +8,22 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-20: **Fetch: concurrency-safe calls without a named session**
+  (`ma-fetch-plugin`, SPEC D6-D8). The manifest sets
+  `trigger.tool.concurrencySafe: true`. The handler export
+  `concurrencySafe(input)` gives true only when `session` is absent or
+  `""` and the config sets no `defaults.session`. Calls with a named
+  session stay serial. At most 4 one-shot processes run at the same
+  time (env `MINIMAL_AGENT_FETCH_MAX_CONCURRENT`, an integer of 1 or
+  more; an incorrect value gives 4). Other calls wait in arrival order.
+  The reason: 10 calls at the same time had a measured peak RSS of
+  3.7 GB, and nytimes.com alone used 2.3 GB. The time budget and the
+  watchdog start after the call gets its slot. An abort while a call
+  waits removes it from the queue. When the persistent worker is busy, a
+  concurrency-safe call uses the one-shot path, so at most 5 processes
+  render at the same time (the worker plus 4 one-shot processes). The
+  plugin reads the env one time for each process. The tool `durationMs`
+  includes the slot wait.
 - 2026-11-19: **Intercom footer shows the session title** (`ma-intercom-plugin`).
   The footer line is now `⇆ intercom · 2 online · 1 busy · <title>`. The title
   is the saved title of this session (user, then AI, then derived). The beat

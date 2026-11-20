@@ -211,6 +211,36 @@ content remains backend-agnostic. The process exits after its idle timeout and
 is also killed as a process group on caller abort, outer watchdog, or parent
 exit.
 
+### Concurrent calls
+
+Fetch calls without a named session are concurrency-safe: `session` is
+absent or `""`, and the config sets no `defaults.session`. Core can run
+these calls at the same time in a wave. Calls with a named session stay
+serial. A config `defaults.session` also makes all calls serial, because
+then all calls without a session use the same cookie jar.
+
+At most 4 one-shot processes run at the same time. Set
+`MINIMAL_AGENT_FETCH_MAX_CONCURRENT` (an integer of 1 or more) to change
+this cap. An incorrect value gives the default, 4. The plugin reads this
+variable one time for each process, at the first one-shot call. To change
+the cap, start the process again. Other calls wait in arrival order. The
+reason: 10 calls at the same time had a measured peak RSS of 3.7 GB, and
+nytimes.com alone used 2.3 GB.
+
+The cap does not count the persistent worker. When the worker is busy, a
+call uses the one-shot path, so at most 5 processes render at the same
+time: 1 worker process and 4 one-shot processes. The median peak RSS
+of one call was about 330 MB, but one heavy page used 2.3 to 2.5 GB.
+
+- A call that waits for a slot does not use its time budget. The
+  `timeout_sec` limit and the outer watchdog start when the process starts.
+- An abort while a call waits removes the call from the queue.
+- When the persistent worker runs a call, a concurrency-safe call that
+  could use the worker uses the one-shot path. It does not wait behind
+  the worker. `accessibility` output has no one-shot path, so it always
+  waits for the worker.
+- The tool `durationMs` that core records includes the slot wait.
+
 **Config knobs**:
 
 - `obscura.persistent` (`boolean`, default `true`). Set `false` to force the
@@ -229,9 +259,10 @@ exit.
 - Cookies and `localStorage` land in plaintext JSON. Sites stash auth
   tokens in both. The directory inherits your `umask` — treat it the
   way you'd treat a Chrome profile dir.
-- No cross-process / cross-instance locking. Two `Fetch` calls
-  targeting the same session at the same time will race. Calls are
-  sequential per agent turn, so this rarely matters.
+- No cross-process / cross-instance locking. Two agent processes that
+  use the same session at the same time can race. In one agent, a call
+  with a named session is a serial call, so two calls in one batch do not
+  use the same session at the same time.
 - The model picks the session name. If you don't want the model
   inventing names like `my-twitter-account`, set
   `defaults.session` to a fixed value and tell users to pass

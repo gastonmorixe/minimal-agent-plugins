@@ -278,6 +278,49 @@ describe("PersistentWorkerClient", () => {
     fake.close()
   })
 
+  test("busy() is true while a call is in the serial chain, and false after", async () => {
+    const fake = new FakeWorker()
+    const pending: Array<Record<string, unknown>> = []
+    fake.onRequest = (request) => {
+      if (request.op === "hello") {
+        fake.respond({
+          v: 1,
+          id: request.id,
+          ok: true,
+          result: {
+            protocol: 1,
+            pid: FAKE_WORKER_PID,
+            operations: ["hello", "fetch"],
+            supported_formats: ["html", "text", "links", "markdown", "accessibility"],
+          },
+        })
+      } else {
+        pending.push(request)
+      }
+    }
+    const c = client(fake)
+    expect(c.busy()).toBe(false)
+    const a = c.call(config(), input({ url: "https://a" }), new AbortController().signal)
+    expect(c.busy()).toBe(true)
+    await Bun.sleep(0)
+    expect(pending).toHaveLength(1)
+    fake.respond({ v: 1, id: pending[0].id, ok: true, result: { body: "a" } })
+    await a
+    expect(c.busy()).toBe(false)
+    fake.close()
+  })
+
+  test("busy() is false after a call that falls back", async () => {
+    const c = new PersistentWorkerClient({
+      existsFn: () => false,
+      parentExitHook: () => () => {},
+    })
+    const p = c.call(config(), input(), new AbortController().signal)
+    expect(c.busy()).toBe(true)
+    expect((await p).kind).toBe("fallback")
+    expect(c.busy()).toBe(false)
+  })
+
   test("falls back when worker is unavailable without spawning", async () => {
     let spawned = false
     const c = new PersistentWorkerClient({
