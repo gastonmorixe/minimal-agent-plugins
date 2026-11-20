@@ -6,8 +6,9 @@ top-level REPLs and projects on the same machine.
 
 Tools: **`Peers`** (roster + cross-plugin inspection), **`Send`** (note / ping /
 interrupt / broadcast), **`Inbox`** (re-read received messages). Plus an ambient
-footer (`⇆ intercom · N online`, then the title of this session when it has
-one), automatic per-turn delivery of received
+footer (`⇆ intercom · N online`, then the title of this session in faint text
+when it has one; a new title shows at once, on the `title.saved` event of the
+title plugin), automatic per-turn delivery of received
 messages as a `<ma::agent::intercom-inbox>` block, and **`@`-mention** peer
 autocomplete in the prompt (live highlight + dual representation for the model).
 

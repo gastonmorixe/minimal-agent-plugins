@@ -16,6 +16,8 @@
  * 4. `llm.request` (one attempt, `timeoutMs`, `abortSignal: ctx.abort`).
  * 5. Validate + sanitize (T1 `validateTitleResult`).
  * 6. Late-result guard, then `sessionMeta.setTitle({sid: captured sid, …})`.
+ * 7. After the write: one `title.saved` event (UI refresh signal, see
+ *    {@link TITLE_SAVED_EVENT}).
  *
  * Failure is silent: debug log + one diagnostics event `title.attempt` per
  * attempt. A failed attempt leaves the sid open for one retry on the next
@@ -57,6 +59,29 @@ const LOG_SOURCE = "title"
 
 /** Diagnostics event name (SPEC §10, S4). */
 export const TITLE_ATTEMPT_EVENT = "title.attempt"
+
+/**
+ * UI refresh event. The plugin emits it after `setTitle` wrote a title. A
+ * live-area slot that names it in `refreshOn` runs at once, so the new title
+ * shows without a wait for the next timer tick. The intercom footer slot
+ * (`ma-intercom-plugin`, slot `intercom_beat`) does this.
+ *
+ * The name is a contract with the `refreshOn` list of that manifest. A test
+ * in `tests/` checks that the two stay equal.
+ */
+export const TITLE_SAVED_EVENT = "title.saved"
+
+/**
+ * Payload of {@link TITLE_SAVED_EVENT}. It is a hint, not the source of
+ * truth: core can change the text again when it writes the sidecar line. A
+ * subscriber that paints the title reads it with `sessions.title(sid)`. This
+ * also shows the title of a resumed session, for which no event comes.
+ */
+export interface TitleSavedEvent {
+  sid: string
+  title: string
+  source: "ai"
+}
 
 /**
  * Max output tokens of the title call (SPEC §5.7 item 7). 80 title characters
@@ -175,6 +200,14 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       ctx.emit(TITLE_ATTEMPT_EVENT, ev)
     } catch {
       /* diagnostics are best effort */
+    }
+  }
+
+  function emitSaved(ctx: EventHandlerContext, ev: TitleSavedEvent): void {
+    try {
+      ctx.emit(TITLE_SAVED_EVENT, ev)
+    } catch {
+      /* a refresh signal is best effort: the next timer tick shows the title */
     }
   }
 
@@ -358,6 +391,9 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
         ctx,
         `title sid=${sid} model=${ev.model} in=${ev.inputTokens} out=${ev.outputTokens}${cost} ${ev.latencyMs}ms`,
       )
+      // After the write: a subscriber that reads the title finds it. The emit
+      // has its own `try`, so it cannot turn a good write into `write-failed`.
+      emitSaved(ctx, { sid, title: valid.title, source: "ai" })
     } catch (err) {
       if (!writing) ev.latencyMs = Date.now() - started
       ev.stopReason = writing ? "write-failed" : "exception"
