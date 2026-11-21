@@ -66,7 +66,9 @@ import type {
   ModelRegistrar,
   ProviderModelSpec,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+import type { TokenEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForFamily, familyForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_CHAT_LATEST_CHAT,
@@ -157,11 +159,17 @@ import {
 } from "./pricing.ts"
 
 /**
- * Token estimator for OpenAI's tokenizer families (cl100k / o200k). ~4
- * chars/token is the well-known rule of thumb for English text on these
- * encoders. Shared by every OpenAI model entry.
+ * Get the token estimator of an OpenAI model id. The kit map gives
+ * `openai-cl100k` for plain `gpt-4` and `gpt-3.5`, and `openai-o200k` for
+ * `gpt-4o`, `gpt-4.1`, `gpt-5+`, `o1`/`o3`/`o4` and `gpt-oss`. An id that the
+ * kit does not know gets `openai-o200k`: all new OpenAI models use it.
+ *
+ * @param modelId - The OpenAI model id.
+ * @returns The memoized estimator for the family of the id.
  */
-const estimateOpenAITokens = makeCharRatioEstimator(4)
+export function estimatorForOpenAIModel(modelId: string): TokenEstimator {
+  return estimatorForFamily(familyForModelId(modelId) ?? "openai-o200k")
+}
 
 /**
  * Local catalog of id + tags captured at registration, so the adapter's
@@ -186,11 +194,13 @@ export function findOpenAIModelByTags(mustHave: readonly string[]): string | und
 export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
   localCatalog.length = 0
   const ids: string[] = []
-  const register = (input: ProviderModelSpec): void => {
+  const register = (input: Omit<ProviderModelSpec, "estimateTokens">): void => {
     // Per-model input formats: the surface set filtered by the model flags.
+    // The token estimator comes from the tokenizer family of the id.
     const spec = {
       ...input,
       capabilities: withOpenAIInputMimeTypes(input.capabilities, input.surfaceId),
+      estimateTokens: estimatorForOpenAIModel(input.id),
     }
     registrar.register(spec)
     localCatalog.push({ id: spec.id, tags: spec.tags ?? [] })
@@ -210,7 +220,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-05-18",
     tags: ["gpt-6", "flagship", "reasoning", "production"],
     capabilities: CAPS_GPT_6_2_ASTRA_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_2_ASTRA,
     vendorIds: { firstParty: "gpt-6.2-astra" },
   })
@@ -223,7 +232,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-05-18",
     tags: ["gpt-6", "flagship", "chat"],
     capabilities: CAPS_GPT_6_2_ASTRA_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_2_ASTRA,
     vendorIds: { firstParty: "gpt-6.2-astra" },
   })
@@ -235,7 +243,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-06-01",
     tags: ["gpt-6", "balanced", "reasoning", "production"],
     capabilities: CAPS_GPT_6_2_SOL_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_2_SOL,
     vendorIds: { firstParty: "gpt-6.2-sol" },
   })
@@ -247,7 +254,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-06-01",
     tags: ["gpt-6", "balanced", "chat"],
     capabilities: CAPS_GPT_6_2_SOL_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_2_SOL,
     vendorIds: { firstParty: "gpt-6.2-sol" },
   })
@@ -264,7 +270,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-04-30",
     tags: ["gpt-6", "flagship", "reasoning", "production"],
     capabilities: CAPS_GPT_6_ASTRA_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_ASTRA,
     vendorIds: { firstParty: "gpt-6-astra" },
   })
@@ -277,7 +282,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-04-30",
     tags: ["gpt-6", "flagship", "chat"],
     capabilities: CAPS_GPT_6_ASTRA_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_ASTRA,
     vendorIds: { firstParty: "gpt-6-astra" },
   })
@@ -294,7 +298,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-04-30",
     tags: ["gpt-6", "balanced", "reasoning", "production"],
     capabilities: CAPS_GPT_6_1_SOL_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_1_SOL,
     vendorIds: { firstParty: "gpt-6.1-sol" },
   })
@@ -306,7 +309,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-04-30",
     tags: ["gpt-6", "balanced", "chat"],
     capabilities: CAPS_GPT_6_1_SOL_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_1_SOL,
     vendorIds: { firstParty: "gpt-6.1-sol" },
   })
@@ -318,7 +320,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-06-01",
     tags: ["gpt-6", "balanced", "reasoning", "production"],
     capabilities: CAPS_GPT_6_1_TERRA_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_1_TERRA,
     vendorIds: { firstParty: "gpt-6.1-terra" },
   })
@@ -330,7 +331,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-06-01",
     tags: ["gpt-6", "balanced", "chat"],
     capabilities: CAPS_GPT_6_1_TERRA_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_1_TERRA,
     vendorIds: { firstParty: "gpt-6.1-terra" },
   })
@@ -342,7 +342,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-04-20",
     tags: ["gpt-6", "reasoning"],
     capabilities: CAPS_GPT_6_SOL_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_SOL,
     vendorIds: { firstParty: "gpt-6-sol" },
   })
@@ -354,7 +353,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-04-20",
     tags: ["gpt-6", "chat"],
     capabilities: CAPS_GPT_6_SOL_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_SOL,
     vendorIds: { firstParty: "gpt-6-sol" },
   })
@@ -366,7 +364,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-05-18",
     tags: ["gpt-6", "reasoning", "fast", "cheap"],
     capabilities: CAPS_GPT_6_LUNA_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_LUNA,
     vendorIds: { firstParty: "gpt-6-luna" },
   })
@@ -380,7 +377,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     // model that can call tools. Luna Chat tools work only with effort none.
     tags: ["gpt-6", "chat", "cheap"],
     capabilities: CAPS_GPT_6_LUNA_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_6_LUNA,
     vendorIds: { firstParty: "gpt-6-luna" },
   })
@@ -398,7 +394,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-16",
     tags: ["gpt-5", "reasoning", "production"],
     capabilities: CAPS_GPT_5_6_SOL_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_SOL,
     vendorIds: { firstParty: "gpt-5.6-sol" },
   })
@@ -411,7 +406,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-16",
     tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_6_SOL_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_SOL,
     vendorIds: { firstParty: "gpt-5.6-sol" },
   })
@@ -423,7 +417,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-16",
     tags: ["gpt-5", "balanced", "reasoning", "production"],
     capabilities: CAPS_GPT_5_6_TERRA_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_TERRA,
     vendorIds: { firstParty: "gpt-5.6-terra" },
   })
@@ -435,7 +428,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-16",
     tags: ["gpt-5", "balanced", "chat"],
     capabilities: CAPS_GPT_5_6_TERRA_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_TERRA,
     vendorIds: { firstParty: "gpt-5.6-terra" },
   })
@@ -447,7 +439,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-16",
     tags: ["gpt-5", "reasoning", "fast", "cheap"],
     capabilities: CAPS_GPT_5_6_LUNA_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_LUNA,
     vendorIds: { firstParty: "gpt-5.6-luna" },
   })
@@ -459,7 +450,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-02-16",
     tags: ["gpt-5", "chat", "fast", "cheap"],
     capabilities: CAPS_GPT_5_6_LUNA_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_6_LUNA,
     vendorIds: { firstParty: "gpt-5.6-luna" },
   })
@@ -476,7 +466,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-12-01",
     tags: ["gpt-5", "pro", "reasoning"],
     capabilities: CAPS_GPT_5_5_PRO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_5_PRO,
     vendorIds: { firstParty: "gpt-5.5-pro" },
   })
@@ -488,7 +477,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-12-01",
     tags: ["gpt-5", "reasoning", "production"],
     capabilities: CAPS_GPT_5_5_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_5,
     vendorIds: { firstParty: "gpt-5.5" },
   })
@@ -500,7 +488,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-12-01",
     tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_5_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_5,
     vendorIds: { firstParty: "gpt-5.5" },
   })
@@ -514,7 +501,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "pro", "reasoning"],
     capabilities: CAPS_GPT_5_4_PRO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4_PRO,
     vendorIds: { firstParty: "gpt-5.4-pro" },
   })
@@ -526,7 +512,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "reasoning", "production"],
     capabilities: CAPS_GPT_5_4_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4,
     vendorIds: { firstParty: "gpt-5.4" },
   })
@@ -538,7 +523,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_4_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4,
     vendorIds: { firstParty: "gpt-5.4" },
   })
@@ -550,7 +534,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "reasoning", "fast"],
     capabilities: CAPS_GPT_5_4_MINI_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4_MINI,
     vendorIds: { firstParty: "gpt-5.4-mini" },
   })
@@ -562,7 +545,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "chat", "fast"],
     capabilities: CAPS_GPT_5_4_MINI_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4_MINI,
     vendorIds: { firstParty: "gpt-5.4-mini" },
   })
@@ -574,7 +556,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "reasoning", "fast", "cheap"],
     capabilities: CAPS_GPT_5_4_NANO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4_NANO,
     vendorIds: { firstParty: "gpt-5.4-nano" },
   })
@@ -586,7 +567,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "chat", "fast", "cheap"],
     capabilities: CAPS_GPT_5_4_NANO_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_4_NANO,
     vendorIds: { firstParty: "gpt-5.4-nano" },
   })
@@ -600,7 +580,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-09-30",
     tags: ["gpt-5", "reasoning"],
     capabilities: CAPS_GPT_5_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5,
     vendorIds: { firstParty: "gpt-5" },
   })
@@ -615,7 +594,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-06-01",
     tags: ["o-series", "reasoning"],
     capabilities: CAPS_O3_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_O3,
     vendorIds: { firstParty: "o3" },
   })
@@ -629,7 +607,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-06-01",
     tags: ["gpt-4", "chat", "long-context"],
     capabilities: CAPS_GPT_41_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_41,
     vendorIds: { firstParty: "gpt-4.1" },
   })
@@ -641,7 +618,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2023-10-01",
     tags: ["gpt-4", "chat", "multimodal"],
     capabilities: CAPS_GPT_4O_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_4O,
     vendorIds: { firstParty: "gpt-4o" },
   })
@@ -653,7 +629,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2023-10-01",
     tags: ["gpt-4", "chat", "fast", "cheap"],
     capabilities: CAPS_GPT_4O_MINI_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_4O_MINI,
     vendorIds: { firstParty: "gpt-4o-mini" },
   })
@@ -681,7 +656,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-09-30",
     tags: ["gpt-5", "reasoning"],
     capabilities: CAPS_GPT_5_1_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_1,
     vendorIds: { firstParty: "gpt-5.1" },
   })
@@ -693,7 +667,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-09-30",
     tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_1_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_1,
     vendorIds: { firstParty: "gpt-5.1" },
   })
@@ -707,7 +680,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "reasoning"],
     capabilities: CAPS_GPT_5_2_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_2,
     vendorIds: { firstParty: "gpt-5.2" },
   })
@@ -719,7 +691,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "chat"],
     capabilities: CAPS_GPT_5_2_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_2,
     vendorIds: { firstParty: "gpt-5.2" },
   })
@@ -733,7 +704,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "pro", "reasoning"],
     capabilities: CAPS_GPT_5_2_PRO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_2_PRO,
     vendorIds: { firstParty: "gpt-5.2-pro" },
   })
@@ -747,7 +717,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "reasoning", "codex"],
     capabilities: CAPS_GPT_5_3_CODEX_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_3_CODEX,
     vendorIds: { firstParty: "gpt-5.3-codex" },
   })
@@ -761,7 +730,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-05-31",
     tags: ["gpt-5", "reasoning", "legacy"],
     capabilities: CAPS_GPT_5_MINI_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_MINI,
     vendorIds: { firstParty: "gpt-5-mini" },
   })
@@ -773,7 +741,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-05-31",
     tags: ["gpt-5", "chat", "legacy"],
     capabilities: CAPS_GPT_5_MINI_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_MINI,
     vendorIds: { firstParty: "gpt-5-mini" },
   })
@@ -787,7 +754,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-05-31",
     tags: ["gpt-5", "reasoning", "legacy"],
     capabilities: CAPS_GPT_5_NANO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_NANO,
     vendorIds: { firstParty: "gpt-5-nano" },
   })
@@ -799,7 +765,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-05-31",
     tags: ["gpt-5", "chat", "legacy"],
     capabilities: CAPS_GPT_5_NANO_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_NANO,
     vendorIds: { firstParty: "gpt-5-nano" },
   })
@@ -813,7 +778,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-09-30",
     tags: ["gpt-5", "pro", "reasoning", "legacy"],
     capabilities: CAPS_GPT_5_PRO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_5_PRO,
     vendorIds: { firstParty: "gpt-5-pro" },
   })
@@ -827,7 +791,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "reasoning", "alias"],
     capabilities: CAPS_CHAT_LATEST_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_CHAT_LATEST,
     vendorIds: { firstParty: "chat-latest" },
   })
@@ -839,7 +802,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08-31",
     tags: ["gpt-5", "chat", "alias"],
     capabilities: CAPS_CHAT_LATEST_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_CHAT_LATEST,
     vendorIds: { firstParty: "chat-latest" },
   })
@@ -853,7 +815,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-06-01",
     tags: ["o-series", "pro", "reasoning", "legacy"],
     capabilities: CAPS_O3_PRO_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_O3_PRO,
     vendorIds: { firstParty: "o3-pro" },
   })
@@ -867,7 +828,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-06-01",
     tags: ["gpt-4", "long-context"],
     capabilities: CAPS_GPT_41_MINI_RESPONSES,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_41_MINI,
     vendorIds: { firstParty: "gpt-4.1-mini" },
   })
@@ -879,7 +839,6 @@ export function registerOpenAIModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2024-06-01",
     tags: ["gpt-4", "chat", "long-context"],
     capabilities: CAPS_GPT_41_MINI_CHAT,
-    estimateTokens: estimateOpenAITokens,
     pricing: PRICING_GPT_41_MINI,
     vendorIds: { firstParty: "gpt-4.1-mini" },
   })

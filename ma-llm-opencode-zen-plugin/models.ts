@@ -1,7 +1,8 @@
 /** OpenCode Zen's complete live model registry. Live check 2026-11-18: 87 ids. */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_CHAT,
@@ -19,7 +20,14 @@ import type { SurfaceId } from "./lib/host-types.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { PRICING_OPENCODE_ZEN_GENERIC, PRICING_OX_ALPHA_FREE, ZEN_PRICING } from "./pricing.ts"
 
-const estimateTokens = makeCharRatioEstimator(3.8)
+/**
+ * Fallback tokenizer family for an id that the kit map does not know (for
+ * example `big-pickle` or `nemotron-*`). Zen serves models of many vendors,
+ * so `generic` (the fit on the union of 12 reference tokenizers) is the
+ * safest guess.
+ */
+const ZEN_FALLBACK_FAMILY = "generic" as const
+
 interface ZenModelSpec extends ProviderModelSpec {
   surfaceId: SurfaceId
 }
@@ -156,7 +164,7 @@ function makeSpec(id: string): ZenModelSpec {
     tags: ["opencode-zen", surfaceId, family, ...(family === "free" ? ["free", "cheap"] : [])],
     // Per-model input formats: the live list, else the static flags.
     capabilities: withOpencodeInputMimeTypes(capsFor(family), id, surfaceId),
-    estimateTokens,
+    estimateTokens: estimatorForModelId(id, ZEN_FALLBACK_FAMILY),
     pricing:
       ZEN_PRICING[id] ?? (family === "free" ? PRICING_OX_ALPHA_FREE : PRICING_OPENCODE_ZEN_GENERIC),
     vendorIds: { firstParty: id },

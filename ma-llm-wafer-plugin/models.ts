@@ -23,7 +23,8 @@
  */
 
 import type { ModelRegistrar } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_DEEPSEEK_V4_1_FLASH,
@@ -55,12 +56,11 @@ import {
 } from "./pricing.ts"
 
 /**
- * Token estimator for Wafer models. Wafer proxies many upstream model
- * families (GLM, Kimi, MiniMax, DeepSeek, Qwen), each with their own tokenizer.
- * ~3.8 chars/token splits the difference and gives a defensible estimate
- * for the status bar.
+ * Fallback tokenizer family for a model id that the kit map does not know.
+ * Wafer serves models of many vendors (GLM, Kimi, MiniMax, DeepSeek, Qwen, ...), so `generic` (the fit on the union of 12 reference tokenizers)
+ * is the safest guess.
  */
-const estimateWaferTokens = makeCharRatioEstimator(3.8)
+const WAFER_FALLBACK_FAMILY = "generic" as const
 
 export interface WaferModelSpec {
   id: string
@@ -227,7 +227,7 @@ export function registerWaferModel(spec: WaferModelSpec, registrar: ModelRegistr
     displayName: spec.displayName ?? spec.id,
     tags,
     capabilities,
-    estimateTokens: estimateWaferTokens,
+    estimateTokens: estimatorForModelId(spec.id, WAFER_FALLBACK_FAMILY),
     pricing: builtin?.pricing ?? PRICING_WAFER_GENERIC,
     vendorIds: { firstParty: spec.id },
   })

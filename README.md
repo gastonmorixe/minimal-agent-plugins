@@ -189,6 +189,7 @@ value of `--provider`.
 | --- | --- |
 | [`ma-autocomplete-kit/`](./ma-autocomplete-kit) | An autocomplete menu for the prompt editor. The prompts plugin uses it for the `&` menu. |
 | [`ma-template-kit/`](./ma-template-kit) | The `%%name%%` template engine. The prompt template and header template plugins use it. |
+| [`ma-token-estimate-kit/`](./ma-token-estimate-kit) | Token-estimate presets for each tokenizer family, and a model id to family map. The `ma-llm-*` provider plugins use it to set `estimateTokens` on each model. |
 
 ## Layout convention
 

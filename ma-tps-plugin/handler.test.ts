@@ -103,6 +103,39 @@ describe("on_output_end event handler", () => {
   })
 })
 
+describe("a model with no token estimator (core sends no llm.outputDelta)", () => {
+  async function publish(): Promise<string[]> {
+    const published: string[] = []
+    const ctx: LiveAreaHandlerContext = {
+      abort: new AbortController().signal,
+      setFooterTail: (text) => published.push(text),
+    }
+    expect(await handle(ctx)).toBeNull()
+    return published
+  }
+
+  it("publishes empty when a turn has only llm.outputEnd", async () => {
+    tracker.reset()
+    const { default: onEnd } = await import("./on_output_end.ts")
+    onEnd(eventCtx({ reason: "stream_end" }, "llm.outputEnd"))
+    expect(await publish()).toEqual([""])
+  })
+
+  it("shows no stale rate from a previous turn that had deltas", async () => {
+    tracker.reset()
+    const { default: onDelta } = await import("./on_output_delta.ts")
+    const { default: onEnd } = await import("./on_output_end.ts")
+    // Turn 1: a model with an estimator.
+    onDelta(eventCtx({ deltaTokens: 25 }, "llm.outputDelta"))
+    onDelta(eventCtx({ deltaTokens: 25 }, "llm.outputDelta"))
+    onEnd(eventCtx({ reason: "stream_end" }, "llm.outputEnd"))
+    // Turn 2: a model with no estimator; only the end event arrives.
+    onEnd(eventCtx({ reason: "stream_end" }, "llm.outputEnd"))
+    expect(await publish()).toEqual([""])
+    expect(tracker.read(performance.now())).toEqual({ tps: 0, active: false })
+  })
+})
+
 function eventCtx(payload: unknown, event = "llm.outputDelta") {
   return {
     event,

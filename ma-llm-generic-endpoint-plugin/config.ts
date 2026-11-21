@@ -1,5 +1,7 @@
 /** Runtime config for the generic endpoint provider. */
 
+import { TOKENIZER_FAMILIES, type TokenizerFamily } from "../ma-token-estimate-kit/src/index.ts"
+
 export interface GenericEndpointConfig {
   endpoint: string
   format: string
@@ -11,6 +13,32 @@ export interface GenericEndpointConfig {
    * 0/false/off). Absent: the codec's image flag decides.
    */
   imageInput?: boolean
+  /**
+   * Tokenizer family for the token estimate (`MINIMAL_AGENT_TOKENIZER`, a
+   * `ma-token-estimate-kit` family name, for example `qwen` or `llama3`;
+   * case does not change the result). Absent: the family of the model id,
+   * then of the provider model id, then the codec estimator, else
+   * `generic`. An unknown name throws in {@link readGenericEndpointConfig}.
+   * See the plugin `README.md` for the list of names.
+   */
+  tokenizer?: TokenizerFamily
+}
+
+/**
+ * Parse the tokenizer family name. Absent text gives `undefined`. An unknown
+ * name throws an error that lists the valid names.
+ */
+function parseTokenizer(v: string | undefined): TokenizerFamily | undefined {
+  if (v === undefined) return undefined
+  const name = v.toLowerCase()
+  const family = TOKENIZER_FAMILIES.find((f) => f === name)
+  if (!family) {
+    throw new Error(
+      `generic-endpoint: unknown tokenizer "${v}" (MINIMAL_AGENT_TOKENIZER). ` +
+        `Valid names: ${TOKENIZER_FAMILIES.join(", ")}`,
+    )
+  }
+  return family
 }
 
 /** Parse an on/off value. Unknown text gives `undefined` (no override). */
@@ -30,8 +58,9 @@ function clean(v: string | undefined): string | undefined {
  * Read the generic-endpoint runtime config from environment variables.
  *
  * Requires an endpoint and a format (surface id); throws with actionable
- * guidance when either is missing. Optional provider model and effort-level
- * ladder are included only when set.
+ * guidance when either is missing. Optional provider model, effort-level
+ * ladder, image input and tokenizer family are included only when set. An
+ * unknown tokenizer name (`MINIMAL_AGENT_TOKENIZER`) throws.
  */
 export function readGenericEndpointConfig(
   env: Record<string, string | undefined> = process.env,
@@ -48,6 +77,7 @@ export function readGenericEndpointConfig(
         .filter((s) => s.length > 0)
     : undefined
   const imageInput = parseSwitch(clean(env.MINIMAL_AGENT_IMAGE_INPUT))
+  const tokenizer = parseTokenizer(clean(env.MINIMAL_AGENT_TOKENIZER))
   return {
     endpoint,
     format,
@@ -56,6 +86,7 @@ export function readGenericEndpointConfig(
       : {}),
     ...(effortLevels && effortLevels.length > 0 ? { effortLevels } : {}),
     ...(imageInput !== undefined ? { imageInput } : {}),
+    ...(tokenizer ? { tokenizer } : {}),
   }
 }
 

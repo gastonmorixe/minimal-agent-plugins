@@ -243,11 +243,8 @@ export const ANTHROPIC_SONNET_55: MTokRate = {
  * tokens: $0.10 / 1M input, $0.50 / 1M output. This is a 10x drop from Haiku
  * 4.5 and the cheapest tier in the catalog.
  *
- * Haiku 5.5 is the ONE model priced by prompt length: a request whose prompt
- * (input + cache reads + cache writes) exceeds 100k tokens pays
- * {@link ANTHROPIC_HAIKU_55_LONG_PROMPT} instead. Pricing is per request, so a
- * long request pays the higher rate even when most of it is a cache hit.
- * {@link haiku55RateForInputTokens} picks between the two.
+ * The pricing page also gives a higher rate for prompts above 100,000 tokens.
+ * The plugin does not model that tier: it bills Haiku 5.5 at this base rate.
  *
  * Verified 2026-11-13 against the pricing table (`$0.10 / MTok for prompts up`
  * `to 100,000 tokens`), the long-context section, and the 2.1.323 baked tier
@@ -263,27 +260,6 @@ export const ANTHROPIC_HAIKU_55: MTokRate = {
   cacheReadUSD: 0.01,
   webSearchPerCallUSD: 0.01,
 }
-
-/**
- * Claude Haiku 5.5 long-prompt rate, applied when a single request's prompt
- * exceeds {@link HAIKU_55_LONG_PROMPT_THRESHOLD} tokens: $0.50 / 1M input,
- * $2.50 / 1M output (5x the base rate, matching the documented step).
- *
- */
-export const ANTHROPIC_HAIKU_55_LONG_PROMPT: MTokRate = {
-  inputUSD: 0.5,
-  outputUSD: 2.5,
-  cacheWriteUSD: 0.625,
-  cacheWrite1hUSD: 1,
-  cacheReadUSD: 0.05,
-  webSearchPerCallUSD: 0.01,
-}
-
-/**
- * Prompt length above which Haiku 5.5 switches to its long-prompt rate.
- * Strictly greater than: a 100,000-token prompt still pays the base rate.
- */
-export const HAIKU_55_LONG_PROMPT_THRESHOLD = 100_000
 
 /**
  * Anthropic's `l78` rate : haiku 4.5.

@@ -17,7 +17,8 @@
  */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForFamily } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_MUSE_EMBER_1_0_CHAT,
@@ -48,7 +49,12 @@ import {
   PRICING_MUSE_WONDER_1_0,
 } from "./pricing.ts"
 
-const estimateMetaTokens = makeCharRatioEstimator(3.8)
+/**
+ * Token estimator for all Meta models: the `meta-muse` preset of the kit
+ * (fitted on live muse-* usage). This plugin serves only Meta Muse models, so
+ * each entry, also an ad-hoc id, uses this family.
+ */
+const estimateMetaTokens = estimatorForFamily("meta-muse")
 
 export interface MetaModelSpec {
   id: string

@@ -31,7 +31,8 @@ import type {
   ModelRegistrar,
   ProviderModelSpec,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import { ollamaCaps } from "./capabilities.ts"
 import { PRICING_OLLAMA_GENERIC } from "./pricing.ts"
@@ -50,12 +51,11 @@ const K = 1_000
 const THINK_EFFORT = ["low", "medium", "high", "xhigh", "max"] as const
 
 /**
- * Token estimator for Ollama Cloud. The catalog spans many tokenizer families
- * (DeepSeek, Qwen, GLM, Llama-derived gpt-oss). ~3.8 chars/token is a
- * defensible cross-family average, matching the gateway-style estimate other
- * multi-vendor providers use.
+ * Fallback tokenizer family for a model id that the kit map does not know.
+ * Ollama Cloud serves models of many vendors, so `generic` (the fit on the union of 12 reference tokenizers)
+ * is the safest guess.
  */
-const estimateOllamaTokens = makeCharRatioEstimator(3.8)
+const OLLAMA_FALLBACK_FAMILY = "generic" as const
 
 /** One entry in the built-in Ollama Cloud catalog. */
 interface OllamaCatalogEntry {
@@ -247,7 +247,7 @@ export function registerOllamaModelInto(models: ModelRegistrar, entry: OllamaCat
     tags: entry.tags,
     capabilities: entry.capabilities,
     pricing: PRICING_OLLAMA_GENERIC,
-    estimateTokens: estimateOllamaTokens,
+    estimateTokens: estimatorForModelId(entry.id, OLLAMA_FALLBACK_FAMILY),
     vendorIds: { firstParty: entry.id },
   }
   models.register(spec)

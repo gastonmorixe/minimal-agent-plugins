@@ -114,6 +114,11 @@ export interface ModelEntry {
   capabilities: import("@minimal-agent/core/plugin-api/llm/capabilities").Capabilities
   pricing: MTokRate
   vendorIds?: Readonly<Record<string, string>>
+  /**
+   * Token estimator for the tokenizer family of this model (the provider sets
+   * it, usually from `ma-token-estimate-kit`). When absent, the model has NO
+   * estimate: core has no default ratio.
+   */
   estimateTokens?: import("@minimal-agent/core/plugin-api/llm/token-estimate").TokenEstimator
   pricingForRequest?: (
     req: import("@minimal-agent/core/plugin-api/llm/canonical-request").CanonicalRequest,

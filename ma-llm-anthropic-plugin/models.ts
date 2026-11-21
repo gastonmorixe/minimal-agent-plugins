@@ -19,14 +19,15 @@
  * @module llm/providers/anthropic/models
  */
 
-import type { CanonicalBlock } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import type {
   ModelRegistrar,
   ProviderModelSpec,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+import type { TokenEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForFamily, familyForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_FABLE_5,
@@ -100,73 +101,6 @@ const fable52PricingFor = (req: CanonicalRequest): MTokRate =>
   req.speed === "fast" ? ANTHROPIC_FABLE_5_2_FAST : ANTHROPIC_FABLE_5_2
 
 /**
- * Prompt length at which Haiku 5.5 leaves its base rate. Mirrors the server's
- * own accounting: the threshold counts input tokens PLUS cache reads PLUS
- * cache writes, because the pricing page defines prompt length that way ("A
- * request's prompt length counts all of its input tokens, including cache
- * reads and cache writes"). Omitting the cache terms would under-count a
- * cached long prompt and silently bill it at the cheap rate.
- *
- * Exported for unit testing the boundary without a live request.
- *
- * @param req - The request about to be sent.
- * @returns The prompt token total the long-prompt gate compares against.
- */
-export function haiku55PromptTokens(req: CanonicalRequest): number {
-  // `requestPromptChars` covers the system blocks, the message content, and
-  // the tool schemas. Cache read/write totals are not known before the
-  // response (they are server-reported), so the pre-flight estimate counts
-  // cached blocks as ordinary input. That is the right conservative reading:
-  // a cached long prompt is exactly the case that must not be billed at the
-  // base rate. A string of the measured length avoids building a large copy.
-  const chars = requestPromptChars(req)
-  return chars === 0 ? 0 : estimateAnthropicTokens(" ".repeat(chars))
-}
-
-/** Character length of one canonical block, for the prompt-length estimate. */
-function blockChars(block: CanonicalBlock): number {
-  switch (block.type) {
-    case "text":
-    case "thinking":
-      return block.text.length
-    case "redacted_thinking":
-      return block.data.length
-    case "tool_use":
-      return block.name.length + safeJsonLength(block.input)
-    case "tool_result": {
-      let chars = 0
-      for (const inner of block.content) chars += blockChars(inner)
-      return chars
-    }
-    default:
-      // image / audio / file: no text to measure here.
-      return 0
-  }
-}
-
-/** Length of `JSON.stringify(value)`, or 0 when it cannot be serialized. */
-function safeJsonLength(value: unknown): number {
-  try {
-    return JSON.stringify(value)?.length ?? 0
-  } catch {
-    return 0
-  }
-}
-
-/** Total characters of system blocks, message content, and tool schemas. */
-function requestPromptChars(req: CanonicalRequest): number {
-  let chars = 0
-  for (const block of req.system ?? []) chars += blockChars(block)
-  for (const msg of req.messages) {
-    for (const block of msg.content) chars += blockChars(block)
-  }
-  for (const tool of req.tools ?? []) {
-    chars += tool.name.length + tool.description.length + safeJsonLength(tool.inputSchema)
-  }
-  return chars
-}
-
-/**
  * First instant (UTC) at which Claude Sonnet 5 leaves introductory pricing.
  * The launch post promises intro rates "through August 31, 2026", so the
  * standard rate applies from 2026-09-01T00:00:00Z onward.
@@ -194,12 +128,18 @@ export function sonnet5RateForDate(nowMs: number = Date.now()): MTokRate {
 const sonnet5PricingFor = (_req: CanonicalRequest): MTokRate => sonnet5RateForDate()
 
 /**
- * Token estimator for Anthropic's tokenizer family. ~3.5 chars/token is the
- * ratio the live output-token estimate in `src/client.ts` already uses, so
- * estimated session totals stay consistent with the live footer. Shared by
- * every Anthropic model entry.
+ * Get the token estimator of an Anthropic model id. The kit reads the Claude
+ * version from the id: 4.7 and later (all 5.x) use the new tokenizer
+ * (`claude-5x`), 4.6 and earlier use `claude-legacy`. An id that the kit
+ * does not know gets `claude-5x`, because new Anthropic models use the new
+ * tokenizer. The kit memoizes the estimator of each family.
+ *
+ * @param modelId - The Anthropic model id.
+ * @returns The estimator for the family of the id.
  */
-const estimateAnthropicTokens = makeCharRatioEstimator(3.5)
+export function estimatorForAnthropicModel(modelId: string): TokenEstimator {
+  return estimatorForFamily(familyForModelId(modelId) ?? "claude-5x")
+}
 
 // ---------------------------------------------------------------------------
 // Register
@@ -232,7 +172,12 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
   // picker (the speed:"fast" rate switch the Anthropic catalog needs but the
   // neutral contract omits); it stays assignable to `ProviderModelSpec`.
   clearLocalCatalog()
-  const register = (spec: AnthropicModelSpec): void => {
+  const register = (base: Omit<AnthropicModelSpec, "estimateTokens">): void => {
+    // Each entry gets the estimator of its tokenizer family from its id.
+    const spec: AnthropicModelSpec = {
+      ...base,
+      estimateTokens: estimatorForAnthropicModel(base.id),
+    }
     registrar.register(spec)
     recordModel(spec as unknown as ModelEntry)
   }
@@ -246,7 +191,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     // with this tag wins a host `findModelByTags(["utility"])` lookup.
     tags: ["haiku", "1m-context", "fast", "production", "utility"],
     capabilities: CAPS_HAIKU_55,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_HAIKU_55,
     vendorIds: {
       firstParty: "claude-haiku-5-5",
@@ -267,7 +211,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     displayName: "Claude Sonnet 5.5",
     tags: ["sonnet", "1m-context", "flagship", "production"],
     capabilities: CAPS_SONNET_55,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_SONNET_55,
     vendorIds: {
       firstParty: "claude-sonnet-5-5",
@@ -289,7 +232,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-06",
     tags: ["opus", "1m-context", "flagship", "production"],
     capabilities: CAPS_OPUS_55,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_OPUS_55_STANDARD,
     pricingForRequest: opus55PricingFor,
     vendorIds: {
@@ -312,7 +254,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-01",
     tags: ["opus", "1m-context", "flagship", "production"],
     capabilities: CAPS_OPUS_5,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_OPUS_4X_STANDARD,
     pricingForRequest: opus48PricingFor,
     vendorIds: {
@@ -336,7 +277,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-06",
     tags: ["fable", "mythos", "1m-context", "production"],
     capabilities: CAPS_FABLE_5_2,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_FABLE_5_2,
     pricingForRequest: fable52PricingFor,
     vendorIds: {
@@ -359,7 +299,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-01",
     tags: ["fable", "mythos", "1m-context", "production"],
     capabilities: CAPS_FABLE_5_1,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_FABLE_5_1,
     vendorIds: {
       firstParty: "claude-fable-5-1",
@@ -381,7 +320,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-01",
     tags: ["fable", "mythos", "1m-context", "flagship", "production"],
     capabilities: CAPS_FABLE_5,
-    estimateTokens: estimateAnthropicTokens,
     // Fable ships a single flat rate (no speed:"fast" tier), so no
     // pricingForRequest picker : the base `pricing` always applies.
     pricing: ANTHROPIC_FABLE_5,
@@ -405,7 +343,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-01",
     tags: ["opus", "1m-context", "flagship", "production"],
     capabilities: CAPS_OPUS_48,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_OPUS_4X_STANDARD,
     pricingForRequest: opus48PricingFor,
     vendorIds: {
@@ -428,7 +365,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-01",
     tags: ["opus", "1m-context", "production"],
     capabilities: CAPS_OPUS_47,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_OPUS_4X_STANDARD,
     pricingForRequest: legacyOpusFastPricingFor,
     vendorIds: {
@@ -451,7 +387,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-05",
     tags: ["opus", "1m-context", "legacy"],
     capabilities: CAPS_OPUS_46,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_OPUS_4X_STANDARD,
     pricingForRequest: legacyOpusFastPricingFor,
     vendorIds: {
@@ -473,7 +408,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2026-01",
     tags: ["sonnet", "1m-context", "flagship", "production"],
     capabilities: CAPS_SONNET_5,
-    estimateTokens: estimateAnthropicTokens,
     // Base rate is the introductory $2/$10; the date-gated picker swaps to
     // the $3/$15 standard rate on 2026-09-01 (see sonnet5PricingFor).
     pricing: ANTHROPIC_SONNET_5_INTRO,
@@ -498,7 +432,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-08",
     tags: ["sonnet", "1m-context", "production"],
     capabilities: CAPS_SONNET_46,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_SONNET_STANDARD,
     vendorIds: {
       firstParty: "claude-sonnet-4-6",
@@ -519,7 +452,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     knowledgeCutoff: "2025-01",
     tags: ["opus", "legacy"],
     capabilities: CAPS_OPUS_45,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_OPUS_4X_STANDARD,
     vendorIds: {
       firstParty: "claude-opus-4-5-20251101",
@@ -542,7 +474,6 @@ export function registerAnthropicModels(registrar: ModelRegistrar): string[] {
     // only when Haiku 5.5 is not registered.
     tags: ["haiku", "fast", "production", "utility"],
     capabilities: CAPS_HAIKU_45,
-    estimateTokens: estimateAnthropicTokens,
     pricing: ANTHROPIC_HAIKU_45,
     vendorIds: {
       firstParty: "claude-haiku-4-5-20251001",
@@ -665,7 +596,7 @@ export function registerAnthropicAdHocModelInto(
     displayName: `${bare} (ad-hoc)`,
     capabilities,
     pricing,
-    estimateTokens: estimateAnthropicTokens,
+    estimateTokens: estimatorForAnthropicModel(bare),
     tags: [...tags],
     vendorIds: { firstParty: bare },
   }

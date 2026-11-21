@@ -15,7 +15,8 @@
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import type { ModelRegistrar } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_OPENROUTER_CHAT,
@@ -40,12 +41,11 @@ import {
 } from "./pricing.ts"
 
 /**
- * Token estimator for OpenRouter. OpenRouter proxies many upstream models
- * (OpenAI, Anthropic, others) on the OpenAI Chat wire, so no single
- * tokenizer applies. ~3.8 chars/token splits the difference between the
- * Anthropic (~3.5) and OpenAI (~4) families for a defensible estimate.
+ * Fallback tokenizer family for an OpenRouter slug that the kit map does not
+ * know. OpenRouter proxies models of many vendors, so `generic` (the fit on
+ * the union of 12 reference tokenizers) is the safest guess.
  */
-const estimateOpenRouterTokens = makeCharRatioEstimator(3.8)
+const OPENROUTER_FALLBACK_FAMILY = "generic" as const
 
 /** Local catalog of id + tags for scout/balanced picks by tag. */
 const localCatalog: Array<{ id: string; tags: readonly string[] }> = []
@@ -152,7 +152,7 @@ export function registerOpenRouterModelInto(
     displayName: spec.displayName ?? spec.id,
     tags,
     capabilities: spec.capabilities ?? CAPS_OPENROUTER_CHAT,
-    estimateTokens: estimateOpenRouterTokens,
+    estimateTokens: estimatorForModelId(spec.id, OPENROUTER_FALLBACK_FAMILY),
     pricing: spec.pricing ?? PRICING_OR_GENERIC,
     vendorIds: { firstParty: spec.id },
   })

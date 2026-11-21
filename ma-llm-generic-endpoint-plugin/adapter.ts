@@ -31,7 +31,14 @@ import type {
   SurfaceCodec,
   SurfaceCodecRegistry,
 } from "@minimal-agent/core/plugin-api/llm/surface-codec"
+import type { TokenEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+
+import {
+  estimatorForFamily,
+  familyForModelId,
+  type TokenizerFamily,
+} from "../ma-token-estimate-kit/src/index.ts"
 
 import { normalizeEndpoint, readGenericEndpointConfig } from "./config.ts"
 import { genericImageOnlyCaps, genericMediaLimits } from "./input-formats.ts"
@@ -123,6 +130,30 @@ export const genericEndpointAdapter: ProviderAdapter = {
 }
 
 /**
+ * Select the token estimator of a generic-endpoint model. The order:
+ * 1. The user tokenizer family (`MINIMAL_AGENT_TOKENIZER`).
+ * 2. The kit family of the model id, then of the provider model id.
+ * 3. The codec estimator, if the codec has one.
+ * 4. `generic`: the endpoint can serve any model, so the fit on the union of
+ *    12 reference tokenizers is the safest guess.
+ *
+ * @returns The estimator. It is never `undefined`.
+ */
+export function genericEndpointEstimator(
+  modelId: string,
+  providerModel: string | undefined,
+  tokenizer: TokenizerFamily | undefined,
+  codecEstimator?: TokenEstimator,
+): TokenEstimator {
+  const family =
+    tokenizer ??
+    familyForModelId(modelId) ??
+    (providerModel ? familyForModelId(providerModel) : undefined)
+  if (family) return estimatorForFamily(family)
+  return codecEstimator ?? estimatorForFamily("generic")
+}
+
+/**
  * Register an ad-hoc model id for the generic endpoint using the selected
  * codec's default capabilities, tags, and pricing.
  *
@@ -133,7 +164,7 @@ export const genericEndpointAdapter: ProviderAdapter = {
 export function registerGenericEndpointAdHocModel(modelId: string): void {
   if (!capturedModels) return
   const codec = selectedCodec()
-  const { providerModel, effortLevels, imageInput } = readGenericEndpointConfig()
+  const { providerModel, effortLevels, imageInput, tokenizer } = readGenericEndpointConfig()
   // Images only (no PDF, audio or video): the user's server formats are not
   // known. The codec image flag or the user config turns images on.
   const baseCaps = genericImageOnlyCaps(
@@ -164,7 +195,12 @@ export function registerGenericEndpointAdHocModel(modelId: string): void {
     tags: codec.defaultTags ?? ["generic-endpoint", codec.surfaceId],
     capabilities,
     pricing: codec.defaultPricing ?? PRICING_GENERIC_ENDPOINT,
-    ...(codec.estimateTokens ? { estimateTokens: codec.estimateTokens } : {}),
+    estimateTokens: genericEndpointEstimator(
+      modelId,
+      providerModel,
+      tokenizer,
+      codec.estimateTokens,
+    ),
     vendorIds: { firstParty: providerModel ?? modelId },
   })
 }
