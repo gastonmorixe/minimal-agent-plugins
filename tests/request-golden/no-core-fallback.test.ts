@@ -82,13 +82,7 @@ function checkSystem(
   if (textOf(system?.[0]) !== identity) {
     findings.push({ scenario: scenario.name, seam: "system", what: "identity" })
   }
-  const parts =
-    baseProvider.instructionParts?.({
-      agentHome: home,
-      // Core sends the tool-output-conventions slot when the executor has an
-      // enabled blob store (follow-up 15b). The harness gives one per scenario.
-      blobStoreEnabled: scenario.blobStore === true,
-    }) ?? []
+  const parts = baseProvider.instructionParts?.({ agentHome: home }) ?? []
   const block = textOf(system?.[1]) ?? ""
   for (const p of parts) {
     if (!block.includes(p.text)) {

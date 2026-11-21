@@ -6,9 +6,6 @@
     "ma-ask-mode-plugin/PROMPT.md": {
       "prompt-file": 2
     },
-    "ma-base-prompt-plugin/prompts/tool-output-conventions.md": {
-      "prompt-file": 2
-    },
     "ma-core-tools-plugin/prompts/tools/mode.md": {
       "prompt-file": 1
     },

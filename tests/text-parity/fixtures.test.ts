@@ -22,11 +22,11 @@ describe("text-parity fixtures", () => {
     expect(Object.keys(f.tools as object).length).toBe(defs.length)
   })
 
-  test("system.json holds the identity and the full fact grid", () => {
+  test("system.json holds the identity and the fact grid", () => {
     const f = load("system.json")
     expect((f.identity as string).length).toBeGreaterThan(0)
     expect((f.instructionsTemplate as string).length).toBeGreaterThan(0)
-    expect((f.grid as unknown[]).length).toBe(2)
+    expect((f.grid as unknown[]).length).toBe(1)
   })
 
   test("synthetic.json holds entries with cases and text", () => {

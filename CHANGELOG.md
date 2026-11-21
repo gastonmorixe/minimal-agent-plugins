@@ -37,6 +37,21 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Removed
 
+- 2026-11-21: **BREAKING: remove the tool-output-conventions system-prompt part.**
+  Removed: the tool-output-conventions system-prompt part, its slot, the
+  `--system-tool-output-conventions` / `-file` / `--no-` flags, the env vars
+  and the config keys. Breaking: old flags now fail as unknown flags; the
+  system prompt bytes change (one prompt cache miss).
+  The startup systemHash changes. The first resume of an old session shows
+  the drift warning one time. After that, the hash does not depend on the
+  blob-store setting.
+  `ma-base-prompt-plugin` has no `prompts/tool-output-conventions.md` and
+  declares only the `instructions` slot. `ma-sub-agents-plugin` has no
+  `toolOutputConventions` system-prompt part (the inherit summary has no
+  `-toolconv` code). The request goldens, the text-parity fixture, the
+  template parity fixture, the STE lock and the sideband baseline lose the
+  part. The raw-output footer and the output-preview annotation stay.
+
 - 2026-11-20: **The core reflection references** (BREAKING). Core
   1268672 removed the loop-safety slot, the reflection texts and the
   `reflection_ack` notice kind. The plugins now follow: `ma-acp-plugin` has no

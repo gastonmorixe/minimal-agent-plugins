@@ -40,7 +40,6 @@ export type StartupProfilePartName =
   | "identity"
   | "providerPreamble"
   | "instructions"
-  | "toolOutputConventions"
   | "sessionContext"
 
 /** Final system-prompt overrides. Mirror of core `StartupProfileSystemPrompt`. */
