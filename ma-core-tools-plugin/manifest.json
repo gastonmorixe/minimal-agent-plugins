@@ -3,7 +3,6 @@
   "name": "Core tools text",
   "version": "0.1.0",
   "required": true,
-  "provides": ["sideband.kinds.core"],
   "description": "Owns the model-facing text of the built-in tools: their descriptions, their results, the tool output notices and the mode texts.",
   "capabilities": [],
   "toolText": [
