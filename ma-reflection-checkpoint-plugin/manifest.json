@@ -64,5 +64,40 @@
         "interactive": false
       }
     ]
-  }
+  },
+  "sideband": [
+    {
+      "kind": "reflection-checkpoint",
+      "direction": "to-model",
+      "placement": "turn",
+      "attrs": {
+        "round": {
+          "type": "int"
+        },
+        "cooldown-applied-seconds": {
+          "type": "int"
+        }
+      },
+      "body": "none",
+      "trust": "harness",
+      "summary": "Soft checkpoint after a number of tool rounds."
+    },
+    {
+      "kind": "reflection-ack",
+      "direction": "from-model",
+      "placement": "inline",
+      "attrs": {
+        "silence-for": {
+          "type": "int"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "body": "none",
+      "trust": "untrusted",
+      "legacy": ["ma::emit::reflection-ack"],
+      "summary": "The model acknowledges a checkpoint and asks for silence for K checkpoints."
+    }
+  ]
 }

@@ -23,18 +23,30 @@ import { afterAll, describe, expect, it } from "bun:test"
 import { PluginLoader } from "@minimal-agent/core/host-kit/plugin-loader"
 import { PluginStream } from "@minimal-agent/core/host-kit/plugin-stream"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
+/** The real codec: the tests write the ack tag and read the checkpoint tag with it. */
+const SB = await pluginSideband()
+/** The ack tag as the model writes it. */
+const ack = (attrs: Record<string, string | number>): string =>
+  SB.render("reflection-ack", { attrs })
+
 const tmp = mkdtempSync(join(tmpdir(), "ma-reflection-int-"))
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 
 const ID = "reflection-checkpoint"
 
-/** A root with only this plugin, so discovery does not load the whole fleet. */
+/**
+ * A root with only this plugin and the sideband codec plugin (it renders the
+ * checkpoint tag line), so discovery does not load the whole fleet.
+ */
 function isolatedRoot(name: string): string {
-  const dest = join(tmp, name, "ma-reflection-checkpoint-plugin")
-  cpSync(import.meta.dir, dest, {
-    recursive: true,
-    filter: (src) => !src.endsWith(".test.ts") && !src.includes("node_modules"),
-  })
+  for (const dir of ["ma-reflection-checkpoint-plugin", "ma-sideband-plugin"]) {
+    cpSync(join(import.meta.dir, "..", dir), join(tmp, name, dir), {
+      recursive: true,
+      filter: (src) => !src.endsWith(".test.ts") && !src.includes("node_modules"),
+    })
+  }
   return join(tmp, name)
 }
 
@@ -100,11 +112,12 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         // The ack: the scanner removes the tag; the user sees the notice.
         let out = ""
         const stream = new PluginStream((c) => (out += c), loader, tmp)
-        const text = 'Work. <ma::emit::reflection-ack silence-for="1" reason="long audit" /> More.'
+        const text = `Work. ${ack({ "silence-for": 1, reason: "long audit" })} More.`
         const p = stream.feed(text)
         if (p) await p
         await stream.end()
-        expect(out).not.toContain("<ma::emit::reflection-ack")
+        expect(SB.find(out, { kinds: ["reflection-ack"] })).toEqual([])
+        expect(out).not.toContain("reflection-ack")
         expect(out).toContain("skip the next 1 reflection checkpoint (long audit)")
         expect(out).toContain("Work. ")
         expect(out).toContain(" More.")
@@ -124,7 +137,9 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         expect(countdowns[0]?.ms).toBe(1000)
         const ctx = r4.additionalContext.map((e) => (typeof e === "string" ? e : e.text))
         expect(ctx).toHaveLength(1)
-        expect(ctx[0]).toContain('<ma::agent::reflection-checkpoint round="4"')
+        const tag = SB.find(ctx[0] ?? "", { kinds: ["reflection-checkpoint"] })
+        expect(tag).toHaveLength(1)
+        expect(SB.attrs(tag[0]!)).toEqual({ round: 4, "cooldown-applied-seconds": 0 })
       } finally {
         loader.hooks().dispose()
       }
@@ -159,16 +174,15 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
 
         let out = ""
         const stream = new PluginStream((c) => (out += c), loader, tmp)
-        for (const chunk of [
-          "Go. <ma::emit::reflec",
-          'tion-ack silence-for="2" reason="x" /> Done.',
-        ]) {
+        const split = `Go. ${ack({ "silence-for": 2, reason: "x" })} Done.`
+        const cut = split.indexOf("reflection-ack") + "reflec".length
+        for (const chunk of [split.slice(0, cut), split.slice(cut)]) {
           const p = stream.feed(chunk)
           if (p) await p
         }
         await stream.end()
-        expect(out).not.toContain("<ma::emit::")
-        expect(out).not.toContain("reflection-ack silence-for")
+        expect(SB.find(out, { kinds: ["reflection-ack"] })).toEqual([])
+        expect(out).not.toContain("reflection-ack")
         expect(out).toContain("skip the next 2 reflection checkpoints (x)")
         expect(out).toContain("Go. ")
         expect(out).toContain(" Done.")
@@ -178,7 +192,7 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         expect(countdowns).toEqual(["reflection @ round 6"])
 
         // An ack in the last response of the run, then the run ends.
-        const p = stream.feed('<ma::emit::reflection-ack silence-for="5" />')
+        const p = stream.feed(ack({ "silence-for": 5 }))
         if (p) await p
         await stream.end()
         bus.emitAsync("turn.didEnd", { ok: true })

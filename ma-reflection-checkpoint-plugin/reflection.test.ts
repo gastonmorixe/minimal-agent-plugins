@@ -11,6 +11,8 @@ import { join } from "node:path"
 
 import { afterAll, beforeEach, describe, expect, it } from "bun:test"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import reflectionAckHandler, { ackNotice, parseAck } from "./handlers/ack.ts"
 import { COUNTDOWN_ID, onDidBatch } from "./handlers/did-batch.ts"
 import loopSafetyFragment from "./handlers/fragment.ts"
@@ -39,6 +41,9 @@ import {
 } from "./lib/state.ts"
 import { attachmentText, loopSafetyText } from "./lib/text.ts"
 import manifest from "./manifest.json"
+
+/** The real codec: the attachment tag line renders with it (design 40 step 10). */
+const SB = await pluginSideband()
 
 const tmp = mkdtempSync(join(tmpdir(), "ma-reflection-"))
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
@@ -69,6 +74,7 @@ function hookCtx(
     env,
     abort: new AbortController().signal,
     ...(run ? { run } : {}),
+    sideband: SB,
     calls,
     countdown: async (req) => {
       calls.push(req)
@@ -286,13 +292,24 @@ describe("session map", () => {
 
 describe("texts", () => {
   it("attachment has the tag and the reflection prompt", () => {
-    const text = attachmentText(50, 60_000)
-    expect(text.split("\n")[0]).toBe(
-      '<ma::agent::reflection-checkpoint round="50" cooldown-applied-seconds="60" />',
-    )
+    const text = attachmentText(50, 60_000, SB)
+    const first = text.split("\n")[0] ?? ""
+    expect(SB.startsWith(first, { kinds: ["reflection-checkpoint"] })).toBe(true)
+    expect(SB.attrs(SB.find(first)[0]!)).toEqual({ round: 50, "cooldown-applied-seconds": 60 })
     expect(text).toContain("- Continue.\n- Change your method.\n- Stop and speak to the user.")
-    expect(text).toContain('<ma::emit::reflection-ack silence-for="K" reason="..." />')
+    // The prompt names the ack tag in a code span (prose of the prompt file).
+    expect(text).toContain("reflection-ack silence-for=")
     expect(text).not.toContain("%%")
+  })
+
+  it("no sideband API: the prompt only, with no tag line and no leading line feed", () => {
+    for (const text of [
+      attachmentText(50, 60_000),
+      attachmentText(50, 60_000, { render: () => "" }),
+    ]) {
+      expect(text).toStartWith("This checkpoint is soft.")
+      expect(text).toBe(attachmentText(50, 60_000, SB).split("\n").slice(1).join("\n"))
+    }
   })
 
   it("prompt section shows the configured interval and cooldown", () => {

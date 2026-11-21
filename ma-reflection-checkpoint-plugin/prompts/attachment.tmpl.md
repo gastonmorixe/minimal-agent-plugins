@@ -1,4 +1,3 @@
-<ma::agent::reflection-checkpoint round="%%round%%" cooldown-applied-seconds="%%cooldownSec%%" />
 This checkpoint is soft. It is not a signal to stop. Quickly examine if your work continues in the correct direction. Then do one of these steps:
 
 - Continue.
