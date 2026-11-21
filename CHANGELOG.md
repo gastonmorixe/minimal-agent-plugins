@@ -17,9 +17,11 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   summary has no `-loop` code). The request goldens lose the
   `# Tool loop safety` section, and the `round-50-reflection-checkpoint`
   scenario and its golden are gone. The text-parity, template-parity and STE
-  data lose the rows of the deleted prompt files, and the STE golden-shape
-  guard allows this one section removal and this one deleted golden
-  (`tests/ste/golden-removals.ts`). The opt-in checkpoint is now in
+  data lose the rows of the deleted prompt files. The STE golden-shape guard
+  has a new allowlist for intended removals (`tests/ste/golden-removals.ts`:
+  whole `#` sections and deleted goldens). It allowed this one section
+  removal and this one deleted golden until main had the new goldens. Now
+  both lists are empty again. The opt-in checkpoint is now in
   `ma-reflection-checkpoint-plugin`.
 
 ### Changed

@@ -20,25 +20,13 @@ export interface SectionRemoval {
  * with no other change. The section may hold `<ma::...>` tags. Remove an
  * entry when main has the new goldens, as for {@link SCHEMA_ADDITIONS}.
  */
-export const SECTION_REMOVALS: readonly SectionRemoval[] = [
-  {
-    heading: "# Tool loop safety",
-    source:
-      "core 1268672 removed the loopSafety slot; the checkpoint text is in the opt-in ma-reflection-checkpoint-plugin",
-  },
-]
+export const SECTION_REMOVALS: readonly SectionRemoval[] = []
 
 /**
  * Goldens that are intended to be gone since the merge base. Remove an entry
  * when main no longer has the golden.
  */
-export const DELETED_GOLDENS: ReadonlyArray<{ golden: string; source: string }> = [
-  {
-    golden: "round-50-reflection-checkpoint.json",
-    source:
-      "core has no reflection checkpoint now; ma-reflection-checkpoint-plugin has its own integration test",
-  },
-]
+export const DELETED_GOLDENS: ReadonlyArray<{ golden: string; source: string }> = []
 
 /**
  * The text with the section of `heading` removed, or null when the text has
