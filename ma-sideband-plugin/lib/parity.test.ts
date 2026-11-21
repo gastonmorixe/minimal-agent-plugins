@@ -14,6 +14,7 @@ import { assetStub } from "../../ma-fetch-plugin/lib/html-cleanup.ts"
 import { formatPeerMentionXml } from "../../ma-intercom-plugin/lib/mention/PROMPTS.ts"
 import { compactOutputToMessages } from "../../ma-llm-openai-plugin/responses/compact.ts"
 import { renderEcho } from "../../ma-memory-plugin/lib/save-echo.ts"
+import { attachmentText } from "../../ma-reflection-checkpoint-plugin/lib/text.ts"
 import { scrubDumpText } from "../../ma-session-history-plugin/lib/dump-from-data.ts"
 import {
   renderTasksAgentBlock,
@@ -448,5 +449,19 @@ describe("v1 attribute wire names", () => {
     const text = r(D.memorySaved, { id: "m1" }, "<t> &")
     expect(text).toBe('<ma::agent::memory-saved id="m1">&lt;t&gt; &</ma::agent::memory-saved>')
     expect(createCodec(makeRegistry([D.memorySaved])).parse(text)[0]!.body).toBe("<t> &")
+  })
+})
+
+describe("parity: int-only kinds need no escape row", () => {
+  // The old turn-recovery template (plugins 223ebb0,
+  // ma-turn-recovery-plugin/prompts/reflection-checkpoint.tmpl.md:1) wrote
+  // the tag line by hand. The opt-in plugin renders it with the codec and the
+  // manifest declaration, with no escape row.
+  test("reflection-checkpoint: the plugin tag line equals the old template bytes", async () => {
+    const sb = await pluginSideband()
+    const line = attachmentText(50, 60_000, sb).split("\n")[0]
+    expect(line).toBe(
+      '<ma::agent::reflection-checkpoint round="50" cooldown-applied-seconds="60" />',
+    )
   })
 })

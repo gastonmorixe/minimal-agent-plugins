@@ -37,7 +37,9 @@ const ROWS: Readonly<Record<string, V1EscapeRow>> = {
   "session-resumed": { attr: "raw" },
   "stream-interrupted": { attr: "raw" },
   "max-tokens-continue": { attr: "raw" },
-  "reflection-checkpoint": { attr: "raw" },
+  // A kind whose attrs are all int or bool needs no row: no escape mode
+  // changes digits, so the default gives the same bytes. For example the
+  // opt-in ma-reflection-checkpoint-plugin kind `reflection-checkpoint`.
   // local escapeAttr copies (core, ma-fetch, ma-session-history)
   "binary-result": { attr: "e3" },
   "redacted-asset": { attr: "e3" },
