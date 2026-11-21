@@ -10,6 +10,9 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "bun:test"
 
 import { createSessionsReadApi } from "@minimal-agent/core/host/sessions-read"
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
 
 import { dumpMarkdown, dumpXml } from "./dump-from-data.ts"
 import type {
@@ -28,6 +31,8 @@ import {
   summaryFromFacts,
   summaryOf,
 } from "./render-from-data.ts"
+
+const sb = await pluginSideband()
 
 const dir = join(import.meta.dir, ".c47-fixtures")
 mkdirSync(dir, { recursive: true })
@@ -193,9 +198,18 @@ describe("C47 edge cases", () => {
     const p = (w?.items ?? []).map((r) => previewOf(r as unknown as RecordView))
     expect(p.some((x) => x.clipped)).toBe(true)
     const rec = (await api.records("fx-one")) as unknown as SessionRecordsView
-    const md1 = dumpMarkdown(rec)
+    const md1 = dumpMarkdown(rec, sb)
     expect(md1).toContain("redacted-asset")
     expect(md1).toContain("**[ERROR]**")
+  })
+
+  it("no sideband codec (NO_SIDEBAND): the dump keeps the data URIs, with no stub", async () => {
+    const rec = (await api.records("fx-one")) as unknown as SessionRecordsView
+    const md = dumpMarkdown(rec, NO_SIDEBAND)
+    expect(md).not.toContain("redacted-asset")
+    expect(md).not.toContain("context-sanitizer")
+    expect(md).toContain(";base64,")
+    expect(dumpXml(rec, undefined)).not.toContain("redacted-asset")
   })
 })
 
@@ -257,8 +271,8 @@ async function dataText(sid: string): Promise<Golden> {
   const m = await api.meta(sid)
   g.firstPrompt = m ? firstPromptOf(m as unknown as SessionMetaView) : null
   const rec = (await api.records(sid)) as unknown as SessionRecordsView
-  g.dumpMarkdown = dumpMarkdown(rec)
-  g.dumpXml = dumpXml(rec)
+  g.dumpMarkdown = dumpMarkdown(rec, sb)
+  g.dumpXml = dumpXml(rec, sb)
   return g
 }
 
@@ -360,13 +374,13 @@ describe("C47 unknown kind and image source edge", () => {
         records: [],
         messages: [{ role: "user", content: [block] }],
       }) as unknown as SessionRecordsView
-    expect(dumpMarkdown(mk({ type: "image", source: { type: "file" } }))).toContain(
+    expect(dumpMarkdown(mk({ type: "image", source: { type: "file" } }), sb)).toContain(
       "**Image**: (file undefined)",
     )
-    expect(dumpMarkdown(mk({ type: "image", source: { type: "url" } }))).toContain(
+    expect(dumpMarkdown(mk({ type: "image", source: { type: "url" } }), sb)).toContain(
       "**Image**: (url undefined)",
     )
-    expect(dumpMarkdown(mk({ type: "document", source: { type: "base64" } }))).toContain(
+    expect(dumpMarkdown(mk({ type: "document", source: { type: "base64" } }), sb)).toContain(
       "**Document**: (base64 undefined)",
     )
   })

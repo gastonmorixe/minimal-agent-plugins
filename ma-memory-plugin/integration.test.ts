@@ -32,6 +32,8 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import memoryHandler from "./handlers/memory.ts"
 import memoryToolHandler from "./handlers/memory_tool.ts"
 import type { TUIContext } from "./lib/host-types.ts"
@@ -44,6 +46,8 @@ import {
 } from "./lib/save-echo.ts"
 import { ShortTermSnapshot } from "./lib/short-term-snapshot.ts"
 import { MemoryStore, projectMemoryPath, shortTermMemoryPath } from "./lib/store.ts"
+
+const sb = await pluginSideband()
 
 /**
  * Minimal in-test event bus satisfying the plugin's structural slices.
@@ -165,7 +169,7 @@ describe("memory plugin v0.3 — closing-the-loop integration", () => {
     const env = { MINIMAL_AGENT_SESSION_ID: sid, HOME: tmpHome }
     const bus = new FakeBus()
     setSaveBus(bus)
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     // --- 1. Inline-tag save ---
     await memoryHandler(
@@ -216,7 +220,7 @@ describe("memory plugin v0.3 — closing-the-loop integration", () => {
   it("short-term save → snapshot attachment shows it on next turn", async () => {
     const sid = "22222222-3333-4444-5555-666666666666"
     const env = { MINIMAL_AGENT_SESSION_ID: sid, HOME: tmpHome }
-    const snapshot = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snapshot = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
 
     // Initially empty — no attachment.
     expect(snapshot.toAttachment()).toBeNull()
@@ -244,7 +248,7 @@ describe("memory plugin v0.3 — closing-the-loop integration", () => {
     const env = { MINIMAL_AGENT_SESSION_ID: sid, HOME: tmpHome }
     const bus = new FakeBus()
     setSaveBus(bus)
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     const { SHORT_TERM_CAP } = await import("./lib/store.ts")
     // Fill to the cap via the inline-tag handler.
@@ -292,7 +296,7 @@ describe("memory plugin v0.3 — closing-the-loop integration", () => {
     const env = { HOME: tmpHome }
     const bus = new FakeBus()
     setSaveBus(bus)
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     await memoryToolHandler(
       makeToolCtx({ action: "add", scope: "project", body: "no echo expected" }, env),

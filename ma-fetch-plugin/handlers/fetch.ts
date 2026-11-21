@@ -312,8 +312,13 @@ export { cleanupBasic as normalizeMarkdown } from "../lib/cleanup.ts"
  * whitespace, and `<style>`/`<script>` blocks replaced by a stub. `<pre>`,
  * `<textarea>` and markdown code are kept as they are.
  */
-function maybeCleanup(content: string, format: FetchFormat | "value", level: CleanupLevel): string {
-  return cleanupForFormat(content, format, level)
+function maybeCleanup(
+  content: string,
+  format: FetchFormat | "value",
+  level: CleanupLevel,
+  sb: TUIContext["sideband"],
+): string {
+  return cleanupForFormat(content, format, level, sb)
 }
 
 /** Build the body lines (`display` field) - first N lines, width-clamped. */
@@ -672,18 +677,24 @@ export async function runWithDeps(
       // Persistence is best-effort; the model still gets the mime/size summary.
     }
     const content = binaryOptIn
-      ? formatBinaryOptedIn({
-          bytes: rawBytes,
-          mime: binaryVerdict.mime,
-          path: saved?.path,
-          sha256: saved?.sha256,
-        })
-      : formatBinaryWithheld({
-          mime: binaryVerdict.mime,
-          sizeBytes: rawBytes.byteLength,
-          path: saved?.path,
-          sha256: saved?.sha256,
-        })
+      ? formatBinaryOptedIn(
+          {
+            bytes: rawBytes,
+            mime: binaryVerdict.mime,
+            path: saved?.path,
+            sha256: saved?.sha256,
+          },
+          ctx.sideband,
+        )
+      : formatBinaryWithheld(
+          {
+            mime: binaryVerdict.mime,
+            sizeBytes: rawBytes.byteLength,
+            path: saved?.path,
+            sha256: saved?.sha256,
+          },
+          ctx.sideband,
+        )
     return {
       kind: "tool_result",
       content,
@@ -721,9 +732,9 @@ export async function runWithDeps(
   // the safe whitespace pass, and the footer names it `value`.
   const isEvalValue = Boolean(input.evalExpr) && (input.evalMode ?? "value") === "value"
   const shown: FetchFormat | "value" = isEvalValue ? "value" : input.format
-  let content = maybeCleanup(result.stdout, shown, cleanup)
+  let content = maybeCleanup(result.stdout, shown, cleanup, ctx.sideband)
   if (shown === "markdown" || shown === "text" || shown === "html") {
-    content = stripDataUris(content)
+    content = stripDataUris(content, ctx.sideband)
   }
   const size = Buffer.byteLength(content, "utf-8")
   const lineCount =

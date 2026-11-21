@@ -158,11 +158,25 @@ describe("linear time on HTML-like text (M1)", () => {
   // Before the fix, each `<` that is not a tag copied the rest of the buffer:
   // 192 KB of `<div>a</div>` took about 1.6 s. Core TagScanner takes about 1 ms.
   const html = (kb: number) => "<div>a</div>".repeat(Math.ceil((kb * 1024) / 12))
+  // The minimum of 5 runs after a warm up: machine load adds time to some
+  // runs, never removes it, so the minimum is the stable value.
   const time = (f: () => void): number => {
     f() // warm up
-    const t0 = performance.now()
-    f()
-    return performance.now() - t0
+    let best = Number.POSITIVE_INFINITY
+    for (let i = 0; i < 5; i++) {
+      const t0 = performance.now()
+      f()
+      best = Math.min(best, performance.now() - t0)
+    }
+    return best
+  }
+  /**
+   * Always the 50 ms ceiling. The ratio only when the 48 KB time is at least
+   * 2 ms: below that, timer and scheduler noise is larger than the value.
+   */
+  const expectLinear = (a: number, b: number): void => {
+    expect(b).toBeLessThan(50)
+    if (a >= 2) expect(b / a).toBeLessThan(8)
   }
   const scan = (t: string) => () => {
     const s = codec.scanner()
@@ -172,18 +186,15 @@ describe("linear time on HTML-like text (M1)", () => {
   }
   const small = html(48)
   const big = html(192)
-  test("parse: 192 KB below 50 ms and ratio 48 KB to 192 KB below 8", () => {
+  test("parse: 192 KB below 50 ms; ratio 48 KB to 192 KB below 8 when 48 KB takes 2 ms or more", () => {
     if (process.env.CI) return
-    const a = time(() => codec.parse(small))
-    const b = time(() => codec.parse(big))
-    expect(b).toBeLessThan(50)
-    expect(b / Math.max(a, 0.5)).toBeLessThan(8)
+    expectLinear(
+      time(() => codec.parse(small)),
+      time(() => codec.parse(big)),
+    )
   })
-  test("scanner: 192 KB below 50 ms and ratio 48 KB to 192 KB below 8", () => {
+  test("scanner: 192 KB below 50 ms; ratio 48 KB to 192 KB below 8 when 48 KB takes 2 ms or more", () => {
     if (process.env.CI) return
-    const a = time(scan(small))
-    const b = time(scan(big))
-    expect(b).toBeLessThan(50)
-    expect(b / Math.max(a, 0.5)).toBeLessThan(8)
+    expectLinear(time(scan(small)), time(scan(big)))
   })
 })

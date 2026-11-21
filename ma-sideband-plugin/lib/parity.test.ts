@@ -316,10 +316,10 @@ describe("parity: plugin emitters (called)", () => {
     const w = { mime: SP, sizeBytes: 3, path: SP, sha256: SP }
     expect(
       r(D.binary, { mime: SP, size: fetchBytes(3), path: SP, sha256: SP, tool: "Fetch" }),
-    ).toBe(tag(formatBinaryWithheld(w)))
+    ).toBe(tag(formatBinaryWithheld(w, sb)))
     const big = new Uint8Array(48 * 1024 + 1)
     expect(r(D.binary, { mime: SP, size: fetchBytes(big.length), path: SP, tool: "Fetch" })).toBe(
-      tag(formatBinaryOptedIn({ bytes: big, mime: SP, path: SP })),
+      tag(formatBinaryOptedIn({ bytes: big, mime: SP, path: SP }, sb)),
     )
     const small = new Uint8Array([0xfb, 0xff])
     expect(
@@ -328,10 +328,10 @@ describe("parity: plugin emitters (called)", () => {
         { mime: SP, size: fetchBytes(2), encoding: "base64", path: SP, tool: "Fetch" },
         "+/8=",
       ),
-    ).toBe(formatBinaryOptedIn({ bytes: small, mime: SP, path: SP }))
+    ).toBe(formatBinaryOptedIn({ bytes: small, mime: SP, path: SP }, sb))
   })
   test("fetch redacted-asset and context-sanitizer (data-uri, html-cleanup)", () => {
-    const out = stripDataUris(`x data:Image/PNG;base64,${"A".repeat(400)} y`)
+    const out = stripDataUris(`x data:Image/PNG;base64,${"A".repeat(400)} y`, sb)
     const [stub, footer] = out.match(/<ma::agent::[^>]*\/>/g)!
     expect(
       r(D.redacted, {
@@ -346,11 +346,11 @@ describe("parity: plugin emitters (called)", () => {
       r(D.sanitizer, { removed: 1, kinds: "data_uri", "chars-removed": 400, tool: "Fetch" }),
     ).toBe(footer!)
     expect(r(D.redacted, { kind: "style_block", size: "1.5KB", tool: "Fetch" })).toBe(
-      assetStub("style_block", 1536),
+      assetStub("style_block", 1536, sb),
     )
   })
   test("session-history redacted-asset and context-sanitizer (E3)", () => {
-    const out = scrubDumpText(`x data:image/png;base64,${"A".repeat(400)} y`)
+    const out = scrubDumpText(`x data:image/png;base64,${"A".repeat(400)} y`, sb)
     const [stub, footer] = out.match(/<ma::agent::[^>]*\/>/g)!
     expect(
       r(D.redacted, { kind: "data_uri", mime: "image/png", size: "300B", "chars-removed": 400 }),
@@ -362,10 +362,10 @@ describe("parity: plugin emitters (called)", () => {
   test('memory memory-saved (attr & and " only, body < and >)', () => {
     const body = 'a&b "q" <t> >'
     expect(r(D.memorySaved, { scope: "short-term", id: SP, evicted: 2 }, body)).toBe(
-      renderEcho({ scope: "short-term", id: SP, body, evicted: 2 }),
+      renderEcho({ scope: "short-term", id: SP, body, evicted: 2 }, sb),
     )
     expect(r(D.memorySaved, { scope: "global", id: "m1" }, "x")).toBe(
-      renderEcho({ scope: "global", id: "m1", body: "x" }),
+      renderEcho({ scope: "global", id: "m1", body: "x" }, sb),
     )
   })
   // P/ma-memory-plugin/lib/short-term-snapshot.ts:71 (class reads a store: literal)
@@ -384,7 +384,7 @@ describe("parity: plugin emitters (called)", () => {
       active_ms: 0,
     } as unknown as Task
     const stats = { total: 1, done: 0, doing: 1, todo: 0, canceled: 0 }
-    const out = renderTasksAgentBlock([task], stats, { action: SP, result: "ok", id: "#1" })
+    const out = renderTasksAgentBlock([task], stats, { action: SP, result: "ok", id: "#1" }, sb)
     expect(
       r(D.tasks, { action: SP, result: "ok", id: "1", ...stats }, renderTasksColumnar([task])),
     ).toBe(out)
@@ -415,9 +415,11 @@ describe("parity: plugin emitters (called)", () => {
   })
   test("intercom intercom-peer (E4 attrs, escaped text body)", () => {
     expect(r(D.peer, { name: SP, sid: SP }, SP)).toBe(
-      formatPeerMentionXml({ name: SP, sid: SP, body: SP }),
+      formatPeerMentionXml({ name: SP, sid: SP, body: SP }, sb),
     )
-    expect(r(D.peer, { sid: "s1" }, "@s1")).toBe(formatPeerMentionXml({ sid: "s1", body: "@s1" }))
+    expect(r(D.peer, { sid: "s1" }, "@s1")).toBe(
+      formatPeerMentionXml({ sid: "s1", body: "@s1" }, sb),
+    )
   })
   test("openai compaction remote and remote-empty (enc encoded by the caller)", () => {
     const [withEnc] = compactOutputToMessages([{ type: "compaction", encrypted_content: SP }])

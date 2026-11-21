@@ -14,12 +14,16 @@
  * @module tasks/handlers/turn_attachment
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { TasksAttachment } from "../lib/attachment.ts"
 
 /** Local structural slice of the host's `TurnAttachmentContext`. */
 interface TurnAttachmentContext {
   /** The live session id, or `null` when no session is plumbed through. */
   sessionId: string | null
+  /** The session sideband API. It renders the tag. */
+  sideband?: SidebandApi
 }
 
 /**
@@ -30,5 +34,5 @@ interface TurnAttachmentContext {
  * means the file stays empty and the producer costs nothing.
  */
 export default function makeTasksAttachment(ctx: TurnAttachmentContext): TasksAttachment {
-  return new TasksAttachment(ctx.sessionId)
+  return new TasksAttachment(ctx.sessionId, {}, ctx.sideband)
 }

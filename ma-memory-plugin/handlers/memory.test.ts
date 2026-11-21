@@ -24,6 +24,7 @@ import { join, resolve } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
 import type { PromptFragmentContext, TUIContext } from "../lib/host-types.ts"
 import { DEFAULT_MEMORY_CONFIG, type MemoryConfig } from "../lib/memory-config.ts"
 import {
@@ -38,6 +39,8 @@ import { shortTermMemoryPath } from "../lib/store.ts"
 
 import loadMemories, { globalMemoryPath, projectMemoryPath } from "./load.ts"
 import memoryHandler, { localIsoSeconds } from "./memory.ts"
+
+const sb = await pluginSideband()
 
 /**
  * Minimal in-test event bus satisfying the plugin's structural slices.
@@ -791,7 +794,7 @@ describe("memory: integration (handler-direct, repo-portable)", () => {
     const bus = new FakeBus()
     setSaveBus(bus)
     const { SaveEchoCollector } = await import("../lib/save-echo.ts")
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     await memoryHandler(
       makeSaveCtx({

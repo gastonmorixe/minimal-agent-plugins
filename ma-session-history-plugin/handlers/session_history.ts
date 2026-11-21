@@ -53,7 +53,7 @@ export default async function sessionHistory(ctx: HandlerContextSlice): Promise<
   const req = parsed.req
 
   try {
-    return await run(req, host, ctx.cwd, ctx.agent?.sessionId)
+    return await run(req, host, ctx.cwd, ctx.agent?.sessionId, ctx.sideband)
   } catch (e) {
     return err(`SessionHistory failed: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -64,6 +64,7 @@ async function run(
   host: PluginHostSlice,
   cwd: string,
   self: string | undefined,
+  sb: HandlerContextSlice["sideband"],
 ): Promise<ToolResultSlice> {
   const sessions = host.sessions
   if (!sessions) return err("sessions:read capability missing.")
@@ -161,7 +162,7 @@ async function run(
     case "dump": {
       const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
-      const d = await dumpOf(sessions, sid.sid, req.format)
+      const d = await dumpOf(sessions, sid.sid, req.format, sb)
       if (!d) return err(unknownSid(sid.sid))
       const warn =
         d.bytes > DUMP_WARN_BYTES
@@ -182,10 +183,11 @@ async function dumpOf(
   sessions: NonNullable<PluginHostSlice["sessions"]>,
   sid: string,
   format: "markdown" | "xml",
+  sb: HandlerContextSlice["sideband"],
 ): Promise<{ text: string; bytes: number } | null> {
   const v = await sessions.records(sid)
   if (!v) return null
-  const text = format === "xml" ? dumpXml(v) : dumpMarkdown(v)
+  const text = format === "xml" ? dumpXml(v, sb) : dumpMarkdown(v, sb)
   return { text, bytes: Buffer.byteLength(text, "utf8") }
 }
 

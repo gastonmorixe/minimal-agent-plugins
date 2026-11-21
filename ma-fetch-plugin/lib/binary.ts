@@ -14,7 +14,12 @@ import { createHash } from "node:crypto"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { agentHome } from "./paths.ts"
+
+/** The slice of the session sideband API that renders the `binary-result` tag. */
+export type BinarySideband = Pick<SidebandApi, "render">
 
 /** Max raw bytes we base64-inline when the model set `binary: true`. */
 export const MAX_INLINE_BINARY_BYTES = 48 * 1024
@@ -103,10 +108,6 @@ function shortSha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex").slice(0, 16)
 }
 
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
-}
-
 /**
  * Persist binary body next to the session blobs dir when we know the
  * session id, else under `~/.minimal-agent/sessions/fetch-bin/`. Returns
@@ -132,62 +133,80 @@ export function persistBinaryBody(opts: {
   return { path, sha256: shortSha256(opts.bytes) }
 }
 
-/**
- * Model-facing replacement when binary is withheld (default).
- * Tag shape matches core `formatBinaryResultMessage`.
- */
-export function formatBinaryWithheld(opts: {
+/** The attrs of a `binary-result` tag. Attr order is the wire order. */
+function binaryAttrs(opts: {
   mime: string
   sizeBytes: number
+  base64?: boolean
   path?: string
   sha256?: string
-}): string {
-  const attrs = [
-    `mime="${escapeAttr(opts.mime)}"`,
-    `size="${escapeAttr(formatBytes(opts.sizeBytes))}"`,
-  ]
-  if (opts.path) attrs.push(`path="${escapeAttr(opts.path)}"`)
-  if (opts.sha256) attrs.push(`sha256="${escapeAttr(opts.sha256)}"`)
-  attrs.push(`tool="Fetch"`)
-  const tag = `<ma::agent::binary-result ${attrs.join(" ")} />`
+}): Record<string, string> {
+  return {
+    mime: opts.mime,
+    size: formatBytes(opts.sizeBytes),
+    ...(opts.base64 ? { encoding: "base64" } : {}),
+    ...(opts.path ? { path: opts.path } : {}),
+    ...(opts.sha256 ? { sha256: opts.sha256 } : {}),
+    tool: "Fetch",
+  }
+}
+
+/** The tag, then the prose after one empty line. With no tag (no codec), the prose only. */
+function tagThenProse(tag: string, prose: string): string {
+  return tag === "" ? prose : `${tag}\n\n${prose}`
+}
+
+/**
+ * Model-facing replacement when binary is withheld (default).
+ * Tag shape matches core `formatBinaryResultMessage`. The codec of `sb`
+ * writes the tag (kind `binary-result`).
+ */
+export function formatBinaryWithheld(
+  opts: {
+    mime: string
+    sizeBytes: number
+    path?: string
+    sha256?: string
+  },
+  sb: BinarySideband | undefined,
+): string {
+  const tag = sb?.render("binary-result", { attrs: binaryAttrs(opts) }) ?? ""
   const prose = `The harness did not put the binary body in the model context. The body is not valid text, and it uses tokens for no purpose.${
     opts.path ? " The harness saved the full bytes at the path above." : ""
   } Do one of these: call the tool again with binary=true to get base64 if the body is small enough, Read the saved path, or ask the user to attach the file.`
-  return `${tag}\n\n${prose}`
+  return tagThenProse(tag, prose)
 }
 
 /**
  * Model-facing body when `binary: true`. Base64 under the size cap;
  * otherwise same withhold message with `optedInButWithheld` prose.
+ * With no codec the base64 form is `""` (the whole form is the tag).
  */
-export function formatBinaryOptedIn(opts: {
-  bytes: Uint8Array
-  mime: string
-  path?: string
-  sha256?: string
-}): string {
+export function formatBinaryOptedIn(
+  opts: {
+    bytes: Uint8Array
+    mime: string
+    path?: string
+    sha256?: string
+  },
+  sb: BinarySideband | undefined,
+): string {
+  const base = {
+    mime: opts.mime,
+    sizeBytes: opts.bytes.length,
+    path: opts.path,
+    sha256: opts.sha256,
+  }
   if (opts.bytes.length > MAX_INLINE_BINARY_BYTES) {
-    const attrs = [
-      `mime="${escapeAttr(opts.mime)}"`,
-      `size="${escapeAttr(formatBytes(opts.bytes.length))}"`,
-    ]
-    if (opts.path) attrs.push(`path="${escapeAttr(opts.path)}"`)
-    if (opts.sha256) attrs.push(`sha256="${escapeAttr(opts.sha256)}"`)
-    attrs.push(`tool="Fetch"`)
-    return (
-      `<ma::agent::binary-result ${attrs.join(" ")} />\n\n` +
+    const tag = sb?.render("binary-result", { attrs: binaryAttrs(base) }) ?? ""
+    return tagThenProse(
+      tag,
       "The binary body is too large to include as base64 in the tool output budget. " +
-      "Use the path above. Read that path, or ask the user to attach the file to their message."
+        "Use the path above. Read that path, or ask the user to attach the file to their message.",
     )
   }
   const b64 = Buffer.from(opts.bytes).toString("base64")
-  const attrs = [
-    `mime="${escapeAttr(opts.mime)}"`,
-    `size="${escapeAttr(formatBytes(opts.bytes.length))}"`,
-    `encoding="base64"`,
-  ]
-  if (opts.path) attrs.push(`path="${escapeAttr(opts.path)}"`)
-  if (opts.sha256) attrs.push(`sha256="${escapeAttr(opts.sha256)}"`)
-  attrs.push(`tool="Fetch"`)
-  return `<ma::agent::binary-result ${attrs.join(" ")}>\n${b64}\n</ma::agent::binary-result>`
+  return (
+    sb?.render("binary-result", { attrs: binaryAttrs({ ...base, base64: true }), body: b64 }) ?? ""
+  )
 }

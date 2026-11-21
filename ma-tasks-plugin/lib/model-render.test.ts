@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import {
   formatTasksOkLine,
   renderTasksAgentBlock,
@@ -8,6 +12,8 @@ import {
   renderTasksToolContent,
 } from "./model-render.ts"
 import { task } from "./render.fixtures.ts"
+
+const sb = await pluginSideband()
 
 // ---------------------------------------------------------------------------
 // Columnar body
@@ -101,6 +107,7 @@ describe("renderTasksAgentBlock", () => {
       [task({ id: "1", title: "x" })],
       { total: 1, done: 0, doing: 0, todo: 1, canceled: 0 },
       { action: "add", result: "added", id: "1" },
+      sb,
     )
 
     expect(out).toStartWith(
@@ -115,11 +122,19 @@ describe("renderTasksAgentBlock", () => {
       [],
       { total: 0, done: 0, doing: 0, todo: 0, canceled: 0 },
       { action: `a"b`, result: "<done>", id: "abc123" },
+      sb,
     )
 
     expect(out).toContain(`action="a&quot;b"`)
     expect(out).toContain(`result="&lt;done&gt;"`)
     expect(out).toContain(`id="abc123"`)
+  })
+
+  test("no sideband codec (NO_SIDEBAND): no tag", () => {
+    const stats = { total: 1, done: 0, doing: 0, todo: 1, canceled: 0 }
+    const tasks = [task({ id: "1", title: "x" })]
+    expect(renderTasksAgentBlock(tasks, stats, { action: "add" }, NO_SIDEBAND)).toBe("")
+    expect(renderTasksAgentBlock(tasks, stats, {}, undefined)).toBe("")
   })
 })
 

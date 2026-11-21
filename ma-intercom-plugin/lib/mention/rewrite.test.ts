@@ -1,9 +1,14 @@
 import { describe, expect, it } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../../tests/support/sideband.ts"
 import type { Liveness } from "../liveness.ts"
 
 import { peerXml, resolveMentionPeer, rewriteMentions } from "./rewrite.ts"
 import type { PeerCandidate } from "./types.ts"
+
+const sb = await pluginSideband()
 
 function peer(
   partial: Partial<PeerCandidate> & Pick<PeerCandidate, "sid" | "short">,
@@ -69,7 +74,7 @@ describe("resolveMentionPeer", () => {
 
 describe("rewriteMentions", () => {
   it("rewrites a unique @name to peer XML", () => {
-    const out = rewriteMentions("hey @Michelle check this", [michelle, ronald])
+    const out = rewriteMentions("hey @Michelle check this", [michelle, ronald], sb)
     expect(out).toContain(
       '<ma::intercom::peer name="Michelle" sid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">@Michelle</ma::intercom::peer>',
     )
@@ -78,31 +83,37 @@ describe("rewriteMentions", () => {
   })
 
   it("leaves unmatched tokens alone", () => {
-    expect(rewriteMentions("ping @nobody", [michelle])).toBe("ping @nobody")
+    expect(rewriteMentions("ping @nobody", [michelle], sb)).toBe("ping @nobody")
   })
 
   it("rewrites multiple unique tokens", () => {
-    const out = rewriteMentions("@Michelle and @Ronald", [michelle, ronald])
+    const out = rewriteMentions("@Michelle and @Ronald", [michelle, ronald], sb)
     expect(out).toContain('name="Michelle"')
     expect(out).toContain('name="Ronald"')
   })
 
   it("uses short sid when peer has no name", () => {
-    const out = rewriteMentions("hi @c3d4e5f6", [unnamed])
+    const out = rewriteMentions("hi @c3d4e5f6", [unnamed], sb)
     expect(out).toBe(
       `hi <ma::intercom::peer sid="c3d4e5f6-a7b8-9012-cdef-123456789012">@c3d4e5f6</ma::intercom::peer>`,
     )
   })
 
+  it("leaves each token as-is with no sideband codec (NO_SIDEBAND)", () => {
+    expect(rewriteMentions("hey @Michelle and @Ronald", [michelle, ronald], NO_SIDEBAND)).toBe(
+      "hey @Michelle and @Ronald",
+    )
+  })
+
   it("is a no-op without peers or @", () => {
-    expect(rewriteMentions("plain", [])).toBe("plain")
-    expect(rewriteMentions("plain", [michelle])).toBe("plain")
+    expect(rewriteMentions("plain", [], sb)).toBe("plain")
+    expect(rewriteMentions("plain", [michelle], sb)).toBe("plain")
   })
 })
 
 describe("peerXml", () => {
   it("delegates to PROMPTS with original token body", () => {
-    expect(peerXml(michelle, "@Michelle")).toBe(
+    expect(peerXml(michelle, "@Michelle", sb)).toBe(
       '<ma::intercom::peer name="Michelle" sid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">@Michelle</ma::intercom::peer>',
     )
   })

@@ -2,10 +2,13 @@
  * Model-facing prompt/template helpers for at-mention peer tags.
  *
  * Prompt-only module (mirrors core src PROMPTS modules): pure string builders,
- * no I/O, no host imports. Every string that ships to the model or session
- * history for peer mentions is authored here so the wire form stays auditable.
+ * no I/O. Every string that ships to the model or session history for peer
+ * mentions is authored here. The codec of the session sideband API writes
+ * the tag (kind `intercom-peer`, declared in this plugin's manifest).
  *
  */
+
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 /** Inputs for formatPeerMentionXml. */
 export interface PeerMentionXmlArgs {
@@ -38,17 +41,19 @@ export function escapeXmlAttr(s: string): string {
  *
  * name attr is omitted when absent. Body is always the original at-token.
  * This is the wire/history form; the TUI keeps the plain at-token styled.
+ * With no `sb` or no codec the result is `""`.
  */
-export function formatPeerMentionXml(args: PeerMentionXmlArgs): string {
-  const attrs: string[] = []
-  if (args.name !== undefined && args.name.length > 0) {
-    attrs.push('name="' + escapeXmlAttr(args.name) + '"')
+export function formatPeerMentionXml(
+  args: PeerMentionXmlArgs,
+  sb: Pick<SidebandApi, "render"> | undefined,
+): string {
+  // The codec escapes the attrs and the body (`<`, `>`, `&`), so a hostile
+  // token can't break the tag stream; at-sign and identifiers stay readable.
+  const attrs = {
+    ...(args.name !== undefined && args.name.length > 0 ? { name: args.name } : {}),
+    sid: args.sid,
   }
-  attrs.push('sid="' + escapeXmlAttr(args.sid) + '"')
-  // Body is user-typed text. Escape < / & so a hostile token can't break
-  // the tag stream, but keep at-sign and alnum identifiers readable.
-  const body = escapeXmlText(args.body)
-  return "<ma::intercom::peer " + attrs.join(" ") + ">" + body + "</ma::intercom::peer>"
+  return sb?.render("intercom-peer", { attrs, body: args.body }) ?? ""
 }
 
 /** Escape text node content (body of the peer tag). */

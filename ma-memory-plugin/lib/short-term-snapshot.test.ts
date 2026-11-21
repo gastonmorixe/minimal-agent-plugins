@@ -15,8 +15,14 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import { ShortTermSnapshot } from "./short-term-snapshot.ts"
 import { MemoryStore } from "./store.ts"
+
+const sb = await pluginSideband()
 
 let tmpHome: string
 
@@ -34,18 +40,18 @@ afterEach(() => {
 
 describe("ShortTermSnapshot — no-op cases", () => {
   it("null sid → no attachment", () => {
-    const s = new ShortTermSnapshot(null, { home: tmpHome })
+    const s = new ShortTermSnapshot(null, { home: tmpHome }, sb)
     expect(s.toAttachment()).toBeNull()
     expect(s.toText()).toBeNull()
   })
 
   it("empty/whitespace sid → no attachment", () => {
-    expect(new ShortTermSnapshot("", { home: tmpHome }).toAttachment()).toBeNull()
-    expect(new ShortTermSnapshot("   ", { home: tmpHome }).toAttachment()).toBeNull()
+    expect(new ShortTermSnapshot("", { home: tmpHome }, sb).toAttachment()).toBeNull()
+    expect(new ShortTermSnapshot("   ", { home: tmpHome }, sb).toAttachment()).toBeNull()
   })
 
   it("missing file → no attachment", () => {
-    const s = new ShortTermSnapshot("sid-missing", { home: tmpHome })
+    const s = new ShortTermSnapshot("sid-missing", { home: tmpHome }, sb)
     expect(s.toAttachment()).toBeNull()
   })
 
@@ -55,7 +61,7 @@ describe("ShortTermSnapshot — no-op cases", () => {
     const store = MemoryStore.shortTerm(sid, { home: tmpHome })
     store.add("temporary")
     store.clear()
-    const snap = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snap = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
     expect(snap.toAttachment()).toBeNull()
   })
 })
@@ -68,7 +74,7 @@ describe("ShortTermSnapshot — happy path", () => {
   it("renders a single bullet as `[#<id>] <body>` between tags", () => {
     const sid = "sid-1"
     MemoryStore.shortTerm(sid, { home: tmpHome }).add("active hypothesis: width 80")
-    const snap = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snap = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
     expect(snap.toText()).toBe(
       "<ma::agent::short-term-memory>\n[#1] active hypothesis: width 80\n</ma::agent::short-term-memory>",
     )
@@ -80,7 +86,7 @@ describe("ShortTermSnapshot — happy path", () => {
     store.add("first")
     store.add("second")
     store.add("third")
-    const snap = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snap = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
     expect(snap.toText()).toBe(
       "<ma::agent::short-term-memory>\n[#1] first\n[#2] second\n[#3] third\n</ma::agent::short-term-memory>",
     )
@@ -89,7 +95,7 @@ describe("ShortTermSnapshot — happy path", () => {
   it("returns a ContentBlock with type='text'", () => {
     const sid = "sid-block"
     MemoryStore.shortTerm(sid, { home: tmpHome }).add("hi")
-    const att = new ShortTermSnapshot(sid, { home: tmpHome }).toAttachment()
+    const att = new ShortTermSnapshot(sid, { home: tmpHome }, sb).toAttachment()
     expect(att).not.toBeNull()
     expect(att?.type).toBe("text")
   })
@@ -103,7 +109,7 @@ describe("ShortTermSnapshot — fresh-read semantics", () => {
   it("sees a bullet added between two toAttachment calls", () => {
     const sid = "sid-fresh"
     const store = MemoryStore.shortTerm(sid, { home: tmpHome })
-    const snap = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snap = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
 
     expect(snap.toText()).toBeNull()
 
@@ -117,7 +123,7 @@ describe("ShortTermSnapshot — fresh-read semantics", () => {
     const a = store.add("a").bullet
     store.add("b")
 
-    const snap = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snap = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
     expect(snap.toText()).toContain("[#1] a")
     expect(snap.toText()).toContain("[#2] b")
 
@@ -130,10 +136,20 @@ describe("ShortTermSnapshot — fresh-read semantics", () => {
     const sid = "sid-fresh-edit"
     const store = MemoryStore.shortTerm(sid, { home: tmpHome })
     const b = store.add("original").bullet
-    const snap = new ShortTermSnapshot(sid, { home: tmpHome })
+    const snap = new ShortTermSnapshot(sid, { home: tmpHome }, sb)
     expect(snap.toText()).toContain("[#1] original")
     store.edit(b.id, "revised")
     expect(snap.toText()).toContain("[#1] revised")
     expect(snap.toText()).not.toContain("original")
+  })
+})
+
+describe("ShortTermSnapshot — no sideband codec (NO_SIDEBAND)", () => {
+  it("returns null: no tag, no empty block", () => {
+    const sid = "sid-no-sideband"
+    MemoryStore.shortTerm(sid, { home: tmpHome }).add("note one")
+    expect(new ShortTermSnapshot(sid, { home: tmpHome }, NO_SIDEBAND).toAttachment()).toBeNull()
+    expect(new ShortTermSnapshot(sid, { home: tmpHome }).toAttachment()).toBeNull()
+    expect(new ShortTermSnapshot(sid, { home: tmpHome }, sb).toText()).toContain("note one")
   })
 })

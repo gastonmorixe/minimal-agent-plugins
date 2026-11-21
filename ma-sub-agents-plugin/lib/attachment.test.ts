@@ -4,9 +4,15 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import { SubagentsAttachment } from "./attachment.ts"
 import { SubagentStore } from "./store.ts"
 import { type SubagentRecord, type SubagentStatus, sessionId, subagentId } from "./types.ts"
+
+const sb = await pluginSideband()
 
 const NOW = Date.parse("2026-05-30T12:00:00.000Z")
 
@@ -35,8 +41,8 @@ describe("SubagentsAttachment", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
   it("returns null when there is no session id", () => {
-    expect(new SubagentsAttachment(null, { dir }).toAttachment()).toBeNull()
-    expect(new SubagentsAttachment("  ", { dir }).toAttachment()).toBeNull()
+    expect(new SubagentsAttachment(null, { dir }, Date.now, sb).toAttachment()).toBeNull()
+    expect(new SubagentsAttachment("  ", { dir }, Date.now, sb).toAttachment()).toBeNull()
   })
 
   it("returns null when no worker is active (idle session pays no tokens)", () => {
@@ -44,7 +50,7 @@ describe("SubagentsAttachment", () => {
     store.upsert(
       rec("A1", { kind: "done", endedAt: "t", result: { short: "x", tokens: 1, tools: 1 } }),
     )
-    expect(new SubagentsAttachment("lead", { dir }).toAttachment()).toBeNull()
+    expect(new SubagentsAttachment("lead", { dir }, Date.now, sb).toAttachment()).toBeNull()
   })
 
   it("emits a bounded <ma::agent::subagents> block when workers are active", () => {
@@ -60,7 +66,7 @@ describe("SubagentsAttachment", () => {
         progress: { tools: 14, tokens: 9100, lastActivity: "editing parser.ts" },
       }),
     )
-    const text = new SubagentsAttachment("lead", { dir }, () => NOW).toText()
+    const text = new SubagentsAttachment("lead", { dir }, () => NOW, sb).toText()
     expect(text).not.toBeNull()
     const t = text as string
     expect(t.startsWith('<ma::agent::subagents active="1" done="1" failed="0"')).toBe(true)
@@ -69,6 +75,21 @@ describe("SubagentsAttachment", () => {
     expect(t).toContain("editing parser.ts")
     expect(t).toContain("A1") // recent terminal shown too
     expect(t.endsWith("</ma::agent::subagents>")).toBe(true)
+  })
+
+  it("no sideband codec (NO_SIDEBAND): null, no tag and no empty block", () => {
+    new SubagentStore("lead", { dir }).upsert(
+      rec("A1", {
+        kind: "running",
+        pid: 1,
+        startedAt: "2026-05-30T11:59:00.000Z",
+        progress: { tools: 0, tokens: 0 },
+      }),
+    )
+    expect(
+      new SubagentsAttachment("lead", { dir }, () => NOW, NO_SIDEBAND).toAttachment(),
+    ).toBeNull()
+    expect(new SubagentsAttachment("lead", { dir }, () => NOW).toText()).toBeNull()
   })
 
   it("caps rows with a +N more overflow", () => {
@@ -83,7 +104,7 @@ describe("SubagentsAttachment", () => {
         }),
       )
     }
-    const t = new SubagentsAttachment("lead", { dir }, () => NOW).toText() as string
+    const t = new SubagentsAttachment("lead", { dir }, () => NOW, sb).toText() as string
     expect(t).toContain("more (SubAgentsListAgents)")
   })
 
@@ -104,7 +125,7 @@ describe("SubagentsAttachment", () => {
         progress: { tools: 0, tokens: 0 },
       }),
     )
-    const att = new SubagentsAttachment("lead", { dir }, () => NOW).toAttachment()
+    const att = new SubagentsAttachment("lead", { dir }, () => NOW, sb).toAttachment()
     expect(att).not.toBeNull()
     expect(att!.type).toBe("text")
     const text = (att as { text: string }).text
@@ -117,6 +138,6 @@ describe("SubagentsAttachment", () => {
     // Construct the store but add nothing — the session has zero workers.
     const _store = new SubagentStore("lead", { dir })
     void _store
-    expect(new SubagentsAttachment("lead", { dir }, () => NOW).toAttachment()).toBeNull()
+    expect(new SubagentsAttachment("lead", { dir }, () => NOW, sb).toAttachment()).toBeNull()
   })
 })

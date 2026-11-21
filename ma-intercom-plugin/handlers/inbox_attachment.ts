@@ -19,6 +19,8 @@
  * @module handlers/inbox_attachment
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { advanceCursor, type Cursor, readCursor } from "../lib/cursors.ts"
 import type {
   AttachmentTextBlock,
@@ -38,6 +40,8 @@ export class InboxAttachment implements TurnAttachmentProducer {
   constructor(
     public readonly sid: string | null,
     private readonly env: NodeJS.ProcessEnv = process.env,
+    /** The session sideband API that renders the tag. With none, no attachment. */
+    private readonly sb?: Pick<SidebandApi, "render">,
   ) {}
 
   toAttachment(): AttachmentTextBlock | null {
@@ -53,10 +57,14 @@ export class InboxAttachment implements TurnAttachmentProducer {
     const { fresh, nextMark } = drainFrom(all, cursor.seen)
     if (fresh.length === 0) return null
 
-    const body = renderInboxBody(fresh)
     const kinds = countKinds(fresh)
-    const attr = `count="${fresh.length}"${kinds.interrupt ? ` interrupt="${kinds.interrupt}"` : ""}`
-    const text = `<ma::agent::intercom-inbox ${attr}>\n${body}\n</ma::agent::intercom-inbox>`
+    const attrs = {
+      count: fresh.length,
+      ...(kinds.interrupt ? { interrupt: kinds.interrupt } : {}),
+    }
+    const text = this.sb?.render("intercom-inbox", { attrs, body: renderInboxBody(fresh) }) ?? ""
+    // No codec: nothing reaches the model, so the cursor stays (no message is lost).
+    if (text === "") return null
 
     // Advance `seen` so each message is rendered exactly once. Merge-on-write
     // (Math.max) so this never rolls back a concurrent `woken`/`read` advance.
@@ -79,5 +87,5 @@ function countKinds(envs: ReadonlyArray<{ kind: string }>): { message: number; i
 
 /** The factory the host's turn-attachment registry invokes at boot. */
 export default function makeInboxAttachment(ctx: TurnAttachmentContext): InboxAttachment {
-  return new InboxAttachment(ctx.sessionId)
+  return new InboxAttachment(ctx.sessionId, process.env, ctx.sideband)
 }

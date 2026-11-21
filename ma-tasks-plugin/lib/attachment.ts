@@ -46,6 +46,8 @@
  * @module tasks/lib/attachment
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { renderTasksColumnar } from "./model-render.ts"
 import type { Task } from "./parse.ts"
 import { type StoreDeps, TaskStore } from "./store.ts"
@@ -107,11 +109,13 @@ export class TasksAttachment {
   constructor(
     public readonly sid: string | null,
     private readonly deps: StoreDeps = {},
+    /** The session sideband API that renders the tag. With none, no attachment. */
+    private readonly sb?: Pick<SidebandApi, "render">,
   ) {}
 
   /**
-   * Render the current attachment, or `null` if there are no tasks (so
-   * the agent can append unconditionally).
+   * Render the current attachment, or `null` if there are no tasks or no
+   * sideband codec (so the agent can append unconditionally).
    *
    * Output shape:
    *
@@ -132,12 +136,9 @@ export class TasksAttachment {
     const tasks = store.list()
     if (tasks.length === 0) return null
 
-    const s = summary(tasks)
-    const body = renderAttachmentBody(tasks)
-    return {
-      type: "text",
-      text: `<ma::agent::tasks total="${s.total}" done="${s.done}" doing="${s.doing}" todo="${s.todo}" canceled="${s.canceled}">\n${body}\n</ma::agent::tasks>`,
-    }
+    const attrs = summary(tasks)
+    const text = this.sb?.render("tasks", { attrs, body: renderAttachmentBody(tasks) }) ?? ""
+    return text === "" ? null : { type: "text", text }
   }
 
   /**

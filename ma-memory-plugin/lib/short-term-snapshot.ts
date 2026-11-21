@@ -29,6 +29,8 @@
  * @module memory/lib/short-term-snapshot
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { type AttachmentTextBlock } from "./save-echo.ts"
 import { MemoryStore, type StoreDeps } from "./store.ts"
 
@@ -44,6 +46,8 @@ export class ShortTermSnapshot {
   constructor(
     public readonly sid: string | null,
     private readonly deps: StoreDeps = {},
+    /** The session sideband API that renders the tag. With none, no attachment. */
+    private readonly sb?: Pick<SidebandApi, "render">,
   ) {}
 
   /**
@@ -66,10 +70,8 @@ export class ShortTermSnapshot {
     // of the working content. The model can call MemoryTool to inspect
     // them if it ever needs to.
     const lines = bullets.map((b) => `[#${b.id}] ${b.body}`)
-    return {
-      type: "text",
-      text: `<ma::agent::short-term-memory>\n${lines.join("\n")}\n</ma::agent::short-term-memory>`,
-    }
+    const text = this.sb?.render("short-term-memory", { body: lines.join("\n") }) ?? ""
+    return text === "" ? null : { type: "text", text }
   }
 
   /**

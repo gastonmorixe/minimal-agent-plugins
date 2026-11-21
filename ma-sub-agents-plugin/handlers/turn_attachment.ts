@@ -14,12 +14,16 @@
  * @module sub-agents/handlers/turn_attachment
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { SubagentsAttachment } from "../lib/attachment.ts"
 
 /** Local structural slice of the host's `TurnAttachmentContext`. */
 interface TurnAttachmentContext {
   /** The live session id, or `null` when no session is plumbed through. */
   sessionId: string | null
+  /** The session sideband API. It renders the tag. */
+  sideband?: SidebandApi
 }
 
 /**
@@ -29,5 +33,5 @@ interface TurnAttachmentContext {
  * unconditional (mirrors the host's old direct construction).
  */
 export default function makeSubagentsAttachment(ctx: TurnAttachmentContext): SubagentsAttachment {
-  return new SubagentsAttachment(ctx.sessionId)
+  return new SubagentsAttachment(ctx.sessionId, {}, Date.now, ctx.sideband)
 }

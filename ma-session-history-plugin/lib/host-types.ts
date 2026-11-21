@@ -14,6 +14,8 @@
  * @module plugins/session-history/lib/host-types
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 // ---------------------------------------------------------------------------
 // sessions:read slice
 // ---------------------------------------------------------------------------
@@ -231,6 +233,8 @@ export interface HandlerContextSlice {
   host?: PluginHostSlice
   /** The calling session. Mirror of the slice of `AgentContext` this plugin reads. */
   agent?: { readonly sessionId: string }
+  /** The session sideband API (`@minimal-agent/core` plugin-api type). It renders the dump stubs. */
+  sideband?: SidebandApi
 }
 
 export interface ToolResultSlice {

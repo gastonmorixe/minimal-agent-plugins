@@ -46,24 +46,8 @@
     "ma-fetch-plugin/lib/backend.ts": {
       "bracket-notice": 1
     },
-    "ma-fetch-plugin/lib/binary.ts": {
-      "tag-literal": 3
-    },
-    "ma-fetch-plugin/lib/data-uri.ts": {
-      "tag-literal": 2,
-      "tag-regex": 1
-    },
-    "ma-fetch-plugin/lib/html-cleanup.ts": {
-      "tag-literal": 1
-    },
     "ma-intercom-plugin/PROMPT.md": {
       "prompt-file": 1
-    },
-    "ma-intercom-plugin/handlers/inbox_attachment.ts": {
-      "tag-literal": 1
-    },
-    "ma-intercom-plugin/lib/mention/PROMPTS.ts": {
-      "tag-literal": 2
     },
     "ma-intercom-plugin/lib/sanitize.ts": {
       "tag-regex": 1
@@ -100,33 +84,14 @@
     "ma-memory-plugin/lib/parse.ts": {
       "bracket-notice": 1
     },
-    "ma-memory-plugin/lib/save-echo.ts": {
-      "tag-literal": 1
-    },
-    "ma-memory-plugin/lib/short-term-snapshot.ts": {
-      "tag-literal": 1
-    },
     "ma-memory-plugin/manifest.json": {
       "prompt-file": 3
-    },
-    "ma-session-history-plugin/lib/dump-from-data.ts": {
-      "tag-literal": 2,
-      "tag-regex": 1
     },
     "ma-skills-plugin/lib/tool-registry.ts": {
       "bracket-notice": 1
     },
-    "ma-sub-agents-plugin/lib/attachment.ts": {
-      "tag-literal": 2
-    },
     "ma-sub-agents-plugin/lib/lane/scrub-fixture.ts": {
       "bracket-notice": 1
-    },
-    "ma-tasks-plugin/lib/attachment.ts": {
-      "tag-literal": 1
-    },
-    "ma-tasks-plugin/lib/model-render.ts": {
-      "tag-literal": 1
     },
     "ma-tasks-plugin/manifest.json": {
       "prompt-file": 1

@@ -12,6 +12,10 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import { InboxAttachment } from "./handlers/inbox_attachment.ts"
 import peersHandler from "./handlers/peers.ts"
 import sendHandler from "./handlers/send.ts"
@@ -20,6 +24,8 @@ import type { AgentContext, TUIContext } from "./lib/host-types.ts"
 import { appendEnvelope } from "./lib/inbox.ts"
 import { inboxPath, presencePath } from "./lib/paths.ts"
 import { type PresenceRecord, writePresence } from "./lib/presence.ts"
+
+const sb = await pluginSideband()
 
 let home: string
 let env: NodeJS.ProcessEnv
@@ -144,7 +150,7 @@ describe("InboxAttachment", () => {
   }
 
   it("returns null with an empty inbox", () => {
-    const att = new InboxAttachment("me-1", env)
+    const att = new InboxAttachment("me-1", env, sb)
     expect(att.toAttachment()).toBeNull()
   })
 
@@ -154,7 +160,7 @@ describe("InboxAttachment", () => {
       inboxPath(sid, env),
       buildEnvelope({ from: FROM, to: sid, scope: sid, kind: "message", body: "ping body" }),
     )
-    const att = new InboxAttachment(sid, env)
+    const att = new InboxAttachment(sid, env, sb)
     const block = att.toAttachment()
     expect(block).not.toBeNull()
     expect(block?.text).toContain("<ma::agent::intercom-inbox")
@@ -164,5 +170,17 @@ describe("InboxAttachment", () => {
 
     // Second call: already seen ⇒ null (delivered exactly once).
     expect(att.toAttachment()).toBeNull()
+  })
+
+  it("no sideband codec (NO_SIDEBAND): null and the cursor stays", () => {
+    const sid = "me-3"
+    appendEnvelope(
+      inboxPath(sid, env),
+      buildEnvelope({ from: FROM, to: sid, scope: sid, kind: "message", body: "kept body" }),
+    )
+    expect(new InboxAttachment(sid, env, NO_SIDEBAND).toAttachment()).toBeNull()
+    expect(new InboxAttachment(sid, env).toAttachment()).toBeNull()
+    // Not marked seen: a session with a codec still gets the message.
+    expect(new InboxAttachment(sid, env, sb).toAttachment()?.text).toContain("kept body")
   })
 })
