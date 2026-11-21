@@ -7,6 +7,7 @@
  * @module lib/sanitize
  */
 
+import type { TitleSideband } from "./host-types.ts"
 import { codePointLength, stripMaTags } from "./input.ts"
 
 /** Max title length, in code points. */
@@ -54,12 +55,12 @@ function upperFirst(text: string): string {
 }
 
 /**
- * Sanitize a raw title: remove `<ma::…>` tags, change control chars to a
+ * Sanitize a raw title: remove the internal tags (`sb`), change control chars to a
  * space, collapse spaces, trim, remove outer quotes and one end period, and
  * make the first letter upper case. An ellipsis (`...`) at the end stays.
  */
-export function sanitizeTitle(raw: string): string {
-  let out = stripMaTags(raw).replace(CONTROL_RE, " ").replace(/\s+/g, " ").trim()
+export function sanitizeTitle(raw: string, sb: TitleSideband): string {
+  let out = stripMaTags(raw, sb).replace(CONTROL_RE, " ").replace(/\s+/g, " ").trim()
   out = stripOuterQuotes(out)
   if (out.endsWith(".") && !out.endsWith("..")) out = out.slice(0, -1).trimEnd()
   out = stripOuterQuotes(out)
@@ -92,12 +93,12 @@ export type TitleValidation =
 /**
  * Validate one side-call result (SPEC §5.5 rules 1-5). `stopReason` must be
  * `end_turn`; `json.title` must be a string; the sanitized title must be
- * usable. Never throws.
+ * usable. `sb` strips the internal tags. Never throws.
  */
-export function validateTitleResult(result: {
-  stopReason?: string
-  json?: unknown
-}): TitleValidation {
+export function validateTitleResult(
+  result: { stopReason?: string; json?: unknown },
+  sb: TitleSideband,
+): TitleValidation {
   if (result.stopReason !== "end_turn") {
     return { ok: false, reason: "stop-reason", detail: String(result.stopReason) }
   }
@@ -107,7 +108,7 @@ export function validateTitleResult(result: {
       ? (json as Record<string, unknown>).title
       : undefined
   if (typeof raw !== "string") return { ok: false, reason: "not-string" }
-  const title = sanitizeTitle(raw)
+  const title = sanitizeTitle(raw, sb)
   if (!isUsableTitle(title)) return { ok: false, reason: "unusable", detail: title }
   return { ok: true, title }
 }

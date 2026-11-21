@@ -21,6 +21,7 @@ import type {
   RunMode,
   RunModeFact,
   SessionTitleState,
+  TitleSideband,
 } from "./host-types.ts"
 import { cleanPromptText, codePointLength, hasMaTag } from "./input.ts"
 
@@ -181,6 +182,8 @@ export interface EligibilityInput {
   config: TitleConfig
   env: NodeJS.ProcessEnv
   args?: TitleArgs
+  /** `ctx.sideband`. It strips and finds the internal tags. */
+  sb: TitleSideband
 }
 
 /** Result of {@link checkEligibility}. */
@@ -239,7 +242,7 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
   }
 
   const rawText = typeof payload.text === "string" ? payload.text : ""
-  let text = cleanPromptText(rawText)
+  let text = cleanPromptText(rawText, input.sb)
 
   // Rule 5: slash command. A simple `/name args` line gives its args as the
   // title text, when the args pass rule 6. Each other slash line stops.
@@ -251,8 +254,8 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
     text = args
   }
 
-  // Rule 7 (checked here): text that is only `<ma::…>` tags is synthetic.
-  if (text === "" && hasMaTag(rawText)) {
+  // Rule 7 (checked here): text that is only internal tags is synthetic.
+  if (text === "" && hasMaTag(rawText, input.sb)) {
     return { eligible: false, rule: 7, reason: "synthetic-ma-only", sid }
   }
 

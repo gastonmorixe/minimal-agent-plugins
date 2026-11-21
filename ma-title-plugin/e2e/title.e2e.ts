@@ -49,6 +49,7 @@ import {
   buildBillingHeaderText,
   CLAUDE_CODE_IDENTITY,
 } from "../../ma-llm-anthropic-plugin/system-prompt.ts"
+import { pluginSideband } from "../../tests/support/sideband.ts"
 import { SYSTEM_PROMPT, TITLE_MAX_TOKENS, TITLE_SCHEMA } from "../handlers/on_prompt_submitted.ts"
 import { buildTitleInput } from "../lib/input.ts"
 import { countWords, validateTitleResult } from "../lib/sanitize.ts"
@@ -157,6 +158,9 @@ function makeSpyClient(): NetworkClient {
 const reg = makeTestRegistry()
 bootstrapAnthropic(reg.ctx)
 
+/** The real codec: it strips the internal tags of the prompt and the title. */
+const sb = await pluginSideband()
+
 function titleRequest(): CanonicalRequest {
   const system: CanonicalBlock[] = [
     { type: "text", text: buildBillingHeaderText() },
@@ -167,7 +171,7 @@ function titleRequest(): CanonicalRequest {
     modelId: MODEL_ID,
     purpose: "title",
     system,
-    messages: [{ role: "user", content: [{ type: "text", text: buildTitleInput(PROMPT) }] }],
+    messages: [{ role: "user", content: [{ type: "text", text: buildTitleInput(PROMPT, sb) }] }],
     generation: { maxOutputTokens: TITLE_MAX_TOKENS },
     thinking: { mode: "off" },
     effort: "low",
@@ -247,7 +251,7 @@ describe.skipIf(SKIP_REASON !== null)("title side call live e2e", () => {
 
     // The handler rules (SPEC §5.5).
     const json = JSON.parse(res.text) as { title?: unknown }
-    const v = validateTitleResult({ stopReason: res.stopReason ?? undefined, json })
+    const v = validateTitleResult({ stopReason: res.stopReason ?? undefined, json }, sb)
     expect(v).toMatchObject({ ok: true })
     if (!v.ok) return
     const words = countWords(v.title)

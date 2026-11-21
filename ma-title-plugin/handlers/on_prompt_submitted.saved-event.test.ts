@@ -14,6 +14,7 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
 import type {
   EventHandlerContext,
   LlmSideResult,
@@ -33,6 +34,9 @@ import {
   type TitleAttemptEvent,
   type TitleSavedEvent,
 } from "./on_prompt_submitted.ts"
+
+/** The real codec (`tests/support/sideband.ts`) for `ctx.sideband`. */
+const sb = await pluginSideband()
 
 const SID = "11111111-2222-3333-4444-555555555555"
 const REPL: RunModeFact = { mode: "repl", interactive: true, providerId: "prov" }
@@ -178,6 +182,7 @@ function makeCtx(
     },
     agent: { sessionId: SID, model: "main-1" },
     run: REPL,
+    sideband: sb,
     host: fake.host,
   }
   return { ctx, attempts, saved, logs }

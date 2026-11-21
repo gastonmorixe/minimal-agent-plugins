@@ -105,10 +105,6 @@
     "ma-tasks-plugin/prompts/results-compact.md": {
       "prompt-file": 1
     },
-    "ma-title-plugin/lib/input.ts": {
-      "tag-regex": 2,
-      "tag-search": 1
-    },
     "ma-turn-recovery-plugin/provider.ts": {
       "bracket-notice": 2
     },

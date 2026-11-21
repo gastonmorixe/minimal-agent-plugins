@@ -55,6 +55,10 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-20: **`ma-title-plugin` uses `ctx.sideband` to strip internal
+  tags.** `stripMaTags` and `hasMaTag` call the codec (`strip` with
+  `lenient`, and `has`). The tag regexes are gone. With no codec (an old
+  host), the handler makes no title and writes one debug line.
 - 2026-11-20: **Each `ma-llm-*` plugin uses the kit estimators.** Core has
   no default ratio, so each provider sets the estimator of each model.
   - `ma-llm-anthropic-plugin`: `claude-5x` for Claude 4.7 and later (all

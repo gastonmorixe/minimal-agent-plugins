@@ -60,6 +60,7 @@ import type {
   SessionsReadApi,
   SessionTitleState,
   TitleHost,
+  TitleSideband,
 } from "../lib/host-types.ts"
 import { buildTitleInput } from "../lib/input.ts"
 import { selectTitleModel } from "../lib/model-select.ts"
@@ -190,6 +191,8 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
   const states = new Map<string, TitleSessionState>()
   const pending = new Set<Promise<void>>()
   const seenConfigLines = new Set<string>()
+  /** True after the "no sideband codec" debug line (one time). */
+  let noSidebandLogged = false
 
   const handler: EventHandler = (ctx) => {
     try {
@@ -232,6 +235,14 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     })
     const payload = ctx.payload
     if (!isPayload(payload)) return
+    // The codec strips the internal tags. With no codec (an old host), a
+    // tag could go to the model: make no title.
+    const sb = ctx.sideband
+    if (!sb?.ready) {
+      if (!noSidebandLogged) debug(ctx, "skip: host has no sideband codec")
+      noSidebandLogged = true
+      return
+    }
 
     const sidKey = typeof payload.sid === "string" ? payload.sid.trim() : ""
     const base = {
@@ -241,6 +252,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       run: ctx.run,
       config,
       env,
+      sb,
     }
     const pre = checkEligibility(base)
     if (!pre.eligible) {
@@ -287,7 +299,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
         } catch (err) {
           debug(ctx, `no parent title sid=${sid}: ${errText(err)}`)
         }
-        startModelCall(ctx, sid, host, request, meta, config, env)
+        startModelCall(ctx, sid, host, request, meta, config, env, sb)
       })().catch((err) => {
         states.set(sid, markIdle(states.get(sid)))
         debug(ctx, `handler error sid=${sid}: ${errText(err)}`)
@@ -295,7 +307,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       track(job)
       return
     }
-    startModelCall(ctx, sid, host, request, meta, config, env)
+    startModelCall(ctx, sid, host, request, meta, config, env, sb)
   }
 
   function track(job: Promise<void>): void {
@@ -341,6 +353,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     meta: SessionMetaApi,
     config: TitleConfig,
     env: NodeJS.ProcessEnv,
+    sb: TitleSideband,
   ): void {
     // Model choice (SPEC §4.3): the provider title profile only. Live
     // provider: run fact, else the boot model.
@@ -392,7 +405,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       purpose: "title",
       model: choice.modelId,
       system: SYSTEM_PROMPT,
-      userText: buildTitleInput(text, resolveTitleLanguage(config, titleEnv)),
+      userText: buildTitleInput(text, sb, resolveTitleLanguage(config, titleEnv)),
       maxTokens: TITLE_MAX_TOKENS,
       timeoutMs: config.timeoutMs,
       thinking: "off",
@@ -402,7 +415,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       maxUsdPerMTokIn: config.maxUsdPerMTokIn,
     }
 
-    track(runCall(ctx, sid, choice.providerId, req, request.bind(host.llm), meta))
+    track(runCall(ctx, sid, choice.providerId, req, request.bind(host.llm), meta, sb))
   }
 
   async function runCall(
@@ -412,6 +425,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     req: LlmSideRequest,
     request: (r: LlmSideRequest) => Promise<LlmSideResult>,
     meta: SessionMetaApi,
+    sb: TitleSideband,
   ): Promise<void> {
     const started = Date.now()
     const ev: TitleAttemptEvent = {
@@ -437,7 +451,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       ev.outputTokens = res.usage?.outputTokens ?? 0
       if (res.costUsd !== undefined) ev.costUsd = res.costUsd
 
-      const valid = validateTitleResult({ stopReason: res.stopReason, json: resultJson(res) })
+      const valid = validateTitleResult({ stopReason: res.stopReason, json: resultJson(res) }, sb)
       if (!valid.ok) {
         if (valid.reason !== "stop-reason") ev.stopReason = "unusable"
         states.set(sid, markFailure(states.get(sid), now()))

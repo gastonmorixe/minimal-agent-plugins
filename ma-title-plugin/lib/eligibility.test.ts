@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import { defaultTitleConfig, type TitleConfig } from "./config.ts"
 import {
   checkEligibility,
@@ -17,6 +19,9 @@ import {
   type TitleSessionState,
 } from "./eligibility.ts"
 import type { PromptSubmittedPayload, RunModeFact, SessionTitleState } from "./host-types.ts"
+
+/** The real codec (`tests/support/sideband.ts`): it strips the internal tags. */
+const sb = await pluginSideband()
 
 const SID = "11111111-2222-3333-4444-555555555555"
 const REPL: RunModeFact = { mode: "repl", interactive: true }
@@ -40,6 +45,7 @@ function input(over: Partial<EligibilityInput> = {}): EligibilityInput {
     run: REPL,
     config: defaultTitleConfig(),
     env: { ...ON },
+    sb,
     ...over,
   }
 }

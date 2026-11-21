@@ -154,7 +154,8 @@ $0.001). To stop this, set `maxUsdPerMTokIn` to `0.5`.
 
 - The plugin sends only the text of the first prompt that the user typed.
   It does not send an assistant text, a tool output or image data.
-- It removes `<ma::…>` tags.
+- It removes the internal tags with the session codec (`ctx.sideband`).
+  With no codec (an old host), the plugin makes no title.
 - The request has the same layout as Claude Code. The system prompt has the
   rules (`prompts/system.md`). The user message is the text in a
   `<session>` block, then one language line:

@@ -16,11 +16,24 @@
  *   `LlmSideResult`, `SessionMetaApi`, `SessionTitleState`,
  *   `SessionsReadApi`, `SessionMetaView`:
  *   `plugin-api/src/types/host-capabilities.ts`
+ * - `TitleSideband`: `plugin-api/src/types/sideband.ts` (`SidebandApi`)
  * - `reason` (result): core `src/plugins/host/providers/llm-side.ts`
  *   (`LlmSideResultCore`). It is not in the plugin-api types yet.
  *
  * @module lib/host-types
  */
+
+/**
+ * The slice of the session sideband API (`ctx.sideband`) that the plugin
+ * reads. Mirror of `SidebandApi.ready`, `has` and `strip`
+ * (`plugin-api/src/types/sideband.ts`).
+ */
+export interface TitleSideband {
+  /** False when no codec is loaded. Then `strip` cannot find a tag. */
+  readonly ready: boolean
+  has(text: string): boolean
+  strip(text: string, q?: { lenient?: boolean; keepBody?: boolean }): string
+}
 
 /** Plugin-scoped diagnostic logger. Mirror of the host `PluginLogger`. */
 export interface PluginLogger {
@@ -255,6 +268,8 @@ export interface EventHandlerContext<TPayload = unknown> {
   /** Set only with `"host": true` in the manifest event subscription. */
   host?: TitleHost
   run?: RunModeFact
+  /** The session sideband API. Optional: older hosts. */
+  sideband?: TitleSideband
 }
 
 /** An event handler. Mirror of the host `EventHandler`. */

@@ -8,6 +8,8 @@
  * @module lib/input
  */
 
+import type { TitleSideband } from "./host-types.ts"
+
 /** Above this length (code points) the cap applies. */
 export const INPUT_MAX_CHARS = 2000
 /** Code points kept from the start of a long text. */
@@ -15,10 +17,6 @@ export const INPUT_HEAD_CHARS = 1500
 /** Code points kept from the end of a long text. */
 export const INPUT_TAIL_CHARS = 400
 
-/** A paired tag `<ma::x …>…</ma::x>`, with its content. */
-const MA_PAIRED_TAG_RE = /<ma::([\w.:-]+)\b[^>]*>[\s\S]*?<\/ma::\1\s*>/g
-/** A self-closing tag, or an open or close tag with no pair. */
-const MA_SINGLE_TAG_RE = /<\/?ma::[^>]*>/g
 /** Three or more line breaks, with only white space between them. */
 const BLANK_RUN_RE = /\n[ \t]*(?:\n[ \t]*)+\n/g
 /**
@@ -35,22 +33,27 @@ export function codePointLength(text: string): number {
   return n
 }
 
-/** Remove each `<ma::…>` tag. A paired tag is removed with its content. */
-export function stripMaTags(text: string): string {
-  return text.replace(MA_PAIRED_TAG_RE, "").replace(MA_SINGLE_TAG_RE, "")
+/**
+ * Remove each internal (sideband) tag with the session codec. A complete
+ * node goes with its body. The lenient strip also removes broken tag parts
+ * (a lone end part; a start part with no end part, with the rest of its line).
+ * `keepBody` stays false: with it, the body of a policy tag goes to the model.
+ */
+export function stripMaTags(text: string, sb: TitleSideband): string {
+  return sb.strip(text, { lenient: true })
 }
 
-/** True when `text` has at least one `<ma::` tag. */
-export function hasMaTag(text: string): boolean {
-  return text.includes("<ma::")
+/** True when `text` has at least one internal (sideband) node. */
+export function hasMaTag(text: string, sb: TitleSideband): boolean {
+  return sb.has(text)
 }
 
 /**
- * Clean a prompt text: remove `<ma::…>` tags, change CRLF to LF, collapse
+ * Clean a prompt text: remove the internal tags, change CRLF to LF, collapse
  * runs of blank lines to one blank line, trim.
  */
-export function cleanPromptText(text: string): string {
-  return stripMaTags(text.replace(/\r\n?/g, "\n")).replace(BLANK_RUN_RE, "\n\n").trim()
+export function cleanPromptText(text: string, sb: TitleSideband): string {
+  return stripMaTags(text.replace(/\r\n?/g, "\n"), sb).replace(BLANK_RUN_RE, "\n\n").trim()
 }
 
 /**
@@ -117,6 +120,6 @@ export function languageLine(language?: string): string {
  * Code: `<session>\n{text}\n</session>\n\n{language line}`. The rules are in
  * the system prompt.
  */
-export function buildTitleInput(promptText: string, language?: string): string {
-  return `${wrapSession(capInput(cleanPromptText(promptText)))}\n\n${languageLine(language)}`
+export function buildTitleInput(promptText: string, sb: TitleSideband, language?: string): string {
+  return `${wrapSession(capInput(cleanPromptText(promptText, sb)))}\n\n${languageLine(language)}`
 }
