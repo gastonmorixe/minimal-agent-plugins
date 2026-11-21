@@ -4,19 +4,24 @@
  *
  * The manifest subscription declares `"host": true`, so the loader gives
  * `ctx.host` with only the manifest capabilities (`llm:complete`,
- * `sessions:meta`, `models:read`) and `ctx.run` (run-mode fact).
+ * `sessions:meta`, `sessions:read`, `models:read`) and `ctx.run` (run-mode
+ * fact).
  *
  * Flow (the handler returns at once; the side call is not awaited):
  * 1. Eligibility (T1 `checkEligibility`, rules 1-8): run-mode gate (default
  *    ON only in the interactive REPL), captured sid, in-flight guard,
- *    slash, short text, `source:"user"`, max 2 attempts.
+ *    slash (a `/name args` line gives its args), short text,
+ *    `source:"user"`, max 2 attempts.
  * 2. Title state: `sessionMeta.getTitle(sid)`; a `user`/`ai` title → done.
- * 3. Model choice (`lib/model-select.ts`); none → no call, diagnostics
- *    `no-model` / `over-ceiling`.
- * 4. `llm.request` (one attempt, `timeoutMs`, `abortSignal: ctx.abort`).
- * 5. Validate + sanitize (T1 `validateTitleResult`).
- * 6. Late-result guard, then `sessionMeta.setTitle({sid: captured sid, …})`.
- * 7. After the write: one `title.saved` event (UI refresh signal, see
+ *    The first eligible text is kept for each sid (each attempt sends it).
+ * 3. Fork check, one time for each sid (`sessions.meta`, async): when the
+ *    parent has a title, copy it as an `ai` title. No model call.
+ * 4. Model choice (`lib/model-select.ts`); none → no call and no attempt
+ *    used, diagnostics `no-model` / `over-ceiling` one time for each sid.
+ * 5. `llm.request` (one attempt, `timeoutMs`, `abortSignal: ctx.abort`).
+ * 6. Validate + sanitize (T1 `validateTitleResult`).
+ * 7. Late-result guard, then `sessionMeta.setTitle({sid: captured sid, …})`.
+ * 8. After the write: one `title.saved` event (UI refresh signal, see
  *    {@link TITLE_SAVED_EVENT}).
  *
  * Failure is silent: debug log + one diagnostics event `title.attempt` per
@@ -31,11 +36,15 @@ import {
   readTitleEnv,
   resolveModelOverride,
   resolveTitleLanguage,
+  type TitleConfig,
 } from "../lib/config.ts"
 import {
   checkEligibility,
   hasTitle,
+  initialTitleState,
+  markBusy,
   markFailure,
+  markIdle,
   markSuccess,
   startAttempt,
   type TitleSessionState,
@@ -43,9 +52,12 @@ import {
 import type {
   EventHandler,
   EventHandlerContext,
+  LlmCompleteApi,
   LlmSideRequest,
   LlmSideResult,
   PromptSubmittedPayload,
+  SessionMetaApi,
+  SessionsReadApi,
   SessionTitleState,
   TitleHost,
 } from "../lib/host-types.ts"
@@ -259,6 +271,77 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       return
     }
 
+    // B5: keep the first eligible text. Each attempt and retry sends it.
+    const prev = states.get(sid) ?? initialTitleState()
+    states.set(sid, { ...prev, firstText: prev.firstText ?? pre.text })
+
+    // B2: a fork or a resume gets the title of its parent (no model call).
+    // `meta` is async: `inFlight` is set now, so a prompt that comes during
+    // the check stops at rule 3.
+    const sessions = host.sessions
+    if (sessions && !prev.parentChecked) {
+      states.set(sid, { ...markBusy(states.get(sid)), parentChecked: true })
+      const job = (async () => {
+        try {
+          if (await inheritParentTitle(ctx, sid, sessions, meta)) return
+        } catch (err) {
+          debug(ctx, `no parent title sid=${sid}: ${errText(err)}`)
+        }
+        startModelCall(ctx, sid, host, request, meta, config, env)
+      })().catch((err) => {
+        states.set(sid, markIdle(states.get(sid)))
+        debug(ctx, `handler error sid=${sid}: ${errText(err)}`)
+      })
+      track(job)
+      return
+    }
+    startModelCall(ctx, sid, host, request, meta, config, env)
+  }
+
+  function track(job: Promise<void>): void {
+    pending.add(job)
+    void job.finally(() => pending.delete(job))
+  }
+
+  /**
+   * B2: copy the title of the parent session. Returns true when the sid has
+   * a title now (copied, or written meanwhile). A throw goes to the caller,
+   * which then uses the normal path.
+   */
+  async function inheritParentTitle(
+    ctx: EventHandlerContext,
+    sid: string,
+    sessions: SessionsReadApi,
+    meta: SessionMetaApi,
+  ): Promise<boolean> {
+    const view = await sessions.meta(sid)
+    const parentSid = view?.parentSid?.trim() ?? ""
+    if (parentSid === "" || parentSid === sid) return false
+    const title = sessions.title(parentSid)?.trim() ?? ""
+    if (title === "") return false
+    // Late guard: a title (user or ai) appeared during the read.
+    if (hasTitle(meta.getTitle(sid))) {
+      states.set(sid, markSuccess(states.get(sid)))
+      debug(ctx, `drop parent title sid=${sid}: a title exists`)
+      return true
+    }
+    await meta.setTitle({ sid, title, source: "ai" })
+    states.set(sid, markSuccess(states.get(sid)))
+    debug(ctx, `title sid=${sid} from parent=${parentSid}`)
+    emitSaved(ctx, { sid, title, source: "ai" })
+    return true
+  }
+
+  /** Model choice, then one side call (not awaited). */
+  function startModelCall(
+    ctx: EventHandlerContext,
+    sid: string,
+    host: TitleHost,
+    request: NonNullable<LlmCompleteApi["request"]>,
+    meta: SessionMetaApi,
+    config: TitleConfig,
+    env: NodeJS.ProcessEnv,
+  ): void {
     // Model choice (SPEC §4.3): the provider title profile only. Live
     // provider: run fact, else the boot model.
     const models = host.models
@@ -280,12 +363,12 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       maxUsdPerMTokIn: config.maxUsdPerMTokIn,
     })
 
-    // Rule 9: the attempt starts here (also when no model is found, so the
-    // no-model path is bounded by the same 2-attempt limit).
-    states.set(sid, startAttempt(states.get(sid)))
-
+    // B4: no model → no call, and no attempt is used. The log line and the
+    // `title.attempt` event come one time for each sid.
     if (!choice.ok) {
-      states.set(sid, markFailure(states.get(sid), now()))
+      const s = states.get(sid) ?? initialTitleState()
+      states.set(sid, { ...markIdle(s), noModelReported: true })
+      if (s.noModelReported) return
       const why = choice.rejected.map((r) => `${r.step}:${r.modelId}:${r.reason}`).join(",")
       debug(ctx, `no title sid=${sid}: ${choice.reason}${why ? ` (${why})` : ""}`)
       emitAttempt(ctx, {
@@ -301,11 +384,15 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       return
     }
 
+    // Rule 9: the attempt starts here.
+    states.set(sid, startAttempt(states.get(sid)))
+    const text = states.get(sid)?.firstText ?? ""
+
     const req: LlmSideRequest = {
       purpose: "title",
       model: choice.modelId,
       system: SYSTEM_PROMPT,
-      userText: buildTitleInput(pre.text, resolveTitleLanguage(config, titleEnv)),
+      userText: buildTitleInput(text, resolveTitleLanguage(config, titleEnv)),
       maxTokens: TITLE_MAX_TOKENS,
       timeoutMs: config.timeoutMs,
       thinking: "off",
@@ -315,9 +402,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       maxUsdPerMTokIn: config.maxUsdPerMTokIn,
     }
 
-    const job = runCall(ctx, sid, choice.providerId, req, request.bind(host.llm), meta)
-    pending.add(job)
-    void job.finally(() => pending.delete(job))
+    track(runCall(ctx, sid, choice.providerId, req, request.bind(host.llm), meta))
   }
 
   async function runCall(
@@ -326,7 +411,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     providerId: string,
     req: LlmSideRequest,
     request: (r: LlmSideRequest) => Promise<LlmSideResult>,
-    meta: NonNullable<TitleHost["sessionMeta"]>,
+    meta: SessionMetaApi,
   ): Promise<void> {
     const started = Date.now()
     const ev: TitleAttemptEvent = {

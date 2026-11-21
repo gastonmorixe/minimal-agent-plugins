@@ -246,6 +246,17 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-20: **Title fixes** (`ma-title-plugin`). (1) An injected prompt
+  (`source: "inject"`, from core `PromptSource`) makes no title. Before, an
+  intercom or background-job wake could become the title. (2) A fork gets
+  the title of its parent session, with no model call. The plugin has the
+  new capability `sessions:read` for this. (3) A `/name args` line gives the
+  args as the title text, when the args have 10 characters or more.
+  (4) No model (`no-model`, `over-ceiling`) does not use one of the 2
+  attempts. The debug line and the `title.attempt` event come one time for
+  each session. (5) Each attempt and retry sends the text of the first good
+  prompt, not the text of a later prompt. The new fix tests are in
+  `handlers/on_prompt_submitted.fixes.test.ts`.
 - 2026-11-18: **A skills test no longer fails on a busy machine**
   (`ma-skills-plugin/lib/tool-registry.test.ts`, "timeout kills the script and
   its background child"). On macOS the first run of a new executable file

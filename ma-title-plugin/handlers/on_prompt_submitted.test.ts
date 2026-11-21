@@ -363,7 +363,8 @@ describe("title handler: gates (no call)", () => {
   test("slash command and short prompt do not use the attempt", async () => {
     const fake = makeHost()
     const t = createTitleHandler()
-    await t.handler(makeCtx(fake, { text: "/model haiku please now" }).ctx)
+    await t.handler(makeCtx(fake, { text: "/model haiku" }).ctx)
+    await t.handler(makeCtx(fake, { text: "/usr/bin/env python3 -c print" }).ctx)
     await t.handler(makeCtx(fake, { text: "hi" }).ctx)
     await t.idle()
     expect(fake.requests).toHaveLength(0)

@@ -17,26 +17,48 @@ sub-agent. To stop it, set `MINIMAL_AGENT_TITLE=0` or
    conditions is true:
    - The run mode is not on (see "Run modes").
    - The session has a title.
-   - The prompt starts with `/`.
+   - The prompt starts with `/` (see "Slash commands").
    - The prompt has fewer than 10 characters.
    - The user did not type the prompt (`source` is not `user`). An expanded
-     command, a skill, a recovery retry and `/continue` make no title.
-3. The handler sends one request and does not wait for it. The turn does not
-   stop.
-4. The handler does a check of the result. When the result is good, it writes
+     command, a skill, a recovery retry, `/continue` and an injected prompt
+     (`inject`: an intercom, background-job, sub-agent, cron or cloud wake)
+     make no title.
+3. The handler keeps the text of the first good prompt of the session. Each
+   request sends this text, also a retry after a later prompt.
+4. When the session is a fork, and the parent session has a title, the
+   handler copies that title (see "Resume"). It sends no request.
+5. Else the handler sends one request and does not wait for it. The turn does
+   not stop.
+6. The handler does a check of the result. When the result is good, it writes
    one `kind: "title"` line to `~/.minimal-agent/sessions/index-meta.jsonl`.
-5. When the request fails, the next prompt can try one more time. The
-   maximum is 2 requests for each session in each process.
+7. When the request fails, the next prompt can try one more time. The
+   maximum is 2 requests for each session in each process. When the plugin
+   finds no model (`no-model`, `over-ceiling`), it sends no request, and this
+   does not count as one of the 2 requests. The next prompt tries again.
+
+### Slash commands
+
+A line `/name args` gives the args as the title text, when the args have 10
+characters or more. The name has only letters, digits, `-`, `_` and `:`.
+For example, `/plan fix the session title bugs` gives the text
+`fix the session title bugs`. Each other line that starts with `/` makes no
+title: a command with no args or with short args, and a path such as
+`/usr/bin/env`. The expanded text of the same command has the source
+`expand`, thus it makes no title.
 
 A title from the user is always more important. The plugin does not write an AI
 title when a user title is in the index.
 
 ### Resume
 
-A default `--resume` makes a fork with a new sid. The title line of the old
-sid does not go to the new sid. Thus, the first good prompt after a resume
-sends one new title request for the new sid. With `--resume-same-sid`, the
-sid does not change, the plugin finds the title and sends no request.
+A default `--resume` makes a fork with a new sid. The new sid has no title
+line. On the first good prompt, the plugin reads the parent sid
+(`sessions.meta(sid).parentSid`). When the parent has a title, the plugin
+writes the same title for the new sid (source `ai`, with no model and no
+usage). It sends no request, and it sends one `title.saved` event. When the
+parent has no title, or the read fails, the plugin sends a request as usual.
+It does this check one time for each sid. With `--resume-same-sid`, the sid
+does not change, the plugin finds the title and sends no request.
 
 ## Run modes
 
@@ -185,7 +207,8 @@ With `"derived"`, the plugin makes no request.
 The plugin does not show errors. It writes them to the debug log only.
 
 For each request, the plugin sends one `title.attempt` event on the plugin
-event bus. The event has these fields: `sid`, `purpose`, `model`,
+event bus. When the plugin finds no model, it sends one event and one debug
+line for each session, not one for each prompt. The event has these fields: `sid`, `purpose`, `model`,
 `provider`, `latencyMs`, `stopReason`, `inputTokens`, `outputTokens`,
 `costUsd` and `written`. When the plugin finds no model, `stopReason` is
 `no-model`, `over-ceiling` or `other-provider`. When the request has an
@@ -209,7 +232,8 @@ session has a title but sends no event, so a slot must keep its timer.
 ## Files
 
 - `manifest.json`: the event `prompt.submitted` with `"host": true`, and the
-  capabilities `llm:complete`, `sessions:meta`, `models:read`.
+  capabilities `llm:complete`, `sessions:meta`, `sessions:read` (the parent
+  title of a fork), `models:read`.
 - `handlers/on_prompt_submitted.ts`: the handler.
 - `lib/`: the configuration, the prompt checks, the input limit, the title
   checks and the model selection.
