@@ -10,14 +10,14 @@ static model catalog: the model comes from `--model`.
 Each value has a CLI flag and a `MINIMAL_AGENT_*` environment variable.
 `config.ts` (`readGenericEndpointConfig`) reads the variables.
 
-| Variable | Flag | Value |
-|---|---|---|
-| `MINIMAL_AGENT_ENDPOINT` | `--endpoint` | The endpoint URL. Necessary. |
-| `MINIMAL_AGENT_FORMAT` (or `MINIMAL_AGENT_SURFACE`) | `--format` | The wire surface id. Necessary. |
-| `MINIMAL_AGENT_PROVIDER_MODEL` | `--provider-model` | The model id on the wire, when it is not the `--model` id. |
-| `MINIMAL_AGENT_EFFORT_LEVELS` | `--effort-levels` | A comma list of effort levels, for example `low,medium,high`. |
-| `MINIMAL_AGENT_IMAGE_INPUT` | | `1`/`true`/`on`/`yes` or `0`/`false`/`off`/`no`. Absent: the codec decides. |
-| `MINIMAL_AGENT_TOKENIZER` | | The tokenizer family for the token estimate. See below. |
+| Variable                                            | Flag               | Value                                                                       |
+| --------------------------------------------------- | ------------------ | --------------------------------------------------------------------------- |
+| `MINIMAL_AGENT_ENDPOINT`                            | `--endpoint`       | The endpoint URL. Necessary.                                                |
+| `MINIMAL_AGENT_FORMAT` (or `MINIMAL_AGENT_SURFACE`) | `--format`         | The wire surface id. Necessary.                                             |
+| `MINIMAL_AGENT_PROVIDER_MODEL`                      | `--provider-model` | The model id on the wire, when it is not the `--model` id.                  |
+| `MINIMAL_AGENT_EFFORT_LEVELS`                       | `--effort-levels`  | A comma list of effort levels, for example `low,medium,high`.               |
+| `MINIMAL_AGENT_IMAGE_INPUT`                         |                    | `1`/`true`/`on`/`yes` or `0`/`false`/`off`/`no`. Absent: the codec decides. |
+| `MINIMAL_AGENT_TOKENIZER`                           |                    | The tokenizer family for the token estimate. See below.                     |
 
 ## Token estimate
 
