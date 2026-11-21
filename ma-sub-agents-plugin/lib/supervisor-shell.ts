@@ -36,11 +36,15 @@ export interface SupervisorDeps {
   readonly sessionsDir: string
   readonly leadSid: string
   readonly now: () => Date
-  /** Live-area tick (drives the breathing spinner). */
+  /** Live-area tick. Kept for compatibility: the widget blink uses the clock. */
   readonly tick: number
   readonly ansi: boolean
   readonly tokenBudget?: number
   readonly maxRows?: number
+  /** Terminal width for the widget. Default: `process.stdout.columns`, else 120. */
+  readonly columns?: number
+  /** Fade the running `●` in truecolor. Default: true when `COLORTERM` is truecolor. */
+  readonly fade?: boolean
   /** When set, publish presence rows (lead + fleet) into this mesh directory. */
   readonly presenceDir?: string
   /** Lead process id, for the lead's presence row. */
@@ -116,7 +120,10 @@ export function runSupervisor(deps: SupervisorDeps): string | null {
     }
   }
 
+  const columns = deps.columns ?? process.stdout.columns
   return renderWidget(out.records, {
+    ...(columns ? { columns } : {}),
+    fade: deps.fade ?? /truecolor|24bit/i.test(process.env.COLORTERM ?? ""),
     ansi: deps.ansi,
     tick: deps.tick,
     nowMs: now.getTime(),

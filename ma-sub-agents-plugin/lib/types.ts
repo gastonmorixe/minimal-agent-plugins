@@ -122,6 +122,8 @@ export interface Progress {
   readonly lastEventAt?: number
   /** The model the worker actually resolved (from `session_started`). */
   readonly model?: string
+  /** The effort the worker actually resolved (from `session_started`). */
+  readonly effort?: string
 }
 
 /** The zero progress value a worker starts with. */

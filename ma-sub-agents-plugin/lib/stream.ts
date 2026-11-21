@@ -416,6 +416,7 @@ export function streamProgress(s: StreamState): Progress | undefined {
     ...(s.inFlight ? { toolSince: s.inFlight.since } : {}),
     ...(s.lastEventAt !== undefined ? { lastEventAt: s.lastEventAt } : {}),
     ...(s.model ? { model: s.model } : {}),
+    ...(s.effort ? { effort: s.effort } : {}),
   }
 }
 
