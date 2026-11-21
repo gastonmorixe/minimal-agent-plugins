@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import {
   buildTitleInput,
   capInput,
@@ -15,6 +17,9 @@ import {
   stripMaTags,
   wrapSession,
 } from "./input.ts"
+
+/** The real codec (`tests/support/sideband.ts`): it strips the internal tags. */
+const sb = await pluginSideband()
 
 /** A text of `n` code points: "0123456789" repeated. */
 function digits(n: number): string {
@@ -74,22 +79,22 @@ describe("capInput", () => {
 describe("cleanPromptText", () => {
   test("removes paired <ma::…> tags with content", () => {
     expect(
-      cleanPromptText('fix the bug <ma::agent::policy x="1">secret</ma::agent::policy> now'),
+      cleanPromptText('fix the bug <ma::agent::policy x="1">secret</ma::agent::policy> now', sb),
     ).toBe("fix the bug  now")
   })
 
   test("removes self-closing and unpaired tags", () => {
-    expect(stripMaTags('a <ma::agent::raw-output path="p" /> b </ma::x> c')).toBe("a  b  c")
+    expect(stripMaTags('a <ma::agent::raw-output path="p" /> b </ma::x> c', sb)).toBe("a  b  c")
   })
 
   test("collapses runs of blank lines and trims", () => {
-    expect(cleanPromptText("\n\none\n\n\n\n  \ntwo\r\n\r\n\r\nthree  \n")).toBe(
+    expect(cleanPromptText("\n\none\n\n\n\n  \ntwo\r\n\r\n\r\nthree  \n", sb)).toBe(
       "one\n\ntwo\n\nthree",
     )
   })
 
   test("keeps image placeholders", () => {
-    expect(cleanPromptText("see [Image #1] please")).toBe("see [Image #1] please")
+    expect(cleanPromptText("see [Image #1] please", sb)).toBe("see [Image #1] please")
   })
 })
 
@@ -118,7 +123,7 @@ describe("wrapSession / buildTitleInput", () => {
 
   test("pipeline: clean, then cap, then wrap", () => {
     const text = `<ma::agent::policy>x</ma::agent::policy>${"z".repeat(2500)}`
-    const out = buildTitleInput(text)
+    const out = buildTitleInput(text, sb)
     expect(out.startsWith("<session>\nzzz")).toBe(true)
     expect(out.endsWith(`z\n</session>\n\n${DEFAULT_LANGUAGE_LINE}`)).toBe(true)
     expect(out).toContain("[… 600 characters omitted …]")
@@ -128,20 +133,20 @@ describe("wrapSession / buildTitleInput", () => {
 
 describe("language line (same layout as Claude Code)", () => {
   test("exact user message for a short prompt, default and with a language", () => {
-    expect(buildTitleInput("what are the latest news?")).toBe(
+    expect(buildTitleInput("what are the latest news?", sb)).toBe(
       "<session>\nwhat are the latest news?\n</session>\n\n" +
         "Write the title in the main language of the text in <session>. " +
         "One word or code name in another language does not change it. " +
         "The language of these instructions does not change it.",
     )
-    expect(buildTitleInput("what are the latest news?", "Spanish")).toBe(
+    expect(buildTitleInput("what are the latest news?", sb, "Spanish")).toBe(
       "<session>\nwhat are the latest news?\n</session>\n\n" +
         "Write the title in Spanish. Keep technical terms and code names as they are.",
     )
   })
 
   test("only one language line, after the <session> block", () => {
-    const out = buildTitleInput("a </session> b", "Spanish")
+    const out = buildTitleInput("a </session> b", sb, "Spanish")
     expect(out.match(/Write the title in/g)).toHaveLength(1)
     expect(out.match(/<\s*\/?\s*session\b[^>]*>/gi)).toEqual(["<session>", "</session>"])
     expect(out.indexOf("</session>\n\nWrite the title in Spanish.")).toBeGreaterThan(0)

@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import { countWords, isUsableTitle, sanitizeTitle, validateTitleResult } from "./sanitize.ts"
+
+/** The real codec (`tests/support/sideband.ts`): it strips the internal tags. */
+const sb = await pluginSideband()
 
 describe("sanitizeTitle", () => {
   const table: Array<[string, string, string]> = [
@@ -26,7 +31,7 @@ describe("sanitizeTitle", () => {
   ]
   for (const [name, raw, want] of table) {
     test(name, () => {
-      expect(sanitizeTitle(raw)).toBe(want)
+      expect(sanitizeTitle(raw, sb)).toBe(want)
     })
   }
 })
@@ -62,7 +67,7 @@ describe("isUsableTitle", () => {
 describe("validateTitleResult", () => {
   test("ok on end_turn + string title", () => {
     expect(
-      validateTitleResult({ stopReason: "end_turn", json: { title: '"fix login bug."' } }),
+      validateTitleResult({ stopReason: "end_turn", json: { title: '"fix login bug."' } }, sb),
     ).toEqual({
       ok: true,
       title: "Fix login bug",
@@ -71,7 +76,7 @@ describe("validateTitleResult", () => {
 
   for (const stop of ["max_tokens", "refusal", "timeout", "aborted", "error", undefined]) {
     test(`stopReason ${String(stop)} → failure`, () => {
-      const r = validateTitleResult({ stopReason: stop, json: { title: "Fix login bug" } })
+      const r = validateTitleResult({ stopReason: stop, json: { title: "Fix login bug" } }, sb)
       expect(r.ok).toBe(false)
       if (!r.ok) expect(r.reason).toBe("stop-reason")
     })
@@ -79,21 +84,27 @@ describe("validateTitleResult", () => {
 
   test("title not a string → failure", () => {
     for (const json of [{ title: 3 }, {}, null, "Fix", ["Fix"], undefined]) {
-      const r = validateTitleResult({ stopReason: "end_turn", json })
+      const r = validateTitleResult({ stopReason: "end_turn", json }, sb)
       expect(r).toEqual({ ok: false, reason: "not-string" })
     }
   })
 
   test("unusable after sanitize → failure", () => {
-    const long = validateTitleResult({ stopReason: "end_turn", json: { title: "x".repeat(81) } })
+    const long = validateTitleResult(
+      { stopReason: "end_turn", json: { title: "x".repeat(81) } },
+      sb,
+    )
     expect(long.ok).toBe(false)
     if (!long.ok) expect(long.reason).toBe("unusable")
-    const empty = validateTitleResult({ stopReason: "end_turn", json: { title: "  .  " } })
+    const empty = validateTitleResult({ stopReason: "end_turn", json: { title: "  .  " } }, sb)
     expect(empty.ok).toBe(false)
-    const tagsOnly = validateTitleResult({
-      stopReason: "end_turn",
-      json: { title: "<ma::x>y</ma::x>" },
-    })
+    const tagsOnly = validateTitleResult(
+      {
+        stopReason: "end_turn",
+        json: { title: "<ma::x>y</ma::x>" },
+      },
+      sb,
+    )
     expect(tagsOnly.ok).toBe(false)
   })
 })
