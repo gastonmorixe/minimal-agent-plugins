@@ -58,8 +58,24 @@ export interface SidebandParseOptions {
   legacyText?: boolean
 }
 
-/** Re-export of the streaming scanner options type (kinds, codeAware, hold limits). */
-export type StreamScanOptions = SB.StreamScanOptions
+/**
+ * Streaming scanner options: the plugin-api type (kinds, codeAware, hold
+ * limits), plus `strictV1` here so the codec builds with a core pin that has
+ * no `strictV1` yet.
+ */
+export type StreamScanOptions = SB.StreamScanOptions & {
+  /**
+   * The grammar of the old core TagScanner (the core stream sets it). Only the
+   * exact opener `<ma::emit::NAME` (NAME of `[A-Za-z0-9_-]`, as written, no
+   * registry lookup) and its exact end part `</ma::emit::NAME>` make a node.
+   * Attributes: `KEY="v"` or `KEY='v'` with no space around `=`, no space
+   * needed between two attributes, `<` allowed in a value, the last duplicate
+   * wins, escapes `\n \t \\ \" \'` and any other `\c` gives `c`, no entity
+   * decode. The body is the raw text. `kinds` limits the names. The v1 escape
+   * is on. No open-part hold limit unless `maxOpenUnits` is set. Default false.
+   */
+  strictV1?: boolean
+}
 
 /** Streaming scanner made by a codec. */
 export interface StreamScanner {

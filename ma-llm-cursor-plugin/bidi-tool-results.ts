@@ -10,6 +10,9 @@ import type {
   ToolResultBlock,
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { SidebandApi, SidebandNode } from "@minimal-agent/core/plugin-api/types/sideband"
+
+import { cursorBidiLog } from "./bidi-debug.ts"
 
 /** Collect trailing tool_result blocks from the latest user message(s). */
 export function extractTrailingToolResults(messages: CanonicalMessage[]): ToolResultBlock[] {
@@ -68,16 +71,40 @@ export function extractTrailingFollowUpUserText(messages: CanonicalMessage[]): s
   return joined.length > 0 ? joined : null
 }
 
+/** The kind of the Task board node. The strip step keeps its data as an OK line. */
+const TASKS_KIND = "tasks"
+
+let warnedNoSideband = false
+
+/** Log one time that the strip step has no sideband codec (debug channel). */
+function noteNoSideband(): void {
+  if (warnedNoSideband) return
+  warnedNoSideband = true
+  cursorBidiLog("tool-result.no-sideband", "no sideband codec: tool result text sent unchanged")
+}
+
 /**
- * Turn legacy `<ma::agent::tasks …>` attr lists into a plain OK line.
- * Used when older Task payloads (pre MA-39298 plain-text) still wrap content
- * in harness tags that this stripper must not delete.
+ * True when the strip step removes a node of `kind`: a to-model kind that is
+ * not a system section, or a kind that no plugin declares.
  */
-export function tasksAttrsToOkLine(attrs: string): string {
-  const get = (name: string): string | undefined => {
-    const m = new RegExp(`\\b${name}="([^"]*)"`, "i").exec(attrs)
-    return m?.[1]
-  }
+function removable(sb: SidebandApi, kind: string): boolean {
+  const info = sb.kindInfo(kind)
+  return info === undefined || (info.direction === "to-model" && info.placement !== "system")
+}
+
+/** True when `sb` can read the harness tags. */
+const canRead = (sb: SidebandApi | undefined): sb is SidebandApi => sb?.ready === true
+
+/**
+ * Turn the attributes of an old Task board node into a plain OK line.
+ * Used when older Task payloads (pre MA-39298 plain-text) still wrap content
+ * in a harness tag that this stripper must not delete.
+ *
+ * @param attrs - The node attributes as written (`SidebandNode.attrs`).
+ */
+export function tasksAttrsToOkLine(attrs: Readonly<Record<string, string>>): string {
+  const get = (name: string): string | undefined =>
+    Object.hasOwn(attrs, name) ? attrs[name] : undefined
   const result = (get("result") ?? "ok").trim() || "ok"
   const parts: string[] = [`OK ${result}`]
   const action = get("action")
@@ -97,45 +124,45 @@ export function tasksAttrsToOkLine(attrs: string): string {
   return parts.join(" ")
 }
 
+/** The plain text of a Task board node: the OK line, then the rows of its body. */
+function tasksNodeText(text: string, n: SidebandNode): string {
+  const head = tasksAttrsToOkLine(n.attrs)
+  if (n.selfClosing) return head
+  // The body as written (the codec decodes `n.body`; the old path kept the raw text).
+  const raw = n.open && n.close ? text.slice(n.open.end, n.close.start) : (n.body ?? "")
+  const inner = raw.replace(/^\n+|\n+$/g, "")
+  return inner.length > 0 ? `${head}\n${inner}` : head
+}
+
 /**
  * Remove MA harness annotations before sending tool output to Cursor's wire.
  *
- * `ma::agent::tasks` is special: Task historically wrapped model-facing
- * payloads in that tag, so a full delete emptied every Task tool_result
- * (MA-39298). Unwrap / convert tasks tags to plain text; still strip other
- * harness chrome (mode-active, raw-output, short-term-memory, …).
+ * The session sideband API reads the nodes. Each node of a to-model kind
+ * goes, and each node of a kind that no plugin declares (an old harness tag
+ * of a resumed session). A from-model kind and a system kind (a prompt
+ * section) stay. The Task board kind is special: Task historically wrapped
+ * model-facing payloads in that node, so a full delete emptied every Task
+ * tool_result (MA-39298). Its node becomes an OK line and its rows.
+ *
+ * With no codec (`sb` absent or not ready) the text does not change: no
+ * parser can find a tag, and a guess can delete tool output. The plugin logs
+ * this one time on its debug channel.
+ *
+ * @param text - The tool result text.
+ * @param sb - The session sideband API (`RunContext.sideband`).
  */
-export function stripMaAgentWireAnnotations(text: string): string {
-  let out = text
-  // Paired tasks: keep columnar body, promote attrs to an OK header line.
-  out = out.replace(
-    /<ma::agent::tasks\b([^>]*)>([\s\S]*?)<\/ma::agent::tasks>/gi,
-    (_m, attrs: string, body: string) => {
-      const head = tasksAttrsToOkLine(attrs)
-      const inner = body.replace(/^\n+|\n+$/g, "")
-      return inner.length > 0 ? `${head}\n${inner}` : head
-    },
-  )
-  // Self-closing tasks acks → plain OK line (never delete).
-  out = out.replace(/<ma::agent::tasks\b([^>]*)\/>/gi, (_m, attrs: string) =>
-    tasksAttrsToOkLine(attrs),
-  )
-  // Other paired tags (output-preview, short-term-memory, …).
-  out = out.replace(/<ma::agent::([a-z0-9-]+)\b[^>]*>[\s\S]*?<\/ma::agent::\1>/gi, "")
-  // Other self-closing tags (mode-active, raw-output, mode-change, …).
-  out = out.replace(/<ma::agent::[^>]+\/>/g, "")
+export function stripMaAgentWireAnnotations(text: string, sb: SidebandApi | undefined): string {
+  if (!canRead(sb)) {
+    noteNoSideband()
+    return text
+  }
+  const out = sb.replace(text, (n) => {
+    // A kind that the model writes, or a prompt section, is data here: keep it.
+    if (!removable(sb, n.kind)) return undefined
+    return n.kind === TASKS_KIND ? tasksNodeText(text, n) : ""
+  })
   return out.replace(/\n{3,}/g, "\n\n").trim()
 }
-
-/** True when `text` holds a harness opener or closer. Case-insensitive: the strip regexes use the i flag. */
-const hasHarnessLiteral = (text: string): boolean => /<\/?ma::agent::/i.test(text)
-
-/** True when the strip step deletes ALL of `text`, white space included (no trim hides a leftover). */
-const stripsToNothing = (text: string): boolean =>
-  stripMaAgentWireAnnotations(`\u0001${text}\u0001`) === "\u0001\u0001"
-
-/** Start of a harness closing tag. */
-const MA_AGENT_CLOSER_PREFIX = "</ma::agent::"
 
 /** Core kinds that hold plain text, with the prefix that the text must have. */
 const PLAIN_TEXT_KINDS: Readonly<Record<string, string>> = {
@@ -143,29 +170,32 @@ const PLAIN_TEXT_KINDS: Readonly<Record<string, string>> = {
   "output-streak": "[note:",
 }
 
+/** True when the lenient reader of the codec finds no tag part in `text` (also a broken one). */
+const noTagPart = (text: string, sb: SidebandApi): boolean =>
+  sb.strip(text, { lenient: true }) === text
+
 /**
  * Model-facing text of a tool_result from its stored `outcome`, or `undefined`
  * when the old path must run. The old path joins the text blocks with `"\n"` and
  * strips the harness tags. This function gives the SAME bytes as the old path
  * in every case where it returns a string. The result is the body, then the
  * plain-text annotations (`[truncated: ...]`, `[note: ...]`) in append order,
- * each after `"\n\n"`. Tag annotations are not added: the strip regex deletes them.
+ * each after `"\n\n"`. Tag annotations are not added: the strip step deletes them.
  *
  * Returns `undefined` (old path) unless ALL of these rules hold:
- * - (a) `block.outcome` is set and `viewPersistedOutcome` gives a view.
+ * - (a) `block.outcome` is set and `viewPersistedOutcome` gives a view, and
+ *   `sb` can read tags.
  * - (b) At most one text block has text. If one has, it is the FIRST text
  *   block, because the stored offsets refer to the first text block only.
  * - (c) The stored spans tile the text: the body, then each annotation, with
  *   nothing after the last annotation (so the content was not edited).
- * - (d) The body has no harness opener or closer (`<ma::agent::` or
- *   `</ma::agent::`), in any letter case, so the strip regex finds no tag
- *   in the body (a tag opener in the body can swallow the text after it).
+ * - (d) The lenient reader finds no tag part in the body (also a broken or
+ *   upper-case one), so the strip step finds no node in the body.
  * - (e) Each annotation is of a core kind. A plain-text kind
- *   (`output-truncated`, `output-streak`) has the right prefix and no harness
- *   opener or closer (any letter case). A tag kind starts with `<ma::agent::`
- *   (any letter case). The strip step must remove ALL of its text, with no white
- *   space left (no trim hides a leftover), and it has no closer inside it
- *   except as its last text.
+ *   (`output-truncated`, `output-streak`) has the right prefix and no tag
+ *   part. A tag kind is exactly one node of the full text, of the same kind,
+ *   and the lenient reader also removes all of its text. The full text has
+ *   no other node, so the strip step removes the tag annotations only.
  * - (f) Each gap between two spans is `"\n\n"` or `"\n"`, and the newlines before
  *   each plain-text annotation (gaps of the tag annotations before it
  *   included) are at least two, and exactly `"\n\n"` when no tag lies between.
@@ -173,11 +203,15 @@ const PLAIN_TEXT_KINDS: Readonly<Record<string, string>> = {
  *   (the strip step trims it in both paths).
  *
  * @param block - The tool_result block.
+ * @param sb - The session sideband API (`RunContext.sideband`).
  * @returns The text before the strip step, or `undefined` for the old path.
  */
-export function outcomeWireText(block: ToolResultBlock): string | undefined {
+export function outcomeWireText(
+  block: ToolResultBlock,
+  sb: SidebandApi | undefined,
+): string | undefined {
   // (a)
-  if (block.outcome === undefined) return undefined
+  if (block.outcome === undefined || !canRead(sb)) return undefined
   const view = viewPersistedOutcome(block.content, block.outcome)
   if (view === undefined) return undefined
 
@@ -192,7 +226,11 @@ export function outcomeWireText(block: ToolResultBlock): string | undefined {
   if ((last === undefined ? view.bodyEnd : last.end) !== view.text.length) return undefined
 
   // (d)
-  if (hasHarnessLiteral(view.body)) return undefined
+  if (!noTagPart(view.body, sb)) return undefined
+
+  // (e) Each node of the full text, in text order. Each must be a tag annotation.
+  const nodes = sb.find(view.text)
+  let nodeAt = 0
 
   let out = view.body
   let previousEnd = view.bodyEnd
@@ -211,19 +249,17 @@ export function outcomeWireText(block: ToolResultBlock): string | undefined {
     if (!(CORE_ANNOTATION_KINDS as readonly string[]).includes(a.kind)) return undefined
     const prefix = PLAIN_TEXT_KINDS[a.kind]
     if (prefix === undefined) {
-      if (!/^<ma::agent::/i.test(a.text)) return undefined
-      if (!stripsToNothing(a.text)) return undefined
-      // A closer is allowed only as the last text of the annotation.
-      const closer = a.text.indexOf(MA_AGENT_CLOSER_PREFIX)
-      if (closer !== -1) {
-        const close = a.text.indexOf(">", closer)
-        if (close !== a.text.length - 1) return undefined
-        if (a.text.indexOf(MA_AGENT_CLOSER_PREFIX, closer + 1) !== -1) return undefined
-      }
+      const n = nodes[nodeAt++]
+      if (n === undefined || n.kind !== a.kind) return undefined
+      if (n.span.start !== a.start || n.span.end !== a.end) return undefined
+      if (sb.kindInfo(n.kind) === undefined || !removable(sb, n.kind)) return undefined
+      // Only the name as the codec writes it (an upper-case name is not a harness write).
+      if (n.legacyQname !== undefined && n.legacyQname !== sb.name(n.kind)) return undefined
+      if (sb.strip(a.text, { lenient: true }) !== "") return undefined
       sawTag = true
       continue
     }
-    if (!a.text.startsWith(prefix) || hasHarnessLiteral(a.text)) return undefined
+    if (!a.text.startsWith(prefix) || !noTagPart(a.text, sb)) return undefined
     // (f) join
     if (!blankLead && (newlines < 2 || (!sawTag && gap !== "\n\n"))) return undefined
     out += `\n\n${a.text}`
@@ -231,19 +267,26 @@ export function outcomeWireText(block: ToolResultBlock): string | undefined {
     newlines = 0
     sawTag = false
   }
+  // (e) no node outside the tag annotations
+  if (nodeAt !== nodes.length) return undefined
   return out
 }
 
-/** Flatten tool_result content to a single string for McpSuccess.content. */
-export function toolResultToWireText(block: ToolResultBlock): string {
-  const fromOutcome = outcomeWireText(block)
+/**
+ * Flatten tool_result content to a single string for McpSuccess.content.
+ *
+ * @param block - The tool_result block.
+ * @param sb - The session sideband API (`RunContext.sideband`).
+ */
+export function toolResultToWireText(block: ToolResultBlock, sb: SidebandApi | undefined): string {
+  const fromOutcome = outcomeWireText(block, sb)
   if (fromOutcome !== undefined) {
-    return stripMaAgentWireAnnotations(fromOutcome) || "(empty tool result)"
+    return stripMaAgentWireAnnotations(fromOutcome, sb) || "(empty tool result)"
   }
   const parts: string[] = []
   for (const c of block.content) {
     if (c.type === "text" && c.text) parts.push(c.text)
   }
   const joined = parts.join("\n") || "(empty tool result)"
-  return stripMaAgentWireAnnotations(joined) || "(empty tool result)"
+  return stripMaAgentWireAnnotations(joined, sb) || "(empty tool result)"
 }

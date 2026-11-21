@@ -270,7 +270,7 @@ export const openaiAdapter: ProviderAdapter &
     })
     return {
       kind: "remote" as const,
-      replacementMessages: compactOutputToMessages(output),
+      replacementMessages: compactOutputToMessages(output, ctx.sideband),
       rawOutput: output,
     }
   },
