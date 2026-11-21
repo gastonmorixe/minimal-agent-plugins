@@ -19,6 +19,8 @@ import {
   sseBodyFromEvents,
 } from "@minimal-agent/core/testing/provider-fixture"
 
+import { pluginSideband } from "../support/sideband.ts"
+
 import type { CoreExtra, Scenario, ScenarioCtx } from "./harness.ts"
 
 const bash = (command: string) => ({ name: "Bash", input: { command } })
@@ -56,7 +58,7 @@ const storeDeps = ({ root, cwd }: { root: string; cwd: string }): CoreExtra => (
 
 /** Load the saved transcript and make a new core that starts from it. */
 async function resumeCore(ctx: ScenarioCtx): Promise<ScenarioCtx["core"]> {
-  const loaded = loadSession(SID, sessionDir(ctx.root))
+  const loaded = loadSession(SID, sessionDir(ctx.root), { sideband: await pluginSideband() })
   const next = await ctx.newCore({
     store: SessionStore.open({
       sid: SID,
@@ -296,7 +298,8 @@ const resumeToolResults = (name: string, withOutcome: boolean): Scenario => ({
     }
     if (results !== 1) throw new Error(`${name}: expected 1 tool_result record, got ${results}`)
     writeFileSync(path, `${rows.map((r) => JSON.stringify(r)).join("\n")}\n`)
-    const restored = loadSession(SID, sessionDir(ctx.root)).messages.flatMap((m) =>
+    const sideband = await pluginSideband()
+    const restored = loadSession(SID, sessionDir(ctx.root), { sideband }).messages.flatMap((m) =>
       Array.isArray(m.content) ? m.content : [],
     )
     const block = restored.find((b) => b.type === "tool_result") as

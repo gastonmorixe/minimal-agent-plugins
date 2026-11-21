@@ -190,13 +190,54 @@ function wantsCacheDiagnosis(req: CanonicalRequest, authKind: ProviderAuth["kind
 }
 
 /**
- * Our sideband / reminder blocks: the equivalent of CC's `isMeta` messages.
- * CC keeps reminders and attachments-as-context in separate meta user
- * messages; we inline them as `<ma::…>` / `<system-reminder>` text blocks.
+ * Fallback meta test for a text block with NO sideband mark (design step 12).
+ * The provider request context has no sideband API, so this text test stays
+ * for unmarked blocks: old history, and the text blocks that core does not
+ * mark yet (session context, turn attachments). The mark decides first.
  */
-function isMetaText(text: string): boolean {
+function isUnmarkedMetaText(text: string): boolean {
   const t = text.trimStart()
   return t.startsWith("<ma::") || t.startsWith("<system-reminder>")
+}
+
+/**
+ * Our sideband / reminder blocks: the equivalent of CC's `isMeta` messages.
+ * CC keeps reminders and attachments-as-context in separate meta user
+ * messages; we inline them as text blocks. A block with a sideband mark
+ * (`sideband.kind` on the canonical block, read before the wire body is made)
+ * is meta. A block with no mark uses {@link isUnmarkedMetaText}.
+ */
+function isMetaText(text: string, block?: object, marked?: ReadonlySet<object>): boolean {
+  if (block !== undefined && marked?.has(block) === true) return true
+  return isUnmarkedMetaText(text)
+}
+
+/**
+ * The wire text blocks whose canonical block has a sideband mark. The wire
+ * messages map one to one from the canonical messages. A message whose block
+ * count changed on the way (a dropped block) gives no mark: the text
+ * fallback decides for it.
+ *
+ * @param req - The canonical request that the body was built from.
+ * @param body - The wire body.
+ * @returns The marked wire blocks (by identity).
+ */
+export function markedWireBlocks(
+  req: Pick<CanonicalRequest, "messages">,
+  body: Pick<AnthropicRequestBody, "messages">,
+): ReadonlySet<object> {
+  const marked = new Set<object>()
+  if (req.messages.length !== body.messages.length) return marked
+  body.messages.forEach((wire, i) => {
+    const canon = req.messages[i]
+    if (canon === undefined || typeof wire.content === "string") return
+    if (canon.content.length !== wire.content.length) return
+    wire.content.forEach((b, j) => {
+      const c = canon.content[j]
+      if (b.type === "text" && c?.type === "text" && c.sideband !== undefined) marked.add(b)
+    })
+  })
+  return marked
 }
 
 /**
@@ -207,15 +248,21 @@ function isMetaText(text: string): boolean {
  * blocks before the prompt are skipped (on the wire CC's meta messages sit in
  * messages[0] before the prompt: 6 D captures, e.g. fetch-005 "hello 2" → f16).
  * A first real message with no text (image-only) yields "", like CC.
+ *
+ * @param messages - The wire messages.
+ * @param marked - The wire blocks with a sideband mark ({@link markedWireBlocks}).
  */
-export function firstUserPromptText(messages: AnthropicRequestBody["messages"]): string {
+export function firstUserPromptText(
+  messages: AnthropicRequestBody["messages"],
+  marked?: ReadonlySet<object>,
+): string {
   for (const msg of messages) {
     if (msg.role !== "user") continue
     if (typeof msg.content === "string") {
       if (isMetaText(msg.content)) continue
       return msg.content
     }
-    const real = msg.content.filter((b) => !(b.type === "text" && isMetaText(b.text)))
+    const real = msg.content.filter((b) => !(b.type === "text" && isMetaText(b.text, b, marked)))
     if (real.length === 0) continue
     const text = real.find((b) => b.type === "text")
     return text?.type === "text" ? text.text : ""
@@ -228,12 +275,12 @@ export function firstUserPromptText(messages: AnthropicRequestBody["messages"]):
  * prompt (the system-prompt seam has no messages, so it renders the "" hash).
  * Only touches system[0] when it is our billing header with the default hash.
  */
-function applyBillingPromptHash(body: AnthropicRequestBody): void {
+function applyBillingPromptHash(body: AnthropicRequestBody, marked?: ReadonlySet<object>): void {
   const block = body.system?.[0]
   if (!block?.text.startsWith("x-anthropic-billing-header:")) return
   const stale = `cc_version=${VERSION}.${BUILD_HASH};`
   if (!block.text.includes(stale)) return
-  const fresh = `cc_version=${VERSION}.${buildHashFor(firstUserPromptText(body.messages))};`
+  const fresh = `cc_version=${VERSION}.${buildHashFor(firstUserPromptText(body.messages, marked))};`
   body.system![0] = { ...block, text: block.text.replace(stale, fresh) }
 }
 
@@ -573,7 +620,8 @@ export const anthropicAdapter: ProviderAdapter & {
       } else if (!betaFlags.includes(ANTHROPIC_BETA_FLAGS.CACHE_DIAGNOSIS)) {
         delete body.diagnostics
       }
-      if (auth.kind === "oauth") applyBillingPromptHash(body)
+      // The block marks come from the canonical blocks (they never reach the wire).
+      if (auth.kind === "oauth") applyBillingPromptHash(body, markedWireBlocks(wireReq, body))
       applyWireExtras(body, betaFlags, auth, ctx.sessionId)
       const serialized = JSON.stringify(body)
 

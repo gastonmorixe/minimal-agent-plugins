@@ -21,12 +21,15 @@ import type {
   NetworkResponse,
 } from "@minimal-agent/core/plugin-api/net/types"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import {
   _resetCacheDiagnosisForTest,
   _resetGzipRejectedForTest,
   anthropicAdapter,
   bootstrapAnthropic,
   firstUserPromptText,
+  markedWireBlocks,
 } from "./adapter.ts"
 import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
@@ -256,6 +259,82 @@ describe("billing cc_version hash from the first user prompt (diff A9)", () => {
     // Real CC capture: prompt "hello 2" → cc_version=2.1.325.f16 (D/…fetch-005-02).
     expect(sys0).toContain(`cc_version=${VERSION}.f16;`)
     expect(VERSION).toBe("2.1.325")
+  })
+
+  it("skips a marked first block that is not a tag (block mark decides, design step 12)", async () => {
+    const { client, seen } = recorder()
+    const req = conversation()
+    req.messages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "notice text with no tag", sideband: { kind: "policy" } },
+          { type: "text", text: "hello 2" },
+        ],
+      },
+    ]
+    await run(req, client)
+    expect(bodyOf(seen[0]).system[0].text as string).toContain(`cc_version=${VERSION}.f16;`)
+    // The mark is metadata only: it never reaches the wire.
+    expect(JSON.stringify(bodyOf(seen[0]).messages)).not.toContain('"sideband"')
+  })
+
+  it("old history: a first block that starts with a tag and has no mark stays meta", async () => {
+    // Documented result: an unmarked block (a session log from before the
+    // mark, or a block that core does not mark yet) uses the text fallback.
+    // The hash is the same as before step 12: the tag block is skipped and
+    // the next text block ("hello 2") gives the hash.
+    const sb = await pluginSideband()
+    const tag = sb.render("policy", { body: "Current local time: x" })
+    expect(tag.length).toBeGreaterThan(0)
+    const { client, seen } = recorder()
+    const req = conversation()
+    req.messages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: tag },
+          { type: "text", text: "hello 2" },
+        ],
+      },
+    ]
+    await run(req, client)
+    expect(bodyOf(seen[0]).system[0].text as string).toContain(`cc_version=${VERSION}.f16;`)
+    const wire = [
+      {
+        role: "user" as const,
+        content: [
+          { type: "text" as const, text: tag },
+          { type: "text" as const, text: "hello 2" },
+        ],
+      },
+    ]
+    expect(firstUserPromptText(wire)).toBe("hello 2")
+    expect(firstUserPromptText(wire, new Set())).toBe("hello 2")
+  })
+
+  it("markedWireBlocks maps the canonical marks to the wire blocks", () => {
+    const wireA = { type: "text" as const, text: "a" }
+    const wireB = { type: "text" as const, text: "b" }
+    const canon = (marks: boolean[]) => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: marks.map((m, i) => ({
+            type: "text" as const,
+            text: String(i),
+            ...(m ? { sideband: { kind: "policy" } } : {}),
+          })),
+        },
+      ],
+    })
+    const body = { messages: [{ role: "user" as const, content: [wireA, wireB] }] }
+    const marked = markedWireBlocks(canon([true, false]), body)
+    expect(marked.has(wireA)).toBe(true)
+    expect(marked.has(wireB)).toBe(false)
+    expect(firstUserPromptText(body.messages, marked)).toBe("b")
+    // A block count that changed on the way gives no mark (text fallback).
+    expect(markedWireBlocks(canon([true]), body).size).toBe(0)
   })
 
   it("leaves the billing header alone for api-key auth", async () => {

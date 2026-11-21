@@ -92,14 +92,17 @@ export function mapQname(qname: string, ctx: ParseContext): string | undefined {
   return hit ?? lower
 }
 
-function formOf(qname: string): SidebandNode["form"] {
+/** The wire form of a qname: `v1` (`ma::`), `v2` (`ma:`) or `v1-bare`. */
+export function formOf(qname: string): SidebandNode["form"] {
   if (qname.slice(0, 4).toLowerCase() === "ma::") return "v1"
   return qname.slice(0, 3).toLowerCase() === "ma:" ? "v2" : "v1-bare"
 }
 
-type Attrs = Map<string, string>
+/** Attribute values of a start part, in source order. */
+export type Attrs = Map<string, string>
 
-type OpenResult =
+/** Result of {@link readOpen}. */
+export type OpenResult =
   | { status: "ok"; attrs: Attrs; end: number; empty: boolean }
   | { status: "none" }
   | { status: "incomplete" }
@@ -110,7 +113,13 @@ function skipWs(text: string, from: number): number {
   return i
 }
 
-function readOpen(text: string, from: number, form: SidebandNode["form"], bs: boolean): OpenResult {
+/** Read the attributes and the end of a start part, from the end of its qname. */
+export function readOpen(
+  text: string,
+  from: number,
+  form: SidebandNode["form"],
+  bs: boolean,
+): OpenResult {
   const attrs: Attrs = new Map()
   let j = from
   if (j >= text.length) return { status: "incomplete" }

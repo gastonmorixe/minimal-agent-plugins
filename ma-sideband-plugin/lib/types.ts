@@ -91,4 +91,18 @@ export interface SidebandCodec {
   name?(kind: SidebandKind): string
   /** Start of the annotation region at the end of `text`, or `text.length`. */
   trailingStart?(text: string): number
+  /** Remove complete nodes and broken tag parts (see `lenient.ts`). */
+  stripLenient?(text: string, opts?: SidebandStripLenientOptions): string
+  /** The node at the first non-space character of `text`, also a start part only. */
+  leadingNode?(text: string): SidebandNode | undefined
+}
+
+/** Options of a codec `stripLenient` call. */
+export interface SidebandStripLenientOptions {
+  /** Only parts of these kinds. Default: each name that the codec maps to a kind. */
+  kinds?: readonly string[]
+  /** True: remove only the tag parts, and keep the body text. Default false. */
+  keepBody?: boolean
+  /** The text that replaces each removed part or node. Default `""`. */
+  replacement?: string
 }
