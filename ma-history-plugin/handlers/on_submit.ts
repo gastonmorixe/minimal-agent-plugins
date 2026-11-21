@@ -1,8 +1,12 @@
 /**
- * `prompt.submitted` event handler.
+ * `editor.submitted` event handler.
  *
- * Subscribed via `manifest.events`. Called once per user submit with
- * `{text, cwd, sid, exit, queuePos}`. We:
+ * Subscribed via `manifest.events`. Called once for each line that the user
+ * submits in the editor, with `{text, cwd, sid, submittedAt}` (the raw typed
+ * line, before slash-command dispatch or expansion). The plugin does NOT
+ * listen to `prompt.submitted`: that is a queue event for any origin
+ * (intercom, sub-agent, cron, background, expanded commands, recovery), and
+ * history must hold only what the user typed. We:
  *
  *   1. Build a fresh {@link HistoryEntry} stamped with the current
  *      time + a base36-millis-rand4hex id (matches memory plugin).
@@ -18,35 +22,37 @@
  * @module plugins/history/handlers/on_submit
  */
 
-import type { EventHandler, EventHandlerContext } from "../lib/host-types.ts"
+import type {
+  EditorSubmittedPayload,
+  EventHandler,
+  EventHandlerContext,
+} from "../lib/host-types.ts"
 import { recallFor } from "../lib/session.ts"
 import { appendBoth, buildEntry, isDisabled } from "../lib/store.ts"
 
 /**
- * Payload shape for `prompt.submitted`. Mirrors the emit site in
- * `src/agent.ts:runReplLiveArea#onSubmit`. We use a loose check at
- * runtime since the bus is untyped at the wire.
+ * Runtime check of the `editor.submitted` payload (the bus is untyped at the
+ * wire). `submittedAt` is the host submit time (ISO).
  */
-interface SubmittedPayload {
-  text: string
-  cwd: string
-  sid: string | null
-  exit?: "submitted" | "canceled"
-  queuePos?: number
-}
-
-function isPayload(v: unknown): v is SubmittedPayload {
+function isPayload(v: unknown): v is EditorSubmittedPayload {
   if (!v || typeof v !== "object") return false
   const o = v as Record<string, unknown>
   return (
     typeof o.text === "string" &&
     typeof o.cwd === "string" &&
-    (o.sid === null || typeof o.sid === "string")
+    (o.sid === null || typeof o.sid === "string") &&
+    typeof o.submittedAt === "string"
   )
 }
 
-const handler: EventHandler<SubmittedPayload> = async (
-  ctx: EventHandlerContext<SubmittedPayload>,
+/** The submit time of the payload, or `undefined` (then now) if it is not a valid date. */
+function submitTime(iso: string): Date | undefined {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? undefined : d
+}
+
+const handler: EventHandler<EditorSubmittedPayload> = async (
+  ctx: EventHandlerContext<EditorSubmittedPayload>,
 ) => {
   if (isDisabled()) return
   const payload = ctx.payload as unknown
@@ -54,7 +60,7 @@ const handler: EventHandler<SubmittedPayload> = async (
     ctx.log.warn("on_submit", `ignoring malformed payload ${JSON.stringify(payload)}`)
     return
   }
-  const { text, sid, exit } = payload
+  const { text, sid } = payload
   if (text.trim().length === 0) return
   // We use `ctx.cwd` (the agent's working directory) as the index key
   // for both the on-disk file AND the in-memory recall — not
@@ -63,12 +69,12 @@ const handler: EventHandler<SubmittedPayload> = async (
   // mismatches. The entry's `cwd` field still records `payload.cwd` as
   // an audit field — that's what the EMITTER observed.
   const recordCwd = typeof payload.cwd === "string" ? payload.cwd : ctx.cwd
-  const entry = buildEntry({
-    text,
-    cwd: recordCwd,
-    sid,
-    exit: exit === "canceled" ? "canceled" : "submitted",
-  })
+  const at = submitTime(payload.submittedAt)
+  // The host has no "canceled draft" submit path: each entry is `submitted`.
+  const entry = buildEntry(
+    { text, cwd: recordCwd, sid, exit: "submitted" },
+    at ? { now: () => at } : {},
+  )
   appendBoth(entry, {
     // The project file's path key is the AGENT's cwd (ctx.cwd), even
     // if payload.cwd differs (which only happens in tests). The entry

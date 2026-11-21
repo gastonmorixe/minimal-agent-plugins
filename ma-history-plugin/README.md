@@ -2,6 +2,10 @@
 
 Persistent ↑/↓ recall for the prompt editor (`❯ `). Submitted prompts are appended to two newline-delimited JSON files and recalled via arrow keys.
 
+History holds only what the user TYPED. The plugin subscribes to `editor.submitted` (permission `hooks:editor.submitted`): the host emits it once for each non-blank line that the user submits in the editor, with the raw text, before slash-command dispatch (so `/model x` is recorded as typed). It does NOT subscribe to `prompt.submitted`, which is a queue event for any origin: injected prompts (intercom, sub-agents, schedule, background jobs), expanded commands and skills, recovery retries and `/continue` never land in history. Headless (`-p`) prompts are not recorded.
+
+**Requires** a host that emits `editor.submitted`: the release after core 2c02521c / cli a044c77. On an older host the plugin records nothing and shows no warning (the manifest has no min-host-version field).
+
 This is a UX layer for the human user. **No model-facing surface, no tools, no inline tags, no PROMPT.md** the loader treats this plugin assilent in the system prompt.
 
 ## Key bindings

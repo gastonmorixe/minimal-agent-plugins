@@ -309,6 +309,25 @@ export type EventHandler<TPayload = unknown> = (
   ctx: EventHandlerContext<TPayload>,
 ) => void | Promise<void>
 
+/**
+ * Origin of the text in a `prompt.submitted` payload. Mirror of the host's
+ * `PromptSource`. `inject` = text from a `prompt.inject` emit (intercom,
+ * sub-agents, cron, background jobs, cloud). Absent on older hosts.
+ */
+export type PromptSource = "user" | "command" | "expand" | "recovery" | "continue" | "inject"
+
+/** Payload of the `prompt.submitted` event. Mirror of `PromptSubmittedPayload`, narrowed. */
+export interface PromptSubmittedPayload {
+  /** The prompt text (for `expand`, the expanded text). */
+  text: string
+  /** The working directory at submit time. */
+  cwd: string
+  /** The session id, or `null` when the host has no session yet. */
+  sid: string | null
+  /** Origin of the text. Absent on older hosts. */
+  source?: PromptSource
+}
+
 // ---------------------------------------------------------------------------
 // Hook handler context (editor.key, turn.willStart, ...)
 // ---------------------------------------------------------------------------
