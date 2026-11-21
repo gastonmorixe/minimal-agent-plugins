@@ -52,9 +52,6 @@
     "ma-interleave-thinking-plugin/manifest.json": {
       "prompt-file": 1
     },
-    "ma-llm-anthropic-plugin/adapter.ts": {
-      "tag-search": 2
-    },
     "ma-llm-cursor-plugin/bidi-tool-results.ts": {
       "tag-literal": 1,
       "tag-regex": 6,
