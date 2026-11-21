@@ -27,12 +27,9 @@ import { makeRegistry } from "../../ma-sideband-plugin/lib/testing.ts"
 
 const PLUGINS = resolve(import.meta.dir, "../..")
 const NO_DIR = join(PLUGINS, "tmp", "sideband-kinds-no-dir")
-const CORE_KINDS_CONTRACT = "sideband.kinds.core"
 
 interface Manifest {
   id: string
-  required?: boolean
-  provides?: string[]
   sideband?: Omit<SidebandKind, "owner">[]
 }
 
@@ -112,7 +109,10 @@ async function boot(
         }
         const src = ev.source ?? ""
         if (src.startsWith("sideband.") || src.includes("manifest")) {
-          warnings.push({ source: src, data: ev.structuredData ?? ev.diagnostic?.attrs ?? {} })
+          warnings.push({
+            source: src,
+            data: ev.structuredData ?? ev.diagnostic?.attrs ?? {},
+          })
         }
       },
       emergency: () => {},
@@ -120,7 +120,10 @@ async function boot(
       critical: () => {},
       error: () => {},
       warn: (source, _m, data) => {
-        warnings.push({ source, data: (data ?? {}) as Record<string, unknown> })
+        warnings.push({
+          source,
+          data: (data ?? {}) as Record<string, unknown>,
+        })
       },
       notice: () => {},
       info: () => {},
@@ -195,20 +198,25 @@ describe("sideband kinds of the plugin manifests (design 40 step 3)", () => {
     }
   })
 
-  test("only a required plugin with sideband.kinds.core declares a core annotation kind", () => {
-    const owners = all
-      .filter((m) => m.required === true && (m.provides ?? []).includes(CORE_KINDS_CONTRACT))
-      .map((m) => m.id)
-    expect(owners).toEqual(["ma-core-tools-plugin"])
-    const core = new Set<string>(CORE_ANNOTATION_KINDS)
+  test("each kind has exactly one owner, core annotation kinds included (D1 revised)", () => {
+    // No core-owned kind rule: any plugin can declare any kind and the first
+    // declaration wins. The manifests must still give 0 rejects, 0 name
+    // clashes and one owner for each kind.
+    expect(rejectedOf(warnings)).toEqual([])
+    const owners = new Map<string, string[]>()
     for (const m of all) {
-      for (const k of m.sideband ?? []) {
-        if (core.has(k.kind))
-          expect({ kind: k.kind, owner: m.id }).toEqual({
-            kind: k.kind,
-            owner: "ma-core-tools-plugin",
-          })
-      }
+      for (const k of m.sideband ?? []) owners.set(k.kind, [...(owners.get(k.kind) ?? []), m.id])
+    }
+    const multi = [...owners].filter(([, ids]) => ids.length !== 1)
+    expect(multi).toEqual([])
+    const registered = new Map(api.kinds().map((k) => [k.kind, k.owner] as const))
+    for (const [kind, ids] of owners)
+      expect({ kind, owner: registered.get(kind) }).toEqual({
+        kind,
+        owner: ids[0],
+      })
+    for (const kind of CORE_ANNOTATION_KINDS) {
+      if (owners.has(kind)) expect({ kind, n: owners.get(kind)?.length }).toEqual({ kind, n: 1 })
     }
   })
 
@@ -233,7 +241,12 @@ describe("sideband kinds of the plugin manifests (design 40 step 3)", () => {
   test("the read-only kinds plugins and tui-preview are to-model harness kinds", () => {
     for (const name of ["plugins", "tui-preview"]) {
       const k = api.kinds().find((x) => x.kind === name)
-      expect({ name, direction: k?.direction, trust: k?.trust, owner: k?.owner }).toEqual({
+      expect({
+        name,
+        direction: k?.direction,
+        trust: k?.trust,
+        owner: k?.owner,
+      }).toEqual({
         name,
         direction: "to-model",
         trust: "harness",
