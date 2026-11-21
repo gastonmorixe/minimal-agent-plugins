@@ -16,7 +16,7 @@ import {
   sessionId,
   subagentId,
 } from "./types.ts"
-import { blinkDot, blinkPhase, modelTag, renderWidget } from "./widget.ts"
+import { BLINK_FRAME_MS, blinkDot, blinkPattern, HEADER_BLINK, modelTag, renderWidget } from "./widget.ts"
 
 // The display tests below check styled bytes: install the test kit (S41).
 beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
@@ -186,25 +186,46 @@ describe("renderWidget", () => {
 })
 
 describe("renderWidget — blink", () => {
-  const records = [
-    rec("A1", "w", running({ tools: 1, tokens: 1 })), // char sum 114, even → phase 0
-    rec("A2", "w", running({ tools: 1, tokens: 1 })), // char sum 115, odd → phase 1
-  ]
+  const ids = ["A63", "A64", "A65"]
+  const records = ids.map((id) => rec(id, "w", running({ tools: 1, tokens: 1 })))
   const dots = (nowMs: number) =>
     lines(renderWidget(records, { ...OPTS, nowMs }))
-      .slice(0, 3)
+      .slice(0, 1 + ids.length)
       .map((l) => (l.match(/[●○]/) ?? [""])[0])
+  const t0 = Math.floor(NOW / 60_000) * 60_000 // a frame that all periods divide
 
-  it("alternates the dot each second, with a phase per row", () => {
-    expect(blinkPhase("A1")).toBe(0)
-    expect(blinkPhase("A2")).toBe(1)
-    const t0 = Math.floor(NOW / 2000) * 2000 // an even second
-    const a = dots(t0)
-    const b = dots(t0 + 1000)
-    expect(a).toEqual(["●", "●", "○"]) // header (phase 0), A1, A2
-    expect(b).toEqual(["○", "○", "●"])
-    // Inside one second, the frame does not change.
-    expect(dots(t0 + 999)).toEqual(a)
+  it("gives each id a stable pattern with a period of 2 to 5 frames", () => {
+    for (const id of ids) {
+      const p = blinkPattern(id)
+      expect(p).toEqual(blinkPattern(id))
+      expect(p.period).toBeGreaterThanOrEqual(2)
+      expect(p.period).toBeLessThanOrEqual(5)
+      expect(p.phase).toBeGreaterThanOrEqual(0)
+      expect(p.phase).toBeLessThan(p.period)
+    }
+  })
+
+  it("does not blink neighbor ids in step", () => {
+    // Over a long window, no two rows show the same sequence.
+    const seq = (i: number) =>
+      Array.from({ length: 60 }, (_, f) => dots(t0 + f * BLINK_FRAME_MS)[1 + i]).join("")
+    const all = ids.map((_, i) => seq(i))
+    expect(new Set(all).size).toBe(ids.length)
+    for (const s of all) {
+      expect(s).toContain("●")
+      expect(s).toContain("○")
+    }
+  })
+
+  it("keeps the header on a 2-frame cycle", () => {
+    expect(HEADER_BLINK).toEqual({ period: 2, phase: 0 })
+    const even = Math.floor(NOW / 2000) * 2000
+    expect(dots(even)[0]).toBe("●")
+    expect(dots(even + 1000)[0]).toBe("○")
+  })
+
+  it("does not change inside one frame", () => {
+    expect(dots(t0 + 999)).toEqual(dots(t0))
   })
 
   it("does not depend on tick", () => {
@@ -213,10 +234,10 @@ describe("renderWidget — blink", () => {
   })
 
   it("fades the on dot in truecolor when fade is set", () => {
-    const t0 = Math.floor(NOW / 2000) * 2000
-    expect(blinkDot(0, t0, true, true)).not.toBe(blinkDot(0, t0 + 900, true, true))
-    expect(blinkDot(0, t0 + 900, true, true)).toContain("\x1b[38;2;")
-    expect(blinkDot(0, t0 + 900, true, false)).not.toContain("\x1b[38;2;")
+    const t = Math.floor(NOW / 2000) * 2000
+    expect(blinkDot(HEADER_BLINK, t, true, true)).not.toBe(blinkDot(HEADER_BLINK, t + 900, true, true))
+    expect(blinkDot(HEADER_BLINK, t + 900, true, true)).toContain("\x1b[38;2;")
+    expect(blinkDot(HEADER_BLINK, t + 900, true, false)).not.toContain("\x1b[38;2;")
   })
 })
 

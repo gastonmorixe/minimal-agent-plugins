@@ -15,7 +15,8 @@
  *   Their counts go into one summary row at the bottom, together with
  *   `+N more` for the active workers that do not fit.
  * - The dot of a running row blinks `●` / `○`, one frame each second. The
- *   phase of a row comes from its id, so the rows do not blink together.
+ *   period (2 to 5 frames) and the phase of a row come from a hash of its id,
+ *   so the rows blink independently and do not stay in step.
  *   With `fade`, the `●` goes from the color to dim in {@link FADE_STEPS} steps.
  * - No row is wider than `columns - 1` cells.
  * - The widget is `null` (no lines) when no worker is active.
@@ -97,25 +98,53 @@ function mix(from: RGB, to: RGB, t: number): RGB {
   return [at(0), at(1), at(2)]
 }
 
-/** The blink phase of a row: a stable hash of the worker id (0 or 1). */
-export function blinkPhase(id: string): 0 | 1 {
-  let sum = 0
-  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i)
-  return sum % 2 === 0 ? 0 : 1
+/** The blink rhythm of a row: `period` frames per cycle, shifted by `phase` frames. */
+export interface BlinkPattern {
+  readonly period: number
+  readonly phase: number
+}
+
+/** The header dot: a plain on/off cycle of two frames. */
+export const HEADER_BLINK: BlinkPattern = { period: 2, phase: 0 }
+
+/** The cycle lengths (in frames) that a row can get. */
+const BLINK_PERIODS = [2, 3, 4, 5] as const
+
+/** FNV-1a hash of a string (32 bit). Ids that differ by one char get far values. */
+function fnv1a(text: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
 }
 
 /**
- * The blinking dot at `nowMs`. A row of phase `p` shows `●` while
- * `floor(nowMs / 1000) + p` is even, else `○`. With `fade` (and `ansi`), the
- * `●` goes from SKY to dim over its frame.
+ * The blink rhythm of a row, from a stable hash of the worker id. The period
+ * and the phase both come from the hash, so rows go in and out of step and do
+ * not blink together.
  */
-export function blinkDot(phase: 0 | 1, nowMs: number, ansi: boolean, fade: boolean): string {
-  const second = Math.floor(nowMs / BLINK_FRAME_MS)
-  const on = (second + phase) % 2 === 0
+export function blinkPattern(id: string): BlinkPattern {
+  const h = fnv1a(id)
+  const period = BLINK_PERIODS[h % BLINK_PERIODS.length] ?? 2
+  const phase = Math.floor(h / BLINK_PERIODS.length) % period
+  return { period, phase }
+}
+
+/**
+ * The blinking dot at `nowMs`. In each cycle of `period` frames, the first
+ * `ceil(period / 2)` frames show `●`, the others `○`. With `fade` (and `ansi`),
+ * the `●` goes from SKY to dim over its frame.
+ */
+export function blinkDot(pattern: BlinkPattern, nowMs: number, ansi: boolean, fade: boolean): string {
+  const frame = Math.floor(nowMs / BLINK_FRAME_MS)
+  const at = (((frame + pattern.phase) % pattern.period) + pattern.period) % pattern.period
+  const on = at < Math.ceil(pattern.period / 2)
   if (!on) return color(ansi, ANSI.SKY, GLYPHS.dotOff)
   const from = ansi && fade ? sgrToRgb(ANSI.SKY) : null
   if (!from) return color(ansi, ANSI.SKY, GLYPHS.dotOn)
-  const into = nowMs - second * BLINK_FRAME_MS
+  const into = nowMs - frame * BLINK_FRAME_MS
   const step = Math.min(FADE_STEPS - 1, Math.floor((into / BLINK_FRAME_MS) * FADE_STEPS))
   const [r, g, b] = mix(from, DIM_RGB, step / FADE_STEPS)
   return color(ansi, `\x1b[38;2;${r};${g};${b}m`, GLYPHS.dotOn)
@@ -231,7 +260,7 @@ function agentRow(r: SubagentRecord, tree: string, layout: Layout, opts: WidgetO
   }
 
   const p = s.progress
-  const dot = blinkDot(blinkPhase(r.id), nowMs, ansi, opts.fade === true)
+  const dot = blinkDot(blinkPattern(r.id), nowMs, ansi, opts.fade === true)
   const head = `${lead} ${dot} ${id} ${label} ${tagCol} ${el} `
   const idleMs = p.lastEventAt !== undefined ? nowMs - p.lastEventAt : 0
   // A tool call can run long legitimately, so only flag a silent stream
@@ -287,7 +316,7 @@ export function renderWidget(
   const sep = ` ${color(ansi, ANSI.DGRAY, GLYPHS.bullet)} `
 
   // Header: ● Fleet 3f2a · 2 running · 1 queued · 46 done · ... · <spend>
-  const dot = blinkDot(0, opts.nowMs, ansi, opts.fade === true)
+  const dot = blinkDot(HEADER_BLINK, opts.nowMs, ansi, opts.fade === true)
   const counts = [color(ansi, ANSI.SKY, `${stats.running} running`)]
   if (stats.queued > 0) counts.push(color(ansi, ANSI.DIM, `${stats.queued} queued`))
   if (stats.done > 0) counts.push(color(ansi, ANSI.LIME, `${stats.done} done`))
