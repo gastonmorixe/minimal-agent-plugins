@@ -9,6 +9,7 @@
 
 import type { CanonicalEvent } from "@minimal-agent/core/plugin-api/llm/canonical-events"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 import { cursorBidiLog } from "./bidi-debug.ts"
 import {
@@ -75,6 +76,11 @@ export type CursorBidiRunOpts = {
    * fetches earlier turn data with get_blob, so the store starts with them.
    */
   carryBlobs?: CursorBlobStore
+  /**
+   * The session sideband API (`RunContext.sideband`). The tool result text
+   * loses its harness tags with it. Absent: the text goes unchanged.
+   */
+  sideband?: SidebandApi
 }
 
 /**
@@ -261,7 +267,7 @@ async function* continueBidiSession(
     return
   }
 
-  const resultText = toolResultToWireText(match)
+  const resultText = toolResultToWireText(match, opts.sideband)
   const resultOpts = {
     id: pending.id,
     // Cursor's own client only sets ExecClientMessage.id + result oneof

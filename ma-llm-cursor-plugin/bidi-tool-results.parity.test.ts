@@ -14,24 +14,80 @@ import type {
 import { defaultCapabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import { stripUnsupportedModalities } from "@minimal-agent/core/plugin-api/llm/modality-check"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import {
   outcomeWireText,
   stripMaAgentWireAnnotations,
   toolResultToWireText,
 } from "./bidi-tool-results.ts"
 
-/** Frozen copy of the old path: join the text blocks with `"\n"`, strip the tags. */
-function legacyToolResultToWireText(block: ToolResultBlock): string {
+// The real codec and kinds: the strip step reads the tags with the session API.
+const sb = await pluginSideband()
+
+// Tags are built from parts: a source literal of a harness tag is stripped by Cursor tooling.
+const LT = String.fromCharCode(60)
+
+/**
+ * Frozen copy of the old strip step (plugins 276f390, before design step
+ * 12b): the regex reader of the harness tags. The product code reads the
+ * tags with the sideband API now; this copy is the byte oracle only. The
+ * sources are built from `LT`, as the tags of this file are.
+ */
+function frozenOldStrip(text: string): string {
+  const okLine = (attrs: string): string => {
+    const get = (name: string): string | undefined =>
+      new RegExp(`\\b${name}="([^"]*)"`, "i").exec(attrs)?.[1]
+    const result = (get("result") ?? "ok").trim() || "ok"
+    const parts: string[] = [`OK ${result}`]
+    const action = get("action")
+    if (action) parts.push(`action=${action}`)
+    const id = get("id")
+    if (id) parts.push(`id=#${id.replace(/^#/, "")}`)
+    const parentAuto = get("parent_auto_done")
+    if (parentAuto) parts.push(`parent_auto_done=#${parentAuto.replace(/^#/, "")}`)
+    const coerced = get("coerced")
+    if (coerced) parts.push(`coerced=${coerced}`)
+    const reason = get("reason")
+    if (reason) parts.push(`reason="${reason}"`)
+    for (const key of ["total", "done", "doing", "todo", "canceled"] as const) {
+      const v = get(key)
+      if (v !== undefined) parts.push(`${key}=${v}`)
+    }
+    return parts.join(" ")
+  }
+  const A = `${LT}ma::agent::`
+  const Z = `${LT}\\/ma::agent::`
+  let out = text
+  out = out.replace(
+    new RegExp(`${A}tasks\\b([^>]*)>([\\s\\S]*?)${Z}tasks>`, "gi"),
+    (_m, attrs: string, body: string) => {
+      const head = okLine(attrs)
+      const inner = body.replace(/^\n+|\n+$/g, "")
+      return inner.length > 0 ? `${head}\n${inner}` : head
+    },
+  )
+  out = out.replace(new RegExp(`${A}tasks\\b([^>]*)\\/>`, "gi"), (_m, attrs: string) =>
+    okLine(attrs),
+  )
+  out = out.replace(new RegExp(`${A}([a-z0-9-]+)\\b[^>]*>[\\s\\S]*?${Z}\\1>`, "gi"), "")
+  out = out.replace(new RegExp(`${A}[^>]+\\/>`, "g"), "")
+  return out.replace(/\n{3,}/g, "\n\n").trim()
+}
+
+/** The old path: join the text blocks with `"\n"`, strip the tags. `strip` defaults to the product strip. */
+function legacyToolResultToWireText(
+  block: ToolResultBlock,
+  strip: (text: string) => string = (t) => stripMaAgentWireAnnotations(t, sb),
+): string {
   const parts: string[] = []
   for (const c of block.content) {
     if (c.type === "text" && c.text) parts.push(c.text)
   }
   const joined = parts.join("\n") || "(empty tool result)"
-  return stripMaAgentWireAnnotations(joined) || "(empty tool result)"
+  return strip(joined) || "(empty tool result)"
 }
 
-// Tags are built from parts: a source literal of a harness tag is stripped by Cursor tooling.
-const LT = String.fromCharCode(60)
 const tag = (name: string, attrs: string, inner?: string): string =>
   inner === undefined
     ? `${LT}ma::agent::${name}${attrs} />`
@@ -82,7 +138,7 @@ const blockOf = (body: string, parts: Part[]): ToolResultBlock => {
 }
 
 const same = (b: ToolResultBlock): void => {
-  expect(toolResultToWireText(b)).toBe(legacyToolResultToWireText(b))
+  expect(toolResultToWireText(b, sb)).toBe(legacyToolResultToWireText(b))
 }
 
 const image = {
@@ -139,7 +195,7 @@ describe("outcome reader parity: ordinary core outputs use the new path", () => 
   for (const c of cases) {
     test(`new path taken, same bytes: ${c.name}`, () => {
       const b = blockOf(c.body, c.parts)
-      expect(typeof outcomeWireText(b)).toBe("string")
+      expect(typeof outcomeWireText(b, sb)).toBe("string")
       same(b)
     })
   }
@@ -147,7 +203,7 @@ describe("outcome reader parity: ordinary core outputs use the new path", () => 
 
 describe("outcome reader parity: other inputs use the old path (review M3B1)", () => {
   const check = (b: ToolResultBlock): void => {
-    expect(outcomeWireText(b)).toBeUndefined()
+    expect(outcomeWireText(b, sb)).toBeUndefined()
     same(b)
   }
 
@@ -162,7 +218,7 @@ describe("outcome reader parity: other inputs use the old path (review M3B1)", (
       outcome: { v: 1, bodyEnd: 0, annotations: [] },
     }
     check(b)
-    expect(toolResultToWireText(b)).toBe("real")
+    expect(toolResultToWireText(b, sb)).toBe("real")
   })
 
   test("A2: empty text block + image after the text-only placeholder", () => {
@@ -174,7 +230,7 @@ describe("outcome reader parity: other inputs use the old path (review M3B1)", (
     })
     expect(b.outcome).toBeDefined()
     check(b)
-    expect(toolResultToWireText(b)).toContain("image attachment not sent")
+    expect(toolResultToWireText(b, sb)).toContain("image attachment not sent")
   })
 
   test("A2: the placeholder blocks that keep the outcome have the same bytes", () => {
@@ -333,7 +389,7 @@ describe("outcome reader parity: seeded mini-fuzz", () => {
       const chosen: Part[] = []
       for (let j = 0; j < n; j++) chosen.push({ ...pick(parts), join: pick(joins) })
       const b = blockOf(pick(bodies), chosen)
-      if (outcomeWireText(b) !== undefined) newPath++
+      if (outcomeWireText(b, sb) !== undefined) newPath++
       same(b)
     }
     // The new path must still run for a good share of the cases.
@@ -572,7 +628,7 @@ describe("outcome reader parity: second review rows (hand-built blocks)", () => 
   for (const r of rows) {
     test(`${r.id}: same bytes as the old path (${r.what})`, () => {
       same(r.block)
-      if (r.oldPath) expect(outcomeWireText(r.block)).toBeUndefined()
+      if (r.oldPath) expect(outcomeWireText(r.block, sb)).toBeUndefined()
     })
   }
 
@@ -581,14 +637,14 @@ describe("outcome reader parity: second review rows (hand-built blocks)", () => 
       { kind: "mode-active", text: modeAsk },
       { kind: "output-truncated", text: truncated },
     ])
-    expect(outcomeWireText(b)).toBeDefined()
+    expect(outcomeWireText(b, sb)).toBeDefined()
     same(b)
   })
 
   test("an upper-case self-closing tag annotation is not removed by the strip step: old path", () => {
     const upper = `${opener("mode-active", "upper")} id="ask" />`
     const b = blockOf("x", [{ kind: "mode-active", text: upper }])
-    expect(outcomeWireText(b)).toBeUndefined()
+    expect(outcomeWireText(b, sb)).toBeUndefined()
     same(b)
   })
 })
@@ -699,7 +755,7 @@ describe("outcome reader parity: grammar fuzz-lite (harness-shaped fragments)", 
       const anns = Array.from({ length: Math.floor(rnd() * 4) }, annotation)
       const blk = blockOf(b, anns)
       cases++
-      if (outcomeWireText(blk) !== undefined) newPath++
+      if (outcomeWireText(blk, sb) !== undefined) newPath++
       same(blk)
     }
     expect(cases).toBe(300)
@@ -713,9 +769,9 @@ describe("outcome reader parity: large bodies finish in seconds", () => {
     const body = "line\n".repeat(1_000_000)
     expect(body.length).toBe(5_000_000)
     const b = blockOf(body, [{ kind: "output-truncated", text: truncated }])
-    expect(outcomeWireText(b)).toBeDefined()
+    expect(outcomeWireText(b, sb)).toBeDefined()
     const started = performance.now()
-    const got = toolResultToWireText(b)
+    const got = toolResultToWireText(b, sb)
     const elapsed = performance.now() - started
     expect(got).toBe(legacyToolResultToWireText(b))
     expect(elapsed).toBeLessThan(5000)
@@ -725,11 +781,88 @@ describe("outcome reader parity: large bodies finish in seconds", () => {
     const body = `${"line\n".repeat(200_000)}tail ${opener("policy")} unterminated`
     expect(body.length).toBeGreaterThan(1_000_000)
     const b = blockOf(body, [{ kind: "output-truncated", text: truncated }])
-    expect(outcomeWireText(b)).toBeUndefined()
+    expect(outcomeWireText(b, sb)).toBeUndefined()
     const started = performance.now()
-    const got = toolResultToWireText(b)
+    const got = toolResultToWireText(b, sb)
     const elapsed = performance.now() - started
     expect(got).toBe(legacyToolResultToWireText(b))
     expect(elapsed).toBeLessThan(5000)
+  })
+})
+
+describe("wire bytes: the codec strip equals the frozen regex strip for harness-written tags", () => {
+  const frozen = (b: ToolResultBlock): string => legacyToolResultToWireText(b, frozenOldStrip)
+  const tasksPaired = tag(
+    "tasks",
+    ' action="add_many" result="added_many" total="2" done="0" doing="0" todo="2" canceled="0"',
+    "\n#ce6b5b  todo      Phase 1\n  #ce6b5ba  todo      Native logging\n",
+  )
+  const tasksSelf = tag(
+    "tasks",
+    ' action="start" result="started" id="ce6b5ba" parent_auto_done="ce6b5b" total="7" done="1" doing="2" todo="4" canceled="0"',
+  )
+  const policy = tag("policy", "", "Current local time: 2026-11-18")
+  const diag = tag("diagnostics", "", "\nnote\nn2\n")
+  const rows: Array<{ name: string; body: string; parts: Part[] }> = [
+    {
+      name: "four annotation kinds",
+      body: "line 1\nline 2",
+      parts: [
+        { kind: "output-preview", text: preview },
+        { kind: "output-truncated", text: truncated },
+        { kind: "output-streak", text: streak },
+        { kind: "mode-active", text: mode },
+      ],
+    },
+    {
+      name: "empty body + stamp",
+      body: "",
+      parts: [{ kind: "mode-active", text: mode, join: "" }],
+    },
+    {
+      name: "blob + truncated",
+      body: "head",
+      parts: [
+        { kind: "raw-output", text: raw },
+        { kind: "output-truncated", text: truncated },
+      ],
+    },
+    {
+      name: "policy and diagnostics",
+      body: "x",
+      parts: [
+        { kind: "policy", text: policy, join: "\n" },
+        { kind: "diagnostics", text: diag },
+      ],
+    },
+    {
+      name: "tasks board in the body",
+      body: tasksPaired,
+      parts: [{ kind: "mode-active", text: mode }],
+    },
+    { name: "tasks ack in the body", body: tasksSelf, parts: [] },
+    { name: "plain body", body: "plain", parts: [] },
+  ]
+  for (const r of rows) {
+    test(r.name, () => {
+      const b = blockOf(r.body, r.parts)
+      expect(toolResultToWireText(b, sb)).toBe(frozen(b))
+      const { outcome: _, ...noOutcome } = b
+      expect(toolResultToWireText(noOutcome, sb)).toBe(frozen(b))
+    })
+  }
+
+  test("each tag that the API renders for a tool-result kind goes, as before", () => {
+    const tags = [
+      sb.render("mode-active", { attrs: { id: "ask", since: "2026-11-18T15:00:00.000Z" } }),
+      sb.render("raw-output", { attrs: { path: "/tmp/x.raw", size: "5.8kB", sha256: "abc" } }),
+      sb.render("output-preview", { attrs: { shown: 15, total: 156, tool: "Read" }, body: "hint" }),
+      sb.render("policy", { body: "Current local time: 10:30" }),
+    ]
+    for (const t of tags) {
+      const b = block(`body\n\n${t}`, undefined)
+      expect(toolResultToWireText(b, sb)).toBe("body")
+      expect(frozen(b)).toBe("body")
+    }
   })
 })

@@ -423,13 +423,13 @@ describe("parity: plugin emitters (called)", () => {
     )
   })
   test("openai compaction remote and remote-empty (enc encoded by the caller)", () => {
-    const [withEnc] = compactOutputToMessages([{ type: "compaction", encrypted_content: SP }])
+    const [withEnc] = compactOutputToMessages([{ type: "compaction", encrypted_content: SP }], sb)
     expect(r(D.compaction, { kind: "remote", enc: encodeURIComponent(SP) })).toBe(
       line1(withEnc!.content),
     )
-    const [noEnc] = compactOutputToMessages([{ type: "compaction" }])
+    const [noEnc] = compactOutputToMessages([{ type: "compaction" }], sb)
     expect(r(D.compaction, { kind: "remote" })).toBe(line1(noEnc!.content))
-    const [empty] = compactOutputToMessages([])
+    const [empty] = compactOutputToMessages([], sb)
     expect(r(D.compaction, { kind: "remote-empty" })).toBe(line1(empty!.content))
   })
 })

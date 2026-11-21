@@ -12,6 +12,9 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
+import { pluginSideband } from "../tests/support/sideband.ts"
 
 import { runCursorBidi } from "./bidi-run.ts"
 import { connectFrameProto } from "./connect/stream.ts"
@@ -253,5 +256,63 @@ describe("cursor bidi continuation idle guard", () => {
       if (ev.type === "text_delta") text += ev.text
     }
     expect(text).toBe("late")
+  })
+})
+
+describe("cursor bidi continuation: tool result text on the wire (design step 12b)", () => {
+  afterEach(() => {
+    delete process.env.MA_CURSOR_BIDI_HEARTBEAT_MS
+    resetCursorBidiSessionsForTests()
+  })
+
+  /** The bytes that the continuation writes for a tool result `text`, with `sideband` or not. */
+  async function written(text: string, sideband: SidebandApi | undefined): Promise<string> {
+    process.env.MA_CURSOR_BIDI_HEARTBEAT_MS = "0"
+    let ctrl: ReadableStreamDefaultController<Uint8Array> | undefined
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        ctrl = controller
+        controller.enqueue(mcpExecFrame({ id: 5, toolCallId: "call_1", toolName: "ModelInfo" }))
+      },
+    })
+    const chunks: Uint8Array[] = []
+    const client = fakeClient(stream, (c) => chunks.push(c))
+    const id = `wire-${sideband ? "sb" : "none"}`
+    await firstTurnToPause(id, client)
+    chunks.length = 0
+    setTimeout(() => {
+      ctrl?.enqueue(turnEndedFrame())
+      ctrl?.close()
+    }, 20)
+    const cont: CanonicalRequest = {
+      ...continuation,
+      messages: [
+        ...continuation.messages.slice(0, -1),
+        {
+          role: "user",
+          content: [
+            { type: "tool_result", toolUseId: "call_1", content: [{ type: "text", text }] },
+          ],
+        },
+      ],
+    }
+    for await (const _ of runCursorBidi(cont, model as never, {
+      ...runOpts(id, client),
+      ...(sideband ? { sideband } : {}),
+    })) {
+      // drain
+    }
+    return new TextDecoder().decode(concat(...chunks))
+  }
+
+  test("the run option sideband removes the harness tags; without it the text goes unchanged", async () => {
+    const sb = await pluginSideband()
+    const stamp = sb.render("mode-active", { attrs: { id: "ask", since: "2026-11-18T15:00:00Z" } })
+    const text = `546 README.md\n\n${stamp}`
+    const withSb = await written(text, sb)
+    expect(withSb).toContain("546 README.md")
+    expect(withSb).not.toContain(stamp)
+    const without = await written(text, undefined)
+    expect(without).toContain(stamp)
   })
 })

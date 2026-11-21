@@ -36,4 +36,12 @@ literals with their file:line.
 v1 render does not replace control chars, matching today's emitters. xml-ma-v2 will.
 The scanner holds an unfinished opener up to 1024 chars and an unfinished body up to 65536 chars. Beyond the cap the text passes through as plain text.
 
+Scanner option `strictV1` (`lib/scanner-strict.ts`): the grammar of the old core
+TagScanner. The core stream (`PluginStream`) sets it, so its events do not change.
+Only the exact `<ma::emit::NAME` opener and its exact `</ma::emit::NAME>` end part make
+a node; the kind is NAME as written; attributes need no space between them, can hold
+`<`, the last duplicate wins, and `\c` gives `c`; no open-part hold limit.
+`lib/scanner.core-parity.test.ts` pins it against the core cases; the describe
+"default grammar" pins the result with no `strictV1`.
+
 The module is pure: no exec, no file reads, relative and `@minimal-agent/core/plugin-api/*` imports only.

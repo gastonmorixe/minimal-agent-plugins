@@ -15,6 +15,7 @@
 
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
@@ -143,12 +144,33 @@ export async function callOpenAIResponsesCompact(opts: {
 }
 
 /**
- * Portable marker prefix used when folding opaque compact items into
- * agent Message history as text. The next Responses encode path may
- * later rehydrate known markers; until then the model still sees a
- * clear checkpoint string.
+ * The checkpoint prose after the tag (the old bytes). It was a part of the
+ * old tag template; now the tag comes from the sideband API.
  */
-export const COMPACTION_MARKER_PREFIX = "<ma::context::compaction "
+export const REMOTE_CHECKPOINT_PROSE = "[context compacted by provider]"
+/** The checkpoint prose when the endpoint keeps no item. */
+export const REMOTE_EMPTY_CHECKPOINT_PROSE = "[context compacted by provider: no retained items]"
+
+/** The sideband kind of the checkpoint tag (declared by ma-turn-recovery-plugin). */
+const COMPACTION_KIND = "compaction"
+
+/**
+ * The checkpoint text: the `compaction` tag line that `sb` renders, then
+ * `prose`. Same rule as the core checkpoint: with no codec, or with no
+ * `compaction` kind (its plugin is off), the tag is `""` and the text is the
+ * prose alone. The kind has no body, so no text is lost.
+ */
+function checkpointText(
+  sb: SidebandApi | undefined,
+  attrs: { kind: "remote" | "remote-empty"; enc?: string },
+  prose: string,
+): string {
+  const tag =
+    sb?.ready === true && sb.kindInfo(COMPACTION_KIND) !== undefined
+      ? sb.render(COMPACTION_KIND, { attrs })
+      : ""
+  return tag === "" ? prose : `${tag}\n${prose}`
+}
 
 /**
  * Fold compact endpoint output into plain user/assistant text messages
@@ -157,9 +179,14 @@ export const COMPACTION_MARKER_PREFIX = "<ma::context::compaction "
  * - encrypted compaction items → one system-visible checkpoint string
  * - message items with text → role-preserving text messages
  * - everything else dropped (tools, triggers, developer wrappers)
+ *
+ * @param output - The compact endpoint output items.
+ * @param sb - The session sideband API (`RunContext.sideband`). It renders
+ *   the checkpoint tag. Absent: the checkpoint is the prose alone.
  */
 export function compactOutputToMessages(
   output: OpenAICompactOutputItem[],
+  sb: SidebandApi | undefined,
 ): Array<{ role: "user" | "assistant" | "system"; content: string }> {
   const out: Array<{ role: "user" | "assistant" | "system"; content: string }> = []
   for (const item of output) {
@@ -172,9 +199,11 @@ export function compactOutputToMessages(
           : ""
       // Keep encrypted blob so a future encoder can rehydrate wire items.
       // Also give the model a readable checkpoint line.
-      const marker = enc
-        ? `${COMPACTION_MARKER_PREFIX}kind="remote" enc="${encodeURIComponent(enc)}" />\n[context compacted by provider]`
-        : `${COMPACTION_MARKER_PREFIX}kind="remote" />\n[context compacted by provider]`
+      const marker = checkpointText(
+        sb,
+        enc ? { kind: "remote", enc: encodeURIComponent(enc) } : { kind: "remote" },
+        REMOTE_CHECKPOINT_PROSE,
+      )
       out.push({ role: "user", content: marker })
       continue
     }
@@ -196,7 +225,7 @@ export function compactOutputToMessages(
   if (out.length === 0) {
     out.push({
       role: "user",
-      content: `${COMPACTION_MARKER_PREFIX}kind="remote-empty" />\n[context compacted by provider: no retained items]`,
+      content: checkpointText(sb, { kind: "remote-empty" }, REMOTE_EMPTY_CHECKPOINT_PROSE),
     })
   }
   return out

@@ -1,5 +1,6 @@
 import { v1Qname } from "./levels.ts"
 import { makeContext, parseAt } from "./parse.ts"
+import { parseStrictAt } from "./scanner-strict.ts"
 import type {
   ReadonlySidebandRegistry,
   SidebandNode,
@@ -49,6 +50,11 @@ function readsEmit(registry: ReadonlySidebandRegistry, only: Set<string> | undef
  * The v1 escape `\<ma::emit::` applies when the scan reads emit-level kinds
  * (see `readsEmit`). Outside code, it stops detection. In all text, the
  * backslash is removed.
+ *
+ * `strictV1` (default false) uses the grammar of the old core TagScanner (see
+ * `scanner-strict.ts`): the core stream sets it, so its events do not change.
+ * Then `kinds` limits the names as written, the registry is not read, the v1
+ * escape is on, and the open part has no hold limit unless `maxOpenUnits` is set.
  */
 export function createScanner(
   registry: ReadonlySidebandRegistry,
@@ -58,10 +64,12 @@ export function createScanner(
   const only = opts.kinds === undefined ? undefined : new Set(opts.kinds)
   const accept = (kind: string): boolean =>
     ctx.kind(kind)?.direction === "from-model" && (only === undefined || only.has(kind))
-  const openCap = opts.maxOpenUnits ?? OPEN_CAP
+  const strict = opts.strictV1 === true
+  const openCap = opts.maxOpenUnits ?? (strict ? Number.POSITIVE_INFINITY : OPEN_CAP)
   const bodyCap = opts.maxSpanUnits ?? BODY_CAP
   const code = opts.codeAware ?? true
-  const escape = readsEmit(registry, only)
+  const escape = strict || readsEmit(registry, only)
+  const acceptName = (name: string): boolean => only === undefined || only.has(name)
   let buf = ""
   let textCb: ((text: string) => void) | undefined
   let nodeCb: ((node: SidebandNode, raw: string) => void) | undefined
@@ -133,12 +141,13 @@ export function createScanner(
           continue
         }
         if (!final && n - i < ESC.length && ESC.startsWith(buf.slice(i))) {
+          if (strict) atLineStart = false
           hold = i
           break
         }
       }
       if (ch === "<") {
-        const r = parseAt(buf, i, ctx, accept)
+        const r = strict ? parseStrictAt(buf, i, acceptName) : parseAt(buf, i, ctx, accept)
         if (r.status === "node") {
           text(buf.slice(pos, i))
           nodeCb?.(r.node, buf.slice(i, r.end))
@@ -151,6 +160,10 @@ export function createScanner(
           // At the end, or past a hold limit, the rest goes out as text
           // without a scan (the raw fallback of TagScanner and the stripper).
           if (final || n - i > (r.phase === "open" ? openCap : bodyCap)) break
+          // strictV1: core TagScanner walks over a held part of the opener
+          // name (shorter than `<ma::emit::`) and so clears its line-start
+          // flag before the next chunk. Core events depend on the cut here.
+          if (strict && n - i < ESC_OPENER.length) atLineStart = false
           hold = i
           break
         }

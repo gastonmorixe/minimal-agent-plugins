@@ -7,9 +7,12 @@ import { userText } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { ProviderAuth, RunContext } from "@minimal-agent/core/plugin-api/llm/provider-auth"
 import type { NetworkClient, NetworkResponse } from "@minimal-agent/core/plugin-api/net/types"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
 import { openaiAdapter } from "../adapter.ts"
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import { resolveModel } from "../openai.test-helpers.ts"
+
+import { REMOTE_CHECKPOINT_PROSE } from "./compact.ts"
 
 function jsonResponse(status: number, body: unknown): NetworkResponse {
   const text = JSON.stringify(body)
@@ -37,10 +40,13 @@ describe("openaiAdapter.compact e2e", () => {
       },
     }
     const auth: ProviderAuth = { kind: "api-key", key: "sk-test" }
+    // The session sideband API rides the run context (design step 12b).
+    const sideband = await pluginSideband()
     const ctx: RunContext = {
       auth,
       sessionId: "t",
       networkClient,
+      sideband,
     }
     const req: CanonicalRequest = {
       modelId: model.id,
@@ -52,6 +58,10 @@ describe("openaiAdapter.compact e2e", () => {
     expect(capturedUrl).toBe("https://api.openai.com/v1/responses/compact")
     expect(capturedBody).toContain("long history")
     expect(result.replacementMessages[0]?.content).toContain("ENC_PAYLOAD")
+    // No sideband on the context: the checkpoint is the prose alone.
+    const { sideband: _, ...bare } = ctx
+    const plain = await openaiAdapter.compact!({ req }, model, bare)
+    expect(plain.replacementMessages[0]?.content).toBe(REMOTE_CHECKPOINT_PROSE)
   })
 
   it("uses Codex OAuth compact URL", async () => {

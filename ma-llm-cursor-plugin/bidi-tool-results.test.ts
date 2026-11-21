@@ -7,13 +7,19 @@ import { describe, expect, test } from "bun:test"
 import type { PersistedToolOutcome } from "@minimal-agent/core/plugin-api"
 import type { ToolResultBlock } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import {
   extractTrailingFollowUpUserText,
   extractTrailingToolResults,
+  outcomeWireText,
   requestHasToolResultContinuation,
   stripMaAgentWireAnnotations,
   toolResultToWireText,
 } from "./bidi-tool-results.ts"
+
+// The real codec and kinds: the strip step reads the tags with the session API.
+const sb = await pluginSideband()
 
 describe("bidi tool results", () => {
   test("extracts trailing tool_result blocks", () => {
@@ -36,33 +42,38 @@ describe("bidi tool results", () => {
     ])
     expect(results).toHaveLength(1)
     expect(results[0]!.toolUseId).toBe("call_1")
-    expect(toolResultToWireText(results[0]!)).toBe("model=cursor-auto")
+    expect(toolResultToWireText(results[0]!, sb)).toBe("model=cursor-auto")
   })
 
   test("stripMaAgentWireAnnotations removes harness tags from wire text", () => {
     expect(
       stripMaAgentWireAnnotations(
         '546 README.md\n\n<ma::agent::mode-active id="ask" since="2026-07-29T10:14:16.090Z" />',
+        sb,
       ),
     ).toBe("546 README.md")
     expect(
       stripMaAgentWireAnnotations(
         'line 1\n\n<ma::agent::raw-output path="/tmp/x.raw" size="5.8kB" sha256="abc" />\n\n<ma::agent::output-preview shown="15" total="156" tool="Read" path="/tmp/x.raw">hint</ma::agent::output-preview>',
+        sb,
       ),
     ).toBe("line 1")
   })
 
   test("toolResultToWireText strips MA annotations before Cursor encoding", () => {
-    const text = toolResultToWireText({
-      type: "tool_result",
-      toolUseId: "call_1",
-      content: [
-        {
-          type: "text",
-          text: '546 README.md\n\n<ma::agent::mode-active id="ask" since="2026-07-29T10:14:16.090Z" />',
-        },
-      ],
-    })
+    const text = toolResultToWireText(
+      {
+        type: "tool_result",
+        toolUseId: "call_1",
+        content: [
+          {
+            type: "text",
+            text: '546 README.md\n\n<ma::agent::mode-active id="ask" since="2026-07-29T10:14:16.090Z" />',
+          },
+        ],
+      },
+      sb,
+    )
     expect(text).toBe("546 README.md")
     expect(text).not.toContain("<ma::agent::")
   })
@@ -132,7 +143,7 @@ describe("MA-39298 tasks payloads survive Cursor strip", () => {
       ' action="add_many" result="added_many" total="2" done="0" doing="0" todo="2" canceled="0"',
       "\n#ce6b5b  todo      Phase 1\n  #ce6b5ba  todo      Native logging\n",
     )
-    const out = stripMaAgentWireAnnotations(raw)
+    const out = stripMaAgentWireAnnotations(raw, sb)
     expect(out).toContain("OK added_many")
     expect(out).toContain("action=add_many")
     expect(out).toContain("#ce6b5b  todo      Phase 1")
@@ -145,11 +156,14 @@ describe("MA-39298 tasks payloads survive Cursor strip", () => {
     const raw = selfTasks(
       ' action="start" result="started" id="ce6b5ba" total="7" done="1" doing="2" todo="4" canceled="0"',
     )
-    const out = toolResultToWireText({
-      type: "tool_result",
-      toolUseId: "call_1",
-      content: [{ type: "text", text: raw }],
-    })
+    const out = toolResultToWireText(
+      {
+        type: "tool_result",
+        toolUseId: "call_1",
+        content: [{ type: "text", text: raw }],
+      },
+      sb,
+    )
     expect(out).toContain("OK started")
     expect(out).toContain("id=#ce6b5ba")
     expect(out).toContain("doing=2")
@@ -159,13 +173,16 @@ describe("MA-39298 tasks payloads survive Cursor strip", () => {
 
   test("plain OK Task content passes through unchanged", () => {
     const plain = "OK started action=start id=#ce6b5ba total=7 done=1 doing=2 todo=4 canceled=0"
-    expect(stripMaAgentWireAnnotations(plain)).toBe(plain)
+    expect(stripMaAgentWireAnnotations(plain, sb)).toBe(plain)
     expect(
-      toolResultToWireText({
-        type: "tool_result",
-        toolUseId: "call_1",
-        content: [{ type: "text", text: plain }],
-      }),
+      toolResultToWireText(
+        {
+          type: "tool_result",
+          toolUseId: "call_1",
+          content: [{ type: "text", text: plain }],
+        },
+        sb,
+      ),
     ).toBe(plain)
   })
 
@@ -173,7 +190,7 @@ describe("MA-39298 tasks payloads survive Cursor strip", () => {
     const mode = agentPrefix + 'mode-active id="ask" />'
     const rawOut = agentPrefix + 'raw-output path="/tmp/x" />'
     const raw = "hello\n" + mode + "\n" + rawOut
-    const out = stripMaAgentWireAnnotations(raw)
+    const out = stripMaAgentWireAnnotations(raw, sb)
     expect(out).toBe("hello")
     expect(out).not.toContain("mode-active")
     expect(out).not.toContain("raw-output")
@@ -284,8 +301,8 @@ describe("toolResultToWireText outcome parity (M3b-1)", () => {
     test(`parity: ${c.name}`, () => {
       const { text, outcome } = build(c.body, c.parts)
       const { without, withOutcome } = blocks(text, outcome)
-      expect(toolResultToWireText(withOutcome)).toBe(toolResultToWireText(without))
-      expect(toolResultToWireText(withOutcome)).toBe(c.expected)
+      expect(toolResultToWireText(withOutcome, sb)).toBe(toolResultToWireText(without, sb))
+      expect(toolResultToWireText(withOutcome, sb)).toBe(c.expected)
     })
   }
 
@@ -297,11 +314,13 @@ describe("toolResultToWireText outcome parity (M3b-1)", () => {
     const outcome: PersistedToolOutcome = { v: 1, bodyEnd: 0, annotations: [] }
     const without: ToolResultBlock = { type: "tool_result", toolUseId: "c", content: [image] }
     const withOutcome: ToolResultBlock = { ...without, outcome }
-    expect(toolResultToWireText(withOutcome)).toBe("(empty tool result)")
-    expect(toolResultToWireText(without)).toBe("(empty tool result)")
+    expect(toolResultToWireText(withOutcome, sb)).toBe("(empty tool result)")
+    expect(toolResultToWireText(without, sb)).toBe("(empty tool result)")
     // Empty text block + image: same.
     const emptyText = { ...without, content: [{ type: "text", text: "" } as const, image] }
-    expect(toolResultToWireText({ ...emptyText, outcome })).toBe(toolResultToWireText(emptyText))
+    expect(toolResultToWireText({ ...emptyText, outcome }, sb)).toBe(
+      toolResultToWireText(emptyText, sb),
+    )
   })
 
   test("parity: an outcome that does not fit gives the old result", () => {
@@ -311,7 +330,7 @@ describe("toolResultToWireText outcome parity (M3b-1)", () => {
       ...without,
       outcome: { ...outcome, bodyEnd: text.length + 50 },
     }
-    expect(toolResultToWireText(tooBig)).toBe(toolResultToWireText(without))
+    expect(toolResultToWireText(tooBig, sb)).toBe(toolResultToWireText(without, sb))
     // Text changed after the outcome was stored: offsets point to other text.
     const changed: ToolResultBlock = {
       ...without,
@@ -320,14 +339,14 @@ describe("toolResultToWireText outcome parity (M3b-1)", () => {
     }
     const changedWithout: ToolResultBlock = { ...changed, outcome: undefined }
     delete changedWithout.outcome
-    expect(toolResultToWireText(changed)).toBe(toolResultToWireText(changedWithout))
-    expect(toolResultToWireText(changed)).toBe("short")
+    expect(toolResultToWireText(changed, sb)).toBe(toolResultToWireText(changedWithout, sb))
+    expect(toolResultToWireText(changed, sb)).toBe("short")
   })
 
   test("parity: no outcome gives the old result", () => {
     const { text } = build("plain", [{ kind: "mode-active", text: mode }])
     const { without } = blocks(text, { v: 1, bodyEnd: 0, annotations: [] })
-    expect(toolResultToWireText(without)).toBe("plain")
+    expect(toolResultToWireText(without, sb)).toBe("plain")
   })
 
   test("a block with two text blocks uses the old path", () => {
@@ -340,6 +359,34 @@ describe("toolResultToWireText outcome parity (M3b-1)", () => {
       ],
       outcome: { v: 1, bodyEnd: 3, annotations: [] },
     }
-    expect(toolResultToWireText(block)).toBe("one\ntwo")
+    expect(toolResultToWireText(block, sb)).toBe("one\ntwo")
+  })
+})
+
+describe("design step 12b: the strip step reads tags with the sideband API", () => {
+  const stamp = sb.render("mode-active", { attrs: { id: "ask", since: "2026-11-18T15:00:00Z" } })
+  test("a closing bracket inside a quoted attribute: the whole tag goes", () => {
+    const blob = sb.render("raw-output", { attrs: { path: "/tmp/a>b/x.raw", size: "1B" } })
+    expect(stripMaAgentWireAnnotations(`a\n\n${blob}`, sb)).toBe("a")
+  })
+  test("NO_SIDEBAND: with no codec the text does not change", () => {
+    const none = { ...sb, ready: false } as typeof sb
+    const text = `x\n\n${stamp}`
+    const b: ToolResultBlock = {
+      type: "tool_result",
+      toolUseId: "c",
+      content: [{ type: "text", text }],
+      outcome: {
+        v: 1,
+        bodyEnd: 1,
+        annotations: [{ kind: "mode-active", start: 3, end: text.length }],
+      },
+    }
+    expect(outcomeWireText(b, sb)).toBe("x")
+    for (const api of [none, undefined]) {
+      expect(stripMaAgentWireAnnotations(text, api)).toBe(text)
+      expect(outcomeWireText(b, api)).toBeUndefined()
+      expect(toolResultToWireText(b, api)).toBe(text)
+    }
   })
 })

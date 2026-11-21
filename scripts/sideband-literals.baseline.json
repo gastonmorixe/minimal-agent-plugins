@@ -53,15 +53,13 @@
       "prompt-file": 1
     },
     "ma-llm-cursor-plugin/bidi-tool-results.ts": {
-      "tag-literal": 1,
-      "tag-regex": 6,
       "bracket-notice": 2
     },
     "ma-llm-cursor-plugin/request-body.ts": {
       "bracket-notice": 4
     },
     "ma-llm-openai-plugin/responses/compact.ts": {
-      "tag-literal": 1
+      "bracket-notice": 2
     },
     "ma-memory-plugin/PROMPT.md": {
       "prompt-file": 1

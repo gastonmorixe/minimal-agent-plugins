@@ -152,6 +152,7 @@ export const cursorAdapter: ProviderAdapterView = {
             modelId: model.id,
             networkClient,
             carryBlobs: carry?.state.blobs,
+            ...(ctx.sideband ? { sideband: ctx.sideband } : {}),
           })
         // Self-heal the tool allowlist: when the server demands a tool we did
         // not allow, and no content reached the host yet, learn it and retry once.

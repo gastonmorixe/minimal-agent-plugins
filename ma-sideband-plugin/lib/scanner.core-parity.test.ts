@@ -2,12 +2,16 @@
  * Parity of the codec scanner with core `TagScanner`.
  *
  * The cases are a copy of the inputs and expects of
- * `minimal-agent-core/src/plugins/scanner.test.ts` (40 cases). The `drive`
- * helper models the core caller (`plugins/stream.ts`): a codec scanner with
- * the default options (codeAware true, v1 escape on) over a registry where
- * each emit tag of the cases is a from-model kind with a `ma::emit::` name.
+ * core `src/plugins/scanner.test.ts` (40 cases), plus the 15 cases where the
+ * default codec grammar differs from core, with the core result. Since step 9
+ * the core stream uses the codec scanner with `strictV1` (core keeps
+ * TagScanner only for a load with no codec). The `drive` helper models the core
+ * caller (`plugins/stream.ts`): a codec scanner with `strictV1: true` and
+ * codeAware true (v1 escape on). The registry has each emit tag of the cases
+ * as a from-model kind with a `ma::emit::` name (strictV1 does not read it).
  * Core events map: `TagSpan.name` = node kind, `body` = node body or "",
  * `self_closing` = node selfClosing, `raw` = the raw argument of onNode.
+ * The describe "default grammar" pins the codec result with no `strictV1`.
  */
 import { describe, expect, it } from "bun:test"
 
@@ -63,9 +67,20 @@ function emitKind(name: string): SidebandKind {
 
 const codec = createCodec(makeRegistry(EMIT_NAMES.map(emitKind)))
 
-function runChunks(chunks: string[], maxSpanBytes?: number): CollectedEvents {
+type ScanOpts = Parameters<typeof codec.scanner>[0]
+
+/** The options of the core stream call. */
+const CORE_OPTS = { codeAware: true, strictV1: true } as const
+
+function runChunks(
+  chunks: string[],
+  maxSpanBytes?: number,
+  base: ScanOpts = CORE_OPTS,
+): CollectedEvents {
   const events: CollectedEvents = { text: [], tags: [] }
-  const scanner = codec.scanner(maxSpanBytes === undefined ? {} : { maxSpanUnits: maxSpanBytes })
+  const scanner = codec.scanner(
+    maxSpanBytes === undefined ? base : { ...base, maxSpanUnits: maxSpanBytes },
+  )
   scanner.onText((t) => events.text.push(t))
   scanner.onNode((n, raw) =>
     events.tags.push({
@@ -86,13 +101,17 @@ function runChunks(chunks: string[], maxSpanBytes?: number): CollectedEvents {
  * unit per chunk, and assert the same joined text and the same tags: the
  * result must not depend on the chunk cuts.
  */
-function drive(chunks: string[], maxSpanBytes?: number): CollectedEvents {
-  const base = runChunks(chunks, maxSpanBytes)
+function drive(
+  chunks: string[],
+  maxSpanBytes?: number,
+  opts: ScanOpts = CORE_OPTS,
+): CollectedEvents {
+  const base = runChunks(chunks, maxSpanBytes, opts)
   const full = chunks.join("")
   const splits: string[][] = [full.split("")]
   for (let k = 1; k < full.length; k++) splits.push([full.slice(0, k), full.slice(k)])
   for (const split of splits) {
-    const e = runChunks(split, maxSpanBytes)
+    const e = runChunks(split, maxSpanBytes, opts)
     expect({ cut: split.length, text: e.text.join(""), tags: e.tags }).toEqual({
       cut: split.length,
       text: base.text.join(""),
@@ -423,6 +442,96 @@ describe("codec scanner: TagScanner parity", () => {
     expect(e.tags).toHaveLength(0)
     expect(e.text.join("")).toBe('use `<ma::emit::output tool="..." />` for ascii art')
   })
+
+  // ---------------------------------------------------------------------
+  // Cases where the default codec grammar differs from core (step 9).
+  // strictV1 gives the core result. The default result is pinned below in
+  // "default grammar (no strictV1)".
+  // ---------------------------------------------------------------------
+
+  function passes(t: string): void {
+    const e = drive([t])
+    expect(e.tags).toHaveLength(0)
+    expect(e.text.join("")).toBe(t)
+  }
+  function fires(t: string, name: string, body: string, attrs: Record<string, string> = {}) {
+    const e = drive([t])
+    expect(e.tags.map((x) => [x.name, x.attrs, x.body])).toEqual([[name, attrs, body]])
+    expect(e.text.join("")).toBe("")
+  }
+
+  it("<ma::memory> (v1 without a level) is text", () => {
+    passes("<ma::memory>b</ma::memory>")
+  })
+  it("<ma::agent::memory> (other level) is text", () => {
+    passes("<ma::agent::memory>b</ma::agent::memory>")
+  })
+  it("<ma:memory> (v2 form) is text", () => {
+    passes("<ma:memory>b</ma:memory>")
+  })
+  it("<ma::plugin::diff> (plugin level) is text", () => {
+    passes("<ma::plugin::diff>b</ma::plugin::diff>")
+  })
+  it("<ma::emit::Memory> fires with the name as written", () => {
+    fires("<ma::emit::Memory>b</ma::emit::Memory>", "Memory", "b")
+  })
+  it("an upper-case closer </MA::EMIT::X> does not close: raw flush", () => {
+    passes("<ma::emit::x>b</MA::EMIT::X>")
+  })
+  it("a closer with a space </ma::emit::x > does not close: raw flush", () => {
+    passes("<ma::emit::x>b</ma::emit::x >")
+  })
+  it('spaces around = in an attr (path = "a") is text', () => {
+    passes('<ma::emit::output path = "a" />')
+  })
+  it('a quoted attr value can hold < (title="a<b")', () => {
+    fires('<ma::emit::output title="a<b" />', "output", "", { title: "a<b" })
+  })
+  it('no space between attrs (path="a"title="b") fires', () => {
+    fires('<ma::emit::output path="a"title="b" />', "output", "", { path: "a", title: "b" })
+  })
+  it("duplicate attr: the last value wins", () => {
+    fires('<ma::emit::t a="1" a="2" />', "t", "", { a: "2" })
+  })
+  it("unknown backslash escape \\q in an attr drops the backslash", () => {
+    fires('<ma::emit::t a="x\\qy" />', "t", "", { a: "xqy" })
+  })
+  it("upper-case name <ma::emit::T /> fires with name T", () => {
+    fires("<ma::emit::T />", "T", "")
+  })
+  it("upper-case prefix <MA::EMIT::t /> is text", () => {
+    passes("<MA::EMIT::t />")
+  })
+  it("no kinds filter: a from-model <ma::agent::inline-ack .../> is text", () => {
+    const c = createCodec(makeRegistry([...EMIT_NAMES.map(emitKind), TEST_KINDS.inlineAck!]))
+    const sc = c.scanner(CORE_OPTS)
+    let text = ""
+    const kinds: string[] = []
+    sc.onText((t) => (text += t))
+    sc.onNode((n) => kinds.push(n.kind))
+    const t = 'a <ma::agent::inline-ack count="2" reason="r" /> b'
+    sc.write(t)
+    sc.end()
+    expect(kinds).toEqual([])
+    expect(text).toBe(t)
+  })
+  it("an unregistered emit name fires too (the stream gives its raw text)", () => {
+    fires("<ma::emit::unknown>b</ma::emit::unknown>", "unknown", "b")
+  })
+  it("strictV1 with kinds: other names are text and their body is scanned", () => {
+    const e = drive(["<ma::emit::u>x<ma::emit::x />y</ma::emit::u>"], undefined, {
+      ...CORE_OPTS,
+      kinds: ["x"],
+    })
+    expect(e.tags.map((x) => x.name)).toEqual(["x"])
+    expect(e.text.join("")).toBe("<ma::emit::u>xy</ma::emit::u>")
+  })
+  it("an unfinished opener has no hold limit (core holds it to the end)", () => {
+    const t = `<ma::emit::x a="${"v".repeat(3000)}`
+    const e = drive([t, '" />'])
+    expect(e.tags).toHaveLength(1)
+    expect(e.text.join("")).toBe("")
+  })
 })
 
 describe("codec scanner: option edges", () => {
@@ -458,14 +567,14 @@ describe("codec scanner: option edges", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Known differences from core TagScanner. These pin the codec result of
-// today. Core results are in the comments (checked against
-// minimal-agent-core/src/plugins/scanner.ts). Step 9 decides the behavior.
+// Default grammar (no strictV1). The core stream sets strictV1 (step 9);
+// other callers keep this result. The strictV1 (core) result of each case is
+// in the parity describe above.
 // ---------------------------------------------------------------------------
 
-describe("known differences from core TagScanner (decided in step 9)", () => {
+describe("default grammar (no strictV1): differences from core TagScanner", () => {
   function one(t: string): CollectedEvents {
-    return drive([t])
+    return drive([t], undefined, {})
   }
   function fires(t: string, name: string, body: string, attrs: Record<string, string> = {}) {
     const e = one(t)
