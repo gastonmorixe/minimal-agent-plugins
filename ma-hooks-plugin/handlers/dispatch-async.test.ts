@@ -15,6 +15,19 @@ import { makeSandbox, nativeConfig, type Sandbox } from "../engine/test-support.
 import dispatch, { asyncQueue, resetEngine } from "./dispatch.ts"
 
 let sb: Sandbox | undefined
+
+/** The texts of the additionalContext entries of a dispatch result. */
+function textsOf(r: unknown): string[] {
+  const ctx = (r as { additionalContext?: unknown[] } | undefined)?.additionalContext
+  return (Array.isArray(ctx) ? ctx : []).map((e) =>
+    typeof e === "string" ? e : ((e as { text?: string }).text ?? ""),
+  )
+}
+
+/** The texts of the buffered async context of one session, drained. */
+function drainedTexts(sid: string): string[] {
+  return textsOf({ additionalContext: asyncQueue()?.drain(sid) })
+}
 const saved = {
   HOME: process.env.HOME,
   MINIMAL_AGENT_HOME: process.env.MINIMAL_AGENT_HOME,
@@ -105,8 +118,8 @@ describe("async hooks: one limiter per session (MAJOR 1)", () => {
     await q?.idle()
     expect(q?.peak).toBe(2)
     expect(q?.peakTotal).toBe(4)
-    expect(q?.drain("S1")).toEqual(Array(3).fill("async-done"))
-    expect(q?.drain("S2")).toEqual(Array(3).fill("async-done"))
+    expect(drainedTexts("S1")).toEqual(Array(3).fill("async-done"))
+    expect(drainedTexts("S2")).toEqual(Array(3).fill("async-done"))
   })
 
   test("agent.willStop of a session kills its running async hook quickly, not the other", async () => {
@@ -159,7 +172,7 @@ describe("plugin config in the reload signature (MINOR 3)", () => {
     )
     const p = { text: "hi" }
     const r1 = await dispatch(p, ctx("turn.willStart", sb.project, "S1"))
-    expect(r1).toMatchObject({ additionalContext: ["claude-ctx"] })
+    expect(textsOf(r1)).toEqual(["claude-ctx"])
     sb.write(join(sb.agentHome, "config.jsonc"), config({ adapters: { claude: false } }))
     expect(await dispatch(p, ctx("turn.willStart", sb.project, "S1"))).toBeUndefined()
   })
@@ -172,7 +185,7 @@ describe("plugin config in the reload signature (MINOR 3)", () => {
     sb.write(join(sb.agentHome, "hooks.json"), nativeConfig("turn.willStart", ["echo on"]))
     const p = { text: "hi" }
     expect(await dispatch(p, ctx("turn.willStart", sb.project, "S1"))).toMatchObject({
-      additionalContext: ["on"],
+      additionalContext: [{ text: "on" }],
     })
     sb.write(cfg, config({ enabled: false, note: "changed" }))
     expect(await dispatch(p, ctx("turn.willStart", sb.project, "S1"))).toBeUndefined()

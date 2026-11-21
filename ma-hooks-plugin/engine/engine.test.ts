@@ -93,7 +93,7 @@ describe("discovery and merge", () => {
     expect(r).toMatchObject({
       halt: true,
       reason: "stub says no",
-      additionalContext: ["native ctx", "stub ctx"],
+      additionalContext: [{ text: "native ctx" }, { text: "stub ctx" }],
     })
   })
 
@@ -128,11 +128,11 @@ describe("discovery and merge", () => {
 })
 
 describe("exit codes and stdin", () => {
-  test("exit 0 plain text is context on turn.willStart", async () => {
+  test("exit 0 plain text is context on turn.willStart, with the writer label", async () => {
     sb.write(userHooks(), nativeConfig("turn.willStart", ["echo remember tests"]))
-    expect(await engine().dispatch("turn.willStart", { text: "hi" })).toEqual({
+    expect(await engine().dispatch("turn.willStart", { text: "hi" })).toMatchObject({
       payload: { text: "hi" },
-      additionalContext: ["remember tests"],
+      additionalContext: [{ text: "remember tests" }],
     })
   })
 
@@ -396,13 +396,17 @@ describe("async and output cap", () => {
     // Next turn: no sync hooks run, queued context is injected.
     sb.write(userHooks(), JSON.stringify({ hooks: {} }))
     const r = await e.dispatch("turn.willStart", { text: "b" })
-    expect(r).toMatchObject({ additionalContext: Array(5).fill("async-done") })
+    const texts = ((r as { additionalContext?: unknown[] }).additionalContext ?? []).map((x) =>
+      typeof x === "string" ? x : (x as { text: string }).text,
+    )
+    expect(texts).toEqual(Array(5).fill("async-done"))
   })
 
   test("context over the cap keeps a preview and saves the full text", async () => {
     sb.write(userHooks(), nativeConfig("turn.willStart", [`head -c 20000 /dev/zero | tr '\\0' x`]))
     const r = await engine().dispatch("turn.willStart", { text: "a" })
-    const ctx = (r as { additionalContext: string[] }).additionalContext[0] ?? ""
+    const entry = ((r as { additionalContext?: unknown[] }).additionalContext ?? [])[0]
+    const ctx = typeof entry === "string" ? entry : ((entry as { text?: string })?.text ?? "")
     expect(ctx.length).toBeLessThan(2200)
     expect(ctx).toContain("[hook output truncated: 20000 chars, full text at ")
     const path = /full text at (\S+)\]/.exec(ctx)?.[1] ?? ""
@@ -494,11 +498,11 @@ describe("review fixes", () => {
         `echo '{"continue":false,"reason":"stop","context":["keep me"]}'`,
       ]),
     )
-    expect(await engine().dispatch("turn.willStart", { text: "hi" })).toEqual({
+    expect(await engine().dispatch("turn.willStart", { text: "hi" })).toMatchObject({
       halt: true,
       reason: "stop",
       payload: { text: "hi" },
-      additionalContext: ["keep me"],
+      additionalContext: [{ text: "keep me" }],
     })
   })
 

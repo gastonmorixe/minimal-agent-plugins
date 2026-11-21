@@ -21,6 +21,13 @@ export interface MergedResult {
   context: string[]
   /** Context with position `before`, in source order. */
   contextBefore: string[]
+  /**
+   * The debug origin label of each entry of `context`, same length and
+   * order. An empty string means that entry had no label.
+   */
+  contextOrigin: string[]
+  /** The debug origin label of each entry of `contextBefore`, same rules. */
+  contextBeforeOrigin: string[]
   stopTurn?: { reason?: string }
   userMessages: string[]
 }
@@ -34,12 +41,21 @@ export function mergeResults(results: readonly CanonicalResult[]): MergedResult 
     reasons: [],
     context: [],
     contextBefore: [],
+    contextOrigin: [],
+    contextBeforeOrigin: [],
     userMessages: [],
   }
   for (const r of results) {
     if (RANK[r.decision] > RANK[out.decision]) out.decision = r.decision
-    if (r.position === "before") out.contextBefore.push(...r.context)
-    else out.context.push(...r.context)
+    const label = r.origin ?? ""
+    const labels = r.context.map(() => label)
+    if (r.position === "before") {
+      out.contextBefore.push(...r.context)
+      out.contextBeforeOrigin.push(...labels)
+    } else {
+      out.context.push(...r.context)
+      out.contextOrigin.push(...labels)
+    }
     if (r.userMessage) out.userMessages.push(r.userMessage)
     if (r.stopTurn && !out.stopTurn) out.stopTurn = r.stopTurn
   }
