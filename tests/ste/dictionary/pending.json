@@ -3174,10 +3174,6 @@
     ]
   },
   {
-    "word": "submitted",
-    "files": ["ma-history-plugin/manifest.json"]
-  },
-  {
     "word": "subscribes",
     "files": ["ma-diagnostics-plugin/manifest.json", "ma-tps-plugin/manifest.json"]
   },
