@@ -86,17 +86,37 @@ const POSITION_CHANNELS: ReadonlySet<string> = new Set(["turn.willStart", "sessi
 /**
  * The additionalContext list for one channel. On a position channel a
  * `before` entry is a `{ text, position: "before" }` object, and comes first.
- * An `after` entry is always a plain string (the contract: a string means
- * after), so with no `before` hooks the shape is the same as before P2 and
- * a core that keeps only string items loses nothing.
+ * An `after` entry is a plain string (the contract: a string means after),
+ * unless it has an origin label. An entry with a label becomes
+ * `{ text, position?, origin }`: `origin` is debug metadata, so core can name
+ * the writer in the dump. An older core ignores the unknown field and keeps
+ * the text, so the injected text never changes.
  */
 export function contextEntries(
   channel: string,
   before: readonly string[],
   after: readonly string[],
+  beforeOrigin: readonly string[] = [],
+  afterOrigin: readonly string[] = [],
 ): HookContextEntry[] {
-  if (!POSITION_CHANNELS.has(channel)) return [...before, ...after]
-  return [...before.map((text): HookContextEntry => ({ text, position: "before" })), ...after]
+  const entry = (text: string, i: number, from: readonly string[]): HookContextEntry => {
+    const origin = from[i]
+    if (origin === undefined || origin === "") return text
+    return { text, origin }
+  }
+  if (!POSITION_CHANNELS.has(channel)) {
+    return [
+      ...before.map((text, i) => entry(text, i, beforeOrigin)),
+      ...after.map((text, i) => entry(text, i, afterOrigin)),
+    ]
+  }
+  const beforeEntries = before.map((text, i): HookContextEntry => {
+    const origin = beforeOrigin[i]
+    return origin === undefined || origin === ""
+      ? { text, position: "before" }
+      : { text, position: "before", origin }
+  })
+  return [...beforeEntries, ...after.map((text, i) => entry(text, i, afterOrigin))]
 }
 
 /** Extra per-call values from the hook handler context. */
@@ -104,6 +124,63 @@ export interface DispatchContext {
   sid?: string
   cwd?: string
   abort?: AbortSignal
+}
+
+/**
+ * The debug origin label of one hook: `hooks`, the scope, the config file
+ * and the hook name, joined with a middle dot. A path under the agent home
+ * or under `$HOME` becomes `~`-relative, so the label shows no
+ * machine-local path. The hook name is a short form of the command (its
+ * script name) or of the URL. Display data only.
+ */
+export function hookOrigin(hook: CanonicalHook, home?: string, agentHome?: string): string {
+  const path = hook.source.path
+  const shown = shortenHome(path, agentHome) ?? shortenHome(path, home) ?? path
+  return ["hooks", hook.source.scope, shown, hookName(hook)].filter(Boolean).join(" · ")
+}
+
+/** Shells and interpreters that run a script given as the next token. */
+const INTERPRETERS: ReadonlySet<string> = new Set([
+  "bash",
+  "sh",
+  "zsh",
+  "node",
+  "bun",
+  "deno",
+  "python",
+  "python3",
+  "ruby",
+  "perl",
+])
+
+/** A short name of one hook: the command's script name, or the URL host and path. */
+function hookName(hook: CanonicalHook): string {
+  if (hook.handler.type === "http") {
+    try {
+      const u = new URL(hook.handler.url)
+      return `${u.host}${u.pathname}`
+    } catch {
+      return ""
+    }
+  }
+  const tokens = unquoteAll(hook.handler.command).trim().split(/\s+/).filter(Boolean)
+  const first = tokens[0] ?? ""
+  const base = first.split("/").filter(Boolean).pop() ?? ""
+  // `bash script.sh` names the script, not the shell.
+  const target = INTERPRETERS.has(base) && tokens[1] !== undefined ? tokens[1] : first
+  return unquoteAll(target).split("/").filter(Boolean).pop() ?? ""
+}
+
+/** Remove the shell quotes of a command token: `"x.sh"` gives `x.sh`. */
+function unquoteAll(token: string): string {
+  return token.replace(/^["']+/, "").replace(/["']+$/, "")
+}
+
+/** `path` with `prefix` replaced by `~`, or undefined when `path` is not under it. */
+function shortenHome(path: string, prefix: string | undefined): string | undefined {
+  if (!prefix || !path.startsWith(prefix)) return undefined
+  const rest = path.slice(prefix.length)
+  return rest.startsWith("/") ? `~${rest}` : undefined
 }
 
 function isObj(v: unknown): v is Record<string, unknown> {
@@ -510,6 +587,11 @@ export class HooksEngine {
       context: result.context.map((c) => capText(c, cap, outDir)),
       ...(result.reason ? { reason: capText(result.reason, cap, outDir) } : {}),
     }
+    // The label names the hook that wrote the context. It is debug metadata:
+    // it rides on the block mark and never enters the injected text.
+    if (result.context.length > 0) {
+      result = { ...result, origin: hookOrigin(hook, this.env.HOME, this.agentHome) }
+    }
     const rec: RunRecord = {
       dialect: hook.dialect,
       channel,
@@ -549,8 +631,13 @@ export class HooksEngine {
     for (const h of hooks.filter((x) => x.async)) {
       this.asyncQueue.push(async (signal) => {
         const r = await this.runOne(h, channel, payload, inv, signal)
-        if (r.position !== "before") return r.context
-        return r.context.map((text): HookContextEntry => ({ text, position: "before" }))
+        return r.context.map((text): HookContextEntry => {
+          const origin = r.origin
+          if (origin === undefined) {
+            return r.position === "before" ? { text, position: "before" } : text
+          }
+          return r.position === "before" ? { text, position: "before", origin } : { text, origin }
+        })
       }, inv.sid)
     }
     const sync = hooks.filter((h) => !h.async)
@@ -604,15 +691,25 @@ export class HooksEngine {
     const m = await this.evaluate(channel, payload, dc)
     const qBefore: string[] = []
     const qAfter: string[] = []
+    const qBeforeOrigin: string[] = []
+    const qAfterOrigin: string[] = []
     for (const e of queued) {
-      if (typeof e === "string") qAfter.push(e)
-      else if (e.position === "before") qBefore.push(e.text)
-      else qAfter.push(e.text)
+      const origin = typeof e === "string" ? undefined : e.origin
+      const text = typeof e === "string" ? e : e.text
+      if (typeof e !== "string" && e.position === "before") {
+        qBefore.push(text)
+        qBeforeOrigin.push(origin ?? "")
+      } else {
+        qAfter.push(text)
+        qAfterOrigin.push(origin ?? "")
+      }
     }
     const context = contextEntries(
       channel,
       [...qBefore, ...m.contextBefore],
       [...qAfter, ...m.context],
+      [...qBeforeOrigin, ...m.contextBeforeOrigin],
+      [...qAfterOrigin, ...m.contextOrigin],
     )
     const ctxPart = context.length > 0 ? { additionalContext: context } : {}
     const next = m.payload === undefined ? payload : this.rewrite(channel, payload, m.payload, sid)

@@ -6,6 +6,7 @@ import { nativeAdapter } from "../native/adapter.ts"
 
 import { AsyncHookQueue } from "./async-queue.ts"
 import { loadHooksConfig, parseHooksConfig } from "./config.ts"
+import { hookOrigin } from "./engine.ts"
 import { mergeResults } from "./merge.ts"
 import { capText } from "./output-cap.ts"
 import { DIALECT_ADAPTERS, selectAdapters } from "./registry.ts"
@@ -81,6 +82,27 @@ describe("merge", () => {
     expect(m.decision).toBe("deny")
     expect(m.reasons).toEqual(["d"])
     expect(m.context).toEqual(["a", "b"])
+  })
+
+  test("each context entry keeps the label of the hook that wrote it", () => {
+    const m = mergeResults([
+      { decision: "none", context: ["a"], origin: "hooks · user · ~/hooks.json · x.sh" },
+      { decision: "none", context: ["b"] },
+    ])
+    expect(m.context).toEqual(["a", "b"])
+    expect(m.contextOrigin).toEqual(["hooks · user · ~/hooks.json · x.sh", ""])
+  })
+})
+
+describe("hook origin label", () => {
+  test("names the scope, a home-relative config and the hook", () => {
+    const hook = {
+      source: { id: "user", path: "/h/.minimal-agent/hooks.json", scope: "user", precedence: 0 },
+      handler: { type: "command", command: "bash /h/.minimal-agent/hooks/timestamp.sh" },
+    } as unknown as Parameters<typeof hookOrigin>[0]
+    expect(hookOrigin(hook, "/h", "/h/.minimal-agent")).toBe(
+      "hooks · user · ~/hooks.json · timestamp.sh",
+    )
   })
 })
 

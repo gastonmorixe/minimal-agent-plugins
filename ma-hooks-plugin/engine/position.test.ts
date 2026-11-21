@@ -10,7 +10,7 @@ import { HooksEngine } from "./engine.ts"
 import { hookContentHash } from "./hash.ts"
 import { dedupHooks, dedupKey, mergeResults } from "./merge.ts"
 import { makeSandbox, nativeConfig, type Sandbox } from "./test-support.ts"
-import type { CanonicalHook, RunOutcome, SourceRef } from "./types.ts"
+import type { CanonicalHook, HookContextEntry, RunOutcome, SourceRef } from "./types.ts"
 
 const src: SourceRef = { id: "user", path: "/h/hooks.json", scope: "user", precedence: 0 }
 const run = (o: Partial<RunOutcome>): RunOutcome => ({
@@ -28,6 +28,17 @@ function parseOne(extra: Record<string, unknown>): { hook: CanonicalHook; warnin
   const hook = r.hooks[0]
   if (!hook) throw new Error("no hook")
   return { hook, warnings: r.warnings }
+}
+
+/** The additionalContext entries of a dispatch result (empty when none). */
+function entriesOf(r: unknown): HookContextEntry[] {
+  const ctx = (r as { additionalContext?: HookContextEntry[] } | undefined)?.additionalContext
+  return Array.isArray(ctx) ? ctx : []
+}
+
+/** The texts of the additionalContext entries of a dispatch result. */
+function textsOf(r: unknown): string[] {
+  return entriesOf(r).map((e) => (typeof e === "string" ? e : e.text))
 }
 
 describe("position: native config", () => {
@@ -187,7 +198,7 @@ describe("position: engine dispatch", () => {
     { command: `echo '{"context":"before-2","position":"before"}'` },
   ]
 
-  test("turn.willStart and session.willStart: before objects first, after as strings", async () => {
+  test("turn.willStart and session.willStart: before objects first, after objects with the label", async () => {
     for (const channel of ["turn.willStart", "session.willStart"]) {
       sb.write(userHooks(), nativeConfig(channel, hooksFor()))
       const r = await engine().dispatch(channel, { text: "hi", source: "startup" })
@@ -195,22 +206,25 @@ describe("position: engine dispatch", () => {
         additionalContext: [
           { text: "before-1", position: "before" },
           { text: "before-2", position: "before" },
-          "after-1",
-          "after-2",
+          { text: "after-1" },
+          { text: "after-2" },
         ],
       })
+      // Every entry names its writer. The label is metadata: the text stays.
+      for (const e of entriesOf(r)) {
+        expect(typeof e === "string" ? undefined : e.origin?.startsWith("hooks · user · ")).toBe(
+          true,
+        )
+      }
     }
   })
 
-  test("no before hooks: turn.willStart returns only strings (pre-P2 shape)", async () => {
+  test("no before hooks: turn.willStart keeps the texts and adds the label", async () => {
     const cmds = ["echo a1", { command: "echo a2", position: "after" }]
     for (const channel of ["turn.willStart", "session.willStart"]) {
       sb.write(userHooks(), nativeConfig(channel, cmds))
       const r = await engine().dispatch(channel, { text: "hi", source: "startup" })
-      expect(r).toEqual({
-        payload: { text: "hi", source: "startup" },
-        additionalContext: ["a1", "a2"],
-      })
+      expect(textsOf(r)).toEqual(["a1", "a2"])
     }
   })
 
@@ -228,20 +242,20 @@ describe("position: engine dispatch", () => {
     expect(r).toMatchObject({
       additionalContext: [
         { text: "async-before", position: "before" },
-        "async-after",
-        "sync-after",
+        { text: "async-after" },
+        { text: "sync-after" },
       ],
     })
   })
 
-  test("tool.willInvoke returns plain strings", async () => {
+  test("tool.willInvoke keeps the texts, position ignored, label kept", async () => {
     const cmds = [
       `echo '{"context":"x1"}'`,
       { command: `echo '{"context":"x2"}'`, position: "before" },
     ]
     sb.write(userHooks(), nativeConfig("tool.willInvoke", cmds))
     const r = await engine().dispatch("tool.willInvoke", { tool: "Bash", input: {}, cwd: "/" })
-    expect(r).toMatchObject({ additionalContext: ["x2", "x1"] })
+    expect(textsOf(r)).toEqual(["x2", "x1"])
   })
 
   test("Claude context is always after; the ignored key reaches the debug sink", async () => {
@@ -257,7 +271,7 @@ describe("position: engine dispatch", () => {
       }),
     )
     const r = await engine((m) => notes.push(m)).dispatch("turn.willStart", { text: "hi" })
-    expect(r).toMatchObject({ additionalContext: ["c"] })
+    expect(textsOf(r)).toEqual(["c"])
     expect(notes.some((n) => n.includes('ignored "position"'))).toBe(true)
   })
 

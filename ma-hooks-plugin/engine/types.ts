@@ -153,6 +153,14 @@ export interface CanonicalResult {
   error?: string
   /** A note for the debug log (not an error), e.g. an ignored output field. */
   debug?: string
+  /**
+   * Debug label of the hook that produced `context`, for example
+   * `hooks · turn.willStart · user · ~/.minimal-agent/hooks.json`. Core puts
+   * it on the sideband block mark (`sideband.origin`), so the verbose dump
+   * names the writer. It never enters the injected text, so it costs no
+   * model tokens.
+   */
+  origin?: string
 }
 
 /** Values the engine knows about one invocation. */

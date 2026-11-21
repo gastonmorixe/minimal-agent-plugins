@@ -179,7 +179,7 @@ describe("session.willStart end to end", () => {
     sb.write(join(sb.home, ".claude", "settings.json"), claudeSettings("SessionStart", script))
     const p = { ...start, cwd: sb.project }
     const r = await dispatch(p, ctx("session.willStart", sb.project, "S1"))
-    expect(r).toEqual({ payload: p, additionalContext: ["repo facts"] })
+    expect(r).toMatchObject({ payload: p, additionalContext: [{ text: "repo facts" }] })
   })
 
   test("Claude SessionStart cannot block: exit 2 and decision block do not halt", async () => {
@@ -202,9 +202,9 @@ describe("session.willStart end to end", () => {
     sb = homeSandbox()
     const p = { ...start, cwd: sb.project }
     sb.write(join(sb.agentHome, "hooks.json"), nativeConfig("session.willStart", ["echo ctx-1"]))
-    expect(await dispatch(p, ctx("session.willStart", sb.project, "S1"))).toEqual({
+    expect(await dispatch(p, ctx("session.willStart", sb.project, "S1"))).toMatchObject({
       payload: p,
-      additionalContext: ["ctx-1"],
+      additionalContext: [{ text: "ctx-1" }],
     })
     for (const cmd of [`echo '{"decision":"deny","reason":"no"}'`, "echo no >&2; exit 2"]) {
       resetEngine()
@@ -274,7 +274,7 @@ describe("dispatch handler", () => {
     // A moves to another cwd: a new engine, but the queued output stays.
     sb.write(join(sb.agentHome, "hooks.json"), JSON.stringify({ hooks: {} }))
     const a2 = await dispatch({ text: "a2" }, ctx("turn.willStart", other, "A"))
-    expect(a2).toEqual({ payload: { text: "a2" }, additionalContext: ["for-A"] })
+    expect(a2).toMatchObject({ payload: { text: "a2" }, additionalContext: [{ text: "for-A" }] })
   })
 })
 
