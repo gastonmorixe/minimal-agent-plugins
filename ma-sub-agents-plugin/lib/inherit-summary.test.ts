@@ -33,14 +33,14 @@ describe("inheritSummary (SPEC R12)", () => {
       ...BASE,
       systemPrompt: {
         instructions: { kind: "omit" },
-        toolOutputConventions: { kind: "omit" },
+        sessionContext: { kind: "omit" },
       },
       noAgentsMd: true,
       pluginPrompts: { all: true, suppress: [], keep: [] },
       tools: { kind: "list", names: ["Read"] },
     }
     expect(inheritSummary({ state: "on", profile, leadTools: profile.tools, mode: "ask" })).toBe(
-      "inherit: sys(-instr,-toolconv) agents-md:off plugin-prompts:off tools:lead mode:ask",
+      "inherit: sys(-instr,-ctx) agents-md:off plugin-prompts:off tools:lead mode:ask",
     )
   })
 

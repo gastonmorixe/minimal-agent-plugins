@@ -99,11 +99,10 @@ describe("base prompt provider", () => {
       new Set([...read(name).matchAll(/%%([A-Za-z0-9_.-]+\??)%%/g)].map((m) => m[1]))
     expect(names("identity.neutral.md")).toEqual(new Set())
     expect(names("instructions.md")).toEqual(new Set(["agentHome"]))
-    expect(names("tool-output-conventions.md")).toEqual(new Set(["agentHome"]))
   })
 
-  test("the provider declares the 2 system slots as data", () => {
-    expect(createProvider().slots).toEqual(["instructions", "toolOutputConventions"])
+  test("the provider declares the instructions slot as data", () => {
+    expect(createProvider().slots).toEqual(["instructions"])
   })
 
   test("fill replaces each name and throws on a name with no value", () => {
@@ -114,11 +113,9 @@ describe("base prompt provider", () => {
 
 interface GridEntry {
   ctx: {
-    blobStoreEnabled: boolean
     agentHome: string
   }
   instructions: string | null
-  toolOutputConventions: string | null
 }
 interface SystemFixture {
   identity: string
@@ -135,18 +132,17 @@ const system: SystemFixture = {
   grid: oldSystem.grid.map((g) => ({
     ...g,
     instructions: steOrNull(g.instructions),
-    toolOutputConventions: steOrNull(g.toolOutputConventions),
   })),
 }
 
 describe("byte parity with the core system fixture (P4 STE text)", () => {
-  test("the grid has 2 entries", () => expect(system.grid).toHaveLength(2))
+  test("the grid has 1 entry", () => expect(system.grid).toHaveLength(1))
 
   test("each STE rewrite hits the fixture, and no old text is left", () => {
     const all = [
       oldSystem.identity,
       oldSystem.instructionsTemplate,
-      ...oldSystem.grid.flatMap((g) => [g.instructions, g.toolOutputConventions]),
+      ...oldSystem.grid.map((g) => g.instructions),
     ].filter((t): t is string => t !== null)
     for (const [i, rule] of STE_REWRITES.entries()) {
       expect(
@@ -169,12 +165,12 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
 
   for (const entry of system.grid) {
     const c = entry.ctx
-    const name = `blob=${c.blobStoreEnabled}`
+    const name = `agentHome=${c.agentHome}`
     test(`each slot equals the fixture (${name})`, () => {
       const parts = createProvider().instructionParts?.(c) ?? []
       const bySlot = new Map(parts.map((p) => [p.slot, p.text]))
       expect(parts.length).toBe(bySlot.size)
-      for (const slot of ["instructions", "toolOutputConventions"] as const) {
+      for (const slot of ["instructions"] as const) {
         const want = entry[slot]
         if (want === null) {
           expect(bySlot.has(slot)).toBe(false)
@@ -189,7 +185,7 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
     const p = createProvider()
     for (const entry of [...system.grid, ...system.grid.toReversed()]) {
       const got = new Map((p.instructionParts?.(entry.ctx) ?? []).map((x) => [x.slot, x.text]))
-      expect(got.get("toolOutputConventions") ?? null).toBe(entry.toolOutputConventions)
+      expect(got.get("instructions") ?? null).toBe(entry.instructions)
     }
   })
 
@@ -200,16 +196,6 @@ describe("byte parity with the core system fixture (P4 STE text)", () => {
     const text = parts.find((p) => p.slot === "instructions")?.text ?? ""
     expect(text).toBe(system.instructionsTemplate.replaceAll("%%agentHome%%", "/x/home"))
   })
-
-  test("the conventions slot gets agentHome from the ctx", () => {
-    const base = system.grid.find((g) => g.ctx.blobStoreEnabled)
-    if (base === undefined) throw new Error("no grid entry with blobStoreEnabled")
-    const parts = createProvider().instructionParts?.({ ...base.ctx, agentHome: "/x/home" }) ?? []
-    const text = parts.find((p) => p.slot === "toolOutputConventions")?.text ?? ""
-    expect(text).toContain("`/x/home/sessions/<sid>.blobs/<tool_use_id>.raw`")
-    expect(text).not.toContain("%%")
-    expect(text).not.toContain("~/.minimal-agent")
-  })
 })
 
 describe("MA-02 does not promise a transcript file that may not exist", () => {
@@ -217,11 +203,7 @@ describe("MA-02 does not promise a transcript file that may not exist", () => {
     const provider = createBaseProvider((name) =>
       readFileSync(join(import.meta.dir, "prompts", name), "utf8"),
     )
-    const [part] =
-      provider.instructionParts?.({
-        blobStoreEnabled: false,
-        agentHome: "/home/x",
-      }) ?? []
+    const [part] = provider.instructionParts?.({ agentHome: "/home/x" }) ?? []
     const text = part?.text ?? ""
     expect(text).toContain("If the host saves the transcript of this session")
     expect(text).toContain("Some hosts keep it only in memory")

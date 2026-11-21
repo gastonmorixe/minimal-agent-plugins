@@ -1,6 +1,6 @@
 /**
- * Base prompt provider. Owns the identity and the 2 system slots
- * (instructions, toolOutputConventions). Reads the data files
+ * Base prompt provider. Owns the identity and the instructions slot.
+ * Reads the data files
  * lazily (first use), trims them, keeps the raw text, and renders each slot
  * from the facts ctx at each call.
  *
@@ -18,7 +18,6 @@ import type {
 
 import identityNeutralMd from "./prompts/identity.neutral.md" with { type: "text" }
 import instructionsMd from "./prompts/instructions.md" with { type: "text" }
-import toolOutputConventionsMd from "./prompts/tool-output-conventions.md" with { type: "text" }
 
 /** Returns the raw text of one data file of `prompts/`, by path under `prompts/`. */
 export type BaseTextReader = (name: string) => string
@@ -27,11 +26,10 @@ export type BaseTextReader = (name: string) => string
 const TEXTS: Readonly<Record<string, string>> = {
   "identity.neutral.md": identityNeutralMd,
   "instructions.md": instructionsMd,
-  "tool-output-conventions.md": toolOutputConventionsMd,
 }
 
 /** The slots this provider owns. */
-const SLOTS: readonly SystemPromptSlot[] = ["instructions", "toolOutputConventions"]
+const SLOTS: readonly SystemPromptSlot[] = ["instructions"]
 
 /** Reader over the text imports of this plugin. */
 const textImportReader: BaseTextReader = (name) => {
@@ -72,16 +70,9 @@ export function createBaseProvider(readText: BaseTextReader): SystemPromptBasePr
     instructionParts(ctx?: SystemPromptPartsContext): SystemPromptPart[] {
       // No ctx (old callers): the instructions template, as before.
       if (ctx === undefined) return [{ slot: "instructions", text: read("instructions.md") }]
-      const parts: SystemPromptPart[] = [
+      return [
         { slot: "instructions", text: fill(read("instructions.md"), { agentHome: ctx.agentHome }) },
       ]
-      if (ctx.blobStoreEnabled) {
-        parts.push({
-          slot: "toolOutputConventions",
-          text: fill(read("tool-output-conventions.md"), { agentHome: ctx.agentHome }),
-        })
-      }
-      return parts
     },
   }
 }

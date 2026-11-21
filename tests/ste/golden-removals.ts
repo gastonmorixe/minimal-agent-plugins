@@ -20,7 +20,13 @@ export interface SectionRemoval {
  * with no other change. The section may hold `<ma::...>` tags. Remove an
  * entry when main has the new goldens, as for {@link SCHEMA_ADDITIONS}.
  */
-export const SECTION_REMOVALS: readonly SectionRemoval[] = []
+export const SECTION_REMOVALS: readonly SectionRemoval[] = [
+  {
+    heading: "# Tool output conventions",
+    source:
+      "core removed the toolOutputConventions slot; the harness still writes blobs and the raw-output footer",
+  },
+]
 
 /**
  * Goldens that are intended to be gone since the merge base. Remove an entry
