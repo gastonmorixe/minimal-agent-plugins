@@ -179,7 +179,11 @@ function renderTotalsLines(t: UsageTotals): string[] {
     t.estimatedTurns === t.turns
       ? `    ${c.dim("(estimated from transcript text — no billed usage saved)")}`
       : `    ${c.dim("in")} ${fmtTokens(t.input)}  ${c.dim("out")} ${fmtTokens(t.output)}  ${c.dim("cache-r")} ${fmtTokens(t.cacheRead)}  ${c.dim("cache-w")} ${fmtTokens(t.cacheCreate)}  ${c.dim("·")}  ${c.green(fmtUSD(t.costUSD))}`
-  const turns = `    ${c.dim(`${t.turns} turn${t.turns === 1 ? "" : "s"}${t.estimatedTurns > 0 && t.estimatedTurns < t.turns ? ` · ${t.estimatedTurns} estimated` : ""}`)}`
+  const unknown = t.unknownTurns ?? 0
+  // A turn with no estimator adds 0 tokens: say so, so the total is read
+  // as a lower bound and not as an exact count.
+  const unknownNote = unknown > 0 ? ` · ${unknown} not known (no estimator)` : ""
+  const turns = `    ${c.dim(`${t.turns} turn${t.turns === 1 ? "" : "s"}${t.estimatedTurns > 0 && t.estimatedTurns < t.turns ? ` · ${t.estimatedTurns} estimated` : ""}${unknownNote}`)}`
   return [head, breakdown, turns]
 }
 

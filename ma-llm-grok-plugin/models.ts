@@ -40,7 +40,8 @@
  */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForFamily } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_GROK_43_CHAT,
@@ -70,7 +71,12 @@ import {
   PRICING_GROK_GENERIC,
 } from "./pricing.ts"
 
-const estimateGrokTokens = makeCharRatioEstimator(3.5)
+/**
+ * Token estimator for all Grok models: the `grok` preset of the kit (fitted
+ * on live grok-4.x usage). This plugin serves only xAI models, so each entry,
+ * also an ad-hoc id, uses this family.
+ */
+const estimateGrokTokens = estimatorForFamily("grok")
 
 const localCatalog: Array<{ id: string; tags: readonly string[]; contextWindow: number }> = []
 

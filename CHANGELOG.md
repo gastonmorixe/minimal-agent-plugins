@@ -6,6 +6,35 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ## [Unreleased]
 
+### Added
+
+- 2026-11-20: **`ma-token-estimate-kit`: fitted token-estimate presets.** A
+  new kit (not a plugin) with one `CharClassEstimatorParams` preset for each
+  tokenizer family (`claude-5x`, `claude-legacy`, `openai-o200k`,
+  `openai-cl100k`, `gemma`, `llama3`, `llama4`, `qwen`, `deepseek`,
+  `mistral`, `glm`, `kimi`, `minimax`, `grok`, `meta-muse`, `generic`), a
+  family map from a model id (`familyForModelId`, with aggregator prefixes,
+  `org/name`, Hugging Face cache names and Ollama tags), and memoized
+  estimators (`estimatorForFamily`, `estimatorForModelId`). The estimator is
+  the core `makeCharClassEstimator`. Held-out MAPE goes from 13% to 35%
+  (old fixed ratios) to 4% to 15% (see the kit `README.md`).
+- 2026-11-20: **Calibration script** `scripts/token-estimate-calibrate.ts`.
+  It fits the presets from a reference sample file and from local session
+  and net-dbg logs (coordinate descent on 80% of the samples), and reports
+  the held-out MAPE of the real core estimator. The input data stays outside
+  the repo.
+- 2026-11-20: **`MINIMAL_AGENT_TOKENIZER`** (`ma-llm-generic-endpoint-plugin`).
+  It sets the tokenizer family of the generic endpoint model. An unknown
+  name throws when the plugin reads the config, and the error lists the
+  valid names. Absent: the family of the model id, then of the provider
+  model id, then the codec estimator, else `generic`. New plugin
+  `README.md` documents the config.
+- 2026-11-20: **Estimator coverage test** (`tests/estimator-coverage.test.ts`).
+  Each static model entry of the `ma-llm-*` plugins with
+  `outputTokensShareContextWindow: true` must set `estimateTokens`. Without
+  one, the core `max_tokens` clamp uses a UTF-8 byte upper bound (3 to 4
+  times too high) and can clamp to the 1024 floor.
+
 ### Removed
 
 - 2026-11-20: **The core reflection references** (BREAKING). Core
@@ -25,6 +54,23 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   `ma-reflection-checkpoint-plugin`.
 
 ### Changed
+
+- 2026-11-20: **Each `ma-llm-*` plugin uses the kit estimators.** Core has
+  no default ratio, so each provider sets the estimator of each model.
+  - `ma-llm-anthropic-plugin`: `claude-5x` for Claude 4.7 and later (all
+    5.x), `claude-legacy` for 4.6 and earlier; an unknown id gets
+    `claude-5x` (`estimatorForAnthropicModel`).
+  - `ma-llm-openai-plugin`: `openai-o200k` (gpt-4o, gpt-4.1, gpt-5+, o1,
+    o3, o4, gpt-oss; also an unknown id) and `openai-cl100k` (plain gpt-4,
+    gpt-3.5) (`estimatorForOpenAIModel`).
+  - `ma-llm-grok-plugin`: `grok` (fit on grok-4.x sessions).
+  - `ma-llm-meta-plugin`: `meta-muse` (fit on muse sessions).
+  - Aggregators (`ma-llm-clinepass-plugin`, `ma-llm-cursor-plugin`,
+    `ma-llm-huggingface-plugin`, `ma-llm-ollama-plugin`,
+    `ma-llm-opencode-go-plugin`, `ma-llm-opencode-zen-plugin`,
+    `ma-llm-openrouter-plugin`, `ma-llm-wafer-plugin`): the family of the
+    upstream model id, with `generic` as the fallback for an id that the
+    family map does not know. Ad-hoc models get the same rule.
 
 - 2026-11-20: **The Intercom footer paints the session title faint**
   (`ma-intercom-plugin`). `renderFooter` wraps the title in the `dim` style
@@ -571,6 +617,13 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
   models.dev. Coverage in each package's `opencode.test.ts`.
 
 ### Removed
+
+- 2026-11-20: **The unused Haiku 5.5 long-prompt pricing gate is gone**
+  (`ma-llm-anthropic-plugin`). No code called `haiku55PromptTokens`, its
+  helpers, `ANTHROPIC_HAIKU_55_LONG_PROMPT` or
+  `HAIKU_55_LONG_PROMPT_THRESHOLD`: Haiku 5.5 has no `pricingForRequest`, and
+  core does not call `pricingForRequest`. Their tests in `pricing.test.ts` are
+  also gone. The base Haiku 5.5 rate does not change.
 
 - 2026-11-01 `098dec4`: **More OpenCode ids gone from the live catalogs.**
   Zen drops `gemini-3.1-pro`, `gemini-3-flash`, `deepseek-v4-flash`,

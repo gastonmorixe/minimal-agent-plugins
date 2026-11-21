@@ -25,7 +25,8 @@
  */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import { cursorCaps, isCursorEffortParamId, isCursorFastParamId } from "./capabilities.ts"
 import { makeCursorEncodeSpec, registerCursorRunSku, setCursorEncodeSpec } from "./encode-spec.ts"
@@ -36,7 +37,12 @@ import { CURSOR_SURFACE_AGENT_RUN } from "./wire-constants.ts"
 
 const K = 1_000
 
-const estimateCursorTokens = makeCharRatioEstimator(3.8)
+/**
+ * Fallback tokenizer family for a model id that the kit map does not know.
+ * Cursor serves models of many vendors and has router ids (for example `cursor-auto`), so `generic` (the fit on the union of 12 reference tokenizers)
+ * is the safest guess.
+ */
+const CURSOR_FALLBACK_FAMILY = "generic" as const
 
 export interface CursorCatalogEntry {
   /** Host registry id — must not collide with other providers' ids/aliases. */
@@ -400,7 +406,9 @@ export function registerCursorModelInto(models: ModelRegistrar, entry: CursorCat
     capabilities: entry.capabilities,
     // Pricing opaque on AvailableModels — zero rates (see pricing.ts).
     pricing: PRICING_CURSOR_GENERIC,
-    estimateTokens: estimateCursorTokens,
+    // The host id first (`cursor-grok-*`), then the wire id, then the fallback.
+    estimateTokens:
+      estimatorForModelId(entry.id) ?? estimatorForModelId(vendorWireId, CURSOR_FALLBACK_FAMILY),
     // Never put bare wire ids in `aliases` — they collide with Grok et al.
     vendorIds: { cursor: vendorWireId, firstParty: vendorWireId },
   }

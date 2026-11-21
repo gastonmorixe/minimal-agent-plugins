@@ -10,7 +10,8 @@
  */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_DEEPSEEK_V4_FLASH,
@@ -42,7 +43,12 @@ import {
   PRICING_QWEN3_7_PLUS,
 } from "./pricing.ts"
 
-const estimateClinepassTokens = makeCharRatioEstimator(3.8)
+/**
+ * Fallback tokenizer family for a model id that the kit map does not know.
+ * ClinePass serves models of many vendors, so `generic` (the fit on the union of 12 reference tokenizers)
+ * is the safest guess.
+ */
+const CLINEPASS_FALLBACK_FAMILY = "generic" as const
 
 export interface ClinepassModelSpec {
   id: string
@@ -184,7 +190,7 @@ export function registerClinepassModel(
     displayName: spec.displayName ?? builtin?.displayName ?? spec.id,
     tags,
     capabilities,
-    estimateTokens: estimateClinepassTokens,
+    estimateTokens: estimatorForModelId(spec.id, CLINEPASS_FALLBACK_FAMILY),
     pricing: builtin?.pricing ?? PRICING_CLINEPASS_GENERIC,
     vendorIds: { firstParty: spec.id },
   })

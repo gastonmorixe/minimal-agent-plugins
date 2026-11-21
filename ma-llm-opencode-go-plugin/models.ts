@@ -16,7 +16,8 @@
  */
 
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
-import { makeCharRatioEstimator } from "@minimal-agent/core/plugin-api/llm/token-estimate"
+
+import { estimatorForModelId } from "../ma-token-estimate-kit/src/index.ts"
 
 import {
   CAPS_BEAM_FREE,
@@ -90,7 +91,13 @@ import {
   PRICING_STEP_5_PREVIEW,
 } from "./pricing.ts"
 
-const estimateTokens = makeCharRatioEstimator(3.8)
+/**
+ * Fallback tokenizer family for an id that the kit map does not know (for
+ * example `step-*` or `beam-free`). OpenCode Go serves models of many
+ * vendors, so `generic` (the fit on the union of 12 reference tokenizers) is
+ * the safest guess.
+ */
+const GO_FALLBACK_FAMILY = "generic" as const
 
 interface OpencodeModelSpec extends ProviderModelSpec {
   surfaceId: SurfaceId
@@ -114,7 +121,7 @@ function makeSpec(
     tags: opts.tags,
     // Per-model input formats: the live list, else the static flags.
     capabilities: withOpencodeInputMimeTypes(opts.capabilities, id, opts.surfaceId),
-    estimateTokens,
+    estimateTokens: estimatorForModelId(id, GO_FALLBACK_FAMILY),
     pricing: opts.pricing,
     vendorIds: { firstParty: id },
   }
@@ -396,6 +403,8 @@ export function registerOpencodeModelInto(
   registrar.register({
     ...spec,
     capabilities: withOpencodeInputMimeTypes(spec.capabilities, spec.id, spec.surfaceId),
+    // An ad-hoc spec has no estimator: use the family of its id.
+    estimateTokens: spec.estimateTokens ?? estimatorForModelId(spec.id, GO_FALLBACK_FAMILY),
   })
   localCatalog.push({ id: spec.id, tags: spec.tags ?? [] })
   return spec.id
