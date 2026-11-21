@@ -26,10 +26,14 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 
+import { pluginSideband } from "../tests/support/sideband.ts"
+
 import taskToolHandler from "./handlers/task_tool.ts"
 import { TasksAttachment } from "./lib/attachment.ts"
 import type { TUIContext, TUIResult } from "./lib/host-types.ts"
 import { TaskStore } from "./lib/store.ts"
+
+const sb = await pluginSideband()
 
 const RAW = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")) as {
   headless: {
@@ -103,7 +107,7 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     expect(tasks.map((t) => t.title)).toEqual(["plan step 1", "plan step 2", "plan step 3"])
 
     // --- A fresh TasksAttachment sees the committed state ---
-    const att = new TasksAttachment(sid, { home: tmpHome })
+    const att = new TasksAttachment(sid, { home: tmpHome }, sb)
     const text = att.toText()
     expect(text).not.toBeNull()
     expect(text!).toContain("<ma::agent::tasks")
@@ -185,7 +189,7 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     expect(doneResult.displayHeader).toContain("marked done")
 
     // Attachment sees done=1, todo=1.
-    const text = new TasksAttachment(sid, { home: tmpHome }).toText()!
+    const text = new TasksAttachment(sid, { home: tmpHome }, sb).toText()!
     expect(text).toContain(`done="1"`)
     expect(text).toContain(`todo="1"`)
     expect(text).toContain("done")
@@ -208,7 +212,7 @@ describe("tasks plugin — full handler → store → attachment loop", () => {
     await dispatch(sid, { action: "add", title: "child A", parent: parentId })
     await dispatch(sid, { action: "add", title: "child B", parent: parentId })
 
-    const text = new TasksAttachment(sid, { home: tmpHome }).toText()!
+    const text = new TasksAttachment(sid, { home: tmpHome }, sb).toText()!
     expect(text).toContain(`  ${parentId}a  todo      child A`)
     expect(text).toContain(`  ${parentId}b  todo      child B`)
     expect(text).toContain(parentId)

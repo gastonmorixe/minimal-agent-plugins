@@ -15,6 +15,10 @@
 
 import { describe, expect, it } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import {
   type EventBusSlice,
   type EventContextSlice,
@@ -25,6 +29,8 @@ import {
   SaveEchoCollector,
   type Unsubscribe,
 } from "./save-echo.ts"
+
+const sb = await pluginSideband()
 
 /**
  * Minimal in-test event bus satisfying the plugin's structural slices
@@ -115,7 +121,7 @@ describe("isMemorySavedPayload", () => {
 describe("SaveEchoCollector + EventBus", () => {
   it("buffers emitted events and drains them on consumeAll", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     bus.emit(MEMORY_SAVED, { scope: "project", id: "p1", body: "hello" })
     bus.emit(MEMORY_SAVED, { scope: "short-term", id: "1", body: "scratch" })
@@ -142,7 +148,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
   it("consumeAll is idempotent — second call returns []", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
     bus.emit(MEMORY_SAVED, { scope: "project", id: "x", body: "y" })
     await Promise.resolve()
 
@@ -155,7 +161,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
   it("queues new events after a drain", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     bus.emit(MEMORY_SAVED, { scope: "project", id: "a", body: "a" })
     await Promise.resolve()
@@ -170,7 +176,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
   it("ignores malformed payloads silently", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     bus.emit(MEMORY_SAVED, { scope: "weird", id: "x", body: "" })
     bus.emit(MEMORY_SAVED, "not an object")
@@ -183,7 +189,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
   it("detach removes the listener — subsequent emits don't queue", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
     collector.detach()
 
     bus.emit(MEMORY_SAVED, { scope: "project", id: "x", body: "y" })
@@ -195,7 +201,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
   it("detach also drops any already-queued events", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
     bus.emit(MEMORY_SAVED, { scope: "project", id: "x", body: "y" })
     await Promise.resolve()
 
@@ -207,7 +213,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
   it("detach is idempotent", () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
     collector.detach()
     expect(() => collector.detach()).not.toThrow()
     bus.dispose()
@@ -220,7 +226,7 @@ describe("SaveEchoCollector + EventBus", () => {
 
 describe("SaveEchoCollector.enqueue", () => {
   it("queues without going through the bus", () => {
-    const c = new SaveEchoCollector()
+    const c = new SaveEchoCollector(sb)
     c.enqueue({ scope: "global", id: "g1", body: "global thing" })
     expect(c.pendingCount()).toBe(1)
     const blocks = c.consumeAll()
@@ -238,7 +244,7 @@ describe("SaveEchoCollector.enqueue", () => {
 
 describe("renderEcho", () => {
   it("emits scope + id + body for short bodies", () => {
-    const out = renderEcho({ scope: "project", id: "abc-1234", body: "hi" })
+    const out = renderEcho({ scope: "project", id: "abc-1234", body: "hi" }, sb)
     expect(out).toBe(
       '<ma::agent::memory-saved scope="project" id="abc-1234">hi</ma::agent::memory-saved>',
     )
@@ -246,7 +252,7 @@ describe("renderEcho", () => {
 
   it("truncates bodies longer than 60 chars with …", () => {
     const long = "a".repeat(120)
-    const out = renderEcho({ scope: "project", id: "x", body: long })
+    const out = renderEcho({ scope: "project", id: "x", body: long }, sb)
     expect(out).toContain("a".repeat(59))
     expect(out).toContain("…")
     // The opening tag + 59 a's + …, no extra a's:
@@ -255,38 +261,44 @@ describe("renderEcho", () => {
   })
 
   it("collapses internal whitespace in the preview", () => {
-    const out = renderEcho({ scope: "project", id: "x", body: "a\nb\n\nc  d" })
+    const out = renderEcho({ scope: "project", id: "x", body: "a\nb\n\nc  d" }, sb)
     expect(out).toContain("a b c d")
   })
 
   it("emits evicted attribute when > 0", () => {
-    const out = renderEcho({ scope: "short-term", id: "21", body: "x", evicted: 1 })
+    const out = renderEcho({ scope: "short-term", id: "21", body: "x", evicted: 1 }, sb)
     expect(out).toContain('evicted="1"')
   })
 
   it("omits evicted attribute when 0 or absent", () => {
-    expect(renderEcho({ scope: "short-term", id: "1", body: "x", evicted: 0 })).not.toContain(
+    expect(renderEcho({ scope: "short-term", id: "1", body: "x", evicted: 0 }, sb)).not.toContain(
       "evicted",
     )
-    expect(renderEcho({ scope: "short-term", id: "1", body: "x" })).not.toContain("evicted")
+    expect(renderEcho({ scope: "short-term", id: "1", body: "x" }, sb)).not.toContain("evicted")
   })
 
   it("escapes < in body to prevent tag confusion", () => {
-    const out = renderEcho({
-      scope: "project",
-      id: "x",
-      body: "see <bad>tag</bad>",
-    })
+    const out = renderEcho(
+      {
+        scope: "project",
+        id: "x",
+        body: "see <bad>tag</bad>",
+      },
+      sb,
+    )
     expect(out).not.toContain("<bad>")
     expect(out).toContain("&lt;bad&gt;")
   })
 
   it("escapes \" and & in id (defensive — id format doesn't normally have them)", () => {
-    const out = renderEcho({
-      scope: "project",
-      id: 'evil"&id',
-      body: "x",
-    })
+    const out = renderEcho(
+      {
+        scope: "project",
+        id: 'evil"&id',
+        body: "x",
+      },
+      sb,
+    )
     expect(out).toContain("&quot;")
     expect(out).toContain("&amp;")
   })
@@ -299,7 +311,7 @@ describe("renderEcho", () => {
 describe("end-to-end shape", () => {
   it("emitting then consuming produces the expected ContentBlock shape", async () => {
     const bus = new FakeBus()
-    const collector = SaveEchoCollector.attach(bus)
+    const collector = SaveEchoCollector.attach(bus, sb)
 
     const payload: MemorySavedPayload = {
       scope: "project",
@@ -318,5 +330,16 @@ describe("end-to-end shape", () => {
     ])
 
     bus.dispose()
+  })
+})
+
+describe("no sideband codec (NO_SIDEBAND)", () => {
+  it("renders no tag and the drain adds no block", () => {
+    expect(renderEcho({ scope: "global", id: "g1", body: "x" }, NO_SIDEBAND)).toBe("")
+    expect(renderEcho({ scope: "global", id: "g1", body: "x" }, undefined)).toBe("")
+    const c = new SaveEchoCollector(NO_SIDEBAND)
+    c.enqueue({ scope: "global", id: "g1", body: "x" })
+    expect(c.consumeAll()).toEqual([])
+    expect(c.pendingCount()).toBe(0)
   })
 })

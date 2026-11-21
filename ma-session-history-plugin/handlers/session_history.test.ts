@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
 import type {
   BlobsReadApi,
   HandlerContextSlice,
@@ -10,6 +11,8 @@ import type {
 } from "../lib/host-types.ts"
 
 import handler from "./session_history.ts"
+
+const sb = await pluginSideband()
 
 // ---------------------------------------------------------------------------
 // Fake host (in-memory, deterministic)
@@ -185,6 +188,7 @@ function ctx(
     trigger: { type: "tool", name: "SessionHistory", input, tool_use_id: "tu1" },
     cwd: "/proj",
     host: host ?? { sessions: fakeSessions(), blobs: fakeBlobs },
+    sideband: sb,
   }
 }
 

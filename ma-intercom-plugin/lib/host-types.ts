@@ -17,6 +17,8 @@
  * @module lib/host-types
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import type { Transport } from "./transport.ts"
 
 // ---------------------------------------------------------------------------
@@ -353,6 +355,8 @@ export interface HookHandlerContext {
   abort?: AbortSignal
   /** Listener priority post-clamping. */
   priority?: number
+  /** The session sideband API. It renders the peer tags. */
+  sideband?: SidebandApi
   /**
    * Emit on the agent bus. Routed by target channel shape (sync / async).
    * Used by editor.key to fan out to editor.footer.set / editor.buffer.styles /
@@ -401,6 +405,8 @@ export interface TurnAttachmentContext {
   sessionId: string | null
   /** The loader's event bus, when present. Typed `unknown` by the host on purpose. */
   bus?: unknown
+  /** The session sideband API. It renders the inbox tag. */
+  sideband?: SidebandApi
 }
 
 /** The producer shape the host drains once per `Agent.run` at the user-content seam. */

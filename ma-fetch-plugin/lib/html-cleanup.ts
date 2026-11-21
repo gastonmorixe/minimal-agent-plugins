@@ -31,7 +31,12 @@
  * @module lib/html-cleanup
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import type { CleanupLevel } from "./cleanup.ts"
+
+/** The slice of the session sideband API that renders the stubs. */
+export type StubSideband = Pick<SidebandApi, "render">
 
 const STYLE_RE = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi
 const SCRIPT_RE = /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi
@@ -60,23 +65,33 @@ function sizeText(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1).replace(/\.0$/, "")}MB`
 }
 
-/** The stub that replaces a block. */
-export function assetStub(kind: "style_block" | "script_block", bytes: number): string {
-  return `<ma::agent::redacted-asset kind="${kind}" size="${sizeText(bytes)}" tool="Fetch" />`
+/** The stub that replaces a block (kind `redacted-asset`). With no `sb` or no codec, `""`. */
+export function assetStub(
+  kind: "style_block" | "script_block",
+  bytes: number,
+  sb: StubSideband | undefined,
+): string {
+  return (
+    sb?.render("redacted-asset", { attrs: { kind, size: sizeText(bytes), tool: "Fetch" } }) ?? ""
+  )
 }
 
-/** Replace the blocks of one tag with stubs. Keeps a block that is not longer than its stub. */
+/**
+ * Replace the blocks of one tag with stubs. Keeps a block that is not longer
+ * than its stub, and each block when there is no stub (no codec).
+ */
 function stubBlocks(
   input: string,
   re: RegExp,
   kind: "style_block" | "script_block",
+  sb: StubSideband | undefined,
   keep?: (block: string) => boolean,
 ): string {
   return input.replace(re, (block) => {
     if (keep?.(block)) return block
     const bytes = Buffer.byteLength(block, "utf-8")
-    const stub = assetStub(kind, bytes)
-    return stub.length < block.length ? stub : block
+    const stub = assetStub(kind, bytes, sb)
+    return stub !== "" && stub.length < block.length ? stub : block
   })
 }
 
@@ -102,9 +117,9 @@ function cleanWhitespace(input: string, level: CleanupLevel): string {
 }
 
 /** Replace each `<style>` and `<script>` block (not JSON-LD) with a stub. */
-function stubAssetBlocks(input: string): string {
-  const text = stubBlocks(input, STYLE_RE, "style_block")
-  return stubBlocks(text, SCRIPT_RE, "script_block", (b) => LD_JSON_RE.test(b))
+function stubAssetBlocks(input: string, sb: StubSideband | undefined): string {
+  const text = stubBlocks(input, STYLE_RE, "style_block", sb)
+  return stubBlocks(text, SCRIPT_RE, "script_block", sb, (b) => LD_JSON_RE.test(b))
 }
 
 /**
@@ -136,13 +151,17 @@ function withProtected(
  * Clean an HTML page. See the module comment for the rules of each level.
  * Unknown levels return the input as it is.
  */
-export function cleanupHtml(input: string, level: CleanupLevel): string {
+export function cleanupHtml(
+  input: string,
+  level: CleanupLevel,
+  sb: StubSideband | undefined,
+): string {
   if (level !== "basic" && level !== "aggressive") return input
   if (input.length === 0) return input
 
   // Stubs first: a script can hold the text "<pre>", and the stub must not
   // be split by the protected-block pass.
-  const stubbed = stubAssetBlocks(input)
+  const stubbed = stubAssetBlocks(input, sb)
   return withProtected(stubbed, [PROTECTED_RE], (text) => cleanWhitespace(text, level))
 }
 
@@ -152,9 +171,9 @@ export function cleanupHtml(input: string, level: CleanupLevel): string {
  * code are protected: a doc page that shows `<script>` as an example keeps it.
  * Does not touch whitespace. Returns the input when it has no such block.
  */
-export function stubAssetsInMarkdown(input: string): string {
+export function stubAssetsInMarkdown(input: string, sb: StubSideband | undefined): string {
   if (!/<(?:style|script)\b/i.test(input)) return input
-  return withProtected(input, [FENCE_RE, INLINE_CODE_RE], stubAssetBlocks)
+  return withProtected(input, [FENCE_RE, INLINE_CODE_RE], (text) => stubAssetBlocks(text, sb))
 }
 
 /**

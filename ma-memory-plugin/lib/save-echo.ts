@@ -36,6 +36,8 @@
  * @module memory/lib/save-echo
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 // ---------------------------------------------------------------------------
 // Host structural slices (decoupling contract: import nothing from src/)
 // ---------------------------------------------------------------------------
@@ -180,16 +182,19 @@ export class SaveEchoCollector {
   private queue: MemorySavedPayload[] = []
   private off: Unsubscribe | null = null
 
-  // No explicit constructor: the default no-arg public constructor is
-  // sufficient for both tests (manual `new SaveEchoCollector()`) and the
-  // {@link attach} static factory used in production.
+  /**
+   * Make a collector.
+   *
+   * @param sb - The session sideband API that renders the tags. With none, the drain gives no block.
+   */
+  constructor(private readonly sb?: EchoSideband) {}
 
   /**
    * Subscribe to `memory.saved` on the given bus and start buffering
    * events until consumed. Returns the collector instance (chain-friendly).
    */
-  static attach(bus: EventBusSlice): SaveEchoCollector {
-    const c = new SaveEchoCollector()
+  static attach(bus: EventBusSlice, sb?: EchoSideband): SaveEchoCollector {
+    const c = new SaveEchoCollector(sb)
     c.off = bus.on(MEMORY_SAVED, (ctx) => {
       if (isMemorySavedPayload(ctx.payload)) c.queue.push(ctx.payload)
     })
@@ -211,16 +216,18 @@ export class SaveEchoCollector {
    * host `ContentBlock[]`). Returns `[]` when empty so the caller can
    * splat into a list builder unconditionally.
    *
-   * One block per queued payload, rendered as
-   * `<ma::agent::memory-saved scope="…" id="…"[ evicted="N"]>preview</ma::agent::memory-saved>`.
+   * One block per queued payload: a `memory-saved` tag with the attrs
+   * `scope`, `id` and (when above 0) `evicted`, and the preview as body.
    * Preview is the body trimmed to 60 chars with `…` ellipsis on overflow.
+   * With no sideband API (no codec), the render is `""` and no block is added.
    */
   consumeAll(): AttachmentTextBlock[] {
     if (this.queue.length === 0) return []
-    const out = this.queue.map((p) => ({
-      type: "text" as const,
-      text: renderEcho(p),
-    }))
+    const out: AttachmentTextBlock[] = []
+    for (const p of this.queue) {
+      const text = renderEcho(p, this.sb)
+      if (text !== "") out.push({ type: "text", text })
+    }
     this.queue = []
     return out
   }
@@ -244,28 +251,27 @@ export class SaveEchoCollector {
 
 const PREVIEW_MAX = 60
 
+/** The slice of the session sideband API that the echo uses. */
+export type EchoSideband = Pick<SidebandApi, "render">
+
 /**
- * Render a single payload to the inline `<ma::agent::memory-saved>` text the model
- * sees. Exported for tests; the collector uses this internally.
+ * Render a single payload to the inline `memory-saved` tag the model
+ * sees. The codec of `sb` writes the tag (kind `memory-saved`, declared in
+ * this plugin's manifest; its body escape keeps the old `<`, `>` form).
+ * With no `sb` or no codec the result is `""`. Exported for tests; the
+ * collector uses this internally.
  */
-export function renderEcho(p: MemorySavedPayload): string {
-  const evicted = p.evicted && p.evicted > 0 ? ` evicted="${p.evicted}"` : ""
+export function renderEcho(p: MemorySavedPayload, sb: EchoSideband | undefined): string {
   // Single-line preview. The body is already collapsed-to-one-line by
   // the store's `formatBullet`, but defensively normalize whitespace
   // here too in case a tool emits an event without round-tripping
   // through the store.
   const oneLine = p.body.replace(/\s+/g, " ").trim()
   const preview = oneLine.length > PREVIEW_MAX ? `${oneLine.slice(0, PREVIEW_MAX - 1)}…` : oneLine
-  // Escape `<` and `>` in the preview so it can't be mis-parsed as a
-  // child tag inside `<ma::agent::memory-saved>…</ma::agent::memory-saved>`. We don't bother
-  // with `&` (would have to escape only those that aren't already part
-  // of a valid entity, which is fiddly) — the model handles `&` in
-  // body text without tag-syntax confusion.
-  const safe = preview.replace(/</g, "&lt;").replace(/>/g, "&gt;")
-  return `<ma::agent::memory-saved scope="${p.scope}" id="${escapeAttr(p.id)}"${evicted}>${safe}</ma::agent::memory-saved>`
-}
-
-/** Escape `"` and `&` in an attribute value. */
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+  const attrs = {
+    scope: p.scope,
+    id: p.id,
+    ...(p.evicted && p.evicted > 0 ? { evicted: p.evicted } : {}),
+  }
+  return sb?.render("memory-saved", { attrs, body: preview }) ?? ""
 }

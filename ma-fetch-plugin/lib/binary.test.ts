@@ -4,6 +4,10 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, test } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import {
   classifyBinaryBytes,
   formatBinaryOptedIn,
@@ -12,6 +16,8 @@ import {
   persistBinaryBody,
   sniffMime,
 } from "./binary.ts"
+
+const sb = await pluginSideband()
 
 const tempDirs: string[] = []
 afterEach(() => {
@@ -48,12 +54,15 @@ describe("sniffMime / classifyBinaryBytes", () => {
 
 describe("formatBinaryWithheld / formatBinaryOptedIn", () => {
   test("withheld emits ma::agent::binary-result without body", () => {
-    const msg = formatBinaryWithheld({
-      mime: "application/pdf",
-      sizeBytes: 1000,
-      path: "/tmp/x.bin",
-      sha256: "abc",
-    })
+    const msg = formatBinaryWithheld(
+      {
+        mime: "application/pdf",
+        sizeBytes: 1000,
+        path: "/tmp/x.bin",
+        sha256: "abc",
+      },
+      sb,
+    )
     expect(msg).toContain("<ma::agent::binary-result")
     expect(msg).toContain('mime="application/pdf"')
     expect(msg).toContain("did not put the binary body")
@@ -62,7 +71,7 @@ describe("formatBinaryWithheld / formatBinaryOptedIn", () => {
 
   test("opted-in small body is base64", () => {
     const bytes = new TextEncoder().encode("%PDF-1.4 tiny")
-    const msg = formatBinaryOptedIn({ bytes, mime: "application/pdf" })
+    const msg = formatBinaryOptedIn({ bytes, mime: "application/pdf" }, sb)
     expect(msg).toContain('encoding="base64"')
     expect(msg).toContain(Buffer.from(bytes).toString("base64"))
   })
@@ -70,7 +79,7 @@ describe("formatBinaryWithheld / formatBinaryOptedIn", () => {
   test("opted-in large body still withholds", () => {
     const bytes = new Uint8Array(MAX_INLINE_BINARY_BYTES + 10)
     bytes.set(new TextEncoder().encode("%PDF-1.4"), 0)
-    const msg = formatBinaryOptedIn({ bytes, mime: "application/pdf", path: "/tmp/big.bin" })
+    const msg = formatBinaryOptedIn({ bytes, mime: "application/pdf", path: "/tmp/big.bin" }, sb)
     expect(msg).toContain("too large to include as base64")
     expect(msg).toContain("/tmp/big.bin")
   })
@@ -90,5 +99,16 @@ describe("persistBinaryBody", () => {
     expect(r.path).toContain(`${home}/sessions/sid-1.blobs/toolu_test.bin`)
     expect(readFileSync(r.path)).toEqual(Buffer.from(bytes))
     expect(r.sha256.length).toBe(16)
+  })
+})
+
+describe("binary-result with no sideband codec (NO_SIDEBAND)", () => {
+  test("the prose only, with no stray line feed; the base64 form is empty", () => {
+    const withheld = formatBinaryWithheld({ mime: "image/png", sizeBytes: 3 }, NO_SIDEBAND)
+    expect(withheld).toStartWith("The harness did not put the binary body")
+    const big = new Uint8Array(48 * 1024 + 1)
+    const tooLarge = formatBinaryOptedIn({ bytes: big, mime: "image/png" }, undefined)
+    expect(tooLarge).toStartWith("The binary body is too large")
+    expect(formatBinaryOptedIn({ bytes: new Uint8Array([1]), mime: "x/y" }, NO_SIDEBAND)).toBe("")
   })
 })

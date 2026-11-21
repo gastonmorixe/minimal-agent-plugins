@@ -4,8 +4,14 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../tests/support/sideband.ts"
+
 import { renderAttachmentBody, TasksAttachment } from "./attachment.ts"
 import { TaskStore } from "./store.ts"
+
+const sb = await pluginSideband()
 
 // ---------------------------------------------------------------------------
 // Scaffolding
@@ -95,18 +101,18 @@ describe("renderAttachmentBody", () => {
 
 describe("TasksAttachment", () => {
   test("returns null when sid is null", () => {
-    const a = new TasksAttachment(null, { home: tmpHome })
+    const a = new TasksAttachment(null, { home: tmpHome }, sb)
     expect(a.toAttachment()).toBeNull()
     expect(a.toText()).toBeNull()
   })
   test("returns null when sid is empty/whitespace", () => {
-    const a1 = new TasksAttachment("", { home: tmpHome })
-    const a2 = new TasksAttachment("   ", { home: tmpHome })
+    const a1 = new TasksAttachment("", { home: tmpHome }, sb)
+    const a2 = new TasksAttachment("   ", { home: tmpHome }, sb)
     expect(a1.toAttachment()).toBeNull()
     expect(a2.toAttachment()).toBeNull()
   })
   test("returns null when the file is missing (no tasks)", () => {
-    const a = new TasksAttachment(sid, { home: tmpHome })
+    const a = new TasksAttachment(sid, { home: tmpHome }, sb)
     expect(a.toAttachment()).toBeNull()
   })
   test("returns null when the file is empty", () => {
@@ -114,13 +120,19 @@ describe("TasksAttachment", () => {
     // Assign to a discard variable so lint doesn't flag `new` for side effects.
     const _store = new TaskStore(sid, { home: tmpHome })
     void _store
-    const a = new TasksAttachment(sid, { home: tmpHome })
+    const a = new TasksAttachment(sid, { home: tmpHome }, sb)
     expect(a.toAttachment()).toBeNull()
+  })
+  test("no sideband codec (NO_SIDEBAND): null, no tag and no empty block", () => {
+    const s = withRand(["aaaaaa"])
+    s.add({ title: "hello" })
+    expect(new TasksAttachment(sid, { home: tmpHome }, NO_SIDEBAND).toAttachment()).toBeNull()
+    expect(new TasksAttachment(sid, { home: tmpHome }).toText()).toBeNull()
   })
   test("renders the full <ma::agent::tasks> attachment when tasks exist", () => {
     const s = withRand(["aaaaaa"])
     s.add({ title: "hello" })
-    const a = new TasksAttachment(sid, { home: tmpHome })
+    const a = new TasksAttachment(sid, { home: tmpHome }, sb)
     const text = a.toText()
     expect(text).not.toBeNull()
     expect(text!.startsWith("<ma::agent::tasks ")).toBe(true)
@@ -136,7 +148,7 @@ describe("TasksAttachment", () => {
     s.add({ title: "1", status: "done" })
     s.add({ title: "2", status: "doing" })
     s.add({ title: "3" })
-    const text = new TasksAttachment(sid, { home: tmpHome }).toText()
+    const text = new TasksAttachment(sid, { home: tmpHome }, sb).toText()
     expect(text).toContain(`total="3"`)
     expect(text).toContain(`done="1"`)
     expect(text).toContain(`doing="1"`)
@@ -145,14 +157,14 @@ describe("TasksAttachment", () => {
   test("toAttachment returns a ContentBlock with type='text'", () => {
     const s = withRand(["aaaaaa"])
     s.add({ title: "x" })
-    const att = new TasksAttachment(sid, { home: tmpHome }).toAttachment()
+    const att = new TasksAttachment(sid, { home: tmpHome }, sb).toAttachment()
     expect(att).not.toBeNull()
     expect(att!.type).toBe("text")
   })
   test("attachment uses <ma::agent::tasks> opener", () => {
     const s = withRand(["aaaaaa"])
     s.add({ title: "x" })
-    const text = new TasksAttachment(sid, { home: tmpHome }).toText()
+    const text = new TasksAttachment(sid, { home: tmpHome }, sb).toText()
     expect(text!.startsWith("<ma::agent::tasks")).toBe(true)
     // Legacy `<tui::` and intermediate `<ma::tui::` forms are gone.
     expect(text!.startsWith("<tui::")).toBe(false)
@@ -170,7 +182,7 @@ describe("TasksAttachment", () => {
     store.add({ title: "first task" })
     store.add({ title: "second task" })
 
-    const att = new TasksAttachment(sid, { home: tmpHome }).toAttachment()
+    const att = new TasksAttachment(sid, { home: tmpHome }, sb).toAttachment()
     expect(att).not.toBeNull()
     expect(att!.type).toBe("text")
     const text = (att as { text: string }).text
@@ -181,7 +193,7 @@ describe("TasksAttachment", () => {
   })
 
   test("omits the attachment (toAttachment null) when the session has zero tasks", () => {
-    const att = new TasksAttachment(sid, { home: tmpHome }).toAttachment()
+    const att = new TasksAttachment(sid, { home: tmpHome }, sb).toAttachment()
     expect(att).toBeNull()
   })
 })

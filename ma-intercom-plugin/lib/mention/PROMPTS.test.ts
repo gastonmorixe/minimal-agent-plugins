@@ -1,15 +1,24 @@
 import { describe, expect, it } from "bun:test"
 
+import { NO_SIDEBAND } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../../../tests/support/sideband.ts"
+
 import { escapeXmlAttr, escapeXmlText, formatPeerMentionXml } from "./PROMPTS.ts"
+
+const sb = await pluginSideband()
 
 describe("formatPeerMentionXml", () => {
   it("includes name + sid and preserves the @body", () => {
     expect(
-      formatPeerMentionXml({
-        name: "Michelle",
-        sid: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        body: "@Michelle",
-      }),
+      formatPeerMentionXml(
+        {
+          name: "Michelle",
+          sid: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          body: "@Michelle",
+        },
+        sb,
+      ),
     ).toBe(
       '<ma::intercom::peer name="Michelle" sid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">@Michelle</ma::intercom::peer>',
     )
@@ -17,10 +26,13 @@ describe("formatPeerMentionXml", () => {
 
   it("omits name when absent", () => {
     expect(
-      formatPeerMentionXml({
-        sid: "7288e8a4-0000-4000-8000-6f07826425da",
-        body: "@7288e8a4",
-      }),
+      formatPeerMentionXml(
+        {
+          sid: "7288e8a4-0000-4000-8000-6f07826425da",
+          body: "@7288e8a4",
+        },
+        sb,
+      ),
     ).toBe(
       '<ma::intercom::peer sid="7288e8a4-0000-4000-8000-6f07826425da">@7288e8a4</ma::intercom::peer>',
     )
@@ -28,14 +40,24 @@ describe("formatPeerMentionXml", () => {
 
   it("escapes attr and body specials", () => {
     expect(
-      formatPeerMentionXml({
-        name: 'A&B "C"',
-        sid: "x<y>",
-        body: "@A&B",
-      }),
+      formatPeerMentionXml(
+        {
+          name: 'A&B "C"',
+          sid: "x<y>",
+          body: "@A&B",
+        },
+        sb,
+      ),
     ).toBe(
       '<ma::intercom::peer name="A&amp;B &quot;C&quot;" sid="x&lt;y&gt;">@A&amp;B</ma::intercom::peer>',
     )
+  })
+})
+
+describe("formatPeerMentionXml with no sideband codec (NO_SIDEBAND)", () => {
+  it("renders no tag", () => {
+    expect(formatPeerMentionXml({ sid: "s1", body: "@s1" }, NO_SIDEBAND)).toBe("")
+    expect(formatPeerMentionXml({ sid: "s1", body: "@s1" }, undefined)).toBe("")
   })
 })
 

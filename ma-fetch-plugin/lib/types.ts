@@ -15,6 +15,8 @@
  * `TUIResult` (the `tool_result` variant only).
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 export interface ToolTrigger {
   type: "tool"
   /** The tool name as declared in the manifest (`Fetch`). */
@@ -36,6 +38,8 @@ export interface TUIContext {
   stdout: NodeJS.WriteStream
   stdin: NodeJS.ReadStream
   stderr: NodeJS.WriteStream
+  /** The session sideband API. It renders the tags of the tool result. */
+  sideband?: SidebandApi
 }
 
 export type TUIResult =

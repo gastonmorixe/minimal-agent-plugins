@@ -42,7 +42,7 @@ const handler = (
   const peers = getPeers()
   if (peers.length === 0) return
 
-  const rewritten = rewriteMentions(payload.text, peers)
+  const rewritten = rewriteMentions(payload.text, peers, ctx.sideband)
   if (rewritten === payload.text) return
   return { payload: { text: rewritten } }
 }

@@ -27,6 +27,7 @@ import { applyCleanup, type CleanupLevel } from "./cleanup.ts"
 import {
   cleanupHtml,
   looksLikeHtml,
+  type StubSideband,
   squeezeSpacesOutsideCode,
   stubAssetsInMarkdown,
 } from "./html-cleanup.ts"
@@ -60,21 +61,25 @@ export function cleanupForFormat(
   content: string,
   format: CleanableFormat,
   level: CleanupLevel,
+  sb: StubSideband | undefined,
 ): string {
   if (level === "off" || content.length === 0) return content
   switch (format) {
     case "html":
-      return cleanupHtml(content, level)
+      return cleanupHtml(content, level, sb)
     case "markdown":
       return applyCleanup(
-        squeezeSpacesOutsideCode(stubAssetsInMarkdown(content), MARKDOWN_MAX_INDENT),
+        squeezeSpacesOutsideCode(stubAssetsInMarkdown(content, sb), MARKDOWN_MAX_INDENT),
         level,
       )
     case "text":
-      return applyCleanup(squeezeSpacesOutsideCode(stubAssetsInMarkdown(content), "strip"), level)
+      return applyCleanup(
+        squeezeSpacesOutsideCode(stubAssetsInMarkdown(content, sb), "strip"),
+        level,
+      )
     case "original":
       return looksLikeHtml(content)
-        ? cleanupHtml(content, level)
+        ? cleanupHtml(content, level, sb)
         : applyCleanup(content, capAtBasic(level))
     case "links":
     case "accessibility":

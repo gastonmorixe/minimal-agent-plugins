@@ -13,6 +13,8 @@
  * @module sub-agents/lib/attachment
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { type StoreDeps, SubagentStore } from "./store.ts"
 import { fmtElapsed, fmtSpend, fmtTokens } from "./style.ts"
 import { fleetStats, isActive, type SubagentRecord } from "./types.ts"
@@ -74,6 +76,8 @@ export class SubagentsAttachment {
     public readonly sid: string | null,
     private readonly deps: StoreDeps = {},
     private readonly now: () => number = Date.now,
+    /** The session sideband API that renders the tag. With none, no attachment. */
+    private readonly sb?: Pick<SidebandApi, "render">,
   ) {}
 
   toAttachment(): AttachmentTextBlock | null {
@@ -92,10 +96,16 @@ export class SubagentsAttachment {
       records.length > shown.length
         ? `\n… +${records.length - shown.length} more (SubAgentsListAgents)`
         : ""
-    const incompleteAttr = s.incomplete > 0 ? ` incomplete="${s.incomplete}"` : ""
-    const text =
-      `<ma::agent::subagents active="${s.running + s.queued}" done="${s.done}"${incompleteAttr} failed="${s.failed}" tokens="${fmtTokens(s.tokens)}" output="${fmtTokens(s.output)}">\n` +
-      `${body}${overflow}\n</ma::agent::subagents>`
+    const attrs = {
+      active: s.running + s.queued,
+      done: s.done,
+      ...(s.incomplete > 0 ? { incomplete: s.incomplete } : {}),
+      failed: s.failed,
+      tokens: fmtTokens(s.tokens),
+      output: fmtTokens(s.output),
+    }
+    const text = this.sb?.render("subagents", { attrs, body: `${body}${overflow}` }) ?? ""
+    if (text === "") return null
     return { type: "text", text }
   }
 

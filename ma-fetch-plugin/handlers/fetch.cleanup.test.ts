@@ -7,11 +7,14 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
+import { pluginSideband } from "../../tests/support/sideband.ts"
 import type { SpawnedProcess, SpawnFn } from "../lib/backend.ts"
 import { defaultConfig } from "../lib/config.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
 
 import { runWithDeps } from "./fetch.ts"
+
+const sb = await pluginSideband()
 
 // The fail-closed binary precheck reads MINIMAL_AGENT_BIN_DIR. See fetch.run.test.ts.
 const SAVED_BIN_DIR = process.env.MINIMAL_AGENT_BIN_DIR
@@ -50,6 +53,7 @@ function fakeCtx(input: Record<string, unknown>): TUIContext {
     stdin: process.stdin,
     stdout: process.stdout,
     stderr: process.stderr,
+    sideband: sb,
   }
 }
 

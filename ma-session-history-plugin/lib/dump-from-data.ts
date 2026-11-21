@@ -3,12 +3,19 @@
  * messages that `sessions.records` returns. Pure functions.
  *
  * The data-URI scrub is a local port: the host exports no scrub function
- * to plugins. The stub tags match the host.
+ * to plugins. The codec of the session sideband API writes the stub and
+ * footer tags (kinds `redacted-asset` and `context-sanitizer`), so they
+ * match the host.
  *
  * @module plugins/session-history/lib/dump-from-data
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import type { BlockLike, SessionRecordsView } from "./host-types.ts"
+
+/** The slice of the session sideband API that the scrub uses. */
+export type DumpSideband = Pick<SidebandApi, "ready" | "render" | "trailing">
 
 const MIN_BASE64_CHARS = 256
 
@@ -21,13 +28,27 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(2)}MB`
 }
 
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
+/**
+ * `text` without a self-closing `context-sanitizer` footer at its end. The
+ * footer must start a line; the line feeds before it go too. Only the last
+ * line is parsed.
+ */
+function withoutFooter(text: string, sb: DumpSideband): string {
+  const lineStart = text.trimEnd().lastIndexOf("\n") + 1
+  if (lineStart === 0) return text
+  const { nodes } = sb.trailing(text.slice(lineStart), { kinds: ["context-sanitizer"] })
+  const last = nodes[nodes.length - 1]
+  if (last === undefined || !last.selfClosing || last.span.start !== 0) return text
+  return text.slice(0, lineStart).replace(/\n+$/u, "")
 }
 
-/** Redact oversized `data:*;base64,` URIs. Returns the input when nothing changes. */
-export function scrubDumpText(input: string): string {
-  if (input.length === 0 || !input.includes("data:")) return input
+/**
+ * Redact oversized `data:*;base64,` URIs. Returns the input when nothing
+ * changes. With no `sb` or no codec the input does not change: a stub with
+ * no tag would remove data with no notice.
+ */
+export function scrubDumpText(input: string, sb: DumpSideband | undefined): string {
+  if (input.length === 0 || !input.includes("data:") || sb === undefined || !sb.ready) return input
   let removed = 0
   let charsRemoved = 0
   let savedBytes = 0
@@ -40,29 +61,37 @@ export function scrubDumpText(input: string): string {
       removed++
       charsRemoved += b64.length
       savedBytes += approxBytes
-      return (
-        `<ma::agent::redacted-asset kind="data_uri" mime="${escapeAttr(mime.toLowerCase())}" ` +
-        `size="${escapeAttr(formatBytes(approxBytes))}" chars_removed="${b64.length}" />`
-      )
+      return sb.render("redacted-asset", {
+        attrs: {
+          kind: "data_uri",
+          mime: mime.toLowerCase(),
+          size: formatBytes(approxBytes),
+          "chars-removed": b64.length,
+        },
+      })
     },
   )
   if (removed === 0) return input
-  const withoutPriorFooter = text.replace(/\n*\n<ma::agent::context-sanitizer\b[^>]*\/>\s*$/u, "")
-  const footer =
-    `<ma::agent::context-sanitizer removed="${removed}" ` +
-    `kinds="data_uri" chars_removed="${charsRemoved}" ` +
-    `saved="${escapeAttr(formatBytes(savedBytes))}" />`
-  return `${withoutPriorFooter}\n\n${footer}`
+  const footer = sb.render("context-sanitizer", {
+    attrs: {
+      removed,
+      kinds: "data_uri",
+      "chars-removed": charsRemoved,
+      saved: formatBytes(savedBytes),
+    },
+  })
+  return `${withoutFooter(text, sb)}\n\n${footer}`
 }
 
-function resultText(block: BlockLike): string {
+function resultText(block: BlockLike, sb: DumpSideband | undefined): string {
   const c = block.content
-  if (typeof c === "string") return scrubDumpText(c)
+  if (typeof c === "string") return scrubDumpText(c, sb)
   return scrubDumpText(
     (c ?? [])
       .filter((b) => b.type === "text")
       .map((b) => b.text ?? "")
       .join("\n"),
+    sb,
   )
 }
 
@@ -83,7 +112,7 @@ function sourceDetail(block: BlockLike, textFallback: boolean): string | undefin
   return textFallback ? "text/plain" : s.file_id
 }
 
-function blockAsMarkdown(block: BlockLike): string {
+function blockAsMarkdown(block: BlockLike, sb: DumpSideband | undefined): string {
   switch (block.type) {
     case "text":
       return block.text ?? ""
@@ -106,7 +135,7 @@ function blockAsMarkdown(block: BlockLike): string {
       let bq = `> 🔙 **Tool Result**: (id: ${block.tool_use_id})`
       if (block.is_error) bq += ` **[ERROR]**`
       bq += "\n"
-      const contentStr = resultText(block)
+      const contentStr = resultText(block, sb)
       if (contentStr) {
         bq += `> \`\`\`\n`
         bq += quote(contentStr)
@@ -126,7 +155,7 @@ function blockAsMarkdown(block: BlockLike): string {
 }
 
 /** Markdown dump. Same text as the host dump. */
-export function dumpMarkdown(v: SessionRecordsView): string {
+export function dumpMarkdown(v: SessionRecordsView, sb: DumpSideband | undefined): string {
   let out = ""
   if (v.meta) {
     out += `# Session: ${v.meta.sid}\n`
@@ -140,7 +169,7 @@ export function dumpMarkdown(v: SessionRecordsView): string {
     if (typeof msg.content === "string") {
       out += `${msg.content}\n\n`
     } else {
-      for (const block of msg.content) out += `${blockAsMarkdown(block)}\n\n`
+      for (const block of msg.content) out += `${blockAsMarkdown(block, sb)}\n\n`
     }
   }
   return `${out.trim()}\n`
@@ -155,7 +184,7 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, "&apos;")
 }
 
-function blockAsXml(block: BlockLike, indent: number): string {
+function blockAsXml(block: BlockLike, indent: number, sb: DumpSideband | undefined): string {
   const pad = " ".repeat(indent)
   switch (block.type) {
     case "text":
@@ -178,7 +207,7 @@ function blockAsXml(block: BlockLike, indent: number): string {
       const isErrorAttr = block.is_error ? ` is_error="true"` : ""
       return (
         `${pad}<tool_result tool_use_id="${escapeXml(block.tool_use_id ?? "")}"${isErrorAttr}>\n` +
-        `${pad}  <content>${escapeXml(resultText(block))}</content>\n` +
+        `${pad}  <content>${escapeXml(resultText(block, sb))}</content>\n` +
         `${pad}</tool_result>`
       )
     }
@@ -192,7 +221,7 @@ function blockAsXml(block: BlockLike, indent: number): string {
 }
 
 /** XML dump. Same text as the host dump. */
-export function dumpXml(v: SessionRecordsView): string {
+export function dumpXml(v: SessionRecordsView, sb: DumpSideband | undefined): string {
   let out = ""
   if (v.meta) {
     out += `<session id="${escapeXml(v.meta.sid)}" model="${escapeXml(v.meta.model)}" date="${escapeXml(v.meta.createdAt)}">\n`
@@ -204,7 +233,7 @@ export function dumpXml(v: SessionRecordsView): string {
     if (typeof msg.content === "string") {
       out += `    <text>${escapeXml(msg.content)}</text>\n`
     } else {
-      for (const block of msg.content) out += `${blockAsXml(block, 4)}\n`
+      for (const block of msg.content) out += `${blockAsXml(block, 4, sb)}\n`
     }
     out += `  </turn>\n`
   }

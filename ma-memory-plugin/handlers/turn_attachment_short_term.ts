@@ -15,12 +15,16 @@
  * @module memory/handlers/turn_attachment_short_term
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { ShortTermSnapshot } from "../lib/short-term-snapshot.ts"
 
 /** Local structural slice of the host's `TurnAttachmentContext`. */
 interface TurnAttachmentContext {
   /** The live session id, or `null` when no session is plumbed through. */
   sessionId: string | null
+  /** The session sideband API. It renders the tag. */
+  sideband?: SidebandApi
 }
 
 /**
@@ -30,5 +34,5 @@ interface TurnAttachmentContext {
  * unconditional (mirrors the host's old direct construction).
  */
 export default function makeShortTermSnapshot(ctx: TurnAttachmentContext): ShortTermSnapshot {
-  return new ShortTermSnapshot(ctx.sessionId)
+  return new ShortTermSnapshot(ctx.sessionId, {}, ctx.sideband)
 }

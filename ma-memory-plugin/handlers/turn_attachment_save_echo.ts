@@ -18,6 +18,8 @@
  * @module memory/handlers/turn_attachment_save_echo
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { SaveEchoCollector, setSaveBus } from "../lib/save-echo.ts"
 
 /** Local structural slice of the host's `TurnAttachmentContext`. */
@@ -26,6 +28,8 @@ interface TurnAttachmentContext {
   sessionId: string | null
   /** The host's event bus, when present. Narrowed structurally below. */
   bus?: unknown
+  /** The session sideband API. It renders the `memory-saved` tags. */
+  sideband?: SidebandApi
 }
 
 /**
@@ -47,5 +51,8 @@ export default function makeSaveEcho(ctx: TurnAttachmentContext): SaveEchoCollec
   if (typeof (bus as { emit?: unknown }).emit === "function") {
     setSaveBus(bus as Parameters<typeof setSaveBus>[0])
   }
-  return SaveEchoCollector.attach(bus as Parameters<typeof SaveEchoCollector.attach>[0])
+  return SaveEchoCollector.attach(
+    bus as Parameters<typeof SaveEchoCollector.attach>[0],
+    ctx.sideband,
+  )
 }

@@ -11,6 +11,8 @@
  *   - XML attrs escaped. Body is the original at-token.
  */
 
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import { peerSlug, scorePeer } from "./overlay.ts"
 import { formatPeerMentionXml } from "./PROMPTS.ts"
 import type { PeerCandidate } from "./types.ts"
@@ -75,12 +77,19 @@ export function resolveMentionPeer(
  * Build the peer XML tag for a resolved mention.
  * Delegates to {@link formatPeerMentionXml} so the wire form lives in PROMPTS.
  */
-export function peerXml(peer: PeerCandidate, originalToken: string): string {
-  return formatPeerMentionXml({
-    sid: peer.sid,
-    ...(peer.name ? { name: peer.name } : {}),
-    body: originalToken,
-  })
+export function peerXml(
+  peer: PeerCandidate,
+  originalToken: string,
+  sb: Pick<SidebandApi, "render"> | undefined,
+): string {
+  return formatPeerMentionXml(
+    {
+      sid: peer.sid,
+      ...(peer.name ? { name: peer.name } : {}),
+      body: originalToken,
+    },
+    sb,
+  )
 }
 
 // Re-export escape helpers for tests / callers that previously imported from here.
@@ -88,9 +97,14 @@ export { escapeXmlAttr } from "./PROMPTS.ts"
 
 /**
  * Rewrite every uniquely-resolved `at-token` in `text` to peer XML.
- * Unmatched / ambiguous tokens are left as-is.
+ * Unmatched / ambiguous tokens are left as-is. With no `sb` or no codec
+ * (the tag renders as `""`), each token is left as-is too.
  */
-export function rewriteMentions(text: string, peers: readonly PeerCandidate[]): string {
+export function rewriteMentions(
+  text: string,
+  peers: readonly PeerCandidate[],
+  sb: Pick<SidebandApi, "render"> | undefined,
+): string {
   if (!text || peers.length === 0) return text
 
   // Walk with a fresh regex each call (global lastIndex).
@@ -108,11 +122,8 @@ export function rewriteMentions(text: string, peers: readonly PeerCandidate[]): 
 
     const peer = resolveMentionPeer(body, peers)
     out += text.slice(last, at)
-    if (peer) {
-      out += peerXml(peer, original)
-    } else {
-      out += original
-    }
+    const tag = peer ? peerXml(peer, original, sb) : ""
+    out += tag === "" ? original : tag
     last = tokenEnd
   }
   out += text.slice(last)

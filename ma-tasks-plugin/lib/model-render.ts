@@ -1,3 +1,5 @@
+import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+
 import type { Task } from "./parse.ts"
 import type { Stats } from "./store.ts"
 
@@ -16,18 +18,16 @@ export interface TaskToolMeta extends TaskModelMeta {
   replaced?: number
 }
 
-function cleanText(s: string): string {
+/** One line: line feeds and tabs become one space, runs of spaces collapse, ends trimmed. */
+function oneLine(s: string): string {
   return s
     .replace(/[\r\n\t]+/g, " ")
     .replace(/ {2,}/g, " ")
     .trim()
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
 }
 
-function attr(s: string): string {
-  return cleanText(s).replace(/"/g, "&quot;")
+function cleanText(s: string): string {
+  return oneLine(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 }
 
 function fmtDur(ms: number): string {
@@ -136,7 +136,10 @@ export function renderTasksCompactAck(stats: Stats, meta: TaskToolMeta = {}): st
 }
 
 /**
- * Wrap the columnar task list in a `<ma::agent::tasks>` block.
+ * Wrap the columnar task list in a `tasks` block. The codec of `sb`
+ * writes the tag (kind `tasks`, declared in this plugin's manifest). The
+ * attr values are one line; the codec escapes them. With no `sb` or no
+ * codec the result is `""`.
  *
  * For **turn attachments / harness inject only**. Do not put this in
  * tool_result `content` — Cursor strips `ma::agent::*` from the wire
@@ -145,18 +148,19 @@ export function renderTasksCompactAck(stats: Stats, meta: TaskToolMeta = {}): st
 export function renderTasksAgentBlock(
   tasks: readonly Task[],
   stats: Stats,
-  meta: TaskModelMeta = {},
+  meta: TaskModelMeta,
+  sb: Pick<SidebandApi, "render"> | undefined,
 ): string {
-  const attrs: string[] = []
-  if (meta.action) attrs.push(`action="${attr(meta.action)}"`)
-  if (meta.result) attrs.push(`result="${attr(meta.result)}"`)
-  if (meta.id) attrs.push(`id="${attr(meta.id.replace(/^#/, ""))}"`)
-  attrs.push(
-    `total="${stats.total}"`,
-    `done="${stats.done}"`,
-    `doing="${stats.doing}"`,
-    `todo="${stats.todo}"`,
-    `canceled="${stats.canceled}"`,
-  )
-  return `<ma::agent::tasks ${attrs.join(" ")}>\n${renderTasksColumnar(tasks)}\n</ma::agent::tasks>`
+  const attrs: Record<string, string | number> = {}
+  if (meta.action) attrs.action = oneLine(meta.action)
+  if (meta.result) attrs.result = oneLine(meta.result)
+  if (meta.id) attrs.id = oneLine(meta.id.replace(/^#/, ""))
+  Object.assign(attrs, {
+    total: stats.total,
+    done: stats.done,
+    doing: stats.doing,
+    todo: stats.todo,
+    canceled: stats.canceled,
+  })
+  return sb?.render("tasks", { attrs, body: renderTasksColumnar(tasks) }) ?? ""
 }
