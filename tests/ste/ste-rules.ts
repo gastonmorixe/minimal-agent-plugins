@@ -419,7 +419,7 @@ export function maskNonProse(text: string): string {
       .replace(/^[ \t]*(```|~~~)[^\n]*\n[\s\S]*?^[ \t]*\1[^\n]*$/gm, blank)
       .replace(/`([^`\n]*)`/g, codeSpan)
       .replace(/\$\{[^}\n]*\}/g, oneWord)
-      .replace(/%%[A-Za-z0-9_]+%%/g, oneWord)
+      .replace(TEMPLATE_PLACEHOLDER, oneWord)
       .replace(/<ma::[\s\S]*?\/?>/g, oneWord)
       .replace(/\bhttps?:\/\/\S+/g, oneWord)
       .replace(PATH_LIKE, (match: string, at: number, all: string) =>
@@ -427,6 +427,13 @@ export function maskNonProse(text: string): string {
       )
   )
 }
+
+/**
+ * A template placeholder: `%%name%%`, `%%name?%%`, `%%sideband:<op> <kind> k="v" ...%%`,
+ * or the literal `%%%%`. It is template syntax, not prose, so the checker masks
+ * it as one word, the same as a tag literal. It does not cross a line.
+ */
+export const TEMPLATE_PLACEHOLDER = /%%(?:%%|[A-Za-z0-9_][\w.-]*\??(?::[^\n]*?)?%%)/g
 
 /** A token with a slash: a path candidate. {@link isPath} decides. */
 const PATH_LIKE = /\b[\w.-]+\/[\w./-]+\b/g
@@ -479,7 +486,7 @@ export function maskForWords(text: string): string {
     .replace(/^[a-z][\w-]*:[ \t]*\S+=\S+(?:;[ \t]*\S+=\S*)+;?[ \t]*$/gm, blank)
     .replace(/^[ \t]*(```|~~~)[^\n]*\n[\s\S]*?^[ \t]*\1[^\n]*$/gm, blank)
     .replace(/\$\{[^}\n]*\}/g, oneWord)
-    .replace(/%%[A-Za-z0-9_]+%%/g, oneWord)
+    .replace(TEMPLATE_PLACEHOLDER, oneWord)
     .replace(/<ma::[\s\S]*?\/?>/g, oneWord)
     .replace(/\bhttps?:\/\/\S+/g, oneWord)
     .replace(PATH_LIKE, (match: string, at: number, all: string) =>

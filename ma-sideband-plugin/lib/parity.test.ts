@@ -465,3 +465,35 @@ describe("parity: int-only kinds need no escape row", () => {
     )
   })
 })
+
+describe("parity: open and close parts (design 50 section 5)", () => {
+  // A plain body (no escaped character), so the escape row does not matter.
+  const BODY = "line one\nline two"
+  test("open + body + close equals render for each parity kind", () => {
+    for (const kind of Object.values(D)) {
+      const attrs: Record<string, string> = {}
+      for (const key of Object.keys(kind.attrs)) attrs[key] = "v"
+      const msg = { kind: kind.kind, attrs, body: BODY }
+      // A block layout has the LF between the parts in the prompt text.
+      const inner = kind.layout === "block" ? `\n${BODY}\n` : BODY
+      expect(`${codec.open!(kind, msg)}${inner}${codec.close!(kind)}`).toBe(codec.render(kind, msg))
+    }
+  })
+  test("open ignores the body and close takes no attrs", () => {
+    const msg = { kind: "policy", body: "x" }
+    expect(codec.open!(D.policy, msg)).toBe("<ma::agent::policy>")
+    expect(codec.close!(D.policy)).toBe("</ma::agent::policy>")
+    expect(codec.close!(D.diagnostics)).toBe("</ma::agent::diagnostics>")
+  })
+  test("open output-preview equals the prompt text bytes today", () => {
+    const msg = { kind: "output-preview", attrs: { shown: "N", total: "M", tool: "X" } }
+    expect(codec.open!(D.outputPreview, msg)).toBe(
+      '<ma::agent::output-preview shown="N" total="M" tool="X">',
+    )
+  })
+  test("open escapes attrs with the escape row of the kind", () => {
+    expect(codec.open!(D.binary, { kind: "binary-result", attrs: { mime: SP } })).toBe(
+      `<ma::agent::binary-result mime="${E3}">`,
+    )
+  })
+})

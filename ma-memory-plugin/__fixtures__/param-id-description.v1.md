@@ -1,0 +1,1 @@
+Necessary for `read`, `edit` and `remove`. The entry id, from a `<ma::agent::memory-saved>` tag or a `list` result. Examples: `mwklay8d-a8f3`, `3` (`short-term`).

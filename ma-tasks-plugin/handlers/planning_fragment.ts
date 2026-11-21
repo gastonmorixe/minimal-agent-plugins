@@ -31,7 +31,7 @@
  * compiled binary, where the plugin's files are not on disk.
  */
 
-import type { PromptFragmentContext } from "../lib/host-types.ts"
+import type { PromptFragmentContext, PromptTemplateText } from "../lib/host-types.ts"
 import { tasksFullResults } from "../lib/result-verbosity.ts"
 import planningMd from "../prompts/planning.md" with { type: "text" }
 import resultsCompactMd from "../prompts/results-compact.md" with { type: "text" }
@@ -40,14 +40,16 @@ import resultsFullMd from "../prompts/results-full.md" with { type: "text" }
 /**
  * Render the PLAN/PHASES fragment.
  *
- * Returns the contents of `prompts/planning.md` when the active model
- * supports user-defined tools, or an empty string otherwise (which makes the
+ * Returns the contents of `prompts/planning.md` and the result guidance as a
+ * template (`{ template }`) when the active model supports user-defined
+ * tools. The markdown holds `%%sideband:...%%` calls and core renders them
+ * (design 50, S4). Returns an empty string otherwise (which makes the
  * loader drop the fragment entirely). When the host wired no model snapshot
  * provider (`ctx.queryModelInfo` is undefined: subprocess fragments,
  * back-compat callers), we emit the paragraph rather than suppress it, since
  * the loader's tool-availability gate is the authoritative second layer.
  */
-export default function planningFragment(ctx: PromptFragmentContext): string {
+export default function planningFragment(ctx: PromptFragmentContext): PromptTemplateText | "" {
   const info = ctx.queryModelInfo?.()
   // When we CAN read the model snapshot and it reports no user-defined tool
   // support, suppress. When we can't tell (undefined), defer to the loader's
@@ -55,8 +57,9 @@ export default function planningFragment(ctx: PromptFragmentContext): string {
   if (info && !info.tools.userDefined) return ""
 
   const resultGuidance = tasksFullResults(ctx.env) ? resultsFullMd : resultsCompactMd
-  return [planningMd, resultGuidance]
+  const template = [planningMd, resultGuidance]
     .map((text) => text.trim())
     .filter(Boolean)
     .join("\n\n")
+  return { template }
 }

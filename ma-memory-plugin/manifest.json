@@ -3,7 +3,7 @@
   "name": "Memory",
   "version": "0.4.0",
   "requires": ["prompts.template"],
-  "description": "Persistent cross-session memory plus a per-session short-term scratchpad. The model saves with the inline <ma::emit::memory> tag in a response, and reads, edits or removes with the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). The persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`). The short-term scope moves as a user-message attachment on each turn.",
+  "description": "Persistent cross-session memory plus a per-session short-term scratchpad. The model saves with the inline `memory` tag in a response, and reads, edits or removes with the MemoryTool (structured CRUD by id). Three scopes: global (~/.minimal-agent/memory.md), project (~/.minimal-agent/projects/<cwd>/memory.md), short-term (~/.minimal-agent/sessions/<sid>.scratch.md). The persistent scopes are query-only by default (`MemoryTool({action: \"list\"})`). The short-term scope moves as a user-message attachment on each turn.",
   "headless": {
     "tools": [
       {
@@ -25,7 +25,7 @@
           "type": "tool",
           "tool": {
             "name": "MemoryTool",
-            "description": "Read and change the permanent memory entries of the user, and the short-term entries of this session. Use it when the user tells you to show your memory. Use it before you debug a symptom that you know, or before you save an entry with new information.\n\nTo save during a response, use the `<ma::emit::memory>` tag, not `add`. Do not save a secret.\n\nThe tool gives entries with the id, the timestamp and the body. The first line of `list` gives the total. `clear` gives the number of removed entries.",
+            "description": "Read and change the permanent memory entries of the user, and the short-term entries of this session. Use it when the user tells you to show your memory. Use it before you debug a symptom that you know, or before you save an entry with new information.\n\nTo save during a response, use the `%%sideband:open memory%%` tag, not `add`. Do not save a secret.\n\nThe tool gives entries with the id, the timestamp and the body. The first line of `list` gives the total. `clear` gives the number of removed entries.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -41,7 +41,7 @@
                 },
                 "id": {
                   "type": "string",
-                  "description": "Necessary for `read`, `edit` and `remove`. The entry id, from a `<ma::agent::memory-saved>` tag or a `list` result. Examples: `mwklay8d-a8f3`, `3` (`short-term`)."
+                  "description": "Necessary for `read`, `edit` and `remove`. The entry id, from a `%%sideband:open memory-saved%%` tag or a `list` result. Examples: `mwklay8d-a8f3`, `3` (`short-term`)."
                 },
                 "body": {
                   "type": "string",

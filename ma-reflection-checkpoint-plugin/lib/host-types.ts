@@ -82,7 +82,26 @@ export interface ToolDidBatchPayload {
 }
 
 /** The chain result arm this listener returns. Mirror of `ChainResult`. */
-export type DidBatchResult = void | { additionalContext: string[] }
+/**
+ * Prompt text from plugin code that core renders as a template. Mirror of
+ * `PromptTemplateText` (`plugin-api/src/types/plugin.ts`).
+ */
+export interface PromptTemplateText {
+  template: string
+  vars?: Record<string, string | number>
+}
+
+/**
+ * A hook context entry that core renders as a template. Mirror of the
+ * template form of `HookContextEntry` (`plugin-api/src/types/hook-context.ts`).
+ */
+export interface HookTemplateEntry {
+  text: string
+  template: true
+  vars?: Record<string, string | number>
+}
+
+export type DidBatchResult = void | { additionalContext: Array<string | HookTemplateEntry> }
 
 /** The trigger variants of an inline-tag handler. Mirror of `TUITrigger`. */
 export type TUITrigger =

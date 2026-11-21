@@ -3,9 +3,6 @@
     "ma-acp-plugin/host-mode.ts": {
       "bracket-notice": 1
     },
-    "ma-ask-mode-plugin/PROMPT.md": {
-      "prompt-file": 2
-    },
     "ma-core-tools-plugin/prompts/tools/mode.md": {
       "prompt-file": 1
     },
@@ -16,38 +13,14 @@
     "ma-diagnostics-plugin/lib/format-notes.ts": {
       "bracket-notice": 1
     },
-    "ma-diagnostics-plugin/manifest.json": {
-      "prompt-file": 1
-    },
-    "ma-diff-view-plugin/PROMPT.md": {
-      "prompt-file": 1
-    },
-    "ma-diff-view-plugin/manifest.json": {
-      "prompt-file": 1
-    },
-    "ma-emit-output-plugin/PROMPT.md": {
-      "prompt-file": 3
-    },
     "ma-fetch-plugin/handlers/fetch.ts": {
       "bracket-notice": 1
     },
     "ma-fetch-plugin/lib/backend.ts": {
       "bracket-notice": 1
     },
-    "ma-intercom-plugin/PROMPT.md": {
-      "prompt-file": 1
-    },
     "ma-intercom-plugin/lib/sanitize.ts": {
       "tag-regex": 1
-    },
-    "ma-intercom-plugin/manifest.json": {
-      "prompt-file": 1
-    },
-    "ma-interleave-thinking-plugin/PROMPT.md": {
-      "prompt-file": 1
-    },
-    "ma-interleave-thinking-plugin/manifest.json": {
-      "prompt-file": 1
     },
     "ma-llm-cursor-plugin/bidi-tool-results.ts": {
       "bracket-notice": 2
@@ -58,44 +31,17 @@
     "ma-llm-openai-plugin/responses/compact.ts": {
       "bracket-notice": 2
     },
-    "ma-memory-plugin/PROMPT.md": {
-      "prompt-file": 1
-    },
     "ma-memory-plugin/lib/format.ts": {
       "bracket-notice": 1
     },
     "ma-memory-plugin/lib/parse.ts": {
       "bracket-notice": 1
     },
-    "ma-memory-plugin/manifest.json": {
-      "prompt-file": 3
-    },
-    "ma-reflection-checkpoint-plugin/manifest.json": {
-      "prompt-file": 1
-    },
-    "ma-reflection-checkpoint-plugin/prompts/ack.md": {
-      "prompt-file": 1
-    },
-    "ma-reflection-checkpoint-plugin/prompts/attachment.tmpl.md": {
-      "prompt-file": 1
-    },
-    "ma-reflection-checkpoint-plugin/prompts/checkpoint-cooldown.tmpl.md": {
-      "prompt-file": 2
-    },
-    "ma-reflection-checkpoint-plugin/prompts/checkpoint-plain.tmpl.md": {
-      "prompt-file": 2
-    },
     "ma-skills-plugin/lib/tool-registry.ts": {
       "bracket-notice": 1
     },
     "ma-sub-agents-plugin/lib/lane/scrub-fixture.ts": {
       "bracket-notice": 1
-    },
-    "ma-tasks-plugin/manifest.json": {
-      "prompt-file": 1
-    },
-    "ma-tasks-plugin/prompts/results-compact.md": {
-      "prompt-file": 1
     },
     "ma-turn-recovery-plugin/provider.ts": {
       "bracket-notice": 2

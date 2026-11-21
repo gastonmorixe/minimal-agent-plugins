@@ -3,7 +3,7 @@ import { leadingNode, stripLenient } from "./lenient.ts"
 import { v1Qname } from "./levels.ts"
 import { neutralizeText } from "./neutralize.ts"
 import { makeContext, parseText } from "./parse.ts"
-import { renderV1 } from "./render.ts"
+import { renderV1, renderV1Close, renderV1Open } from "./render.ts"
 import { createScanner } from "./scanner.ts"
 import type {
   ReadonlySidebandRegistry,
@@ -35,6 +35,8 @@ export default function createCodec(registry: ReadonlySidebandRegistry): Sideban
     leadingNode: (text) => leadingNode(text, makeContext(registry)),
     id: "xml-ma-v1",
     render: (kind, msg) => renderV1(kind, msg),
+    open: (kind, msg) => renderV1Open(kind, msg),
+    close: (kind) => renderV1Close(kind),
     parse: (text, opts) => parseText(text, makeContext(registry), opts),
     scanner: (opts) => createScanner(registry, opts),
     name: (kind) => v1Qname(kind),

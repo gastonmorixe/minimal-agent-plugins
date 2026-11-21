@@ -11,8 +11,10 @@
  *   leaves no blank-line scar.
  * - `name` matches `[A-Za-z0-9_.-]+`, so dotted names like `sid.short` work.
  *
- * There is no escape syntax. A template cannot hold a literal `%%name%%` for
- * a name that is a valid placeholder.
+ * `renderTemplate` has no escape syntax. A template cannot hold a literal
+ * `%%name%%` for a name that is a valid placeholder. The call engine
+ * (`calls.ts`, `expandTemplate`) adds the escape `%%%%` and the
+ * `%%sideband:...%%` calls.
  *
  * @module ma-template-kit/template
  */
@@ -53,6 +55,34 @@ export class PromptTemplateError extends Error {
     this.name = "PromptTemplateError"
     this.missing = missing
     this.source = source
+  }
+}
+
+/**
+ * Thrown for a malformed `%%sideband:...%%` token or an unknown op. It is a
+ * {@link PromptTemplateError} with no missing variable.
+ */
+export class PromptTemplateSyntaxError extends PromptTemplateError {
+  /** The token text from its start, at most 80 characters. */
+  readonly token: string
+  /** UTF-16 offset of the token in the template. */
+  readonly offset: number
+
+  /**
+   * Build the error message from the reason and the token.
+   *
+   * @param reason - What is wrong.
+   * @param token - The token text.
+   * @param offset - Offset of the token in the template.
+   * @param source - Template path, when known.
+   */
+  constructor(reason: string, token: string, offset: number, source?: string) {
+    super([], source)
+    const where = source ? ` in ${source}` : ""
+    this.message = `prompt template${where}: ${reason} at offset ${offset}: ${token}`
+    this.name = "PromptTemplateSyntaxError"
+    this.token = token
+    this.offset = offset
   }
 }
 

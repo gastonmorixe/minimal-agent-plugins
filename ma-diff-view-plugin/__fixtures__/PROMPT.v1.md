@@ -1,0 +1,1 @@
+The `<ma::emit::diff>` tag has one optional attribute, `title`. The user sees the title above the diff. Write the start tag, then the diff text, then the end tag. The harness replaces the tags and the diff text with the diff in color.

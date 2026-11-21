@@ -13,7 +13,7 @@ export type ReadonlySidebandRegistry = SB.ReadonlySidebandRegistry
 // plugin-api additions. Replace each one with the plugin-api type when the
 // core pin has them: SidebandForm, SidebandSpan, SidebandNode,
 // SidebandParseOptions (plus `kinds`), StreamScanOptions, StreamScanner,
-// SidebandCodec (optional `name`, `trailingStart`).
+// SidebandCodec (optional `name`, `trailingStart`, `open`, `close`).
 
 /** Wire form that produced a node. `v1-text` is an old bracket notice. */
 export type SidebandForm = "v2" | "v1" | "v1-bare" | "v1-text"
@@ -105,6 +105,10 @@ export interface SidebandCodec {
   example(kind: SidebandKind, msg?: SidebandMessage): string
   /** The wire name of a kind for prompt text (SB-DOC-2). */
   name?(kind: SidebandKind): string
+  /** Render only the start part of a message (design 50 section 5). The body is ignored. */
+  open?(kind: SidebandKind, msg: SidebandMessage): string
+  /** Render only the end part of a kind (design 50 section 5). */
+  close?(kind: SidebandKind): string
   /** Start of the annotation region at the end of `text`, or `text.length`. */
   trailingStart?(text: string): number
   /** Remove complete nodes and broken tag parts (see `lenient.ts`). */

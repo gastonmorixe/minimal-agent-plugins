@@ -22,8 +22,8 @@ Enforcement happens at dispatch time. It does not depend on your cooperation.
 
 ## How you learn the active mode
 
-1. **`<ma::agent::mode-active id="..." since="..." />`**: the harness stamps this tag on every tool result. It is the freshest signal. `id="default"` or no stamp means no mode is active (unrestricted).
-2. **`<ma::agent::mode-change from="..." to="..." at="..." />`**: the harness adds this tag to the next user turn when the user toggles the mode. Read `to=` for the new mode.
+1. **`%%sideband:tag mode-active id="..." since="..."%%`**: the harness stamps this tag on every tool result. It is the freshest signal. `id="default"` or no stamp means no mode is active (unrestricted).
+2. **`%%sideband:tag mode-change from="..." to="..." at="..."%%`**: the harness adds this tag to the next user turn when the user toggles the mode. Read `to=` for the new mode.
 3. **`Mode` tool**: call it when you need a deterministic answer and no recent tool result is available. It returns the id, the label, and the allow and deny permission lists. `id: null` means no mode is active.
 
 You do not need to call `Mode` routinely. The tool-result stamp is the primary signal.
