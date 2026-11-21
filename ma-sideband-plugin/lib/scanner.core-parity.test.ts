@@ -535,18 +535,18 @@ describe("known differences from core TagScanner (decided in step 9)", () => {
     // core: no tag (the opener probe is case-sensitive), the text passes through
     fires("<MA::EMIT::t />", "t", "")
   })
-  it("no kinds filter: the scanner also consumes <ma::agent::reflection-ack .../>", () => {
-    // core: TagScanner reads only <ma::emit::, so the ack is text
-    // "a <ma::agent::reflection-ack ... /> b" (the ack stripper removes it later)
-    const c = createCodec(makeRegistry([...EMIT_NAMES.map(emitKind), TEST_KINDS.reflectionAck!]))
+  it("no kinds filter: the scanner also consumes a from-model <ma::agent::inline-ack .../>", () => {
+    // core: TagScanner reads only <ma::emit::, so an agent-level from-model
+    // tag is text "a <ma::agent::inline-ack ... /> b"
+    const c = createCodec(makeRegistry([...EMIT_NAMES.map(emitKind), TEST_KINDS.inlineAck!]))
     const sc = c.scanner()
     let text = ""
     const kinds: string[] = []
     sc.onText((t) => (text += t))
     sc.onNode((n) => kinds.push(n.kind))
-    sc.write('a <ma::agent::reflection-ack silence-for="2" reason="r" /> b')
+    sc.write('a <ma::agent::inline-ack count="2" reason="r" /> b')
     sc.end()
-    expect(kinds).toEqual(["reflection-ack"])
+    expect(kinds).toEqual(["inline-ack"])
     expect(text).toBe("a  b")
   })
 })

@@ -13,7 +13,8 @@
  *    can use the time. This is the same as the no-op gate of the old core.
  *    The attachment then has `cooldown-applied-seconds="0"`.
  * 3. Return the checkpoint attachment as `additionalContext`. Core adds it to
- *    the user content of the next request.
+ *    the user content of the next request. `ctx.sideband` renders the tag
+ *    line of the attachment.
  *
  * @module handlers/did-batch
  */
@@ -83,7 +84,7 @@ export async function onDidBatch(
     if (result === "aborted") return undefined
     appliedMs = result === "elapsed" ? cooldownMs : Math.max(0, deps.now() - start)
   }
-  return { additionalContext: [attachmentText(round, appliedMs)] }
+  return { additionalContext: [attachmentText(round, appliedMs, ctx.sideband)] }
 }
 
 /** The manifest hook entry. */

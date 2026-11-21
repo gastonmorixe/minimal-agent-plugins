@@ -14,6 +14,8 @@ import plainMd from "../prompts/checkpoint-plain.tmpl.md" with { type: "text" }
 import headingMd from "../prompts/heading.md" with { type: "text" }
 import introMd from "../prompts/intro.md" with { type: "text" }
 
+import type { SidebandRender } from "./host-types.ts"
+
 /**
  * Replace each `%%name%%` with `vars[name]`. A name with no value throws, so
  * a template typo cannot reach the model.
@@ -46,12 +48,21 @@ export function loopSafetyText(interval: number, cooldownMs: number): string {
 }
 
 /**
- * The checkpoint attachment: the `<ma::agent::reflection-checkpoint />` tag
- * and the reflection prompt.
+ * The checkpoint attachment: the `reflection-checkpoint` tag line and the
+ * reflection prompt, joined by one line feed. The session sideband API
+ * renders the tag line (design 40 step 10). With no `sb` or no codec, the
+ * tag is "" and the text is the prompt only, with no leading line feed.
  *
  * @param round - The tool round of the checkpoint.
  * @param appliedMs - The wall-clock wait that the plugin applied.
+ * @param sb - The session sideband API (`ctx.sideband`).
  */
-export function attachmentText(round: number, appliedMs: number): string {
-  return fill(attachmentMd.trim(), { round, cooldownSec: toSeconds(appliedMs) })
+export function attachmentText(round: number, appliedMs: number, sb?: SidebandRender): string {
+  const cooldownSec = toSeconds(appliedMs)
+  const tag =
+    sb?.render("reflection-checkpoint", {
+      attrs: { round, "cooldown-applied-seconds": cooldownSec },
+    }) ?? ""
+  const prose = fill(attachmentMd.trim(), { round, cooldownSec })
+  return tag === "" ? prose : `${tag}\n${prose}`
 }

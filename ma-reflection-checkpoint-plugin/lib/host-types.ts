@@ -8,7 +8,8 @@
  *
  * Source of truth in the host: `plugin-api/src/types/plugin.ts`
  * (`TUIContext`, `TUITrigger`, `TUIResult`, `HookHandlerContext`,
- * `CountdownFn`, `RunModeFact`, `PromptFragmentContext`) and `src/sdk/lifecycle.ts`
+ * `CountdownFn`, `RunModeFact`, `PromptFragmentContext`), `plugin-api/src/types/sideband.ts`
+ * (`SidebandApi`) and `src/sdk/lifecycle.ts`
  * (`ToolDidBatchPayload`).
  *
  * @module lib/host-types
@@ -45,6 +46,14 @@ export interface PluginLogger {
   info(message: string, data?: Record<string, unknown>): void
 }
 
+/**
+ * The slice of the session sideband API that this plugin uses. Mirror of
+ * `SidebandApi.render` (we render the `reflection-checkpoint` tag).
+ */
+export interface SidebandRender {
+  render(kind: string, msg?: { attrs?: Record<string, string | number> }): string
+}
+
 /** The slice of `HookHandlerContext` the `tool.didBatch` listener reads. */
 export interface HookContext {
   env: Record<string, string>
@@ -54,6 +63,8 @@ export interface HookContext {
   run?: RunModeFact
   countdown: CountdownFn
   log?: PluginLogger
+  /** The session sideband API. It renders the checkpoint tag. With none, no tag line. */
+  sideband?: SidebandRender
 }
 
 /** One finished tool call in a batch. Mirror of `ToolBatchItem`. */
