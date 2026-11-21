@@ -27,9 +27,15 @@ export const GLYPHS = {
   frameML: "│",
   frameBL: "╰",
   bullet: "·",
+  dotOn: "●", // U+25CF  live widget: a running row, blink frame "on"
+  dotOff: "○", // U+25CB  live widget: a running row, blink frame "off"
+  dotQueued: "◌", // U+25CC  live widget: a queued row
+  treeMid: "├", // live widget: a tree row that is not the last
+  treeLast: "╰", // live widget: the last tree row
+  unknown: "—", // live widget: no model is known
 } as const
 
-/** Frames of the running spinner, cycled by tick for the live widget. */
+/** Frames of the old running spinner. The live widget does not use them now. */
 export const SPINNER = ["◐", "◓", "◑", "◒"] as const
 
 export const ANSI = {

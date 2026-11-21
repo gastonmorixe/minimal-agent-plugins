@@ -73,7 +73,7 @@ describe("runSupervisor", () => {
     const widget = runSupervisor(deps)
     expect(store.get("A1")?.status.kind).toBe("running")
     expect(widget).not.toBeNull()
-    expect(widget).toContain("◈ fleet")
+    expect(widget).toContain("Fleet ")
     expect(deps.emitted).toHaveLength(0)
   })
 
