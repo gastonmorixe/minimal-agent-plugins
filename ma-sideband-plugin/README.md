@@ -10,7 +10,12 @@ Required plugin. Provides the sideband codec `xml-ma-v1` (`sideband.codec`).
   end part, a start part with no end part (with the rest of its line when a line feed
   follows), a start part that the text cuts at its end. `keepBody: true` removes only the
   parts and keeps the text between them; `replacement` sets the text for each removed range;
-  `kinds` limits the kinds. Linear time. Core calls it with `sideband.strip(text, { lenient: true })`.
+  `kinds` limits the kinds. A well-formed start part ends at its own `>`: a `>` in a quoted
+  value does not end it. Linear time. Core calls it with `sideband.strip(text, { lenient: true })`.
+- `parse` with `legacyText: true` also reads the old bracket notices (`\n\n[note: ...]`,
+  `\n\n[truncated: ...]`). A notice ends at its closing `]` on the same line; an unclosed
+  notice is not a notice and does not hide a later one. `parse` is linear time, also for
+  many unclosed start parts of different kinds.
 - `leadingNode` gives the node at the first non-space character, also a start part only
   (core `sideband.leadingKind(text)`).
 

@@ -19,10 +19,12 @@ export const LEGACY_TEXT_PROBES: readonly string[] = LEGACY_TEXT.map(
 )
 
 function closeOf(text: string, from: number): number {
-  // The notice ends at the `]` before a line feed or the end of text.
+  // The notice ends at the `]` that closes its `[`, on the same line. A line
+  // feed before it means no notice here (-1). Reads one line only: linear.
   let depth = 0
   for (let i = from; i < text.length; i++) {
     const c = text.charAt(i)
+    if (c === "\n") return -1
     if (c === "[") depth++
     else if (c === "]") {
       depth--
@@ -43,7 +45,11 @@ export function readLegacyText(text: string): SidebandNode[] {
       if (at < 0) break
       const start = at + LEGACY_TEXT_JOIN.length
       const end = closeOf(text, start)
-      if (end < 0) break
+      if (end < 0) {
+        // Not closed on its line: no notice here. Look for a later one.
+        from = start
+        continue
+      }
       out.push({
         kind: l.kind,
         attrs: {},

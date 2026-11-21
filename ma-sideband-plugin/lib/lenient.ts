@@ -8,7 +8,8 @@
  *
  * A part is `<` or `</`, a qname that the codec maps to a kind (v1, v2, bare
  * legacy), a name end (space, `/`, `>` or the end of the text), then the
- * text to the next `>`. A part with no `>` counts only when it runs to the
+ * text to the next `>`. A well-formed start part ends at its own `>`, so a
+ * `>` in a quoted value does not end it. A part with no `>` counts only when it runs to the
  * end of the text (a `<` before the `>` makes it plain text). The scan is
  * linear: each `<` reads forward only to the next `<` or `>`.
  *
@@ -53,6 +54,15 @@ function partAt(text: string, at: number, ctx: ParseContext): Part | undefined {
   if (hit.end < text.length && !NAME_END.test(text.charAt(hit.end))) return undefined
   const kind = mapQname(hit.text, ctx)
   if (kind === undefined) return undefined
+  if (!close) {
+    // A well-formed start part first: a `>` in a quoted value is not its end
+    // (m4). No backslash escapes, so the read stops at the next `<` (linear).
+    const head = readOpen(text, hit.end, formOf(hit.text), false)
+    if (head.status === "ok") {
+      const role = head.empty ? "self" : "open"
+      return { role, kind, qname: hit.text, start: at, end: head.end, cut: false }
+    }
+  }
   let j = hit.end
   while (j < text.length) {
     const c = text.charAt(j)

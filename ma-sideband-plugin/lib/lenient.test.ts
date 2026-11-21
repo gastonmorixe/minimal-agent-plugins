@@ -112,6 +112,13 @@ describe("stripLenient: more forms and options", () => {
     const t = `${"<ma::a>".repeat(12)}x${"</ma::a>".repeat(12)} REAL`
     expect(strip(t, SUMMARY)).toBe("  REAL")
   })
+  test("a `>` in a quoted value does not end the part (m4)", () => {
+    expect(strip('a <ma::agent::raw-output path="x>y" size="1" />')).toBe("a ")
+    expect(strip('a <ma::agent::raw-output path="x>y" /> keep\nnext')).toBe("a  keep\nnext")
+    expect(strip("a <ma::agent::raw-output path='x>y' />", TITLE)).toBe("a  ")
+    expect(strip('a <ma::agent::policy note="x>y">B</ma::agent::policy> c')).toBe("a  c")
+    expect(leading('<ma::agent::raw-output path="x>y" /> z')?.span).toEqual({ start: 0, end: 36 })
+  })
 })
 
 describe("leadingNode", () => {
