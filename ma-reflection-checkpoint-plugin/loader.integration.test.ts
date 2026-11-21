@@ -50,12 +50,16 @@ function isolatedRoot(name: string): string {
   return join(tmp, name)
 }
 
-/** Set the env that the handlers read, for the time of `fn`. */
-async function withEnv<T>(vars: Record<string, string>, fn: () => Promise<T>): Promise<T> {
+/** Set the env that the handlers read, for the time of `fn`. `undefined` removes a var. */
+async function withEnv<T>(
+  vars: Record<string, string | undefined>,
+  fn: () => Promise<T>,
+): Promise<T> {
   const old: Record<string, string | undefined> = {}
   for (const [k, v] of Object.entries(vars)) {
     old[k] = process.env[k]
-    process.env[k] = v
+    if (v === undefined) delete process.env[k]
+    else process.env[k] = v
   }
   try {
     return await fn()
@@ -71,6 +75,10 @@ const ENV = {
   MINIMAL_AGENT_CONFIG: join(tmp, "absent.jsonc"),
   MINIMAL_AGENT_REFLECTION_INTERVAL: "2",
   MINIMAL_AGENT_REFLECTION_COOLDOWN_MS: "1000",
+  // A run in a sub-agent worker has these vars. Core then sets `ctx.run` to
+  // `subagent` with `interactive: false`, and the handler does no countdown.
+  MINIMAL_AGENT_SUBAGENT_ID: undefined,
+  MINIMAL_AGENT_SUBAGENT_SID: undefined,
 }
 
 describe("reflection-checkpoint via the real PluginLoader", () => {
