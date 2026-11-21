@@ -13,7 +13,8 @@
  * - `EventHandlerContext`, `RunModeFact`, `PromptSubmittedPayload`,
  *   `UtilityModelRecommendation`: `plugin-api/src/types/plugin.ts`
  * - `ModelsReadApi`, `ResolvedUtilityModel`, `LlmSideRequest`,
- *   `LlmSideResult`, `SessionMetaApi`, `SessionTitleState`:
+ *   `LlmSideResult`, `SessionMetaApi`, `SessionTitleState`,
+ *   `SessionsReadApi`, `SessionMetaView`:
  *   `plugin-api/src/types/host-capabilities.ts`
  * - `reason` (result): core `src/plugins/host/providers/llm-side.ts`
  *   (`LlmSideResultCore`). It is not in the plugin-api types yet.
@@ -43,7 +44,7 @@ export interface RunModeFact {
 }
 
 /** Origin of the prompt text. Mirror of the host `PromptSource`. */
-export type PromptSource = "user" | "command" | "expand" | "recovery" | "continue"
+export type PromptSource = "user" | "command" | "expand" | "recovery" | "continue" | "inject"
 
 /** `prompt.submitted` payload. Mirror of the host `PromptSubmittedPayload`. */
 export interface PromptSubmittedPayload {
@@ -212,11 +213,28 @@ export interface SessionMetaApi {
   setTitle(input: SessionTitleInput): Promise<void>
 }
 
+/** Slice of the host `SessionMetaView` (`sessions.meta`). */
+export interface SessionMetaViewSlice {
+  readonly sid: string
+  /** The sid of the session that this session was forked from, or null. */
+  readonly parentSid: string | null
+}
+
+/** `sessions:read` slice. Mirror of the host `SessionsReadApi`. */
+export interface SessionsReadApi {
+  /** The saved title (user, AI, then derived), or null. */
+  title(sid: string): string | null
+  /** Session metadata. Null when the sid is not known. */
+  meta(sid: string): Promise<SessionMetaViewSlice | null>
+}
+
 /** The host slice that the title handler reads (`ctx.host`). */
 export interface TitleHost {
   readonly llm?: LlmCompleteApi
   readonly sessionMeta?: SessionMetaApi
   readonly models?: ModelsReadApi
+  /** `sessions:read`. Optional: older hosts. */
+  readonly sessions?: SessionsReadApi
 }
 
 /** Slice of the host `AgentContext`. */

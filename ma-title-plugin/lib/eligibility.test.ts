@@ -7,9 +7,12 @@ import {
   initialTitleState,
   isSubagentRun,
   MAX_ATTEMPTS,
+  markBusy,
   markFailure,
+  markIdle,
   markSuccess,
   resolveModeGate,
+  slashCommandArgs,
   startAttempt,
   type TitleSessionState,
 } from "./eligibility.ts"
@@ -91,7 +94,7 @@ describe("checkEligibility: rules 1-9 (table)", () => {
     ],
     [
       "rule 5: slash after a ma tag",
-      { payload: payload({ text: "<ma::x>y</ma::x>  /compact now please" }) },
+      { payload: payload({ text: "<ma::x>y</ma::x>  /compact now" }) },
       5,
       "slash-command",
     ],
@@ -364,5 +367,47 @@ describe("sub-agent policy (SPEC §7.4, IMPL-PLAN R8)", () => {
     expect(
       resolveModeGate({ run: worker, env: {}, config: { ...config, modes: ["subagent"] } }).allowed,
     ).toBe(true)
+  })
+})
+
+describe("rule 5: slash command with args (B3)", () => {
+  test("slashCommandArgs: a simple name, white space, then the args", () => {
+    expect(slashCommandArgs("/plan fix the title bugs")).toBe("fix the title bugs")
+    expect(slashCommandArgs("/ns:my-cmd_2   do the work  ")).toBe("do the work")
+    expect(slashCommandArgs("/plan\nfix it on two lines")).toBe("fix it on two lines")
+    expect(slashCommandArgs("/plan")).toBeUndefined()
+    expect(slashCommandArgs("/plan   ")).toBeUndefined()
+    expect(slashCommandArgs("/usr/bin/env python3")).toBeUndefined()
+    expect(slashCommandArgs("/ leading space")).toBeUndefined()
+  })
+
+  test("args that pass minChars are the title text", () => {
+    const r = checkEligibility(input({ payload: payload({ text: "/plan fix the title bugs" }) }))
+    expect(r).toEqual({ eligible: true, sid: SID, text: "fix the title bugs" })
+  })
+
+  test("short args, no args or a path stay skipped (rule 5)", () => {
+    for (const text of ["/model haiku", "/compact", "/usr/bin/env python3 -c x"]) {
+      const r = checkEligibility(input({ payload: payload({ text }) }))
+      expect(r.eligible ? "" : r.reason).toBe("slash-command")
+    }
+  })
+
+  test("rule 7 still stops the expand event of the same command", () => {
+    const text = "/plan fix the title bugs"
+    const r = checkEligibility(input({ payload: payload({ text, source: "expand" }) }))
+    expect(r.eligible ? "" : r.reason).toBe("source-not-user")
+  })
+})
+
+describe("state helpers with no attempt (B2, B4)", () => {
+  test("markBusy sets inFlight and markIdle clears it; attempts do not change", () => {
+    const busy = markBusy(undefined)
+    expect(busy).toMatchObject({ attempts: 0, inFlight: true, done: false })
+    const r = checkEligibility(input({ state: busy }))
+    expect(r.eligible ? "" : r.reason).toBe("in-flight")
+    const idle = markIdle({ ...busy, firstText: "keep me" })
+    expect(idle).toMatchObject({ attempts: 0, inFlight: false, firstText: "keep me" })
+    expect(checkEligibility(input({ state: idle })).eligible).toBe(true)
   })
 })

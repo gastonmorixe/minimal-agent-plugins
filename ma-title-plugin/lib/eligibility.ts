@@ -24,7 +24,11 @@ import type {
 } from "./host-types.ts"
 import { cleanPromptText, codePointLength, hasMaTag } from "./input.ts"
 
-/** Max calls per session per process: 1 attempt + 1 retry (SPEC §6 rule 8). */
+/**
+ * Max model calls per session per process: 1 attempt + 1 retry (SPEC §6
+ * rule 8). A prompt with no model (`no-model`, `over-ceiling`) makes no call
+ * and does not count.
+ */
 export const MAX_ATTEMPTS = 2
 
 /** Env var that a sub-agent worker has (core `host-session-facts.ts`). */
@@ -42,6 +46,15 @@ export interface TitleSessionState {
   done: boolean
   /** ISO time of the last failure. */
   failedAt?: string
+  /**
+   * The clean text of the first eligible prompt (B5). Each attempt and each
+   * retry sends this text, not the text of a later prompt.
+   */
+  firstText?: string
+  /** True after the fork check (B2) ran for this sid. It runs one time. */
+  parentChecked?: boolean
+  /** True after the no-model log line and event (B4). They come one time. */
+  noModelReported?: boolean
 }
 
 /** A new state for a sid. */
@@ -226,10 +239,17 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
   }
 
   const rawText = typeof payload.text === "string" ? payload.text : ""
-  const text = cleanPromptText(rawText)
+  let text = cleanPromptText(rawText)
 
-  // Rule 5: slash command.
-  if (text.startsWith("/")) return { eligible: false, rule: 5, reason: "slash-command", sid }
+  // Rule 5: slash command. A simple `/name args` line gives its args as the
+  // title text, when the args pass rule 6. Each other slash line stops.
+  if (text.startsWith("/")) {
+    const args = slashCommandArgs(text)
+    if (args === undefined || codePointLength(args) < config.minChars) {
+      return { eligible: false, rule: 5, reason: "slash-command", sid }
+    }
+    text = args
+  }
 
   // Rule 7 (checked here): text that is only `<ma::…>` tags is synthetic.
   if (text === "" && hasMaTag(rawText)) {
@@ -250,6 +270,35 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
   }
 
   return { eligible: true, sid, text }
+}
+
+/** A simple command line: `/`, a name, white space, then the args. */
+const SLASH_ARGS_RE = /^\/[A-Za-z0-9_:-]+\s+(\S[\s\S]*)$/
+
+/**
+ * The args of a simple slash command line (`/name args`), trimmed. The name
+ * has only letters, digits, `-`, `_` and `:`. A line with no args, or with a
+ * different first word (for example `/usr/bin/env x`), gives `undefined`.
+ */
+export function slashCommandArgs(text: string): string | undefined {
+  const m = SLASH_ARGS_RE.exec(text)
+  const args = m?.[1]?.trim() ?? ""
+  return args === "" ? undefined : args
+}
+
+/**
+ * The state while the handler works on a prompt, before a model call starts
+ * (fork check, model choice). It sets `inFlight` and does not use an attempt.
+ */
+export function markBusy(state: TitleSessionState | undefined): TitleSessionState {
+  const s = state ?? initialTitleState()
+  return { ...s, inFlight: true }
+}
+
+/** The state after a prompt that made no call (no model): no attempt used. */
+export function markIdle(state: TitleSessionState | undefined): TitleSessionState {
+  const s = state ?? initialTitleState()
+  return { ...s, inFlight: false }
 }
 
 /** Rule 9: the state after a call starts (`attempts++`, `inFlight`). */
