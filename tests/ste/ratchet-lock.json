@@ -1088,7 +1088,6 @@
     "subagentsreportresult @ ma-sub-agents-plugin/lib/library.ts": 6,
     "subagentsreportresult @ ma-sub-agents-plugin/prompts/leaf-discipline.md": 2,
     "subagentsreportresult @ ma-sub-agents-plugin/prompts/result-protocol.tmpl.md": 1,
-    "submitted @ ma-history-plugin/manifest.json": 1,
     "subscribes @ ma-diagnostics-plugin/manifest.json": 1,
     "subscribes @ ma-tps-plugin/manifest.json": 1,
     "subsystem @ ma-memory-plugin/prompts/summarize.tmpl.md": 1,
