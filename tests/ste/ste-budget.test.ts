@@ -12,9 +12,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { describe, expect, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "bun:test"
+
+import type { SidebandApi } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../support/sideband.ts"
 
 import { historyRefs, showAt } from "./ratchet.ts"
+import { renderDescriptions } from "./render.ts"
 import { PLUGINS_ROOT } from "./surfaces.ts"
 import {
   BLOCK_RAISES,
@@ -296,6 +301,10 @@ function tempRoot(tool: Record<string, unknown>): {
 describe("measurement source: the golden plus every manifest tool (review C B3)", () => {
   const tools = shippedTools()
   const byName = new Map(tools.map((t) => [t.name, t]))
+  let sb: SidebandApi
+  beforeAll(async () => {
+    sb = await pluginSideband()
+  })
 
   test("every manifest tool and every built-in is measured", () => {
     expect(unmeasuredTools(tools)).toEqual([])
@@ -335,12 +344,14 @@ describe("measurement source: the golden plus every manifest tool (review C B3)"
       const manifest = JSON.parse(
         readFileSync(join(PLUGINS_ROOT, entry.plugin, "manifest.json"), "utf8"),
       ) as { headless?: { tools?: Array<{ trigger?: { tool?: Record<string, unknown> } }> } }
-      const tool = manifest.headless?.tools?.find((h) => h.trigger?.tool?.name === entry.tool)
+      const raw = manifest.headless?.tools?.find((h) => h.trigger?.tool?.name === entry.tool)
         ?.trigger?.tool
-      if (!tool) {
+      if (!raw) {
         differ.push(`${entry.wire}: not found`)
         continue
       }
+      // Core renders the `%%sideband:...%%` calls before it sends the text.
+      const tool = renderDescriptions(raw, sb)
       const props = (shipped.input_schema as { properties?: Record<string, unknown> }).properties
       const schema = tool.mayReturnBinary
         ? {

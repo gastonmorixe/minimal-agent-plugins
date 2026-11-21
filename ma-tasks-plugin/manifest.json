@@ -2,7 +2,7 @@
   "id": "tasks",
   "name": "Tasks",
   "version": "0.1.0",
-  "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO.\n\nSingle Task tool with action switch (add, add_many, replace_plan, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model and human boards use canonical ordinal ids. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as <ma::agent::tasks>.",
+  "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO.\n\nSingle Task tool with action switch (add, add_many, replace_plan, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model and human boards use canonical ordinal ids. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as the `tasks` section.",
   "permissions": ["hooks:turn.willStart", "hooks:turn.didEnd", "hooks:turn.aborted"],
   "headless": {
     "promptFragments": [

@@ -2,9 +2,25 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
-import type { ModelInfoSnapshot, PromptFragmentContext } from "../lib/host-types.ts"
+import { expandTemplate } from "../../ma-template-kit/src/index.ts"
+import { pluginSideband } from "../../tests/support/sideband.ts"
+import type {
+  ModelInfoSnapshot,
+  PromptFragmentContext,
+  PromptTemplateText,
+} from "../lib/host-types.ts"
 
-import planningFragment from "./planning_fragment.ts"
+import planningFragmentRaw from "./planning_fragment.ts"
+
+/** The real codec: core renders the returned template with it. */
+const SB = await pluginSideband()
+
+/** Render the fragment result as core does (S4). */
+function render(x: PromptTemplateText | ""): string {
+  return x === "" ? "" : expandTemplate(x.template, { vars: x.vars ?? {}, sideband: SB })
+}
+
+const planningFragment = (c: PromptFragmentContext): string => render(planningFragmentRaw(c))
 
 const PKG_DIR = join(import.meta.dir, "..")
 

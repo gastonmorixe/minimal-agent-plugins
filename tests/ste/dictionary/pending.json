@@ -589,10 +589,7 @@
   },
   {
     "word": "contract",
-    "files": [
-      "ma-agent-cloud/manifest.json",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
+    "files": ["ma-agent-cloud/manifest.json"]
   },
   {
     "word": "contractcheckfailederror",
@@ -2044,11 +2041,7 @@
   },
   {
     "word": "opt",
-    "files": [
-      "ma-hooks-plugin/manifest.json",
-      "ma-interleave-thinking-plugin/manifest.json",
-      "ma-prompt-template-plugin/__fixtures__/prompts/hello.md"
-    ]
+    "files": ["ma-hooks-plugin/manifest.json", "ma-interleave-thinking-plugin/manifest.json"]
   },
   {
     "word": "options",

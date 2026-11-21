@@ -11,6 +11,7 @@ import { join } from "node:path"
 
 import { afterAll, beforeEach, describe, expect, it } from "bun:test"
 
+import { expandTemplate } from "../ma-template-kit/src/index.ts"
 import { pluginSideband } from "../tests/support/sideband.ts"
 
 import reflectionAckHandler, { ackNotice, parseAck } from "./handlers/ack.ts"
@@ -28,6 +29,8 @@ import type {
   CountdownRequest,
   CountdownResult,
   HookContext,
+  HookTemplateEntry,
+  PromptTemplateText,
   RunModeFact,
   TUIContext,
 } from "./lib/host-types.ts"
@@ -39,11 +42,19 @@ import {
   sessionKey,
   stateFor,
 } from "./lib/state.ts"
-import { attachmentText, loopSafetyText } from "./lib/text.ts"
+import { attachmentEntry, loopSafetyText } from "./lib/text.ts"
 import manifest from "./manifest.json"
 
 /** The real codec: the attachment tag line renders with it (design 40 step 10). */
 const SB = await pluginSideband()
+
+/** Render a returned text as core does: a template with the real codec, a string as is. */
+function render(x: PromptTemplateText | HookTemplateEntry | string | undefined): string {
+  if (x === undefined || typeof x === "string") return x ?? ""
+  const template =
+    "template" in x && typeof x.template === "string" ? x.template : (x as HookTemplateEntry).text
+  return expandTemplate(template, { vars: x.vars ?? {}, sideband: SB })
+}
 
 const tmp = mkdtempSync(join(tmpdir(), "ma-reflection-"))
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
@@ -143,7 +154,7 @@ describe("cooldown", () => {
     expect(ctx.calls).toHaveLength(1)
     expect(ctx.calls[0]).toMatchObject({ id: COUNTDOWN_ID, ms: 60_000, signal: ctx.abort })
     expect(ctx.calls[0]?.label).toBe("reflection @ round 2")
-    expect(r?.additionalContext[0]).toContain('round="2" cooldown-applied-seconds="60"')
+    expect(render(r?.additionalContext[0])).toContain('round="2" cooldown-applied-seconds="60"')
   })
 
   it("skipped: adds the attachment with the time that passed", async () => {
@@ -155,7 +166,7 @@ describe("cooldown", () => {
       return v
     }
     const r = await onDidBatch({ results: [], round: 2 }, ctx, { now })
-    expect(r?.additionalContext[0]).toContain('cooldown-applied-seconds="7"')
+    expect(render(r?.additionalContext[0])).toContain('cooldown-applied-seconds="7"')
   })
 
   it("aborted: adds no attachment", async () => {
@@ -172,7 +183,7 @@ describe("cooldown", () => {
     )
     const r = await onDidBatch({ results: [], round: 2 }, ctx)
     expect(ctx.calls).toEqual([])
-    expect(r?.additionalContext[0]).toContain('cooldown-applied-seconds="0"')
+    expect(render(r?.additionalContext[0])).toContain('cooldown-applied-seconds="0"')
   })
 })
 
@@ -189,7 +200,7 @@ describe("run that is not interactive", () => {
       const ctx = hookCtx(env, "elapsed", run)
       const r = await onDidBatch({ results: [], round: 2 }, ctx)
       expect(ctx.calls).toEqual([])
-      expect(r?.additionalContext[0]).toContain('round="2" cooldown-applied-seconds="0"')
+      expect(render(r?.additionalContext[0])).toContain('round="2" cooldown-applied-seconds="0"')
     })
   }
 
@@ -197,7 +208,7 @@ describe("run that is not interactive", () => {
     const ctx = hookCtx(env, "elapsed", REPL)
     const r = await onDidBatch({ results: [], round: 2 }, ctx)
     expect(ctx.calls).toHaveLength(1)
-    expect(r?.additionalContext[0]).toContain('cooldown-applied-seconds="60"')
+    expect(render(r?.additionalContext[0])).toContain('cooldown-applied-seconds="60"')
   })
 })
 
@@ -292,7 +303,7 @@ describe("session map", () => {
 
 describe("texts", () => {
   it("attachment has the tag and the reflection prompt", () => {
-    const text = attachmentText(50, 60_000, SB)
+    const text = render(attachmentEntry(50, 60_000, SB))
     const first = text.split("\n")[0] ?? ""
     expect(SB.startsWith(first, { kinds: ["reflection-checkpoint"] })).toBe(true)
     expect(SB.attrs(SB.find(first)[0]!)).toEqual({ round: 50, "cooldown-applied-seconds": 60 })
@@ -304,28 +315,33 @@ describe("texts", () => {
 
   it("no sideband API: the prompt only, with no tag line and no leading line feed", () => {
     for (const text of [
-      attachmentText(50, 60_000),
-      attachmentText(50, 60_000, { render: () => "" }),
+      render(attachmentEntry(50, 60_000)),
+      render(attachmentEntry(50, 60_000, { render: () => "" })),
     ]) {
       expect(text).toStartWith("This checkpoint is soft.")
-      expect(text).toBe(attachmentText(50, 60_000, SB).split("\n").slice(1).join("\n"))
+      expect(text).toBe(
+        render(attachmentEntry(50, 60_000, SB))
+          .split("\n")
+          .slice(1)
+          .join("\n"),
+      )
     }
   })
 
   it("prompt section shows the configured interval and cooldown", () => {
-    const text = loopSafetyText(25, 30_000)
+    const text = render(loopSafetyText(25, 30_000))
     expect(text.startsWith("# Tool loop safety\n")).toBe(true)
     expect(text).toContain("after each 25 tool steps")
     expect(text).toContain("waits 30 seconds")
     expect(text).toContain('cooldown-applied-seconds="30"')
     expect(text).not.toContain("%%")
-    const plain = loopSafetyText(25, 0)
+    const plain = render(loopSafetyText(25, 0))
     expect(plain).toContain('cooldown-applied-seconds="0"')
     expect(plain).not.toContain("Esc")
   })
 
   it("fragment uses the config", () => {
-    expect(loopSafetyFragment({ env: envWith() })).toBe(loopSafetyText(50, 60_000))
+    expect(loopSafetyFragment({ env: envWith() })).toEqual(loopSafetyText(50, 60_000))
   })
 })
 
@@ -357,7 +373,7 @@ describe("config", () => {
     expect(pluginConfig(first).interval).toBe(3)
     expect(pluginConfig(later).interval).toBe(3)
     // The fragment and the hook use the same value.
-    expect(loopSafetyFragment({ env: later })).toContain("after each 3 tool steps")
+    expect(render(loopSafetyFragment({ env: later }))).toContain("after each 3 tool steps")
     const ctx = hookCtx(later)
     expect(await runRounds(ctx, 1, 6)).toEqual([3, 6])
     resetConfigCache()

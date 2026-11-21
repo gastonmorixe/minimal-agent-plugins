@@ -23,6 +23,7 @@ import { afterAll, describe, expect, it } from "bun:test"
 import { PluginLoader } from "@minimal-agent/core/host-kit/plugin-loader"
 import { PluginStream } from "@minimal-agent/core/host-kit/plugin-stream"
 
+import { expandTemplate } from "../ma-template-kit/src/index.ts"
 import { pluginSideband } from "../tests/support/sideband.ts"
 
 /** The real codec: the tests write the ack tag and read the checkpoint tag with it. */
@@ -37,11 +38,21 @@ afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 const ID = "reflection-checkpoint"
 
 /**
- * A root with only this plugin and the sideband codec plugin (it renders the
- * checkpoint tag line), so discovery does not load the whole fleet.
+ * A root with only this plugin, the sideband codec plugin (it renders the
+ * checkpoint tag line) and the `prompts.template` provider with its engine
+ * (`ma-template-kit`, not a plugin), so discovery does not load the whole
+ * fleet. The fragment returns a template (`{ template, vars }`) and core
+ * renders it with the provider (S4). With no provider, core fills only
+ * `agentHome`, and the other tokens stay in the text.
  */
+const ROOT_DIRS = [
+  "ma-reflection-checkpoint-plugin",
+  "ma-sideband-plugin",
+  "ma-prompt-template-plugin",
+  "ma-template-kit",
+]
 function isolatedRoot(name: string): string {
-  for (const dir of ["ma-reflection-checkpoint-plugin", "ma-sideband-plugin"]) {
+  for (const dir of ROOT_DIRS) {
     cpSync(join(import.meta.dir, "..", dir), join(tmp, name, dir), {
       recursive: true,
       filter: (src) => !src.endsWith(".test.ts") && !src.includes("node_modules"),
@@ -116,6 +127,17 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         const blocks = await loader.getPromptBlocksAsync()
         expect(blocks.afterInstructions).toContain("# Tool loop safety")
         expect(blocks.afterInstructions).toContain("after each 2 tool steps")
+        // Core rendered the template (S4) with the real engine and the real
+        // codec: no token stays, and the two tags are in the text.
+        const section = blocks.afterInstructions ?? ""
+        expect(section).not.toContain("%%")
+        expect(section).toContain("the harness waits 1 seconds")
+        expect(section).toContain(
+          SB.render("reflection-checkpoint", {
+            attrs: { round: "N", "cooldown-applied-seconds": 1 },
+          }),
+        )
+        expect(section).toContain(ack({ "silence-for": "K", reason: "..." }))
 
         // The ack: the scanner removes the tag; the user sees the notice.
         let out = ""
@@ -143,7 +165,14 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
         expect(countdowns).toHaveLength(1)
         expect(countdowns[0]?.label).toBe("reflection @ round 4")
         expect(countdowns[0]?.ms).toBe(1000)
-        const ctx = r4.additionalContext.map((e) => (typeof e === "string" ? e : e.text))
+        // The entry is a template (`{ text, template: true, vars }`); core renders it at
+        // its point of use (S7). The test renders it the same way.
+        const ctx = r4.additionalContext.map((e): string => {
+          if (typeof e === "string") return e
+          if (e.template === true)
+            return expandTemplate(e.text, { vars: e.vars ?? {}, sideband: SB })
+          return e.text
+        })
         expect(ctx).toHaveLength(1)
         const tag = SB.find(ctx[0] ?? "", { kinds: ["reflection-checkpoint"] })
         expect(tag).toHaveLength(1)

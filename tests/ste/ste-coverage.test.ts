@@ -16,8 +16,13 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { describe, expect, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "bun:test"
 
+import type { SidebandApi } from "@minimal-agent/core/host/sideband"
+
+import { pluginSideband } from "../support/sideband.ts"
+
+import { renderText } from "./render.ts"
 import { allSurfaces, CORE_ROOT, coreSurfaces, PLUGINS_ROOT } from "./surfaces.ts"
 
 /** A golden with the full built-in tool block plus the plugin fixture tools. */
@@ -44,15 +49,33 @@ function descriptions(value: unknown, out: Set<string>): void {
   }
 }
 
+let sb: SidebandApi
+
+/**
+ * The text of every surface, as the model sees it: core renders the
+ * `%%sideband:...%%` calls of a manifest description, so the golden has the
+ * rendered text. The raw text stays in the set too.
+ */
+function coveredTexts(): Set<string> {
+  const out = new Set<string>()
+  for (const s of [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)]) {
+    out.add(s.text.trim())
+    if (s.kind === "manifest") out.add(renderText(s.text, sb).trim())
+  }
+  return out
+}
+
 describe("STE coverage", () => {
+  beforeAll(async () => {
+    sb = await pluginSideband()
+  })
+
   test("every tool description in a golden is a known surface", () => {
     const golden = JSON.parse(readFileSync(GOLDEN, "utf8")) as unknown
     const texts = new Set<string>()
     descriptions(golden, texts)
 
-    const covered = new Set(
-      [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)].map((s) => s.text.trim()),
-    )
+    const covered = coveredTexts()
     const allowed = new Map(ALLOWED)
     const missing = [...texts].filter((t) => !covered.has(t.trim()) && !allowed.has(t))
 
@@ -64,9 +87,7 @@ describe("STE coverage", () => {
     const golden = JSON.parse(readFileSync(GOLDEN, "utf8")) as unknown
     const texts = new Set<string>()
     descriptions(golden, texts)
-    const covered = new Set(
-      [...allSurfaces(PLUGINS_ROOT), ...coreSurfaces(CORE_ROOT)].map((s) => s.text.trim()),
-    )
+    const covered = coveredTexts()
     for (const [text] of ALLOWED) {
       // A stale allowlist hides a real gap, so an entry must still be needed.
       expect(covered.has(text.trim()), `allowlist entry is now covered: ${text}`).toBe(false)

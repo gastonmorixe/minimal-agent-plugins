@@ -2,7 +2,7 @@
   "id": "intercom",
   "name": "Intercom",
   "version": "0.1.0",
-  "description": "Inter-session communication and presence. The plugin lets a session see what the other sessions do. It shows a live roster with derived liveness. It also gives a deep inspection of the tasks, the background jobs and the sub-agent fleet of a peer.\n\nA session can send a message to a peer: a note, a ping, an interrupt or a broadcast. The messages are durable, they arrive as a per-turn <ma::agent::intercom-inbox> block, and they survive a crash and a resume. A ping or an interrupt wakes an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. To disable presence, set MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
+  "description": "Inter-session communication and presence. The plugin lets a session see what the other sessions do. It shows a live roster with derived liveness. It also gives a deep inspection of the tasks, the background jobs and the sub-agent fleet of a peer.\n\nA session can send a message to a peer: a note, a ping, an interrupt or a broadcast. The messages are durable, they arrive as a per-turn `intercom-inbox` block, and they survive a crash and a resume. A ping or an interrupt wakes an idle peer between turns. Tools: IntercomPeers, IntercomSend, IntercomInbox. To disable presence, set MINIMAL_AGENT_INTERCOM_NO_PRESENCE=1.",
   "capabilities": ["sessions:read"],
   "permissions": [
     "hooks:editor.key",
