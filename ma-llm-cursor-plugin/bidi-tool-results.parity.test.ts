@@ -312,8 +312,10 @@ describe("outcome reader parity: other inputs use the old path (review M3B1)", (
   })
 
   test("B4: raw-output tag with a closing bracket inside an attribute", () => {
-    check(blockOf("line 1\nline 2", [{ kind: "raw-output", text: rawGt }]))
-    check(blockOf("", [{ kind: "raw-output", text: rawGt }]))
+    // The lenient strip now reads a quoted `>` inside the attribute, so the
+    // outcome path is taken. The bytes stay equal to the old path.
+    same(blockOf("line 1\nline 2", [{ kind: "raw-output", text: rawGt }]))
+    same(blockOf("", [{ kind: "raw-output", text: rawGt }]))
   })
 
   test("B4: diagnostics tag with a closer inside a note", () => {

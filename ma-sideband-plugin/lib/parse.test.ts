@@ -152,6 +152,68 @@ describe("hostile input", () => {
     expect(Array.isArray(out)).toBe(true)
     expect(performance.now() - t0).toBeLessThan(1000)
   })
+  test("unclosed openers of many kinds: no end part, the same nodes", () => {
+    const t = `${Array.from({ length: 50 }, (_, i) => `<ma::x${i}> text`).join("\n")}\n<ma::x7>b</ma::x7>`
+    const n = codec.parse(t)
+    // The first <ma::x7> pairs with the only end part, at the text end.
+    expect(n.map((x) => [x.kind, x.span.start, x.span.end])).toEqual([
+      ["x7", t.indexOf("<ma::x7>"), t.length],
+    ])
+  })
+})
+
+describe("legacy bracket notices (M1)", () => {
+  test("an unclosed earlier notice does not hide a later one", () => {
+    const n = codec.parse("a\n\n[note: see [x\n\nb\n\n[note: y]", { legacyText: true })
+    expect(n.map((x) => [x.kind, x.body, x.span.start])).toEqual([["output-streak", "y", 21]])
+  })
+  test("a notice at the end of the text, after an unclosed one", () => {
+    const t = "out\n\n[truncated: a [ b\nmore\n\n[truncated: shown 1 of 2 bytes [x]]"
+    const n = codec.parse(t, { legacyText: true })
+    expect(n.map((x) => x.body)).toEqual(["shown 1 of 2 bytes [x]"])
+    expect(n[0]?.span.end).toBe(t.length)
+  })
+  test("a notice ends on its own line", () => {
+    expect(codec.parse("a\n\n[note: x\n]", { legacyText: true })).toEqual([])
+  })
+  test("a notice inside a node is dropped, one after it is kept", () => {
+    const t = "<ma::agent::policy>\n\n[note: in]</ma::agent::policy>\n\n[note: out]"
+    const n = codec.parse(t, { legacyText: true })
+    expect(n.map((x) => x.kind)).toEqual(["policy", "output-streak"])
+    expect(n[1]?.body).toBe("out")
+  })
+})
+
+describe("linear time on hostile text (M2, m3)", () => {
+  const time = (f: () => void): number => {
+    f()
+    let best = Number.POSITIVE_INFINITY
+    for (let i = 0; i < 5; i++) {
+      const t0 = performance.now()
+      f()
+      best = Math.min(best, performance.now() - t0)
+    }
+    return best
+  }
+  test("M2: 349 KB of unclosed openers of 20k kinds below 100 ms", () => {
+    if (process.env.CI) return
+    const t = Array.from({ length: 20000 }, (_, i) => `<ma::x${i}> text`).join("\n")
+    expect(t.length).toBeGreaterThan(340_000)
+    expect(time(() => codec.parse(t))).toBeLessThan(100)
+  })
+  test("m3: 992 KB of nodes and notices with legacyText below 100 ms", () => {
+    if (process.env.CI) return
+    const ma = '<ma::agent::mode-active id="ask" since="s" />'
+    const t = Array.from({ length: 16000 }, () => `line ${ma}\n\n[note: x]`).join("\n")
+    expect(t.length).toBeGreaterThan(900_000)
+    let n = 0
+    expect(
+      time(() => {
+        n = codec.parse(t, { legacyText: true }).length
+      }),
+    ).toBeLessThan(100)
+    expect(n).toBe(32000)
+  })
 })
 
 describe("linear time on HTML-like text (M1)", () => {

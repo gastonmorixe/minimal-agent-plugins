@@ -236,6 +236,7 @@ export function parseAt(
   ctx: ParseContext,
   accept?: (kind: string) => boolean,
   noClose?: Set<string>,
+  closers?: ReadonlySet<string>,
 ): ParseAtResult {
   const hit = matchQname(text, pos + 1)
   if (!hit) {
@@ -274,7 +275,8 @@ export function parseAt(
   if (form !== "v2") node.legacyQname = hit.text
   if (open.empty) return { status: "node", node, end: open.end }
   const key = `${kind}|${form}`
-  if (noClose?.has(key)) return { status: "incomplete", phase: "body" }
+  if (noClose?.has(key) || (closers !== undefined && !closers.has(kind)))
+    return { status: "incomplete", phase: "body" }
   const close = findEnd(text, open.end, kind, form, ctx)
   if (close.status === "incomplete") {
     noClose?.add(key)
@@ -293,19 +295,52 @@ function shift(n: SidebandNode, by: number): SidebandNode {
   return n
 }
 
-function parseTop(text: string, ctx: ParseContext, nested: boolean, out: SidebandNode[]): void {
+/**
+ * The kinds that have an end part (`</qname>`) anywhere in `text`. One
+ * linear pass. A kind not in the set has no end part, so `findEnd` cannot
+ * find one: the parse skips that search (M2: many unclosed start parts of
+ * different kinds made the parse O(n^2)). The set is a superset of what
+ * `findEnd` finds (it also counts an end part in v2 CDATA), so a skip never
+ * changes a result.
+ */
+function closerKinds(text: string, ctx: ParseContext): Set<string> {
+  const out = new Set<string>()
+  let p = 0
+  for (;;) {
+    const i = text.indexOf("</", p)
+    if (i < 0) return out
+    const hit = matchQname(text, i + 2)
+    if (hit) {
+      const j = skipWs(text, hit.end)
+      if (text.charAt(j) === ">") {
+        const kind = mapQname(hit.text, ctx)
+        if (kind !== undefined) out.add(kind)
+      }
+    }
+    p = i + 2
+  }
+}
+
+function parseTop(
+  text: string,
+  ctx: ParseContext,
+  nested: boolean,
+  out: SidebandNode[],
+  closers: ReadonlySet<string> = closerKinds(text, ctx),
+): void {
   const noClose = new Set<string>()
   let pos = 0
   for (;;) {
     const i = text.indexOf("<", pos)
     if (i < 0) break
-    const r = parseAt(text, i, ctx, undefined, noClose)
+    const r = parseAt(text, i, ctx, undefined, noClose, closers)
     if (r.status === "node") {
       out.push(r.node)
       const { open, close } = r.node
       if (nested && open && close && close.start > open.end) {
         const inner: SidebandNode[] = []
-        parseTop(text.slice(open.end, close.start), ctx, true, inner)
+        // The set of the whole text is a superset for a body.
+        parseTop(text.slice(open.end, close.start), ctx, true, inner, closers)
         for (const n of inner) out.push(shift(n, open.end))
       }
       pos = r.end
@@ -313,6 +348,30 @@ function parseTop(text: string, ctx: ParseContext, nested: boolean, out: Sideban
       pos = i + 1
     }
   }
+}
+
+/**
+ * The notices of `legacy` that overlap no node of `nodes`. Both lists are in
+ * start order. Two pointers: O(L + N) (m3: the old `filter` + `some` was
+ * O(L x N)). The notices do not overlap (each is one line), so their ends
+ * are in order too: at each notice, the nodes read so far are exactly the
+ * nodes that start before its end, and the maximum of their ends decides.
+ */
+function dropOverlaps(legacy: SidebandNode[], nodes: readonly SidebandNode[]): SidebandNode[] {
+  const out: SidebandNode[] = []
+  let k = 0
+  let maxEnd = -1
+  for (const l of legacy) {
+    // Each node that starts before the notice ends can overlap it.
+    while (k < nodes.length && (nodes[k] as SidebandNode).span.start < l.span.end) {
+      const n = nodes[k] as SidebandNode
+      if (n.span.end > maxEnd) maxEnd = n.span.end
+      k++
+    }
+    // Overlap: some node with start < l.end and end > l.start.
+    if (maxEnd <= l.span.start) out.push(l)
+  }
+  return out
 }
 
 /**
@@ -330,9 +389,7 @@ export function parseText(
   try {
     parseTop(text, ctx, opts.nested === true, nodes)
     if (opts.legacyText === true) {
-      const legacy = readLegacyText(text).filter(
-        (l) => !nodes.some((n) => l.span.start < n.span.end && n.span.start < l.span.end),
-      )
+      const legacy = dropOverlaps(readLegacyText(text), nodes)
       if (legacy.length > 0)
         nodes = [...nodes, ...legacy].sort((a, b) => a.span.start - b.span.start)
     }
