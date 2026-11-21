@@ -1,4 +1,5 @@
 import { trailingStart } from "./legacy-text.ts"
+import { leadingNode, stripLenient } from "./lenient.ts"
 import { v1Qname } from "./levels.ts"
 import { neutralizeText } from "./neutralize.ts"
 import { makeContext, parseText } from "./parse.ts"
@@ -30,6 +31,8 @@ function buildExample(kind: SidebandKind): SidebandMessage {
  */
 export default function createCodec(registry: ReadonlySidebandRegistry): SidebandCodec {
   return {
+    stripLenient: (text, opts) => stripLenient(text, makeContext(registry), opts),
+    leadingNode: (text) => leadingNode(text, makeContext(registry)),
     id: "xml-ma-v1",
     render: (kind, msg) => renderV1(kind, msg),
     parse: (text, opts) => parseText(text, makeContext(registry), opts),

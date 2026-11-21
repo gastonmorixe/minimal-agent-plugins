@@ -7,6 +7,8 @@ import { describe, expect, test } from "bun:test"
 
 import { loadSessionFromText } from "@minimal-agent/core/host/session-restore"
 
+import { pluginSideband } from "../support/sideband.ts"
+
 import { GOLDEN_DIR } from "./harness.ts"
 
 const DIR = join(import.meta.dir, "fixtures")
@@ -32,9 +34,10 @@ describe("new compacted fixtures", () => {
       expect(meta.at).toBe(row.ts)
     })
 
-    test(`old and new ${kind} twins restore to equal messages`, () => {
-      const oldLoaded = loadSessionFromText(read(`old-compacted-${kind}.jsonl`))
-      const newLoaded = loadSessionFromText(read(`new-compacted-${kind}.jsonl`))
+    test(`old and new ${kind} twins restore to equal messages`, async () => {
+      const sideband = await pluginSideband()
+      const oldLoaded = loadSessionFromText(read(`old-compacted-${kind}.jsonl`), { sideband })
+      const newLoaded = loadSessionFromText(read(`new-compacted-${kind}.jsonl`), { sideband })
       expect(newLoaded.messages.length).toBeGreaterThanOrEqual(3)
       expect(newLoaded.messages).toEqual(oldLoaded.messages)
     })

@@ -6,6 +6,13 @@ Required plugin. Provides the sideband codec `xml-ma-v1` (`sideband.codec`).
 - `parse` and the scanner read v1, v2 (`<ma:kind>`) and the bare legacy forms.
 - `neutralize` defangs every sigil form so untrusted text cannot forge a tag.
 - `example` builds a deterministic sample for a kind.
+- `stripLenient` (`lib/lenient.ts`) removes complete nodes AND broken tag parts: a lone
+  end part, a start part with no end part (with the rest of its line when a line feed
+  follows), a start part that the text cuts at its end. `keepBody: true` removes only the
+  parts and keeps the text between them; `replacement` sets the text for each removed range;
+  `kinds` limits the kinds. Linear time. Core calls it with `sideband.strip(text, { lenient: true })`.
+- `leadingNode` gives the node at the first non-space character, also a start part only
+  (core `sideband.leadingKind(text)`).
 
 Known v1 quirk: v1 escapes per site, the strict single rule comes with xml-ma-v2.
 

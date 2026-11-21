@@ -7,6 +7,8 @@ import { describe, expect, test } from "bun:test"
 
 import { loadSessionFromText } from "@minimal-agent/core/host/session-restore"
 
+import { pluginSideband } from "../support/sideband.ts"
+
 const DIR = join(import.meta.dir, "fixtures")
 
 const CASES = [
@@ -28,8 +30,9 @@ describe("old compacted fixtures", () => {
       expect("meta" in (compact[0] ?? {})).toBe(false)
     })
 
-    test(`${file} loads with the checkpoint message`, () => {
-      const loaded = loadSessionFromText(readFileSync(join(DIR, file), "utf8"))
+    test(`${file} loads with the checkpoint message`, async () => {
+      const sideband = await pluginSideband()
+      const loaded = loadSessionFromText(readFileSync(join(DIR, file), "utf8"), { sideband })
       expect(loaded.messages.length).toBeGreaterThanOrEqual(3)
       expect(loaded.messages.some((m) => textOf(m).includes(marker))).toBe(true)
     })
