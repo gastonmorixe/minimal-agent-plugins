@@ -43,3 +43,18 @@ export type EventHandler<TPayload = unknown> = (
 export interface HookHandlerContext {
   cwd: string
 }
+
+/**
+ * `editor.submitted` payload: the raw line that the user typed in the
+ * interactive editor, before slash-command dispatch or expansion. Mirror of
+ * the host `EditorSubmittedPayload`. Unlike `prompt.submitted` (a queue
+ * event for any origin), only the editor path emits it, so injected,
+ * expanded, recovery and `/continue` prompts never reach history.
+ */
+export interface EditorSubmittedPayload {
+  text: string
+  cwd: string
+  sid: string | null
+  /** Submit time (ISO 8601). */
+  submittedAt: string
+}
