@@ -1,6 +1,7 @@
 /**
  * Harness pick(): the capture drops `outcome` and `sideband` from tool_result
- * blocks only (leader decision L1). Other block types keep all keys.
+ * blocks (leader decision L1), and the `sideband` mark from text blocks
+ * (design step 12c). Other keys and other block types stay.
  */
 
 import { describe, expect, test } from "bun:test"
@@ -56,7 +57,7 @@ describe("harness pick()", () => {
     expect(block).toEqual(toolResult({ is_error: true }))
   })
 
-  test("a block of another type keeps all its keys, also outcome and sideband", () => {
+  test("a text block loses only its sideband mark (design step 12c)", () => {
     const text = {
       type: "text",
       text: "x",
@@ -68,7 +69,22 @@ describe("harness pick()", () => {
     const msg = (got.messages as Array<{ content: unknown }>)[2]
     expect(msg).toBeDefined()
     const block = (msg!.content as unknown[])[0]
-    expect(block).toEqual(text)
+    const { sideband: _mark, ...rest } = text
+    expect(block).toEqual(rest)
+  })
+
+  test("a block of another type keeps all its keys, also outcome and sideband", () => {
+    const image = {
+      type: "image",
+      source: { type: "base64", media_type: "image/png", data: "AA==" },
+      outcome: { v: 1 },
+      sideband: { kind: "probe-mark" },
+    }
+    const got = pick(opts([image]))
+    const msg = (got.messages as Array<{ content: unknown }>)[2]
+    expect(msg).toBeDefined()
+    const block = (msg!.content as unknown[])[0]
+    expect(block).toEqual(image)
   })
 
   test("pick does not change the input object", () => {

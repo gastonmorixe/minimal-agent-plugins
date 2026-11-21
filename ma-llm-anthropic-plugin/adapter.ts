@@ -190,33 +190,24 @@ function wantsCacheDiagnosis(req: CanonicalRequest, authKind: ProviderAuth["kind
 }
 
 /**
- * Fallback meta test for a text block with NO sideband mark (design step 12).
- * The provider request context has no sideband API, so this text test stays
- * for unmarked blocks: old history, and the text blocks that core does not
- * mark yet (session context, turn attachments). The mark decides first.
+ * Our sideband blocks: the equivalent of CC's `isMeta` messages. CC keeps
+ * reminders and attachments-as-context in separate meta user messages; we
+ * inline them as text blocks. Only the block mark decides (design step 12c):
+ * a block with a sideband mark (`sideband.kind` on the canonical block, read
+ * before the wire body is made) is meta. Core marks each harness text block
+ * that it inserts (session context, turn hook context, turn attachments,
+ * markers, wrap-up, turn-stop note). There is no text test: a block with no
+ * mark (old history, string content) is not meta.
  */
-function isUnmarkedMetaText(text: string): boolean {
-  const t = text.trimStart()
-  return t.startsWith("<ma::") || t.startsWith("<system-reminder>")
-}
-
-/**
- * Our sideband / reminder blocks: the equivalent of CC's `isMeta` messages.
- * CC keeps reminders and attachments-as-context in separate meta user
- * messages; we inline them as text blocks. A block with a sideband mark
- * (`sideband.kind` on the canonical block, read before the wire body is made)
- * is meta. A block with no mark uses {@link isUnmarkedMetaText}.
- */
-function isMetaText(text: string, block?: object, marked?: ReadonlySet<object>): boolean {
-  if (block !== undefined && marked?.has(block) === true) return true
-  return isUnmarkedMetaText(text)
+function isMetaBlock(block: object, marked?: ReadonlySet<object>): boolean {
+  return marked?.has(block) === true
 }
 
 /**
  * The wire text blocks whose canonical block has a sideband mark. The wire
  * messages map one to one from the canonical messages. A message whose block
- * count changed on the way (a dropped block) gives no mark: the text
- * fallback decides for it.
+ * count changed on the way (a dropped block) gives no mark: its blocks are
+ * not meta.
  *
  * @param req - The canonical request that the body was built from.
  * @param body - The wire body.
@@ -258,11 +249,8 @@ export function firstUserPromptText(
 ): string {
   for (const msg of messages) {
     if (msg.role !== "user") continue
-    if (typeof msg.content === "string") {
-      if (isMetaText(msg.content)) continue
-      return msg.content
-    }
-    const real = msg.content.filter((b) => !(b.type === "text" && isMetaText(b.text, b, marked)))
+    if (typeof msg.content === "string") return msg.content
+    const real = msg.content.filter((b) => !(b.type === "text" && isMetaBlock(b, marked)))
     if (real.length === 0) continue
     const text = real.find((b) => b.type === "text")
     return text?.type === "text" ? text.text : ""

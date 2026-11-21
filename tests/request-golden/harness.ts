@@ -176,14 +176,29 @@ const OUTPUT_CONFIG_FIELDS = [
  */
 const TOOL_RESULT_INTERNAL_KEYS = ["outcome", "sideband"] as const
 
+/**
+ * Internal text block keys: the `sideband` block mark (design step 12c: core
+ * marks the harness text blocks it inserts). No encoder sends it, so the
+ * goldens do not record it.
+ */
+const TEXT_INTERNAL_KEYS = ["sideband"] as const
+
 function stripToolResultInternal(block: unknown): void {
   if (!block || typeof block !== "object" || Array.isArray(block)) return
   const b = block as Record<string, unknown>
-  if (b.type !== "tool_result") return
-  for (const k of TOOL_RESULT_INTERNAL_KEYS) delete b[k]
+  const keys =
+    b.type === "tool_result"
+      ? TOOL_RESULT_INTERNAL_KEYS
+      : b.type === "text"
+        ? TEXT_INTERNAL_KEYS
+        : []
+  for (const k of keys) delete b[k]
 }
 
-/** Remove the internal keys from tool_result blocks only. Other blocks keep all keys. */
+/**
+ * Remove the internal keys: `outcome` and `sideband` from tool_result blocks,
+ * `sideband` from text blocks. Other keys and other block types stay.
+ */
 function stripInternalFromMessages(messages: unknown): void {
   if (!Array.isArray(messages)) return
   for (const msg of messages) {

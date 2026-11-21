@@ -35,7 +35,7 @@ import type { ModelEntry } from "./lib/host-types.ts"
 import { makeTestRegistry } from "./lib/test-registry.ts"
 import { buildBillingHeaderText } from "./system-prompt.ts"
 import { useTempAgentHome } from "./test-home.ts"
-import { BUILD_HASH, VERSION } from "./wire-constants.ts"
+import { BUILD_HASH, buildHashFor, VERSION } from "./wire-constants.ts"
 
 useTempAgentHome()
 
@@ -249,7 +249,11 @@ describe("billing cc_version hash from the first user prompt (diff A9)", () => {
       {
         role: "user",
         content: [
-          { type: "text", text: "<ma::agent::policy>Current local time: …</ma::agent::policy>" },
+          {
+            type: "text",
+            text: "<ma::agent::policy>Current local time: …</ma::agent::policy>",
+            sideband: { kind: "policy" },
+          },
           { type: "text", text: "hello 2" },
         ],
       },
@@ -279,11 +283,12 @@ describe("billing cc_version hash from the first user prompt (diff A9)", () => {
     expect(JSON.stringify(bodyOf(seen[0]).messages)).not.toContain('"sideband"')
   })
 
-  it("old history: a first block that starts with a tag and has no mark stays meta", async () => {
-    // Documented result: an unmarked block (a session log from before the
-    // mark, or a block that core does not mark yet) uses the text fallback.
-    // The hash is the same as before step 12: the tag block is skipped and
-    // the next text block ("hello 2") gives the hash.
+  it("old history: a first block that starts with a tag and has no mark is not meta", async () => {
+    // Behavior change (design step 12c): the text fallback is gone. Core now
+    // marks each harness text block that it inserts, so only the block mark
+    // decides. An unmarked block (a session log from before the mark: restore
+    // adds no mark) is the prompt text: its bytes give the hash. Before step
+    // 12c the tag block was skipped and "hello 2" gave the hash (f16).
     const sb = await pluginSideband()
     const tag = sb.render("policy", { body: "Current local time: x" })
     expect(tag.length).toBeGreaterThan(0)
@@ -299,7 +304,9 @@ describe("billing cc_version hash from the first user prompt (diff A9)", () => {
       },
     ]
     await run(req, client)
-    expect(bodyOf(seen[0]).system[0].text as string).toContain(`cc_version=${VERSION}.f16;`)
+    const sys0 = bodyOf(seen[0]).system[0].text as string
+    expect(sys0).toContain(`cc_version=${VERSION}.${buildHashFor(tag)};`)
+    expect(sys0).not.toContain(`cc_version=${VERSION}.f16;`)
     const wire = [
       {
         role: "user" as const,
@@ -309,8 +316,10 @@ describe("billing cc_version hash from the first user prompt (diff A9)", () => {
         ],
       },
     ]
-    expect(firstUserPromptText(wire)).toBe("hello 2")
-    expect(firstUserPromptText(wire, new Set())).toBe("hello 2")
+    expect(firstUserPromptText(wire)).toBe(tag)
+    expect(firstUserPromptText(wire, new Set())).toBe(tag)
+    // The same block with its mark is meta again.
+    expect(firstUserPromptText(wire, new Set([wire[0]!.content[0]!]))).toBe("hello 2")
   })
 
   it("markedWireBlocks maps the canonical marks to the wire blocks", () => {
@@ -333,7 +342,7 @@ describe("billing cc_version hash from the first user prompt (diff A9)", () => {
     expect(marked.has(wireA)).toBe(true)
     expect(marked.has(wireB)).toBe(false)
     expect(firstUserPromptText(body.messages, marked)).toBe("b")
-    // A block count that changed on the way gives no mark (text fallback).
+    // A block count that changed on the way gives no mark (no block is meta).
     expect(markedWireBlocks(canon([true]), body).size).toBe(0)
   })
 
@@ -492,27 +501,41 @@ describe("firstUserPromptText mirrors CC j() (review MINOR-2)", () => {
   })
 
   it("a prompt followed by an attachment text block hashes the prompt", () => {
-    expect(
-      firstUserPromptText([
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "<ma::agent::policy>…</ma::agent::policy>" },
-            { type: "text", text: "summarize this" },
-            { type: "text", text: "<file path='a.ts'>…</file>" },
-          ],
-        },
-      ]),
-    ).toBe("summarize this")
+    const policy = { type: "text" as const, text: "<ma::agent::policy>…</ma::agent::policy>" }
+    const messages = [
+      {
+        role: "user" as const,
+        content: [
+          policy,
+          { type: "text" as const, text: "summarize this" },
+          { type: "text" as const, text: "<file path='a.ts'>…</file>" },
+        ],
+      },
+    ]
+    expect(firstUserPromptText(messages, new Set([policy]))).toBe("summarize this")
   })
 
   it("skips a first user message made only of meta blocks", () => {
+    const meta = { type: "text" as const, text: "x" }
     expect(
-      firstUserPromptText([
-        { role: "user", content: [{ type: "text", text: "<system-reminder>x</system-reminder>" }] },
-        { role: "assistant", content: "ok" },
-        { role: "user", content: "real prompt" },
-      ]),
+      firstUserPromptText(
+        [
+          { role: "user", content: [meta] },
+          { role: "assistant", content: "ok" },
+          { role: "user", content: "real prompt" },
+        ],
+        new Set([meta]),
+      ),
     ).toBe("real prompt")
+  })
+
+  it("a host block with no mark is not meta (design step 12c, decision D9)", () => {
+    // `<system-reminder>` is a host block, not a sideband tag. Core never
+    // writes it, so the billing rule does not test for it: with no mark it
+    // is the prompt text.
+    const reminder = "<system-reminder>x</system-reminder>"
+    expect(
+      firstUserPromptText([{ role: "user", content: [{ type: "text", text: reminder }] }]),
+    ).toBe(reminder)
   })
 })
