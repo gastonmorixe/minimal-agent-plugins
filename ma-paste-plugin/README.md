@@ -37,7 +37,9 @@ Config (`~/.minimal-agent/config.jsonc`):
 `0/0` (the default) makes a ref for each non-empty paste. Otherwise a paste
 becomes a ref when it reaches one of the two limits.
 
-The text hook and the chip need CLI support (`ctx.paste`, `ctx.chips`). With
+The text hook and the chip need CLI support (`ctx.paste`, `ctx.chips`). The
+CLI gives `ctx.paste` only to a plugin whose manifest `permissions` has
+`ui:paste`, because a paste hook reads all pasted text. With
 an older CLI, `ui/setup.ts` does nothing, but refs that exist still expand.
 
 ## What the model sees

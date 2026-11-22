@@ -161,6 +161,19 @@ describe("ma-paste-plugin load", () => {
     expect(host?.models).toBeDefined()
   })
 
+  test("loadedPackages gives the validated capabilities and the owned paste kind", () => {
+    const pkg = loader.loadedPackages().find((p) => p.id === "paste")
+    expect(pkg?.capabilities).toEqual(["sessions:files", "models:read"])
+    expect(pkg?.sidebandKinds).toEqual(["paste"])
+  })
+
+  test("the manifest asks for ui:paste (the CLI gives ctx.paste only then)", () => {
+    const raw = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf8")) as {
+      permissions: string[]
+    }
+    expect(raw.permissions).toContain("ui:paste")
+  })
+
   test("the files go under <sid>.files/paste/", () => {
     expect(files().create(SID, "load1.txt", "hello")).toBe("ok")
     expect(readFileSync(join(sessionsDir, `${SID}.files`, "paste", "load1.txt"), "utf8")).toBe(

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "The plugin keeps each text paste in a session file. The editor shows a short tag, not the paste. Before each request to the model, the plugin replaces each tag with the text of its file.",
   "capabilities": ["sessions:files", "models:read"],
-  "permissions": ["hooks:message.willSend"],
+  "permissions": ["hooks:message.willSend", "ui:paste"],
   "headless": {
     "hooks": [
       {
