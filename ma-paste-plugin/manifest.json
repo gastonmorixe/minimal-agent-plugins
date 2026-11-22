@@ -1,0 +1,53 @@
+{
+  "id": "paste",
+  "name": "Paste",
+  "version": "0.1.0",
+  "description": "The plugin keeps each text paste in a session file. The editor shows a short tag, not the paste. Before each request to the model, the plugin replaces each tag with the text of its file.",
+  "capabilities": ["sessions:files"],
+  "permissions": ["hooks:message.willSend"],
+  "headless": {
+    "hooks": [
+      {
+        "id": "expand_on_send",
+        "channel": "message.willSend",
+        "handler": {
+          "type": "module",
+          "path": "./handlers/expand_on_send.ts",
+          "export": "default"
+        },
+        "priority": 100,
+        "host": true
+      }
+    ]
+  },
+  "ui": {
+    "setup": {
+      "type": "module",
+      "path": "./ui/setup.ts",
+      "export": "default"
+    }
+  },
+  "sideband": [
+    {
+      "kind": "paste",
+      "direction": "to-model",
+      "placement": "inline",
+      "attrs": {
+        "id": {
+          "type": "string",
+          "required": true
+        },
+        "bytes": {
+          "type": "int"
+        },
+        "lines": {
+          "type": "int"
+        }
+      },
+      "body": "text",
+      "layout": "block",
+      "trust": "untrusted",
+      "summary": "Text that the user pasted. The body is the pasted text, exact except for CRLF to LF and neutralized sideband tags."
+    }
+  ]
+}

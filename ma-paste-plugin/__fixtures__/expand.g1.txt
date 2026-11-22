@@ -1,0 +1,8 @@
+fix this:
+<ma::agent::paste id="g1aaa" bytes="39" lines="4">
+def f(x):
+    return x & 1 < 2
+
+"done"
+
+</ma::agent::paste>

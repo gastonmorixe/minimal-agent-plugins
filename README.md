@@ -151,6 +151,7 @@ when the manifest sets it.
 | [`ma-usage-plugin/`](./ma-usage-plugin) | `usage` | `/usage`: token use and cost of the saved sessions. |
 | [`ma-slash-menu-plugin/`](./ma-slash-menu-plugin) | `ma-slash-menu` | The `/` command menu and the `$` skills menu. |
 | [`ma-history-plugin/`](./ma-history-plugin) | `history` | Up and down arrow recall of earlier prompts. |
+| [`ma-paste-plugin/`](./ma-paste-plugin) | `paste` | A text paste goes to a session file. The editor holds a short ref, and each send expands it. |
 | [`ma-history-edit-plugin/`](./ma-history-edit-plugin) | `history-edit` | `/history-edit`: change an earlier prompt of the session and continue from there. |
 | [`ma-quota-status-plugin/`](./ma-quota-status-plugin) | `quota-status` | The quota line in the footer. |
 | [`ma-tps-plugin/`](./ma-tps-plugin) | `tps` | Tokens per second, on the quota line. |
