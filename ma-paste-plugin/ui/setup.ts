@@ -15,9 +15,7 @@ import { countLines, normalizeNewlines, utf8Bytes } from "../lib/count.ts"
 import { chipLabel } from "../lib/format.ts"
 import type { PasteUiContext, PluginPasteEvent, PluginPasteHook } from "../lib/host-types.ts"
 import { newId } from "../lib/id.ts"
-
-/** The sideband kind of a paste ref. */
-const PASTE_KIND = "paste"
+import { PASTE_KIND } from "../lib/kind.ts"
 
 /** The priority of the text hook. The media hook is 90. */
 export const TEXT_HOOK_PRIORITY = 50

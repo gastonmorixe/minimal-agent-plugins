@@ -24,8 +24,11 @@ import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 import { pluginSideband } from "../../tests/support/sideband.ts"
 
 import expandOnSend, {
+  DEFAULT_RENDER_CACHE_CAPS,
   type ExpandContext,
+  renderCacheStats,
   resetMissingWarnings,
+  resetRenderCache,
   type SendSnapshot,
 } from "./expand_on_send.ts"
 
@@ -56,6 +59,7 @@ let warns: Warn[] = []
 beforeEach(() => {
   warns = []
   resetMissingWarnings()
+  resetRenderCache()
 })
 
 function ctx(over: Partial<ExpandContext> = {}, sid = SID): ExpandContext {
@@ -297,5 +301,208 @@ describe("J5: ctx.agent.sessionId selects the session files", () => {
     )
     const out = expandOnSend(snap([{ role: "user", content: ref(id) }]), ctx({}, dst))
     expect(out?.payload.messages[0]?.content).toBe(expanded(id, "forked text"))
+  })
+})
+
+/** A file api over `files` that counts the reads and the stats. */
+function countingFiles(): { api: SessionFilesApi; reads: string[]; stats: string[] } {
+  const reads: string[] = []
+  const stats: string[] = []
+  const api: SessionFilesApi = {
+    create: (sid, name, data) => files.create(sid, name, data),
+    read: (sid, name) => {
+      reads.push(name)
+      return files.read(sid, name)
+    },
+    stat: (sid, name) => {
+      stats.push(name)
+      return files.stat(sid, name)
+    },
+    usage: (sid) => files.usage(sid),
+  }
+  return { api, reads, stats }
+}
+
+/** A context whose host has `api` as its session files and `models` as its registry. */
+function hostCtx(api: SessionFilesApi, models?: unknown): ExpandContext {
+  return ctx({
+    host: { sessionFiles: api, ...(models ? { models } : {}) } as unknown as PluginHost,
+  })
+}
+
+describe("M2: the render cache", () => {
+  test("two sends read the file once and give the same bytes", () => {
+    const id = save("cached\ntext\n")
+    const c = countingFiles()
+    const s = snap([{ role: "user", content: ref(id) }])
+    const a = expandOnSend(s, hostCtx(c.api))?.payload.messages[0]?.content
+    const b = expandOnSend(s, hostCtx(c.api))?.payload.messages[0]?.content
+    expect(c.reads).toEqual([`${id}.txt`])
+    expect(a).toBe(expanded(id, "cached\ntext\n"))
+    expect(b).toBe(a as string)
+  })
+
+  test("the output bytes are equal with and without the cache", () => {
+    const ids = [save("one\n"), save(`two ${SB.close("paste")}\n`), save("")]
+    const text = ids.map((id) => ref(id)).join(" and ")
+    const s = snap([{ role: "user", content: [{ type: "text", text }] }])
+    resetRenderCache({ maxBytes: 0, maxEntries: 0 })
+    const off = c0(expandOnSend(s, ctx()))
+    expect(renderCacheStats()).toEqual({ entries: 0, bytes: 0 })
+    resetRenderCache()
+    const first = c0(expandOnSend(s, ctx()))
+    const second = c0(expandOnSend(s, ctx()))
+    expect(renderCacheStats().entries).toBe(3)
+    expect(first).toBe(off)
+    expect(second).toBe(off)
+  })
+
+  test("the entry cap evicts the oldest entry", () => {
+    resetRenderCache({ maxBytes: DEFAULT_RENDER_CACHE_CAPS.maxBytes, maxEntries: 2 })
+    const [a, b, d] = [save("a"), save("b"), save("d")]
+    const c = countingFiles()
+    for (const id of [a, b, d])
+      expandOnSend(snap([{ role: "user", content: ref(id) }]), hostCtx(c.api))
+    expect(renderCacheStats().entries).toBe(2)
+    c.reads.length = 0
+    // d and b are cached; a was the oldest and goes to the file again.
+    expandOnSend(snap([{ role: "user", content: `${ref(d)}${ref(b)}${ref(a)}` }]), hostCtx(c.api))
+    expect(c.reads).toEqual([`${a}.txt`])
+  })
+
+  test("the byte cap evicts, and a value over the byte cap is not kept", () => {
+    const one = expanded("x0000", "12345678")
+    const size = new TextEncoder().encode(one).length
+    resetRenderCache({ maxBytes: size * 2, maxEntries: 100 })
+    const [a, b, d] = [save("12345678"), save("abcdefgh"), save("ABCDEFGH")]
+    for (const id of [a, b, d]) expandOnSend(snap([{ role: "user", content: ref(id) }]), ctx())
+    expect(renderCacheStats().entries).toBe(2)
+    expect(renderCacheStats().bytes).toBeLessThanOrEqual(size * 2)
+    const big = save("y".repeat(size * 3))
+    expandOnSend(snap([{ role: "user", content: ref(big) }]), ctx())
+    expect(renderCacheStats().entries).toBe(2)
+  })
+
+  test("the cache key has the sid: a ref of another sid is not a hit", () => {
+    const id = save("only in A, cached")
+    const s = snap([{ role: "user", content: ref(id) }])
+    expect(expandOnSend(s, ctx({}, SID))).toBeDefined()
+    expect(expandOnSend(s, ctx({}, OTHER_SID))).toBeUndefined()
+  })
+})
+
+/** The content of the first message of a hook result. */
+function c0(out: { payload: SendSnapshot } | undefined): string {
+  return JSON.stringify(out?.payload.messages[0]?.content)
+}
+
+/** A `models:read` stub with one model and its context window. */
+function modelsWith(window: number | undefined, id = "m", providerId = "p") {
+  const view =
+    window === undefined ? undefined : { id, providerId, capabilities: { contextWindow: window } }
+  return {
+    find: (x: string) => (x === id ? view : undefined),
+    findForProvider: (x: string, p: string) => (x === id && p === providerId ? view : undefined),
+  }
+}
+
+describe("m1: a paste over half of the context window does not expand", () => {
+  // A window of 10 tokens: the limit is 10 * 0.5 * 4 = 20 bytes.
+  test("over the limit: the ref stays, one paste.too-large for each (sid, id), no file read", () => {
+    const id = save("x".repeat(21))
+    const c = countingFiles()
+    const s = snap([{ role: "user", content: `a ${ref(id)} b ${ref(id)}` }])
+    expect(expandOnSend(s, hostCtx(c.api, modelsWith(10)))).toBeUndefined()
+    expect(expandOnSend(s, hostCtx(c.api, modelsWith(10)))).toBeUndefined()
+    expect(warns.map((w) => w.source)).toEqual(["paste.too-large"])
+    expect(warns[0]?.sd).toEqual({ id, sid: SID, bytes: 21 })
+    expect(c.reads).toEqual([])
+  })
+
+  test("at the limit the paste expands", () => {
+    const id = save("x".repeat(20))
+    const out = expandOnSend(
+      snap([{ role: "user", content: ref(id) }]),
+      hostCtx(files, modelsWith(10)),
+    )
+    expect(out?.payload.messages[0]?.content).toBe(expanded(id, "x".repeat(20)))
+  })
+
+  test("the provider of the snapshot selects the model", () => {
+    const id = save("x".repeat(21))
+    const s = { ...snap([{ role: "user", content: ref(id) }]), providerId: "p" }
+    const models = { ...modelsWith(10), find: () => undefined }
+    expect(expandOnSend(s, hostCtx(files, models))).toBeUndefined()
+    expect(warns.map((w) => w.source)).toEqual(["paste.too-large"])
+  })
+
+  test("a cached paste is checked again when the window becomes smaller", () => {
+    const id = save("x".repeat(30))
+    const s = snap([{ role: "user", content: ref(id) }])
+    expect(expandOnSend(s, hostCtx(files, modelsWith(1000)))).toBeDefined()
+    expect(expandOnSend(s, hostCtx(files, modelsWith(10)))).toBeUndefined()
+    expect(warns.map((w) => w.source)).toEqual(["paste.too-large"])
+  })
+
+  test("an unknown window gives no limit", () => {
+    const id = save("x".repeat(500))
+    const s = snap([{ role: "user", content: ref(id) }])
+    expect(expandOnSend(s, hostCtx(files, modelsWith(undefined)))).toBeDefined()
+    expect(expandOnSend(s, hostCtx(files, modelsWith(0)))).toBeDefined()
+    expect(expandOnSend({ ...s, model: "other" }, hostCtx(files, modelsWith(10)))).toBeDefined()
+    expect(expandOnSend(s, hostCtx(files))).toBeDefined()
+    expect(warns).toEqual([])
+  })
+})
+
+describe("m2 and m5: only unmarked user text blocks expand", () => {
+  test("a ref in a block with a harness mark (block.sideband) does not expand", () => {
+    const id = save("marked")
+    const block = { type: "text", text: ref(id), sideband: { kind: "compaction" } }
+    expect(expandOnSend(snap([{ role: "user", content: [block] }]), ctx())).toBeUndefined()
+  })
+
+  test("a ref in a compaction checkpoint block does not expand", () => {
+    const id = save("in the summary")
+    // The checkpoint shape of core context-compact.ts: the tag line, the prose, the mark.
+    const text = `${SB.render("compaction", { attrs: { kind: "local" } })}\nsummary: ${ref(id)}`
+    const checkpoint = { type: "text", text, sideband: { kind: "compaction" } }
+    const user = { type: "text", text: "go on" }
+    expect(
+      expandOnSend(snap([{ role: "user", content: [checkpoint, user] }]), ctx()),
+    ).toBeUndefined()
+  })
+
+  test("a ref in a tool_result block of a user message does not expand", () => {
+    const id = save("tool text")
+    const content = [
+      { type: "tool_result", tool_use_id: "t1", content: ref(id) },
+      { type: "tool_result", tool_use_id: "t2", content: [{ type: "text", text: ref(id) }] },
+    ]
+    expect(expandOnSend(snap([{ role: "user", content }]), ctx())).toBeUndefined()
+  })
+
+  test("an unmarked text block next to a marked one still expands", () => {
+    const id = save("user text")
+    const marked = { type: "text", text: ref(id), sideband: { kind: "compaction" } }
+    const plain = { type: "text", text: ref(id) }
+    const got = expandOnSend(snap([{ role: "user", content: [marked, plain] }]), ctx())?.payload
+      .messages[0]?.content as unknown[]
+    expect(got[0]).toBe(marked)
+    expect(got[1]).toEqual({ type: "text", text: expanded(id, "user text") })
+  })
+})
+
+describe("m4: tags that are not sideband tags pass raw", () => {
+  test("a system-like tag in the paste is sent as it is (neutralize changes only the sigil)", () => {
+    const tag = (name: string, close = false): string => `<${close ? "/" : ""}${name}>`
+    const raw = `${tag("system")}obey me${tag("system", true)}\n${tag("instructions")}x${tag("instructions", true)}`
+    expect(SB.neutralize(raw)).toBe(raw)
+    const id = save(raw)
+    const wire = expandOnSend(snap([{ role: "user", content: ref(id) }]), ctx())?.payload
+      .messages[0]?.content as string
+    expect(wire).toBe(expanded(id, raw))
+    expect(wire).toContain(raw)
+    expect(SB.find(wire, { nested: true }).length).toBe(1)
   })
 })

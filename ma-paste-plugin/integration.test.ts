@@ -154,10 +154,11 @@ describe("ma-paste-plugin load", () => {
     expect(k?.attrs.id?.required).toBe(true)
   })
 
-  test("the plugin host has sessions:files only", () => {
+  test("the plugin host has sessions:files and models:read only", () => {
     const host = loader.capabilityHostFor("paste")
-    expect(host?.capabilities).toEqual(["sessions:files"])
+    expect(host?.capabilities).toEqual(["sessions:files", "models:read"])
     expect(host?.sessionFiles).toBeDefined()
+    expect(host?.models).toBeDefined()
   })
 
   test("the files go under <sid>.files/paste/", () => {
