@@ -16,7 +16,14 @@ import {
   sessionId,
   subagentId,
 } from "./types.ts"
-import { BLINK_FRAME_MS, blinkDot, blinkPattern, HEADER_BLINK, modelTag, renderWidget } from "./widget.ts"
+import {
+  BLINK_FRAME_MS,
+  blinkDot,
+  blinkPattern,
+  HEADER_BLINK,
+  modelTag,
+  renderWidget,
+} from "./widget.ts"
 
 // The display tests below check styled bytes: install the test kit (S41).
 beforeAll(() => setup({ tui: { kit: TEST_TERMINAL_KIT } } as UiSetupContext))
@@ -235,7 +242,9 @@ describe("renderWidget — blink", () => {
 
   it("fades the on dot in truecolor when fade is set", () => {
     const t = Math.floor(NOW / 2000) * 2000
-    expect(blinkDot(HEADER_BLINK, t, true, true)).not.toBe(blinkDot(HEADER_BLINK, t + 900, true, true))
+    expect(blinkDot(HEADER_BLINK, t, true, true)).not.toBe(
+      blinkDot(HEADER_BLINK, t + 900, true, true),
+    )
     expect(blinkDot(HEADER_BLINK, t + 900, true, true)).toContain("\x1b[38;2;")
     expect(blinkDot(HEADER_BLINK, t + 900, true, false)).not.toContain("\x1b[38;2;")
   })

@@ -137,7 +137,12 @@ export function blinkPattern(id: string): BlinkPattern {
  * `ceil(period / 2)` frames show `●`, the others `○`. With `fade` (and `ansi`),
  * the `●` goes from SKY to dim over its frame.
  */
-export function blinkDot(pattern: BlinkPattern, nowMs: number, ansi: boolean, fade: boolean): string {
+export function blinkDot(
+  pattern: BlinkPattern,
+  nowMs: number,
+  ansi: boolean,
+  fade: boolean,
+): string {
   const frame = Math.floor(nowMs / BLINK_FRAME_MS)
   const at = (((frame + pattern.phase) % pattern.period) + pattern.period) % pattern.period
   const on = at < Math.ceil(pattern.period / 2)
