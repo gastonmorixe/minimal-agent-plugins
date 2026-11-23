@@ -88,18 +88,22 @@ You get the command, the cwd, and the **log file path** so you can `tail -f` it 
 another terminal in real time. A `BackgroundStatus <id>` on a job with output also
 appends a short dim tail of its most recent lines.
 
-**The live panel** (the breathing footer, like the sub-agents fleet widget) lists
-every background job, one breathing row each, so the conversation never hides what
-is running:
+**The live panel** (the footer) uses the same layout as the sub-agents fleet
+widget. It shows one tree row for each background job, so the conversation never
+hides what is running:
 
 ```
- ◆ jobs · ● 2 running · ✔ 1 done
-   ⠹ j13   0s  Build + install + run tvOS on real Apple TV
-   ⠹ j14   3s  bun test --coverage
+● Jobs · 2 running · 1 done
+├ ● j13    0s Build + install + run tvOS on real Apple TV
+├ ○ j14    3s bun test --coverage
+├ ✔ j12   41s bun run lint
+╰ ✔ 1 done · BackgroundStatus
 ```
 
-It collapses to nothing when no job is running, and to a `+N more` line past six
-jobs.
+The header dot and each running dot blink. Running jobs come first. Finished jobs
+keep their rows. The `╰` summary row shows the finished counts, and `+N more` past
+six jobs. No row is wider than the terminal. The panel has no rows when no job is
+running.
 
 ## The hard requirement: jobs die with the harness
 

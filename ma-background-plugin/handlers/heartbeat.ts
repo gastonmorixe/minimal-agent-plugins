@@ -34,6 +34,7 @@ const handler = async (ctx: LiveAreaHandlerContext): Promise<string | null> => {
   const { records, effects } = runReconcile(deps, realReconcileIO())
   for (const e of effects) runEffect(e, ctx)
 
+  // Give the full terminal width. The render clips each row to `cols - 1`.
   const cols = process.stdout.columns ?? 80
   return renderWidget(records, { tick: ctx.tick, nowMs: Date.now(), cols })
 }

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
 import type { UiSetupContext } from "@minimal-agent/core/plugin-api/types/plugin"
+import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
 
 import { TEST_TERMINAL_KIT } from "../../scripts/ui/test-terminal-kit.ts"
 import setup from "../ui/setup.ts"
@@ -190,7 +191,7 @@ describe("renderWidget", () => {
     const w = strip(
       renderWidget([rec("j1", running), rec("j2", running)], { tick: 0, nowMs: now }) ?? "",
     )
-    expect(w).toContain("jobs")
+    expect(w).toContain("Jobs")
     expect(w).toContain("2 running")
     expect(w).toContain("j1")
     expect(w).toContain("j2")
@@ -222,5 +223,108 @@ describe("renderWidget", () => {
     const w = strip(renderWidget(records, { tick: 0, nowMs: now }) ?? "")
     expect(w).toContain("1 done")
     expect(w).toContain("1 failed")
+  })
+})
+
+describe("renderWidget header (fleet layout)", () => {
+  const now = Date.parse("2026-06-04T00:00:05.000Z")
+  const firstLine = (w: string | null): string => strip(w ?? "").split("\n")[0] ?? ""
+
+  test("header is a blink dot, the word Jobs, and the counts", () => {
+    const w = renderWidget([rec("j1", running), rec("j2", running)], { tick: 0, nowMs: now })
+    expect(firstLine(w)).toMatch(/^[●○] Jobs · 2 running$/)
+  })
+  test("header dot blinks by nowMs: an even second is on, an odd second is off", () => {
+    const records = [rec("j1", running)]
+    const even = renderWidget(records, { tick: 0, nowMs: 4000 })
+    const odd = renderWidget(records, { tick: 0, nowMs: 5000 })
+    expect(firstLine(even).startsWith("● ")).toBe(true)
+    expect(firstLine(odd).startsWith("○ ")).toBe(true)
+  })
+  test("header counts have no glyph of their own", () => {
+    const records = [
+      rec("j1", running),
+      rec("j2", { kind: "exited", endedAt: "t", exitCode: 0 }),
+      rec("j3", { kind: "exited", endedAt: "t", exitCode: 2 }),
+    ]
+    expect(firstLine(renderWidget(records, { tick: 0, nowMs: now }))).toMatch(
+      /^[●○] Jobs · 1 running · 1 done · 1 failed$/,
+    )
+  })
+  test("header is at most cols - 1 cells wide", () => {
+    const records = [
+      rec("j1", running),
+      rec("j2", { kind: "exited", endedAt: "t", exitCode: 0 }),
+      rec("j3", { kind: "exited", endedAt: "t", exitCode: 2 }),
+      rec("j4", { kind: "stopped", endedAt: "t" }),
+    ]
+    const w = renderWidget(records, { tick: 0, nowMs: now, cols: 30 })
+    expect(displayWidth(firstLine(w))).toBeLessThanOrEqual(29)
+  })
+})
+
+describe("renderWidget rows (fleet layout)", () => {
+  const now = Date.parse("2026-06-04T00:00:05.000Z")
+  const lines = (w: string | null): string[] => strip(w ?? "").split("\n")
+
+  test("2 running jobs give a tree: the first row has ├, the last row has ╰", () => {
+    const rows = lines(
+      renderWidget([rec("j1", running), rec("j2", running)], { tick: 0, nowMs: now }),
+    )
+    expect(rows.length).toBe(3)
+    expect(rows[1]?.startsWith("├ ")).toBe(true)
+    expect(rows[2]?.startsWith("╰ ")).toBe(true)
+  })
+  test("a running row has a blink dot, the padded id, the elapsed time, and the label", () => {
+    const rows = lines(
+      renderWidget([rec("j1", running, { description: "build the app" })], { tick: 0, nowMs: now }),
+    )
+    expect(rows[1]).toMatch(/^╰ [●○] j1 {2,}5s build the app$/)
+  })
+  test("no row is wider than cols - 1 for a long command", () => {
+    const long = `bun run ${"x".repeat(200)}`
+    const w = renderWidget([rec("j1", running, { command: long }), rec("j2", running)], {
+      tick: 0,
+      nowMs: now,
+      cols: 40,
+    })
+    for (const row of lines(w)) expect(displayWidth(row)).toBeLessThanOrEqual(39)
+  })
+  test("no row is wider than cols - 1 on a narrow terminal", () => {
+    const w = renderWidget([rec("j1", running, { description: "build the app now" })], {
+      tick: 0,
+      nowMs: now,
+      cols: 24,
+    })
+    for (const row of lines(w)) expect(displayWidth(row)).toBeLessThanOrEqual(23)
+  })
+})
+
+describe("renderWidget summary row", () => {
+  const now = Date.parse("2026-06-04T00:00:05.000Z")
+  const lines = (w: string | null): string[] => strip(w ?? "").split("\n")
+
+  test("terminal jobs keep their rows, and a ╰ summary row closes the tree", () => {
+    const records = [
+      rec("j1", running),
+      rec("j2", { kind: "exited", endedAt: "t", exitCode: 0 }),
+      rec("j3", { kind: "exited", endedAt: "t", exitCode: 2 }),
+    ]
+    const rows = lines(renderWidget(records, { tick: 0, nowMs: now }))
+    // header, 3 job rows (terminal rows stay visible), 1 summary row
+    expect(rows.length).toBe(5)
+    expect(rows.slice(1, 4).every((r) => r.startsWith("├ "))).toBe(true)
+    expect(rows[4]).toBe("╰ ✘ 1 failed · ✔ 1 done · BackgroundStatus")
+  })
+  test("past maxRows, the summary row has +N more", () => {
+    const records = ["j1", "j2", "j3", "j4", "j5"].map((id) => rec(id, running))
+    const rows = lines(renderWidget(records, { tick: 0, nowMs: now, maxRows: 2 }))
+    expect(rows.length).toBe(4)
+    expect(rows[3]).toBe("╰ +3 more · BackgroundStatus")
+  })
+  test("a stopped job shows in the summary row", () => {
+    const records = [rec("j1", running), rec("j2", { kind: "stopped", endedAt: "t" })]
+    const rows = lines(renderWidget(records, { tick: 0, nowMs: now }))
+    expect(rows.at(-1)).toBe("╰ ■ 1 stopped · BackgroundStatus")
   })
 })

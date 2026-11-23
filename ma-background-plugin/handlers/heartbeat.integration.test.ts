@@ -10,6 +10,8 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
+import { displayWidth, stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
+
 import { resetRegistryForTests } from "../lib/registry.ts"
 import { BgJobStore } from "../lib/store.ts"
 
@@ -109,5 +111,21 @@ describe("heartbeat", () => {
     const running = await heartbeat(slotCtx([], 3))
     expect(typeof running).toBe("string")
     expect(running ?? "").toContain("running")
+  }, 10000)
+
+  test("no widget row is wider than the terminal columns", async () => {
+    const before = Object.getOwnPropertyDescriptor(process.stdout, "columns")
+    Object.defineProperty(process.stdout, "columns", { value: 30, configurable: true })
+    try {
+      await bgRun(runCtx(`sleep 2 # ${"x".repeat(200)}`))
+      const out = await heartbeat(slotCtx([], 1))
+      expect(typeof out).toBe("string")
+      for (const row of stripAnsi(out ?? "").split("\n")) {
+        expect(displayWidth(row)).toBeLessThanOrEqual(29)
+      }
+    } finally {
+      if (before) Object.defineProperty(process.stdout, "columns", before)
+      else Reflect.deleteProperty(process.stdout, "columns")
+    }
   }, 10000)
 })

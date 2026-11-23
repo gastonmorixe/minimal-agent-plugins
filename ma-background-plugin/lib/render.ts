@@ -15,13 +15,27 @@
  * single opaque line. It shows the **command actually run**, the **state +
  * elapsed + pid**, the **timeout**, the **cwd**, the **log file path** (so the
  * user can `tail -f` it), and the **exact follow-up tool calls** to read or
- * stop it. The live panel mirrors the sub-agents fleet widget: a header row
- * (counts) plus one breathing row per job, so the user always sees what is
- * running in the background.
+ * stop it. The live panel uses the layout of the sub-agents fleet widget:
+ *
+ * ```
+ * ● Jobs · 1 running · 1 done · 1 failed
+ * ├ ● j1     5s build the app
+ * ├ ✔ j2     3s bun test
+ * ├ ✘ j3     1s bun run lint
+ * ╰ ✘ 1 failed · ✔ 1 done · BackgroundStatus
+ * ```
+ *
+ * The header dot and each running dot blink `●` and `○` by `nowMs`. Each job
+ * gets one tree row, running jobs first. Terminal jobs keep their rows. The
+ * `╰` summary row shows the terminal counts and `+N more`. When there is no
+ * summary, the last job row gets the `╰`. No row is wider than `cols - 1`.
  *
  * @module lib/render
  */
 
+import { displayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
+
+import { blinkDot, blinkPattern, cut, HEADER_BLINK } from "./blink.ts"
 import { formatDuration } from "./duration.ts"
 import { slots } from "./style.ts"
 import { type JobRecord, type JobStats, type JobStatus, jobStats } from "./types.ts"
@@ -295,15 +309,15 @@ export function jobLines(records: readonly JobRecord[], nowMs: number): string {
 // Live-area panel (the breathing footer) — multi-line, like the fleet widget
 // ---------------------------------------------------------------------------
 
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-
 /** Options for {@link renderWidget}. */
 export interface WidgetOptions {
+  /** Monotonic tick. Kept for compatibility: the blink uses `nowMs`. */
   readonly tick: number
+  /** Epoch ms, for the elapsed times and for the blink. */
   readonly nowMs: number
-  /** Max job rows before collapsing to a `+N more` line. Default 6. */
+  /** Max job rows before the rest goes into the `+N more` of the summary row. Default 6. */
   readonly maxRows?: number
-  /** Terminal width, for clipping the per-row label. Default 80. */
+  /** Terminal width. No row is wider than `cols - 1` cells. Default 80. */
   readonly cols?: number
 }
 
@@ -327,53 +341,104 @@ function rowRank(s: JobStatus): number {
   }
 }
 
-/** The spinner glyph (running) or the terminal status dot, for a panel row. */
-function rowGlyph(s: JobStatus, tick: number): string {
-  if (s.kind === "running") return cyan(SPINNER[tick % SPINNER.length])
-  return statusDot(s)
+/** Paint `text` in the dark gray of the fleet chrome (tree glyphs, separators). */
+function chrome(text: string): string {
+  return slots.color(true, slots.codes.DARK_GRAY, text)
+}
+
+/** Paint `text` in a palette color. Plain until the UI setup runs. */
+function paint(open: string, text: string): string {
+  return slots.color(true, open, text)
+}
+
+/** The ` · ` separator of the panel, in the chrome color. */
+function sep(): string {
+  return ` ${chrome("·")} `
+}
+
+/** The counts of the panel that the header and the summary row show. */
+interface PanelCounts {
+  readonly running: number
+  readonly done: number
+  readonly failed: number
+  readonly stopped: number
+}
+
+function panelCounts(stats: JobStats): PanelCounts {
+  return {
+    running: stats.running,
+    done: stats.succeeded,
+    // A timed out job counts as failed, as before.
+    failed: stats.exited - stats.succeeded + stats.timedout,
+    stopped: stats.stopped,
+  }
+}
+
+/** The header row: blink dot, bold `Jobs`, then the colored counts. */
+function headerRow(c: PanelCounts, nowMs: number, budget: number): string {
+  const counts = [paint(slots.palette.sky, `${c.running} running`)]
+  if (c.done > 0) counts.push(paint(slots.palette.lime, `${c.done} done`))
+  if (c.failed > 0) counts.push(paint(slots.palette.red, `${c.failed} failed`))
+  if (c.stopped > 0) counts.push(paint(slots.palette.gold, `${c.stopped} stopped`))
+  const title = bold("Jobs")
+  return cut(`${blinkDot(HEADER_BLINK, nowMs)} ${title}${sep()}${counts.join(sep())}`, budget)
+}
+
+/** The dot of a job row: a blink dot when the job runs, else its status glyph. */
+function rowDot(r: JobRecord, nowMs: number): string {
+  if (r.status.kind === "running") return blinkDot(blinkPattern(r.id), nowMs)
+  return statusDot(r.status)
+}
+
+/** One job row, at most `budget` cells: tree glyph, dot, id, elapsed, label. */
+function jobRow(r: JobRecord, tree: string, idW: number, nowMs: number, budget: number): string {
+  const id = bold(r.id.padEnd(idW))
+  const el = chrome(elapsed(r, nowMs).padStart(5))
+  const head = `${chrome(tree)} ${rowDot(r, nowMs)} ${id} ${el} `
+  const text = (r.description ? r.description : r.command).replace(/\s+/g, " ").trim()
+  const label = cut(text, budget - displayWidth(head))
+  // The last cut is a guard for a very narrow terminal.
+  return cut(`${head}${label}`, budget)
+}
+
+/** The summary row: terminal counts, `+N more`, and the status hint. Or null. */
+function summaryRow(c: PanelCounts, more: number, budget: number): string | null {
+  const parts: string[] = []
+  if (c.failed > 0) parts.push(paint(slots.palette.red, `✘ ${c.failed} failed`))
+  if (c.stopped > 0) parts.push(paint(slots.palette.gold, `■ ${c.stopped} stopped`))
+  if (c.done > 0) parts.push(paint(slots.palette.lime, `✔ ${c.done} done`))
+  if (more > 0) parts.push(slots.color(true, slots.codes.LIGHT_GRAY, `+${more} more`))
+  if (parts.length === 0) return null
+  parts.push(chrome("BackgroundStatus"))
+  return cut(`${chrome("╰")} ${parts.join(sep())}`, budget)
 }
 
 /**
- * Render the live-area panel, or `null` when nothing is running (the panel
- * collapses to zero rows). One header row with counts, then one breathing row
- * per job (running first), then a `+N more` overflow line. The slot value is a
- * multi-line string; the host splits it on `\n` into footer rows. Pure.
+ * Render the live-area panel, or `null` when no job runs (the panel then has
+ * no rows). The layout is the same as the sub-agents fleet widget: a header
+ * row, one tree row for each job (running first), and a `╰` summary row with
+ * the terminal counts and `+N more`. Terminal jobs keep their rows. No row is
+ * wider than `cols - 1` cells. The host splits the value on `\n`. Pure.
  */
 export function renderWidget(records: readonly JobRecord[], opts: WidgetOptions): string | null {
   const stats: JobStats = jobStats(records)
   if (stats.running === 0) return null
 
-  const maxRows = opts.maxRows ?? 6
-  const cols = opts.cols ?? 80
+  const maxRows = Math.max(1, opts.maxRows ?? 6)
+  const budget = Math.max(20, (opts.cols ?? 80) - 1)
+  const counts = panelCounts(stats)
 
-  // Header: ◆ jobs · ● R running · ✔ D done [· ✘ F failed]
-  const done = stats.succeeded
-  const failed = stats.exited - stats.succeeded + stats.timedout
-  const headerBits = [
-    `${cyan("◆")} ${cyan("jobs")}`,
-    `${cyan("●")} ${cyan(`${stats.running} running`)}`,
-  ]
-  if (done > 0) headerBits.push(`${green("✔")} ${dim(`${done} done`)}`)
-  if (failed > 0) headerBits.push(`${red("✘")} ${dim(`${failed} failed`)}`)
-  if (stats.stopped > 0) headerBits.push(`${yellow("■")} ${dim(`${stats.stopped} stopped`)}`)
-  const header = ` ${headerBits.join(` ${dot()} `)}`
-
-  // Rows: running first, then most-recent terminal. Cap at maxRows.
+  // Rows: running first, then the terminal jobs. At most maxRows.
   const ordered = [...records].sort((a, b) => rowRank(a.status) - rowRank(b.status))
   const shown = ordered.slice(0, maxRows)
-  // Budget for the label = cols minus the fixed prefix (glyph+id+elapsed+gutter).
-  const labelMax = Math.max(16, cols - 22)
-  const lines = [header]
-  for (const r of shown) {
-    const glyph = rowGlyph(r.status, opts.tick)
-    const id = bold(r.id.padEnd(4))
-    const el = dim(elapsed(r, opts.nowMs).padStart(4))
-    const label = clip(jobLabel(r, labelMax), labelMax)
-    lines.push(`   ${glyph} ${id} ${el}  ${label}`)
-  }
-  if (ordered.length > shown.length) {
-    const more = ordered.length - shown.length
-    lines.push(dim(`   … +${more} more ${dot()} BackgroundStatus for all`))
-  }
+  const idW = Math.max(3, ...shown.map((r) => r.id.length))
+  const summary = summaryRow(counts, ordered.length - shown.length, budget)
+
+  const lines = [headerRow(counts, opts.nowMs, budget)]
+  shown.forEach((r, i) => {
+    const last = summary === null && i === shown.length - 1
+    lines.push(jobRow(r, last ? "╰" : "├", idW, opts.nowMs, budget))
+  })
+  if (summary !== null) lines.push(summary)
   return lines.join("\n")
 }
