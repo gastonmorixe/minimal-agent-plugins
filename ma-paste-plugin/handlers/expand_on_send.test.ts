@@ -30,7 +30,10 @@ import expandOnSend, {
   resetMissingWarnings,
   resetRenderCache,
   type SendSnapshot,
+  setLineNumbers,
+  wireBodyBytes,
 } from "./expand_on_send.ts"
+import { numberLines } from "../lib/number.ts"
 
 const SB: SidebandApi = await pluginSideband()
 const SID = "sid-paste-a"
@@ -47,7 +50,11 @@ function openSession(sid: string): void {
 }
 openSession(SID)
 
-afterAll(() => rmSync(root, { recursive: true, force: true }))
+afterAll(() => {
+  // The override is module state: other test files in this process read the config.
+  setLineNumbers(undefined)
+  rmSync(root, { recursive: true, force: true })
+})
 
 interface Warn {
   source: string
@@ -60,6 +67,7 @@ beforeEach(() => {
   warns = []
   resetMissingWarnings()
   resetRenderCache()
+  setLineNumbers(false)
 })
 
 function ctx(over: Partial<ExpandContext> = {}, sid = SID): ExpandContext {
@@ -98,6 +106,59 @@ function save(content: string, sid = SID): string {
   expect(files.create(sid, `${id}.txt`, content)).toBe("ok")
   return id
 }
+
+describe("wireBodyBytes", () => {
+  test("file bytes plus the number and the TAB of each line", () => {
+    expect(wireBodyBytes(20, 10, true)).toBe(20 + 9 * 2 + 1 * 3)
+    expect(wireBodyBytes(9, 9, true)).toBe(9 + 9 * 2)
+    expect(wireBodyBytes(0, 100, true)).toBe(9 * 2 + 90 * 3 + 1 * 4)
+    expect(wireBodyBytes(20, 10, false)).toBe(20)
+    expect(wireBodyBytes(0, 0, true)).toBe(0)
+  })
+
+  test("it is the exact size of the numbered body", () => {
+    const enc = new TextEncoder()
+    for (const t of ["a", "a\n", "a\n\nb", "x\n".repeat(150), "é\n".repeat(12), "\n".repeat(1001)]) {
+      const lines = t.split("\n").length - (t.endsWith("\n") ? 1 : 0)
+      expect(wireBodyBytes(enc.encode(t).length, lines, true)).toBe(
+        enc.encode(numberLines(t)).length,
+      )
+    }
+  })
+})
+
+describe("expand_on_send line numbers", () => {
+  test("numbered body in Read tool form; attrs from the file; numbered=true", () => {
+    setLineNumbers(true)
+    const content = "alpha\n\nga<mm>a\n"
+    const id = save(content)
+    const out = expandOnSend(snap([{ role: "user", content: `x ${ref(id)}` }]), ctx())
+    const want = SB.render("paste", {
+      attrs: { id, bytes: 15, lines: 3, numbered: true },
+      body: SB.neutralize("1\talpha\n2\t\n3\tga<mm>a\n"),
+    })
+    expect(out?.payload.messages[0]?.content).toBe(`x ${want}`)
+  })
+
+  test("a body with no final LF is numbered on each line", () => {
+    setLineNumbers(true)
+    const id = save("a\nb")
+    const out = expandOnSend(snap([{ role: "user", content: ref(id) }]), ctx())
+    expect(out?.payload.messages[0]?.content).toBe(
+      SB.render("paste", {
+        attrs: { id, bytes: 3, lines: 2, numbered: true },
+        body: SB.neutralize("1\ta\n2\tb"),
+      }),
+    )
+  })
+
+  test("off: the body is the exact file text, with no numbered attr", () => {
+    setLineNumbers(false)
+    const id = save("a\nb")
+    const out = expandOnSend(snap([{ role: "user", content: ref(id) }]), ctx())
+    expect(out?.payload.messages[0]?.content).toBe(expanded(id, "a\nb"))
+  })
+})
 
 describe("expand_on_send (U8)", () => {
   test("expands a known self-closing ref with bytes and lines from the file", () => {
@@ -442,6 +503,21 @@ describe("m1: a paste over half of the context window does not expand", () => {
     expect(expandOnSend(s, hostCtx(files, modelsWith(1000)))).toBeDefined()
     expect(expandOnSend(s, hostCtx(files, modelsWith(10)))).toBeUndefined()
     expect(warns.map((w) => w.source)).toEqual(["paste.too-large"])
+  })
+
+  test("numbered: the guard counts the wire bytes, not the file bytes", () => {
+    setLineNumbers(true)
+    // 10 lines of 1 char: 20 file bytes (at the limit), 41 wire bytes.
+    const id = save("a\n".repeat(10))
+    const s = snap([{ role: "user", content: ref(id) }])
+    expect(expandOnSend(s, hostCtx(files, modelsWith(10)))).toBeUndefined()
+    expect(warns[0]?.sd).toEqual({ id, sid: SID, bytes: 41 })
+    // The cache hit also checks the wire bytes.
+    expect(expandOnSend(s, hostCtx(files, modelsWith(1000)))).toBeDefined()
+    expect(expandOnSend(s, hostCtx(files, modelsWith(10)))).toBeUndefined()
+    // Not numbered: the same file is at the limit and expands.
+    setLineNumbers(false)
+    expect(expandOnSend(s, hostCtx(files, modelsWith(10)))).toBeDefined()
   })
 
   test("an unknown window gives no limit", () => {

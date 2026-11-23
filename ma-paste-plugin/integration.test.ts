@@ -37,9 +37,15 @@ let sessionsDir: string
 let loader: PluginLoader
 let store: SessionStore
 
+/** The config path before this file: the test pins the paste config. */
+const prevConfig = process.env.MINIMAL_AGENT_CONFIG
+
 beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), "paste-integ-"))
   sessionsDir = join(root, "sessions")
+  // A config path with no file: the plugin uses its defaults, not the
+  // config of the developer.
+  process.env.MINIMAL_AGENT_CONFIG = join(root, "no-config.jsonc")
   // Load only two plugins: put links to them in a temp embedded root.
   const embedded = join(root, "plugins")
   mkdirSync(embedded)
@@ -78,6 +84,8 @@ beforeAll(async () => {
 })
 
 afterAll(() => {
+  if (prevConfig === undefined) delete process.env.MINIMAL_AGENT_CONFIG
+  else process.env.MINIMAL_AGENT_CONFIG = prevConfig
   rmSync(root, { recursive: true, force: true })
 })
 
@@ -150,7 +158,7 @@ describe("ma-paste-plugin load", () => {
     expect(k?.body).toBe("text")
     expect(k?.layout).toBe("block")
     expect(k?.trust).toBe("untrusted")
-    expect(Object.keys(k?.attrs ?? {})).toEqual(["id", "bytes", "lines"])
+    expect(Object.keys(k?.attrs ?? {})).toEqual(["id", "bytes", "lines", "numbered"])
     expect(k?.attrs.id?.required).toBe(true)
   })
 
@@ -191,11 +199,12 @@ describe("I1: the wire has the content, the stored forms have the ref", () => {
     expect(sent.length).toBe(1)
     const sb = loader.sideband()
     const wire = lastUserText(sent[0]?.messages ?? [])
-    expect(wire).toContain(content)
+    // Line numbers are on by default (`plugins.paste.lineNumbers`).
+    expect(wire).toContain("1\tpasted line 1\n2\tpasted line 2\n")
     expect(wire).not.toContain(ref("int01"))
     const node = sb.find(wire, { kinds: ["paste"] })[0]
     expect(node?.selfClosing).toBe(false)
-    expect(node?.attrs).toEqual({ id: "int01", bytes: "28", lines: "2" })
+    expect(node?.attrs).toEqual({ id: "int01", bytes: "28", lines: "2", numbered: "true" })
     // Core messages hold the ref.
     const stored = lastUserText(core.history())
     expect(stored).toContain(ref("int01"))

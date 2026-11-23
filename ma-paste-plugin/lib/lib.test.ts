@@ -14,6 +14,7 @@ import { defaultPasteConfig, loadPasteConfig, parsePasteConfig, shouldCollapse }
 import { countLines, normalizeNewlines, utf8Bytes } from "./count.ts"
 import { chipLabel, formatSize } from "./format.ts"
 import { isPasteId, newId, PASTE_ID_RE } from "./id.ts"
+import { numberLines } from "./number.ts"
 
 /** A chip label: the text in square brackets. */
 const chip = (inner: string): string => `[${inner}]`
@@ -125,16 +126,61 @@ describe("count", () => {
   })
 })
 
+describe("numberLines", () => {
+  test("Read tool form: N<TAB>line from 1; final LF kept with no number after it", () => {
+    expect(numberLines("")).toBe("")
+    expect(numberLines("a")).toBe("1\ta")
+    expect(numberLines("a\n")).toBe("1\ta\n")
+    expect(numberLines("a\n\nb")).toBe("1\ta\n2\t\n3\tb")
+    expect(numberLines("\n")).toBe("1\t\n")
+  })
+
+  test("the numbered text has the same line count", () => {
+    for (const t of ["a", "a\n", "a\n\nb", "\n\n", "x\ny\n"]) {
+      expect(countLines(numberLines(t))).toBe(countLines(t))
+    }
+  })
+})
+
 describe("config", () => {
-  test("default is 0/0 (a ref for each non-empty paste)", () => {
-    expect(defaultPasteConfig()).toEqual({ collapse: { minLines: 0, minBytes: 0 } })
-    expect(shouldCollapse(defaultPasteConfig().collapse, 1, 1)).toBe(true)
+  test("default: 4 lines or 1200 bytes, floor 120 bytes, line numbers on", () => {
+    expect(defaultPasteConfig()).toEqual({
+      collapse: { minLines: 4, minBytes: 1200, floorBytes: 120 },
+      lineNumbers: true,
+    })
+    const c = defaultPasteConfig().collapse
+    // Small stuff stays literal text.
+    expect(shouldCollapse(c, 1, 1)).toBe(false)
+    expect(shouldCollapse(c, 1, 80)).toBe(false)
+    expect(shouldCollapse(c, 3, 600)).toBe(false)
+    expect(shouldCollapse(c, 1, 1199)).toBe(false)
+    // 4 very short lines are under the floor.
+    expect(shouldCollapse(c, 4, 12)).toBe(false)
+    expect(shouldCollapse(c, 10, 119)).toBe(false)
+    // Large stuff collapses.
+    expect(shouldCollapse(c, 4, 120)).toBe(true)
+    expect(shouldCollapse(c, 1, 1200)).toBe(true)
+    expect(shouldCollapse(c, 200, 9000)).toBe(true)
+  })
+
+  test("0/0 with no floor makes a ref for each paste", () => {
+    expect(shouldCollapse({ minLines: 0, minBytes: 0, floorBytes: 0 }, 1, 1)).toBe(true)
   })
 
   test("plugins.paste.collapse is read; bad fields keep the default", () => {
     expect(
-      parsePasteConfig({ plugins: { paste: { collapse: { minLines: 3, minBytes: 200 } } } }),
-    ).toEqual({ collapse: { minLines: 3, minBytes: 200 } })
+      parsePasteConfig({
+        plugins: {
+          paste: {
+            collapse: { minLines: 3, minBytes: 200, floorBytes: 0 },
+            lineNumbers: false,
+          },
+        },
+      }),
+    ).toEqual({ collapse: { minLines: 3, minBytes: 200, floorBytes: 0 }, lineNumbers: false })
+    expect(parsePasteConfig({ plugins: { paste: { lineNumbers: "no" } } })).toEqual(
+      defaultPasteConfig(),
+    )
     expect(
       parsePasteConfig({ plugins: { paste: { collapse: { minLines: -1, minBytes: "x" } } } }),
     ).toEqual(defaultPasteConfig())
@@ -145,11 +191,11 @@ describe("config", () => {
   })
 
   test("threshold: either limit that is not 0", () => {
-    const c = { minLines: 3, minBytes: 200 }
+    const c = { minLines: 3, minBytes: 200, floorBytes: 0 }
     expect(shouldCollapse(c, 2, 199)).toBe(false)
     expect(shouldCollapse(c, 3, 10)).toBe(true)
     expect(shouldCollapse(c, 1, 200)).toBe(true)
-    expect(shouldCollapse({ minLines: 3, minBytes: 0 }, 2, 10_000)).toBe(false)
+    expect(shouldCollapse({ minLines: 3, minBytes: 0, floorBytes: 0 }, 2, 10_000)).toBe(false)
   })
 
   test("loadPasteConfig reads JSONC from MINIMAL_AGENT_CONFIG and never throws", () => {
@@ -161,7 +207,8 @@ describe("config", () => {
         '{ // note\n "plugins": { "paste": { "collapse": { "minLines": 5, } } } }',
       )
       expect(loadPasteConfig({ MINIMAL_AGENT_CONFIG: path })).toEqual({
-        collapse: { minLines: 5, minBytes: 0 },
+        collapse: { minLines: 5, minBytes: 1200, floorBytes: 120 },
+        lineNumbers: true,
       })
       writeFileSync(path, "{ bad")
       expect(loadPasteConfig({ MINIMAL_AGENT_CONFIG: path })).toEqual(defaultPasteConfig())

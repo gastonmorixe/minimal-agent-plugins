@@ -17,6 +17,7 @@ import type { SessionFileCreate } from "@minimal-agent/core/plugin-api/types/hos
 import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
+import { defaultPasteConfig } from "../lib/config.ts"
 import type {
   BoundSessionFiles,
   ChipDef,
@@ -77,7 +78,7 @@ function ev(text: string, over: Partial<PluginPasteEvent> = {}): PluginPasteEven
 let idN = 0
 const seqId = (): string => `s${String(++idN).padStart(4, "0")}`
 
-const ALWAYS = { minLines: 0, minBytes: 0 }
+const ALWAYS = { minLines: 0, minBytes: 0, floorBytes: 0 }
 
 describe("text paste hook (U9)", () => {
   test("one create; the insert is the codec ref with bytes and lines; CRLF and CR become LF", () => {
@@ -117,11 +118,25 @@ describe("text paste hook (U9)", () => {
 
   test("null below the collapse threshold", () => {
     const files = fakeFiles([])
-    const hook = makeTextPasteHook({ collapse: { minLines: 3, minBytes: 200 }, newId: seqId })
+    const hook = makeTextPasteHook({
+      collapse: { minLines: 3, minBytes: 200, floorBytes: 0 },
+      newId: seqId,
+    })
     expect(hook.onPaste(ev("one\ntwo", { files }))).toBeNull()
     expect(files.creates).toEqual([])
     expect(hook.onPaste(ev("1\n2\n3", { files }))).not.toBeNull()
     expect(hook.onPaste(ev("x".repeat(200), { files }))).not.toBeNull()
+  })
+
+  test("default limits: small stuff stays literal, a big paste collapses", () => {
+    const files = fakeFiles([])
+    const hook = makeTextPasteHook({ collapse: defaultPasteConfig().collapse, newId: seqId })
+    expect(hook.onPaste(ev("npm run build", { files }))).toBeNull()
+    expect(hook.onPaste(ev("a\nb\nc\nd\n", { files }))).toBeNull()
+    expect(hook.onPaste(ev(`${"x".repeat(60)}\n`.repeat(3), { files }))).toBeNull()
+    expect(files.creates).toEqual([])
+    expect(hook.onPaste(ev(`${"x".repeat(40)}\n`.repeat(4), { files }))).not.toBeNull()
+    expect(hook.onPaste(ev("y".repeat(1200), { files }))).not.toBeNull()
   })
 
   test("retry on exists, with a new id each time", () => {
