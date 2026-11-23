@@ -1769,6 +1769,24 @@
           "name": "Task"
         },
         {
+          "description": "Set the title of this session. With `title`, the tool writes that title. Without `title`, the tool makes a new title from the user messages with a small model.\n\nUse it only when the user tells you to set or change the title. Use it also when the work of the session changed much. Do not use it to read the title. Do not use it on each turn.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "lock": {
+                "description": "If `true`, the tool writes a user title. Automatic titles do not replace it. Use `true` only with a `title` that the user gave you. The default is `false`.",
+                "type": "boolean"
+              },
+              "title": {
+                "description": "The new title, 2 to 6 words. Without it, the tool makes a title.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SessionTitle"
+        },
+        {
           "description": "Find information on the web. Use it for facts that are possibly newer than your data, or for a URL. Use it to make sure that a fact is correct before you give it. Do not use it when this session or a file that you read has the result.\n\nThe tool gives the results. Each result has a title, URL, short text, date and source. After some errors, the tool tries again 2 times. Do not send the same request again immediately.",
           "input_schema": {
             "additionalProperties": false,
@@ -3637,6 +3655,24 @@
             "type": "object"
           },
           "name": "Task"
+        },
+        {
+          "description": "Set the title of this session. With `title`, the tool writes that title. Without `title`, the tool makes a new title from the user messages with a small model.\n\nUse it only when the user tells you to set or change the title. Use it also when the work of the session changed much. Do not use it to read the title. Do not use it on each turn.",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "lock": {
+                "description": "If `true`, the tool writes a user title. Automatic titles do not replace it. Use `true` only with a `title` that the user gave you. The default is `false`.",
+                "type": "boolean"
+              },
+              "title": {
+                "description": "The new title, 2 to 6 words. Without it, the tool makes a title.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "SessionTitle"
         },
         {
           "description": "Find information on the web. Use it for facts that are possibly newer than your data, or for a URL. Use it to make sure that a fact is correct before you give it. Do not use it when this session or a file that you read has the result.\n\nThe tool gives the results. Each result has a title, URL, short text, date and source. After some errors, the tool tries again 2 times. Do not send the same request again immediately.",

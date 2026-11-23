@@ -13,10 +13,13 @@ import {
   INPUT_TAIL_CHARS,
   LANGUAGE_MAX_CHARS,
   languageLine,
+  PROMPT_TOKEN_RE,
+  removePromptTokens,
   sanitizeLanguage,
   stripMaTags,
   wrapSession,
 } from "./input.ts"
+import { PASTE_MISSING_MARKER } from "./paste.ts"
 
 /** The real codec (`tests/support/sideband.ts`): it strips the internal tags. */
 const sb = await pluginSideband()
@@ -182,5 +185,67 @@ describe("language line (same layout as Claude Code)", () => {
     expect(languageLine("Spanish")).toBe(
       "Write the title in Spanish. Keep technical terms and code names as they are.",
     )
+  })
+})
+
+describe("saved prompt tokens (&name)", () => {
+  test("removePromptTokens drops each token and keeps the prefix char", () => {
+    expect(removePromptTokens("&a-b\n(&c) x &d_e y")).toBe("\n() x  y")
+    expect(removePromptTokens("mail a&b stays")).toBe("mail a&b stays")
+  })
+
+  test("cleanPromptText removes the tokens, then collapses blank lines", () => {
+    expect(cleanPromptText("&arcana-access-prod\n\n\n\n&arcana-work\nfix the build", sb)).toBe(
+      "fix the build",
+    )
+  })
+})
+
+describe("the first prompt bug: template tokens and a paste ref", () => {
+  const SID = "ba0ad20f-0000-4000-8000-666ff6ccaa5b"
+  const DIR = "/sessions-root"
+  const URL =
+    "https://linear.app/arcanums/issue/DEV-244/user-can-make-a-shared-project-view-only-for-a-team"
+  const pasteRef = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
+  const BUG = `&arcana-access-prod\n---\n&arcana-work\n\nTask:\n---\n\nwhat's the status of ${pasteRef} ?`
+
+  test("the user message has the issue id and slug, and no &name token", () => {
+    const out = buildTitleInput(BUG, sb, undefined, {
+      source: {
+        sessionsDir: DIR,
+        sid: SID,
+        readFile: (p) => (p === `${DIR}/${SID}.files/paste/m23a7.txt` ? URL : null),
+      },
+    })
+    expect(out).toContain("DEV-244")
+    expect(out).toContain("user-can-make-a-shared-project-view-only-for-a-team")
+    expect(out).not.toContain("&arcana-access-prod")
+    expect(out).not.toContain("&arcana-work")
+    expect(out).not.toContain("ma::")
+  })
+
+  test("a missing paste file gives the marker", () => {
+    const out = buildTitleInput(BUG, sb, undefined, {
+      source: { sessionsDir: DIR, sid: SID, readFile: () => null },
+    })
+    expect(out).toContain(`what's the status of ${PASTE_MISSING_MARKER} ?`)
+  })
+})
+
+describe("token removal and paste text (m2, m9)", () => {
+  const SID = "ba0ad20f-0000-4000-8000-666ff6ccaa5b"
+  const pasteRef = sb.render("paste", { attrs: { id: "m23a7", bytes: 7, lines: 1 } })
+
+  test("an &name in the pasted text stays (tokens go before the paste expand)", () => {
+    const out = cleanPromptText(`&tpl check ${pasteRef}`, sb, {
+      source: { sessionsDir: "/sessions-root", sid: SID, readFile: () => "foo &bar" },
+    })
+    expect(out).toBe("check foo &bar")
+  })
+
+  test("PROMPT_TOKEN_RE has no g flag, so test() gives the same result two times", () => {
+    expect(PROMPT_TOKEN_RE.flags).not.toContain("g")
+    expect(PROMPT_TOKEN_RE.test("x &a")).toBe(true)
+    expect(PROMPT_TOKEN_RE.test("x &a")).toBe(true)
   })
 })

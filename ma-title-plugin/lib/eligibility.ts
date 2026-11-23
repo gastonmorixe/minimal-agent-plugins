@@ -3,8 +3,10 @@
  *
  * Pure functions, no IO and no host call. The handler (T2) gets the values
  * (payload, run fact, config, env, title state) and calls
- * {@link checkEligibility}. Rules run in order; the first rule that matches
- * stops. Only rule 9 (start) uses an attempt.
+ * {@link checkEligibility}. Rules run in order, but the cheap source check
+ * (rule 7) and the attempt check (rule 8) come before the clean step of rules
+ * 5 and 6. The first rule that matches stops. Only rule 9 (start) uses an
+ * attempt.
  *
  * @module lib/eligibility
  */
@@ -24,6 +26,7 @@ import type {
   TitleSideband,
 } from "./host-types.ts"
 import { cleanPromptText, codePointLength, hasMaTag } from "./input.ts"
+import { PASTE_MISSING_MARKER, type PasteSource } from "./paste.ts"
 
 /**
  * Max model calls per session per process: 1 attempt + 1 retry (SPEC §6
@@ -184,6 +187,11 @@ export interface EligibilityInput {
   args?: TitleArgs
   /** `ctx.sideband`. It strips and finds the internal tags. */
   sb: TitleSideband
+  /**
+   * Where to read the paste files of the captured sid. Without it, each
+   * self-closing paste ref gives the marker `(pasted text)`.
+   */
+  pasteSource?: (sid: string) => PasteSource | undefined
 }
 
 /** Result of {@link checkEligibility}. */
@@ -241,8 +249,19 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
     return { eligible: false, rule: 4, reason: "has-title", sid, markDone: true }
   }
 
+  // Rules 7 and 8 come before the clean step: they are cheap, and the clean
+  // step can read paste files. Each rule stops the prompt with no attempt, so
+  // the order changes only the reason in the log, not the result.
+  // Rule 7: only typed user text. A missing `source` (old core) stops too.
+  if (payload.source !== "user") return { eligible: false, rule: 7, reason: "source-not-user", sid }
+
+  // Rule 8: 1 attempt + 1 retry.
+  if ((state?.attempts ?? 0) >= MAX_ATTEMPTS) {
+    return { eligible: false, rule: 8, reason: "max-attempts", sid }
+  }
+
   const rawText = typeof payload.text === "string" ? payload.text : ""
-  let text = cleanPromptText(rawText, input.sb)
+  let text = cleanPromptText(rawText, input.sb, { source: input.pasteSource?.(sid) })
 
   // Rule 5: slash command. A simple `/name args` line gives its args as the
   // title text, when the args pass rule 6. Each other slash line stops.
@@ -254,22 +273,18 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
     text = args
   }
 
+  // The marker of a paste with no readable file is not user text: the length
+  // checks do not count it.
+  const typed = text.split(PASTE_MISSING_MARKER).join("").trim()
+
   // Rule 7 (checked here): text that is only internal tags is synthetic.
-  if (text === "" && hasMaTag(rawText, input.sb)) {
+  if (typed === "" && hasMaTag(rawText, input.sb)) {
     return { eligible: false, rule: 7, reason: "synthetic-ma-only", sid }
   }
 
   // Rule 6: short prompt.
-  if (codePointLength(text) < config.minChars) {
+  if (codePointLength(typed) < config.minChars) {
     return { eligible: false, rule: 6, reason: "too-short", sid }
-  }
-
-  // Rule 7: only typed user text. A missing `source` (old core) stops too.
-  if (payload.source !== "user") return { eligible: false, rule: 7, reason: "source-not-user", sid }
-
-  // Rule 8: 1 attempt + 1 retry.
-  if ((state?.attempts ?? 0) >= MAX_ATTEMPTS) {
-    return { eligible: false, rule: 8, reason: "max-attempts", sid }
   }
 
   return { eligible: true, sid, text }

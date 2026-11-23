@@ -1,3 +1,5 @@
+import { resolve } from "node:path"
+
 import { describe, expect, test } from "bun:test"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
@@ -415,5 +417,66 @@ describe("state helpers with no attempt (B2, B4)", () => {
     const idle = markIdle({ ...busy, firstText: "keep me" })
     expect(idle).toMatchObject({ attempts: 0, inFlight: false, firstText: "keep me" })
     expect(checkEligibility(input({ state: idle })).eligible).toBe(true)
+  })
+})
+
+describe("paste refs in the eligibility check (M2, m7)", () => {
+  const PASTE_REF = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
+
+  /** A paste source that counts the reads. `text` null = a missing file. */
+  function counted(text: string | null): {
+    reads: () => number
+    pasteSource: NonNullable<EligibilityInput["pasteSource"]>
+  } {
+    let n = 0
+    return {
+      reads: () => n,
+      pasteSource: (sid) => ({
+        sessionsDir: resolve("/sessions-root"),
+        sid,
+        readFile: () => {
+          n++
+          return text
+        },
+      }),
+    }
+  }
+
+  test("a prompt that is only a paste ref with no file is not eligible (M2)", () => {
+    const { pasteSource } = counted(null)
+    const r = checkEligibility(input({ pasteSource, payload: payload({ text: PASTE_REF }) }))
+    expect(r.eligible).toBe(false)
+    if (!r.eligible) expect(r.reason).toBe("synthetic-ma-only")
+    const none = checkEligibility(input({ payload: payload({ text: ` ${PASTE_REF} ` }) }))
+    expect(none.eligible ? "" : none.reason).toBe("synthetic-ma-only")
+  })
+
+  test("a short text with a missing paste is too short (M2)", () => {
+    const { pasteSource } = counted(null)
+    const r = checkEligibility(
+      input({ pasteSource, payload: payload({ text: `hi ${PASTE_REF}` }) }),
+    )
+    expect(r.eligible ? "" : r.reason).toBe("too-short")
+  })
+
+  test("a paste ref with a readable file is eligible", () => {
+    const { pasteSource } = counted("a long pasted text about the build")
+    const r = checkEligibility(input({ pasteSource, payload: payload({ text: PASTE_REF }) }))
+    expect(r).toMatchObject({ eligible: true, text: "a long pasted text about the build" })
+  })
+
+  test("rule 7 source and rule 8 attempts read no paste file (m7)", () => {
+    const c = counted("a long pasted text about the build")
+    const text = `status of ${PASTE_REF}`
+    const bySource = checkEligibility(
+      input({ pasteSource: c.pasteSource, payload: payload({ text, source: "expand" }) }),
+    )
+    expect(bySource.eligible ? "" : bySource.reason).toBe("source-not-user")
+    const state = { ...initialTitleState(), attempts: MAX_ATTEMPTS }
+    const byAttempts = checkEligibility(
+      input({ pasteSource: c.pasteSource, state, payload: payload({ text }) }),
+    )
+    expect(byAttempts.eligible ? "" : byAttempts.reason).toBe("max-attempts")
+    expect(c.reads()).toBe(0)
   })
 })

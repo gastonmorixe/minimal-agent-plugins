@@ -9,6 +9,7 @@
  */
 
 import type { TitleSideband } from "./host-types.ts"
+import { expandPasteRefs, type PasteSource } from "./paste.ts"
 
 /** Above this length (code points) the cap applies. */
 export const INPUT_MAX_CHARS = 2000
@@ -49,11 +50,42 @@ export function hasMaTag(text: string, sb: TitleSideband): boolean {
 }
 
 /**
- * Clean a prompt text: remove the internal tags, change CRLF to LF, collapse
- * runs of blank lines to one blank line, trim.
+ * A saved prompt token (`&name`) at a word boundary. The same rule as
+ * `TOKEN_RE` in `ma-prompts-plugin/lib/rewrite.ts`. Group 1 is the char
+ * before the `&`. It has no `g` flag, so a `.test()` call keeps no state.
+ * {@link removePromptTokens} adds the `g` flag.
  */
-export function cleanPromptText(text: string, sb: TitleSideband): string {
-  return stripMaTags(text.replace(/\r\n?/g, "\n"), sb).replace(BLANK_RUN_RE, "\n\n").trim()
+export const PROMPT_TOKEN_RE = /(^|[\s([{])&([a-zA-Z0-9_-]+)/
+
+/**
+ * Remove each saved prompt token (`&name`) and keep the char before it. A
+ * token is a reference to a template of instructions that the user uses
+ * again. It is not the subject of the session.
+ */
+export function removePromptTokens(text: string): string {
+  return text.replace(new RegExp(PROMPT_TOKEN_RE.source, "g"), "$1")
+}
+
+/** Options of {@link cleanPromptText} and {@link buildTitleInput}. */
+export interface CleanOptions {
+  /**
+   * Where to read the paste files. Without it, each self-closing paste ref
+   * gives the marker `(pasted text)`.
+   */
+  source?: PasteSource
+}
+
+/**
+ * Clean a prompt text. The steps, in this order: change CRLF to LF, remove
+ * the saved prompt tokens (`&name`), put the text of each paste ref in place
+ * of the ref, remove the other internal tags, collapse runs of blank lines to
+ * one blank line, trim. The tokens go before the paste step, so an `&word`
+ * in the pasted text stays.
+ */
+export function cleanPromptText(text: string, sb: TitleSideband, opts: CleanOptions = {}): string {
+  const lf = text.replace(/\r\n?/g, "\n")
+  const pasted = expandPasteRefs(removePromptTokens(lf), sb, opts.source)
+  return stripMaTags(pasted, sb).replace(BLANK_RUN_RE, "\n\n").trim()
 }
 
 /**
@@ -120,6 +152,19 @@ export function languageLine(language?: string): string {
  * Code: `<session>\n{text}\n</session>\n\n{language line}`. The rules are in
  * the system prompt.
  */
-export function buildTitleInput(promptText: string, sb: TitleSideband, language?: string): string {
-  return `${wrapSession(capInput(cleanPromptText(promptText, sb)))}\n\n${languageLine(language)}`
+export function buildTitleInput(
+  promptText: string,
+  sb: TitleSideband,
+  language?: string,
+  opts: CleanOptions = {},
+): string {
+  return wrapCleanText(cleanPromptText(promptText, sb, opts), language)
+}
+
+/**
+ * Cap and wrap a text that is clean already, then add one language line.
+ * The tool path uses it for a text that it joined from more than one message.
+ */
+export function wrapCleanText(cleanText: string, language?: string): string {
+  return `${wrapSession(capInput(cleanText))}\n\n${languageLine(language)}`
 }

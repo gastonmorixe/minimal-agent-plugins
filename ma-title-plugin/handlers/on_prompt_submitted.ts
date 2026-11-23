@@ -31,13 +31,7 @@
  * @module handlers/on_prompt_submitted
  */
 
-import {
-  loadTitleConfig,
-  readTitleEnv,
-  resolveModelOverride,
-  resolveTitleLanguage,
-  type TitleConfig,
-} from "../lib/config.ts"
+import { loadTitleConfig, type TitleConfig } from "../lib/config.ts"
 import {
   checkEligibility,
   hasTitle,
@@ -49,6 +43,15 @@ import {
   startAttempt,
   type TitleSessionState,
 } from "../lib/eligibility.ts"
+import {
+  buildTitleRequest,
+  checkTitleResult,
+  chooseTitleModel,
+  pasteSourceFor,
+  TITLE_SAVED_EVENT,
+  type TitleSavedEvent,
+  titleLanguage,
+} from "../lib/generate.ts"
 import type {
   EventHandler,
   EventHandlerContext,
@@ -62,67 +65,22 @@ import type {
   TitleHost,
   TitleSideband,
 } from "../lib/host-types.ts"
-import { buildTitleInput } from "../lib/input.ts"
-import { selectTitleModel } from "../lib/model-select.ts"
-import { validateTitleResult } from "../lib/sanitize.ts"
-import systemPromptText from "../prompts/system.md" with { type: "text" }
+import { wrapCleanText } from "../lib/input.ts"
+import { createTitleShared, defaultTitleShared, type TitleShared } from "../lib/shared.ts"
+
+export {
+  SYSTEM_PROMPT,
+  TITLE_MAX_TOKENS,
+  TITLE_SAVED_EVENT,
+  TITLE_SCHEMA,
+  type TitleSavedEvent,
+} from "../lib/generate.ts"
 
 /** Log source and plugin id. */
 const LOG_SOURCE = "title"
 
 /** Diagnostics event name (SPEC §10, S4). */
 export const TITLE_ATTEMPT_EVENT = "title.attempt"
-
-/**
- * UI refresh event. The plugin emits it after `setTitle` wrote a title. A
- * live-area slot that names it in `refreshOn` runs at once, so the new title
- * shows without a wait for the next timer tick. The intercom footer slot
- * (`ma-intercom-plugin`, slot `intercom_beat`) does this.
- *
- * The name is a contract with the `refreshOn` list of that manifest. A test
- * in `tests/` checks that the two stay equal.
- */
-export const TITLE_SAVED_EVENT = "title.saved"
-
-/**
- * Payload of {@link TITLE_SAVED_EVENT}. It is a hint, not the source of
- * truth: core can change the text again when it writes the sidecar line. A
- * subscriber that paints the title reads it with `sessions.title(sid)`. This
- * also shows the title of a resumed session, for which no event comes.
- */
-export interface TitleSavedEvent {
-  sid: string
-  title: string
-  source: "ai"
-}
-
-/**
- * Max output tokens of the title call (SPEC §5.7 item 7). 80 title characters
- * in CJK text plus the JSON wrapper can be more than 128 tokens. The API bills
- * the real output, not the cap.
- */
-export const TITLE_MAX_TOKENS = 256
-
-/**
- * The system prompt (SPEC §5.3), inlined by a text import. It holds all the
- * rules. The user message is the `<session>` block and one language line
- * (`buildTitleInput`), the same layout as Claude Code.
- */
-export const SYSTEM_PROMPT = systemPromptText.trim()
-
-/**
- * The output schema (SPEC §5.2). A constant: the provider caches the grammar.
- * The `description` is the STE form of the SPEC text, because the STE gate
- * does not accept the SPEC words (T2 deviation 2).
- */
-export const TITLE_SCHEMA: Record<string, unknown> = Object.freeze({
-  type: "object",
-  properties: {
-    title: { type: "string", description: "A title of 2 to 6 words" },
-  },
-  required: ["title"],
-  additionalProperties: false,
-})
 
 /** One `title.attempt` diagnostics payload. */
 export interface TitleAttemptEvent {
@@ -147,6 +105,12 @@ export interface TitleAttemptEvent {
 export interface TitleHandlerOptions {
   /** Clock for `failedAt`. Default `() => new Date()`. */
   now?: () => Date
+  /**
+   * The state that the handler shares with the `SessionTitle` tool. Default:
+   * a new state for each handler. The module default handler uses
+   * `defaultTitleShared`.
+   */
+  shared?: TitleShared
 }
 
 /** A title handler with its state (tests read the state and wait for calls). */
@@ -175,26 +139,19 @@ function errCode(err: unknown): string | undefined {
   return typeof code === "string" && code !== "" ? code : undefined
 }
 
-/** Parse the result JSON; fall back to the text when the host gave no `json`. */
-function resultJson(res: LlmSideResult): unknown {
-  if (res.json !== undefined) return res.json
-  try {
-    return JSON.parse(res.text)
-  } catch {
-    return undefined
-  }
-}
-
 /** Make a handler with its own per-session state. */
 export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandlerInstance {
   const now = opts.now ?? (() => new Date())
-  const states = new Map<string, TitleSessionState>()
+  const shared = opts.shared ?? createTitleShared()
+  const states = shared.states
   const pending = new Set<Promise<void>>()
   const seenConfigLines = new Set<string>()
   /** True after the "no sideband codec" debug line (one time). */
   let noSidebandLogged = false
 
   const handler: EventHandler = (ctx) => {
+    // The tool context has no `emit`: keep the bus emit for the tool.
+    if (typeof ctx.emit === "function") shared.emit = ctx.emit
     try {
       start(ctx)
     } catch (err) {
@@ -253,6 +210,8 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       config,
       env,
       sb,
+      // Part A: a paste ref gets the text of its file (`lib/paste.ts`).
+      pasteSource: (sid: string) => pasteSourceFor(ctx.host, sid),
     }
     const pre = checkEligibility(base)
     if (!pre.eligible) {
@@ -355,25 +314,13 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     env: NodeJS.ProcessEnv,
     sb: TitleSideband,
   ): void {
-    // Model choice (SPEC §4.3): the provider title profile only. Live
-    // provider: run fact, else the boot model.
-    const models = host.models
-    const agentModel = ctx.agent?.model
-    let sessionProviderId = ctx.run?.providerId
-    if (!sessionProviderId && agentModel && models) {
-      try {
-        sessionProviderId = models.find(agentModel)?.providerId
-      } catch {
-        sessionProviderId = undefined
-      }
-    }
-    const titleEnv = readTitleEnv(env)
-    const choice = selectTitleModel({
-      models,
-      sessionProviderId,
-      override: resolveModelOverride(config, titleEnv),
-      ...(config.effort ? { effort: config.effort } : {}),
-      maxUsdPerMTokIn: config.maxUsdPerMTokIn,
+    // Model choice (SPEC §4.3): `lib/generate.ts`, shared with the tool.
+    const { choice, sessionProviderId } = chooseTitleModel({
+      models: host.models,
+      run: ctx.run,
+      agentModel: ctx.agent?.model,
+      config,
+      env,
     })
 
     // B4: no model → no call, and no attempt is used. The log line and the
@@ -401,19 +348,10 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     states.set(sid, startAttempt(states.get(sid)))
     const text = states.get(sid)?.firstText ?? ""
 
-    const req: LlmSideRequest = {
-      purpose: "title",
-      model: choice.modelId,
-      system: SYSTEM_PROMPT,
-      userText: buildTitleInput(text, sb, resolveTitleLanguage(config, titleEnv)),
-      maxTokens: TITLE_MAX_TOKENS,
-      timeoutMs: config.timeoutMs,
-      thinking: "off",
-      ...(choice.effort ? { effort: choice.effort } : {}),
-      outputSchema: { name: "session_title", schema: TITLE_SCHEMA, strict: true },
-      abortSignal: ctx.abort,
-      maxUsdPerMTokIn: config.maxUsdPerMTokIn,
-    }
+    // `firstText` is clean already (the eligibility clean step expanded the
+    // paste refs). Do not clean it again.
+    const userText = wrapCleanText(text, titleLanguage(config, env))
+    const req = buildTitleRequest(choice, userText, config, ctx.abort)
 
     track(runCall(ctx, sid, choice.providerId, req, request.bind(host.llm), meta, sb))
   }
@@ -451,7 +389,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       ev.outputTokens = res.usage?.outputTokens ?? 0
       if (res.costUsd !== undefined) ev.costUsd = res.costUsd
 
-      const valid = validateTitleResult({ stopReason: res.stopReason, json: resultJson(res) }, sb)
+      const valid = checkTitleResult(res, sb)
       if (!valid.ok) {
         if (valid.reason !== "stop-reason") ev.stopReason = "unusable"
         states.set(sid, markFailure(states.get(sid), now()))
@@ -460,8 +398,10 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
         return
       }
 
-      // Late-result guard (SPEC §6): a title (user or ai) appeared meanwhile.
-      if (hasTitle(meta.getTitle(sid))) {
+      // Late-result guard (SPEC §6): a title (user or ai) appeared meanwhile,
+      // or the `SessionTitle` tool marked the sid done (its write can still
+      // be in flight, so `getTitle` does not show it yet).
+      if (states.get(sid)?.done || hasTitle(meta.getTitle(sid))) {
         states.set(sid, markSuccess(states.get(sid)))
         debug(ctx, `drop title sid=${sid}: a title exists`)
         return
@@ -517,7 +457,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
   }
 }
 
-const instance = createTitleHandler()
+const instance = createTitleHandler({ shared: defaultTitleShared })
 
 /** The handler that the manifest names (`export: "default"`). */
 const onPromptSubmitted: EventHandler = instance.handler

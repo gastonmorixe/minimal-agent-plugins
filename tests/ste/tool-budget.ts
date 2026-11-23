@@ -56,8 +56,11 @@ export const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-ha
  * 2026-11-17 review B round 2 (part of speech, one term per item, value labels)
  * and the trim after it: 6875 to 6747 words. Every TOOL_WORDS entry is set to
  * its measured value.
+ *
+ * 2026-11-23 the new SessionTitle tool (ma-title-plugin, 112 words) ships in
+ * every golden: 6747 to 6842 words (see {@link BLOCK_RAISES}).
  */
-export const TOOL_BLOCK_WORDS = 6747
+export const TOOL_BLOCK_WORDS = 6842
 
 /** How far below {@link TOOL_BLOCK_WORDS} the tree may drift before it must be lowered. */
 export const LOOSE_WORDS = 50
@@ -115,6 +118,7 @@ export const TOOL_WORDS: Readonly<Record<string, number>> = {
   SecurityStatus: 15,
   SessionHistory: 280,
   SessionInfo: 68,
+  SessionTitle: 112,
   Skill: 153,
   Speak: 157,
   SpeakStatus: 58,
@@ -207,7 +211,14 @@ export interface BlockRaise {
  * The raise log of {@link TOOL_BLOCK_WORDS} (REVIEW-C2 W1). The total may only
  * go above its lowest committed value with a row here. Keep old rows.
  */
-export const BLOCK_RAISES: readonly BlockRaise[] = []
+export const BLOCK_RAISES: readonly BlockRaise[] = [
+  {
+    from: 6747,
+    to: 6842,
+    date: "2026-11-23",
+    reason: "SessionTitle tool, ma-title-plugin (new tool, 112 words, ships in every golden)",
+  },
+]
 
 /** The long-run per-tool target. Never reach it by dropping a fact or a rule. */
 export const TARGET = {

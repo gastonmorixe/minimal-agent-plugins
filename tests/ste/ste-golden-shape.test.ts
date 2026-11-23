@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- one comparator with its allowlist and mutation tests (the TOOL_ADDITIONS tests go away with the list) */
 /**
  * Keep the golden regeneration honest (R3 section 10.3).
  *
@@ -48,6 +49,7 @@ import {
   type SectionRemoval,
   withoutSection,
 } from "./golden-removals.ts"
+import { TOOL_ADDITIONS, type ToolAddition, withoutAddedTools } from "./golden-tool-additions.ts"
 import { PLUGINS_ROOT } from "./surfaces.ts"
 
 /** Golden folder, relative to the plugins root. */
@@ -503,22 +505,26 @@ function atPath(value: unknown, path: string): unknown {
 /**
  * Every problem of one golden against its merge-base version: each `shape`,
  * `value` and `tag` difference that no {@link PROSE_LEAVES} entry allows, and
- * a changed contract-leaf list ({@link contractLeaves}).
+ * a changed contract-leaf list ({@link contractLeaves}). Before the compare,
+ * each new tool that {@link TOOL_ADDITIONS} lists is removed from the current
+ * golden ({@link withoutAddedTools}).
  *
  * @param name - Golden file name.
  * @param before - The merge-base golden.
- * @param after - The current golden.
+ * @param current - The current golden.
  * @param leaves - The allowlist (a test passes its own).
  * @returns One line per problem. Empty when the golden is clean.
  */
 export function goldenProblems(
   name: string,
   before: unknown,
-  after: unknown,
+  current: unknown,
   leaves: readonly ProseLeaf[] = PROSE_LEAVES,
   additions: readonly SchemaAddition[] = SCHEMA_ADDITIONS,
   removals: readonly SectionRemoval[] = SECTION_REMOVALS,
+  toolAdditions: readonly ToolAddition[] = TOOL_ADDITIONS,
 ): string[] {
+  const after = withoutAddedTools(before, current, toolAdditions)
   const out: string[] = []
   for (const d of leafDiff(before, after)) {
     if (d.kind === "string") continue
@@ -1076,6 +1082,61 @@ describe("golden leaf diff: SCHEMA_ADDITIONS (intended schema change)", () => {
   test("with no allowlist, the same change fails (the entry is what allows it)", () => {
     const after = golden({ id: typedId, order: typedOrder }, { id: ID, order: ORDER })
     expect(goldenProblems("g.json", before, after, PROSE_LEAVES, []).length).toBe(2)
+  })
+})
+
+describe("golden leaf diff: TOOL_ADDITIONS (intended new tool)", () => {
+  const NEW_TOOLS: readonly ToolAddition[] = [
+    { name: "NewTool", reason: "test", date: "2026-11-23" },
+  ]
+  const problems = (before: unknown, after: unknown, tools = NEW_TOOLS) =>
+    goldenProblems("g.json", before, after, PROSE_LEAVES, SCHEMA_ADDITIONS, SECTION_REMOVALS, tools)
+  const tool = (name: string, enumValues = ["a", "b"]) => ({
+    name,
+    description: `The ${name} tool.`,
+    input_schema: {
+      type: "object",
+      properties: { mode: { type: "string", enum: enumValues } },
+      required: ["mode"],
+    },
+  })
+  const golden = (tools: unknown[]) => ({ requests: [{ tools, messages: [] }] })
+  const before = golden([tool("Alpha"), tool("Omega")])
+
+  test("an added listed tool passes, also in the middle of the array", () => {
+    expect(problems(before, golden([tool("Alpha"), tool("NewTool"), tool("Omega")]))).toEqual([])
+    expect(problems(before, golden([tool("Alpha"), tool("Omega"), tool("NewTool")]))).toEqual([])
+  })
+
+  test("kills 'any tool': an added tool that is not listed fails", () => {
+    const after = golden([tool("Alpha"), tool("Other"), tool("Omega")])
+    expect(problems(before, after)).toContain("shape $.requests[0].tools.length")
+    expect(problems(before, after)).toContain("contract +$.requests[0].tools[1].name=Other")
+  })
+
+  test("kills 'hides other changes': a listed tool plus a change of another tool fails", () => {
+    const after = golden([tool("Alpha", ["a", "c"]), tool("NewTool"), tool("Omega")])
+    expect(problems(before, after)).toEqual([
+      "value $.requests[0].tools[0].input_schema.properties.mode.enum[1]",
+      'contract -$.requests[0].tools[0].input_schema.properties.mode.enum=["a","b"]',
+      'contract +$.requests[0].tools[0].input_schema.properties.mode.enum=["a","c"]',
+    ])
+  })
+
+  test("kills 'hides a reorder': a listed tool plus a new order of the other tools fails", () => {
+    const after = golden([tool("Omega"), tool("NewTool"), tool("Alpha")])
+    expect(problems(before, after).length).toBeGreaterThan(0)
+  })
+
+  test("a listed tool that the merge base has already is compared as usual", () => {
+    const withNew = golden([tool("Alpha"), tool("NewTool")])
+    const changed = golden([tool("Alpha"), tool("NewTool", ["x"])])
+    expect(problems(withNew, changed).length).toBeGreaterThan(0)
+  })
+
+  test("with no allowlist, the same change fails (the entry is what allows it)", () => {
+    const after = golden([tool("Alpha"), tool("NewTool"), tool("Omega")])
+    expect(problems(before, after, []).length).toBeGreaterThan(0)
   })
 })
 

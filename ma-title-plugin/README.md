@@ -156,6 +156,21 @@ $0.001). To stop this, set `maxUsdPerMTokIn` to `0.5`.
   It does not send an assistant text, a tool output or image data.
 - It removes the internal tags with the session codec (`ctx.sideband`).
   With no codec (an old host), the plugin makes no title.
+- A paste ref (a large paste that `ma-paste-plugin` keeps in a session file)
+  becomes the text of its file, before the plugin removes the other tags. The
+  plugin reads `<sessionsDir>/<sid>.files/paste/<id>.txt` with the `paths`
+  capability. It sends a maximum of 600 characters of each paste, then the
+  marker `(rest of the pasted text omitted)`. The id must have 5 characters
+  from `[0-9a-z]`, the sid must have no `/`, no `\` and no `..`, and the
+  path must stay in the paste folder of the sid. When a check fails, or the
+  file is missing, the ref becomes the marker `(pasted text)`. The plugin
+  reads only a regular file: a symlink, a folder or a FIFO gives the marker.
+  The length checks do not count the marker, so a prompt that is only a ref
+  with no file makes no title.
+- It removes each saved prompt token (`&name`, see `ma-prompts-plugin`). A
+  token points to a template of instructions that the user uses again. It is
+  not the subject of the session. The plugin removes the tokens before it
+  puts the paste text in, so an `&word` in a paste stays.
 - The request has the same layout as Claude Code. The system prompt has the
   rules (`prompts/system.md`). The user message is the text in a
   `<session>` block, then one language line:
@@ -216,10 +231,65 @@ line for each session, not one for each prompt. The event has these fields: `sid
 error, `stopReason` is `exception`. When the index write has an error,
 `stopReason` is `write-failed`.
 
+## The `SessionTitle` tool
+
+The plugin gives the model one tool, `SessionTitle`. The model calls it
+only when the user asks to set or change the title, or when the subject of
+the session changed a lot. It does not call it to read the title.
+
+The input has two optional fields:
+
+1. `title`: the new title. With it, the tool writes this title and sends no
+   request.
+2. `lock`: `true` writes a `user` title. An automatic title does not replace
+   a `user` title. The default is `false`, which writes an `ai` title.
+   `lock: true` needs a `title`. Without it, the tool gives an error.
+
+With `title`, the tool operates in all run modes, also when the plugin is
+off.
+
+Without `title`, the tool makes a new title with the same model, request and
+checks as the automatic path. It sends the first user message and the last 3
+user messages of the session, with the same clean steps (paste refs, `&name`
+tokens, internal tags). It does not stop when a title exists. This path
+makes a request, so it gives an error and sends no request when the plugin is
+off (`plugins.title.enabled: false` or `MINIMAL_AGENT_TITLE=0`).
+
+Without `title`, the tool makes a maximum of one request in 10 minutes for
+each session (`REGENERATE_COOLDOWN_MS`). The time starts when the request
+starts, so a failed request also counts. A call in that time sends no request.
+It gives an error with the title and tells the model to give `title`. A call
+with `title` has no limit. The plugin keeps the time in memory only, so a new
+process starts with no time.
+
+The first part is the first prompt that the automatic handler kept, when it
+has one. The session messages hold the full body of each saved prompt
+(`ma-prompts-plugin` puts the body in place of `&name` before the turn). Thus
+the tool reads the prompt library (`<agent home>/prompts/*.md` and
+`<cwd>/.agents/prompts/*.md`, read only, a maximum of 500 files of 64 KB) and
+removes each body from the message text.
+
+With `lock: false` and a `user` title, the tool writes nothing. Core does
+not let an `ai` title replace a `user` title. The tool result tells the model
+this.
+
+Before the write, the tool marks the session as done for the automatic
+handler. Thus the handler makes no more requests for that session in this
+process, and it drops a result that comes during the write. After a write,
+the tool sends `title.saved`. The result is
+`Title: <title> (source: ai)` or `(source: user)`, with the title that core
+saved (core removes tags and keeps a maximum of 80 characters).
+
+A tool context has no `emit`. The tool sends `title.saved` with the bus
+`emit` of the last `prompt.submitted` call (`lib/shared.ts`). Before the
+first prompt, the tool sends no event, and the footer shows the title at its
+next timer tick.
+
 ## The `title.saved` event
 
 After the plugin wrote a title, it sends one `title.saved` event on the same
-bus. The event has the fields `sid`, `title` and `source` (always `ai`). It is
+bus. The event has the fields `sid`, `title` and `source` (`ai`, or `user` for
+a title that the tool locked). It is
 a signal to refresh a screen. The plugin sends it after the write, and only
 when it wrote a title. An error in the emit does not change the result of the
 write.
@@ -232,12 +302,17 @@ session has a title but sends no event, so a slot must keep its timer.
 
 ## Files
 
-- `manifest.json`: the event `prompt.submitted` with `"host": true`, and the
-  capabilities `llm:complete`, `sessions:meta`, `sessions:read` (the parent
-  title of a fork), `models:read`.
-- `handlers/on_prompt_submitted.ts`: the handler.
-- `lib/`: the configuration, the prompt checks, the input limit, the title
-  checks and the model selection.
+- `manifest.json`: the event `prompt.submitted` with `"host": true`, the
+  tool `SessionTitle`, and the capabilities `llm:complete`, `sessions:meta`,
+  `sessions:read` (the parent title of a fork, the messages for the tool),
+  `models:read` and `paths` (the paste files).
+- `handlers/on_prompt_submitted.ts`: the automatic handler.
+- `handlers/session_title_tool.ts`: the `SessionTitle` tool.
+- `lib/`: the configuration, the prompt checks, the input limit, the paste
+  refs (`paste.ts`), the saved prompt bodies (`prompt-library.ts`), the
+  title request (`generate.ts`), the state that the
+  handler and the tool share (`shared.ts`), the title checks and the model
+  selection.
 - `prompts/system.md`: the system prompt of the title request.
 - `e2e/title.e2e.ts`: one request to the provider. It operates only with
   `E2E=1` and `MA_E2E_CREDENTIAL_NAME=<credential-name>`.

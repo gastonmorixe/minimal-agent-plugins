@@ -23,15 +23,38 @@
  * @module lib/host-types
  */
 
+/** Slice of the host `SidebandQuery`: only the kind filter. */
+export interface SidebandQuerySlice {
+  kinds?: readonly string[]
+}
+
+/** Slice of the host `SidebandNode` that the paste expand reads. */
+export interface SidebandNodeView {
+  kind: string
+  attrs: Record<string, string>
+  body?: string
+  /** True when the node had no end part. */
+  selfClosing: boolean
+}
+
 /**
  * The slice of the session sideband API (`ctx.sideband`) that the plugin
- * reads. Mirror of `SidebandApi.ready`, `has` and `strip`
+ * reads. Mirror of `SidebandApi.ready`, `has`, `replace` and `strip`
  * (`plugin-api/src/types/sideband.ts`).
  */
 export interface TitleSideband {
   /** False when no codec is loaded. Then `strip` cannot find a tag. */
   readonly ready: boolean
-  has(text: string): boolean
+  has(text: string, q?: SidebandQuerySlice): boolean
+  /**
+   * Replace each node that matches `q`. `fn` gives the new text, `""` to
+   * remove the node, or `undefined` to keep it.
+   */
+  replace(
+    text: string,
+    fn: (n: SidebandNodeView) => string | undefined,
+    q?: SidebandQuerySlice,
+  ): string
   strip(text: string, q?: { lenient?: boolean; keepBody?: boolean }): string
 }
 
@@ -233,12 +256,43 @@ export interface SessionMetaViewSlice {
   readonly parentSid: string | null
 }
 
+/**
+ * Slice of the host `SessionContentBlock`. The plugin reads only the text
+ * blocks. A block with `sideband` set is an internal block, not user text.
+ */
+export interface SessionContentBlockSlice {
+  type: string
+  text?: string
+  sideband?: { kind: string; origin?: string }
+}
+
+/** Slice of the host `SessionMessage`. */
+export interface SessionMessageSlice {
+  role: "user" | "assistant" | "system"
+  content: string | readonly SessionContentBlockSlice[]
+}
+
+/** Slice of the host `SessionRecordsView` (`sessions.records`). */
+export interface SessionRecordsSlice {
+  readonly sid: string
+  /** Model-facing messages. */
+  readonly messages: readonly SessionMessageSlice[]
+}
+
 /** `sessions:read` slice. Mirror of the host `SessionsReadApi`. */
 export interface SessionsReadApi {
   /** The saved title (user, AI, then derived), or null. */
   title(sid: string): string | null
   /** Session metadata. Null when the sid is not known. */
   meta(sid: string): Promise<SessionMetaViewSlice | null>
+  /** All records and the messages of a session. Optional in the slice: the auto path does not use it. */
+  records?(sid: string): Promise<SessionRecordsSlice | null>
+}
+
+/** `paths` slice. Mirror of the host `PathsApi`. */
+export interface PathsApi {
+  /** The sessions directory (`<home>/sessions`). */
+  sessionsDir(): string
 }
 
 /** The host slice that the title handler reads (`ctx.host`). */
@@ -248,6 +302,8 @@ export interface TitleHost {
   readonly models?: ModelsReadApi
   /** `sessions:read`. Optional: older hosts. */
   readonly sessions?: SessionsReadApi
+  /** `paths`: the plugin reads the paste files with it. Optional: older hosts. */
+  readonly paths?: PathsApi
 }
 
 /** Slice of the host `AgentContext`. */
@@ -270,6 +326,39 @@ export interface EventHandlerContext<TPayload = unknown> {
   run?: RunModeFact
   /** The session sideband API. Optional: older hosts. */
   sideband?: TitleSideband
+}
+
+/** The trigger of a tool handler. Mirror of the `tool` arm of the host `TUITrigger`. */
+export interface ToolTrigger {
+  type: "tool"
+  name: string
+  input: Record<string, unknown>
+  tool_use_id: string
+}
+
+/**
+ * Slice of the host `TUIContext` (`ToolHandlerContext`) that the
+ * `SessionTitle` tool reads. A tool context has no `emit`.
+ */
+export interface TitleToolContext {
+  trigger: ToolTrigger | { type: string }
+  /** The cwd of the agent. The tool reads the project prompt dir under it. */
+  cwd?: string
+  env: Record<string, string>
+  abort: AbortSignal
+  log: PluginLogger
+  agent?: AgentContext
+  host?: TitleHost
+  run?: RunModeFact
+  sideband?: TitleSideband
+}
+
+/** The `tool_result` arm of the host `TUIResult`. */
+export interface TitleToolResult {
+  kind: "tool_result"
+  content: string
+  is_error?: boolean
+  displayHeader?: string
 }
 
 /** An event handler. Mirror of the host `EventHandler`. */
