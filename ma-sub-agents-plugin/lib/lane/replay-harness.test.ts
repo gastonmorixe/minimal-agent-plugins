@@ -289,7 +289,7 @@ describe("fixture scrub check", () => {
     for (const file of scanned) {
       const text = readFileSync(file, "utf-8")
       const hits: string[] = []
-      for (const needle of ["/Users/", "gas" + "ton", "sk-", "Bearer ", "api_key"]) {
+      for (const needle of ["/Users/", ["gas", "ton"].join(""), "sk-", "Bearer ", "api_key"]) {
         if (text.includes(needle)) hits.push(needle)
       }
       // The user name counts only as a path segment or an address part. A bare
