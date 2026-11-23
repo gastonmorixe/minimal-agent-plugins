@@ -1,7 +1,7 @@
 /**
  * SessionInfo reads the LIVE target of the session (`ctx.queryTarget`): the
  * credential and the effort after a `/provider`, `/model` or `/effort`.
- * Alex (11-18): after "/provider anthropic:anthropic-plan-oauth-3" the
+ * Owner (11-18): after "/provider anthropic:anthropic-plan-oauth-3" the
  * model asked "what changed?" and SessionInfo showed no credential, so the
  * model could not see the switch.
  */

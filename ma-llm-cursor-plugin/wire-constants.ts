@@ -8,7 +8,7 @@
  */
 
 /**
- * Env policy (Alex):
+ * Env policy (owner):
  * - Auth tokens/keys: NEVER read process.env for secrets. Only MA auth store via
  *   apiKeyAuth / oauthLogin (core manages credentials).
  * - Optional non-secret overrides: MA_CURSOR_* only (not bare CURSOR_*).

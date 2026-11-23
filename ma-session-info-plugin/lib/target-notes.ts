@@ -5,7 +5,7 @@
  * credential, provider, model or effort of the next request. The user sees a
  * line in the transcript, but the model sees nothing, because the commands
  * are quiet for the model. So a model that is asked "what changed?" can only
- * guess. Alex (11-18): after "/provider anthropic:anthropic-plan-oauth-3"
+ * guess. Owner (11-18): after "/provider anthropic:anthropic-plan-oauth-3"
  * the model answered "Nothing changed in the model, provider or effort".
  *
  * How:

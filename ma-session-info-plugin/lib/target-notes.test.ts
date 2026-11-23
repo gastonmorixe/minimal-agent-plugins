@@ -18,7 +18,7 @@ const A = {
 }
 
 describe("the model is told about a target switch at its next turn", () => {
-  it("the owner's case: a credential switch with the same model names the credential", () => {
+  it("Owner's case: a credential switch with the same model names the credential", () => {
     recordSwitch({ from: A, to: { ...A, credentialName: "plan-3" } })
     expect(takeSwitchNote()).toBe(
       'The user switched the target of this session since your last turn: credential "plan-2" -> "plan-3". ' +

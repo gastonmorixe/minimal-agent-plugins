@@ -434,7 +434,7 @@ describe("buildAnthropicRequestBody — quota probe", () => {
       generation: { maxOutputTokens: 1 },
       stream: false,
       metadata: {
-        accountId: "00000000-0000-4000-8000-000000000001",
+        accountId: "be906821-0000-4000-8000-7f6160180d01",
         deviceId: "0000000000000000000000000000000000000000000000000000000000000000",
         sessionId: "00000000-0000-4000-8000-0000000000b1",
       },
@@ -460,7 +460,7 @@ describe("buildAnthropicRequestBody — quota probe", () => {
     expect(body.metadata?.user_id).toBeDefined()
     expect(JSON.parse(body.metadata!.user_id!)).toEqual({
       device_id: "0000000000000000000000000000000000000000000000000000000000000000",
-      account_uuid: "00000000-0000-4000-8000-000000000001",
+      account_uuid: "be906821-0000-4000-8000-7f6160180d01",
       session_id: "00000000-0000-4000-8000-0000000000b1",
     })
   })
@@ -518,7 +518,7 @@ describe("buildAnthropicRequestBody — Opus 4.8 conversation", () => {
       ],
       effort: "high",
       metadata: {
-        accountId: "00000000-0000-4000-8000-000000000001",
+        accountId: "be906821-0000-4000-8000-7f6160180d01",
         deviceId: "0000000000000000000000000000000000000000000000000000000000000000",
         sessionId: "00000000-0000-4000-8000-0000000000b1",
       },

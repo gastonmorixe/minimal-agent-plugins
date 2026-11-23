@@ -6,14 +6,14 @@
 #
 #   cd native && fastlane mac build
 #
-# Dev signing only (Apple Development identity, team TEAMID0000). No notarization:
+# Dev signing only (Apple Development identity, team from MA_CU_TEAM_ID). No notarization:
 # a locally-built app needs none (Gatekeeper only blocks quarantined downloads).
 
 default_platform(:mac)
 
-TEAM_ID   = "TEAMID0000"
-IDENTITY  = "Apple Development: Example Developer (CERTID0000)"
-BUNDLE_ID = "dev.example.computeruse"
+TEAM_ID   = ENV.fetch("MA_CU_TEAM_ID", "TEAMID0000")
+IDENTITY  = ENV.fetch("MA_CU_SIGN_IDENTITY", "Apple Development: Example Developer (CERTID0000)")
+BUNDLE_ID = ENV.fetch("MA_CU_BUNDLE_ID", "dev.example.computeruse")
 SCHEME    = "ComputerUseHelper"
 PROJECT   = "ComputerUseHelper.xcodeproj"
 

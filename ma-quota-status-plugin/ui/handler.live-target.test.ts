@@ -1,7 +1,7 @@
 /**
  * The footer follows a target switch during the session (`/model`,
  * `/effort`, `/provider`). The host writes the live target to the env
- * (cli `startup/live-target.ts`) and sends `target.didSwitch`. Alex saw
+ * (cli `startup/live-target.ts`) and sends `target.didSwitch`. the owner saw
  * the footer keep the boot effort ("haiku-5.5:low" while the session ran at
  * effort high) and the boot model until the next response.
  */

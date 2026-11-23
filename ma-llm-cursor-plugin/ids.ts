@@ -1,7 +1,7 @@
 /**
  * Machine / client ids for checksum + Cursor request headers.
  *
- * Auth policy (Alex): never keychain, never bare CURSOR_* token envs.
+ * Auth policy (owner): never keychain, never bare CURSOR_* token envs.
  * Credentials only via MA provider auth store. This module is fingerprint only.
  *
  * Optional non-secret overrides use MA_CURSOR_* only.

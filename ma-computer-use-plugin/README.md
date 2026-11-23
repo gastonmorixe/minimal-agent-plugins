@@ -28,7 +28,7 @@ agent ──Computer tool──► handlers/computer.ts (bun, thin client)
 ```
 
 The daemon is a **signed `.app`** because macOS TCC keys permission grants on the
-code signature (bundle id `dev.example.computeruse` + team `TEAMID0000`). A
+code signature (bundle id (`MA_CU_BUNDLE_ID`) + team (`MA_CU_TEAM_ID`)). A
 long-running signed helper is granted Accessibility + Screen Recording **once** and
 the grant survives rebuilds. The bun side never touches AX/CGEvent, so `bun` never
 appears in the privacy panes (which would mis-attribute the grant and silently fail).
@@ -42,9 +42,10 @@ IPC is HTTP-over-unix-socket, mirroring `ma-chrome-cdp-plugin`, so the bun clien
 - macOS 14+ (ScreenCaptureKit floor; built/tested on macOS 26).
 - Xcode + command-line tools, `xcodegen`, `bun`. `fastlane` optional (CI path).
 - An Apple **Development** signing identity in the login keychain for the local
-  Debug build. This repo's build is wired to
-  `Apple Development: Example Developer (CERTID0000)` / team `TEAMID0000` (see
-  `native/project.yml`). Change those two values to use a different account.
+  Debug build. The build reads its signing values from env vars (placeholder defaults, so set them for a real build):
+  `MA_CU_TEAM_ID` (Apple team id, default `TEAMID0000`), `MA_CU_BUNDLE_ID` (default
+  `dev.example.computeruse`) and `MA_CU_SIGN_IDENTITY` (Fastlane / notarize identity, e.g.
+  `Apple Development: Your Name (CERTID)`). See `native/project.yml`.
 - For the **notarized** build (optional, `cud notarize`): a **Developer ID
   Application** identity in the keychain + App Store Connect API key credentials
   (see "Notarization" below).

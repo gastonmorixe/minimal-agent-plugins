@@ -1,2 +1,2 @@
-app_identifier("dev.example.computeruse")
-team_id("TEAMID0000")
+app_identifier(ENV.fetch("MA_CU_BUNDLE_ID", "dev.example.computeruse"))
+team_id(ENV.fetch("MA_CU_TEAM_ID", "TEAMID0000"))

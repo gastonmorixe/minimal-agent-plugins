@@ -212,7 +212,7 @@ export const BLOCK_RAISES: readonly BlockRaise[] = []
 /** The long-run per-tool target. Never reach it by dropping a fact or a rule. */
 export const TARGET = {
   words: 250,
-  owner: "Alex",
+  owner: "Example",
   note: "Cut the tools above 250 words by hand, one tool per change, and lower its TOOL_WORDS entry with each cut.",
 } as const
 

@@ -38,6 +38,15 @@ const PACKAGE_DIR = dirname(HERE)
 const NATIVE_DIR = `${PACKAGE_DIR}/native`
 const SOCK = socketPath()
 const LOG = logPath()
+
+/** Signing values for xcodegen (`${MA_CU_*}` in native/project.yml). Placeholder defaults. */
+function signingEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    MA_CU_TEAM_ID: process.env.MA_CU_TEAM_ID ?? "TEAMID0000",
+    MA_CU_BUNDLE_ID: process.env.MA_CU_BUNDLE_ID ?? "dev.example.computeruse",
+  }
+}
 const BIN = helperBinary(PACKAGE_DIR)
 const APP = helperApp(PACKAGE_DIR)
 
@@ -91,7 +100,7 @@ const cmd = process.argv[2] ?? ""
 switch (cmd) {
   case "build": {
     console.log("Generating Xcode project (xcodegen)…")
-    const gen = spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit" })
+    const gen = spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit", env: signingEnv() })
     if (gen.status !== 0) {
       console.error("xcodegen failed")
       process.exit(gen.status ?? 1)
@@ -125,7 +134,7 @@ switch (cmd) {
     // Release build (no get-task-allow) + Developer ID sign + notarytool + staple.
     // Reads notary creds from the private env file (see sign-and-notarize.sh).
     console.log("Generating Xcode project (xcodegen)…")
-    if (spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit" }).status !== 0) {
+    if (spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit", env: signingEnv() }).status !== 0) {
       console.error("xcodegen failed")
       process.exit(1)
     }

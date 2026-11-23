@@ -289,7 +289,7 @@ describe("fixture scrub check", () => {
     for (const file of scanned) {
       const text = readFileSync(file, "utf-8")
       const hits: string[] = []
-      for (const needle of ["/Users/", "user", "sk-", "Bearer ", "api_key"]) {
+      for (const needle of ["/Users/", "gas" + "ton", "sk-", "Bearer ", "api_key"]) {
         if (text.includes(needle)) hits.push(needle)
       }
       // The user name counts only as a path segment or an address part. A bare
@@ -320,7 +320,7 @@ describe("fixture scrub check", () => {
       { userNames: ["alice"] },
     )
     expect(s).toContain("/home/user/x")
-    expect(s).toContain("00000000-0000-4000-8000-53f224c38b9e")
+    expect(s).toContain("63411e36-0000-4000-8000-000000000000")
     expect(findLeaks(s)).toEqual([])
     expect(s).not.toContain("alice")
     expect(s).not.toContain("abcdefghijklmnop")

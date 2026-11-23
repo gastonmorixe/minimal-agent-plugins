@@ -113,7 +113,7 @@ description: Bring a messy local git tree back to a clean, reviewable state. Use
 license: MIT
 allowed-tools: Bash(git:*) Read
 metadata:
-  author: user
+  author: example
 ---
 
 # git-tidy

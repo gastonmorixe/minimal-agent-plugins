@@ -16,7 +16,7 @@ import { describe, expect, test } from "bun:test"
 import { extractModelFromSignature, looksLikeAnthropicModelId } from "./signature-model.ts"
 
 // ---------------------------------------------------------------------------
-// Real captures from 00000000-0000-4000-8000-0000000000b2.jsonl
+// Real captures from 583e8dcc-0000-4000-8000-c70911e4e665.jsonl
 // Each is the first ~250 chars of the base64 signature, which is more
 // than enough to contain field 6 (model_id) since it appears at the start.
 // ---------------------------------------------------------------------------

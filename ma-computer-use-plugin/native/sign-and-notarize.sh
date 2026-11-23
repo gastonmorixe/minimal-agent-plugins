@@ -13,7 +13,7 @@ set -euo pipefail
 
 APP="${1:-$(cd "$(dirname "$0")" && pwd)/build/ComputerUseHelper.app}"
 CREDS="${2:-/Users/user/Projects/minimal-agent/private/20260606-161000-notarization-secrets/notary-credentials.env}"
-IDENTITY="${CUD_SIGN_IDENTITY:-Developer ID Application: Example Developer (TEAMID0000)}"
+IDENTITY="${MA_CU_SIGN_IDENTITY:-${CUD_SIGN_IDENTITY:-Developer ID Application: Example Developer (TEAMID0000)}}"
 ENTITLEMENTS="$(cd "$(dirname "$0")" && pwd)/Sources/ComputerUseHelper.release.entitlements"
 
 echo "==> App:          $APP"

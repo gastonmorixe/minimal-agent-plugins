@@ -2,7 +2,7 @@
  * SessionInfo reads the identity of the session from the handler context
  * (`ctx.agent`, `ctx.env`), not from the process env.
  *
- * Alex (11-18), the web host: two sessions in one server process. In the
+ * Owner (11-18), the web host: two sessions in one server process. In the
  * cursor session SessionInfo showed "Session: unknown" and the boot default
  * model (deepseek-v4.1-flash / opencode-zen), because it read
  * `process.env.MINIMAL_AGENT_SESSION_ID`, which only the CLI sets.
