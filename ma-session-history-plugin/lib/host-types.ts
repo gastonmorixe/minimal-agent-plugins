@@ -215,9 +215,15 @@ export interface BlobsReadApi {
 // Context slice (what the handler reads off TUIContext)
 // ---------------------------------------------------------------------------
 
+/** paths slice: the sessions dir (`<home>/sessions`), for the paste files of a dump. */
+export interface PathsSlice {
+  sessionsDir(): string
+}
+
 export interface PluginHostSlice {
   readonly sessions?: SessionsReadApi
   readonly blobs?: BlobsReadApi
+  readonly paths?: PathsSlice
 }
 
 export interface ToolTriggerSlice {

@@ -5,7 +5,7 @@
  * Fully decoupled: this module imports NOTHING from the host (`src/...`).
  * Everything it needs arrives through the handler context — the frozen
  * capability host on `ctx.host` (granted namespaces: `sessions:read`,
- * `blobs:read`, declared in ../manifest.json) and the trigger input. The
+ * `blobs:read`, `paths`, declared in ../manifest.json) and the trigger input. The
  * context/host shapes are re-declared locally in `../lib/host-types.ts`
  * (structural typing; see that module's header for the contract).
  *
@@ -20,6 +20,7 @@
 import { dumpMarkdown, dumpXml } from "../lib/dump-from-data.ts"
 import type { HandlerContextSlice, PluginHostSlice, ToolResultSlice } from "../lib/host-types.ts"
 import { parseInput, type SessionHistoryRequest } from "../lib/input.ts"
+import { pasteFileReader } from "../lib/paste-refs.ts"
 import {
   renderList,
   renderMeta,
@@ -162,7 +163,7 @@ async function run(
     case "dump": {
       const sid = await resolveSid(req.sid, sessions, cwd, self)
       if (!sid.ok) return err(sid.error)
-      const d = await dumpOf(sessions, sid.sid, req.format, sb)
+      const d = await dumpOf(sessions, sid.sid, req.format, sb, host.paths)
       if (!d) return err(unknownSid(sid.sid))
       const warn =
         d.bytes > DUMP_WARN_BYTES
@@ -178,16 +179,22 @@ async function run(
   }
 }
 
-/** Build the dump from raw records. */
+/**
+ * Build the dump from raw records. With the `paths` grant, each paste ref in
+ * user text shows the text of its file (read only). Without it, the ref
+ * shows as missing.
+ */
 async function dumpOf(
   sessions: NonNullable<PluginHostSlice["sessions"]>,
   sid: string,
   format: "markdown" | "xml",
   sb: HandlerContextSlice["sideband"],
+  paths: PluginHostSlice["paths"],
 ): Promise<{ text: string; bytes: number } | null> {
   const v = await sessions.records(sid)
   if (!v) return null
-  const text = format === "xml" ? dumpXml(v, sb) : dumpMarkdown(v, sb)
+  const opts = paths ? { readPaste: pasteFileReader(paths.sessionsDir(), v.sid) } : {}
+  const text = format === "xml" ? dumpXml(v, sb, opts) : dumpMarkdown(v, sb, opts)
   return { text, bytes: Buffer.byteLength(text, "utf8") }
 }
 

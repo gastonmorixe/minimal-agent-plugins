@@ -13,9 +13,37 @@
 import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 import type { BlockLike, SessionRecordsView } from "./host-types.ts"
+import { type PasteReader, pasteMarkdown, pasteXml } from "./paste-refs.ts"
 
-/** The slice of the session sideband API that the scrub uses. */
-export type DumpSideband = Pick<SidebandApi, "ready" | "render" | "trailing">
+/** The slice of the session sideband API that the scrub and the paste refs use. */
+export type DumpSideband = Pick<SidebandApi, "ready" | "render" | "trailing" | "find">
+
+/** Dump options. */
+export interface DumpOptions {
+  /**
+   * Reads the file of a paste ref (`pasteFileReader`). Without it, a paste
+   * ref in user text shows as `[Paste #<id> missing]`.
+   */
+  readPaste?: PasteReader
+}
+
+/** A reader that finds no file: each paste ref shows as missing. */
+const NO_PASTE: PasteReader = () => null
+
+/** The sideband for the paste step, or undefined with no codec. */
+function pasteSb(sb: DumpSideband | undefined): DumpSideband | undefined {
+  return sb?.ready ? sb : undefined
+}
+
+/** User text with each paste ref as its label and file text (markdown). */
+function userTextMarkdown(text: string, sb: DumpSideband | undefined, opts: DumpOptions): string {
+  return pasteMarkdown(text, pasteSb(sb), opts.readPaste ?? NO_PASTE)
+}
+
+/** User text with each paste ref as a `paste` element (XML content). */
+function userTextXml(text: string, sb: DumpSideband | undefined, opts: DumpOptions): string {
+  return pasteXml(text, pasteSb(sb), opts.readPaste ?? NO_PASTE, escapeXml)
+}
 
 const MIN_BASE64_CHARS = 256
 
@@ -155,7 +183,11 @@ function blockAsMarkdown(block: BlockLike, sb: DumpSideband | undefined): string
 }
 
 /** Markdown dump. Same text as the host dump. */
-export function dumpMarkdown(v: SessionRecordsView, sb: DumpSideband | undefined): string {
+export function dumpMarkdown(
+  v: SessionRecordsView,
+  sb: DumpSideband | undefined,
+  opts: DumpOptions = {},
+): string {
   let out = ""
   if (v.meta) {
     out += `# Session: ${v.meta.sid}\n`
@@ -166,10 +198,17 @@ export function dumpMarkdown(v: SessionRecordsView, sb: DumpSideband | undefined
   for (const msg of v.messages) {
     const role = msg.role === "user" ? "User" : "Assistant"
     out += `## ${role}\n\n`
+    const isUser = msg.role === "user"
     if (typeof msg.content === "string") {
-      out += `${msg.content}\n\n`
+      out += `${isUser ? userTextMarkdown(msg.content, sb, opts) : msg.content}\n\n`
     } else {
-      for (const block of msg.content) out += `${blockAsMarkdown(block, sb)}\n\n`
+      for (const block of msg.content) {
+        const md =
+          isUser && block.type === "text"
+            ? userTextMarkdown(block.text ?? "", sb, opts)
+            : blockAsMarkdown(block, sb)
+        out += `${md}\n\n`
+      }
     }
   }
   return `${out.trim()}\n`
@@ -221,7 +260,11 @@ function blockAsXml(block: BlockLike, indent: number, sb: DumpSideband | undefin
 }
 
 /** XML dump. Same text as the host dump. */
-export function dumpXml(v: SessionRecordsView, sb: DumpSideband | undefined): string {
+export function dumpXml(
+  v: SessionRecordsView,
+  sb: DumpSideband | undefined,
+  opts: DumpOptions = {},
+): string {
   let out = ""
   if (v.meta) {
     out += `<session id="${escapeXml(v.meta.sid)}" model="${escapeXml(v.meta.model)}" date="${escapeXml(v.meta.createdAt)}">\n`
@@ -230,10 +273,18 @@ export function dumpXml(v: SessionRecordsView, sb: DumpSideband | undefined): st
   }
   for (const msg of v.messages) {
     out += `  <turn role="${escapeXml(msg.role)}">\n`
+    const isUser = msg.role === "user"
     if (typeof msg.content === "string") {
-      out += `    <text>${escapeXml(msg.content)}</text>\n`
+      const body = isUser ? userTextXml(msg.content, sb, opts) : escapeXml(msg.content)
+      out += `    <text>${body}</text>\n`
     } else {
-      for (const block of msg.content) out += `${blockAsXml(block, 4, sb)}\n`
+      for (const block of msg.content) {
+        const xml =
+          isUser && block.type === "text"
+            ? `    <text>${userTextXml(block.text ?? "", sb, opts)}</text>`
+            : blockAsXml(block, 4, sb)
+        out += `${xml}\n`
+      }
     }
     out += `  </turn>\n`
   }

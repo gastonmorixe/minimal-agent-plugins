@@ -3,7 +3,7 @@
   "name": "Session History",
   "version": "0.1.0",
   "description": "Contributes the SessionHistory tool: paginated, filterable read access to any saved session's transcript (this one or a past one) from the append-only JSONL store. Window records, list or search sessions, filter tool calls by name, read spilled tool-output blobs, or produce the full markdown or XML dump. The tool reads only through the ctx.host capability surface (sessions:read, blobs:read). Distinct from SessionInfo, which reports the current run's live state.",
-  "capabilities": ["sessions:read", "blobs:read"],
+  "capabilities": ["sessions:read", "blobs:read", "paths"],
   "headless": {
     "tools": [
       {

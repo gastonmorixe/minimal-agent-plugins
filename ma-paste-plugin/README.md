@@ -31,11 +31,27 @@ Text paste refs on the sideband codec (manifest id `paste`).
 Config (`~/.minimal-agent/config.jsonc`):
 
 ```jsonc
-{ "plugins": { "paste": { "collapse": { "minLines": 0, "minBytes": 0 } } } }
+{
+  "plugins": {
+    "paste": {
+      "collapse": { "minLines": 4, "minBytes": 1200, "floorBytes": 120 },
+      "lineNumbers": true
+    }
+  }
+}
 ```
 
-`0/0` (the default) makes a ref for each non-empty paste. Otherwise a paste
-becomes a ref when it reaches one of the two limits.
+The values above are the defaults. A paste becomes a ref when it has
+`minLines` lines or more, or `minBytes` bytes or more. A paste below
+`floorBytes` stays literal text, so 4 very short lines (a short list, a few
+commands) do not become a ref. A limit of 0 is off. `0/0/0` makes a ref for
+each non-empty paste.
+
+`lineNumbers` (default true): the model gets the paste body with a line
+number (from 1) and a TAB before each line (`N<TAB>line`), and the block has
+`numbered="true"`. A final LF gets no number. The stored file and the `bytes`
+attr stay the exact paste. The too-large check uses the size of the numbered
+body. Each send reads this option, so a change has effect on the next send.
 
 The text hook and the chip need CLI support (`ctx.paste`, `ctx.chips`). The
 CLI gives `ctx.paste` only to a plugin whose manifest `permissions` has
@@ -46,8 +62,13 @@ an older CLI, `ui/setup.ts` does nothing, but refs that exist still expand.
 
 The model gets each paste as one `paste` block of the codec. The ref in the
 stored message is self-closing; on the wire it becomes the full block with
-the `id`, `bytes` and `lines` attrs, and the body is the paste text. The tag
-describes itself.
+the `id`, `bytes`, `lines` and `numbered` attrs, and the body is the paste
+text. The tag describes itself. The codec makes the tag syntax, so this
+README does not show it. For a paste of 40 lines and 1.5 kB, the block has
+`id`, `bytes="1500"`, `lines="40"` and `numbered="true"`. Its body starts
+with `1<TAB>` and the first line, and ends with `40<TAB>` and the last line.
+
+A paste below the collapse limits goes in as literal text, with no tag.
 
 The plugin sends NO system prompt text about pastes, on purpose: a prompt
 block costs tokens on every request, also when the conversation has no

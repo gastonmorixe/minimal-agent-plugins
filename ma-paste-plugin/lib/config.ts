@@ -5,11 +5,25 @@
  * `MINIMAL_AGENT_CONFIG`), key path `plugins.paste` (the manifest id, S-1).
  *
  * ```jsonc
- * { "plugins": { "paste": { "collapse": { "minLines": 0, "minBytes": 0 } } } }
+ * {
+ *   "plugins": {
+ *     "paste": {
+ *       "collapse": { "minLines": 4, "minBytes": 1200, "floorBytes": 120 },
+ *       "lineNumbers": true
+ *     }
+ *   }
+ * }
  * ```
  *
  * A paste becomes a ref when it has `minLines` lines or more, OR `minBytes`
- * bytes or more. The default `0/0` makes a ref for each non-empty paste (Q1).
+ * bytes or more. A paste below `floorBytes` never becomes a ref, so 4 very
+ * short lines stay literal text. A limit of 0 is off. A field that is not
+ * set keeps its default, so `floorBytes` stays 120 when only `minLines` and
+ * `minBytes` are set. `0/0/0` makes a ref for each non-empty paste.
+ *
+ * `lineNumbers` (default true): the model gets the paste body with a line
+ * number (from 1) and a TAB before each line. A final LF gets no number.
+ *
  * Lenient: a missing file, bad JSONC or a wrong type gives the default. The
  * loader never throws.
  *
@@ -24,20 +38,31 @@ import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 /** The collapse threshold. */
 export interface CollapseConfig {
-  /** Make a ref at this line count or more. */
+  /** Make a ref at this line count or more. 0 is off. */
   minLines: number
-  /** Make a ref at this UTF-8 byte count or more. */
+  /** Make a ref at this UTF-8 byte count or more. 0 is off. */
   minBytes: number
+  /** Never make a ref below this UTF-8 byte count. 0 is off. */
+  floorBytes: number
 }
 
 /** The plugin config. */
 export interface PasteConfig {
   collapse: CollapseConfig
+  /** Number the lines of the body that the model gets. */
+  lineNumbers: boolean
 }
 
-/** The built-in defaults: a ref for each non-empty paste. */
+/** The default collapse limits. */
+export const DEFAULT_COLLAPSE: Readonly<CollapseConfig> = Object.freeze({
+  minLines: 4,
+  minBytes: 1200,
+  floorBytes: 120,
+})
+
+/** The built-in defaults. */
 export function defaultPasteConfig(): PasteConfig {
-  return { collapse: { minLines: 0, minBytes: 0 } }
+  return { collapse: { ...DEFAULT_COLLAPSE }, lineNumbers: true }
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -53,11 +78,13 @@ export function parsePasteConfig(raw: unknown): PasteConfig {
   const out = defaultPasteConfig()
   if (!isPlainObject(raw) || !isPlainObject(raw.plugins)) return out
   const cfg = raw.plugins.paste
-  if (!isPlainObject(cfg) || !isPlainObject(cfg.collapse)) return out
-  const minLines = count(cfg.collapse.minLines)
-  const minBytes = count(cfg.collapse.minBytes)
-  if (minLines !== undefined) out.collapse.minLines = minLines
-  if (minBytes !== undefined) out.collapse.minBytes = minBytes
+  if (!isPlainObject(cfg)) return out
+  if (typeof cfg.lineNumbers === "boolean") out.lineNumbers = cfg.lineNumbers
+  if (!isPlainObject(cfg.collapse)) return out
+  for (const k of ["minLines", "minBytes", "floorBytes"] as const) {
+    const v = count(cfg.collapse[k])
+    if (v !== undefined) out.collapse[k] = v
+  }
   return out
 }
 
@@ -82,10 +109,12 @@ export function loadPasteConfig(env: NodeJS.ProcessEnv = process.env): PasteConf
 }
 
 /**
- * True when the paste must become a ref. With `0/0` each paste collapses.
- * Otherwise the paste must reach one of the two limits that is not 0.
+ * True when the paste must become a ref. Below `floorBytes`: never. With
+ * `minLines` and `minBytes` both 0: always. Otherwise the paste must reach
+ * one of the two limits that is not 0.
  */
 export function shouldCollapse(c: CollapseConfig, lines: number, bytes: number): boolean {
+  if (c.floorBytes > 0 && bytes < c.floorBytes) return false
   if (c.minLines === 0 && c.minBytes === 0) return true
   return (c.minLines > 0 && lines >= c.minLines) || (c.minBytes > 0 && bytes >= c.minBytes)
 }
