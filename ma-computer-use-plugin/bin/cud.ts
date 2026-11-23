@@ -100,7 +100,11 @@ const cmd = process.argv[2] ?? ""
 switch (cmd) {
   case "build": {
     console.log("Generating Xcode project (xcodegen)…")
-    const gen = spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit", env: signingEnv() })
+    const gen = spawnSync("xcodegen", ["generate"], {
+      cwd: NATIVE_DIR,
+      stdio: "inherit",
+      env: signingEnv(),
+    })
     if (gen.status !== 0) {
       console.error("xcodegen failed")
       process.exit(gen.status ?? 1)
@@ -134,7 +138,10 @@ switch (cmd) {
     // Release build (no get-task-allow) + Developer ID sign + notarytool + staple.
     // Reads notary creds from the private env file (see sign-and-notarize.sh).
     console.log("Generating Xcode project (xcodegen)…")
-    if (spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit", env: signingEnv() }).status !== 0) {
+    if (
+      spawnSync("xcodegen", ["generate"], { cwd: NATIVE_DIR, stdio: "inherit", env: signingEnv() })
+        .status !== 0
+    ) {
       console.error("xcodegen failed")
       process.exit(1)
     }
