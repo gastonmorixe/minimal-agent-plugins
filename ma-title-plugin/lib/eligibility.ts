@@ -42,7 +42,7 @@ import type {
   TitleSideband,
 } from "./host-types.ts"
 import { cleanPromptText, codePointLength, hasMaTag } from "./input.ts"
-import { PASTE_MISSING_MARKER, type PasteSource } from "./paste.ts"
+import { PASTE_MISSING_MARKER } from "./paste.ts"
 import { backoffMs } from "./retry.ts"
 
 /**
@@ -213,13 +213,11 @@ export interface EligibilityInput {
   config: TitleConfig
   env: NodeJS.ProcessEnv
   args?: TitleArgs
-  /** `ctx.sideband`. It strips and finds the internal tags. */
-  sb: TitleSideband
   /**
-   * Where to read the paste files of the captured sid. Without it, each
-   * self-closing paste ref gives the marker `(pasted text)`.
+   * `ctx.sideband`. It strips and finds the internal tags, and its `display`
+   * gives the text of each paste ref of the captured sid.
    */
-  pasteSource?: (sid: string) => PasteSource | undefined
+  sb: TitleSideband
   /** The clock for the backoff check. Default: the time of the call. */
   now?: Date
 }
@@ -280,8 +278,9 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
   }
 
   // Rules 7 and 8 come before the clean step: they are cheap, and the clean
-  // step can read paste files. Each rule stops the prompt with no attempt, so
-  // the order changes only the reason in the log, not the result.
+  // step can read paste files (through the display API). Each rule stops the
+  // prompt with no attempt, so the order changes only the reason in the log,
+  // not the result.
   // Rule 7: only typed user text. A missing `source` (old core) stops too.
   if (payload.source !== "user") return { eligible: false, rule: 7, reason: "source-not-user", sid }
 
@@ -297,7 +296,7 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
   }
 
   const rawText = typeof payload.text === "string" ? payload.text : ""
-  let text = cleanPromptText(rawText, input.sb, { source: input.pasteSource?.(sid) })
+  let text = cleanPromptText(rawText, input.sb, { sid })
 
   // Rule 5: slash command. A simple `/name args` line gives its args as the
   // title text, when the args pass rule 6. Each other slash line stops.

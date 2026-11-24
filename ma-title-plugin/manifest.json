@@ -3,7 +3,7 @@
   "name": "Session Title",
   "version": "0.1.0",
   "description": "The plugin makes a short title for a session. It sends the first prompt of the session one time to a model of the session provider with a low cost. It sends a maximum of 2000 characters. It saves the title in the session index. The plugin is off by default. To start it, set MINIMAL_AGENT_TITLE=1, or add the mode to plugins.title.modes in ~/.minimal-agent/config.jsonc.\n\nTo stop it, set MINIMAL_AGENT_TITLE=0.",
-  "capabilities": ["llm:complete", "sessions:meta", "sessions:read", "models:read", "paths"],
+  "capabilities": ["llm:complete", "sessions:meta", "sessions:read", "models:read"],
   "permissions": ["hooks:prompt.submitted"],
   "headless": {
     "tools": [

@@ -1,8 +1,7 @@
-import { resolve } from "node:path"
-
 import { describe, expect, test } from "bun:test"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
+import { fakeDisplay, noDisplay } from "../__fixtures__/display-sideband.ts"
 
 import { defaultTitleConfig, type TitleConfig } from "./config.ts"
 import {
@@ -423,60 +422,46 @@ describe("state helpers with no attempt (B2, B4)", () => {
 describe("paste refs in the eligibility check (M2, m7)", () => {
   const PASTE_REF = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
 
-  /** A paste source that counts the reads. `text` null = a missing file. */
-  function counted(text: string | null): {
-    reads: () => number
-    pasteSource: NonNullable<EligibilityInput["pasteSource"]>
-  } {
-    let n = 0
-    return {
-      reads: () => n,
-      pasteSource: (sid) => ({
-        sessionsDir: resolve("/sessions-root"),
-        sid,
-        readFile: () => {
-          n++
-          return text
-        },
-      }),
-    }
+  /** A sideband whose paste display gives `text` (null: `missing: true`). It counts the calls. */
+  function counted(text: string | null) {
+    return fakeDisplay(sb, () =>
+      text === null ? { label: "paste", missing: true } : { label: "paste", text },
+    )
   }
 
   test("a prompt that is only a paste ref with no file is not eligible (M2)", () => {
-    const { pasteSource } = counted(null)
-    const r = checkEligibility(input({ pasteSource, payload: payload({ text: PASTE_REF }) }))
+    const r = checkEligibility(input({ sb: counted(null), payload: payload({ text: PASTE_REF }) }))
     expect(r.eligible).toBe(false)
     if (!r.eligible) expect(r.reason).toBe("synthetic-ma-only")
-    const none = checkEligibility(input({ payload: payload({ text: ` ${PASTE_REF} ` }) }))
+    const old = noDisplay(sb)
+    const none = checkEligibility(input({ sb: old, payload: payload({ text: ` ${PASTE_REF} ` }) }))
     expect(none.eligible ? "" : none.reason).toBe("synthetic-ma-only")
   })
 
-  test("a short text with a missing paste is too short (M2)", () => {
-    const { pasteSource } = counted(null)
+  test("a short text with a missing paste is too short: the length rule ignores the marker (M2)", () => {
     const r = checkEligibility(
-      input({ pasteSource, payload: payload({ text: `hi ${PASTE_REF}` }) }),
+      input({ sb: counted(null), payload: payload({ text: `hi ${PASTE_REF}` }) }),
     )
     expect(r.eligible ? "" : r.reason).toBe("too-short")
   })
 
-  test("a paste ref with a readable file is eligible", () => {
-    const { pasteSource } = counted("a long pasted text about the build")
-    const r = checkEligibility(input({ pasteSource, payload: payload({ text: PASTE_REF }) }))
+  test("a paste ref with a display text is eligible, and the call has the captured sid", () => {
+    const shown = counted("a long pasted text about the build")
+    const r = checkEligibility(input({ sb: shown, payload: payload({ text: PASTE_REF }) }))
     expect(r).toMatchObject({ eligible: true, text: "a long pasted text about the build" })
+    expect(shown.calls[0]?.opts).toMatchObject({ mode: "full", sid: SID })
   })
 
-  test("rule 7 source and rule 8 attempts read no paste file (m7)", () => {
-    const c = counted("a long pasted text about the build")
+  test("rule 7 source and rule 8 attempts make no display call (m7)", () => {
+    const shown = counted("a long pasted text about the build")
     const text = `status of ${PASTE_REF}`
     const bySource = checkEligibility(
-      input({ pasteSource: c.pasteSource, payload: payload({ text, source: "expand" }) }),
+      input({ sb: shown, payload: payload({ text, source: "expand" }) }),
     )
     expect(bySource.eligible ? "" : bySource.reason).toBe("source-not-user")
     const state = { ...initialTitleState(), attempts: MAX_ATTEMPTS }
-    const byAttempts = checkEligibility(
-      input({ pasteSource: c.pasteSource, state, payload: payload({ text }) }),
-    )
+    const byAttempts = checkEligibility(input({ sb: shown, state, payload: payload({ text }) }))
     expect(byAttempts.eligible ? "" : byAttempts.reason).toBe("max-attempts")
-    expect(c.reads()).toBe(0)
+    expect(shown.calls).toHaveLength(0)
   })
 })

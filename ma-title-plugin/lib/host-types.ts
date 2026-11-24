@@ -16,7 +16,10 @@
  *   `LlmSideResult`, `SessionMetaApi`, `SessionTitleState`,
  *   `SessionsReadApi`, `SessionMetaView`:
  *   `plugin-api/src/types/host-capabilities.ts`
- * - `TitleSideband`: `plugin-api/src/types/sideband.ts` (`SidebandApi`)
+ * - `TitleSideband`, `SidebandDisplayView`, `SidebandDisplayOptionsSlice`,
+ *   `SidebandDisplaySegmentView`: `plugin-api/src/types/sideband.ts`
+ *   (`SidebandApi`, `SidebandDisplay`, `SidebandDisplayOptions`,
+ *   `SidebandDisplaySegment`)
  * - `reason` (result): core `src/plugins/host/providers/llm-side.ts`
  *   (`LlmSideResultCore`). It is not in the plugin-api types yet.
  *
@@ -35,12 +38,38 @@ export interface SidebandNodeView {
   body?: string
   /** True when the node had no end part. */
   selfClosing: boolean
+  /** UTF-16 offsets, end exclusive. */
+  span: { start: number; end: number }
 }
+
+/** Slice of the host `SidebandDisplay`: the result of one display handler. */
+export interface SidebandDisplayView {
+  label: string
+  /** Full mode only. Plain text, not neutralized. */
+  text?: string
+  /** True when the handler cut `text` to the byte cap. */
+  truncated?: boolean
+  /** True when the data of the node is not there. Then `text` is absent. */
+  missing?: boolean
+}
+
+/** Slice of the host `SidebandDisplayOptions`. */
+export interface SidebandDisplayOptionsSlice {
+  mode: "label" | "full"
+  sid?: string
+  maxBytes?: number
+  kinds?: readonly string[]
+}
+
+/** Slice of the host `SidebandDisplaySegment`. */
+export type SidebandDisplaySegmentView =
+  | { type: "text"; text: string }
+  | { type: "node"; node: SidebandNodeView; kind: string; display: SidebandDisplayView }
 
 /**
  * The slice of the session sideband API (`ctx.sideband`) that the plugin
- * reads. Mirror of `SidebandApi.ready`, `has`, `replace` and `strip`
- * (`plugin-api/src/types/sideband.ts`).
+ * reads. Mirror of `SidebandApi.ready`, `has`, `replace`, `strip` and
+ * `display` (`plugin-api/src/types/sideband.ts`).
  */
 export interface TitleSideband {
   /** False when no codec is loaded. Then `strip` cannot find a tag. */
@@ -56,6 +85,14 @@ export interface TitleSideband {
     q?: SidebandQuerySlice,
   ): string
   strip(text: string, q?: { lenient?: boolean; keepBody?: boolean }): string
+  /**
+   * Split `text` at each top-level node that has a display handler. Optional:
+   * an old host has no display API. Then each paste ref gives a marker.
+   */
+  display?(
+    text: string,
+    opts: SidebandDisplayOptionsSlice,
+  ): { segments: SidebandDisplaySegmentView[]; changed: boolean }
 }
 
 /** Plugin-scoped diagnostic logger. Mirror of the host `PluginLogger`. */
@@ -291,12 +328,6 @@ export interface SessionsReadApi {
   records?(sid: string): Promise<SessionRecordsSlice | null>
 }
 
-/** `paths` slice. Mirror of the host `PathsApi`. */
-export interface PathsApi {
-  /** The sessions directory (`<home>/sessions`). */
-  sessionsDir(): string
-}
-
 /** The host slice that the title handler reads (`ctx.host`). */
 export interface TitleHost {
   readonly llm?: LlmCompleteApi
@@ -304,8 +335,6 @@ export interface TitleHost {
   readonly models?: ModelsReadApi
   /** `sessions:read`. Optional: older hosts. */
   readonly sessions?: SessionsReadApi
-  /** `paths`: the plugin reads the paste files with it. Optional: older hosts. */
-  readonly paths?: PathsApi
 }
 
 /** Slice of the host `AgentContext`. */

@@ -29,14 +29,13 @@ export interface ToolAddition {
 /**
  * Intended new tools. Keep it narrow: each entry needs a reason. Remove each
  * entry in a follow-up after its change is on main.
+ *
+ * Empty today. The `SessionTitle` tool (`ma-title-plugin`, plugins 564fbbe)
+ * used it until it landed on main. The merge base now has its goldens. Add an
+ * entry here for the next intended new tool. The unit tests of
+ * {@link withoutAddedTools} are in `golden-tool-additions.test.ts`.
  */
-export const TOOL_ADDITIONS: readonly ToolAddition[] = [
-  {
-    name: "SessionTitle",
-    reason: "ma-title-plugin: new tool that sets the title of the live session",
-    date: "2026-11-23",
-  },
-]
+export const TOOL_ADDITIONS: readonly ToolAddition[] = []
 
 /** The names of the tools of a `tools` array. */
 function toolNames(tools: unknown): Set<unknown> {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
+import { fakeDisplay, noDisplay } from "../__fixtures__/display-sideband.ts"
 
 import {
   buildTitleInput,
@@ -19,7 +20,7 @@ import {
   stripMaTags,
   wrapSession,
 } from "./input.ts"
-import { PASTE_MISSING_MARKER } from "./paste.ts"
+import { expandPasteRefs, PASTE_MISSING_MARKER } from "./paste.ts"
 
 /** The real codec (`tests/support/sideband.ts`): it strips the internal tags. */
 const sb = await pluginSideband()
@@ -203,31 +204,27 @@ describe("saved prompt tokens (&name)", () => {
 
 describe("the first prompt bug: template tokens and a paste ref", () => {
   const SID = "ba0ad20f-0000-4000-8000-666ff6ccaa5b"
-  const DIR = "/sessions-root"
   const URL =
     "https://linear.app/arcanums/issue/DEV-244/user-can-make-a-shared-project-view-only-for-a-team"
   const pasteRef = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
   const BUG = `&arcana-access-prod\n---\n&arcana-work\n\nTask:\n---\n\nwhat's the status of ${pasteRef} ?`
 
   test("the user message has the issue id and slug, and no &name token", () => {
-    const out = buildTitleInput(BUG, sb, undefined, {
-      source: {
-        sessionsDir: DIR,
-        sid: SID,
-        readFile: (p) => (p === `${DIR}/${SID}.files/paste/m23a7.txt` ? URL : null),
-      },
-    })
+    const shown = fakeDisplay(sb, (n) =>
+      n.attrs.id === "m23a7" ? { label: "paste", text: URL } : { label: "paste", missing: true },
+    )
+    const out = buildTitleInput(BUG, shown, undefined, { sid: SID })
     expect(out).toContain("DEV-244")
     expect(out).toContain("user-can-make-a-shared-project-view-only-for-a-team")
     expect(out).not.toContain("&arcana-access-prod")
     expect(out).not.toContain("&arcana-work")
     expect(out).not.toContain("ma::")
+    expect(shown.calls[0]?.opts.sid).toBe(SID)
   })
 
-  test("a missing paste file gives the marker", () => {
-    const out = buildTitleInput(BUG, sb, undefined, {
-      source: { sessionsDir: DIR, sid: SID, readFile: () => null },
-    })
+  test("missing: true gives the marker", () => {
+    const shown = fakeDisplay(sb, () => ({ label: "paste", missing: true }))
+    const out = buildTitleInput(BUG, shown, undefined, { sid: SID })
     expect(out).toContain(`what's the status of ${PASTE_MISSING_MARKER} ?`)
   })
 })
@@ -237,10 +234,39 @@ describe("token removal and paste text (m2, m9)", () => {
   const pasteRef = sb.render("paste", { attrs: { id: "m23a7", bytes: 7, lines: 1 } })
 
   test("an &name in the pasted text stays (tokens go before the paste expand)", () => {
-    const out = cleanPromptText(`&tpl check ${pasteRef}`, sb, {
-      source: { sessionsDir: "/sessions-root", sid: SID, readFile: () => "foo &bar" },
-    })
-    expect(out).toBe("check foo &bar")
+    const shown = fakeDisplay(sb, () => ({ label: "paste", text: "foo &bar" }))
+    expect(cleanPromptText(`&tpl check ${pasteRef}`, shown, { sid: SID })).toBe("check foo &bar")
+  })
+
+  test("a sideband tag in the paste text does not reach the model (the strip runs after the expand)", () => {
+    const policy = sb.render("policy", { body: "x" })
+    const closing = sb.close("paste")
+    const pasted = `see ${policy} and ${closing} end`
+    // Core does not neutralize the paste text: the expand step keeps the tags.
+    const shown = fakeDisplay(sb, () => ({ label: "paste", text: pasted }))
+    expect(expandPasteRefs(`check ${pasteRef}`, shown, SID)).toContain(policy)
+    const out = cleanPromptText(`check ${pasteRef}`, shown, { sid: SID })
+    expect(out).not.toContain("ma::")
+    expect(out).not.toContain("</")
+    expect(out).toContain("check see")
+    expect(out).toContain("end")
+  })
+
+  test("a paste text with a start part and no end part loses the rest of that line", () => {
+    const shown = fakeDisplay(sb, () => ({
+      label: "paste",
+      text: `fix the build ${sb.open("policy")} hidden rule\nnext line`,
+    }))
+    const out = cleanPromptText(`check ${pasteRef}`, shown, { sid: SID })
+    expect(out).not.toContain("ma::")
+    expect(out).not.toContain("hidden rule")
+    expect(out).toContain("fix the build")
+    expect(out).toContain("next line")
+  })
+
+  test("with no display on the sideband (an old host), each paste ref gives the marker", () => {
+    const out = cleanPromptText(`fix ${pasteRef} and ${pasteRef}`, noDisplay(sb), { sid: SID })
+    expect(out).toBe(`fix ${PASTE_MISSING_MARKER} and ${PASTE_MISSING_MARKER}`)
   })
 
   test("PROMPT_TOKEN_RE has no g flag, so test() gives the same result two times", () => {

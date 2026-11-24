@@ -51,7 +51,6 @@ import {
   buildTitleRequest,
   checkTitleResult,
   chooseTitleModel,
-  pasteSourceFor,
   TITLE_SAVED_EVENT,
   type TitleSavedEvent,
   titleLanguage,
@@ -220,8 +219,6 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       config,
       env,
       sb,
-      // Part A: a paste ref gets the text of its file (`lib/paste.ts`).
-      pasteSource: (sid: string) => pasteSourceFor(ctx.host, sid),
       now: now(),
     }
     const pre = checkEligibility(base)

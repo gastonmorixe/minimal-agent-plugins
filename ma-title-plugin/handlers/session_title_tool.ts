@@ -52,7 +52,6 @@ import {
   buildTitleRequest,
   checkTitleResult,
   chooseTitleModel,
-  pasteSourceFor,
   TITLE_SAVED_EVENT,
   type TitleSavedEvent,
   titleLanguage,
@@ -231,7 +230,7 @@ async function generateTitle(
     return `Cannot read the session: ${errText(err)}`
   }
   const text = conversationText(view?.messages ?? [], sb, {
-    source: pasteSourceFor(host, sid),
+    sid,
     bodies: parts.bodies,
     ...(parts.firstText ? { firstText: parts.firstText } : {}),
   })

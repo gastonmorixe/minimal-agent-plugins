@@ -5,48 +5,42 @@
  * and puts a short ref node in the prompt text. The paste plugin expands the
  * ref only for the main model (`message.willSend`). The `prompt.submitted`
  * text that the title plugin gets still has the ref. Thus the title plugin
- * reads the file itself and puts the head of its text in place of the ref.
+ * asks core for the text of each ref: `ctx.sideband.display` in full mode,
+ * with the sid and a byte cap. Core calls the display handler of the paste
+ * plugin. That handler checks the id and the sid and reads the file. The
+ * title plugin reads no file and knows no path.
  *
- * The file path is `<sessionsDir>/<sid>.files/paste/<id>.txt`. The
- * `sessions:files` API of the host reads only the files of the calling plugin,
- * so the plugin reads the path with the `paths` capability. The checks are
- * strict: the id must agree with the paste id grammar, the sid must not hold a
- * path part, and the resolved path must stay in the paste dir of the sid.
- *
- * The functions are pure. The caller gives the file reader. The default
- * reader {@link readPasteFile} reads a maximum of {@link PASTE_READ_BYTES}
- * bytes.
+ * Rules:
+ * - The call asks only for the paste kind. Each other node stays in the text
+ *   as it is, so the tag strip after this step removes it. The display label
+ *   of another kind never goes to the model.
+ * - The display text is not neutralized: it can hold a sideband tag. The
+ *   caller must run the tag strip after this step (`cleanPromptText`).
+ * - A ref with a body gives its body. A ref with `missing: true`, with no
+ *   text, with no display, or a host with no `display` (an old host) gives
+ *   {@link PASTE_MISSING_MARKER}.
+ * - Each text has a maximum of {@link PASTE_MAX_CHARS} code points, then
+ *   {@link PASTE_CUT_MARKER}. A text that core marks `truncated` also gets
+ *   the marker.
  *
  * @module lib/paste
  */
-
-import { closeSync, constants, fstatSync, openSync, readSync } from "node:fs"
-import { isAbsolute, resolve, sep } from "node:path"
 
 import type { SidebandNodeView, TitleSideband } from "./host-types.ts"
 
 /** The sideband kind of a paste ref (declared by `ma-paste-plugin`). */
 export const PASTE_KIND = "paste"
 
-/**
- * The rule for a paste id: 5 chars from `[0-9a-z]`. A copy of `PASTE_ID_RE`
- * in `ma-paste-plugin/lib/id.ts`. A plugin does not import another plugin.
- */
-export const PASTE_ID_RE = /^[0-9a-z]{5}$/
-
-/** The plugin id of the paste plugin: the name of its session file dir. */
-export const PASTE_PLUGIN_DIR = "paste"
-
 /** Max code points of the text of one paste. */
 export const PASTE_MAX_CHARS = 600
 
 /**
- * Max bytes that {@link readPasteFile} reads. A UTF-8 code point has 4 bytes
- * or fewer, and CRLF gives one code point for 2 bytes. Thus this many bytes
- * always give more than {@link PASTE_MAX_CHARS} code points when the file is
- * longer.
+ * The byte cap of one display call (`maxBytes`). A UTF-8 code point has 4
+ * bytes or fewer, and CRLF gives one code point for 2 bytes. Thus this many
+ * bytes always give more than {@link PASTE_MAX_CHARS} code points when the
+ * file is longer.
  */
-export const PASTE_READ_BYTES = 8192
+export const PASTE_DISPLAY_BYTES = 8192
 
 /** The text after the head of a long paste. */
 export const PASTE_CUT_MARKER = "(rest of the pasted text omitted)"
@@ -54,112 +48,66 @@ export const PASTE_CUT_MARKER = "(rest of the pasted text omitted)"
 /** The text in place of a ref with no readable file. */
 export const PASTE_MISSING_MARKER = "(pasted text)"
 
-/** Where to find the paste files of one session. */
-export interface PasteSource {
-  /** The sessions dir of the host (`PathsApi.sessionsDir()`). Must be absolute. */
-  sessionsDir: string
-  /** The captured sid. */
-  sid: string
-  /**
-   * Read the text of a file. Gives null when the file is missing. A throw
-   * counts as a missing file.
-   */
-  readFile: (path: string) => string | null
-}
-
-/** True when `id` is a valid paste id. */
-export function isPasteId(id: unknown): id is string {
-  return typeof id === "string" && PASTE_ID_RE.test(id)
-}
-
-/**
- * True when `sid` is safe as one path part: not empty, no `/`, no `\`, no
- * `..` and no NUL.
- */
-export function isSafeSid(sid: unknown): sid is string {
-  if (typeof sid !== "string" || sid.trim() === "") return false
-  return !/[/\\\0]/.test(sid) && !sid.includes("..")
-}
-
-/**
- * The path of the file of paste `id` in session `sid`, or undefined when a
- * check fails: a bad id, a bad sid, a dir that is not absolute, or a path out
- * of the paste dir of the sid.
- */
-export function pastePath(sessionsDir: string, sid: string, id: string): string | undefined {
-  if (!isPasteId(id) || !isSafeSid(sid)) return undefined
-  if (typeof sessionsDir !== "string" || sessionsDir === "" || !isAbsolute(sessionsDir)) {
-    return undefined
-  }
-  const dir = resolve(sessionsDir, `${sid}.files`, PASTE_PLUGIN_DIR)
-  const path = resolve(dir, `${id}.txt`)
-  return path.startsWith(`${dir}${sep}`) ? path : undefined
-}
-
-/**
- * Read the start of a file as UTF-8 text: a maximum of
- * {@link PASTE_READ_BYTES} bytes. Gives null when the file is missing, when
- * the path is a symlink (`O_NOFOLLOW`), when it is not a regular file (a
- * dir, a FIFO, a device) or when a read fails. `O_NONBLOCK` makes sure that
- * the open of a FIFO does not stop the event loop. Both flags exist on Linux
- * and macOS.
- */
-export function readPasteFile(path: string): string | null {
-  let fd: number | undefined
-  try {
-    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
-    if (!fstatSync(fd).isFile()) return null
-    const buf = Buffer.alloc(PASTE_READ_BYTES)
-    const n = readSync(fd, buf, 0, PASTE_READ_BYTES, 0)
-    return buf.subarray(0, n).toString("utf8")
-  } catch {
-    return null
-  } finally {
-    if (fd !== undefined) {
-      try {
-        closeSync(fd)
-      } catch {
-        /* the read result stays good */
-      }
-    }
-  }
-}
-
 /** Change CRLF and CR to LF, then keep the head of a long text. */
-function capPaste(text: string): string {
+function capPaste(text: string, truncated: boolean): string {
   const points = Array.from(text.replace(/\r\n?/g, "\n"))
-  if (points.length <= PASTE_MAX_CHARS) return points.join("")
+  if (points.length <= PASTE_MAX_CHARS && !truncated) return points.join("")
   return `${points.slice(0, PASTE_MAX_CHARS).join("")}\n${PASTE_CUT_MARKER}`
 }
 
-/** The text of one ref node. */
-function pasteText(node: SidebandNodeView, source: PasteSource | undefined): string {
-  if (!node.selfClosing) return capPaste(node.body ?? "")
-  const id = node.attrs.id
-  if (!source || !isPasteId(id)) return PASTE_MISSING_MARKER
-  const path = pastePath(source.sessionsDir, source.sid, id)
-  if (path === undefined) return PASTE_MISSING_MARKER
-  let text: string | null
-  try {
-    text = source.readFile(path)
-  } catch {
-    text = null
-  }
-  return typeof text === "string" ? capPaste(text) : PASTE_MISSING_MARKER
+/** The text of one paste node with no display: its body, else the marker. */
+function fallbackText(node: SidebandNodeView): string {
+  return node.selfClosing ? PASTE_MISSING_MARKER : capPaste(node.body ?? "", false)
+}
+
+/** Put the marker (or the body) in place of each paste ref. */
+function withoutDisplay(text: string, sb: TitleSideband): string {
+  return sb.replace(text, fallbackText, { kinds: [PASTE_KIND] })
 }
 
 /**
- * Put the text of each paste ref of `text` in place of the ref. A ref with a
- * body (an expanded ref) gives its body. A self-closing ref gives the head of
- * its file. A ref with a bad id, a bad sid, no source or no readable file
- * gives {@link PASTE_MISSING_MARKER}. Each text has a maximum of
- * {@link PASTE_MAX_CHARS} code points, then {@link PASTE_CUT_MARKER}.
+ * Put the text of each paste ref of `text` in place of the ref. See the
+ * module doc for the rules.
+ *
+ * @param text - The prompt text, after the `&name` tokens are gone.
+ * @param sb - The session sideband API.
+ * @param sid - The captured sid. Absent: the handler has no file to read.
+ * @returns The text with no paste ref. Other nodes stay.
  */
-export function expandPasteRefs(
-  text: string,
-  sb: TitleSideband,
-  source: PasteSource | undefined,
-): string {
+export function expandPasteRefs(text: string, sb: TitleSideband, sid: string | undefined): string {
   if (!sb.has(text, { kinds: [PASTE_KIND] })) return text
-  return sb.replace(text, (node) => pasteText(node, source), { kinds: [PASTE_KIND] })
+  const display = sb.display
+  if (typeof display !== "function") return withoutDisplay(text, sb)
+  let segments: ReturnType<NonNullable<TitleSideband["display"]>>["segments"]
+  try {
+    segments = display.call(sb, text, {
+      mode: "full",
+      ...(sid !== undefined ? { sid } : {}),
+      maxBytes: PASTE_DISPLAY_BYTES,
+      kinds: [PASTE_KIND],
+    }).segments
+  } catch {
+    return withoutDisplay(text, sb)
+  }
+  const out: string[] = []
+  for (const seg of segments) {
+    if (seg.type === "text") {
+      // A paste node with no display stays in a text segment. Only the
+      // source text is parsed again, never the inserted paste text.
+      out.push(withoutDisplay(seg.text, sb))
+      continue
+    }
+    if (seg.kind !== PASTE_KIND) {
+      // A host that ignores `kinds`: keep the source text for the tag strip.
+      out.push(text.slice(seg.node.span.start, seg.node.span.end))
+      continue
+    }
+    const d = seg.display
+    if (d.missing === true || typeof d.text !== "string") {
+      out.push(fallbackText(seg.node))
+      continue
+    }
+    out.push(capPaste(d.text, d.truncated === true))
+  }
+  return out.join("")
 }

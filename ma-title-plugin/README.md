@@ -190,15 +190,18 @@ $0.001). To stop this, set `maxUsdPerMTokIn` to `0.5`.
   With no codec (an old host), the plugin makes no title.
 - A paste ref (a large paste that `ma-paste-plugin` keeps in a session file)
   becomes the text of its file, before the plugin removes the other tags. The
-  plugin reads `<sessionsDir>/<sid>.files/paste/<id>.txt` with the `paths`
-  capability. It sends a maximum of 600 characters of each paste, then the
-  marker `(rest of the pasted text omitted)`. The id must have 5 characters
-  from `[0-9a-z]`, the sid must have no `/`, no `\` and no `..`, and the
-  path must stay in the paste folder of the sid. When a check fails, or the
-  file is missing, the ref becomes the marker `(pasted text)`. The plugin
-  reads only a regular file: a symlink, a folder or a FIFO gives the marker.
-  The length checks do not count the marker, so a prompt that is only a ref
-  with no file makes no title.
+  plugin reads no file and knows no path. It calls the core display API
+  (`ctx.sideband.display`, full mode, with the sid and a cap of 8192 bytes)
+  for the paste kind only. Core calls the display handler of
+  `ma-paste-plugin`, which checks the id and the sid and reads the file.
+  The plugin sends a maximum of 600 characters of each paste, then the
+  marker `(rest of the pasted text omitted)`. A text that core marks as cut
+  also gets this marker. When the file is missing, the handler fails, or
+  the host has no display API (an old host), the ref becomes the marker
+  `(pasted text)`. The paste text is not neutralized, so the plugin removes
+  the internal tags after it puts the paste text in. The length checks do
+  not count the marker, so a prompt that is only a ref with no file makes
+  no title.
 - It removes each saved prompt token (`&name`, see `ma-prompts-plugin`). A
   token points to a template of instructions that the user uses again. It is
   not the subject of the session. The plugin removes the tokens before it
@@ -342,8 +345,9 @@ session has a title but sends no event, so a slot must keep its timer.
 
 - `manifest.json`: the event `prompt.submitted` with `"host": true`, the
   tool `SessionTitle`, and the capabilities `llm:complete`, `sessions:meta`,
-  `sessions:read` (the parent title of a fork, the messages for the tool),
-  `models:read` and `paths` (the paste files).
+  `sessions:read` (the parent title of a fork, the messages for the tool,
+  and the display read scope of the sid of an old session) and
+  `models:read`.
 - `handlers/on_prompt_submitted.ts`: the automatic handler.
 - `handlers/session_title_tool.ts`: the `SessionTitle` tool.
 - `lib/`: the configuration, the prompt checks, the input limit, the paste

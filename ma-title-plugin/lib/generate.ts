@@ -19,12 +19,9 @@ import type {
   LlmSideResult,
   ModelsReadApi,
   RunModeFact,
-  TitleHost,
   TitleSideband,
 } from "./host-types.ts"
 import { type ModelSelection, selectTitleModel } from "./model-select.ts"
-import type { PasteSource } from "./paste.ts"
-import { readPasteFile } from "./paste.ts"
 import { type TitleValidation, validateTitleResult } from "./sanitize.ts"
 
 /**
@@ -160,21 +157,4 @@ export function resultJson(res: LlmSideResult): unknown {
 /** Check the result of one title call (SPEC §5.5). Never throws. */
 export function checkTitleResult(res: LlmSideResult, sb: TitleSideband): TitleValidation {
   return validateTitleResult({ stopReason: res.stopReason, json: resultJson(res) }, sb)
-}
-
-/**
- * The paste source of `sid`, from the `paths` capability. Undefined when the
- * host has no `paths` API or the call fails. Then each paste ref gives a
- * marker.
- */
-export function pasteSourceFor(host: TitleHost | undefined, sid: string): PasteSource | undefined {
-  const paths = host?.paths
-  if (!paths) return undefined
-  try {
-    const sessionsDir = paths.sessionsDir()
-    if (typeof sessionsDir !== "string" || sessionsDir === "") return undefined
-    return { sessionsDir, sid, readFile: readPasteFile }
-  } catch {
-    return undefined
-  }
 }

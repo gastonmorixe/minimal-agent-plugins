@@ -8,13 +8,14 @@
  * test files of this repo.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
+import { realDisplaySideband, writePaste } from "../__fixtures__/display-sideband.ts"
 import type {
   EventHandlerContext,
   LlmSideResult,
@@ -335,9 +336,10 @@ describe("title.saved: not sent when no title was written", () => {
 describe("the first prompt bug: paste ref and &name tokens (handler path)", () => {
   test("the request text has the paste file text and no &name token", async () => {
     const dir = join(home, "sessions")
-    mkdirSync(join(dir, `${SID}.files`, "paste"), { recursive: true })
-    writeFileSync(
-      join(dir, `${SID}.files`, "paste", "m23a7.txt"),
+    writePaste(
+      dir,
+      SID,
+      "m23a7",
       "https://linear.app/arcanums/issue/DEV-244/user-can-make-a-shared-project-view-only-for-a-team",
     )
     const fake = makeFake()
@@ -350,12 +352,13 @@ describe("the first prompt bug: paste ref and &name tokens (handler path)", () =
           return fake.respond()
         },
       },
-      paths: { sessionsDir: () => dir },
     }
     const ref = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
     const text = `&arcana-access-prod\n---\n&arcana-work\n\nTask:\n---\n\nwhat's the status of ${ref} ?`
     const t = createTitleHandler()
-    await t.handler(makeCtx(fake, text).ctx)
+    const { ctx } = makeCtx(fake, text)
+    ctx.sideband = await realDisplaySideband(dir)
+    await t.handler(ctx)
     await t.idle()
     expect(texts).toHaveLength(1)
     expect(texts[0]).toContain("DEV-244")
@@ -367,8 +370,7 @@ describe("the first prompt bug: paste ref and &name tokens (handler path)", () =
 describe("the handler cleans the first text one time (m6)", () => {
   test("an &name in the pasted text reaches the model", async () => {
     const dir = join(home, "sessions")
-    mkdirSync(join(dir, `${SID}.files`, "paste"), { recursive: true })
-    writeFileSync(join(dir, `${SID}.files`, "paste", "m23a7.txt"), "rename the field foo &bar")
+    writePaste(dir, SID, "m23a7", "rename the field foo &bar")
     const fake = makeFake()
     const texts: string[] = []
     fake.host = {
@@ -379,11 +381,12 @@ describe("the handler cleans the first text one time (m6)", () => {
           return fake.respond()
         },
       },
-      paths: { sessionsDir: () => dir },
     }
     const ref = sb.render("paste", { attrs: { id: "m23a7", bytes: 25, lines: 1 } })
     const t = createTitleHandler()
-    await t.handler(makeCtx(fake, `&tpl please do this: ${ref}`).ctx)
+    const { ctx } = makeCtx(fake, `&tpl please do this: ${ref}`)
+    ctx.sideband = await realDisplaySideband(dir)
+    await t.handler(ctx)
     await t.idle()
     expect(texts).toHaveLength(1)
     expect(texts[0]).toContain("<session>\nplease do this: rename the field foo &bar\n</session>")

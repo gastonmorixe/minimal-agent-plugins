@@ -9,7 +9,7 @@
  */
 
 import type { TitleSideband } from "./host-types.ts"
-import { expandPasteRefs, type PasteSource } from "./paste.ts"
+import { expandPasteRefs } from "./paste.ts"
 
 /** Above this length (code points) the cap applies. */
 export const INPUT_MAX_CHARS = 2000
@@ -69,10 +69,11 @@ export function removePromptTokens(text: string): string {
 /** Options of {@link cleanPromptText} and {@link buildTitleInput}. */
 export interface CleanOptions {
   /**
-   * Where to read the paste files. Without it, each self-closing paste ref
-   * gives the marker `(pasted text)`.
+   * The sid of the text. The paste display handler reads the paste files of
+   * this sid. Without it, each self-closing paste ref gives the marker
+   * `(pasted text)`.
    */
-  source?: PasteSource
+  sid?: string
 }
 
 /**
@@ -80,11 +81,12 @@ export interface CleanOptions {
  * the saved prompt tokens (`&name`), put the text of each paste ref in place
  * of the ref, remove the other internal tags, collapse runs of blank lines to
  * one blank line, trim. The tokens go before the paste step, so an `&word`
- * in the pasted text stays.
+ * in the pasted text stays. The tag strip goes after the paste step, because
+ * the paste text is not neutralized and can hold a tag.
  */
 export function cleanPromptText(text: string, sb: TitleSideband, opts: CleanOptions = {}): string {
   const lf = text.replace(/\r\n?/g, "\n")
-  const pasted = expandPasteRefs(removePromptTokens(lf), sb, opts.source)
+  const pasted = expandPasteRefs(removePromptTokens(lf), sb, opts.sid)
   return stripMaTags(pasted, sb).replace(BLANK_RUN_RE, "\n\n").trim()
 }
 

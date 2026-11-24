@@ -10,6 +10,7 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
+import { fakeDisplay, realDisplaySideband, writePaste } from "../__fixtures__/display-sideband.ts"
 import type {
   EventHandlerContext,
   LlmSideRequest,
@@ -19,6 +20,7 @@ import type {
   SessionTitleInput,
   SessionTitleState,
   TitleHost,
+  TitleSideband,
   TitleToolContext,
 } from "../lib/host-types.ts"
 import { loadPromptBodies } from "../lib/prompt-library.ts"
@@ -50,6 +52,8 @@ interface Fake {
   state: SessionTitleState
   messages: SessionMessageSlice[]
   respond: () => Promise<LlmSideResult>
+  /** The `ctx.sideband` of the tool. Default: the real codec with no display handler. */
+  sideband?: TitleSideband
 }
 
 function okResult(title = "DEV-244 shared project view"): LlmSideResult {
@@ -66,7 +70,7 @@ function okResult(title = "DEV-244 shared project view"): LlmSideResult {
 }
 
 /** A fake host. `setTitle` acts like core: an `ai` write is dropped when a user title exists. */
-function makeFake(sessionsDir?: string): Fake {
+function makeFake(): Fake {
   const fake: Fake = {
     requests: [],
     writes: [],
@@ -118,7 +122,6 @@ function makeFake(sessionsDir?: string): Fake {
       meta: async () => ({ sid: SID, parentSid: null }),
       records: async (sid) => (sid === SID ? { sid, messages: fake.messages } : null),
     },
-    ...(sessionsDir ? { paths: { sessionsDir: () => sessionsDir } } : {}),
   }
   return fake
 }
@@ -143,7 +146,7 @@ function toolCtx(fake: Fake, input: Record<string, unknown>): TitleToolContext {
     log: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
     agent: { sessionId: SID, model: "cheap-1" },
     run: { mode: "repl", interactive: true, providerId: "prov" },
-    sideband: sb,
+    sideband: fake.sideband ?? sb,
     host: fake.host,
   }
 }
@@ -231,12 +234,14 @@ describe("SessionTitle tool: a given title", () => {
 describe("SessionTitle tool: no title (the model makes one)", () => {
   test("calls llm.request with text from the records, then writes the result", async () => {
     const dir = join(home, "sessions")
-    mkdirSync(join(dir, `${SID}.files`, "paste"), { recursive: true })
-    writeFileSync(
-      join(dir, `${SID}.files`, "paste", "m23a7.txt"),
+    writePaste(
+      dir,
+      SID,
+      "m23a7",
       "https://linear.app/arcanums/issue/DEV-244/user-can-make-a-shared-project-view-only-for-a-team",
     )
-    const fake = makeFake(dir)
+    const fake = makeFake()
+    fake.sideband = await realDisplaySideband(dir)
     const ref = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
     fake.state = {
       ai: { kind: "title", v: 1, sid: SID, title: "Status of arcana", source: "ai", at: "x" },
@@ -434,12 +439,14 @@ describe("SessionTitle tool: round 2 fixes", () => {
 
   test("M3: the saved prompt bodies in the records do not go to the model", async () => {
     const dir = join(home, "sessions")
-    mkdirSync(join(dir, `${SID}.files`, "paste"), { recursive: true })
-    writeFileSync(
-      join(dir, `${SID}.files`, "paste", "m23a7.txt"),
+    writePaste(
+      dir,
+      SID,
+      "m23a7",
       "https://linear.app/arcanums/issue/DEV-244/user-can-make-a-shared-project-view-only-for-a-team",
     )
-    const fake = makeFake(dir)
+    const fake = makeFake()
+    fake.sideband = await realDisplaySideband(dir)
     const ref = sb.render("paste", { attrs: { id: "m23a7", bytes: 93, lines: 1 } })
     const expanded = `${ACCESS_BODY}\r\n---\r\n${WORK_BODY}\n\nTask:\n---\n\nwhat's the status of ${ref}`
     fake.messages = [{ role: "user", content: expanded }]
@@ -495,24 +502,17 @@ describe("SessionTitle tool: round 2 fixes", () => {
   })
 
   test("m8: conversationText reads the paste files of the first and the last 3 only", () => {
-    const reads: string[] = []
-    const source = {
-      sessionsDir: "/sessions-root",
-      sid: SID,
-      readFile: (p: string) => {
-        reads.push(p)
-        return "pasted"
-      },
-    }
+    const shown = fakeDisplay(sb, () => ({ label: "paste", text: "pasted" }))
     const ref = sb.render("paste", { attrs: { id: "m23a7", bytes: 6, lines: 1 } })
     const msgs: SessionMessageSlice[] = []
     for (let i = 1; i <= 7; i++) msgs.push({ role: "user", content: `message ${i} ${ref}` })
     msgs.push({ role: "user", content: [{ type: "tool_result" }] })
-    const out = conversationText(msgs, sb, { source })
+    const out = conversationText(msgs, shown, { sid: SID })
     expect(out).toBe(
       ["message 1 pasted", "message 5 pasted", "message 6 pasted", "message 7 pasted"].join("\n\n"),
     )
-    expect(reads).toHaveLength(4)
+    expect(shown.calls).toHaveLength(4)
+    expect(shown.calls.every((c) => c.opts.sid === SID)).toBe(true)
   })
 
   test("m4: an auto result that comes during the tool write is dropped", async () => {
