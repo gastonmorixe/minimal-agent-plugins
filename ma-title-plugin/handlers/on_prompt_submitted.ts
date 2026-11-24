@@ -11,7 +11,7 @@
  * 1. Eligibility (T1 `checkEligibility`, rules 1-8): run-mode gate (default
  *    ON only in the interactive REPL), captured sid, in-flight guard,
  *    slash (a `/name args` line gives its args), short text,
- *    `source:"user"`, max 2 attempts.
+ *    `source:"user"`, max 2 attempts, backoff after a transient failure.
  * 2. Title state: `sessionMeta.getTitle(sid)`; a `user`/`ai` title → done.
  *    The first eligible text is kept for each sid (each attempt sends it).
  * 3. Fork check, one time for each sid (`sessions.meta`, async): when the
@@ -25,7 +25,9 @@
  *    {@link TITLE_SAVED_EVENT}).
  *
  * Failure is silent: debug log + one diagnostics event `title.attempt` per
- * attempt. A failed attempt leaves the sid open for one retry on the next
+ * attempt. `lib/retry.ts` puts each failure in a class. A transient failure
+ * uses no attempt: the next eligible prompt after the backoff tries again,
+ * with no limit. A final failure uses an attempt: one retry on the next
  * eligible prompt (SPEC §6 rule 8).
  *
  * @module handlers/on_prompt_submitted
@@ -36,10 +38,12 @@ import {
   checkEligibility,
   hasTitle,
   initialTitleState,
+  MAX_ATTEMPTS,
   markBusy,
   markFailure,
   markIdle,
   markSuccess,
+  markTransientFailure,
   startAttempt,
   type TitleSessionState,
 } from "../lib/eligibility.ts"
@@ -66,6 +70,7 @@ import type {
   TitleSideband,
 } from "../lib/host-types.ts"
 import { wrapCleanText } from "../lib/input.ts"
+import { classifyFailure, type FailureClass, type FailureInput } from "../lib/retry.ts"
 import { createTitleShared, defaultTitleShared, type TitleShared } from "../lib/shared.ts"
 
 export {
@@ -99,11 +104,16 @@ export interface TitleAttemptEvent {
   costUsd?: number
   /** True when a title line was written. */
   written: boolean
+  /**
+   * On a failed call only: `transient` (no attempt used, a retry after the
+   * backoff) or `final` (one attempt used). See `lib/retry.ts`.
+   */
+  retry?: FailureClass
 }
 
 /** Options of {@link createTitleHandler} (tests). */
 export interface TitleHandlerOptions {
-  /** Clock for `failedAt`. Default `() => new Date()`. */
+  /** Clock for `failedAt` and the backoff. Default `() => new Date()`. */
   now?: () => Date
   /**
    * The state that the handler shares with the `SessionTitle` tool. Default:
@@ -212,6 +222,7 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       sb,
       // Part A: a paste ref gets the text of its file (`lib/paste.ts`).
       pasteSource: (sid: string) => pasteSourceFor(ctx.host, sid),
+      now: now(),
     }
     const pre = checkEligibility(base)
     if (!pre.eligible) {
@@ -356,6 +367,26 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
     track(runCall(ctx, sid, choice.providerId, req, request.bind(host.llm), meta, sb))
   }
 
+  /**
+   * Record a failed call: classify it, change the state, set `ev.retry`,
+   * and give the log text for the class and the next try.
+   */
+  function recordFailure(sid: string, ev: TitleAttemptEvent, input: FailureInput): string {
+    const cls = classifyFailure(input)
+    const at = now()
+    ev.retry = cls
+    if (cls === "transient") {
+      const s = markTransientFailure(states.get(sid), at)
+      states.set(sid, s)
+      const next = s.retryAfter !== undefined ? new Date(s.retryAfter).toISOString() : "-"
+      return `retry=transient n=${s.transientFailures ?? 0} next=${next}`
+    }
+    const s = markFailure(states.get(sid), at)
+    states.set(sid, s)
+    const next = s.attempts < MAX_ATTEMPTS ? "next-prompt" : "none"
+    return `retry=final attempts=${s.attempts}/${MAX_ATTEMPTS} next=${next}`
+  }
+
   async function runCall(
     ctx: EventHandlerContext,
     sid: string,
@@ -392,9 +423,14 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       const valid = checkTitleResult(res, sb)
       if (!valid.ok) {
         if (valid.reason !== "stop-reason") ev.stopReason = "unusable"
-        states.set(sid, markFailure(states.get(sid), now()))
+        const retry = recordFailure(sid, ev, {
+          kind: "result",
+          stopReason: res.stopReason,
+          ...(res.reason ? { reason: res.reason } : {}),
+          ...(res.detail ? { detail: res.detail } : {}),
+        })
         const extra = res.reason ? ` reason=${res.reason}` : ""
-        debug(ctx, `no title sid=${sid}: ${valid.reason} stop=${res.stopReason}${extra}`)
+        debug(ctx, `no title sid=${sid}: ${valid.reason} stop=${res.stopReason}${extra} ${retry}`)
         return
       }
 
@@ -437,11 +473,17 @@ export function createTitleHandler(opts: TitleHandlerOptions = {}): TitleHandler
       if (!writing) ev.latencyMs = Date.now() - started
       ev.stopReason = writing ? "write-failed" : "exception"
       ev.written = false
-      states.set(sid, markFailure(states.get(sid), now()))
       const code = errCode(err)
+      const retry = recordFailure(
+        sid,
+        ev,
+        writing
+          ? { kind: "write-failed", ...(code ? { code } : {}) }
+          : { kind: "exception", error: err },
+      )
       debug(
         ctx,
-        `no title sid=${sid}: ${ev.stopReason}${code ? ` code=${code}` : ""}: ${errText(err)}`,
+        `no title sid=${sid}: ${ev.stopReason}${code ? ` code=${code}` : ""}: ${errText(err)} ${retry}`,
       )
     } finally {
       emitAttempt(ctx, ev)

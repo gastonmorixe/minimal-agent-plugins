@@ -31,10 +31,42 @@ sub-agent. To stop it, set `MINIMAL_AGENT_TITLE=0` or
    not stop.
 6. The handler does a check of the result. When the result is good, it writes
    one `kind: "title"` line to `~/.minimal-agent/sessions/index-meta.jsonl`.
-7. When the request fails, the next prompt can try one more time. The
-   maximum is 2 requests for each session in each process. When the plugin
-   finds no model (`no-model`, `over-ceiling`), it sends no request, and this
-   does not count as one of the 2 requests. The next prompt tries again.
+7. When the request fails, the plugin puts the error in one of two classes
+   (see "Retry policy"). After a final error, the next prompt can try one
+   more time. The maximum is 2 final errors for each session in each
+   process. After a transient error, the plugin tries again after a wait,
+   with no limit. When the plugin finds no model (`no-model`,
+   `over-ceiling`), it sends no request, and this does not count as one of
+   the 2 requests. The next prompt tries again.
+
+### Retry policy
+
+The agent can run for a long time. Thus a network problem must not stop the
+title for the full process. The plugin puts each failed request in one of
+two classes:
+
+1. Transient: the provider or the network did not give an answer. Examples:
+   a timeout, an abort of the request, a connection reset, a DNS error, an
+   HTTP 408, 429 or 5xx status, an overloaded provider, a rate limit, a
+   stream with no activity. A transient error does not count as one of the
+   2 requests. The plugin waits, then the next prompt after the wait sends
+   the request again. The wait is 1, 2, 5, 15 and 30 minutes, then 60
+   minutes for each later transient error in a row. There is no limit.
+2. Final: the model gave a result that the plugin cannot use, or the write
+   failed. Examples: invalid JSON, a title that is not usable, the stop
+   reasons `max_tokens`, `refusal` and `content_filter`, a quota or billing
+   error, an HTTP 400, 401 or 403 status, and an index write error
+   (`not-owned`, `no-session-file`). A final error counts as one of the 2
+   requests.
+
+An error that the plugin does not know is final. Thus a new error kind
+cannot make requests with no limit.
+
+The plugin has no timer. A retry starts only on a prompt. A prompt during
+the wait sends no request, and the debug log shows `backoff`. Each retry
+sends the text of the first good prompt. A final error ends the row of
+transient errors, so the next transient error waits 1 minute again. A
+title resets the count.
 
 ### Slash commands
 
@@ -230,6 +262,12 @@ line for each session, not one for each prompt. The event has these fields: `sid
 `no-model`, `over-ceiling` or `other-provider`. When the request has an
 error, `stopReason` is `exception`. When the index write has an error,
 `stopReason` is `write-failed`.
+
+When a request fails, the event also has the field `retry`: `transient` or
+`final` (see "Retry policy"). The debug line of the failure shows the class
+and the next try, for example
+`retry=transient n=2 next=2026-11-23T10:03:00.000Z` or
+`retry=final attempts=1/2 next=next-prompt`.
 
 ## The `SessionTitle` tool
 

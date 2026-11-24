@@ -4,9 +4,25 @@
  * Pure functions, no IO and no host call. The handler (T2) gets the values
  * (payload, run fact, config, env, title state) and calls
  * {@link checkEligibility}. Rules run in order, but the cheap source check
- * (rule 7) and the attempt check (rule 8) come before the clean step of rules
- * 5 and 6. The first rule that matches stops. Only rule 9 (start) uses an
- * attempt.
+ * (rule 7), the attempt check (rule 8) and the backoff check (rule 8, reason
+ * `backoff`) come before the clean step of rules 5 and 6. The first rule that
+ * matches stops. Only rule 9 (start) uses an attempt.
+ *
+ * Retry policy (`lib/retry.ts`). A failed call is `transient` or `final`:
+ *
+ * 1. A transient failure (network, timeout, abort, rate limit, overload,
+ *    HTTP 408 or 5xx) gives the attempt back. It adds 1 to
+ *    `transientFailures` and sets `retryAfter` to now plus the backoff
+ *    (1, 2, 5, 15, 30 min, then 60 min). There is no limit on transient
+ *    failures.
+ * 2. A final failure (a result that is not usable, a bad stop reason, a
+ *    refusal, invalid JSON, a write error, an unknown error kind) uses the
+ *    attempt. After {@link MAX_ATTEMPTS} final failures, the sid stops until
+ *    the process starts again.
+ * 3. A success resets `transientFailures` and `retryAfter`.
+ *
+ * A retry starts only on the next eligible prompt after `retryAfter`. The
+ * plugin has no timer. Each retry sends `firstText`.
  *
  * @module lib/eligibility
  */
@@ -27,11 +43,12 @@ import type {
 } from "./host-types.ts"
 import { cleanPromptText, codePointLength, hasMaTag } from "./input.ts"
 import { PASTE_MISSING_MARKER, type PasteSource } from "./paste.ts"
+import { backoffMs } from "./retry.ts"
 
 /**
- * Max model calls per session per process: 1 attempt + 1 retry (SPEC §6
+ * Max final failures per session per process: 1 attempt + 1 retry (SPEC §6
  * rule 8). A prompt with no model (`no-model`, `over-ceiling`) makes no call
- * and does not count.
+ * and does not count. A transient failure does not count (`lib/retry.ts`).
  */
 export const MAX_ATTEMPTS = 2
 
@@ -42,8 +59,18 @@ export const SUBAGENT_SID_ENV = "MINIMAL_AGENT_SUBAGENT_SID"
 
 /** Per-session state in plugin memory (key = sid). */
 export interface TitleSessionState {
-  /** Calls started for this sid (0, 1 or 2). */
+  /**
+   * Attempts used for this sid (0, 1 or 2). A call in flight counts. A
+   * transient failure gives its attempt back.
+   */
   attempts: number
+  /** Transient failures in a row. A final failure or a success resets it. */
+  transientFailures?: number
+  /**
+   * Epoch ms. Before this time, a prompt makes no call (rule 8, `backoff`).
+   * Set by a transient failure only.
+   */
+  retryAfter?: number
   /** True while a call runs. */
   inFlight: boolean
   /** True when a title exists or was written. */
@@ -169,6 +196,7 @@ export type SkipReason =
   | "too-short"
   | "source-not-user"
   | "max-attempts"
+  | "backoff"
 
 /** Input of {@link checkEligibility}. */
 export interface EligibilityInput {
@@ -192,6 +220,8 @@ export interface EligibilityInput {
    * self-closing paste ref gives the marker `(pasted text)`.
    */
   pasteSource?: (sid: string) => PasteSource | undefined
+  /** The clock for the backoff check. Default: the time of the call. */
+  now?: Date
 }
 
 /** Result of {@link checkEligibility}. */
@@ -260,6 +290,12 @@ export function checkEligibility(input: EligibilityInput): Eligibility {
     return { eligible: false, rule: 8, reason: "max-attempts", sid }
   }
 
+  // Rule 8 (backoff): after a transient failure, wait until `retryAfter`.
+  const retryAfter = state?.retryAfter
+  if (retryAfter !== undefined && (input.now ?? new Date()).getTime() < retryAfter) {
+    return { eligible: false, rule: 8, reason: "backoff", sid }
+  }
+
   const rawText = typeof payload.text === "string" ? payload.text : ""
   let text = cleanPromptText(rawText, input.sb, { source: input.pasteSource?.(sid) })
 
@@ -325,17 +361,45 @@ export function startAttempt(state: TitleSessionState | undefined): TitleSession
   return { ...s, attempts: s.attempts + 1, inFlight: true }
 }
 
-/** The state after a title was written (or a title was found). */
+/**
+ * The state after a title was written (or a title was found). It resets the
+ * transient count and `retryAfter`.
+ */
 export function markSuccess(state: TitleSessionState | undefined): TitleSessionState {
-  const s = state ?? initialTitleState()
-  return { ...s, inFlight: false, done: true }
+  const { retryAfter: _r, ...s } = state ?? initialTitleState()
+  return { ...s, inFlight: false, done: true, transientFailures: 0 }
 }
 
-/** The state after a failure: no write; the next eligible prompt can retry. */
+/**
+ * The state after a final failure: no write, and the attempt stays used. It
+ * ends the row of transient failures. The next eligible prompt can retry
+ * while `attempts` is below {@link MAX_ATTEMPTS}.
+ */
 export function markFailure(
   state: TitleSessionState | undefined,
   at: Date = new Date(),
 ): TitleSessionState {
+  const { retryAfter: _r, ...s } = state ?? initialTitleState()
+  return { ...s, inFlight: false, failedAt: at.toISOString(), transientFailures: 0 }
+}
+
+/**
+ * The state after a transient failure: the attempt of this call is given
+ * back, `transientFailures` gets 1 more, and `retryAfter` is `at` plus
+ * {@link backoffMs}.
+ */
+export function markTransientFailure(
+  state: TitleSessionState | undefined,
+  at: Date = new Date(),
+): TitleSessionState {
   const s = state ?? initialTitleState()
-  return { ...s, inFlight: false, failedAt: at.toISOString() }
+  const n = (s.transientFailures ?? 0) + 1
+  return {
+    ...s,
+    attempts: Math.max(0, s.attempts - 1),
+    inFlight: false,
+    failedAt: at.toISOString(),
+    transientFailures: n,
+    retryAfter: at.getTime() + backoffMs(n),
+  }
 }

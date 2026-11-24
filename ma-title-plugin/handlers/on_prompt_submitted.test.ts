@@ -446,8 +446,10 @@ describe("title handler: gates (no call)", () => {
 })
 
 describe("title handler: failure and retry", () => {
+  // Final failures only. A timeout is transient: see
+  // `on_prompt_submitted.retry.test.ts`.
   const failures: Array<[string, () => LlmSideResult]> = [
-    ["timeout", () => ({ ...okResult(), json: undefined, text: "", stopReason: "timeout" })],
+    ["refusal", () => ({ ...okResult(), json: undefined, text: "", stopReason: "refusal" })],
     ["invalid json", () => ({ ...okResult(), json: undefined, text: "{not json" })],
     ["max_tokens", () => ({ ...okResult(), stopReason: "max_tokens" })],
     ["error", () => ({ ...okResult(), json: undefined, text: "", stopReason: "error" })],
@@ -563,7 +565,8 @@ describe("title handler: failure and retry", () => {
   test("a failure then a success on the retry writes the title", async () => {
     const fake = makeHost()
     let n = 0
-    fake.respond = async () => (++n === 1 ? { ...okResult(), stopReason: "timeout" } : okResult())
+    fake.respond = async () =>
+      ++n === 1 ? { ...okResult(), stopReason: "max_tokens" } : okResult()
     const t = createTitleHandler()
     await t.handler(makeCtx(fake).ctx)
     await t.idle()

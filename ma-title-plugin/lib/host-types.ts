@@ -195,6 +195,8 @@ export interface LlmSideResult {
   latencyMs: number
   /** Core `LlmSideResultCore` extra: the precise cause of an `error`. */
   reason?: string
+  /** Core `LlmSideResultCore` extra: short error text (max 200 chars). */
+  detail?: string
 }
 
 /** `llm:complete` slice. Only `request` is used. */

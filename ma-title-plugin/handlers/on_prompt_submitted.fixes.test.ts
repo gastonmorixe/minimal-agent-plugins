@@ -316,7 +316,7 @@ describe("title handler: fork inherit (B2)", () => {
   test("the fork check runs one time for each sid (a retry does not read meta again)", async () => {
     const fake = makeHost()
     const { metaCalls } = withSessions(fake, { parentSid: null })
-    fake.respond = async () => ({ ...okResult(), stopReason: "timeout" })
+    fake.respond = async () => ({ ...okResult(), stopReason: "max_tokens" })
     const t = createTitleHandler()
     await t.handler(makeCtx(fake).ctx)
     await t.idle()
@@ -382,7 +382,7 @@ describe("title handler: no model does not use an attempt (B4)", () => {
       ...fake.host,
       models: { ...fake.host.models!, utilityFor: () => utility },
     }
-    fake.respond = async () => ({ ...okResult(), stopReason: "timeout" })
+    fake.respond = async () => ({ ...okResult(), stopReason: "max_tokens" })
     const t = createTitleHandler()
     const events: TitleAttemptEvent[] = []
     for (let i = 0; i < 3; i++) {
@@ -412,7 +412,8 @@ describe("title handler: the first eligible text (B5)", () => {
   test("a retry after a failure sends the first text, not the later prompt", async () => {
     const fake = makeHost()
     let n = 0
-    fake.respond = async () => (++n === 1 ? { ...okResult(), stopReason: "timeout" } : okResult())
+    fake.respond = async () =>
+      ++n === 1 ? { ...okResult(), stopReason: "max_tokens" } : okResult()
     const t = createTitleHandler()
     await t.handler(makeCtx(fake, { text: "the first real task of the session" }).ctx)
     await t.idle()
