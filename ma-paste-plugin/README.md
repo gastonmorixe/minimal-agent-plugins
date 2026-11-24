@@ -27,6 +27,10 @@ Text paste refs on the sideband codec (manifest id `paste`).
   purpose: the paste is user text, and the `paste` block marks it as
   untrusted.
 - With no codec, a paste goes in as literal text.
+- The kind has a display handler (`handlers/display.ts`, manifest
+  `sideband[0].display`). A dump (the CLI `sessions dump`, the
+  `SessionHistory` tool) calls it through `sideband.display`. See
+  "Display" below.
 
 Config (`~/.minimal-agent/config.jsonc`):
 
@@ -35,7 +39,8 @@ Config (`~/.minimal-agent/config.jsonc`):
   "plugins": {
     "paste": {
       "collapse": { "minLines": 4, "minBytes": 1200, "floorBytes": 120 },
-      "lineNumbers": true
+      "lineNumbers": true,
+      "display": { "maxBytes": 65536 }
     }
   }
 }
@@ -53,10 +58,33 @@ number (from 1) and a TAB before each line (`N<TAB>line`), and the block has
 attr stay the exact paste. The too-large check uses the size of the numbered
 body. Each send reads this option, so a change has effect on the next send.
 
+`display.maxBytes` (default 65536): the largest paste text in UTF-8 bytes
+that the display handler gives, when the consumer asks for no size. 0 gives
+a label only.
+
 The text hook and the chip need CLI support (`ctx.paste`, `ctx.chips`). The
 CLI gives `ctx.paste` only to a plugin whose manifest `permissions` has
 `ui:paste`, because a paste hook reads all pasted text. With
 an older CLI, `ui/setup.ts` does nothing, but refs that exist still expand.
+
+## Display
+
+The display handler shows one paste ref to a person or a reader. It never
+throws, and it reads at most one file for each ref.
+
+- The label comes from `chipLabel` (the same text as the TUI chip):
+  `[Paste #<id> <size> <lines>L]`, or `[Paste #<id> missing]` with
+  `missing: true` when the session has no regular file for the id. A
+  symlink, a FIFO or a dir counts as missing.
+- A bad id gives `[Paste #? missing]` and `missing: true`. The handler reads
+  no file, and the label never shows the raw id.
+- With no sid or no `sessions:files` host, the label comes from the attrs.
+- Label mode: one `stat`. The size comes from the file.
+- Full mode: one `readHead` with the size cap of the consumer, else
+  `display.maxBytes`. The text is the exact file text: no line numbers and
+  no `neutralize`. A consumer that sends the text to a model must
+  neutralize it. A cut text ends with `\n[... N more bytes]` and the result
+  has `truncated: true`.
 
 ## What the model sees
 

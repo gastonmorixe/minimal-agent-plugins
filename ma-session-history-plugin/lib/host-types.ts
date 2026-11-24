@@ -82,6 +82,8 @@ export interface BlockLike {
   readonly tool_use_id?: string
   readonly content?: string | readonly BlockLike[]
   readonly is_error?: boolean
+  /** A harness mark (for example the compaction checkpoint): the block is not user text. */
+  readonly sideband?: unknown
   readonly source?: {
     readonly type: string
     readonly media_type?: string
@@ -215,15 +217,9 @@ export interface BlobsReadApi {
 // Context slice (what the handler reads off TUIContext)
 // ---------------------------------------------------------------------------
 
-/** paths slice: the sessions dir (`<home>/sessions`), for the paste files of a dump. */
-export interface PathsSlice {
-  sessionsDir(): string
-}
-
 export interface PluginHostSlice {
   readonly sessions?: SessionsReadApi
   readonly blobs?: BlobsReadApi
-  readonly paths?: PathsSlice
 }
 
 export interface ToolTriggerSlice {

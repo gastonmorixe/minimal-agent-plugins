@@ -22,6 +22,7 @@ import type {
 import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 import { pluginSideband } from "../../tests/support/sideband.ts"
+import { numberLines } from "../lib/number.ts"
 
 import expandOnSend, {
   DEFAULT_RENDER_CACHE_CAPS,
@@ -33,7 +34,6 @@ import expandOnSend, {
   setLineNumbers,
   wireBodyBytes,
 } from "./expand_on_send.ts"
-import { numberLines } from "../lib/number.ts"
 
 const SB: SidebandApi = await pluginSideband()
 const SID = "sid-paste-a"
@@ -118,7 +118,14 @@ describe("wireBodyBytes", () => {
 
   test("it is the exact size of the numbered body", () => {
     const enc = new TextEncoder()
-    for (const t of ["a", "a\n", "a\n\nb", "x\n".repeat(150), "é\n".repeat(12), "\n".repeat(1001)]) {
+    for (const t of [
+      "a",
+      "a\n",
+      "a\n\nb",
+      "x\n".repeat(150),
+      "é\n".repeat(12),
+      "\n".repeat(1001),
+    ]) {
       const lines = t.split("\n").length - (t.endsWith("\n") ? 1 : 0)
       expect(wireBodyBytes(enc.encode(t).length, lines, true)).toBe(
         enc.encode(numberLines(t)).length,

@@ -10,8 +10,14 @@ import { join } from "node:path"
 
 import { describe, expect, test } from "bun:test"
 
-import { defaultPasteConfig, loadPasteConfig, parsePasteConfig, shouldCollapse } from "./config.ts"
-import { countLines, normalizeNewlines, utf8Bytes } from "./count.ts"
+import {
+  DEFAULT_DISPLAY_MAX_BYTES,
+  defaultPasteConfig,
+  loadPasteConfig,
+  parsePasteConfig,
+  shouldCollapse,
+} from "./config.ts"
+import { countLines, normalizeNewlines, utf8Bytes, utf8Head } from "./count.ts"
 import { chipLabel, formatSize } from "./format.ts"
 import { isPasteId, newId, PASTE_ID_RE } from "./id.ts"
 import { numberLines } from "./number.ts"
@@ -120,6 +126,15 @@ describe("count", () => {
     expect(utf8Bytes("😀")).toBe(4)
   })
 
+  test("utf8Head cuts on a UTF-8 boundary", () => {
+    expect(utf8Head("abc", 3)).toBe("abc")
+    expect(utf8Head("abc", 2)).toBe("ab")
+    expect(utf8Head("aé", 2)).toBe("a")
+    expect(utf8Head("a😀b", 4)).toBe("a")
+    expect(utf8Head("a😀b", 5)).toBe("a😀")
+    expect(utf8Head("é", 0)).toBe("")
+  })
+
   test("normalizeNewlines changes CRLF and CR to LF only", () => {
     expect(normalizeNewlines("a\r\nb\rc\n\td ")).toBe("a\nb\nc\n\td ")
     expect(normalizeNewlines("\r\r\n")).toBe("\n\n")
@@ -147,7 +162,9 @@ describe("config", () => {
     expect(defaultPasteConfig()).toEqual({
       collapse: { minLines: 4, minBytes: 1200, floorBytes: 120 },
       lineNumbers: true,
+      display: { maxBytes: 65536 },
     })
+    expect(DEFAULT_DISPLAY_MAX_BYTES).toBe(65536)
     const c = defaultPasteConfig().collapse
     // Small stuff stays literal text.
     expect(shouldCollapse(c, 1, 1)).toBe(false)
@@ -177,7 +194,11 @@ describe("config", () => {
           },
         },
       }),
-    ).toEqual({ collapse: { minLines: 3, minBytes: 200, floorBytes: 0 }, lineNumbers: false })
+    ).toEqual({
+      collapse: { minLines: 3, minBytes: 200, floorBytes: 0 },
+      lineNumbers: false,
+      display: { maxBytes: 65536 },
+    })
     expect(parsePasteConfig({ plugins: { paste: { lineNumbers: "no" } } })).toEqual(
       defaultPasteConfig(),
     )
@@ -188,6 +209,29 @@ describe("config", () => {
       defaultPasteConfig(),
     )
     expect(parsePasteConfig(null)).toEqual(defaultPasteConfig())
+  })
+
+  test("plugins.paste.display.maxBytes is read; 0 is valid; bad values keep the default", () => {
+    const max = (v: unknown) => parsePasteConfig({ plugins: { paste: { display: v } } }).display
+    expect(max({ maxBytes: 8192 })).toEqual({ maxBytes: 8192 })
+    expect(max({ maxBytes: 0 })).toEqual({ maxBytes: 0 })
+    expect(max({ maxBytes: 100.7 })).toEqual({ maxBytes: 100 })
+    for (const bad of [
+      { maxBytes: -1 },
+      { maxBytes: "1" },
+      { maxBytes: Number.NaN },
+      {},
+      5,
+      null,
+    ]) {
+      expect(max(bad)).toEqual({ maxBytes: DEFAULT_DISPLAY_MAX_BYTES })
+    }
+    // The display key does not need a collapse key, and the reverse.
+    const both = parsePasteConfig({
+      plugins: { paste: { display: { maxBytes: 9 }, collapse: { minLines: 2 } } },
+    })
+    expect(both.display.maxBytes).toBe(9)
+    expect(both.collapse.minLines).toBe(2)
   })
 
   test("threshold: either limit that is not 0", () => {
@@ -209,6 +253,7 @@ describe("config", () => {
       expect(loadPasteConfig({ MINIMAL_AGENT_CONFIG: path })).toEqual({
         collapse: { minLines: 5, minBytes: 1200, floorBytes: 120 },
         lineNumbers: true,
+        display: { maxBytes: 65536 },
       })
       writeFileSync(path, "{ bad")
       expect(loadPasteConfig({ MINIMAL_AGENT_CONFIG: path })).toEqual(defaultPasteConfig())

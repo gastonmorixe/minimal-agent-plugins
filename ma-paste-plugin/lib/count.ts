@@ -11,6 +11,22 @@ export function utf8Bytes(text: string): number {
   return ENCODER.encode(text).length
 }
 
+const DECODER = new TextDecoder()
+
+/**
+ * The head of `text` with at most `maxBytes` UTF-8 bytes. The cut is on a
+ * char boundary: a char that does not fit goes out whole. A text that fits
+ * comes back as it is.
+ */
+export function utf8Head(text: string, maxBytes: number): string {
+  const bytes = ENCODER.encode(text)
+  if (bytes.length <= maxBytes) return text
+  let end = Math.max(0, Math.floor(maxBytes))
+  // Move back over the continuation bytes (10xxxxxx) to the start of a char.
+  while (end > 0 && ((bytes[end] ?? 0) & 0xc0) === 0x80) end--
+  return DECODER.decode(bytes.subarray(0, end))
+}
+
 /**
  * The line count of `text`: the LF count, plus 1 when the text is not empty
  * and does not end with LF. Empty text gives 0.

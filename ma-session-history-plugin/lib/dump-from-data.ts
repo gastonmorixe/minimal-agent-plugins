@@ -7,42 +7,91 @@
  * footer tags (kinds `redacted-asset` and `context-sanitizer`), so they
  * match the host.
  *
+ * User text (string content, and `text` blocks with no harness mark) goes
+ * through `sideband.display` in full mode. Each node with a display (for
+ * example a paste ref) shows its label and its text. The kind owner gives
+ * the display, so this plugin knows no kind. The display text goes through
+ * `neutralize` (the label too), because this dump goes to the model. A text
+ * with no node that has a display stays byte for byte the same. The XML
+ * escape removes each char that XML 1.0 does not allow, as the host dump
+ * does.
+ *
  * @module plugins/session-history/lib/dump-from-data
  */
 
-import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
+import type {
+  SidebandApi,
+  SidebandDisplaySegment,
+} from "@minimal-agent/core/plugin-api/types/sideband"
+import {
+  displayMarkdown,
+  displayXml,
+  xmlSafe,
+} from "@minimal-agent/core/plugin-api/utils/display-format"
 
 import type { BlockLike, SessionRecordsView } from "./host-types.ts"
-import { type PasteReader, pasteMarkdown, pasteXml } from "./paste-refs.ts"
 
-/** The slice of the session sideband API that the scrub and the paste refs use. */
-export type DumpSideband = Pick<SidebandApi, "ready" | "render" | "trailing" | "find">
+/** The slice of the session sideband API that the scrub and the display step use. */
+export type DumpSideband = Pick<
+  SidebandApi,
+  "ready" | "render" | "trailing" | "find" | "display" | "neutralize"
+>
 
 /** Dump options. */
 export interface DumpOptions {
-  /**
-   * Reads the file of a paste ref (`pasteFileReader`). Without it, a paste
-   * ref in user text shows as `[Paste #<id> missing]`.
-   */
-  readPaste?: PasteReader
+  /** The dumped session. Absent: a display handler uses the node attrs only. */
+  sid?: string
+  /** The largest display text of one node, in UTF-8 bytes. Absent: the handler default. */
+  maxBytes?: number
 }
 
-/** A reader that finds no file: each paste ref shows as missing. */
-const NO_PASTE: PasteReader = () => null
-
-/** The sideband for the paste step, or undefined with no codec. */
-function pasteSb(sb: DumpSideband | undefined): DumpSideband | undefined {
-  return sb?.ready ? sb : undefined
+/**
+ * The display segments of user text, with each display text neutralized.
+ * Undefined when no node has a display (or there is no codec): then the
+ * caller keeps the text as it is.
+ */
+function userSegments(
+  text: string,
+  sb: DumpSideband | undefined,
+  opts: DumpOptions,
+): SidebandDisplaySegment[] | undefined {
+  if (!sb?.ready || typeof sb.display !== "function" || text === "") return undefined
+  const { segments, changed } = sb.display(text, {
+    mode: "full",
+    ...(opts.sid !== undefined ? { sid: opts.sid } : {}),
+    ...(opts.maxBytes !== undefined ? { maxBytes: opts.maxBytes } : {}),
+  })
+  if (!changed) return undefined
+  return segments.map((seg) => neutralized(seg, sb))
 }
 
-/** User text with each paste ref as its label and file text (markdown). */
+/**
+ * A copy of `seg` with its display label and text neutralized. A third-party
+ * handler gives the label, and core removes only the control chars. A text
+ * segment does not change.
+ */
+function neutralized(seg: SidebandDisplaySegment, sb: DumpSideband): SidebandDisplaySegment {
+  if (seg.type !== "node") return seg
+  const display = { ...seg.display, label: sb.neutralize(seg.display.label) }
+  if (seg.display.text !== undefined) display.text = sb.neutralize(seg.display.text)
+  return { ...seg, display }
+}
+
+/** User text with each node that has a display as its label and text (markdown). */
 function userTextMarkdown(text: string, sb: DumpSideband | undefined, opts: DumpOptions): string {
-  return pasteMarkdown(text, pasteSb(sb), opts.readPaste ?? NO_PASTE)
+  const segments = userSegments(text, sb, opts)
+  return segments ? displayMarkdown(segments) : text
 }
 
-/** User text with each paste ref as a `paste` element (XML content). */
+/** User text with each node that has a display as a `display` element (XML content). */
 function userTextXml(text: string, sb: DumpSideband | undefined, opts: DumpOptions): string {
-  return pasteXml(text, pasteSb(sb), opts.readPaste ?? NO_PASTE, escapeXml)
+  const segments = userSegments(text, sb, opts)
+  return segments ? displayXml(segments, escapeXml) : escapeXml(text)
+}
+
+/** True for a `text` block of user text: a harness-marked block is not user text. */
+function isUserTextBlock(block: BlockLike): boolean {
+  return block.type === "text" && (block.sideband === undefined || block.sideband === null)
 }
 
 const MIN_BASE64_CHARS = 256
@@ -204,7 +253,7 @@ export function dumpMarkdown(
     } else {
       for (const block of msg.content) {
         const md =
-          isUser && block.type === "text"
+          isUser && isUserTextBlock(block)
             ? userTextMarkdown(block.text ?? "", sb, opts)
             : blockAsMarkdown(block, sb)
         out += `${md}\n\n`
@@ -214,8 +263,12 @@ export function dumpMarkdown(
   return `${out.trim()}\n`
 }
 
+/**
+ * XML escape. It also removes each char that XML 1.0 does not allow
+ * (`xmlSafe`), the same as the host dump.
+ */
 function escapeXml(unsafe: string): string {
-  return unsafe
+  return xmlSafe(unsafe)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -280,7 +333,7 @@ export function dumpXml(
     } else {
       for (const block of msg.content) {
         const xml =
-          isUser && block.type === "text"
+          isUser && isUserTextBlock(block)
             ? `    <text>${userTextXml(block.text ?? "", sb, opts)}</text>`
             : blockAsXml(block, 4, sb)
         out += `${xml}\n`

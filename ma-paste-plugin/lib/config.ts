@@ -9,7 +9,8 @@
  *   "plugins": {
  *     "paste": {
  *       "collapse": { "minLines": 4, "minBytes": 1200, "floorBytes": 120 },
- *       "lineNumbers": true
+ *       "lineNumbers": true,
+ *       "display": { "maxBytes": 65536 }
  *     }
  *   }
  * }
@@ -23,6 +24,10 @@
  *
  * `lineNumbers` (default true): the model gets the paste body with a line
  * number (from 1) and a TAB before each line. A final LF gets no number.
+ *
+ * `display.maxBytes` (default 65536): the largest paste text in UTF-8 bytes
+ * that the display handler gives in full mode (a dump), when the consumer
+ * asks for no size. A longer text is cut. 0 gives a label only.
  *
  * Lenient: a missing file, bad JSONC or a wrong type gives the default. The
  * loader never throws.
@@ -46,12 +51,22 @@ export interface CollapseConfig {
   floorBytes: number
 }
 
+/** The display config (`handlers/display.ts`). */
+export interface DisplayConfig {
+  /** The default cap of the full text in UTF-8 bytes. 0: a label only. */
+  maxBytes: number
+}
+
 /** The plugin config. */
 export interface PasteConfig {
   collapse: CollapseConfig
   /** Number the lines of the body that the model gets. */
   lineNumbers: boolean
+  display: DisplayConfig
 }
+
+/** The default cap of the display text in UTF-8 bytes. */
+export const DEFAULT_DISPLAY_MAX_BYTES = 65536
 
 /** The default collapse limits. */
 export const DEFAULT_COLLAPSE: Readonly<CollapseConfig> = Object.freeze({
@@ -62,7 +77,11 @@ export const DEFAULT_COLLAPSE: Readonly<CollapseConfig> = Object.freeze({
 
 /** The built-in defaults. */
 export function defaultPasteConfig(): PasteConfig {
-  return { collapse: { ...DEFAULT_COLLAPSE }, lineNumbers: true }
+  return {
+    collapse: { ...DEFAULT_COLLAPSE },
+    lineNumbers: true,
+    display: { maxBytes: DEFAULT_DISPLAY_MAX_BYTES },
+  }
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -80,6 +99,10 @@ export function parsePasteConfig(raw: unknown): PasteConfig {
   const cfg = raw.plugins.paste
   if (!isPlainObject(cfg)) return out
   if (typeof cfg.lineNumbers === "boolean") out.lineNumbers = cfg.lineNumbers
+  if (isPlainObject(cfg.display)) {
+    const max = count(cfg.display.maxBytes)
+    if (max !== undefined) out.display.maxBytes = max
+  }
   if (!isPlainObject(cfg.collapse)) return out
   for (const k of ["minLines", "minBytes", "floorBytes"] as const) {
     const v = count(cfg.collapse[k])

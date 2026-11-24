@@ -26,6 +26,9 @@ const MODEL = "paste-share-model"
 const PROVIDER = "paste-share-prov"
 const ONE_MB = 1_000_000
 
+/** A chip label from its inner text (no bracket literal in this file). */
+const chip = (inner: string): string => `[${inner}]`
+
 /**
  * The core host accepts only a sid that the process owns: the process sid
  * (the CLI gives the same value to `ctx.agent.sessionId`).
@@ -242,5 +245,46 @@ describe("I1: the wire has the content, the stored forms have the ref", () => {
     expect(after as number).toBeLessThan((before as number) - ONE_MB / 2)
     // The stored message holds only the ref.
     expect(lastUserText(large.core.history()).length).toBeLessThan(200)
+  })
+})
+
+describe("P3: the display handler through the real loader", () => {
+  test("the loader has a display for paste", () => {
+    expect(loader.sideband().hasDisplay("paste")).toBe(true)
+  })
+
+  test("full mode gives the file text; label mode gives the chip label", () => {
+    const content = "display line 1\ndisplay line 2\n"
+    expect(files().create(SID, "disp1.txt", content)).toBe("ok")
+    const sb = loader.sideband()
+    const text = `see ${ref("disp1")} now`
+    const full = sb.display(text, { mode: "full", sid: SID })
+    expect(full.changed).toBe(true)
+    expect(full.segments.map((s) => s.type)).toEqual(["text", "node", "text"])
+    const node = full.segments[1]
+    if (node?.type !== "node") throw new Error("no node")
+    expect(node.kind).toBe("paste")
+    expect(node.display).toEqual({ label: chip("Paste #disp1 30B 2L"), text: content })
+    const label = sb.display(text, { mode: "label", sid: SID }).segments[1]
+    if (label?.type !== "node") throw new Error("no node")
+    // Label mode: the bytes from the file, the lines from the ref attrs.
+    expect(label.display).toEqual({ label: chip("Paste #disp1 30B 1L") })
+  })
+
+  test("a missing file and a cap", () => {
+    const sb = loader.sideband()
+    const miss = sb.displayNode(sb.find(ref("nofl2"), { kinds: ["paste"] })[0] as never, {
+      mode: "full",
+      sid: SID,
+    })
+    expect(miss).toEqual({ label: chip("Paste #nofl2 missing"), missing: true })
+    expect(files().create(SID, "disp2.txt", "abcdefghij")).toBe("ok")
+    const cut = sb.display(ref("disp2"), { mode: "full", sid: SID, maxBytes: 4 }).segments[0]
+    if (cut?.type !== "node") throw new Error("no node")
+    expect(cut.display).toEqual({
+      label: chip("Paste #disp2 10B 1L"),
+      text: "abcd\n[... 6 more bytes]",
+      truncated: true,
+    })
   })
 })

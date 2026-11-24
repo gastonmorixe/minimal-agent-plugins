@@ -8,6 +8,29 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-23: **`ma-paste-plugin`: a display handler for the `paste`
+  kind** (`handlers/display.ts`, manifest `sideband[0].display`). A dump
+  shows each paste ref as its chip label and, in full mode, the file text
+  in a fenced block. The cap is `plugins.paste.display.maxBytes` (default
+  65536). A cut text ends with `[... N more bytes]`. On a host with no
+  `readHead`, the plugin also cuts the text of `read` to the cap, on a UTF-8
+  boundary (`utf8Head`), because an older host can ignore `maxBytes`.
+- 2026-11-23: **`ma-session-history-plugin`: the dump shows sideband refs.**
+  User text goes through `sideband.display` in full mode. A display handler
+  gives the label and the text, so the plugin knows no kind. The label and
+  the text go through `neutralize`, because the dump goes to the model. The
+  text cap is 8192 bytes. A block with a `sideband` mark (not `undefined`
+  and not `null`) keeps its raw text, the same rule as the cli dump and the
+  paste send hook. `lib/paste-refs.ts` is removed.
+
+### Changed
+
+- 2026-11-23: **`ma-session-history-plugin`: the XML dump removes each char
+  that XML 1.0 does not allow** (`xmlSafe` in `escapeXml`): C0 controls
+  other than TAB, LF and CR, U+FFFE, U+FFFF and a lone surrogate. This is
+  the same as the cli dump, so the two XML texts stay equal. Before, these
+  chars went into the XML as they were.
+
 - 2026-11-20: **`ma-token-estimate-kit`: fitted token-estimate presets.** A
   new kit (not a plugin) with one `CharClassEstimatorParams` preset for each
   tokenizer family (`claude-5x`, `claude-legacy`, `openai-o200k`,

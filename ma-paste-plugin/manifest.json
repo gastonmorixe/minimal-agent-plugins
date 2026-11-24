@@ -50,7 +50,15 @@
       "body": "text",
       "layout": "block",
       "trust": "untrusted",
-      "summary": "Text that the user pasted. The body is the pasted text, exact except for CRLF to LF and neutralized sideband tags. With numbered=\"true\", each line starts with its line number (from 1) and a TAB. The number and the TAB are not part of the pasted text."
+      "summary": "Text that the user pasted. The body is the pasted text, exact except for CRLF to LF and neutralized sideband tags. With numbered=\"true\", each line starts with its line number (from 1) and a TAB. The number and the TAB are not part of the pasted text.",
+      "display": {
+        "handler": {
+          "type": "module",
+          "path": "./handlers/display.ts",
+          "export": "default"
+        },
+        "host": true
+      }
     }
   ]
 }
