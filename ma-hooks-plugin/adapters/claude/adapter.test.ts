@@ -72,6 +72,14 @@ describe("claude discovery and parse", () => {
     expect(list.map((s) => s.scope)).toEqual(["user", "project", "project"])
   })
 
+  test("project root = home: the user settings file is not also a project source", () => {
+    const list = discoverClaude({ home: "/h", agentHome: "/h/.ma", projectRoot: "/h", plugins: [] })
+    expect(list.map((s) => `${s.id}:${s.path}`)).toEqual([
+      "user:/h/.claude/settings.json",
+      "project-local:/h/.claude/settings.local.json",
+    ])
+  })
+
   test("event map, onFailure block, timeout seconds, unsupported types", () => {
     const r = parseClaude(
       src,

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
@@ -61,6 +61,20 @@ describe("discovery and merge", () => {
       "native:project-local",
       "stub:project",
     ])
+  })
+
+  test("cwd = home (also through a symlink): the user file loads once, no untrusted copy", () => {
+    sb.write(userHooks(), nativeConfig("turn.willStart", ["echo ts"]))
+    const link = join(sb.root, "home-link")
+    symlinkSync(sb.home, link)
+    for (const cwd of [sb.home, link]) {
+      const e = engine({ cwd })
+      expect(e.status().map((r) => `${r.hook.source.scope}:${r.trust}`)).toEqual([
+        "user:implicit-user",
+      ])
+      expect(e.untrustedHooks()).toEqual([])
+      expect(e.active.length).toBe(1)
+    }
   })
 
   test("dedup keeps the native copy of an identical hook", async () => {

@@ -16,6 +16,7 @@ import { join } from "node:path"
 import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 import { hookContentHash, TrustKeyAllocator } from "../../engine/hash.ts"
+import { withoutUserCopies } from "../../engine/project.ts"
 import type {
   CanonicalHook,
   DiscoverEnv,
@@ -235,7 +236,7 @@ function buildHook(
 /** Claude settings files for this home and project (SPEC.md "Source discovery"). */
 export function discoverClaude(env: DiscoverEnv): SourceRef[] {
   const dir = join(env.projectRoot, ".claude")
-  return [
+  return withoutUserCopies([
     {
       id: "user",
       path: join(env.home, ".claude", "settings.json"),
@@ -249,7 +250,7 @@ export function discoverClaude(env: DiscoverEnv): SourceRef[] {
       scope: "project",
       precedence: 2,
     },
-  ]
+  ])
 }
 
 /** Claude stdin and env for one call. */

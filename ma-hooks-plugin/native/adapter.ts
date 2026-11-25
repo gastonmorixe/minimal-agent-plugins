@@ -18,6 +18,7 @@ import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
 import { channelInfo, isHookChannel } from "../engine/channels.ts"
 import { hookContentHash, TrustKeyAllocator } from "../engine/hash.ts"
+import { withoutUserCopies } from "../engine/project.ts"
 import {
   type CanonicalHook,
   type CanonicalResult,
@@ -358,7 +359,7 @@ export function discoverNative(env: DiscoverEnv): SourceRef[] {
       ...(p.dataDir ? { pluginData: p.dataDir } : {}),
     })
   })
-  return out
+  return withoutUserCopies(out)
 }
 
 /** The native adapter instance. */

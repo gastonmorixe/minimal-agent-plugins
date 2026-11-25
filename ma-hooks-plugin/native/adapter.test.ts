@@ -56,6 +56,27 @@ describe("native discovery", () => {
     expect(list.map((s) => s.scope)).toEqual(["user", "project", "project", "plugin"])
     expect(list[3]?.pluginData).toBe("/d/a")
   })
+
+  test("project root = home: the user file is not also a project source", () => {
+    const env = { home: "/h", agentHome: "/h/.minimal-agent", plugins: [] }
+    for (const projectRoot of ["/h", "/h/", "/h/x/.."]) {
+      const list = discoverNative({ ...env, projectRoot })
+      expect(list.map((s) => `${s.id}:${s.path}`)).toEqual([
+        "user:/h/.minimal-agent/hooks.json",
+        "project-local:/h/.minimal-agent/hooks.local.json",
+      ])
+    }
+  })
+
+  test("project root = home with MINIMAL_AGENT_HOME elsewhere: keep the project source", () => {
+    const list = discoverNative({
+      home: "/h",
+      agentHome: "/x/agent",
+      projectRoot: "/h",
+      plugins: [],
+    })
+    expect(list.map((s) => s.id)).toEqual(["user", "project", "project-local"])
+  })
 })
 
 describe("native parse", () => {
