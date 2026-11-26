@@ -51,8 +51,3 @@ export function magenta(s: string): string {
 export function gray(s: string): string {
   return slots.styles.gray(s)
 }
-
-/** Dim cyan for frame connectors (`╭`, `│`, `╰`). */
-export function dimCyan(s: string): string {
-  return slots.styles.dimCyan(s)
-}
