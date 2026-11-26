@@ -17,6 +17,8 @@ Replace, do not accumulate. Each new assistant `usage` overwrites the previous v
 
 `fleetStats.tokens` sums those last footprints across running, done, incomplete, failed, and stopped workers. That is concurrent window size, not `turns × context`.
 
+The fleet line labels this sum `Σctx` (`fmtFleetSpend`), because it is not one context window. A worker row keeps `ctx`, because its number is one context.
+
 Output tokens are not in the window. Cursor reports output as 0 anyway.
 
 Code:

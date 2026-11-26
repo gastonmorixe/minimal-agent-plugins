@@ -9,7 +9,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { parseProgress } from "./progress.ts"
-import { fmtSpend } from "./style.ts"
+import { fmtFleetSpend, fmtSpend } from "./style.ts"
 import { fleetStats, type SubagentRecord, sessionId, subagentId } from "./types.ts"
 
 function jsonl(...records: object[]): string {
@@ -68,6 +68,20 @@ describe("fmtSpend", () => {
   })
 })
 
+describe("fmtFleetSpend", () => {
+  it("labels the summed context Σctx, not ctx", () => {
+    expect(fmtFleetSpend({ tokens: 5_260_000, output: 1_200_000, thinking: 400_000 })).toBe(
+      "Σctx 5260k · out 1200k (thinking 400k)",
+    )
+    expect(fmtFleetSpend({ tokens: 900, output: 120, thinking: 0 })).toBe("Σctx 900 · out 120")
+  })
+
+  it("keeps the Σctx label when no output is known", () => {
+    expect(fmtFleetSpend({ tokens: 61_339 })).toBe("Σctx 61.3k")
+    expect(fmtFleetSpend({ tokens: 61_339, output: 0 })).toBe("Σctx 61.3k")
+  })
+})
+
 describe("fleetStats summed output", () => {
   const base = {
     sid: sessionId("509dbf90-0000-4000-8000-60a816d26f76"),
@@ -107,5 +121,9 @@ describe("fleetStats summed output", () => {
     const s = fleetStats(records)
     expect(s.output).toBe(3303)
     expect(s.thinking).toBe(70)
+  })
+
+  it("formats the fleet sum as Σctx", () => {
+    expect(fmtFleetSpend(fleetStats(records))).toBe("Σctx 101k · out 3.3k (thinking 70)")
   })
 })

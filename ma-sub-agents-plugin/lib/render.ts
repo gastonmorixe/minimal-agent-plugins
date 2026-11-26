@@ -9,7 +9,16 @@
  * @module sub-agents/lib/render
  */
 
-import { ANSI, color, fmtElapsed, fmtSpend, GLYPHS, statusGlyph, statusLabel } from "./style.ts"
+import {
+  ANSI,
+  color,
+  fmtElapsed,
+  fmtFleetSpend,
+  fmtSpend,
+  GLYPHS,
+  statusGlyph,
+  statusLabel,
+} from "./style.ts"
 import { fleetStats, type SubagentRecord } from "./types.ts"
 
 /** The `{header, body, footer}` slots a tool result fills. */
@@ -127,7 +136,7 @@ function fleetRow(r: SubagentRecord, ansi: boolean, nowMs: number): string {
   return `  ${id} ${glyph}  ${label} ${st}  ${trail}`.trimEnd()
 }
 
-/** Footer summary: `◐ 2 running · ✔ 1 done · ✘ 0 failed · 47.9k tok`. */
+/** Footer summary: `◐ 2 running · ✔ 1 done · ✘ 0 failed · Σctx 47.9k · out 2.8k`. */
 export function renderFleetFooter(records: readonly SubagentRecord[], ansi: boolean): string {
   const s = fleetStats(records)
   const dot = color(ansi, ANSI.DIM, GLYPHS.bullet)
@@ -140,7 +149,7 @@ export function renderFleetFooter(records: readonly SubagentRecord[], ansi: bool
         ]
       : []),
     `${color(ansi, `${ANSI.RED}${ANSI.BOLD}`, GLYPHS.failed)} ${color(ansi, ANSI.RED, `${s.failed} failed`)}`,
-    color(ansi, ANSI.DGRAY, fmtSpend(s)),
+    color(ansi, ANSI.DGRAY, fmtFleetSpend(s)),
   ]
   return ` ${parts.join(` ${dot} `)}`
 }
@@ -162,7 +171,7 @@ export function renderFleetDisplay(
   }
   const incSeg =
     s.incomplete > 0 ? ` ${dot} ${color(ansi, ANSI.GOLD, `${s.incomplete} incomplete`)}` : ""
-  const header = `${color(ansi, ANSI.LGRAY, "fleet")} ${dot} ${color(ansi, ANSI.SKY, `${s.running} running`)} ${dot} ${color(ansi, ANSI.LIME, `${s.done} done`)}${incSeg} ${dot} ${color(ansi, ANSI.DGRAY, fmtSpend(s))}`
+  const header = `${color(ansi, ANSI.LGRAY, "fleet")} ${dot} ${color(ansi, ANSI.SKY, `${s.running} running`)} ${dot} ${color(ansi, ANSI.LIME, `${s.done} done`)}${incSeg} ${dot} ${color(ansi, ANSI.DGRAY, fmtFleetSpend(s))}`
   const rows = records.map((r) => fleetRow(r, ansi, nowMs))
   // Trailing blank row → the host renders a bare `│` spacer before the
   // `╰ <footer>` summary, mirroring the blank `│` line the header already

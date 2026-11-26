@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "bun:test"
 
-import { diskSalvageText, resultText } from "./content.ts"
+import { diskSalvageText, fleetText, resultText } from "./content.ts"
 import { type SubagentRecord, type SubagentStatus, sessionId, subagentId } from "./types.ts"
 
 function rec(status: SubagentStatus): SubagentRecord {
@@ -97,6 +97,26 @@ describe("resultText — failed does not hard-lie about disk", () => {
     expect(text).toMatch(/result sentinel/i)
     // Avoid the old absolute "No result." dead-end that hid Dorothy's handoffs.
     expect(text).not.toMatch(/No result\.$/)
+  })
+})
+
+describe("fleetText — the fleet sum is labeled Σctx", () => {
+  it("labels the head sum Σctx and keeps ctx on the worker line", () => {
+    const text = fleetText(
+      [
+        rec({
+          kind: "done",
+          endedAt: "t",
+          result: { short: "s", tokens: 61_300, tools: 8, output: 2800 },
+        }),
+      ],
+      Date.parse("2026-05-30T12:00:00.000Z"),
+    )
+    const [head, , row] = text.split("\n")
+    expect(head).toBe(
+      "Fleet: 0 running · 0 queued · 1 done · 0 failed · 0 stopped · Σctx 61.3k · out 2.8k",
+    )
+    expect(row).toContain("done · ctx 61.3k · out 2.8k")
   })
 })
 

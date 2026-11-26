@@ -6,7 +6,7 @@
  * @module sub-agents/lib/content
  */
 
-import { fmtElapsed, fmtSpend } from "./style.ts"
+import { fmtElapsed, fmtFleetSpend, fmtSpend } from "./style.ts"
 import {
   fleetStats,
   type Progress,
@@ -92,7 +92,7 @@ export function fleetText(records: readonly SubagentRecord[], nowMs: number): st
     return "No sub-agents in this session. Use SubAgentsSpawnAgent to delegate a unit of work."
   }
   const s = fleetStats(records)
-  const head = `Fleet: ${s.running} running · ${s.queued} queued · ${s.done} done · ${s.failed} failed · ${s.stopped} stopped · ${fmtSpend(s)} total`
+  const head = `Fleet: ${s.running} running · ${s.queued} queued · ${s.done} done · ${s.failed} failed · ${s.stopped} stopped · ${fmtFleetSpend(s)}`
   const rows = records.map((r) => recordLine(r, nowMs))
   const tail =
     s.done > 0 ? "\nPull a finished worker's deliverable with SubAgentsAgentResult <id>." : ""

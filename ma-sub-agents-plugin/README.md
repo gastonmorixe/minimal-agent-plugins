@@ -7,7 +7,7 @@ own session id, so it can use every tool the lead can use, on its own context
 window.
 
 ```
-◈ fleet 3f2a · ◐ 2 · ✔ 1 · ✘ 0 · ctx 61.3k · out 2.8k
+◈ fleet 3f2a · ◐ 2 · ✔ 1 · ✘ 0 · Σctx 61.3k · out 2.8k
    ◑ A1  explorer   1m12  Bash: rg -n "parseArgs" src (0m04) · 9 tools · ctx 30.9k · out 812
    ◐ A2  worker     0m31  ✎ The fix moves the guard into… · 4 tools ✘1 · ctx 22.4k · out 340
    ✔ A3  reviewer   done  No blocking issues; 2 nits in… → AgentResult A3

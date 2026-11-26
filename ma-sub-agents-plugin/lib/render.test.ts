@@ -186,6 +186,38 @@ describe("renderFleetDisplay", () => {
     expect(d.footer).toContain("0 failed")
   })
 
+  it("labels the fleet sum Σctx in the header and footer, and keeps ctx on worker rows", () => {
+    const records = [
+      rec("A1", "worker", {
+        kind: "running",
+        pid: 1,
+        startedAt: "2026-05-30T11:58:38.000Z",
+        progress: { tools: 9, tokens: 30_900, output: 812 },
+      }),
+      rec("A2", "worker", {
+        kind: "running",
+        pid: 2,
+        startedAt: "2026-05-30T11:59:29.000Z",
+        progress: { tools: 4, tokens: 22_400, output: 340 },
+      }),
+    ]
+    const d = renderFleetDisplay(records, false, NOW)
+    expect(d.header).toContain("Σctx 53.3k · out 1.2k")
+    expect(d.footer).toContain("Σctx 53.3k · out 1.2k")
+    const rows = d.body.split("\n")
+    expect(rows[0]).toContain("ctx 30.9k · out 812")
+    expect(rows[0]).not.toContain("Σ")
+    expect(rows[1]).toContain("ctx 22.4k · out 340")
+  })
+
+  it("labels the fleet sum Σctx when no output is known", () => {
+    const records = [rec("A1", "reviewer", { kind: "done", endedAt: "t", result: RESULT })]
+    const d = renderFleetDisplay(records, false, NOW)
+    expect(d.header).toContain("Σctx 5.2k")
+    expect(d.footer).toContain("Σctx 5.2k")
+    expect(d.footer).not.toContain("tok")
+  })
+
   it("renders a hint for an empty fleet", () => {
     const d = renderFleetDisplay([], false, NOW)
     expect(d.header).toContain("no sub-agents")

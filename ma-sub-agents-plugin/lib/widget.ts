@@ -4,7 +4,7 @@
  * tool tree of the CLI:
  *
  * ```
- * ● Fleet 3f2a · 2 running · 46 done · 6 incomplete · 2 failed · ctx 1.2M · out 80k
+ * ● Fleet 3f2a · 2 running · 46 done · 6 incomplete · 2 failed · Σctx 1200k · out 80k
  * ├ ● A55 step14-wp opus-5.5:high 15m47 ✎ Now S5 (built-in tool text) 103 tools ✘3 · 146k
  * ├ ○ A57 step14-wp sonnet:max     6m20 Bash sleep 60; cat /tmp/v3.log 55 tools ✘1 · 109k
  * ╰ ✘ 2 failed · ⚠ 6 incomplete · ✔ 46 done · +51 more · SubAgentsListAgents
@@ -29,7 +29,7 @@
 
 import { displayWidth, truncateDisplayWidth } from "@minimal-agent/core/plugin-api/utils/term-width"
 
-import { ANSI, color, fmtElapsed, fmtSpend, fmtTokens, GLYPHS } from "./style.ts"
+import { ANSI, color, fmtElapsed, fmtFleetSpend, fmtTokens, GLYPHS } from "./style.ts"
 import { fleetStats, type Progress, type SubagentRecord } from "./types.ts"
 
 /** Options for {@link renderWidget}. */
@@ -329,7 +329,7 @@ export function renderWidget(
   if (stats.failed > 0) counts.push(color(ansi, ANSI.RED, `${stats.failed} failed`))
   if (stats.stopped > 0) counts.push(color(ansi, ANSI.RED, `${stats.stopped} stopped`))
   const overBudget = opts.tokenBudget !== undefined && stats.tokens > opts.tokenBudget
-  counts.push(color(ansi, overBudget ? ANSI.GOLD : ANSI.DGRAY, fmtSpend(stats)))
+  counts.push(color(ansi, overBudget ? ANSI.GOLD : ANSI.DGRAY, fmtFleetSpend(stats)))
   const fleet = color(ansi, ANSI.BOLD, `Fleet ${shortSid(opts.leadSid)}`)
   const header = cut(`${dot} ${fleet}${sep}${counts.join(sep)}`, budget)
 

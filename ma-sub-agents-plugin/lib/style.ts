@@ -121,7 +121,8 @@ export function fmtTokens(n: number): string {
 }
 
 /**
- * One worker's (or the fleet's) token figures. `tokens` is last-turn context.
+ * One worker's (or the fleet's) token figures. `tokens` is last-turn context
+ * (for the fleet: the sum of the last-turn context of each worker).
  * `output` and `thinking` are summed generated tokens.
  */
 export interface SpendCounts {
@@ -130,15 +131,32 @@ export interface SpendCounts {
   readonly thinking?: number
 }
 
+/** The ` · out 2.8k (thinking 61)` tail, or `""` when no output is known. */
+function outTail(c: SpendCounts): string {
+  if (!c.output) return ""
+  const thinking = c.thinking ? ` (thinking ${fmtTokens(c.thinking)})` : ""
+  return ` · out ${fmtTokens(c.output)}${thinking}`
+}
+
 /**
- * Format token figures: `"ctx 61.3k · out 2.8k (thinking 61)"`. When no
- * output is known (an old record, or a provider that reports none, such as
- * Cursor), fall back to the old single figure `"61.3k tok"`.
+ * Format the token figures of ONE worker: `"ctx 61.3k · out 2.8k (thinking 61)"`.
+ * When no output is known (an old record, or a provider that reports none,
+ * such as Cursor), fall back to the old single figure `"61.3k tok"`.
  */
 export function fmtSpend(c: SpendCounts): string {
   if (!c.output) return `${fmtTokens(c.tokens)} tok`
-  const thinking = c.thinking ? ` (thinking ${fmtTokens(c.thinking)})` : ""
-  return `ctx ${fmtTokens(c.tokens)} · out ${fmtTokens(c.output)}${thinking}`
+  return `ctx ${fmtTokens(c.tokens)}${outTail(c)}`
+}
+
+/**
+ * Format the token figures of the FLEET (a `fleetStats` value):
+ * `"Σctx 101k · out 3.3k (thinking 70)"`. `Σctx` is the sum of the last-turn
+ * context of each worker. It is not one context window, and not a billed
+ * total. With no output known, it gives `"Σctx 101k"`, so the sum always has
+ * its label.
+ */
+export function fmtFleetSpend(c: SpendCounts): string {
+  return `Σctx ${fmtTokens(c.tokens)}${outTail(c)}`
 }
 
 /** Format an elapsed-ms duration: "0m31", "1m22", "1h04". Empty under 1s. */

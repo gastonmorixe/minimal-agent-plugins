@@ -167,6 +167,23 @@ describe("renderWidget", () => {
     expect(ls.at(-1)).toBe("╰ ✔ 1 done · +5 more · SubAgentsListAgents")
   })
 
+  it("labels the fleet sum Σctx in the header, and keeps it inside the width", () => {
+    const records = [
+      rec("A1", "w", running({ tools: 1, tokens: 61_300, output: 2800 })),
+      rec("A2", "w", running({ tools: 1, tokens: 40_000, output: 500 })),
+    ]
+    const header = lines(renderWidget(records, OPTS))[0] as string
+    expect(header).toContain("Σctx 101k · out 3.3k")
+    expect(header).not.toMatch(/(^|[^Σ])ctx /)
+    expect(displayWidth("Σ")).toBe(1)
+    for (const columns of [40, 60, 80]) {
+      for (const ansi of [false, true]) {
+        const h = lines(renderWidget(records, { ...OPTS, ansi, columns }))[0] as string
+        expect(displayWidth(h)).toBeLessThanOrEqual(columns - 1)
+      }
+    }
+  })
+
   it("paints the token total over budget (GOLD) via ansi codes", () => {
     const records = [rec("A2", "worker", running({ tools: 1, tokens: 90_000 }))]
     const out = renderWidget(records, { ...OPTS, ansi: true, tokenBudget: 50_000 }) as string
