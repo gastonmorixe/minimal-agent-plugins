@@ -409,9 +409,11 @@ type StepResult = { status: SubagentStatus; effects: Effect[] }
  * terminal effects. The ONE place that builds it, for the grace end, a run
  * end in the grace, and the hard maxTokens stop. `probe` (when known) adds
  * the exit code, a crash text, and the distilled final message as `salvage`.
+ * The spend comes from the newest progress (the probe, else the running status).
  */
 function limitFailed(
   r: SubagentRecord,
+  s: Running,
   error: string,
   probe: WorkerProbe | undefined,
   now: string,
@@ -425,6 +427,7 @@ function limitFailed(
     endedAt: now,
     error: `${error}${crash}`,
     ...(probe?.exitCode !== undefined ? { exitCode: probe.exitCode } : {}),
+    ...spendOf(probe?.progress ?? s.progress),
     ...(salvage ? { salvage } : {}),
     ...(salvage && probe?.distilledClipped ? { salvageClipped: true } : {}),
   }
@@ -440,7 +443,7 @@ function limitFailedAndStop(
   reason: string,
   now: string,
 ): StepResult {
-  const { status, effects } = limitFailed(r, error, probe, now)
+  const { status, effects } = limitFailed(r, s, error, probe, now)
   if (probe && !probe.alive) return { status, effects }
   return { status, effects: [{ type: "stop", id: r.id, pid: s.pid, reason }, ...effects] }
 }
@@ -474,7 +477,7 @@ function startGrace(
   now: string,
   nowMs: number,
 ): StepResult {
-  if (probe && !probe.alive) return limitFailed(r, error, probe, now)
+  if (probe && !probe.alive) return limitFailed(r, s, error, probe, now)
   const until = new Date(nowMs + DEFAULT_GRACE_SEC * 1000).toISOString()
   const progress = probe?.progress ?? s.progress
   return {
@@ -540,6 +543,7 @@ function finalizeRunning(
       endedAt: now,
       error,
       exitCode: probe.exitCode,
+      ...spendOf(s.progress),
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
@@ -552,6 +556,7 @@ function finalizeRunning(
       endedAt: now,
       error: probe.runFailed,
       ...(probe.exitCode !== undefined ? { exitCode: probe.exitCode } : {}),
+      ...spendOf(s.progress),
     }
     return { status, effects: terminalEffects(r, status, now) }
   }
@@ -564,7 +569,12 @@ function finalizeRunning(
   //     generic message. Only fires when the worker produced nothing usable
   //     (the probe only reads the log in that case).
   if (probe.crash && !probe.result && !(probe.distilled && probe.distilled.trim().length > 0)) {
-    const status: SubagentStatus = { kind: "failed", endedAt: now, error: probe.crash }
+    const status: SubagentStatus = {
+      kind: "failed",
+      endedAt: now,
+      error: probe.crash,
+      ...spendOf(s.progress),
+    }
     return { status, effects: terminalEffects(r, status, now) }
   }
   // b. CONTRACT CHECK (FIX 4): the worker declared `expectArtifacts` and some
@@ -690,7 +700,7 @@ function outputOf(p: Progress): Pick<Progress, "output" | "thinking"> {
 }
 
 /** Every count a terminal status copies from progress. */
-function spendOf(
+export function spendOf(
   p: Progress,
 ): Pick<Progress, "tokens" | "tools" | "output" | "thinking" | "turns" | "toolErrors"> {
   return { tokens: p.tokens, tools: p.tools, ...outputOf(p), ...streamCountsOf(p) }

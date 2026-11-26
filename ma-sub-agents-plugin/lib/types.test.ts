@@ -77,6 +77,36 @@ describe("fleetStats", () => {
     })
   })
 
+  it("adds the spend of failed and stopped workers (no spend fields add 0)", () => {
+    const records: SubagentRecord[] = [
+      rec("A1", {
+        kind: "failed",
+        endedAt: "t",
+        error: "timed out",
+        tokens: 187_000,
+        tools: 12,
+        output: 58_100,
+        thinking: 33_100,
+      }),
+      rec("A2", {
+        kind: "stopped",
+        endedAt: "t",
+        tokens: 4000,
+        tools: 2,
+        output: 900,
+        thinking: 300,
+      }),
+      rec("A3", { kind: "failed", endedAt: "t", error: "crash" }),
+      rec("A4", { kind: "stopped", endedAt: "t" }),
+    ]
+    const s = fleetStats(records)
+    expect(s.failed).toBe(2)
+    expect(s.stopped).toBe(2)
+    expect(s.tokens).toBe(187_000 + 4000)
+    expect(s.output).toBe(58_100 + 900)
+    expect(s.thinking).toBe(33_100 + 300)
+  })
+
   it("is empty-safe", () => {
     expect(fleetStats([])).toEqual({
       total: 0,

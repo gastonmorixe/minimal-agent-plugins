@@ -347,3 +347,62 @@ describe("supervisorTick — grace phase at maxTurns / maxTokens", () => {
     expect(status(out)?.kind).toBe("done")
   })
 })
+
+describe("supervisorTick: a failed worker keeps the spend of its last progress", () => {
+  const SPEND: Progress = {
+    tools: 12,
+    tokens: 187_000,
+    output: 58_100,
+    thinking: 33_100,
+    turns: 9,
+    toolErrors: 1,
+    lastTool: "Bash",
+  }
+  const COUNTS = {
+    tokens: 187_000,
+    tools: 12,
+    output: 58_100,
+    thinking: 33_100,
+    turns: 9,
+    toolErrors: 1,
+  }
+  const spent = (budget?: SubagentRecord["budget"]): SubagentRecord => {
+    const r = rec(budget)
+    return r.status.kind === "running" ? { ...r, status: { ...r.status, progress: SPEND } } : r
+  }
+  const failedWithSpend = (out: TickOutput) => {
+    const st = status(out)
+    expect(st?.kind).toBe("failed")
+    expect(st).toMatchObject(COUNTS)
+  }
+
+  it("a non-zero exit keeps the spend", () => {
+    failedWithSpend(tick([spent()], { alive: false, exitCode: 1 }, NOW_MS))
+  })
+
+  it("a stream failure keeps the spend", () => {
+    failedWithSpend(tick([spent()], { alive: false, runFailed: "API 529" }, NOW_MS))
+  })
+
+  it("a crash signature keeps the spend", () => {
+    failedWithSpend(tick([spent()], { alive: false, crash: "fatal: boom" }, NOW_MS))
+  })
+
+  it("the grace end keeps the spend (no probe on the last tick)", () => {
+    const first = tick([spent({ deadlineSec: 60 })], { alive: true }, NOW_MS)
+    failedWithSpend(tick(first.records, undefined, NOW_MS + GRACE_MS))
+  })
+
+  it("the maxTokens stop keeps the spend of the newest probe", () => {
+    const probe: WorkerProbe = { alive: true, progress: { ...SPEND, output: 1200 } }
+    const out = tick([spent({ maxTokens: 1000 })], probe, NOW_MS)
+    expect(status(out)).toMatchObject({ kind: "failed", ...COUNTS, output: 1200 })
+  })
+
+  it("a worker that exits before it runs has no spend fields", () => {
+    const out = tick([{ ...rec(), status: { kind: "queued" } }], { alive: false }, NOW_MS)
+    const st = status(out)
+    expect(st?.kind).toBe("failed")
+    expect(st && "tokens" in st).toBe(false)
+  })
+})

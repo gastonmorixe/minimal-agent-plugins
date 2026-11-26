@@ -255,7 +255,7 @@ export type SubagentStatus =
       /** Artifact paths the worker's sentinel CLAIMED, if any (for the lead to verify/locate). */
       readonly artifacts?: readonly string[]
     }
-  | {
+  | ({
       readonly kind: "failed"
       readonly endedAt: string
       readonly error: string
@@ -268,8 +268,27 @@ export type SubagentStatus =
       readonly salvage?: string
       /** True when `salvage` was clipped at {@link SALVAGE_MAX_CHARS}. */
       readonly salvageClipped?: boolean
-    }
-  | { readonly kind: "stopped"; readonly endedAt: string; readonly reason?: string }
+    } & EndSpend)
+  | ({ readonly kind: "stopped"; readonly endedAt: string; readonly reason?: string } & EndSpend)
+
+/**
+ * The spend of the last progress of a worker that failed or stopped. All
+ * optional: a worker that never ran has none, and old records have none.
+ */
+export interface EndSpend {
+  /** Last-turn contextSize before the worker ended (from live progress). */
+  readonly tokens?: number
+  /** Tool calls made before the worker ended. */
+  readonly tools?: number
+  /** Output tokens summed over all turns. */
+  readonly output?: number
+  /** Thinking tokens summed over all turns. A part of `output`. */
+  readonly thinking?: number
+  /** Model responses made before the worker ended. */
+  readonly turns?: number
+  /** Tool calls that returned an error. */
+  readonly toolErrors?: number
+}
 
 /** All terminal status kinds (no further transitions). */
 export type TerminalKind = "done" | "incomplete" | "failed" | "stopped"
@@ -376,7 +395,7 @@ export interface FleetStats {
   readonly incomplete: number
   readonly failed: number
   readonly stopped: number
-  /** Sum of last-turn contextSize across workers (running + done + incomplete). */
+  /** Sum of last-turn contextSize across workers (every kind but queued). */
   readonly tokens: number
   /** Output tokens summed across workers. Real generated spend. */
   readonly output: number
@@ -395,8 +414,8 @@ export function fleetStats(records: readonly SubagentRecord[]): FleetStats {
   let tokens = 0
   let output = 0
   let thinking = 0
-  const add = (c: { tokens: number; output?: number; thinking?: number }) => {
-    tokens += c.tokens
+  const add = (c: { tokens?: number; output?: number; thinking?: number }) => {
+    tokens += c.tokens ?? 0
     output += c.output ?? 0
     thinking += c.thinking ?? 0
   }
@@ -419,9 +438,11 @@ export function fleetStats(records: readonly SubagentRecord[]): FleetStats {
         break
       case "failed":
         failed++
+        add(r.status)
         break
       case "stopped":
         stopped++
+        add(r.status)
         break
       default: {
         throw new Error(`unhandled status kind: ${String(r.status satisfies never)}`)

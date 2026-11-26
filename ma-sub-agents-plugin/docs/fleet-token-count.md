@@ -15,7 +15,7 @@ input_tokens + cache_read_input_tokens + cache_creation_input_tokens
 
 Replace, do not accumulate. Each new assistant `usage` overwrites the previous value. A turn with no `usage` keeps the last footprint.
 
-`fleetStats.tokens` sums those last footprints across running, done, and incomplete workers. That is concurrent window size, not `turns × context`.
+`fleetStats.tokens` sums those last footprints across running, done, incomplete, failed, and stopped workers. That is concurrent window size, not `turns × context`.
 
 Output tokens are not in the window. Cursor reports output as 0 anyway.
 
@@ -102,10 +102,11 @@ Donna's audit: `research/2026-10-04-subagent-fleet-token-count.md` (monorepo).
 ## What this patch does not do
 
 - Does not change Cursor `cursor-usage.ts` (still no cache counters, still no output).
-- Does not persist tokens on `stopped` / `failed` handles (`fleetStats` still adds 0 there).
 - Does not show a second billed number.
 - Does not fix extra `AgentService/Run` folds when the bidi wire drops.
 - Does not make `fresh` workers share the lead prefix.
+
+A later fix: `failed` and `stopped` handles now keep the spend of their last progress (context, tools, output, thinking, turns, tool errors). So `fleetStats` adds them. A worker that never ran has no spend and adds 0.
 
 ## Tests
 

@@ -28,9 +28,11 @@ import {
 } from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { type SubagentStore } from "./store.ts"
+import { spendOf } from "./supervisor.ts"
 import { childControlOrNone } from "./target-control-lead.ts"
 import { clampTools } from "./tool-clamp.ts"
 import {
+  type EndSpend,
   err,
   type Isolation,
   isActive,
@@ -38,6 +40,7 @@ import {
   type Result,
   type SessionId,
   type SubagentRecord,
+  type SubagentStatus,
   sessionId,
   ZERO_PROGRESS,
 } from "./types.ts"
@@ -560,7 +563,12 @@ export function stopAgent(
   const stopped: SubagentRecord = {
     ...rec,
     ...(rec.status.kind === "running" ? { lastPid: rec.status.pid } : {}),
-    status: { kind: "stopped", endedAt: deps.now().toISOString(), ...(reason ? { reason } : {}) },
+    status: {
+      kind: "stopped",
+      endedAt: deps.now().toISOString(),
+      ...(reason ? { reason } : {}),
+      ...runningSpend(rec.status),
+    },
   }
   deps.store.upsert(stopped)
   return ok(stopped)
@@ -599,8 +607,14 @@ export function stopAllAgents(
         kind: "stopped",
         endedAt: deps.now().toISOString(),
         reason,
+        ...runningSpend(rec.status),
       },
     })
   }
   return signaled
+}
+
+/** The spend of a running worker's last progress, for its `stopped` status. Empty for other kinds. */
+function runningSpend(s: SubagentStatus): EndSpend {
+  return s.kind === "running" ? spendOf(s.progress) : {}
 }
