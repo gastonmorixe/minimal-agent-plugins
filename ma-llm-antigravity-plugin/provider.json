@@ -1,0 +1,8 @@
+{
+  "id": "antigravity",
+  "name": "LLM Provider: Google Antigravity",
+  "version": "0.1.0",
+  "description": "Google Antigravity (Cloud Code Assist) models over Google OAuth. Gemini, Claude and GPT-OSS families. No telemetry.",
+  "entry": "./index.ts",
+  "export": "antigravityProviderPlugin"
+}

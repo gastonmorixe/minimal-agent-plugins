@@ -19,6 +19,7 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
 
 import { registerAnthropicModels } from "../ma-llm-anthropic-plugin/models.ts"
+import { registerAntigravityModels } from "../ma-llm-antigravity-plugin/models.ts"
 import { registerClinepassModels } from "../ma-llm-clinepass-plugin/models.ts"
 import { registerCursorModels } from "../ma-llm-cursor-plugin/models.ts"
 import { registerGrokModels } from "../ma-llm-grok-plugin/models.ts"
@@ -34,6 +35,7 @@ import { registerWaferModels } from "../ma-llm-wafer-plugin/models.ts"
 /** The static registration function of each `ma-llm-*` plugin. */
 const PLUGINS: ReadonlyArray<readonly [string, (registrar: ModelRegistrar) => unknown]> = [
   ["anthropic", registerAnthropicModels],
+  ["antigravity", registerAntigravityModels],
   ["clinepass", registerClinepassModels],
   ["cursor", registerCursorModels],
   ["grok", registerGrokModels],

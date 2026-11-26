@@ -171,6 +171,7 @@ value of `--provider`.
 | Directory | Id | Backend |
 | --- | --- | --- |
 | [`ma-llm-anthropic-plugin/`](./ma-llm-anthropic-plugin) | `anthropic` | Anthropic Messages API |
+| [`ma-llm-antigravity-plugin/`](./ma-llm-antigravity-plugin) | `antigravity` | Google Antigravity (Cloud Code Assist, Google OAuth) |
 | [`ma-llm-openai-plugin/`](./ma-llm-openai-plugin) | `openai` | OpenAI Chat Completions and Responses |
 | [`ma-llm-ollama-plugin/`](./ma-llm-ollama-plugin) | `ollama` | Ollama Cloud |
 | [`ma-llm-openrouter-plugin/`](./ma-llm-openrouter-plugin) | `openrouter` | OpenRouter gateway |

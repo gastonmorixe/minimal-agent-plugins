@@ -1,0 +1,21 @@
+{
+  "name": "ma-llm-antigravity-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "External provider plugin for minimal-agent: Google Antigravity (Cloud Code Assist) models over Google OAuth, with no telemetry.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "bun run ../scripts/typecheck.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "check": "bun run ../scripts/check.ts"
+  },
+  "peerDependencies": {
+    "@minimal-agent/core": "git+ssh://git@github.com/gastonmorixe/minimal-agent-core.git#b17961ef43a969acd9543a8bab2657afb8afe535"
+  }
+}

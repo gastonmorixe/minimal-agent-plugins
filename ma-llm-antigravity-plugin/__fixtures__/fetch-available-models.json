@@ -1,0 +1,526 @@
+{
+  "defaultAgentModelId": "gemini-4-neon-high",
+  "groupedModels": {
+    "gemini-4-neon": {
+      "displayName": "Gemini 4 Neon",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        },
+        {
+          "thinkingSuffix": "xhigh",
+          "thinkingDisplayName": "Extra High"
+        }
+      ]
+    },
+    "gemini-3.8-flash": {
+      "displayName": "Gemini 3.8 Flash",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        }
+      ]
+    },
+    "claude-opus-5-5": {
+      "displayName": "Claude Opus 5.5",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        }
+      ]
+    },
+    "gemini-4-carbon": {
+      "displayName": "Gemini 4 Carbon",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        }
+      ]
+    },
+    "gemini-4-hydrogen": {
+      "displayName": "Gemini 4 Hydrogen",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        },
+        {
+          "thinkingSuffix": "xhigh",
+          "thinkingDisplayName": "Extra High"
+        }
+      ]
+    },
+    "claude-sonnet-5-5": {
+      "displayName": "Claude Sonnet 5.5",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        }
+      ]
+    },
+    "gemini-4-argon": {
+      "displayName": "Gemini 4 Argon",
+      "supportedThinkingLevels": [
+        {
+          "thinkingSuffix": "low",
+          "thinkingDisplayName": "Low"
+        },
+        {
+          "thinkingSuffix": "medium",
+          "thinkingDisplayName": "Medium"
+        },
+        {
+          "thinkingSuffix": "high",
+          "thinkingDisplayName": "High"
+        }
+      ]
+    }
+  },
+  "models": {
+    "gemini-flash-worker-agy": {
+      "displayName": "Gemini 4 Hydrogen (Orchestrator)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 100
+    },
+    "gemini-3.1-flash-lite": {
+      "displayName": "Gemini 3.1 Flash Lite",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65535,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-2.5-flash-thinking": {
+      "displayName": "Gemini 3.5 Flash Lite",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65535,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-carbon-medium": {
+      "displayName": "Gemini 4 Carbon (Medium)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "gemini-4-neon-medium": {
+      "displayName": "Gemini 4 Neon (Medium)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "claude-sonnet-5-5-low": {
+      "displayName": "Claude Sonnet 5.5 (Low)",
+      "maxTokens": 1000000,
+      "maxOutputTokens": 128000,
+      "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-medium": {
+      "displayName": "Gemini 4 Hydrogen (Medium)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "tab_jump_flash_lite_preview": {
+      "maxTokens": 16384,
+      "maxOutputTokens": 4096,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE"
+    },
+    "gemini-4-carbon-low": {
+      "displayName": "Gemini 4 Carbon (Low)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-neon-low": {
+      "displayName": "Gemini 4 Neon (Low)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-low": {
+      "displayName": "Gemini 4 Hydrogen (Low)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "claude-opus-5-5-medium": {
+      "displayName": "Claude Opus 5.5 (Medium)",
+      "maxTokens": 1000000,
+      "maxOutputTokens": 128000,
+      "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "gemini-4-neon-xhigh": {
+      "displayName": "Gemini 4 Neon (XHigh)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 100,
+      "recommended": true
+    },
+    "claude-opus-5-5-high": {
+      "displayName": "Claude Opus 5.5 (High)",
+      "maxTokens": 1000000,
+      "maxOutputTokens": 128000,
+      "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-3-flash": {
+      "displayName": "Gemini 3 Flash",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-3.8-flash-low": {
+      "displayName": "Gemini 3.8 Flash (Low)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "claude-sonnet-5-5-high": {
+      "displayName": "Claude Sonnet 5.5 (High)",
+      "maxTokens": 1000000,
+      "maxOutputTokens": 128000,
+      "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-4-neon-high": {
+      "displayName": "Gemini 4 Neon (High)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-2.5-flash-lite": {
+      "displayName": "Gemini 3.5 Flash Lite",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65535,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-high": {
+      "displayName": "Gemini 4 Hydrogen (High)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-3.8-flash-tiered": {
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-tiered-xhigh": {
+      "displayName": "Gemini 4 Hydrogen (XHigh)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 100,
+      "recommended": true
+    },
+    "gemini-4-carbon-high": {
+      "displayName": "Gemini 4 Carbon (High)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-xhigh": {
+      "displayName": "Gemini 4 Hydrogen (XHigh)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 100,
+      "recommended": true
+    },
+    "gemini-3.8-flash-high": {
+      "displayName": "Gemini 3.8 Flash (High)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-3.8-flash-medium": {
+      "displayName": "Gemini 3.8 Flash (Medium)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "gemini-pro-orchestrator-neon": {
+      "displayName": "Orchestrator (Neon)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 100,
+      "recommended": true
+    },
+    "gemini-4-argon-high": {
+      "displayName": "Gemini 4 Argon (High)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "claude-sonnet-5-5-medium": {
+      "displayName": "Claude Sonnet 5.5 (Medium)",
+      "maxTokens": 1000000,
+      "maxOutputTokens": 128000,
+      "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "gemini-2.5-flash": {
+      "displayName": "Gemini 3.5 Flash Lite",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65535,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-sonar": {
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-3.5-flash-lite": {
+      "displayName": "Gemini 3.5 Flash Lite",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65535,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "claude-opus-5-5-low": {
+      "displayName": "Claude Opus 5.5 (Low)",
+      "maxTokens": 1000000,
+      "maxOutputTokens": 128000,
+      "modelProvider": "MODEL_PROVIDER_ANTHROPIC",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-argon-medium": {
+      "displayName": "Gemini 4 Argon (Medium)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 2,
+      "recommended": true
+    },
+    "gemini-4-argon-low": {
+      "displayName": "Gemini 4 Argon (Low)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 1,
+      "recommended": true
+    },
+    "gemini-4-hydrogen-tiered-high": {
+      "displayName": "Gemini 4 Hydrogen (High)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-pro-orchestrator": {
+      "displayName": "Orchestrator (Carbon)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 262144,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gpt-oss-120b-medium": {
+      "displayName": "GPT-OSS 120B (Medium)",
+      "maxTokens": 131072,
+      "maxOutputTokens": 32768,
+      "modelProvider": "MODEL_PROVIDER_OPENAI",
+      "supportsThinking": true,
+      "recommended": true
+    },
+    "tab_flash_lite_preview": {
+      "maxTokens": 16384,
+      "maxOutputTokens": 4096,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE"
+    },
+    "gemini-pro-orchestrator-argon": {
+      "displayName": "Orchestrator (Argon)",
+      "maxTokens": 1048576,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true,
+      "supportsThinking": true,
+      "thinkingLevel": 3,
+      "recommended": true
+    },
+    "gemini-3.1-flash-image": {
+      "displayName": "Gemini 3.1 Flash Image",
+      "maxTokens": 65536,
+      "maxOutputTokens": 65536,
+      "modelProvider": "MODEL_PROVIDER_GOOGLE",
+      "supportsImages": true
+    }
+  }
+}

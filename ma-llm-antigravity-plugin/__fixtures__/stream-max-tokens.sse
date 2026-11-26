@@ -1,0 +1,4 @@
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "Cut off"}]}}], "usageMetadata": {"promptTokenCount": 50, "candidatesTokenCount": 4096, "totalTokenCount": 4146}, "responseId": "resp_max_1"}, "traceId": "t7"}
+
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": []}, "finishReason": "MAX_TOKENS"}], "usageMetadata": {"promptTokenCount": 50, "candidatesTokenCount": 4096, "totalTokenCount": 4146}, "responseId": "resp_max_1"}, "traceId": "t7"}
+

@@ -1,0 +1,4 @@
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "Reading two files.", "thought": true}]}}], "usageMetadata": {"promptTokenCount": 100, "totalTokenCount": 110, "thoughtsTokenCount": 10}, "responseId": "resp_par_1"}, "traceId": "t4"}
+
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"functionCall": {"id": "call_1001", "name": "read_file", "args": {"Path": "/repo/a.txt"}}, "thoughtSignature": "SIG_TOOL_PARALLEL_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"}, {"functionCall": {"id": "call_1002", "name": "read_file", "args": {"Path": "/repo/b.txt"}}}]}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 40, "totalTokenCount": 150, "thoughtsTokenCount": 10}, "responseId": "resp_par_1"}, "traceId": "t4"}
+

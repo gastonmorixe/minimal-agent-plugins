@@ -1,0 +1,2 @@
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "", "thoughtSignature": "SIG_TOOL_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"}, {"functionCall": {"id": "call_1000000000000000001", "name": "read_file", "args": {"Path": "/repo/README.md"}}, "thoughtSignature": "SIG_TOOL_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"}]}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 24999, "candidatesTokenCount": 1082, "totalTokenCount": 26182, "thoughtsTokenCount": 101}, "modelVersion": "gemini-4-neon", "responseId": "resp_tool_1"}, "traceId": "t3"}
+

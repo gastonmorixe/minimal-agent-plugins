@@ -1,0 +1,6 @@
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "Let me count.", "thought": true}]}}], "usageMetadata": {"promptTokenCount": 20, "totalTokenCount": 25, "thoughtsTokenCount": 5}, "responseId": "resp_think_1"}, "traceId": "t2"}
+
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "Four.", "thought": false}]}}], "usageMetadata": {"promptTokenCount": 20, "candidatesTokenCount": 2, "totalTokenCount": 32, "thoughtsTokenCount": 10}, "responseId": "resp_think_1"}, "traceId": "t2"}
+
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "", "thoughtSignature": "SIG_TEXT_THOUGHT_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}]}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 20, "candidatesTokenCount": 2, "totalTokenCount": 32, "thoughtsTokenCount": 10}, "responseId": "resp_think_1"}, "traceId": "t2"}
+

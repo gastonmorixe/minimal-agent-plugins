@@ -1,0 +1,4 @@
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "Cached answer."}]}}], "usageMetadata": {"promptTokenCount": 37902, "totalTokenCount": 38089, "cachedContentTokenCount": 35528, "thoughtsTokenCount": 187}, "modelVersion": "gemini-4-neon", "responseId": "resp_cache_1"}, "traceId": "t6"}
+
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": ""}]}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 37902, "candidatesTokenCount": 64, "totalTokenCount": 38242, "cachedContentTokenCount": 35528, "thoughtsTokenCount": 276}, "modelVersion": "gemini-4-neon", "responseId": "resp_cache_1"}, "traceId": "t6"}
+

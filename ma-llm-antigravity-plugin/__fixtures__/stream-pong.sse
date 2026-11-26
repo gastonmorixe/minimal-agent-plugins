@@ -1,0 +1,4 @@
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": "pong"}]}}], "usageMetadata": {"promptTokenCount": 12, "totalTokenCount": 12}, "modelVersion": "gemini-4-neon", "responseId": "resp_pong_1"}, "traceId": "trace_pong"}
+
+data: {"response": {"candidates": [{"content": {"role": "model", "parts": [{"text": ""}]}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 12, "candidatesTokenCount": 1, "totalTokenCount": 13}, "modelVersion": "gemini-4-neon", "responseId": "resp_pong_1"}, "traceId": "trace_pong"}
+

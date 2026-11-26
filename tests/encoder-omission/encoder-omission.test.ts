@@ -19,6 +19,8 @@ import { defaultCapabilities } from "@minimal-agent/core/plugin-api/llm/capabili
 import { buildOpenAIChatBody as buildCoreOpenAIChatBody } from "@minimal-agent/core/plugin-api/llm/openai-chat"
 
 import { buildAnthropicRequestBody as buildAnthropic } from "../../ma-llm-anthropic-plugin/request-body.ts"
+import { CAPS_GEMINI_4 } from "../../ma-llm-antigravity-plugin/capabilities.ts"
+import { buildAntigravityBody } from "../../ma-llm-antigravity-plugin/request-body.ts"
 import { cursorCaps } from "../../ma-llm-cursor-plugin/capabilities.ts"
 import { buildCursorAgentRunBody } from "../../ma-llm-cursor-plugin/request-body.ts"
 import { CURSOR_SURFACE_AGENT_RUN } from "../../ma-llm-cursor-plugin/wire-constants.ts"
@@ -228,6 +230,23 @@ const CASES: EncoderCase[] = [
           request(m) as never,
           modelView("opencode-zen", "anthropic-messages") as never,
         ),
+      ),
+  },
+  {
+    name: "Cloud Code Assist (ma-llm-antigravity-plugin)",
+    path: "ma-llm-antigravity-plugin/request-body.ts buildAntigravityBody",
+    encode: (m) =>
+      json(
+        buildAntigravityBody(
+          request(m) as never,
+          modelView("antigravity", "custom", CAPS_GEMINI_4) as never,
+          {
+            project: "aicode-consumers",
+            modelId: "gemini-4-neon-high",
+            requestId: "agent/1/0/exec/0",
+            sessionId: "1",
+          },
+        ).body,
       ),
   },
   {
