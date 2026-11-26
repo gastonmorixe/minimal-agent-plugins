@@ -26,6 +26,7 @@ import { stripAnsi } from "@minimal-agent/core/plugin-api/utils/term-width"
 import { parseFinalText, parseProgress } from "./progress.ts"
 import { isContractedFilePresent } from "./report.ts"
 import type { SpawnPlan } from "./spawn-plan.ts"
+import { nameStaleCredential } from "./stale-credential.ts"
 import {
   type StreamState,
   streamEnded,
@@ -247,7 +248,12 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
   const durationMs = stream?.result?.durationMs
   // A failed run as the child itself reported it. Structural, so unlike a
   // log-mined crash it is trusted even when the worker left partial text.
-  const runFailed = stream ? streamFailure(stream) : undefined
+  // A boot failure on a stale credential name gets the name from the log,
+  // because the stream text of an older CLI does not name it.
+  const readLog = (): string | undefined =>
+    target.logPath ? deps.readCrash?.(target.logPath) : undefined
+  const streamFailed = stream ? streamFailure(stream) : undefined
+  const runFailed = streamFailed ? nameStaleCredential(streamFailed, readLog) : undefined
   const streamFields = {
     ...(stream && streamEnded(stream) ? { runEnded: true } : {}),
     ...(durationMs ? { durationMs } : {}),
@@ -289,8 +295,8 @@ export function probeWorker(target: ProbeTarget, deps: ProbeDeps): WorkerProbe {
   // even for a boot failure). Log mining (FIX A) is the fallback for an old
   // worker or a death before the stream writer ran (the binary did not start).
   const silent = !result && !(distilled && distilled.trim().length > 0)
-  const crash =
-    silent && !runFailed && target.logPath ? deps.readCrash?.(target.logPath) : undefined
+  const logCrash = silent && !runFailed ? readLog() : undefined
+  const crash = logCrash ? nameStaleCredential(logCrash, () => undefined) : undefined
   return {
     alive,
     ...(progress ? { progress } : {}),

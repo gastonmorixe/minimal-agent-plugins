@@ -1,0 +1,1 @@
+The sub-agent does not get `--credential-name %%name%%` from the lead, because that name is not stored at this time. It uses the default `%%provider%%` auth. To stop this message, set the lead to a stored name.

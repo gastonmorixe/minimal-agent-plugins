@@ -27,6 +27,7 @@ import {
   streamPathFor,
 } from "./spawn.ts"
 import { buildSpawnPlan } from "./spawn-plan.ts"
+import { credentialFallbackText, ENV_CREDENTIAL_NAME, findKnownStale } from "./stale-credential.ts"
 import { type SubagentStore } from "./store.ts"
 import { spendOf } from "./supervisor.ts"
 import { childControlOrNone } from "./target-control-lead.ts"
@@ -114,6 +115,12 @@ export interface SpawnRequest {
    * than a thing it has to remember to check.
    */
   readonly expectArtifacts?: readonly string[]
+  /**
+   * A credential name for this worker only. It wins over the inherited lead
+   * credential and the service never drops it. The `SpawnAgent` tool does not
+   * give it: only a direct caller of {@link spawnAgent} can set it.
+   */
+  readonly credentialName?: string
 }
 
 /** Everything the service needs, injected for testability. */
@@ -338,7 +345,7 @@ export async function spawnAgent(
   // Credential: only when the worker stays on the lead's provider (or the
   // provider is unknown and we're inheriting the lead model). A different
   // provider's credential name would be meaningless / wrong.
-  const credentialName = (() => {
+  const inheritedCredential = (() => {
     const name = deps.defaultCredentialName?.trim()
     if (!name) return undefined
     const leadProv = deps.leadProvider?.trim()
@@ -368,6 +375,18 @@ export async function spawnAgent(
     deps.policy ?? DEFAULT_POLICY,
   )
   if (!verdict.allowed) return err(verdict.allowed ? "" : verdict.reason)
+
+  // A per-spawn credential wins and stays as is. An inherited lead credential
+  // that a failed worker of this fleet proved stale (the user logged in again
+  // and the store has new names) is dropped: the worker uses the provider
+  // default, and the lead gets one warning (after the launch, below).
+  const explicitCredential = req.credentialName?.trim() || undefined
+  const stale =
+    !explicitCredential && inheritedCredential
+      ? findKnownStale(records, inheritedCredential, provider ?? deps.leadProvider?.trim())
+      : undefined
+  const credentialName = explicitCredential ?? (stale ? undefined : inheritedCredential)
+  const credentialFallback = stale ? { from: stale.name, provider: stale.provider } : undefined
 
   // External policy chain (LifecyclePort / HookBus `subagent.willSpawn`).
   if (deps.emitChain) {
@@ -456,6 +475,9 @@ export async function spawnAgent(
       ...control?.env,
       [ENV_RESULT_PATH]: resultPath,
       ...(expectArtifacts ? { [ENV_EXPECT_ARTIFACTS]: JSON.stringify(expectArtifacts) } : {}),
+      // The lead publishes its credential name in its env. Blank it, so the
+      // stale name cannot reach the worker by the env either.
+      ...(credentialFallback ? { [ENV_CREDENTIAL_NAME]: "" } : {}),
     },
     // The effective budget and the start time, for the worker-side soft
     // warnings (`handlers/budget_transforms.ts`). The plan pins them over
@@ -470,6 +492,7 @@ export async function spawnAgent(
 
   const launched = launchWorker(planResult.value, deps.spawnDeps, logPath, streamPath)
   if (!launched.ok) return err(launched.error)
+  if (credentialFallback) deps.warn?.(credentialFallbackText(credentialFallback, deps.renderPrompt))
 
   const nowIso = deps.now().toISOString()
   const record: SubagentRecord = {
@@ -497,6 +520,7 @@ export async function spawnAgent(
       mode,
     }),
     ...(clamp.lowered ? { modeLowered: { from: roleMode, to: mode } } : {}),
+    ...(credentialFallback ? { credentialFallback } : {}),
     ...(profileChoice?.derivedFrom ? { profileProvider: profileChoice.derivedFrom } : {}),
     ...(control ? { controlKeyId: control.keyId } : {}),
   }

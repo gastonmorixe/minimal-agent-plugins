@@ -11,6 +11,7 @@ import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import { type PromptRender } from "../lib/prompts.ts"
 import { renderSpawnDisplay } from "../lib/render.ts"
 import { spawnAgent } from "../lib/service.ts"
+import { credentialFallbackText } from "../lib/stale-credential.ts"
 import type { SubagentRecord } from "../lib/types.ts"
 import { parseSpawnRequest } from "../lib/validate.ts"
 
@@ -32,6 +33,14 @@ function loweredLine(lowered: SubagentRecord["modeLowered"], render: PromptRende
 function providerLine(p: SubagentRecord["profileProvider"], render: PromptRender): string {
   if (!p) return ""
   return `\n${render("provider-profile.tmpl.md", { lead: p.lead, worker: p.worker }).trim()}`
+}
+
+/**
+ * One extra line when the lead credential name was stale and the worker got
+ * the provider default. Text lives in `prompts/credential-fallback.tmpl.md`.
+ */
+function credentialLine(c: SubagentRecord["credentialFallback"], render: PromptRender): string {
+  return c ? `\n${credentialFallbackText(c, render)}` : ""
 }
 
 /**
@@ -65,7 +74,8 @@ export default async function spawn(ctx: TUIContext): Promise<TUIResult> {
     `It works concurrently. You are not blocked. Track it with SubAgentsListAgents or SubAgentsAgentStatus ${rec.id}. ` +
     `When it finishes you'll get a one-line digest between turns and can pull the full deliverable with SubAgentsAgentResult ${rec.id}.` +
     loweredLine(rec.modeLowered, deps.renderPrompt) +
-    providerLine(rec.profileProvider, deps.renderPrompt)
+    providerLine(rec.profileProvider, deps.renderPrompt) +
+    credentialLine(rec.credentialFallback, deps.renderPrompt)
   return {
     kind: "tool_result",
     content,

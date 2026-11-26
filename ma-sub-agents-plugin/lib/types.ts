@@ -376,6 +376,12 @@ export interface SubagentRecord {
   readonly inherit?: string
   /** Set only when the mode clamp lowered the role mode to the lead mode (SPEC R13). */
   readonly modeLowered?: { readonly from: string; readonly to: string }
+  /**
+   * Set when the lead credential name was stale (a failed worker of this fleet
+   * showed that the store does not have it), so the worker got the provider
+   * default credential and no `--credential-name`.
+   */
+  readonly credentialFallback?: { readonly from: string; readonly provider: string }
   /** Set when the worker got a provider-derived profile (SPEC 6.4): the two provider ids. */
   readonly profileProvider?: { readonly lead: string; readonly worker: string }
   /**
