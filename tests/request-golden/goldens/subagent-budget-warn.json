@@ -1445,81 +1445,6 @@
           "name": "SpeakStop"
         },
         {
-          "description": "Give one unit of work, with all its data, to a sub-agent that operates in the background.\n\nUse it when the unit uses much of your context or does not use the result of other work. Do not use it for a small change, or for work that must frequently interchange data with you.\n\nThe tool gives the sub-agent id, type, model, `isolation` value and session id. When the sub-agent stops, a summary of one line comes between turns.",
-          "input_schema": {
-            "additionalProperties": false,
-            "properties": {
-              "agent": {
-                "description": "The sub-agent type:\n- `explorer`: read files.\n- `planner`: make a sequence of steps.\n- `worker`: make changes.\n- `reviewer`: find errors in changes.\n- `integrator`: run the checks and make the commit.\n- `log-miner`: examine logs.\n\nWithout it, the tool uses `system`. A `worker` does not use git and does not run the full checks. Do that work in the lead, or give it to an `integrator`.",
-                "type": "string"
-              },
-              "budget": {
-                "additionalProperties": false,
-                "description": "Optional. The supervisor stops a sub-agent above a limit.",
-                "properties": {
-                  "deadlineSec": {
-                    "description": "The maximum time, in seconds.",
-                    "type": "number"
-                  },
-                  "maxTokens": {
-                    "description": "The maximum number of output tokens, with the tokens to think.",
-                    "type": "number"
-                  },
-                  "maxTurns": {
-                    "description": "The maximum number of model responses.",
-                    "type": "number"
-                  }
-                },
-                "type": "object"
-              },
-              "effort": {
-                "description": "Optional. Give only a level that the model of the sub-agent accepts (see `effort.levels` in `ModelInfo`). If possible, do not give it. Then the sub-agent uses the level of the lead if its model accepts it, or the model default. The tool rejects an incorrect level. If the tool does not know the levels, the sub-agent can stop at its start.",
-                "type": "string"
-              },
-              "expectArtifacts": {
-                "description": "The full paths of the files that the sub-agent must make. The supervisor marks the sub-agent `done` only when each file is there and is not empty. If not, the result is `incomplete` and tells you. Use it when the task must make a file, for example `[\"/abs/findings.md\"]`. The sub-agent gets these paths.\n\nA type that cannot change files (`explorer`, `planner`, `reviewer`, `log-miner`) gives the files with `deliverables` in `SubAgentsReportResult`.",
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "isolation": {
-                "description": "The context of the sub-agent:\n- `fresh`: only the task and the system prompt of the sub-agent.\n- `fork`: the full history of this session, with the same prompt cache. Use it for a side task that must have your context.\n\nThe default is `fresh`. For `planner`, the default is `fork`.",
-                "enum": [
-                  "fresh",
-                  "fork"
-                ],
-                "type": "string"
-              },
-              "label": {
-                "description": "A short name in the sub-agent widget. The default is the sub-agent type.",
-                "type": "string"
-              },
-              "model": {
-                "description": "Optional. Without it, the sub-agent uses `MINIMAL_AGENT_SUBAGENT_MODEL`, or the model of the lead. Set `MINIMAL_AGENT_SUBAGENT_AUTO_TIER=1` to get a model for each role. With an unknown id, the sub-agent stops at its start with an error status.",
-                "type": "string"
-              },
-              "system": {
-                "description": "The system prompt for the role of the sub-agent. If you give it, it replaces the prompt of the `agent` type. It goes above the task.",
-                "type": "string"
-              },
-              "task": {
-                "description": "Necessary. Give the result, the limits of the work and the files that the sub-agent can change. Also tell which output the sub-agent must send back. This text is the most important cause of a good result.\n\nUse 1 sub-agent to find one fact, and 2 to 4 sub-agents to compare items. A sub-agent cannot start a sub-agent. Thus divide the work into units in the lead.",
-                "type": "string"
-              },
-              "taskId": {
-                "description": "The id of the `Task` item that the sub-agent does, for example `1` or `1a`. When the sub-agent is `done`, the harness sets the task to `done`. If not, the harness cancels the task and records the cause.",
-                "type": "string"
-              }
-            },
-            "required": [
-              "task"
-            ],
-            "type": "object"
-          },
-          "name": "SubAgentsSpawnAgent"
-        },
-        {
           "description": "Record the result of a sub-agent for the lead. Use it as the last step of the sub-agent. Do not use it as the lead. The lead uses `SubAgentsAgentResult`. Give the necessary files in `deliverables`, and the tool writes them.\n\nThe tool gives the number of written files and recorded artifact paths, and the `incomplete` flag. If a necessary file is missing and `incomplete` is not `true`, the tool does not record the result.",
           "input_schema": {
             "additionalProperties": false,
@@ -1570,63 +1495,6 @@
           "name": "SubAgentsReportResult"
         },
         {
-          "description": "Show the sub-agents of this session, before you get a result or stop a sub-agent. For one sub-agent, use `SubAgentsAgentStatus`. The tool does not read the transcripts.\n\nThe tool gives the id, type, status and tokens of each sub-agent. For an active sub-agent, it also gives the time since its start and its last step.",
-          "input_schema": {
-            "additionalProperties": false,
-            "properties": {},
-            "type": "object"
-          },
-          "name": "SubAgentsListAgents"
-        },
-        {
-          "description": "Show the status of one sub-agent, or of all sub-agents. The status has the completed steps, the model, the `isolation` value and the connected session. To read a result, use `SubAgentsAgentResult`. To read the last steps, use `SubAgentsAgentOutput`. The tool gives a status text with no transcript.",
-          "input_schema": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "description": "The sub-agent id, for example `A2`. Without it, the tool shows all sub-agents.",
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
-          "name": "SubAgentsAgentStatus"
-        },
-        {
-          "description": "Get the result of a `done` sub-agent into your context. Only this sub-agent tool gives the result. Read the result before you use the work. Do not accept an `incomplete` result as a completed task. Before you set a task to `done`, make sure that each file of the result is there. To monitor an active sub-agent, use `SubAgentsAgentOutput`.\n\nThe tool gives the full summary and the artifact paths, not the transcript. For an error status or `incomplete`, it also gives the last 20 log lines.",
-          "input_schema": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "description": "Necessary. The sub-agent id (`A2`).",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "type": "object"
-          },
-          "name": "SubAgentsAgentResult"
-        },
-        {
-          "description": "Show the last steps of one sub-agent, with their times: the tools that it used and its text. Use it to monitor a sub-agent, but not frequently. The widget and the summary between turns usually give sufficient data. To read a result, use `SubAgentsAgentResult`. The tool gives a short text, not the transcript.",
-          "input_schema": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "description": "Necessary. The sub-agent id (`A2`).",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "type": "object"
-          },
-          "name": "SubAgentsAgentOutput"
-        },
-        {
           "description": "Send and read short messages between the sub-agents and the lead. Use it only when your task tells you to. Use it to give a result, or to tell the agents that you use a file or cannot continue. Do not use it for general messages.\n\nThe tool gives a line for `post`, or your messages after `since` for `read`.",
           "input_schema": {
             "additionalProperties": false,
@@ -1659,27 +1527,6 @@
             "type": "object"
           },
           "name": "SubAgentsMailbox"
-        },
-        {
-          "description": "Stop the process of a sub-agent, and set the status of an active sub-agent to `stopped`. Use it when a sub-agent is not necessary, when a newer sub-agent replaced it, or when its work is incorrect. To read a result, use `SubAgentsAgentResult`.\n\nThe tool gives a line with the id and the cause that you gave, or an error for an unknown id.",
-          "input_schema": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "description": "Necessary. The sub-agent id (`A2`).",
-                "type": "string"
-              },
-              "reason": {
-                "description": "Optional. A short cause. The tool records it on an active sub-agent.",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "type": "object"
-          },
-          "name": "SubAgentsStopAgent"
         },
         {
           "description": "Make and monitor the task board of this session. The user sees the board live. Use it for 3 or more steps. Do not use this tool for small work of 1 or 2 steps. Use `add_many` with `tasks` to add all steps, then `start` and `done` with the board id.\n\nDo not write the board again as text. Use `canceled` for a task that you stopped, and `done` for a task that you completed. A completed parent task is `done`, not `canceled`. The tool gives an `OK` line, and for most operations the board.",

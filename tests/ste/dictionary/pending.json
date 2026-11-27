@@ -4,10 +4,6 @@
     "files": ["ma-emit-output-plugin/PROMPT.md"]
   },
   {
-    "word": "absolute",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "action",
     "files": [
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
@@ -50,10 +46,6 @@
   {
     "word": "alignment",
     "files": ["ma-emit-output-plugin/PROMPT.md"]
-  },
-  {
-    "word": "alive",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
   },
   {
     "word": "allow",
@@ -184,10 +176,6 @@
     "files": ["ma-slash-menu-plugin/manifest.json"]
   },
   {
-    "word": "avoid",
-    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
-  },
-  {
     "word": "avoidance",
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
@@ -243,21 +231,6 @@
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
-    "word": "both",
-    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
-  },
-  {
-    "word": "bounce",
-    "files": [
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
-  },
-  {
-    "word": "bounced",
-    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
-  },
-  {
     "word": "branch",
     "files": ["ma-header-template-plugin/manifest.json"]
   },
@@ -293,8 +266,6 @@
       "ma-memory-plugin/prompts/summarize.tmpl.md",
       "ma-model-info-plugin/manifest.json",
       "ma-session-info-plugin/manifest.json",
-      "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
       "ma-turn-recovery-plugin/manifest.json",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md",
@@ -308,7 +279,7 @@
   },
   {
     "word": "calling",
-    "files": ["ma-llm-cursor-plugin/prompts/tool-catalog.md", "ma-sub-agents-plugin/lib/library.ts"]
+    "files": ["ma-llm-cursor-plugin/prompts/tool-catalog.md"]
   },
   {
     "word": "calls",
@@ -517,10 +488,6 @@
     "files": ["ma-turn-recovery-plugin/prompts/compact-summary-system.md"]
   },
   {
-    "word": "created",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "credential",
     "files": ["ma-acp-plugin/config-options.ts"]
   },
@@ -589,18 +556,7 @@
   },
   {
     "word": "delegation",
-    "files": [
-      "ma-sub-agents-plugin/manifest.json",
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md"
-    ]
-  },
-  {
-    "word": "deliver",
-    "files": ["ma-sub-agents-plugin/prompts/result-contract.tmpl.md"]
-  },
-  {
-    "word": "deliverables",
-    "files": ["ma-sub-agents-plugin/prompts/result-contract.tmpl.md"]
+    "files": ["ma-sub-agents-plugin/manifest.json"]
   },
   {
     "word": "delve",
@@ -618,13 +574,8 @@
     "word": "denies",
     "files": [
       "ma-policy-ref-plugin/manifest.json",
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
     ]
-  },
-  {
-    "word": "dense",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
   },
   {
     "word": "derived",
@@ -809,10 +760,6 @@
     "files": ["ma-base-prompt-plugin/prompts/instructions.md", "ma-env-info-plugin/manifest.json"]
   },
   {
-    "word": "even",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "every",
     "files": [
       "ma-agent-writing-style-plugin/PROMPT.md",
@@ -823,8 +770,6 @@
       "ma-security-plugin/manifest.json",
       "ma-sub-agents-plugin/lib/library.ts",
       "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-contract.tmpl.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
       "ma-tasks-plugin/manifest.json"
     ]
   },
@@ -837,7 +782,6 @@
     "files": [
       "ma-llm-cursor-plugin/prompts/tool-catalog.md",
       "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
@@ -884,10 +828,6 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "failure",
-    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
-  },
-  {
     "word": "fallback",
     "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
   },
@@ -898,8 +838,7 @@
       "ma-file-lock-plugin/manifest.json",
       "ma-history-plugin/manifest.json",
       "ma-hooks-plugin/manifest.json",
-      "ma-interleave-thinking-plugin/manifest.json",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
+      "ma-interleave-thinking-plugin/manifest.json"
     ]
   },
   {
@@ -1039,20 +978,6 @@
   {
     "word": "guessing",
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
-  },
-  {
-    "word": "hand",
-    "files": [
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
-  },
-  {
-    "word": "hand-off",
-    "files": [
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
   },
   {
     "word": "handful",
@@ -1206,10 +1131,6 @@
     "files": ["ma-emit-output-plugin/PROMPT.md", "ma-interleave-thinking-plugin/PROMPT.md"]
   },
   {
-    "word": "instead",
-    "files": ["ma-sub-agents-plugin/lib/library.ts"]
-  },
-  {
     "word": "intent",
     "files": ["ma-turn-recovery-plugin/prompts/compact-summary-system.md"]
   },
@@ -1228,10 +1149,6 @@
   {
     "word": "interleave-thinking",
     "files": ["ma-interleave-thinking-plugin/manifest.json"]
-  },
-  {
-    "word": "intermediate",
-    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "interrupt",
@@ -1282,10 +1199,6 @@
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
   {
-    "word": "land",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "later",
     "files": ["ma-quota-status-plugin/manifest.json"]
   },
@@ -1299,10 +1212,6 @@
       "ma-sub-agents-plugin/prompts/leaf-discipline.md",
       "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
     ]
-  },
-  {
-    "word": "leaves",
-    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
   },
   {
     "word": "legacy",
@@ -1528,10 +1437,7 @@
   },
   {
     "word": "nothing",
-    "files": [
-      "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/prompts/result-contract.tmpl.md"
-    ]
+    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "notice",
@@ -1632,8 +1538,7 @@
     "files": [
       "ma-model-info-plugin/manifest.json",
       "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/manifest.json",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
+      "ma-sub-agents-plugin/manifest.json"
     ]
   },
   {
@@ -1665,10 +1570,6 @@
     "files": ["ma-slash-menu-plugin/manifest.json"]
   },
   {
-    "word": "paragraph",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "parallelisms",
     "files": ["ma-agent-writing-style-plugin/manifest.json"]
   },
@@ -1685,11 +1586,7 @@
   },
   {
     "word": "pass",
-    "files": [
-      "ma-interleave-thinking-plugin/PROMPT.md",
-      "ma-security-plugin/manifest.json",
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md"
-    ]
+    "files": ["ma-interleave-thinking-plugin/PROMPT.md", "ma-security-plugin/manifest.json"]
   },
   {
     "word": "passes",
@@ -1758,10 +1655,6 @@
   {
     "word": "ping",
     "files": ["ma-intercom-plugin/manifest.json"]
-  },
-  {
-    "word": "pipe",
-    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "pivotal",
@@ -1920,10 +1813,6 @@
     "files": ["ma-emit-output-plugin/PROMPT.md"]
   },
   {
-    "word": "re-read",
-    "files": ["ma-sub-agents-plugin/lib/library.ts"]
-  },
-  {
     "word": "reach",
     "files": ["ma-emit-output-plugin/PROMPT.md"]
   },
@@ -1934,10 +1823,6 @@
   {
     "word": "reader",
     "files": ["ma-agent-writing-style-plugin/PROMPT.md"]
-  },
-  {
-    "word": "reading",
-    "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
     "word": "readout",
@@ -1961,7 +1846,6 @@
     "word": "reason",
     "files": [
       "ma-acp-plugin/stop-reason.ts",
-      "ma-sub-agents-plugin/prompts/result-contract.tmpl.md",
       "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
     ]
   },
@@ -2066,11 +1950,7 @@
   },
   {
     "word": "requires",
-    "files": [
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-contract.tmpl.md",
-      "ma-tps-plugin/manifest.json"
-    ]
+    "files": ["ma-sub-agents-plugin/prompts/result-contract.tmpl.md", "ma-tps-plugin/manifest.json"]
   },
   {
     "word": "research",
@@ -2198,10 +2078,6 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "scratch",
-    "files": ["ma-sub-agents-plugin/lib/library.ts"]
-  },
-  {
     "word": "scratchpad",
     "files": ["ma-memory-plugin/manifest.json"]
   },
@@ -2237,10 +2113,6 @@
     "files": ["ma-emit-output-plugin/PROMPT.md"]
   },
   {
-    "word": "self-contained",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "semicolons",
     "files": [
       "ma-agent-writing-style-plugin/PROMPT.md",
@@ -2249,10 +2121,7 @@
   },
   {
     "word": "sentinel",
-    "files": [
-      "ma-agent-identity-plugin/manifest.json",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
+    "files": ["ma-agent-identity-plugin/manifest.json"]
   },
   {
     "word": "server-side",
@@ -2341,8 +2210,7 @@
       "ma-config-plugin/manifest.json",
       "ma-history-plugin/manifest.json",
       "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/prompts/provider-profile.tmpl.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
+      "ma-sub-agents-plugin/prompts/provider-profile.tmpl.md"
     ]
   },
   {
@@ -2414,10 +2282,7 @@
   },
   {
     "word": "still",
-    "files": [
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md",
-      "ma-turn-recovery-plugin/prompts/compact-summary-system.md"
-    ]
+    "files": ["ma-turn-recovery-plugin/prompts/compact-summary-system.md"]
   },
   {
     "word": "stop-reason",
@@ -2444,11 +2309,7 @@
   },
   {
     "word": "subagentsreportresult",
-    "files": [
-      "ma-sub-agents-plugin/lib/library.ts",
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
+    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
   },
   {
     "word": "subscribes",
@@ -2457,10 +2318,6 @@
   {
     "word": "subsystem",
     "files": ["ma-memory-plugin/prompts/summarize.tmpl.md"]
-  },
-  {
-    "word": "successful",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
   },
   {
     "word": "suggestion",
@@ -2648,10 +2505,6 @@
     "files": ["ma-sub-agents-plugin/lib/library.ts"]
   },
   {
-    "word": "treats",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "triggered",
     "files": ["ma-slash-menu-plugin/manifest.json"]
   },
@@ -2824,15 +2677,8 @@
     ]
   },
   {
-    "word": "wrong",
-    "files": ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"]
-  },
-  {
     "word": "yourself",
-    "files": [
-      "ma-sub-agents-plugin/prompts/leaf-discipline.md",
-      "ma-sub-agents-plugin/prompts/result-protocol.tmpl.md"
-    ]
+    "files": ["ma-sub-agents-plugin/prompts/leaf-discipline.md"]
   },
   {
     "word": "ytd",

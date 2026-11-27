@@ -50,7 +50,7 @@ import {
   type SectionRemoval,
   withoutSection,
 } from "./golden-removals.ts"
-import { TOOL_ADDITIONS, type ToolAddition, withoutAddedTools } from "./golden-tool-additions.ts"
+import { TOOL_ADDITIONS, type ToolAddition, toolChangePair } from "./golden-tool-additions.ts"
 import { PLUGINS_ROOT } from "./surfaces.ts"
 
 /** Golden folder, relative to the plugins root. */
@@ -526,7 +526,8 @@ export function goldenProblems(
   toolAdditions: readonly ToolAddition[] = TOOL_ADDITIONS,
   blocks: readonly BlockRemoval[] = BLOCK_REMOVALS,
 ): string[] {
-  const after = withoutAddedTools(before, current, toolAdditions)
+  ;[before, current] = toolChangePair(name, before, current, toolAdditions)
+  const after = current
   const out: string[] = []
   for (const d of leafDiff(before, after)) {
     if (d.kind === "string") continue
