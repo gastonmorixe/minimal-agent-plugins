@@ -3,8 +3,8 @@
  *
  * - With no opt-in, the manifest `enabled: false` keeps it off: no prompt
  *   section and no `tool.didBatch` listener.
- * - With `enabledPluginIds`, the fragment gives the "Tool loop safety"
- *   section, the real `PluginStream` removes the ack tag from the visible
+ * - With `enabledPluginIds`, the plugin adds no system prompt section
+ *   (the checkpoint attachment teaches the ack), the real `PluginStream` removes the ack tag from the visible
  *   output and gives the handler the attributes, and the real hook bus
  *   gives `round`, `ctx.abort` and `ctx.countdown` to the listener, which
  *   returns the attachment as `additionalContext`.
@@ -41,9 +41,8 @@ const ID = "reflection-checkpoint"
  * A root with only this plugin, the sideband codec plugin (it renders the
  * checkpoint tag line) and the `prompts.template` provider with its engine
  * (`ma-template-kit`, not a plugin), so discovery does not load the whole
- * fleet. The fragment returns a template (`{ template, vars }`) and core
- * renders it with the provider (S4). With no provider, core fills only
- * `agentHome`, and the other tokens stay in the text.
+ * fleet. The checkpoint entry is a template (`{ text, template: true, vars }`)
+ * and core renders it with the provider (S7).
  */
 const ROOT_DIRS = [
   "ma-reflection-checkpoint-plugin",
@@ -109,7 +108,7 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
     })
   })
 
-  it("opt-in: prompt section, ack tag, checkpoint with countdown", async () => {
+  it("opt-in: no prompt section, ack tag, checkpoint with countdown", async () => {
     await withEnv(ENV, async () => {
       const countdowns: { id: string; label: string; ms: number; signal?: AbortSignal }[] = []
       const loader = await PluginLoader.load({
@@ -125,19 +124,8 @@ describe("reflection-checkpoint via the real PluginLoader", () => {
       })
       try {
         const blocks = await loader.getPromptBlocksAsync()
-        expect(blocks.afterInstructions).toContain("# Tool loop safety")
-        expect(blocks.afterInstructions).toContain("after each 2 tool steps")
-        // Core rendered the template (S4) with the real engine and the real
-        // codec: no token stays, and the two tags are in the text.
-        const section = blocks.afterInstructions ?? ""
-        expect(section).not.toContain("%%")
-        expect(section).toContain("the harness waits 1 seconds")
-        expect(section).toContain(
-          SB.render("reflection-checkpoint", {
-            attrs: { round: "N", "cooldown-applied-seconds": 1 },
-          }),
-        )
-        expect(section).toContain(ack({ "silence-for": "K", reason: "..." }))
+        expect(blocks.afterInstructions ?? "").not.toContain("Tool loop safety")
+        expect(blocks.afterInstructions ?? "").not.toContain("reflection-ack")
 
         // The ack: the scanner removes the tag; the user sees the notice.
         let out = ""

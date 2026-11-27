@@ -71,7 +71,7 @@ than crashing the agent.
 ## Layout
 
 ```
-handlers/     tool handlers, key/buffer hooks, turn.willStart, prompt fragment
+handlers/     tool handlers, key/buffer hooks, turn.willStart
 lib/          store, frontmatter, config, provider, rewrite, menu spec
 ```
 

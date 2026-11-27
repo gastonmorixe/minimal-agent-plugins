@@ -116,7 +116,7 @@ export function normalizeText(text: string, roots: string[]): string {
   // Keep every key and the line order. Mask only the value.
   // The block has no fence. It is the run of key=value lines after the note.
   out = out.replace(
-    /(Do not invent sibling absolute project roots\.\n\n)((?:[a-z_]+=[^\n]*(?:\n|$))+)/g,
+    /(# Host values\n\n[^\n]+\n\n)((?:[a-z_]+=[^\n]*(?:\n|$))+)/g,
     (_m, head: string, body: string) => head + body.replace(/^([a-z_]+=)[^\n]*$/gm, "$1<V>"),
   )
   out = out.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<UUID>")

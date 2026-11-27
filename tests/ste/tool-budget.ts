@@ -61,8 +61,16 @@ export const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-ha
  * every golden: 6747 to 6842 words (see {@link BLOCK_RAISES}).
  *
  * 2026-11-27 tool attachments (ChromeCDP screenshot and PDF, Fetch image URL): 6842 to 6884 words.
+ *
+ * 2026-11-27 the prompt diet moved facts from 14 system prompt blocks into
+ * the tool text: 6842 to 7384 words, and the system prompt went down more.
+ * The probe S10 regression fix made the MemoryTool save rules explicit:
+ * 7384 to 7408 words. Review m3 (clearer security wording in Computer): 7409.
+ *
+ * 2026-11-27 merge of the prompt diet with the tool attachments: 7409 to 7451
+ * words (the 42 attachment words on top of the prompt diet).
  */
-export const TOOL_BLOCK_WORDS = 6884
+export const TOOL_BLOCK_WORDS = 7451
 
 /** How far below {@link TOOL_BLOCK_WORDS} the tree may drift before it must be lowered. */
 export const LOOSE_WORDS = 50
@@ -82,60 +90,60 @@ export const LOOSE_WORDS = 50
  */
 export const TOOL_WORDS: Readonly<Record<string, number>> = {
   BackgroundLogs: 108,
-  BackgroundRun: 183,
+  BackgroundRun: 190,
   BackgroundStatus: 60,
   BackgroundStop: 84,
-  Bash: 117,
-  ChromeCDP: 360,
+  Bash: 116,
+  ChromeCDP: 410,
   // CloudLogin, CloudPush, CloudStatus: ma-agent-cloud (enabled: false), not in a golden.
-  CloudLogin: 62,
-  CloudPush: 67,
-  CloudStatus: 51,
+  CloudLogin: 58,
+  CloudPush: 65,
+  CloudStatus: 58,
   CompactContext: 162,
-  Computer: 647,
-  DiffViewerShowDiff: 89,
+  Computer: 696,
+  DiffViewerShowDiff: 111,
   Edit: 24,
-  Fetch: 417,
+  Fetch: 439,
   FilesStats: 62,
   Glob: 119,
   Grep: 168,
-  IntercomInbox: 67,
-  IntercomPeers: 140,
-  IntercomSend: 176,
-  LockStatus: 174,
-  MemoryTool: 266,
+  IntercomInbox: 88,
+  IntercomPeers: 139,
+  IntercomSend: 198,
+  LockStatus: 215,
+  MemoryTool: 345,
   Mode: 65,
   ModelInfo: 86,
   PromptDelete: 49,
   PromptEdit: 71,
-  PromptList: 48,
+  PromptList: 58,
   PromptNew: 110,
   PromptShow: 48,
   Read: 107,
   ScheduleCronCreate: 210,
-  ScheduleCronDelete: 41,
-  ScheduleCronList: 32,
+  ScheduleCronDelete: 52,
+  ScheduleCronList: 45,
   ScheduleCronReschedule: 90,
   // SecurityStatus: ma-security-plugin (enabled: false), not in a golden.
   SecurityStatus: 15,
-  SessionHistory: 280,
+  SessionHistory: 276,
   SessionInfo: 68,
   SessionTitle: 112,
-  Skill: 153,
-  Speak: 157,
+  Skill: 208,
+  Speak: 176,
   SpeakStatus: 58,
   SpeakStop: 65,
   SubAgentsAgentOutput: 58,
-  SubAgentsAgentResult: 56,
+  SubAgentsAgentResult: 91,
   SubAgentsAgentStatus: 60,
   SubAgentsListAgents: 55,
-  SubAgentsMailbox: 110,
+  SubAgentsMailbox: 109,
   // SubAgentsReportResult: worker-only (ships to every worker), not in a golden.
   SubAgentsReportResult: 174,
-  SubAgentsSpawnAgent: 485,
+  SubAgentsSpawnAgent: 540,
   SubAgentsStopAgent: 80,
-  Task: 458,
-  WebSearch: 211,
+  Task: 495,
+  WebSearch: 221,
   Write: 54,
 }
 
@@ -215,6 +223,190 @@ export const RAISES: readonly Raise[] = [
     reason:
       "an image URL now comes as an image, or as a saved file when the model cannot read images (tool attachments)",
   },
+  {
+    tool: "BackgroundRun",
+    from: 183,
+    to: 190,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the background-jobs block (a job stops when the agent exits)",
+  },
+  {
+    tool: "ChromeCDP",
+    from: 340,
+    to: 390,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the ChromeCDP or Fetch rules, the last tab rule and the enable step",
+  },
+  {
+    tool: "CloudStatus",
+    from: 51,
+    to: 58,
+    date: "2026-11-27",
+    reason: "D13 and F15: the false stub text is gone, the tool now names the backend URL fact",
+  },
+  {
+    tool: "Computer",
+    from: 647,
+    to: 695,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the safety rule (no login end, purchase, safety value or data delete flow without a request), F01a",
+  },
+  {
+    tool: "Computer",
+    from: 647,
+    to: 696,
+    date: "2026-11-27",
+    reason:
+      "review m3 clearer security wording: a password or permission change, not a safety value",
+  },
+  {
+    tool: "DiffViewerShowDiff",
+    from: 89,
+    to: 111,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the diff tag rule of the DiffViewerShowDiff block",
+  },
+  {
+    tool: "Fetch",
+    from: 396,
+    to: 417,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: Fetch block, and the ChromeCDP routing (DECISIONS G2 item 6)",
+  },
+  {
+    tool: "IntercomInbox",
+    from: 67,
+    to: 88,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the intercom policy (no poll, dedup on the id)",
+  },
+  {
+    tool: "IntercomSend",
+    from: 176,
+    to: 198,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the intercom policy, and the SubAgentsMailbox routing (D14)",
+  },
+  {
+    tool: "LockStatus",
+    from: 174,
+    to: 215,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the lock advice (DECISIONS G2 item 3)",
+  },
+  {
+    tool: "MemoryTool",
+    from: 266,
+    to: 321,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the save rules of the memory block",
+  },
+  {
+    // From the committed floor (266), because the row above is not committed yet.
+    tool: "MemoryTool",
+    from: 266,
+    to: 345,
+    date: "2026-11-27",
+    reason:
+      "probe S10 regression fix: 321 to 345 on top of the prompt diet row above. The save rules (tag, not add, list with a query first) are explicit in the description and the add line",
+  },
+  {
+    tool: "PromptList",
+    from: 48,
+    to: 58,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the prompts-catalog fragment case (DECISIONS G3 item 3)",
+  },
+  {
+    tool: "ScheduleCronDelete",
+    from: 41,
+    to: 52,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the schedule block fact about the /loop and /schedule commands",
+  },
+  {
+    tool: "ScheduleCronList",
+    from: 32,
+    to: 45,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the schedule block fact about the /loop and /schedule commands",
+  },
+  {
+    tool: "Skill",
+    from: 153,
+    to: 208,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the skill rules of the skills block, and the broken skills fact (O2)",
+  },
+  {
+    tool: "Speak",
+    from: 157,
+    to: 176,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the speak block rules",
+  },
+  {
+    tool: "SubAgentsAgentResult",
+    from: 56,
+    to: 91,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: D15, verify each deliverable file before a task is done",
+  },
+  {
+    tool: "SubAgentsSpawnAgent",
+    from: 485,
+    to: 540,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: sub-agents block, D15 (no nested sub-agent) and the worker git and gate rule",
+  },
+  {
+    tool: "Task",
+    from: 458,
+    to: 495,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the planning and result rules of the tasks fragment",
+  },
+  {
+    tool: "WebSearch",
+    from: 211,
+    to: 221,
+    date: "2026-11-27",
+    reason:
+      "the prompt diet (2026-11-27) moved the facts of the deleted system prompt block into this tool text: the URL rule of the WebSearch block",
+  },
+  {
+    tool: "ChromeCDP",
+    from: 340,
+    to: 410,
+    date: "2026-11-27",
+    reason:
+      "merge: prompt diet + media attachments (prompt diet 340 to 390, tool attachments +20 on the `method` text)",
+  },
+  {
+    tool: "Fetch",
+    from: 396,
+    to: 439,
+    date: "2026-11-27",
+    reason:
+      "merge: prompt diet + media attachments (prompt diet 396 to 417, tool attachments +22, the image URL fact now in the `url` text)",
+  },
 ]
 
 /** One raise of {@link TOOL_BLOCK_WORDS}. */
@@ -242,6 +434,33 @@ export const BLOCK_RAISES: readonly BlockRaise[] = [
     date: "2026-11-27",
     reason:
       "tool attachments: ChromeCDP `method` text, a screenshot or PDF result comes as an image or a file (+20 words). Fetch text, an image URL comes as an image or a saved file (+22 words)",
+  },
+  {
+    from: 6842,
+    to: 7384,
+    date: "2026-11-27",
+    reason:
+      "prompt diet: text moved from the system prompt into tool text (14 removed system blocks). plain-turn system words 2238 to 695, request bytes 72052 to 65370",
+  },
+  {
+    from: 6842,
+    to: 7408,
+    date: "2026-11-27",
+    reason:
+      "probe S10 regression fix: 7384 to 7408 on top of the prompt diet row above (MemoryTool 321 to 345 words)",
+  },
+  {
+    from: 6842,
+    to: 7409,
+    date: "2026-11-27",
+    reason: "review m3 clearer security wording in Computer (695 to 696 words)",
+  },
+  {
+    from: 6842,
+    to: 7451,
+    date: "2026-11-27",
+    reason:
+      "merge: prompt diet + media attachments (7409 from the prompt diet, +42 words of the tool attachments in ChromeCDP and Fetch)",
   },
 ]
 

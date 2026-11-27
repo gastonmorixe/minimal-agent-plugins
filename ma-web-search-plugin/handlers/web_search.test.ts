@@ -299,6 +299,7 @@ describe("WebSearch handler — error path", () => {
     expect(r.is_error).toBe(true)
     expect(r.content).toContain("brave: not configured")
     expect(r.content).toContain("BRAVE_API_KEY")
+    expect(r.content).toContain("Do not try again. Tell the user to set the API key.")
   })
 
   test("HTTP 500 from provider → all-failed", async () => {
@@ -366,6 +367,42 @@ describe("WebSearch handler — error path", () => {
       expect(r.is_error).toBe(true)
       expect(r.content).toMatch(/HTTP 403/)
       expect(r.content).not.toMatch(/All failures look transient/)
+      // A refused key: the model tells the user to set the key.
+      expect(r.content).toContain("Do not try again. Tell the user to set the API key.")
+    } finally {
+      restore()
+    }
+  })
+
+  test("permanent all-failed (401) tells the user to set the key", async () => {
+    writeConfig()
+    const restore = patchFetch(
+      () => new Response("unauthorized", { status: 401, statusText: "Unauthorized" }),
+    )
+    try {
+      const r = (await handler(makeCtx({ query: "x" }))) as Extract<
+        TUIResult,
+        { kind: "tool_result" }
+      >
+      expect(r.is_error).toBe(true)
+      expect(r.content).toMatch(/HTTP 401/)
+      expect(r.content).toContain("Tell the user to set BRAVE_API_KEY")
+    } finally {
+      restore()
+    }
+  })
+
+  test("HTTP 500 gives no key text", async () => {
+    writeConfig()
+    const restore = patchFetch(
+      () => new Response("boom", { status: 500, statusText: "Server Error" }),
+    )
+    try {
+      const r = (await handler(makeCtx({ query: "x" }))) as Extract<
+        TUIResult,
+        { kind: "tool_result" }
+      >
+      expect(r.content).not.toContain("Tell the user to set the API key")
     } finally {
       restore()
     }

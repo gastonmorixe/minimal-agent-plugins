@@ -14,7 +14,7 @@
  * @module tests/ste/ste-corpus.test
  */
 
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 import { describe, expect, test } from "bun:test"
@@ -69,11 +69,17 @@ describe("STE corpus", () => {
     for (const kind of ["prompt-md", "prompts-md", "manifest", "inline-ts"] as const) {
       expect(kinds.has(kind)).toBe(true)
     }
-    // Every plugin with a PROMPT.md must be in the corpus.
+    // Every plugin with a PROMPT.md must be in the corpus. The prompt diet
+    // (2026-11-27) deleted most PROMPT.md files, so the check compares with
+    // the files on disk, not with a count.
     const withPrompt = new Set(
       surfaces.filter((s) => s.kind === "prompt-md").map((s) => s.file.split("/")[0]),
     )
-    expect(withPrompt.size).toBeGreaterThanOrEqual(20)
+    const onDisk = readdirSync(PLUGINS_ROOT).filter(
+      (dir) => dir.startsWith("ma-") && existsSync(resolve(PLUGINS_ROOT, dir, "PROMPT.md")),
+    )
+    expect(onDisk.length).toBeGreaterThan(0)
+    expect([...withPrompt].sort()).toEqual(onDisk.sort())
   })
 
   test("audits the 3 text plugins that own the core prompt text", () => {

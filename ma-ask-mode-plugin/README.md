@@ -1,11 +1,12 @@
 # ask-mode plugin
 
-Read-only Q&A mode for the REPL. While active:
+Mode for reading and planning in the REPL. While active:
 
 - The prompt prefix becomes a blue `ASK ❯`.
 - The status spinner reads `Asking...`.
 - The harness REFUSES `Edit` and `Write` tool calls. The model is told
-  via `PROMPT.md` to present changes as diffs instead.
+  via `PROMPT.md` (2 sentences) and the `refusalHint` to give changes
+  as diffs instead, and not to use `Bash` to make them.
 
 Cycle modes from the REPL with **Shift+Tab** (forward) or
 **Ctrl+Shift+Tab** (back). Press **Alt+M** mid-turn to apply a
@@ -28,10 +29,10 @@ spinner).
 
 - `manifest.json`: mode definition (label, color, statusLabel,
   permissions).
-- `PROMPT.md`: model-facing policy. Explains harness-side
-  enforcement, the `<ma::mode-active>` stamp on every tool_result,
-  the `<ma::mode-change>` advertisement on user turns, and the
-  built-in `Mode` tool as an escape hatch.
+- `PROMPT.md`: model-facing policy, 2 sentences. Edit and Write are
+  refused, give changes as a diff, do not use Bash to make them.
+  The stamp, the advertisement and the `Mode` tool are described by
+  their own text (the `Mode` tool description), not here.
 
 ## Permissions
 
@@ -66,7 +67,7 @@ adapts on the next turn.
 
 ## Activation signals to the model
 
-Three channels (see PROMPT.md for the model-facing version):
+Three channels (the `Mode` tool description tells the model about them):
 
 1. **`<ma::mode-active id="..." since="..." />`** trailing on every
    `tool_result` content. The freshest signal; the model sees it

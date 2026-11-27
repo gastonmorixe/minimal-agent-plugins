@@ -1,0 +1,1 @@
+For `add` or `edit`, and for the body of the `<ma::emit::memory>` tag. One line is best: the tool changes more lines into one. Do not save a long text, a date prefix or a secret. Do not save the status of one task. The harness adds the timestamp.

@@ -373,7 +373,6 @@ When rerunning this study:
 These paths are the current sources of truth:
 
 - `manifest.json`: public Fetch schema and parameter descriptions
-- `PROMPT.md`: model-facing usage policy
 - `handlers/fetch.ts`: validation, default merging, session directory
   resolution, and transcript footer behavior
 - `lib/config.ts`: runtime defaults, storage root, and session-name validation

@@ -93,19 +93,3 @@ export interface CommandInfo {
   argHint?: string
   pluginId: string
 }
-
-// ---------------------------------------------------------------------------
-// Prompt-fragment contract (catalog injection)
-// ---------------------------------------------------------------------------
-
-export interface PromptFragmentContext {
-  packageDir: string
-  cwd: string
-  env: Record<string, string>
-  sessionId?: string
-  abort: AbortSignal
-  stderr: NodeJS.WriteStream
-  log: PluginLogger
-}
-
-export type PromptFragmentHandler = (ctx: PromptFragmentContext) => Promise<string> | string

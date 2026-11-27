@@ -5,7 +5,7 @@
  *
  * Delivery is at-least-once by construction: a reader drains, acts, THEN
  * advances its cursor. A crash between act and cursor-write replays the tail —
- * the model dedups on envelope `id` (taught in PROMPT.md). Better a duplicate
+ * the model dedups on envelope `id` (taught in the IntercomInbox description). Better a duplicate
  * than a dropped interrupt.
  *
  * ## Why `node:fs` and not `Bun.write`/`Bun.file`

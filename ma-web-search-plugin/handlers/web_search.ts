@@ -158,22 +158,31 @@ function mergeOptions(input: ParsedInput, config: WebSearchConfig): SearchOption
   }
 }
 
+/** A failure that only a new API key can fix: no key, or HTTP 401 or 403. */
+function isKeyFailure(f: WebSearchAllFailedError["failures"][number]): boolean {
+  if (f.kind === "not_configured") return true
+  return f.transient !== true && /^HTTP 40[13]\b/.test(f.message)
+}
+
 /** Render an actionable error from `WebSearchAllFailedError`. */
 function renderAllFailed(err: WebSearchAllFailedError): string {
   if (err.failures.length === 0) {
     return 'WebSearch: no providers configured. Set `plugins["web-search"].providers` in ~/.minimal-agent/config.jsonc.'
   }
   const lines = ["WebSearch: all providers failed:"]
-  let onlyMissingKey = true
+  let onlyKeyFailures = true
   let allTransient = true
   for (const f of err.failures) {
     lines.push(`  - ${f.providerId}: ${f.message}`)
-    if (f.kind !== "not_configured") onlyMissingKey = false
+    if (!isKeyFailure(f)) onlyKeyFailures = false
     if (f.kind === "not_configured" || f.transient !== true) allTransient = false
   }
-  if (onlyMissingKey) {
+  if (onlyKeyFailures) {
+    // A missing key or a key that the provider refused (HTTP 401 or 403).
+    // The model must not edit user secrets, so it tells the user.
     lines.push("")
-    lines.push("Hint: set BRAVE_API_KEY in your environment, or add an `apiKey` to")
+    lines.push("Do not try again. Tell the user to set the API key.")
+    lines.push("Tell the user to set BRAVE_API_KEY, or to add an `apiKey` to")
     lines.push('plugins["web-search"].brave in ~/.minimal-agent/config.jsonc.')
   } else if (allTransient) {
     // Every failure was a rate limit / upstream / network error. The tool

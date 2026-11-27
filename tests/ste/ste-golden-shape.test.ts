@@ -42,8 +42,10 @@ import { join } from "node:path"
 import { describe, expect, test } from "bun:test"
 
 import {
+  BLOCK_REMOVALS,
+  type BlockRemoval,
   DELETED_GOLDENS,
-  isAllowedRemoval,
+  isAllowedTextChange,
   SECTION_REMOVALS,
   type SectionRemoval,
   withoutSection,
@@ -522,15 +524,17 @@ export function goldenProblems(
   additions: readonly SchemaAddition[] = SCHEMA_ADDITIONS,
   removals: readonly SectionRemoval[] = SECTION_REMOVALS,
   toolAdditions: readonly ToolAddition[] = TOOL_ADDITIONS,
+  blocks: readonly BlockRemoval[] = BLOCK_REMOVALS,
 ): string[] {
   const after = withoutAddedTools(before, current, toolAdditions)
   const out: string[] = []
   for (const d of leafDiff(before, after)) {
     if (d.kind === "string") continue
+    const pair = [atPath(before, d.path), atPath(after, d.path)] as const
     if (
       d.kind === "tag" &&
       d.key === "text" &&
-      isAllowedRemoval(atPath(before, d.path), atPath(after, d.path), removals)
+      isAllowedTextChange(...pair, maTags, removals, blocks)
     )
       continue
     if (d.kind === "shape" && isAllowedAddition(d.path, before, after, additions)) continue
@@ -966,9 +970,6 @@ describe("golden leaf diff: SECTION_REMOVALS (intended section removal)", () => 
   })
   test("a removal with one more change is still a tag problem", () => {
     expect(problems("# A\n\nX\n\n# C\n\nc")).toEqual(["tag $.requests[0].system[0].text"])
-  })
-  test("each listed deleted golden has a source", () => {
-    for (const d of DELETED_GOLDENS) expect(d.source.length).toBeGreaterThan(0)
   })
 })
 

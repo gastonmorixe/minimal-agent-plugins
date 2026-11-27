@@ -24,6 +24,7 @@ import { isAbsolute, join, posix, relative } from "node:path"
 
 import { describe, expect, it } from "bun:test"
 
+import identityLine from "../ma-agent-identity-plugin/prompts/identity.md" with { type: "text" }
 import anthropicBilling from "../ma-llm-anthropic-plugin/prompts/billing.tmpl.md" with {
   type: "text",
 }
@@ -39,14 +40,20 @@ import memoryFramingGlobal from "../ma-memory-plugin/prompts/framing.global.md" 
 import memoryFramingProject from "../ma-memory-plugin/prompts/framing.project.md" with {
   type: "text",
 }
+import memoryInjectLatest from "../ma-memory-plugin/prompts/inject.latest.md" with { type: "text" }
+import memoryInjectSummary from "../ma-memory-plugin/prompts/inject.summary.md" with {
+  type: "text",
+}
+import memoryInjectVerbatim from "../ma-memory-plugin/prompts/inject.verbatim.md" with {
+  type: "text",
+}
 import memorySummarize from "../ma-memory-plugin/prompts/summarize.tmpl.md" with { type: "text" }
+import skillsCatalogCap from "../ma-skills-plugin/prompts/catalog-cap.md" with { type: "text" }
+import skillsCatalogIntro from "../ma-skills-plugin/prompts/catalog-intro.md" with { type: "text" }
 import subAgentsLeaf from "../ma-sub-agents-plugin/prompts/leaf-discipline.md" with { type: "text" }
 import subAgentsResult from "../ma-sub-agents-plugin/prompts/result-protocol.tmpl.md" with {
   type: "text",
 }
-import tasksPlanning from "../ma-tasks-plugin/prompts/planning.md" with { type: "text" }
-import tasksCompact from "../ma-tasks-plugin/prompts/results-compact.md" with { type: "text" }
-import tasksFull from "../ma-tasks-plugin/prompts/results-full.md" with { type: "text" }
 
 const ROOT = join(import.meta.dir, "..")
 
@@ -306,17 +313,20 @@ describe("embed safety", () => {
 
 describe("migrated prompt text imports are byte-identical to the files", () => {
   const cases: [string, string][] = [
+    ["ma-agent-identity-plugin/prompts/identity.md", identityLine],
     ["ma-llm-anthropic-plugin/prompts/billing.tmpl.md", anthropicBilling],
     ["ma-llm-anthropic-plugin/prompts/identity.claude-code.md", anthropicIdentity],
     ["ma-llm-cursor-plugin/prompts/tool-catalog.md", cursorToolCatalog],
     ["ma-memory-plugin/prompts/framing.global.md", memoryFramingGlobal],
     ["ma-memory-plugin/prompts/framing.project.md", memoryFramingProject],
+    ["ma-memory-plugin/prompts/inject.latest.md", memoryInjectLatest],
+    ["ma-memory-plugin/prompts/inject.summary.md", memoryInjectSummary],
+    ["ma-memory-plugin/prompts/inject.verbatim.md", memoryInjectVerbatim],
     ["ma-memory-plugin/prompts/summarize.tmpl.md", memorySummarize],
+    ["ma-skills-plugin/prompts/catalog-cap.md", skillsCatalogCap],
+    ["ma-skills-plugin/prompts/catalog-intro.md", skillsCatalogIntro],
     ["ma-sub-agents-plugin/prompts/leaf-discipline.md", subAgentsLeaf],
     ["ma-sub-agents-plugin/prompts/result-protocol.tmpl.md", subAgentsResult],
-    ["ma-tasks-plugin/prompts/planning.md", tasksPlanning],
-    ["ma-tasks-plugin/prompts/results-compact.md", tasksCompact],
-    ["ma-tasks-plugin/prompts/results-full.md", tasksFull],
   ]
   for (const [rel, imported] of cases) {
     it(rel, () => {

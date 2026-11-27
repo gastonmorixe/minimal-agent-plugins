@@ -27,18 +27,34 @@ function memoryTool() {
   if (!tool) throw new Error("no MemoryTool entry")
   return tool as {
     description: string
-    input_schema: { properties: { id: { description: string } } }
+    input_schema: {
+      properties: {
+        action: { description: string }
+        id: { description: string }
+        body: { description: string }
+        query: { description: string }
+      }
+    }
   }
 }
 
 /** The new templates and the names of their old-byte fixtures. */
 const CASES: [label: string, template: () => string, fixture: string][] = [
-  ["PROMPT.md", () => read("PROMPT.md"), "PROMPT"],
   ["tool description", () => memoryTool().description, "tool-description"],
+  [
+    "param action description",
+    () => memoryTool().input_schema.properties.action.description,
+    "param-action-description",
+  ],
   [
     "param id description",
     () => memoryTool().input_schema.properties.id.description,
     "param-id-description",
+  ],
+  [
+    "param body description",
+    () => memoryTool().input_schema.properties.body.description,
+    "param-body-description",
   ],
 ]
 
@@ -58,5 +74,21 @@ describe("prompt templates of ma-memory-plugin", () => {
     }
     const all = CASES.map(([, t]) => expandTemplate(t())).join("\n")
     for (const kind of ["memory", "memory-saved"]) expect(all).toContain(`\`${kind}\``)
+  })
+
+  // Probe S10: the save rules must be explicit in the tool text, because the
+  // system prompt no longer has a memory block.
+  it("the tool text keeps the save rules (tag, not add, list with a query first)", () => {
+    const tool = memoryTool()
+    expect(tool.description).toContain(
+      "To save an entry, write the `%%sideband:open memory%%` tag in your response. Do not use `add`.",
+    )
+    const addLine = tool.input_schema.properties.action.description
+      .split("\n")
+      .find((l) => l.startsWith("- `add`:"))
+    expect(addLine).toContain("do not use it to save during a response")
+    expect(addLine).toContain("`%%sideband:open memory%%` tag")
+    expect(addLine).toContain("Before you save, run `list` with a `query`")
+    expect(tool.input_schema.properties.query.description).toContain("Use it before you save.")
   })
 })

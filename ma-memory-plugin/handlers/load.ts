@@ -26,7 +26,7 @@
  *
  *   - `"latest"`   (default): injects the N most-recent bullets per scope
  *                    formatted as `MemoryTool.list` output.
- *   - `"none"`: return empty string. PROMPT.md still loads.
+ *   - `"none"`: return empty string.
  *   - `"verbatim"`: full memory.md text, formatted as a
  *                    `## Saved memories` block.
  *   - `"summary"` : LLM-derived condensed view via
@@ -61,6 +61,11 @@ import {
 } from "../lib/store.ts"
 import { type CompleteFn, providerMissingError, type RenderFn } from "../lib/summarize.ts"
 import { refreshAndRender, summaryPathFor } from "../lib/summary-refresh.ts"
+// Text imports of the fixed framing lines: Bun inlines them, so the same code
+// works in a compiled binary, and the STE gate reads them in `prompts/*.md`.
+import injectLatestMd from "../prompts/inject.latest.md" with { type: "text" }
+import injectSummaryMd from "../prompts/inject.summary.md" with { type: "text" }
+import injectVerbatimMd from "../prompts/inject.verbatim.md" with { type: "text" }
 
 // ---------------------------------------------------------------------------
 // Path re-exports (kept for back-compat with existing callers / tests)
@@ -180,11 +185,10 @@ const latestStrategy: InjectStrategy = async ({ label, memoryPath, scope, cfg })
     ansi: false,
     total: all.length,
   })
-  return [
-    `### ${label} (latest ${take} of ${all.length}, \`${memoryPath}\`)`,
-    "",
-    formatted.trimEnd(),
-  ]
+  // Drop the `list` header line (`global (3 entries)`): the `###` heading
+  // above already gives the same counts. The tool `list` result keeps it.
+  const rows = formatted.trimEnd().split("\n").slice(1).join("\n")
+  return [`### ${label} (latest ${take} of ${all.length}, \`${memoryPath}\`)`, "", rows]
 }
 
 const STRATEGIES: Readonly<Record<MemoryInjectMode, InjectStrategy>> = {
@@ -283,9 +287,9 @@ export default async function loadMemories(
  * header with the appropriate framing for the inject mode.
  *
  * Kept private and small: the framing prose is intentionally minimal
- * because PROMPT.md (loaded separately, always) is the canonical place
- * for "how to use the tool". The framing here just disambiguates what
- * is in the block.
+ * because the `MemoryTool` description and its parameters are the
+ * canonical place for "how to use the tool". The framing here just
+ * disambiguates what is in the block.
  */
 function composeFragment(
   mode: MemoryInjectMode,
@@ -293,33 +297,9 @@ function composeFragment(
   projectSection: string[],
 ): string {
   const out: string[] = ["## Saved memories", ""]
-  if (mode === "summary") {
-    out.push(
-      "Below the section headers, content is a CONDENSED summary",
-      "(with `Sources: #id1, #id2` citing the underlying bullets).",
-      "For the full body of any bullet referenced by id, call",
-      '`MemoryTool({action: "read", scope, id})`. Bullets added since the',
-      'last regen are listed verbatim under "Recent saves".',
-      "",
-    )
-  } else if (mode === "latest") {
-    out.push(
-      "Latest entries per scope, formatted as `MemoryTool.list` output",
-      "(id, timestamp, body). These are the most recent bullets only.",
-      "For older entries, the full history, or mid-session changes, call",
-      '`MemoryTool({action: "list", scope: ...})`.',
-      "",
-    )
-  } else {
-    out.push(
-      "Standing instructions and lessons-learned, persisted across sessions.",
-      "Snapshot taken at session start: for the live state mid-session,",
-      'call `MemoryTool({action: "list", scope: ...})`. Other agents in',
-      "shared worktrees, CLI edits, and your own later saves all bypass",
-      "this snapshot.",
-      "",
-    )
-  }
+  const framing =
+    mode === "summary" ? injectSummaryMd : mode === "latest" ? injectLatestMd : injectVerbatimMd
+  out.push(framing.trim(), "")
   out.push(...globalSection)
   out.push(...projectSection)
   return out.join("\n")

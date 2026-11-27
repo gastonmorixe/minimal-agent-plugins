@@ -30,7 +30,6 @@ function showDiffTool(): { description: string } {
 
 /** The new templates and the names of their old-byte fixtures. */
 const CASES: [label: string, template: () => string, fixture: string][] = [
-  ["PROMPT.md", () => read("PROMPT.md"), "PROMPT"],
   ["tool description", () => showDiffTool().description, "tool-description"],
 ]
 

@@ -34,11 +34,9 @@ enable it, set this value in `~/.minimal-agent/config.jsonc`:
    `<ma::agent::reflection-checkpoint round="N" cooldown-applied-seconds="S" />`
    and the reflection prompt (continue, change the method, or speak to the
    user). `S` is the time that the plugin waited.
-4. A prompt fragment (`afterInstructions`) adds the "Tool loop safety"
-   section to the system prompt. The section gives the configured interval
-   and cooldown. The loader makes the fragment one time at boot. The plugin
-   reads the config one time for each process, so the section and the
-   checkpoint use the same values.
+4. The plugin adds no system prompt section. The checkpoint text gives
+   the 3 choices and the ack syntax. The plugin reads the config one time
+   for each process.
 
 ## The ack
 
@@ -81,16 +79,15 @@ The plugin ignores a value that is not a number of 0 or more.
 
 ## Files
 
-| File                         | Contents                                          |
-| ---------------------------- | ------------------------------------------------- |
-| `manifest.json`              | The hook, the prompt fragment and the inline tag. |
-| `handlers/did-batch.ts`      | The `tool.didBatch` listener (the checkpoint).    |
-| `handlers/ack.ts`            | The `reflection-ack` inline-tag handler.          |
-| `handlers/run-end.ts`        | The run-end listener (clears the count).          |
-| `handlers/fragment.ts`       | The "Tool loop safety" prompt fragment.           |
-| `lib/config.ts`              | The config reader.                                |
-| `lib/state.ts`               | The silence count for each session.               |
-| `lib/text.ts`                | The texts from `prompts/*.md`.                    |
-| `prompts/*.md`               | The model-facing text.                            |
-| `reflection.test.ts`         | The unit tests.                                   |
-| `loader.integration.test.ts` | The test through the real core `PluginLoader`.    |
+| File                         | Contents                                       |
+| ---------------------------- | ---------------------------------------------- |
+| `manifest.json`              | The hooks and the inline tag.                  |
+| `handlers/did-batch.ts`      | The `tool.didBatch` listener (the checkpoint). |
+| `handlers/ack.ts`            | The `reflection-ack` inline-tag handler.       |
+| `handlers/run-end.ts`        | The run-end listener (clears the count).       |
+| `lib/config.ts`              | The config reader.                             |
+| `lib/state.ts`               | The silence count for each session.            |
+| `lib/text.ts`                | The text from `prompts/attachment.tmpl.md`.    |
+| `prompts/attachment.tmpl.md` | The model-facing text.                         |
+| `reflection.test.ts`         | The unit tests.                                |
+| `loader.integration.test.ts` | The test through the real core `PluginLoader`. |

@@ -11,14 +11,14 @@
           "type": "tool",
           "tool": {
             "name": "LockStatus",
-            "description": "Examine or clear the file locks of the agents, in the cwd and below it. Use it when `Edit` or `Write` gives a lock error. Use it to know which session has the lock on a file. To change a file, use `Edit` or `Write`.\n\nThe tool gives:\n- `list`: each lock, with the session, pid and host that have it, and the time since the lock started.\n- `inspect`: the data of one lock and its session.\n- `clear-stale`: the number of removed locks.",
+            "description": "Examine or clear the file locks of the agents, in the cwd and below it. Use it when `Edit` or `Write` gives a lock error. Use it to know which session has the lock on a file. To change a file, use `Edit` or `Write`. The tool gives the result of the `action`.\n\nA lock error comes after some seconds of tries (default 30). Do not use `Edit` again immediately. Wait a short time, or use this tool. If the lock stays, show the data of the lock to the user. Then wait for the user to tell you.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "inspect", "clear-stale", "clear"],
-                  "description": "- `list`: show each lock in the tree.\n- `inspect`: show the data of one lock.\n- `clear-stale`: remove each lock of a stopped process, and each lock made more than 5 minutes before.\n- `clear`: remove one lock. This is dangerous when the peer continues to operate."
+                  "description": "- `list`: show each lock in the tree, with the session, pid and host that have it, and the time since the lock started.\n- `inspect`: show the data of one lock and its session.\n- `clear-stale`: remove each lock of a stopped process, and each lock made more than 5 minutes before. The tool gives the number of removed locks.\n- `clear`: remove one lock. This is dangerous when the peer continues to operate."
                 },
                 "path": {
                   "type": "string",

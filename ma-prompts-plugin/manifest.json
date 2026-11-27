@@ -60,7 +60,7 @@
           "type": "tool",
           "tool": {
             "name": "PromptList",
-            "description": "Show all saved prompts in the prompt library of the user. Use it before you save, change or delete a prompt, or when a typed '&name' did not expand. To read a body, use `PromptShow`. The tool gives the name, description, `scope` and file path of each prompt.",
+            "description": "Show all saved prompts in the prompt library of the user. Use it before you save, change or delete a prompt. Use it also when the user names a saved prompt, or when a typed '&name' did not expand. To read a body, use `PromptShow`. The tool gives the name, description, `scope` and file path of each prompt.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -175,18 +175,6 @@
           "export": "default"
         },
         "interactive": false
-      }
-    ],
-    "promptFragments": [
-      {
-        "id": "prompts-catalog",
-        "handler": {
-          "type": "module",
-          "path": "./handlers/prompt-fragment.ts",
-          "export": "default"
-        },
-        "timeoutMs": 2000,
-        "order": 210
       }
     ],
     "hooks": [

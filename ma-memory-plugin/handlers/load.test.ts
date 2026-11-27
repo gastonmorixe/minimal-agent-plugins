@@ -190,7 +190,7 @@ describe("loadMemories: inject='verbatim'", () => {
     const out = await loadMemories(makeCtx(home, cwd), {
       loadConfig: () => cfgWith("verbatim"),
     })
-    expect(out).toContain("Snapshot taken at session start")
+    expect(out).toContain("Entries at session start.")
     expect(out).toContain("MemoryTool")
   })
 
@@ -203,7 +203,7 @@ describe("loadMemories: inject='verbatim'", () => {
     const out = await loadMemories(makeCtx(home, cwd), {
       loadConfig: () => cfgWith("verbatim"),
     })
-    expect(out).not.toContain("CONDENSED summary")
+    expect(out).not.toContain("A summary of the entries.")
   })
 
   it("returns empty string when both files are absent", async () => {
@@ -269,8 +269,8 @@ describe("loadMemories: inject='summary'", () => {
       loadConfig: () => cfgWith("summary"),
       refresh: fakeRefresh,
     })
-    expect(out).toContain("CONDENSED summary")
-    expect(out).toContain('MemoryTool({action: "read"')
+    expect(out).toContain("A summary of the entries.")
+    expect(out).toContain("Use `MemoryTool` with `read` and an id")
   })
 
   it("omits scopes whose refreshAndRender returns empty text", async () => {
@@ -367,17 +367,18 @@ describe("loadMemories: inject='latest'", () => {
     })
 
     expect(out).toContain("## Saved memories")
-    expect(out).toContain("formatted as `MemoryTool.list` output")
+    expect(out).toContain("in the `list` format. Use `MemoryTool` with `list`")
     // Global scope: should show the header from formatList
     expect(out).toContain("### Global")
-    expect(out).toContain("global (3 entries)")
+    expect(out).toContain("### Global (latest 3 of 3, ")
+    expect(out).not.toContain("global (3 entries)")
     expect(out).toContain("#g-001")
     expect(out).toContain("global bullet one")
     expect(out).toContain("#g-003")
     expect(out).toContain("global bullet three")
     // Project scope
     expect(out).toContain("### Project")
-    expect(out).toContain("project (2 entries)")
+    expect(out).toContain("### Project (latest 2 of 2, ")
     expect(out).toContain("#p-001")
     expect(out).toContain("project bullet one")
   })
@@ -398,7 +399,7 @@ describe("loadMemories: inject='latest'", () => {
     expect(out).toContain("## Saved memories")
     expect(out).not.toContain("### Global")
     expect(out).toContain("### Project")
-    expect(out).toContain("project (1 entry)")
+    expect(out).toContain("### Project (latest 1 of 1, ")
     expect(out).toContain("#p-001")
   })
 
@@ -452,7 +453,8 @@ describe("loadMemories: inject='latest'", () => {
       loadConfig: () => cfg,
     })
 
-    expect(out).toContain("global (showing 3 of 7 entries")
+    expect(out).toContain("### Global (latest 3 of 7, ")
+    expect(out).not.toContain("showing 3 of 7 entries")
     // Should contain bullets 5, 6, 7 (the latest 3) but not 1-4.
     expect(out).toContain("bullet 5")
     expect(out).toContain("bullet 6")
@@ -461,17 +463,10 @@ describe("loadMemories: inject='latest'", () => {
     expect(out).not.toContain("bullet 2")
     expect(out).not.toContain("bullet 4")
 
-    // Should NOT have a next-page hint when top >= total bullets.
-    // (Here top=3 < total=7, so we do get the hint from formatList
-    // because it only shows a subset. Actually formatList shows a hint when
-    // nextOffset is set — which happens when there are more bullets beyond
-    // the shown page. In this case we're not paginating through formatList,
-    // we're just taking the last N and formatting them. So we need to check
-    // what happens.)
-    // When we pass total: 7 but only 3 bullets in the array, formatList
-    // sees shown=3, total=7 and renders "showing 3 of 7 entries, offset 0"
-    // and a next-page hint. This is correct — the model sees that there
-    // are more entries it can query.
+    // The `list` header line ("showing 3 of 7 entries, offset 0") is
+    // dropped from the fragment. The `### Global (latest 3 of 7, ...)`
+    // heading gives the same counts, so the model sees that there are
+    // more entries it can query.
   })
 
   it("when top >= total bullets, shows all without pagination hint", async () => {
@@ -492,7 +487,7 @@ describe("loadMemories: inject='latest'", () => {
       loadConfig: () => cfg,
     })
 
-    expect(out).toContain("global (2 entries)") // no "showing X of Y" — fits in one page
+    expect(out).toContain("### Global (latest 2 of 2, ")
     expect(out).not.toContain("next: MemoryTool")
   })
 
@@ -528,9 +523,9 @@ describe("loadMemories: inject='latest'", () => {
       loadConfig: () => cfgWith("latest"),
     })
 
-    expect(out).toContain("formatted as `MemoryTool.list` output")
-    expect(out).not.toContain("CONDENSED summary") // not summary mode
-    expect(out).not.toContain("Snapshot taken at session start") // not verbatim mode
+    expect(out).toContain("in the `list` format. Use `MemoryTool` with `list`")
+    expect(out).not.toContain("A summary of the entries.") // not summary mode
+    expect(out).not.toContain("Entries at session start.") // not verbatim mode
   })
 })
 

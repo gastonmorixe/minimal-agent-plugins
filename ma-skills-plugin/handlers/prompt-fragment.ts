@@ -3,7 +3,7 @@
  *
  * Emitted into the system prompt at session start by minimal-agent's
  * plugin loader. Implements **Level 1** of the Agent Skills progressive-
- * disclosure model: just the `name` and `description` of each
+ * disclosure model: just the `name` and a clipped `description` of each
  * discovered skill, so the model knows what's available without paying
  * the token cost of every SKILL.md body up front.
  *
@@ -11,54 +11,55 @@
  *
  *   ## Skills available this session
  *
- *   <skill-table>
+ *   Use `Skill` with `read` and the name of a skill to load it. A skill
+ *   is at `<root>/<name>/SKILL.md`.
  *
- *   *(Use the `Skill` tool with action="read" name="<name>" to load
- *   the full instructions for one of these, or `Read` the path
- *   directly. Skills marked as broken below are not invocable until
- *   their SKILL.md is fixed.)*
+ *   ### `~/.agents/skills`
  *
- *   ### Broken skills (parse failures)
+ *   - name: clipped description
  *
- *   - …
+ *   Skills not shown here: 7. `Skill` with `list` shows all skills.
  *
- * When discovery finds zero skills, the producer returns the empty
- * string — the loader treats empty fragments as "skip", so the
- * system prompt stays clean.
+ * The fixed text is in `prompts/catalog-intro.md` and `prompts/catalog-cap.md`
+ * (`%%count%%` var). Skill names and descriptions are user data and stay in
+ * code.
+ *
+ * One `###` heading per skills root (the parent directory of each skill
+ * directory), in discovery order. The cap line shows only when
+ * `maxSkills` hid skills. Broken and shadowed skills are not in the
+ * prompt: the `Skill` `list` action gives them, and broken skills also
+ * emit a `skill-load` warning for the user.
+ *
+ * When discovery finds zero valid skills, the producer returns the empty
+ * string. The loader treats empty fragments as "skip", so the system
+ * prompt stays clean.
  *
  * @module handlers/prompt-fragment
  */
 
 import { homedir } from "node:os"
-import { relative } from "node:path"
+import { dirname, relative } from "node:path"
 
 import { loadSkillsConfig } from "../lib/config.ts"
 import { capSkillsForPrompt, discoverSkills } from "../lib/discovery.ts"
 import { warnBrokenSkills, warnSkillCatalogCap } from "../lib/report-broken.ts"
 import type {
-  BrokenSkill,
   DiscoveryResult,
   PromptFragmentContext,
   PromptFragmentHandler,
   Skill,
-  SkillScope,
 } from "../lib/types.ts"
+// Text imports: Bun inlines the files, so the same code works in a compiled
+// binary. The STE gate reads the fixed words in `prompts/*.md`.
+import catalogCapMd from "../prompts/catalog-cap.md" with { type: "text" }
+import catalogIntroMd from "../prompts/catalog-intro.md" with { type: "text" }
 
 // ---------------------------------------------------------------------------
 // Configuration constants
 // ---------------------------------------------------------------------------
 
-/** Display-only label per scope, used in the prompt fragment table. */
-const SCOPE_LABEL: Record<SkillScope, string> = {
-  project: "project",
-  projectClaudeCode: "project (.claude)",
-  homeShared: "home",
-  userAgent: "user",
-  extra: "extra",
-}
-
 /**
- * Hard ceiling on the Level-1 table even if config.maxSkills is set high.
+ * Hard ceiling on the Level-1 catalog even if config.maxSkills is set high.
  */
 const MAX_FRAGMENT_ENTRIES = 128
 
@@ -66,17 +67,18 @@ const MAX_FRAGMENT_ENTRIES = 128
  * Cap on the `description` chunk we render per row. Spec allows up to
  * 1024; we already validate that. The L1 fragment is meant to be a
  * router, not the full doc, so a short clip keeps token cost down.
- * Model can `Skill info` to get the full description verbatim.
+ * 120 keeps most "Use when" text. Model can `Skill info` to get the
+ * full description verbatim.
  */
-const DESC_CLIP = 240
+const DESC_CLIP = 120
 
 // ---------------------------------------------------------------------------
 // Pure renderers (exported for tests)
 // ---------------------------------------------------------------------------
 
-/** Optional Level-1 cap note. `maxSkills` hid these packs from the table. */
+/** Optional Level-1 cap note. `maxSkills` hid these packs from the catalog. */
 export interface CatalogCapNote {
-  /** How many valid skills were left out of the Level-1 table. */
+  /** How many valid skills were left out of the Level-1 catalog. */
   omittedCount: number
   /** Config cap that produced the omission. */
   maxSkills: number
@@ -93,81 +95,53 @@ export function renderFragment(
   home: string = homedir(),
   cap?: CatalogCapNote,
 ): string {
-  if (result.skills.length === 0 && result.broken.length === 0) {
-    // Nothing to say.
+  if (result.skills.length === 0) {
+    // Nothing to say. Broken skills alone give no section.
     return ""
   }
 
   const lines: string[] = []
-  lines.push("## Skills available this session")
+  lines.push(catalogIntroMd.trim())
+  lines.push("")
+  lines.push(renderCatalog(result.skills, cwd, home))
   lines.push("")
 
-  if (result.skills.length > 0) {
-    lines.push(
-      'Each skill is a SKILL.md pack that bundles instructions + scripts + references for a specific task. The catalog below is **metadata only** (Level 1 of progressive disclosure). To activate a skill, call `Skill {action: "read", name: "<name>"}` or `Read` the SKILL.md path directly. Then follow the instructions and read referenced files / run scripts on demand.',
-    )
-    lines.push("")
-    lines.push(renderTable(result.skills, cwd, home))
-    lines.push("")
-  }
-
   if (cap && cap.omittedCount > 0) {
-    lines.push(
-      `The table above is capped at ${cap.maxSkills} skills (${cap.omittedCount} more on disk). \`Skill list\`, \`Skill info\`, and \`Skill read\` still see every valid skill. Raise \`plugins["ma-skills"].maxSkills\` to list more here.`,
-    )
-    lines.push("")
-  }
-
-  if (result.broken.length > 0) {
-    lines.push("### Broken skills (parse / validation failures)")
-    lines.push("")
-    lines.push(
-      "These skills exist on disk but did not validate. Surface them when the user asks about skills so they can fix the SKILL.md.",
-    )
-    lines.push("")
-    for (const b of result.broken.slice(0, 16)) {
-      lines.push(renderBrokenRow(b, cwd, home))
-    }
-    lines.push("")
-  }
-
-  if (result.shadowed.length > 0) {
-    lines.push("### Shadowed (lower-precedence) skills")
-    lines.push("")
-    lines.push(
-      "These names exist at a higher-precedence root and are not directly invocable. Mention them only if relevant to the user's question.",
-    )
-    lines.push("")
-    for (const s of result.shadowed.slice(0, 16)) {
-      lines.push(
-        `- \`${s.skill.front.name}\` at ${shortenPath(s.skill.dir, cwd, home)} (shadowed by ${SCOPE_LABEL[s.shadowedBy]})`,
-      )
-    }
+    lines.push(fill(catalogCapMd.trim(), { count: String(cap.omittedCount) }))
     lines.push("")
   }
 
   return lines.join("\n").trimEnd()
 }
 
-/** Render the skills table. */
-export function renderTable(skills: Skill[], cwd: string, home: string): string {
-  const rows: string[][] = [["name", "scope", "description", "path"]]
+/**
+ * Render the skills catalog: one `###` heading per root, then one
+ * `- name: description` row per skill.
+ *
+ * The root is the parent directory of the skill directory (the skill
+ * name equals its directory name). Roots keep the order of their first
+ * appearance in `skills`. `capSkillsForPrompt` slices in walk order, so
+ * a root is usually contiguous. If an `extra` root is interleaved, its
+ * skills still group under the first heading of that root.
+ */
+export function renderCatalog(skills: Skill[], cwd: string, home: string): string {
+  const groups = new Map<string, string[]>()
   for (const s of skills.slice(0, MAX_FRAGMENT_ENTRIES)) {
-    rows.push([
-      `\`${s.front.name}\``,
-      SCOPE_LABEL[s.scope],
-      clip(s.front.description, DESC_CLIP),
-      `\`${shortenPath(s.dir, cwd, home)}\``,
-    ])
+    const root = shortenPath(dirname(s.dir), cwd, home)
+    const desc = clip(s.front.description.replace(/\s*\n\s*/g, " "), DESC_CLIP)
+    const row = `- ${s.front.name}: ${desc}`
+    const rows = groups.get(root)
+    if (rows) rows.push(row)
+    else groups.set(root, [row])
   }
-  return renderMarkdownTable(rows)
-}
-
-/** Render one broken-skill bullet. */
-export function renderBrokenRow(b: BrokenSkill, cwd: string, home: string): string {
-  const first = b.errors[0] ?? "unknown error"
-  const more = b.errors.length > 1 ? ` (+${b.errors.length - 1} more)` : ""
-  return `- \`${b.dirName}\` at ${shortenPath(b.dir, cwd, home)} — ${first}${more}`
+  const out: string[] = []
+  for (const [root, rows] of groups) {
+    if (out.length > 0) out.push("")
+    out.push(`### \`${root}\``)
+    out.push("")
+    out.push(...rows)
+  }
+  return out.join("\n")
 }
 
 // ---------------------------------------------------------------------------
@@ -186,25 +160,18 @@ export function shortenPath(abs: string, cwd: string, home: string): string {
   return abs
 }
 
+/**
+ * Fill the `%%name%%` vars of a prompt text in one pass. A value is not read
+ * again as a template. An unknown var stays as written.
+ */
+function fill(text: string, vars: Readonly<Record<string, string>>): string {
+  return text.replace(/%%([A-Za-z0-9_]+)%%/g, (m, key: string) => vars[key] ?? m)
+}
+
 /** Clip a string to N chars, appending `…` when truncated. */
 function clip(s: string, n: number): string {
   if (s.length <= n) return s
   return `${s.slice(0, n - 1).trimEnd()}…`
-}
-
-/** Render a 2D array as a GitHub-flavored markdown table. */
-function renderMarkdownTable(rows: string[][]): string {
-  if (rows.length === 0) return ""
-  // Pipe-escape any `|` inside cells.
-  const escaped = rows.map((row) => row.map((c) => c.replace(/\|/g, "\\|").replace(/\n/g, " ")))
-  const header = escaped[0]
-  const out: string[] = []
-  out.push(`| ${header.join(" | ")} |`)
-  out.push(`| ${header.map(() => "---").join(" | ")} |`)
-  for (let i = 1; i < escaped.length; i++) {
-    out.push(`| ${escaped[i].join(" | ")} |`)
-  }
-  return out.join("\n")
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +186,7 @@ function renderMarkdownTable(rows: string[][]): string {
  * Errors are caught and logged on `ctx.log` (so we don't break boot)
  * but result in an empty fragment. Broken skills also emit `ctx.log.warn`
  * (`skill-load`) so core can show the last-warn slot. Overflow past
- * `maxSkills` emits `skill-catalog` and is omitted from this table only.
+ * `maxSkills` emits `skill-catalog` and is omitted from this catalog only.
  */
 const handler: PromptFragmentHandler = (ctx: PromptFragmentContext): string => {
   try {

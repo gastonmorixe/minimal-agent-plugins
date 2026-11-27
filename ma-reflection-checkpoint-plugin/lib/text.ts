@@ -1,45 +1,24 @@
 /**
- * The model-facing texts of the plugin: the system prompt section and the
- * checkpoint attachment. The text lives in `prompts/*.md`. The static text
- * imports make Bun inline it, so the same code works from the checkout and
- * from a compiled binary.
+ * The model-facing text of the plugin: the checkpoint attachment. The plugin
+ * adds no system prompt section. The text lives in
+ * `prompts/attachment.tmpl.md`. The static text import makes Bun inline it,
+ * so the same code works from the checkout and from a compiled binary.
  *
- * The prompt files are templates: `%%name%%` vars and `%%sideband:...%%`
- * calls (design 50 section 1). The plugin does not fill them. It returns a
- * `PromptTemplateText` (`{ template, vars }`, the fragment, S4) or a hook
+ * The prompt file is a template: `%%name%%` vars and `%%sideband:...%%`
+ * calls (design 50 section 1). The plugin does not fill them. It returns a hook
  * template entry (`{ text, template: true, vars }`, S7), and core renders it
  * at its point of use.
  *
  * @module lib/text
  */
 
-import ackMd from "../prompts/ack.md" with { type: "text" }
 import attachmentMd from "../prompts/attachment.tmpl.md" with { type: "text" }
-import cooldownMd from "../prompts/checkpoint-cooldown.tmpl.md" with { type: "text" }
-import plainMd from "../prompts/checkpoint-plain.tmpl.md" with { type: "text" }
-import headingMd from "../prompts/heading.md" with { type: "text" }
-import introMd from "../prompts/intro.md" with { type: "text" }
 
-import type { HookTemplateEntry, PromptTemplateText, SidebandRender } from "./host-types.ts"
+import type { HookTemplateEntry, SidebandRender } from "./host-types.ts"
 
 /** Milliseconds to whole seconds, never below 0. */
 export function toSeconds(ms: number): number {
   return Math.max(0, Math.round(ms / 1000))
-}
-
-/**
- * The system prompt section that explains the checkpoints and the ack, as a
- * template that core renders (vars `interval` and, with a cooldown,
- * `cooldownSec`). Returns `""` when `interval` is 0 (the checkpoints are off).
- */
-export function loopSafetyText(interval: number, cooldownMs: number): PromptTemplateText | "" {
-  if (!(interval > 0)) return ""
-  const cooldown = cooldownMs > 0
-  const checkpoint = (cooldown ? cooldownMd : plainMd).trim()
-  return {
-    template: [headingMd.trim(), "", introMd.trim(), "", checkpoint, "", ackMd.trim()].join("\n"),
-    vars: cooldown ? { interval, cooldownSec: toSeconds(cooldownMs) } : { interval },
-  }
 }
 
 /**
@@ -67,7 +46,7 @@ export function attachmentText(round: number, appliedMs: number, sb?: SidebandRe
 
 /**
  * The checkpoint attachment as a hook context entry that core renders (S7):
- * the hook form of `PromptTemplateText` (`{ text, template: true, vars }`)
+ * the hook template form (`{ text, template: true, vars }`)
  * with the vars `round` and `cooldownSec`.
  *
  * @param round - The tool round of the checkpoint.

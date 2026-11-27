@@ -12,7 +12,7 @@
           "tool": {
             "name": "ShowDiff",
             "aliases": ["show_diff"],
-            "description": "Show a diff in the `diff -u` format to the user, in ANSI colors. Use it when the diff is the primary content of your response. For a hunk in a longer text, use the `%%sideband:open diff%%` tag. Do not put the patch text directly in your response.\n\nThe tool gives you the patch text with no change. Only the user sees the colors: added lines are lime green and removed lines are pink.",
+            "description": "Show a diff in the `diff -u` format to the user, in ANSI colors. Use it when the diff is the primary content of your response. For a hunk in a longer text, write the `%%sideband:open diff%%` tag, then the diff text, then the end tag. The tag has one optional attribute, `title`. Do not put the patch text directly in your response.\n\nThe tool gives you the patch text with no change. Only the user sees the colors: added lines are lime green and removed lines are pink.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -22,7 +22,7 @@
                 },
                 "title": {
                   "type": "string",
-                  "description": "A title."
+                  "description": "A title. The user sees it above the diff."
                 }
               },
               "required": ["patch"],

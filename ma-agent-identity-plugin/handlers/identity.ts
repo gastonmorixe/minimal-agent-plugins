@@ -3,7 +3,11 @@
  *
  * Emits a SINGLE system-prompt line naming the agent, e.g.
  *
- *   You are working as Laura.
+ *   Your name in this session is Laura. Use this name when a person speaks to you.
+ *
+ * The fixed words live in `prompts/identity.md`, so the STE gate reads them.
+ * The name goes in through the `%%name%%` var. The static text import makes
+ * Bun inline the file, so the same code works in a compiled binary.
  *
  * or nothing at all when naming is explicitly disabled (an off sentinel;
  * naming is otherwise on by default and resolves to `auto`). The name is
@@ -26,9 +30,22 @@
  */
 
 import type { PromptFragmentContext } from "../lib/host-types.ts"
+import identityMd from "../prompts/identity.md" with { type: "text" }
 
 /** Env var the host publishes with the resolved, frozen session name. */
 const NAME_ENV = "MINIMAL_AGENT_AGENT_NAME"
+
+/** The `%%name%%` var of `prompts/identity.md`. */
+const NAME_VAR = "%%name%%"
+
+/**
+ * Fill the `%%name%%` var of the identity text. The name is user data: a
+ * replacer function keeps it as is (no replace patterns), and the name is
+ * not read again as a template.
+ */
+export function renderIdentity(name: string): string {
+  return identityMd.trim().replaceAll(NAME_VAR, () => name)
+}
 
 /**
  * Read the resolved name from the fragment env. Returns `""` (the
@@ -39,5 +56,5 @@ export default function identityFragment(ctx: PromptFragmentContext): string {
   const raw = ctx.env?.[NAME_ENV] ?? ""
   const name = raw.trim()
   if (!name) return ""
-  return `You are working as ${name}. It is the name people use to refer to you in this session. Answer to it naturally when addressed.`
+  return renderIdentity(name)
 }

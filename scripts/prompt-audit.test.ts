@@ -251,7 +251,7 @@ describe("external plugin prompt audit", () => {
   // not inlined as TS string literals in handlers (the owner's prompt-hygiene
   // rule). We flag a handler .ts that assigns a `systemPrompt:` field, since
   // that is a model-facing system prompt that should live in a prompts/*.md
-  // read at load (the ma-tasks-plugin planning_fragment.ts + prompts/planning.md
+  // read at load (the ma-title-plugin lib/generate.ts + prompts/system.md
   // pair is the reference pattern).
   //
   // ALLOWLIST: ma-sub-agents-plugin/lib/library.ts. Its per-specialist

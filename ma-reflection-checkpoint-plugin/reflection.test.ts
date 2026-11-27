@@ -16,7 +16,6 @@ import { pluginSideband } from "../tests/support/sideband.ts"
 
 import reflectionAckHandler, { ackNotice, parseAck } from "./handlers/ack.ts"
 import { COUNTDOWN_ID, onDidBatch } from "./handlers/did-batch.ts"
-import loopSafetyFragment from "./handlers/fragment.ts"
 import onRunEnd from "./handlers/run-end.ts"
 import {
   DEFAULT_COOLDOWN_MS,
@@ -30,7 +29,6 @@ import type {
   CountdownResult,
   HookContext,
   HookTemplateEntry,
-  PromptTemplateText,
   RunModeFact,
   TUIContext,
 } from "./lib/host-types.ts"
@@ -42,18 +40,16 @@ import {
   sessionKey,
   stateFor,
 } from "./lib/state.ts"
-import { attachmentEntry, loopSafetyText } from "./lib/text.ts"
+import { attachmentEntry } from "./lib/text.ts"
 import manifest from "./manifest.json"
 
 /** The real codec: the attachment tag line renders with it (design 40 step 10). */
 const SB = await pluginSideband()
 
-/** Render a returned text as core does: a template with the real codec, a string as is. */
-function render(x: PromptTemplateText | HookTemplateEntry | string | undefined): string {
+/** Render a returned entry as core does: a template with the real codec, a string as is. */
+function render(x: HookTemplateEntry | string | undefined): string {
   if (x === undefined || typeof x === "string") return x ?? ""
-  const template =
-    "template" in x && typeof x.template === "string" ? x.template : (x as HookTemplateEntry).text
-  return expandTemplate(template, { vars: x.vars ?? {}, sideband: SB })
+  return expandTemplate(x.text, { vars: x.vars ?? {}, sideband: SB })
 }
 
 const tmp = mkdtempSync(join(tmpdir(), "ma-reflection-"))
@@ -134,12 +130,11 @@ describe("round modulo", () => {
 })
 
 describe("interval 0", () => {
-  it("turns off the checkpoint, the prompt section and the ack", async () => {
+  it("turns off the checkpoint and the ack", async () => {
     const env = envWith({ MINIMAL_AGENT_REFLECTION_INTERVAL: "0" })
     const ctx = hookCtx(env)
     expect(await runRounds(ctx, 1, 200)).toEqual([])
     expect(ctx.calls).toEqual([])
-    expect(loopSafetyFragment({ env })).toBe("")
     const res = await reflectionAckHandler(ackCtx(env, { "silence-for": "2" }))
     expect(res.ansi).toBe("")
   })
@@ -327,22 +322,6 @@ describe("texts", () => {
       )
     }
   })
-
-  it("prompt section shows the configured interval and cooldown", () => {
-    const text = render(loopSafetyText(25, 30_000))
-    expect(text.startsWith("# Tool loop safety\n")).toBe(true)
-    expect(text).toContain("after each 25 tool steps")
-    expect(text).toContain("waits 30 seconds")
-    expect(text).toContain('cooldown-applied-seconds="30"')
-    expect(text).not.toContain("%%")
-    const plain = render(loopSafetyText(25, 0))
-    expect(plain).toContain('cooldown-applied-seconds="0"')
-    expect(plain).not.toContain("Esc")
-  })
-
-  it("fragment uses the config", () => {
-    expect(loopSafetyFragment({ env: envWith() })).toEqual(loopSafetyText(50, 60_000))
-  })
 })
 
 describe("config", () => {
@@ -372,8 +351,6 @@ describe("config", () => {
     const later = envWith({ MINIMAL_AGENT_REFLECTION_INTERVAL: "5" })
     expect(pluginConfig(first).interval).toBe(3)
     expect(pluginConfig(later).interval).toBe(3)
-    // The fragment and the hook use the same value.
-    expect(render(loopSafetyFragment({ env: later }))).toContain("after each 3 tool steps")
     const ctx = hookCtx(later)
     expect(await runRounds(ctx, 1, 6)).toEqual([3, 6])
     resetConfigCache()
@@ -394,7 +371,7 @@ describe("manifest", () => {
     expect(manifest.enabled).toBe(false)
   })
 
-  it("declares the hook, the fragment and the inline tag", () => {
+  it("declares the hooks and the inline tag, and no prompt fragment", () => {
     expect(manifest.permissions).toContain("hooks:tool.didBatch")
     expect(manifest.headless.hooks[0]?.channel).toBe("tool.didBatch")
     expect(manifest.permissions).toContain("hooks:turn.didEnd")
@@ -404,7 +381,7 @@ describe("manifest", () => {
       "turn.didEnd",
       "turn.aborted",
     ])
-    expect(manifest.headless.promptFragments[0]?.placement).toBe("afterInstructions")
+    expect("promptFragments" in manifest.headless).toBe(false)
     expect(manifest.headless.tools[0]?.trigger).toEqual({
       type: "inline_tag",
       tag: "reflection-ack",

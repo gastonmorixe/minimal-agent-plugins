@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test"
 
 import type { DiscoveryResult, Skill } from "../lib/types.ts"
 
-import { renderBrokenRow, renderFragment, renderTable, shortenPath } from "./prompt-fragment.ts"
+import { renderCatalog, renderFragment, shortenPath } from "./prompt-fragment.ts"
 
 const CWD = "/work/proj"
 const HOME = "/Users/me"
@@ -82,11 +82,11 @@ describe("renderFragment — populated", () => {
       CWD,
       HOME,
     )
-    expect(r).toContain('`Skill {action: "read"')
-    expect(r).toContain("`Read`")
+    expect(r).toContain("Use `Skill` with `read` and the name of a skill to load it.")
+    expect(r).toContain("`<root>/<name>/SKILL.md`")
   })
 
-  test("table row per skill", () => {
+  test("one row per skill, no scope column", () => {
     const r = renderFragment(
       {
         skills: [
@@ -99,12 +99,9 @@ describe("renderFragment — populated", () => {
       CWD,
       HOME,
     )
-    expect(r).toContain("| `alpha` |")
-    expect(r).toContain("| `beta` |")
-    expect(r).toContain("project")
-    expect(r).toContain("user")
-    expect(r).toContain("First.")
-    expect(r).toContain("Second.")
+    expect(r).toContain("- alpha: First.")
+    expect(r).toContain("- beta: Second.")
+    expect(r).not.toContain("|")
   })
 
   test("description clipped at long length (with ellipsis)", () => {
@@ -116,19 +113,8 @@ describe("renderFragment — populated", () => {
     )
     expect(r).toContain("…")
     expect(r.includes("a".repeat(500))).toBe(false)
-  })
-
-  test("pipes in description are escaped (markdown safety)", () => {
-    const r = renderFragment(
-      {
-        skills: [skill({ name: "x", description: "use a | pipe" })],
-        broken: [],
-        shadowed: [],
-      },
-      CWD,
-      HOME,
-    )
-    expect(r).toContain("\\|")
+    expect(r).toContain(`- x: ${"a".repeat(119)}…`)
+    expect(r.includes("a".repeat(120))).toBe(false)
   })
 
   test("newlines in description collapsed to spaces", () => {
@@ -144,7 +130,7 @@ describe("renderFragment — populated", () => {
     expect(r).toContain("line break")
   })
 
-  test("paths shortened to ~/… or ./…", () => {
+  test("roots shortened to ~/… or ./… as headings", () => {
     const r = renderFragment(
       {
         skills: [
@@ -162,17 +148,20 @@ describe("renderFragment — populated", () => {
       CWD,
       HOME,
     )
-    expect(r).toContain("./.agents/skills/proj")
-    expect(r).toContain("~/.minimal-agent/skills/usr")
+    expect(r).toContain("### `./.agents/skills`")
+    expect(r).toContain("### `~/.minimal-agent/skills`")
+    expect(r).toContain("- proj: x")
+    expect(r).toContain("- usr: y")
+    expect(r.indexOf("./.agents/skills")).toBeLessThan(r.indexOf("~/.minimal-agent/skills"))
   })
 })
 
 // ===========================================================================
-// renderFragment — broken + shadowed
+// renderFragment — broken + shadowed are not in the prompt
 // ===========================================================================
 
 describe("renderFragment — broken", () => {
-  test("broken section present when any broken", () => {
+  test("only broken skills → empty string", () => {
     const r = renderFragment(
       {
         skills: [],
@@ -189,21 +178,19 @@ describe("renderFragment — broken", () => {
       CWD,
       HOME,
     )
-    expect(r).toContain("### Broken skills")
-    expect(r).toContain("`bad`")
-    expect(r).toContain("missing closing ---")
+    expect(r).toBe("")
   })
 
-  test("first error shown plus +N more counter", () => {
+  test("broken skills give no line next to valid skills", () => {
     const r = renderFragment(
       {
-        skills: [],
+        skills: [skill({ name: "a", description: "Alpha." })],
         broken: [
           {
             dirName: "bad",
             dir: `${HOME}/.minimal-agent/skills/bad`,
             scope: "userAgent",
-            errors: ["err one", "err two", "err three"],
+            errors: ["err one", "err two"],
           },
         ],
         shadowed: [],
@@ -211,44 +198,46 @@ describe("renderFragment — broken", () => {
       CWD,
       HOME,
     )
-    expect(r).toContain("err one")
-    expect(r).toContain("+2 more")
-  })
-
-  test("renderBrokenRow standalone", () => {
-    const row = renderBrokenRow(
-      {
-        dirName: "x",
-        dir: `${HOME}/.minimal-agent/skills/x`,
-        scope: "userAgent",
-        errors: ["fail"],
-      },
-      CWD,
-      HOME,
-    )
-    expect(row).toContain("`x`")
-    expect(row).toContain("~/.minimal-agent/skills/x")
-    expect(row).toContain("fail")
+    expect(r).not.toContain("bad")
+    expect(r).not.toContain("err one")
+    expect(r).not.toContain("Broken")
   })
 })
 
 describe("renderFragment — catalog cap", () => {
-  test("notes omitted count and that Skill tool still sees them", () => {
+  test("notes omitted count and that Skill list still sees them", () => {
     const r = renderFragment(
       { skills: [skill({ name: "a", description: "Alpha." })], broken: [], shadowed: [] },
       CWD,
       HOME,
       { omittedCount: 22, maxSkills: 64 },
     )
-    expect(r).toContain("capped at 64")
-    expect(r).toContain("22 more on disk")
-    expect(r).toContain("`Skill list`")
-    expect(r).toContain("maxSkills")
+    expect(r).toContain("Skills not shown here: 22. `Skill` with `list` shows all skills.")
+    expect(r).not.toContain("maxSkills")
+  })
+
+  test("singular cap line", () => {
+    const r = renderFragment(
+      { skills: [skill({ name: "a", description: "Alpha." })], broken: [], shadowed: [] },
+      CWD,
+      HOME,
+      { omittedCount: 1, maxSkills: 64 },
+    )
+    expect(r).toContain("Skills not shown here: 1.")
+  })
+
+  test("no cap line when nothing is omitted", () => {
+    const r = renderFragment(
+      { skills: [skill({ name: "a", description: "Alpha." })], broken: [], shadowed: [] },
+      CWD,
+      HOME,
+    )
+    expect(r).not.toContain("Skills not shown here")
   })
 })
 
 describe("renderFragment — shadowed", () => {
-  test("shadowed section present when any shadowed", () => {
+  test("shadowed skills are not in the prompt", () => {
     const r = renderFragment(
       {
         skills: [skill({ name: "alpha", description: "winner", scope: "project" })],
@@ -263,31 +252,45 @@ describe("renderFragment — shadowed", () => {
       CWD,
       HOME,
     )
-    expect(r).toContain("### Shadowed")
-    expect(r).toContain("shadowed by project")
+    expect(r).not.toContain("Shadowed")
+    expect(r).not.toContain("loser")
+    expect(r).toContain("- alpha: winner")
   })
 })
 
 // ===========================================================================
-// renderTable
+// renderCatalog
 // ===========================================================================
 
-describe("renderTable", () => {
-  test("empty skills → header + separator only", () => {
-    const out = renderTable([], CWD, HOME)
-    const lines = out.split("\n")
-    expect(lines[0]).toContain("name")
-    expect(lines[1]).toContain("---")
-    expect(lines).toHaveLength(2)
+describe("renderCatalog", () => {
+  test("empty skills → empty string", () => {
+    expect(renderCatalog([], CWD, HOME)).toBe("")
   })
 
-  test("renders four columns including scope and path", () => {
-    const out = renderTable(
-      [skill({ name: "a", description: "alpha", scope: "homeShared" })],
+  test("one heading per root, rows under it", () => {
+    const out = renderCatalog(
+      [
+        skill({ name: "a", description: "alpha", scope: "homeShared" }),
+        skill({ name: "b", description: "beta", scope: "homeShared" }),
+      ],
       CWD,
       HOME,
     )
-    expect(out).toContain("| `a` | home | alpha |")
-    expect(out).toContain("~/.minimal-agent/skills/a")
+    expect(out).toBe("### `~/.minimal-agent/skills`\n\n- a: alpha\n- b: beta")
+  })
+
+  test("interleaved root groups under its first heading", () => {
+    const out = renderCatalog(
+      [
+        skill({ name: "a", description: "alpha" }),
+        skill({ name: "x", description: "extra", dir: "/opt/skills/x", scope: "extra" }),
+        skill({ name: "b", description: "beta" }),
+      ],
+      CWD,
+      HOME,
+    )
+    expect(out).toBe(
+      "### `~/.minimal-agent/skills`\n\n- a: alpha\n- b: beta\n\n### `/opt/skills`\n\n- x: extra",
+    )
   })
 })

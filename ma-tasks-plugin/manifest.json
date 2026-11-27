@@ -5,17 +5,6 @@
   "description": "Per-session task list. Plan multi-step work, mark progress as you go, the user sees a live TODO.\n\nSingle Task tool with action switch (add, add_many, replace_plan, update, status, start, done, remove, reorder, list, clear). Prefer add_many + tasks[]. Model and human boards use canonical ordinal ids. State lives at ~/.minimal-agent/sessions/<sid>.tasks.jsonl. Current task list is auto-injected every user turn as the `tasks` section.",
   "permissions": ["hooks:turn.willStart", "hooks:turn.didEnd", "hooks:turn.aborted"],
   "headless": {
-    "promptFragments": [
-      {
-        "id": "planning",
-        "handler": {
-          "type": "module",
-          "path": "./handlers/planning_fragment.ts",
-          "export": "default"
-        },
-        "order": 100
-      }
-    ],
     "tools": [
       {
         "id": "task_tool",
@@ -23,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "Task",
-            "description": "Make and monitor the task board of this session. The user sees the board live. Use it for 3 or more steps. Do not use this tool for small work of 1 or 2 steps. Use `add_many` with `tasks` to add all steps, then `start` and `done` with the board id.\n\nDo not write the board again as text. Use `canceled` for a task that you stopped, and `done` for a task that you completed. A completed parent task is `done`, not `canceled`. The tool gives an `OK` line and the board.",
+            "description": "Make and monitor the task board of this session. The user sees the board live. Use it for 3 or more steps. Do not use this tool for small work of 1 or 2 steps. Use `add_many` with `tasks` to add all steps, then `start` and `done` with the board id.\n\nDo not write the board again as text. Use `canceled` for a task that you stopped, and `done` for a task that you completed. A completed parent task is `done`, not `canceled`. The tool gives an `OK` line, and for most operations the board.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -42,7 +31,7 @@
                     "list",
                     "clear"
                   ],
-                  "description": "The operation:\n- `start`: set the task to `doing`. The parent also starts.\n- `done`: set the task to `done`. When no subtask is open, the parent becomes `done` automatically. Before that, the parent stays `doing`.\n- `remove`: remove a task and its subtasks.\n- `replace_plan`: replace the board with a new tree.\nIf the tool rejects your input, try again one time."
+                  "description": "The operation:\n- `start`: set the task to `doing`. The parent also starts.\n- `done`: set the task to `done`. When no subtask is open, the parent becomes `done` automatically. Before that, the parent stays `doing`.\n- `remove`: remove a task and its subtasks.\n- `replace_plan`: replace the board with a new tree.\nIf the tool rejects your input, try again one time. After `start`, `done` and `status`, the next turn shows the board. Do not use `list` only to see it."
                 },
                 "id": {
                   "type": ["string", "integer"],
@@ -54,7 +43,7 @@
                 },
                 "tasks": {
                   "type": "array",
-                  "description": "The recommended task tree for `add_many` or `replace_plan`. Each item is `{title, children?}`. Give only one of `tasks`, `items` or `titles`, and no `parent`.\n\nDo not use `done` on the parent, because the parent becomes `done` automatically. Do not change the array to a string.",
+                  "description": "The recommended task tree for `add_many` or `replace_plan`. Each item is `{title, children?}`. Give one top-level task for each part of the work, with its steps as subtasks. Give only one of `tasks`, `items` or `titles`, and no `parent`.\n\nDo not use `done` on the parent, because the parent becomes `done` automatically. Do not change the array to a string.",
                   "items": {
                     "type": "object",
                     "properties": {

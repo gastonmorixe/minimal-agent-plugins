@@ -20,7 +20,7 @@
               "properties": {
                 "text": {
                   "type": "string",
-                  "description": "Necessary. Sentences without markdown are best. The voice speaks markdown, code and URLs as you write them, and this is bad to hear. First, change them into spoken words. The maximum is 8000 characters."
+                  "description": "Necessary. Sentences without markdown are best. The voice speaks markdown, code and URLs as you write them, and this is bad to hear. First, change them into spoken words.\n\nKeep the text short. For a long text, speak a short summary and keep the data on the screen. The maximum is 8000 characters."
                 },
                 "wait": {
                   "type": "boolean",

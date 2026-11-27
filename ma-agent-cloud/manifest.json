@@ -2,9 +2,8 @@
   "id": "minimal-agent-cloud",
   "name": "Cloud",
   "version": "0.1.0",
-  "description": "The minimal-agent cloud connector. It owns the network transport to the cloud backend and registers that transport in the host transport registry. Thus the Intercom peers and teams span machines, and Intercom does not import this plugin. Skeleton: the remote transport is a stub (no live connection) until the backend auth contract lands. Tool: CloudStatus.",
+  "description": "The minimal-agent cloud connector. It owns the network transport to the cloud backend and registers that transport in the host transport registry. Thus the Intercom peers and teams span machines, and Intercom does not import this plugin. Tools: CloudLogin, CloudStatus, CloudPush.",
   "enabled": false,
-  "prompt": "./PROMPT.md",
   "capabilities": ["transport:registry"],
   "headless": {
     "tools": [
@@ -14,7 +13,7 @@
           "type": "tool",
           "tool": {
             "name": "CloudStatus",
-            "description": "Show the status of the minimal-agent cloud plugin. The tool shows if the cloud functions are on, the cloud flags, and if the network transport is in the registry. If the transport (a placeholder) is not in the registry, the tool also adds it.",
+            "description": "Show the status of the minimal-agent cloud plugin. The tool shows if the cloud functions are on, the cloud flags, the backend URL, and if the network transport is in the registry. If the transport is not in the registry, the tool also adds it. You can use it again safely.",
             "input_schema": {
               "type": "object",
               "properties": {

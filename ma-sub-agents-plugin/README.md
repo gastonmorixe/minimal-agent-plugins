@@ -293,8 +293,9 @@ The supervisor also publishes presence rows (the lead and each worker) to
 - **Bus events.** Each end state emits `subagent.didReport` and
   `subagent.didExit` with `{ id, sid, status }`. A worker linked to a task also
   emits `subagent.taskUpdate`, which the tasks plugin applies.
-- **Prompts.** `PROMPT.md` is the plugin's delegation discipline for the
-  model. `prompts/leaf-discipline.md` is folded into every specialist.
+- **Prompts.** The plugin has no `PROMPT.md`. The delegation rules for the
+  model are in the tool descriptions of `manifest.json`.
+  `prompts/leaf-discipline.md` is folded into every specialist.
 
 ## Cleanup
 

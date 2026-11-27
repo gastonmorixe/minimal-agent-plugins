@@ -20,7 +20,7 @@
  *
  * Constraints inside `(...)` are preserved verbatim — the spec doesn't
  * give them semantics, and enforcement is advisory in this plugin (see
- * PROMPT.md). Future work can interpret `git:*`-style patterns.
+ * the `Skill` `action` description in manifest.json). Future work can interpret `git:*`-style patterns.
  *
  * @module lib/allowed-tools
  */

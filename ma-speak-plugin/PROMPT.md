@@ -1,5 +1,0 @@
-- Write for a person who hears the words. Use usual sentences and usual punctuation. The voice speaks your words as you write them.
-- Remove the markdown. The voice speaks `**bold**`, backticks, list dashes and heading hashes as noise. Send only the words.
-- Do not speak URLs or code blocks. For example, say "I sent the change for inspection". Do not speak the link.
-- Keep each spoken message short. For a long answer, speak a short summary, and keep the data on the screen.
-- The setup of the user sets the voice and the rate of the voice. You select the words, not the sound. Do not try to select a voice or an accent. The tool has no parameter for it.

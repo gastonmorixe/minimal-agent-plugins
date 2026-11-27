@@ -44,7 +44,7 @@ Four actions, all addressed by file path:
 - `clear-stale` (prune dead/expired locks; safe)
 - `clear path="/abs/path"` (force-remove a lock; UNSAFE)
 
-The model is told via `PROMPT.md` when to reach for each action.
+The `LockStatus` description tells the model when to reach for each action.
 
 ## Files
 
@@ -52,7 +52,7 @@ The model is told via `PROMPT.md` when to reach for each action.
 - `handlers/lock_status.ts`: tool entry point.
 - `cli.ts`: outside-the-agent inspection (`bun run cli.ts list`).
 - `integration.test.ts`: end-to-end concurrency tests.
-- `PROMPT.md`: error-recovery guidance for the model.
+- `PROMPT.md`: the shell-write rule for the model (a shell write gets no lock).
 
 ## Disabling
 

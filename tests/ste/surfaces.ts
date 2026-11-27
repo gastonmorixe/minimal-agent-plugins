@@ -33,7 +33,7 @@ export interface Surface {
   /** 1-based line where the text starts, for findings. */
   line: number
   /** Surface family, for grouping in a report. */
-  kind: "prompt-md" | "prompts-md" | "manifest" | "inline-ts" | "core-ts"
+  kind: "prompt-md" | "prompts-md" | "manifest" | "inline-ts" | "core-ts" | "shell-echo"
   /**
    * Role of the text: `tool` (a tool description in `tools[]`), `param` (a
    * parameter description in a tool schema) or `prose`. Absent: computed with
@@ -270,9 +270,25 @@ function inCommentOrType(source: string, index: number): boolean {
  */
 export function pluginSurfaces(root: string, plugin: string): Surface[] {
   const out: Surface[] = []
+  const shellFragments = fragmentShellFiles(root, plugin)
   for (const abs of walk(join(root, plugin))) {
     const rel = relative(root, abs)
     const base = basename(abs)
+
+    if (shellFragments.has(rel)) {
+      const text = normalizeNewlines(readFileSync(abs, "utf8"))
+      for (const entry of shellEchoLiterals(text)) {
+        if (!/[a-z] [a-z]/i.test(entry.text)) continue
+        out.push({
+          file: rel,
+          locator: `echo@L${entry.line}`,
+          text: entry.text,
+          line: entry.line,
+          kind: "shell-echo",
+        })
+      }
+      continue
+    }
 
     if (base === "PROMPT.md") {
       out.push({
@@ -348,6 +364,54 @@ export function pluginSurfaces(root: string, plugin: string): Surface[] {
       }
     }
   }
+  return out
+}
+
+/**
+ * The shell run files of the prompt fragments of one plugin: each
+ * `promptFragments` subprocess `command[0]` that is not a TS or JS module.
+ * Its stdout goes into the system prompt, so its `echo` text is model text.
+ *
+ * @param root - Plugins repo root.
+ * @param plugin - Plugin directory name.
+ * @returns Repo-relative paths, for example `ma-env-info-plugin/gather.sh`.
+ */
+export function fragmentShellFiles(root: string, plugin: string): Set<string> {
+  const out = new Set<string>()
+  let manifest: Record<string, unknown>
+  try {
+    manifest = JSON.parse(readFileSync(join(root, plugin, "manifest.json"), "utf8"))
+  } catch {
+    return out
+  }
+  const headless = (manifest.headless ?? {}) as Record<string, unknown>
+  const frags = [
+    ...((headless.promptFragments as unknown[]) ?? []),
+    ...((manifest.promptFragments as unknown[]) ?? []),
+  ] as Array<{ handler?: { type?: string; command?: unknown[] } }>
+  for (const frag of frags) {
+    const exe = frag.handler?.type === "subprocess" ? frag.handler.command?.[0] : undefined
+    if (typeof exe !== "string" || /\.[cm]?[jt]sx?$/.test(exe)) continue
+    out.add(join(plugin, exe.replace(/^\.\//, "")))
+  }
+  return out
+}
+
+/**
+ * Every `echo` or `printf` literal of a shell source, with its 1-based line.
+ * A comment line is skipped. Only a quoted literal counts: `echo "$HOME"`
+ * gives `$HOME`, which holds no prose.
+ *
+ * @param src - Shell source text.
+ * @returns Each literal with its line.
+ */
+export function shellEchoLiterals(src: string): Array<{ text: string; line: number }> {
+  const out: Array<{ text: string; line: number }> = []
+  const re = /\b(?:echo|printf)\s+(?:-[a-zA-Z]+\s+)*(['"])((?:(?!\1)[^\\]|\\.)*)\1/g
+  src.split("\n").forEach((line, index) => {
+    if (/^\s*#/.test(line)) return
+    for (const match of line.matchAll(re)) out.push({ text: match[2] ?? "", line: index + 1 })
+  })
   return out
 }
 

@@ -49,12 +49,14 @@ automatically. The startup tree's `tools` row will include
 | 4    | `~/.minimal-agent/skills/` | user, agent-specific                  |
 | 5    | extras from config         | lowest                                |
 
-Collisions resolved by skill `name`. Closer-to-user wins. Lower-precedence
-collisions are listed under "Shadowed" in the catalog (and `Skill list`).
-A SKILL.md that fails validation is skipped. The plugin reports it with
-`ctx.log.warn` (core last-warn + file log) and still lists it under Broken
-in the catalog / `Skill list`. `maxSkills` caps only the Level-1 prompt
-table. `Skill list` / `info` / `read` still resolve packs past the cap.
+Collisions resolved by skill `name`. Closer-to-user wins.
+The catalog has one heading for each root and one `- name: desc` row for
+each valid skill. A desc is clipped to 120 chars. A cap line shows when
+`maxSkills` hides packs. The catalog has no shadowed and no broken rows.
+`Skill` with `list` shows the shadowed and the broken skills. A SKILL.md
+that fails validation is skipped. The plugin reports it with `ctx.log.warn`
+(core last-warn + file log). `maxSkills` caps only the Level-1 catalog.
+`Skill list` / `info` / `read` still resolve packs past the cap.
 
 ## Progressive disclosure
 
@@ -91,7 +93,7 @@ User config at `~/.minimal-agent/config.jsonc` under `plugins["ma-skills"]`:
         "userAgent": true
       },
       "extraRoots": [],
-      "maxSkills": 64, // Level-1 prompt table only. Skill tool is uncapped.
+      "maxSkills": 64, // Level-1 catalog only. Skill tool is uncapped.
       "allowReservedNames": false // permit `claude`/`anthropic` in names
     }
   }

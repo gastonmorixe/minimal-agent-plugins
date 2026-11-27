@@ -99,7 +99,7 @@ have to call `start`. You still must `build` and grant permissions once.
 
 ## Tool usage (`Computer`)
 
-AX-first. See `PROMPT.md` for the full agent-facing guide. Quick tour:
+AX-first. The tool and parameter descriptions in `manifest.json` are the agent-facing guide. Quick tour:
 
 ```jsonc
 {"action":"apps"}                                    // list GUI apps
@@ -181,7 +181,6 @@ The fastlane equivalent is `cd native && fastlane mac notarize`.
 
 ```
 manifest.json            # declares the Computer tool
-PROMPT.md                # agent-facing tool guide
 handlers/computer.ts     # tool handler (thin unix-socket client)
 bin/cud.ts               # control CLI + auto-spawn
 lib/{client,routes,render,paths,style,types}.ts

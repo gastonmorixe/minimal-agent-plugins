@@ -66,11 +66,11 @@
               "properties": {
                 "task": {
                   "type": "string",
-                  "description": "Necessary. Give the result, the limits of the work and the files that the sub-agent can change. Also tell which output the sub-agent must send back. This text is the most important cause of a good result."
+                  "description": "Necessary. Give the result, the limits of the work and the files that the sub-agent can change. Also tell which output the sub-agent must send back. This text is the most important cause of a good result.\n\nUse 1 sub-agent to find one fact, and 2 to 4 sub-agents to compare items. A sub-agent cannot start a sub-agent. Thus divide the work into units in the lead."
                 },
                 "agent": {
                   "type": "string",
-                  "description": "The sub-agent type:\n- `explorer`: read files.\n- `planner`: make a sequence of steps.\n- `worker`: make changes.\n- `reviewer`: find errors in changes.\n- `integrator`: run the checks and make the commit.\n- `log-miner`: examine logs.\n\nWithout it, the tool uses `system`."
+                  "description": "The sub-agent type:\n- `explorer`: read files.\n- `planner`: make a sequence of steps.\n- `worker`: make changes.\n- `reviewer`: find errors in changes.\n- `integrator`: run the checks and make the commit.\n- `log-miner`: examine logs.\n\nWithout it, the tool uses `system`. A `worker` does not use git and does not run the full checks. Do that work in the lead, or give it to an `integrator`."
                 },
                 "system": {
                   "type": "string",
@@ -246,7 +246,7 @@
           "type": "tool",
           "tool": {
             "name": "AgentResult",
-            "description": "Get the result of a `done` sub-agent into your context. Only this sub-agent tool gives the result. To monitor an active sub-agent, use `SubAgentsAgentOutput`.\n\nThe tool gives the full summary and the artifact paths, not the transcript. For an error status or `incomplete`, it also gives the last 20 log lines.",
+            "description": "Get the result of a `done` sub-agent into your context. Only this sub-agent tool gives the result. Read the result before you use the work. Do not accept an `incomplete` result as a completed task. Before you set a task to `done`, make sure that each file of the result is there. To monitor an active sub-agent, use `SubAgentsAgentOutput`.\n\nThe tool gives the full summary and the artifact paths, not the transcript. For an error status or `incomplete`, it also gives the last 20 log lines.",
             "input_schema": {
               "type": "object",
               "properties": {

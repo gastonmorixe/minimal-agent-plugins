@@ -84,31 +84,6 @@ export type TUIResult = {
 }
 
 /**
- * Prompt text from plugin code that core renders as a template. Mirror of
- * `PromptTemplateText` (`plugin-api/src/types/plugin.ts`).
- */
-export interface PromptTemplateText {
-  template: string
-  vars?: Record<string, string | number>
-}
-
-/**
- * Context passed to a prompt-fragment producer. This plugin reads
- * `queryModelInfo`, `packageDir`, and `log`.
- */
-export interface PromptFragmentContext {
-  packageDir: string
-  cwd: string
-  env: Record<string, string>
-  sessionId?: string
-  abort: AbortSignal
-  stderr: NodeJS.WriteStream
-  log: PluginLogger
-  agent?: AgentContext
-  queryModelInfo?: () => ModelInfoSnapshot | undefined
-}
-
-/**
  * Runtime context passed to an event-subscription handler. This plugin reads
  * `agent.sessionId`, `payload`, and `env.HOME`.
  */

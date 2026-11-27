@@ -16,7 +16,7 @@
  * Why a structured tool: once the model wants to mutate or browse memory,
  * it needs structured I/O (an id to act on, a list to choose from). The
  * inline tag is a fire-and-forget channel. The tool is the conversation
- * channel. PROMPT.md teaches the split.
+ * channel. The `MemoryTool` description teaches the split.
  *
  * ## Pagination contract for `list`
  *
@@ -77,7 +77,7 @@ export const DEFAULT_LIST_LIMIT = 20
  */
 export const MAX_LIST_LIMIT = 100
 
-// Re-export the body preview ceiling so PROMPT.md and tests have a
+// Re-export the body preview ceiling so the manifest text and tests have a
 // single source of truth.
 export { LIST_PREVIEW_MAX }
 

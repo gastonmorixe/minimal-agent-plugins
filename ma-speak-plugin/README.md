@@ -19,7 +19,6 @@ Three tools:
 ```
 ma-speak-plugin/
 ├── manifest.json              Plugin manifest (3 tools, schemas, ui.setup)
-├── PROMPT.md                  When/how the model should use these tools
 ├── handlers/
 │   ├── speak.ts               Validate → spawn detached → register → return handle
 │   ├── speak_status.ts        Read-only status (one job or all)

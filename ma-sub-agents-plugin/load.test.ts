@@ -3,14 +3,14 @@
  * wires, and the env-gated handlers behave correctly. This is the repo-portable
  * counterpart to a host loader-integration test (the decoupling contract): it
  * asserts the plugin's OWN contract — its manifest shape, its tool-availability
- * gate, its system-prompt body, its validation — without importing host code.
+ * gate, its tool schema text, its validation — without importing host code.
  * The host's loader-discovery wiring is covered by the host's own
  * loader-contract tests.
  *
  * @module sub-agents/load.test
  */
 
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
@@ -85,9 +85,24 @@ describe("sub-agents manifest contract", () => {
     expect(MANIFEST.permissions).toContain("hooks:agent.didStart")
   })
 
-  it("contributes a system-prompt block mentioning SpawnAgent", () => {
-    const prompt = readFileSync(join(import.meta.dir, "PROMPT.md"), "utf-8")
-    expect(prompt).toContain("SpawnAgent")
+  it("has no system-prompt block: the delegation rules are in the SpawnAgent schema", () => {
+    expect(existsSync(join(import.meta.dir, "PROMPT.md"))).toBe(false)
+    const raw = JSON.parse(readFileSync(join(import.meta.dir, "manifest.json"), "utf-8")) as {
+      headless: {
+        tools: {
+          trigger: {
+            tool?: {
+              name?: string
+              input_schema?: { properties?: Record<string, { description?: string }> }
+            }
+          }
+        }[]
+      }
+    }
+    const spawn = raw.headless.tools.find((t) => t.trigger.tool?.name === "SpawnAgent")
+    expect(spawn?.trigger.tool?.input_schema?.properties?.task?.description).toContain(
+      "A sub-agent cannot start a sub-agent.",
+    )
   })
 
   it("does NOT advertise a universal low|medium|high effort menu on SpawnAgent", () => {

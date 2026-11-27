@@ -35,8 +35,8 @@ memories too.
   - optionally the persistent files).
 - `lib/memory-config.ts`: config schema (`scope.inject = "off" | "verbatim" | "summary"`).
 - `cli.ts`: out-of-agent inspection.
-- `PROMPT.md`: model-facing policy: when to query, when to save, three
-  scopes, decision tree.
+- `manifest.json`: the `MemoryTool` description and its parameter texts
+  hold the model-facing policy: when to query, when to save, the scopes.
 
 ## Save echo
 

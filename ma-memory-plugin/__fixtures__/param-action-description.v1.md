@@ -1,0 +1,6 @@
+- `list`: one page of entries.
+- `read`: one full body.
+- `add`: do not use it to save during a response. For that, write the `<ma::emit::memory>` tag. Before you save, run `list` with a `query`.
+- `edit`: replace a body.
+- `remove`: delete one entry.
+- `clear`: remove all `short-term` entries.

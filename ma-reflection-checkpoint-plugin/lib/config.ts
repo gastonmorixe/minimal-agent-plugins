@@ -15,9 +15,8 @@
  * more is ignored. This module never throws: a bad config gives the defaults.
  *
  * The handlers read the config through {@link pluginConfig}: one read for
- * each process. The prompt fragment (at boot) and the hook and the ack (later)
- * thus use the same values, also when the file or the env changes during the
- * session.
+ * each process. The hook and the ack thus use the same values, also when
+ * the file or the env changes during the session.
  *
  * @module lib/config
  */

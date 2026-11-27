@@ -68,7 +68,7 @@
           "type": "tool",
           "tool": {
             "name": "Send",
-            "description": "Send a message to one or more peers. Use it to give a result, stop a peer, or tell that you use an item or cannot continue. Do not use it for a sub-agent, or for each step of your work.\n\nThe tool gives the message id and the sessions that got it or did not.",
+            "description": "Send a message to one or more peers. A peer is a session that you did not start, for example in a different window or project. Use it to give a result, stop a peer, or tell that you use an item or cannot continue. Do not use it for each step of your work. For a sub-agent, use `SubAgentsMailbox` if you have it.\n\nThe tool gives the message id and the sessions that got it or did not.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -108,7 +108,7 @@
           "type": "tool",
           "tool": {
             "name": "Inbox",
-            "description": "Read again the Intercom messages that you got. Do not use it to wait: new messages come at each turn automatically. The tool gives the session id, model, timestamp and body of each message, or an empty text.",
+            "description": "Read again the Intercom messages that you got. Do not use it to wait: new messages come at each turn automatically. A message can come two times. If you did the work of a message `id` before, do not do it again. The tool gives the session id, model, timestamp and body of each message, or an empty text.",
             "input_schema": {
               "type": "object",
               "properties": {

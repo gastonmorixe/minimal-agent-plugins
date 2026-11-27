@@ -60,8 +60,6 @@ declare their own env vars in `providers/<name>.ts`.
 - `config.ts`: config schema + provider chain resolution.
 - `format.ts`: result formatting (text vs json).
 - `cli.ts`: out-of-agent invocation for testing.
-- `PROMPT.md`: model-facing guidance on query shape, freshness, when
-  to use `news` vs `web`.
 
 ## Adding a new provider
 

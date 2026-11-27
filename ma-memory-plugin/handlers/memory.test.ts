@@ -661,9 +661,9 @@ describe("memory: load fragment (inject='verbatim' opt-in)", () => {
     })
     writeFileSync(gp, "- a\n")
     const out = await loadMemories(makeLoadCtx("/p"), { loadConfig: () => verbatimCfg })
-    expect(out).toContain("Snapshot taken at session start")
+    expect(out).toContain("Entries at session start.")
     expect(out).toContain("MemoryTool")
-    expect(out).toContain('"list"')
+    expect(out).toContain("with `list`")
   })
 
   it("returns empty string when files are absent even in verbatim mode", async () => {
@@ -722,11 +722,11 @@ describe("memory: integration (handler-direct, repo-portable)", () => {
       expect(out).toBe("")
     })
 
-    // The plugin's PROMPT.md (loaded into the system prompt by the host)
-    // still tells the model the tool exists — a plugin-owned file, so we
-    // assert on it directly instead of via the host loader.
-    const promptMd = readFileSync(resolve(PLUGIN_DIR, "PROMPT.md"), "utf-8")
-    expect(promptMd).toMatch(/MemoryTool/)
+    // The plugin manifest still declares the tool, so the model knows it
+    // exists. A plugin-owned file, so we assert on it directly instead of
+    // via the host loader.
+    const manifest = readFileSync(resolve(PLUGIN_DIR, "manifest.json"), "utf-8")
+    expect(manifest).toMatch(/"name": "MemoryTool"/)
   })
 
   it("inject='verbatim' opt-in: the load fragment embeds the memory contents", async () => {

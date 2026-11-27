@@ -6,19 +6,6 @@
   "enabled": false,
   "permissions": ["hooks:tool.didBatch", "hooks:turn.didEnd", "hooks:turn.aborted"],
   "headless": {
-    "promptFragments": [
-      {
-        "id": "loop_safety",
-        "handler": {
-          "type": "module",
-          "path": "./handlers/fragment.ts",
-          "export": "default"
-        },
-        "timeoutMs": 1000,
-        "order": 100,
-        "placement": "afterInstructions"
-      }
-    ],
     "hooks": [
       {
         "id": "checkpoint",

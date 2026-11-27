@@ -185,9 +185,6 @@
       "tag-literal": 2,
       "tag-search": 2
     },
-    "ma-tasks-plugin/handlers/planning_fragment.test.ts": {
-      "tag-literal": 1
-    },
     "ma-tasks-plugin/handlers/task_tool.api-simplify.test.ts": {
       "tag-literal": 4
     },

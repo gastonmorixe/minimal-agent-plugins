@@ -11,7 +11,7 @@
           "type": "tool",
           "tool": {
             "name": "WebSearch",
-            "description": "Find information on the web. Use it for facts that are possibly newer than your data, or for a URL. Use it to make sure that a fact is correct before you give it. Do not use it when this session or a file that you read has the result.\n\nThe tool gives the results. Each result has a title, URL, short text, date and source. After some errors, the tool tries again 2 times. Do not send the same request again immediately.",
+            "description": "Find information on the web. Use it for facts that are possibly newer than your data, or for a URL. Use it to make sure that a fact is correct before you give it. Do not use it when this session or a file that you read has the result.\n\nThe tool gives the results. Each result has a title, URL, short text, date and source. Give the URL of each page that you use in your response. After some errors, the tool tries again 2 times. Do not send the same request again immediately.",
             "concurrencySafe": true,
             "input_schema": {
               "type": "object",

@@ -55,23 +55,7 @@ probe() {
   probe in_tmux        bash -c '[ -n "${TMUX:-}" ] && echo yes || echo no' &
   probe lang           bash -c 'echo "${LANG:-}"' &
   probe editor         bash -c 'echo "${EDITOR:-${VISUAL:-}}"' &
-  probe date_iso       bash -c 'date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z' &
   probe timezone       date +%Z &
-  # tput defaults to fd 1 (stdout) for the ioctl; that's a pipe here, so
-  # ask the controlling tty directly via stty. Env vars LINES/COLUMNS win
-  # if the agent set them (preferred path — they reflect the live size).
-  probe term_cols      bash -c '
-    if [ -n "${COLUMNS:-}" ]; then echo "$COLUMNS"
-    elif [ -r /dev/tty ]; then stty size </dev/tty 2>/dev/null | awk "{print \$2}"
-    else tput cols
-    fi
-  ' &
-  probe term_lines     bash -c '
-    if [ -n "${LINES:-}" ]; then echo "$LINES"
-    elif [ -r /dev/tty ]; then stty size </dev/tty 2>/dev/null | awk "{print \$1}"
-    else tput lines
-    fi
-  ' &
   probe cpu_count      bash -c 'sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null' &
   probe hw_model       bash -c 'sysctl -n hw.model 2>/dev/null || cat /sys/class/dmi/id/product_name 2>/dev/null' &
   # Chassis classification: mac → MacBook? = laptop, else desktop.
@@ -96,14 +80,9 @@ probe() {
   probe git_branch     git symbolic-ref --short HEAD &
   probe git_dirty      bash -c '[ -n "$(git status --porcelain 2>/dev/null | head -1)" ] && echo yes || echo no' &
   probe git_default    bash -c 'git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed "s|refs/remotes/origin/||"' &
-  # Agent-supplied identifiers. Both env vars are set by the loader
-  # (TUI_PLUGIN_DIR is always set; MINIMAL_AGENT_SESSION_ID is set when
-  # the agent passes a sessionId to PluginLoader.load).
+  # Agent-supplied identifier. MINIMAL_AGENT_SESSION_ID is set by the
+  # loader when the agent passes a sessionId to PluginLoader.load.
   probe session_id     bash -c 'echo "${MINIMAL_AGENT_SESSION_ID:-}"' &
-  probe plugin_dir     bash -c 'echo "${TUI_PLUGIN_DIR:-}"' &
-  # The agent (src/index.ts) sets MINIMAL_AGENT_MODEL to the resolved
-  # model id (--model arg or DEFAULT_MODEL fallback) before loader.load.
-  probe model          bash -c 'echo "${MINIMAL_AGENT_MODEL:-}"' &
   # Agent process id. The loader exports MINIMAL_AGENT_PID via
   # `agentContextToEnv`; $PPID is the bash-spawn fallback when this
   # script is invoked outside the agent (no MINIMAL_AGENT_PID set).
@@ -121,14 +100,19 @@ rm -f /tmp/env-info-$$.out
 # Emit plain markdown (placement: afterInstructions) so the snapshot survives
 # `--no-system-session-context` / sessionContext overrides that strip the
 # XML-wrapped plugin sessionContext block. Include a short heading + note
-# (formerly only in PROMPT.md under sessionContext) and plain key=value lines.
+# and plain key=value lines.
 # No <ma::sys::…> / <env> wrapper — afterInstructions is unwrapped plain text.
 # stderr is redirected for the whole emit so a closed pipe (test cancellation,
 # loader teardown) doesn't print "broken pipe" diagnostics.
+#
+# The 2 fixed lines stay here, not in prompts/*.md: in a compiled binary core
+# extracts only this run file, so a sibling prompts file is not on disk. The
+# STE gate reads these echo lines as `shell-echo` surfaces
+# (tests/ste/surfaces.ts).
 {
-  echo '# Environment'
+  echo '# Host values'
   echo
-  echo 'Host snapshot at session start (frozen for the session). Re-query with `Bash` for fresh values. Prefer relative paths from `cwd=`. Do not invent sibling absolute project roots.'
+  echo 'The values below are from the start of the session. They do not change during the session. To get new values, run `Bash` again. Use paths that start at `cwd=`, not full paths. Do not make a full path for a project folder next to this project.'
   echo
   cat "/tmp/env-info-$$.sorted"
 } 2>/dev/null

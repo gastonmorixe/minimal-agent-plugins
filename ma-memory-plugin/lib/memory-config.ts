@@ -16,8 +16,8 @@
  * controls whether (and how) the plugin injects memory bullets into the
  * system prompt at session start:
  *
- *   - `"none"`: no bullet dump. The plugin's `PROMPT.md` and
- *     the `MemoryTool` schema still load, so the model knows the tool
+ *   - `"none"`: no bullet dump. The `MemoryTool`
+ *     schema still loads, so the model knows the tool
  *     exists and is taught to query it on demand. Keeps the system
  *     prompt minimal.
  *   - `"latest"` (default): injects the N most-recent bullets from

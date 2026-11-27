@@ -33,7 +33,6 @@ digest between turns when it finishes.
 ```
 ma-background-plugin/
 ├── manifest.json              4 tools (headless) + a 1s heartbeat slot (ui.liveAreaSlots)
-├── PROMPT.md                  Behavioral nudge: background by default
 ├── bin/
 │   └── runner.ts              The supervised per-job runner (the load-bearing process)
 ├── handlers/

@@ -50,7 +50,7 @@
           "type": "tool",
           "tool": {
             "name": "CronList",
-            "description": "Show the scheduled tasks of this session. To change a task, use `ScheduleCronReschedule` or `ScheduleCronDelete`. The tool gives the id, cron expression or interval, next start time and prompt of each task.",
+            "description": "Show the scheduled tasks of this session, also the tasks that the user made with the `/loop` and `/schedule` commands. To change a task, use `ScheduleCronReschedule` or `ScheduleCronDelete`. The tool gives the id, cron expression or interval, next start time and prompt of each task.",
             "input_schema": {
               "type": "object",
               "properties": {},
@@ -71,7 +71,7 @@
           "type": "tool",
           "tool": {
             "name": "CronDelete",
-            "description": "Cancel a scheduled task when the task is complete or the user does not want it. To change the next start time, use `ScheduleCronReschedule`. The tool gives the removed id and the number of tasks that stay.",
+            "description": "Cancel a scheduled task when the task is complete or the user does not want it. It also cancels a task of the `/loop` or `/schedule` commands. To change the next start time, use `ScheduleCronReschedule`. The tool gives the removed id and the number of tasks that stay.",
             "input_schema": {
               "type": "object",
               "properties": {

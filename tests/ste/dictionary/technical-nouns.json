@@ -392,11 +392,6 @@
     "reason": "the folders and files that an operating system keeps"
   },
   {
-    "word": "five",
-    "category": 9,
-    "reason": "the number 5, written as a word in text"
-  },
-  {
     "word": "flag",
     "category": 19,
     "reason": "a command-line option such as --strict"
@@ -450,11 +445,6 @@
     "word": "glob",
     "category": 19,
     "reason": "a file name pattern with wildcards such as *.ts"
-  },
-  {
-    "word": "graphql",
-    "category": 19,
-    "reason": "the GraphQL query language"
   },
   {
     "word": "green",
@@ -919,11 +909,6 @@
     "reason": "the usage limit that a provider sets for an account"
   },
   {
-    "word": "red",
-    "category": 17,
-    "reason": "a color, used to mark a removed or a failed item"
-  },
-  {
     "word": "regex",
     "category": 19,
     "reason": "a regular expression, a text pattern language"
@@ -937,11 +922,6 @@
     "word": "repl",
     "category": 19,
     "reason": "an interactive read-evaluate-print loop of a language"
-  },
-  {
-    "word": "repo",
-    "category": 19,
-    "reason": "short name for a code repository"
   },
   {
     "word": "request",
@@ -1240,11 +1220,6 @@
     "reason": "the WebP image file type"
   },
   {
-    "word": "websocket",
-    "category": 19,
-    "reason": "the WebSocket network protocol"
-  },
-  {
     "word": "week",
     "category": 9,
     "reason": "a unit of time, seven days"
@@ -1278,11 +1253,6 @@
     "word": "worker",
     "category": 11,
     "reason": "the name of the sub-agent type that edits files"
-  },
-  {
-    "word": "workspace",
-    "category": 19,
-    "reason": "a folder with the packages of one project"
   },
   {
     "word": "worktree",

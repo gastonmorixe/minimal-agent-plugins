@@ -309,7 +309,7 @@ describe("allow lists are pinned (REVIEW-C2 D3)", () => {
   const data = readDictionaryData()
   test("technical nouns", () => {
     const words = data.technicalNouns.map((e) => e.word)
-    expect([words.length, fingerprint(words)]).toEqual([273, "ffe45a6db1f2168f"])
+    expect([words.length, fingerprint(words)]).toEqual([267, "42ba3bda7ad8310e"])
   })
   test("technical verbs", () => {
     const words = data.technicalVerbs.map((e) => e.word)

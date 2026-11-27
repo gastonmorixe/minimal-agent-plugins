@@ -1,5 +1,5 @@
 {
-  "assets": 49,
+  "assets": 46,
   "cases": [
     {
       "name": "A:minimal-agent-core/src/prompts/identity.neutral.md",
@@ -925,60 +925,6 @@
         "missing": ["resultPath"],
         "message": "prompt template in minimal-agent-plugins/ma-sub-agents-plugin/prompts/result-protocol.tmpl.md is missing required variable(s): resultPath"
       }
-    },
-    {
-      "name": "A:minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
-      "input": {
-        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
-        "text": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n"
-      },
-      "vars": {},
-      "output": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing."
-    },
-    {
-      "name": "B:minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
-      "input": {
-        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/planning.md",
-        "text": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing.\n"
-      },
-      "vars": {},
-      "output": "Plan non-trivial work in phases with `Task`, and break each phase into concrete tasks or subtasks before executing."
-    },
-    {
-      "name": "A:minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
-      "input": {
-        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
-        "text": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n"
-      },
-      "vars": {},
-      "output": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it."
-    },
-    {
-      "name": "B:minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
-      "input": {
-        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-compact.md",
-        "text": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it.\n"
-      },
-      "vars": {},
-      "output": "Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `<ma::agent::tasks>` attachment carries the complete updated board, so do not call `list` merely to refresh it."
-    },
-    {
-      "name": "A:minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
-      "input": {
-        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
-        "text": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it.\n"
-      },
-      "vars": {},
-      "output": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it."
-    },
-    {
-      "name": "B:minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
-      "input": {
-        "path": "minimal-agent-plugins/ma-tasks-plugin/prompts/results-full.md",
-        "text": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it.\n"
-      },
-      "vars": {},
-      "output": "Every successful mutation, including `start`, `done`, and `status`, returns the complete updated canonical-id board beneath its `OK ...` acknowledgement. Use that immediate board as the source of truth, and do not call `list` merely to refresh it."
     },
     {
       "name": "A:minimal-agent-plugins/ma-turn-recovery-plugin/prompts/output-truncated.md",

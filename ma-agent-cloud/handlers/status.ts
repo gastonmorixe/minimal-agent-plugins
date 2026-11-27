@@ -77,7 +77,7 @@ export default async function cloudStatus(ctx: TUIContext): Promise<TUIResult> {
     lines.push(`  transport: NOT registered — ${reg.ok ? "" : reg.reason}`)
   }
   lines.push(
-    `  (the remote transport's network methods are still a stub until the WS layer lands; login + token are real)`,
+    `  (the remote transport connects when it is first used. It has an empty roster until it connects.)`,
   )
 
   return { kind: "tool_result", content: lines.join("\n") }

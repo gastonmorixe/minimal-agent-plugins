@@ -11,7 +11,6 @@ chosen format (markdown / text / html / links / accessibility / raw).
 ```
 ma-fetch-plugin/
 ├── manifest.json           Plugin manifest (tool name, schema, ui.setup)
-├── PROMPT.md               When/how the model should use this tool
 ├── handlers/
 │   ├── fetch.ts            Backend-agnostic handler: validate → dispatch → ToolResult
 │   └── fetch.test.ts

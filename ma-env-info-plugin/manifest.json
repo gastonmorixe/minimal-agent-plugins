@@ -2,7 +2,7 @@
   "id": "env-info",
   "name": "Env Info",
   "version": "0.1.0",
-  "description": "Captures a one-shot snapshot of the host environment (OS, arch, terminal, date, git state) and injects it into the system prompt at session start.",
+  "description": "Captures a one-shot snapshot of the host environment (OS, arch, terminal, git state) and injects it into the system prompt at session start.",
   "headless": {
     "promptFragments": [
       {

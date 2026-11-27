@@ -194,7 +194,6 @@ handlers/   entry points (imperative shells)
   peers, send, inbox, beat (slot), inbox_attachment (turn attachment),
   on_submit (event), on_key / on_buffer_changed / on_turn_will_start (mentions)
 manifest.json  headless: tool/attachment/event/hook wiring. ui: setup + beat slot
-PROMPT.md      model-facing guidance
 ```
 
 ## Tests

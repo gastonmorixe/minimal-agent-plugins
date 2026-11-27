@@ -23,7 +23,6 @@ Both paths share the same renderer.
 - `handlers/inline_diff.ts`: inline-tag entry point.
 - `handlers/render.ts`: shared renderer. Adds ANSI color from the
   agent's palette (`addition` = lime green, `removal` = hot pink).
-- `PROMPT.md`: model-facing guidance on when to use the tool vs the tag.
 
 ## Colors
 

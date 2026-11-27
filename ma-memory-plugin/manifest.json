@@ -25,19 +25,19 @@
           "type": "tool",
           "tool": {
             "name": "MemoryTool",
-            "description": "Read and change the permanent memory entries of the user, and the short-term entries of this session. Use it when the user tells you to show your memory. Use it before you debug a symptom that you know, or before you save an entry with new information.\n\nTo save during a response, use the `%%sideband:open memory%%` tag, not `add`. Do not save a secret.\n\nThe tool gives entries with the id, the timestamp and the body. The first line of `list` gives the total. `clear` gives the number of removed entries.",
+            "description": "Read and change the permanent memory entries of the user, and the short-term entries of this session. Use it when the user tells you to show your memory. Use it before you debug a symptom that you know, or before you save an entry with new information.\n\nTo save an entry, write the `%%sideband:open memory%%` tag in your response. Do not use `add`.\n\nThe tool gives entries with the id, the timestamp and the body. The first line of `list` gives the total. `clear` gives the number of removed entries.",
             "input_schema": {
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
                   "enum": ["list", "read", "add", "edit", "remove", "clear"],
-                  "description": "- `list`: one page of entries.\n- `read`: one full body.\n- `add`: save an entry.\n- `edit`: replace a body.\n- `remove`: delete one entry.\n- `clear`: remove all `short-term` entries."
+                  "description": "- `list`: one page of entries.\n- `read`: one full body.\n- `add`: do not use it to save during a response. For that, write the `%%sideband:open memory%%` tag. Before you save, run `list` with a `query`.\n- `edit`: replace a body.\n- `remove`: delete one entry.\n- `clear`: remove all `short-term` entries."
                 },
                 "scope": {
                   "type": "string",
                   "enum": ["global", "project", "short-term"],
-                  "description": "- `global`: all projects.\n- `project`: this project.\n- `short-term`: this session only."
+                  "description": "- `global`: all projects.\n- `project`: this project.\n- `short-term`: this session only. It keeps 20 entries. Then a new entry removes the first entry."
                 },
                 "id": {
                   "type": "string",
@@ -45,11 +45,11 @@
                 },
                 "body": {
                   "type": "string",
-                  "description": "For `add` or `edit`. One line is best: the tool changes more lines into one."
+                  "description": "For `add` or `edit`, and for the body of the `%%sideband:open memory%%` tag. One line is best: the tool changes more lines into one. Do not save a long text, a date prefix or a secret. Do not save the status of one task. The harness adds the timestamp."
                 },
                 "query": {
                   "type": "string",
-                  "description": "A case-insensitive text to find in each body, for `list` only. Use it with `limit` and `offset`."
+                  "description": "A case-insensitive text to find in each body, for `list` only. Use it with `limit` and `offset`. Use it before you save. If an entry tells the same fact, use `edit` on it, not `add`."
                 },
                 "limit": {
                   "type": "integer",

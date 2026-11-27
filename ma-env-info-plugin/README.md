@@ -1,12 +1,13 @@
 # env-info plugin
 
 Captures a one-shot snapshot of the host environment (OS, arch, CPU
-count, terminal size, current date, git state, etc.) and injects it
+count, terminal, git state, etc.) and injects it
 into the system prompt at session start.
 
 The snapshot is **frozen for the rest of the session** so the cached
 system prompt stays byte-stable (memoized by `PluginLoader.getPromptBlockAsync`).
-Volatile values like the current time and terminal size won't refresh.
+It has no volatile values such as the current time, the terminal size
+or the model id: they would go stale.
 
 ## What it contributes
 
@@ -21,18 +22,15 @@ assembly, captures stdout, and injects it as **plain markdown** via
 
 That placement is intentional: the absolute `cwd=` (and the rest of the
 snapshot) must survive `--no-system-session-context` /
-`systemPrompt.sessionContext` omit. Plugin PROMPT.md / sessionContext
-XML is still optional framing; the snapshot itself is not sessionContext.
+`systemPrompt.sessionContext` omit. The plugin has no PROMPT.md. The snapshot itself is not sessionContext.
 
 ## Files
 
 - `manifest.json`: declares the prompt fragment + subprocess command
   (`placement: "afterInstructions"`).
-- `gather.sh`: collects the host facts and emits the full `# Environment`
+- `gather.sh`: collects the host facts and emits the full `# Host values`
   markdown (heading + note + plain `key=value` lines). Designed to be fast, never
   network-touching, and to fail closed (empty output, never a crash).
-- `PROMPT.md`: intentionally empty. Framing lives in the fragment so the
-  snapshot does not depend on sessionContext / PROMPT.md composition.
 
 ## Format
 
@@ -48,7 +46,6 @@ The snapshot includes the agent-process identity via the
 - `session_id` ← `MINIMAL_AGENT_SESSION_ID` (UUID v4, per-process)
 - `pid` ← `MINIMAL_AGENT_PID` (agent's Bun process id;
   falls back to `$PPID` when run outside the agent)
-- `model` ← `MINIMAL_AGENT_MODEL` (resolved model id)
 - `version` ← `MINIMAL_AGENT_VERSION` (agent semver)
 
 ## Disabling

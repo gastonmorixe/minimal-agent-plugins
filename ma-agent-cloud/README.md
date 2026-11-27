@@ -4,12 +4,13 @@ This plugin connects this session to the minimal-agent cloud backend. The plugin
 
 Login is real. The CLI authenticates to the backend with the OAuth device grant (RFC 8628). The CLI stores a bearer token locally.
 
-`cloudEnabled` is `false` before the login. After login, the feature flags come from the backend (`me { flags }`). The network methods of the remote transport are still a stub until the WebSocket layer lands. The auth and the flags path is live.
+`cloudEnabled` is `false` before the login. After login, the feature flags come from the backend (`me { flags }`). The remote transport connects over a graphql-ws WebSocket when it is first used. If the connection fails, it has an empty roster. The auth and the flags path is live.
 
 ## Tools
 
 - `CloudLogin` - log in with the device grant. The tool prints a short user code and a verification URL. Approve the code in your browser. The tool completes the login and saves the token. The backend defaults to `http://localhost:4000/api/auth`. To change it, set `MINIMAL_AGENT_CLOUD_URL`.
 - `CloudStatus` - show the login state, the feature flags, the backend URL, and the state of the remote transport. The call also registers the transport when it is not present. The call is idempotent.
+- `CloudPush` - upload the new entries of this session to the cloud now. The harness also does this automatically between turns.
 
 ## Config (env)
 

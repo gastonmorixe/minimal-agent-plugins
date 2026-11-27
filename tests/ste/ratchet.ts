@@ -58,12 +58,7 @@ export const BASELINE_PATH = resolve(import.meta.dir, "ste-baseline.json")
  * reason, so the exception is auditable. An exception that is no longer needed
  * is reported by the coverage test.
  */
-export const INTENTIONALLY_EMPTY: ReadonlyMap<string, string> = new Map([
-  [
-    "ma-env-info-plugin/PROMPT.md",
-    "39b5388 emptied it on purpose: the framing moved into the gather.sh fragment output, so an extra block here adds a second system section to every request",
-  ],
-])
+export const INTENTIONALLY_EMPTY: ReadonlyMap<string, string> = new Map<string, string>([])
 
 /**
  * Files where a rule does not apply, keyed by `file` + `rule`. Each entry

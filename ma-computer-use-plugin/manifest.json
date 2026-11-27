@@ -12,7 +12,7 @@
           "type": "tool",
           "tool": {
             "name": "Computer",
-            "description": "Control this Mac with the Accessibility tree or with mouse and keyboard input. Use the tree first: its elements have names. Use input only for a canvas, Electron or a web view with a thin tree. Do not use it for a browser page that `ChromeCDP` controls. The tool has no sandbox. Read the screen before you change it.\n\nFor `snapshot` and `find`, the tool gives element ids with role, title, value and area (`bbox: [x,y,w,h]`).",
+            "description": "Control this Mac with the Accessibility tree or with mouse and keyboard input. Use the tree first: its elements have names. Use input only for a canvas, Electron or a web view with a thin tree. Do not use it for a browser page that `ChromeCDP` controls. The tool has no sandbox. Read the screen before you change it.\n\nDo not start a flow that ends a login, makes a purchase, changes a password or permission, or deletes data. Start such a flow only when the user tells you to do that same operation.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -86,7 +86,7 @@
                 },
                 "el": {
                   "type": "string",
-                  "description": "Necessary for `describe`, `getValue`, `setValue` and `perform`: an element id (`e7`) from `snapshot`, `find`, `elementAtPoint` or `focused`. After a UI change, the tool gives the error 409 for this id. Then use `snapshot` again."
+                  "description": "Necessary for `describe`, `getValue`, `setValue` and `perform`: an element id (`e7`) from `snapshot`, `find`, `elementAtPoint` or `focused`. `snapshot` and `find` give each id with role, title, value and area (`bbox: [x,y,w,h]`). After a UI change, the tool gives the error 409 for this id. Then use `snapshot` again."
                 },
                 "axAction": {
                   "type": "string",
@@ -198,7 +198,7 @@
                 },
                 "prompt": {
                   "type": "boolean",
-                  "description": "For `perms`: if `true`, show the missing `ax` and `screen` prompts and open the permission pane. For the `input` prompt, also set `pane` to `input`."
+                  "description": "For `perms`: if `true`, show the missing `ax` and `screen` prompts and open the permission pane. For the `input` prompt, also set `pane` to `input`. Only the user can give a permission in that pane. Tell the user which permission to give."
                 },
                 "pane": {
                   "type": "string",

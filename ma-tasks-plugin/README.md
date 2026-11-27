@@ -37,7 +37,6 @@ Glyphs are pure unicode (no nerd-font, no emoji):
 ```
 ma-tasks-plugin/
 ├── manifest.json               # headless block + ui.setup
-├── PROMPT.md                   # model-facing usage rules
 ├── README.md                   # this file
 ├── cli.ts                      # `bun run ma-tasks-plugin/cli.ts <cmd>`
 ├── ui/setup.ts                 # CLI only: installs the terminal kit into the style slots
@@ -53,7 +52,6 @@ ma-tasks-plugin/
 └── handlers/
     ├── task_tool.ts            # the Task tool dispatch
     ├── turn_attachment.ts      # per-turn <ma::agent::tasks> attachment
-    ├── planning_fragment.ts    # PLAN/PHASES prompt fragment
     ├── replay_render.ts        # re-render past Task calls on --resume
     └── task_link.ts            # subagent.taskUpdate -> tick or cancel a todo
 ```

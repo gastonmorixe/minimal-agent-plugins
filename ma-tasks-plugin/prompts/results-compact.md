@@ -1,1 +1,0 @@
-Status mutations (`start`, `done`, and `status`) return a short plain `OK ...` acknowledgement. The next-turn `%%sideband:open tasks%%` attachment carries the full updated board, so do not call `list` merely to refresh it.

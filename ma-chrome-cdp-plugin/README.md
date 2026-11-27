@@ -40,7 +40,6 @@ just calls the tool.
 
 ```
 manifest.json            tool registration (ChromeCDP) + input schema + ui.setup
-PROMPT.md                model-facing usage guidance
 handlers/chrome_cdp.ts   tool handler (thin shell over lib/)
 ui/setup.ts              CLI only: installs the terminal kit into the style slots
 bin/cdp-server.ts        the persistent daemon
@@ -99,9 +98,8 @@ curl --unix-socket /tmp/cdp.sock http://x/send -d '{"method":"Performance.enable
 curl --unix-socket /tmp/cdp.sock http://x/send -d '{"method":"Performance.getMetrics"}'
 ```
 
-See PROMPT.md for the model-facing contract and calling tips (clicking custom
-widgets, setting React inputs, download verification, iframe/login caveats, the
-`send`/`events` network+perf inspection loop).
+The model-facing contract is the tool and parameter descriptions in
+`manifest.json`.
 
 ## Config (env)
 

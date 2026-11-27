@@ -343,7 +343,7 @@ describe("MemoryTool.list", () => {
 describe("MemoryTool.list: pagination", () => {
   it("default limit is DEFAULT_LIST_LIMIT (regression guard)", () => {
     // Pinning the constant rather than the magic number makes the test
-    // fail loudly if someone bumps the default without updating PROMPT.md.
+    // fail loudly if someone bumps the default without updating the `limit` description in manifest.json.
     expect(DEFAULT_LIST_LIMIT).toBe(20)
   })
 

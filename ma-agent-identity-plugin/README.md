@@ -4,8 +4,7 @@ Gives the agent a per-session **display name**, injected as a
 single line in the system prompt:
 
 ```
-You are working as Laura. It is the name people use to refer to you in
-this session; answer to it naturally when addressed.
+Your name in this session is Laura. Use this name when a person speaks to you.
 ```
 
 On by default. When nothing is configured the agent behaves as if

@@ -8,7 +8,7 @@
  *
  * Source of truth in the host: `plugin-api/src/types/plugin.ts`
  * (`TUIContext`, `TUITrigger`, `TUIResult`, `HookHandlerContext`,
- * `CountdownFn`, `RunModeFact`, `PromptFragmentContext`), `plugin-api/src/types/sideband.ts`
+ * `CountdownFn`, `RunModeFact`), `plugin-api/src/types/sideband.ts`
  * (`SidebandApi`) and `src/sdk/lifecycle.ts`
  * (`ToolDidBatchPayload`).
  *
@@ -83,15 +83,6 @@ export interface ToolDidBatchPayload {
 
 /** The chain result arm this listener returns. Mirror of `ChainResult`. */
 /**
- * Prompt text from plugin code that core renders as a template. Mirror of
- * `PromptTemplateText` (`plugin-api/src/types/plugin.ts`).
- */
-export interface PromptTemplateText {
-  template: string
-  vars?: Record<string, string | number>
-}
-
-/**
  * A hook context entry that core renders as a template. Mirror of the
  * template form of `HookContextEntry` (`plugin-api/src/types/hook-context.ts`).
  */
@@ -118,8 +109,3 @@ export interface TUIContext {
 
 /** The `rendered` result variant. Mirror of `TUIResult`. */
 export type TUIResult = { kind: "rendered"; ansi: string }
-
-/** The slice of `PromptFragmentContext` the fragment handler reads. */
-export interface FragmentContext {
-  env: Record<string, string>
-}

@@ -16,7 +16,7 @@
           "type": "tool",
           "tool": {
             "name": "ChromeCDP",
-            "description": "Control an open Chrome through the Chrome DevTools Protocol (CDP). Use an `action`, or send a CDP method with `send`. Use it for the user login session, a click in a live page, or the network and performance data. Use `Fetch`, not this tool, to read a page that has no login. Do not close the last tab when the connection must stay open, because Chrome can stop. The tool gives a JSON result for each operation.",
+            "description": "Control an open Chrome through the Chrome DevTools Protocol (CDP). Use an `action`, or send a CDP method with `send`. Use it for the login session of the user and the tabs that the user has open. Use it also for a click or a flow of steps in a live page. Use it for the network and performance data.\n\nUse `Fetch`, not this tool, to read a page that has no login. Do not close the last tab when the connection must stay open, because Chrome can stop. The tool gives a JSON result for each operation.",
             "input_schema": {
               "type": "object",
               "properties": {
@@ -39,7 +39,7 @@
                     "activatetarget",
                     "getinfo"
                   ],
-                  "description": "Necessary. Start with `targets` to get a tab id.\n- `targets`: the page tabs (`id`, `title`, `url`).\n- `alltargets`: all targets, also iframes and workers.\n- `frameeval`: run JavaScript in a cross-origin child frame.\n- `downloads`: show the downloaded files. Use it again until all are complete.\n- `send`: send one CDP method directly.\n- `events`: read the event buffer.\n- `record`: start or stop the event buffer."
+                  "description": "Necessary. Start with `targets` to get a tab id.\n- `targets`: the page tabs (`id`, `title`, `url`).\n- `alltargets`: all targets, also iframes and workers.\n- `frameeval`: run JavaScript in a cross-origin child frame.\n- `downloads`: show the downloaded files. Use it again until all are complete.\n- `send`: send one CDP method directly.\n- `events`: read the event buffer. It stays empty until you send a `*.enable` method.\n- `record`: start or stop the event buffer."
                 },
                 "target": {
                   "type": "string",
@@ -55,7 +55,7 @@
                 },
                 "url": {
                   "type": "string",
-                  "description": "The URL. Necessary for `nav`. For `newtab`, the default is `about:blank`."
+                  "description": "The URL. Necessary for `nav`. For `newtab`, the default is `about:blank`. A page can stop a script with a check. Then tell the user to log in one time in Chrome."
                 },
                 "dir": {
                   "type": "string",
