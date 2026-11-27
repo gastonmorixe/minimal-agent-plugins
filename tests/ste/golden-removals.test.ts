@@ -148,13 +148,18 @@ describe("golden removals: block trims", () => {
 describe("golden removals: per golden", () => {
   const GOLDEN_DIR = "tests/request-golden/goldens"
   /**
-   * The count of (golden, block) removals since the merge base: 14 listed
-   * blocks, each removed from each of 57 request goldens (14 x 57 = 798).
-   * It was 784 (14 x 56) before the rebase onto the tool attachments, which
-   * added the cdp-screenshot golden. A later change that drops a listed block
-   * from one more golden must raise this number.
+   * The count of (golden, block) removals since the merge base. Each listed
+   * block must be gone from each golden that had it, so the count is
+   * listed blocks x goldens that had the block. It is not a fixed number: a
+   * fixed number is true only on a branch, and it fails on main after the
+   * land, when the merge base already has the new goldens (then the list is
+   * empty and the count is 0).
    */
-  const EXPECTED_REMOVALS = 798
+  const expectedRemovals = (before: Map<string, Set<string>>): number => {
+    let n = 0
+    for (const keys of before.values()) for (const key of keys) if (listed.has(key)) n++
+    return n
+  }
   /** The open tag prefix of a system block, built by the codec (no tag literal here). */
   const probe = SB.open("tool", { attrs: { name: "Q" } })
   const PREFIX = probe.slice(0, probe.indexOf("tool"))
@@ -200,10 +205,12 @@ describe("golden removals: per golden", () => {
   test("each listed block is gone and each gone block is listed, in every golden", () => {
     let removals = 0
     const problems: string[] = []
+    const beforeByGolden = new Map<string, Set<string>>()
     for (const name of names) {
       const path = join(PLUGINS_ROOT, GOLDEN_DIR, name)
       if (!existsSync(path)) continue
       const before = blocksOf(JSON.parse(git(["show", `${base}:${GOLDEN_DIR}/${name}`]) ?? "null"))
+      beforeByGolden.set(name, before)
       const after = blocksOf(JSON.parse(readFileSync(path, "utf8")))
       for (const key of before) {
         if (listed.has(key) && after.has(key)) problems.push(`${name}: ${key} is still there`)
@@ -213,6 +220,16 @@ describe("golden removals: per golden", () => {
       }
     }
     expect(problems).toEqual([])
-    expect(removals).toBe(EXPECTED_REMOVALS)
+    expect(removals).toBe(expectedRemovals(beforeByGolden))
+  })
+
+  test("each listed block is in the merge base, so the entry is not stale", () => {
+    const seen = new Set<string>()
+    for (const name of names) {
+      const text = git(["show", `${base}:${GOLDEN_DIR}/${name}`])
+      if (text !== null) for (const key of blocksOf(JSON.parse(text))) seen.add(key)
+    }
+    const stale = [...listed].filter((key) => !seen.has(key))
+    expect(stale).toEqual([])
   })
 })

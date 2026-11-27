@@ -50,83 +50,7 @@ export interface BlockRemoval {
  * one `\n\n` separator and no other change. Many blocks can go from one leaf.
  * Remove an entry when main has the new goldens.
  */
-export const BLOCK_REMOVALS: readonly BlockRemoval[] = [
-  // The prompt diet (2026-11-27): each block below was the PROMPT.md (or a
-  // prompt fragment) of one plugin. The facts moved into the tool or param
-  // descriptions of that plugin, or were dropped as a copy of a tool text.
-  // The list comes from the golden diff (56 goldens lose all 14 blocks).
-  {
-    role: "tool",
-    name: "background-jobs",
-    source: "ma-background-plugin PROMPT.md deleted, facts moved to BackgroundRun",
-  },
-  {
-    role: "tool",
-    name: "ChromeCDP",
-    source: "ma-chrome-cdp-plugin PROMPT.md deleted, facts moved to ChromeCDP",
-  },
-  {
-    role: "tool",
-    name: "Computer",
-    source: "ma-computer-use-plugin PROMPT.md deleted, the safety rule moved to Computer",
-  },
-  {
-    role: "tool",
-    name: "DiffViewerShowDiff",
-    source: "ma-diff-view-plugin PROMPT.md deleted, the tag rule moved to DiffViewerShowDiff",
-  },
-  {
-    role: "tool",
-    name: "Fetch",
-    source: "ma-fetch-plugin PROMPT.md deleted, facts moved to Fetch",
-  },
-  {
-    role: "tool",
-    name: "intercom",
-    source: "ma-intercom-plugin PROMPT.md deleted, the policy moved to the Intercom tools",
-  },
-  {
-    role: "tool",
-    name: "MemoryTool",
-    source: "ma-memory-plugin PROMPT.md deleted, the save rules moved to MemoryTool",
-  },
-  {
-    role: "tool",
-    name: "prompts",
-    source:
-      "ma-prompts-plugin PROMPT.md and prompts-catalog fragment deleted, PromptList names the case",
-  },
-  {
-    role: "tool",
-    name: "schedule",
-    source: "ma-schedule-plugin PROMPT.md deleted, facts moved to the ScheduleCron tools",
-  },
-  {
-    role: "tool",
-    name: "Skill",
-    source: "ma-skills-plugin PROMPT.md deleted, facts moved to Skill (the catalog fragment stays)",
-  },
-  {
-    role: "tool",
-    name: "speak",
-    source: "ma-speak-plugin PROMPT.md deleted, facts moved to Speak",
-  },
-  {
-    role: "tool",
-    name: "sub-agents",
-    source: "ma-sub-agents-plugin PROMPT.md deleted, facts moved to the SubAgents tools",
-  },
-  {
-    role: "tool",
-    name: "Task",
-    source: "ma-tasks-plugin planning fragment deleted, the rules are in the Task description",
-  },
-  {
-    role: "tool",
-    name: "WebSearch",
-    source: "ma-web-search-plugin PROMPT.md deleted, the URL rule moved to WebSearch",
-  },
-]
+export const BLOCK_REMOVALS: readonly BlockRemoval[] = []
 
 /**
  * One intended trim of a block that stays in a `text` leaf. It is used only
@@ -147,28 +71,7 @@ export interface BlockTrim {
 }
 
 /** Intended block trims. Remove an entry when main has the new goldens. */
-export const BLOCK_TRIMS: readonly BlockTrim[] = [
-  {
-    role: "mode",
-    name: "ask",
-    dropTags: [],
-    source:
-      "D9 and D18: ma-ask-mode-plugin PROMPT.md trimmed to 4 short sentences. It keeps the 2 mode tags, so the model knows when the rules apply (probe S03)",
-  },
-  {
-    role: "emit",
-    name: "output",
-    dropTags: [],
-    source: "ma-emit-output-plugin PROMPT.md: STE rewrite, same facts",
-  },
-  {
-    role: "tool",
-    name: "LockStatus",
-    dropTags: [],
-    source:
-      "DECISIONS G2 items 2 and 3: ma-file-lock-plugin PROMPT.md keeps the shell-write paragraph, the lock advice moved to LockStatus",
-  },
-]
+export const BLOCK_TRIMS: readonly BlockTrim[] = []
 
 /**
  * Goldens that are intended to be gone since the merge base. Remove an entry
