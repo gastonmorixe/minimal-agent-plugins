@@ -508,7 +508,8 @@ function atPath(value: unknown, path: string): unknown {
  * `value` and `tag` difference that no {@link PROSE_LEAVES} entry allows, and
  * a changed contract-leaf list ({@link contractLeaves}). Before the compare,
  * each new tool that {@link TOOL_ADDITIONS} lists is removed from the current
- * golden ({@link withoutAddedTools}).
+ * golden, each listed tool schema change is undone, and each listed removed
+ * tool is removed from the merge-base golden ({@link toolChangePair}).
  *
  * @param name - Golden file name.
  * @param before - The merge-base golden.

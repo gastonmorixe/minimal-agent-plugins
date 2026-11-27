@@ -7,10 +7,16 @@ import Foundation
 /// touches: Accessibility (read AX + post events), Screen Recording (screenshots),
 /// Input Monitoring (only if we ever read the live event stream; optional here).
 ///
-/// The prompts MUST originate from this signed .app so TCC attributes the grant
-/// to ComputerUseHelper.app (not bun). The grant then persists across rebuilds
-/// because it keys on the stable designated requirement.
+/// When a terminal (or the CLI in a terminal) starts this helper, macOS checks
+/// the grants of that terminal app, not of this binary. The helper signature
+/// does not change the result. Give the grants to the terminal app.
 enum Permissions {
+    /// The grant hint for every "not granted" result. The user has no build
+    /// tools and no `cud`, so the hint names only System Settings.
+    static let grantHint =
+        "Give the grant to the terminal app that runs minimal-agent " +
+        "(System Settings > Privacy & Security), then try again."
+
     static func accessibilityTrusted(prompt: Bool) -> Bool {
         if prompt {
             let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
@@ -71,26 +77,25 @@ enum Permissions {
                 _ = accessibilityTrusted(prompt: true)
                 openSettings("ax")
                 instructions.append(
-                    "Enable ComputerUseHelper under System Settings → Privacy & Security → Accessibility.")
+                    "Enable the terminal app that runs minimal-agent under System Settings > Privacy & Security > Accessibility.")
             }
             if !(result["screen"] as? Bool ?? false) {
                 requestScreenRecording()
                 openSettings("screen")
                 instructions.append(
-                    "Enable ComputerUseHelper under System Settings → Privacy & Security → Screen & System Audio Recording.")
+                    "Enable the terminal app that runs minimal-agent under System Settings > Privacy & Security > Screen & System Audio Recording.")
             }
             if let pane, pane == "input", !(result["input"] as? Bool ?? false) {
                 requestInputMonitoring()
                 openSettings("input")
                 instructions.append(
-                    "Enable ComputerUseHelper under System Settings → Privacy & Security → Input Monitoring.")
+                    "Enable the terminal app that runs minimal-agent under System Settings > Privacy & Security > Input Monitoring.")
             }
             // Re-read after prompting (state may not flip until relaunch).
             result = status()
             if !instructions.isEmpty {
                 result["instructions"] = instructions
-                result["note"] =
-                    "After enabling, the helper may need a restart (run: cud restart) for the grant to take effect."
+                result["note"] = grantHint
             }
         }
         return result

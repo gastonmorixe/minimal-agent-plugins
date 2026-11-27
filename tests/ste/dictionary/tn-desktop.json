@@ -16,6 +16,11 @@
     "reason": "the hardware device with keys that sends key input to the Mac"
   },
   {
+    "word": "occluded",
+    "category": 19,
+    "reason": "the state of a window when another window is on top of a part of it (the Computer screenshot field occluded)"
+  },
+  {
     "word": "purchase",
     "category": 19,
     "reason": "the act of the user when the user pays for an item in an app or on a web page"

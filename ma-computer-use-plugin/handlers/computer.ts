@@ -1,10 +1,11 @@
 /**
  * Tool-call handler for `Computer`.
  *
- * Talks to the signed ComputerUseHelper daemon over its unix domain socket. If
- * the daemon isn't running it auto-spawns the signed .app (exec'd directly so
- * TCC attributes permission grants to ComputerUseHelper.app, never bun), then
- * forwards the validated action and shapes the response into a TUIResult.
+ * Talks to the ComputerUseHelper daemon over its unix domain socket. If the
+ * daemon isn't running it auto-spawns the helper binary, then forwards the
+ * validated action and shapes the response into a TUIResult. macOS gives the
+ * helper the Accessibility and Screen Recording grants of the terminal app that
+ * runs minimal-agent. The helper signature does not change that.
  *
  * The pure pieces (input validation, response rendering, daemon lifecycle) live
  * in lib/ and are unit-tested. This file is the thin imperative shell. Mirrors
@@ -17,7 +18,15 @@ import { spawn } from "node:child_process"
 import { closeSync, existsSync, mkdirSync, openSync } from "node:fs"
 import { dirname } from "node:path"
 
-import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/client.ts"
+import {
+  ensureDaemon,
+  HelperTimeoutError,
+  makeBunSocketFetch,
+  PING_TIMEOUT_MS,
+  parsePing,
+  type SocketFetch,
+} from "../lib/client.ts"
+import { isSourceCheckout, missingHelperText } from "../lib/missing-helper.ts"
 import { helperBinary, logPath, socketPath, supportDir } from "../lib/paths.ts"
 import { dim, isErrorBody, red, renderContent, summarize } from "../lib/render.ts"
 import { validateToolInput } from "../lib/routes.ts"
@@ -27,9 +36,8 @@ const SOCK = socketPath()
 const LOG = logPath()
 
 /**
- * Spawn the signed .app binary detached so it outlives this tool call. Its
- * stdout+stderr append to LOG. Exec'ing the in-bundle binary preserves the
- * bundle's signed identity for TCC.
+ * Spawn the helper binary detached so it outlives this tool call. Its
+ * stdout+stderr append to LOG.
  */
 function spawnDaemon(packageDir: string): void {
   const bin = helperBinary(packageDir)
@@ -73,7 +81,7 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
     return { kind: "tool_result", content: "Computer: wrong trigger type", is_error: true }
   }
 
-  const v = validateToolInput(ctx.trigger.input)
+  const v = validateToolInput(ctx.trigger.input, { cwd: ctx.cwd })
   if (!v.ok) {
     return {
       kind: "tool_result",
@@ -88,41 +96,41 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   const ensure = deps.ensure ?? ensureDaemon
   const doSpawn = deps.spawnDaemon ?? spawnDaemon
 
-  // If the helper isn't built, give a precise instruction instead of a generic
-  // "unreachable" (auto-spawn would silently fail).
-  if (!deps.socketFetch && !existsSync(helperBinary(ctx.packageDir))) {
+  // If the helper is missing, give a precise instruction instead of a generic
+  // "unreachable" (auto-spawn would silently fail). Only a dev checkout can
+  // build it. A compiled CLI user has no build tools.
+  const bin = helperBinary(ctx.packageDir)
+  if (!deps.socketFetch && !existsSync(bin)) {
+    const source = isSourceCheckout(ctx.packageDir)
     return {
       kind: "tool_result",
-      content:
-        "Computer: the ComputerUseHelper.app is not built yet. Build it once with:\n" +
-        "  cd ma-computer-use-plugin && bun run bin/cud.ts build\n" +
-        "Then grant permissions: bun run bin/cud.ts prompt (enable ComputerUseHelper in System Settings > Accessibility + Screen Recording).",
+      content: missingHelperText(bin, source),
       is_error: true,
-      displayHeader: red("helper not built"),
+      displayHeader: red(source ? "helper not built" : "helper not included"),
     }
   }
 
+  // A ping that gives an old protocol (or none) means an old helper holds the
+  // socket. ensure stops it (SIGTERM to the pid of its ping) and starts this one.
   const up = await ensure({
     sock: SOCK,
-    ping: async () => {
+    probe: async () => {
       try {
-        const r = await socketFetch("ping")
-        return r.status === 200
+        return parsePing(await socketFetch("ping", undefined, { timeoutMs: PING_TIMEOUT_MS }))
       } catch {
-        return false
+        return null
       }
     },
     spawn: () => doSpawn(ctx.packageDir),
+    logPath: LOG,
   })
 
-  if (!up) {
+  if (!up.ok) {
     return {
       kind: "tool_result",
-      content:
-        "Computer: the ComputerUseHelper daemon is not reachable and could not be started. " +
-        "Check logs with: bun run bin/cud.ts logs",
+      content: `Computer: ${up.error}`,
       is_error: true,
-      displayHeader: red("daemon unreachable"),
+      displayHeader: red(up.header),
     }
   }
 
@@ -130,6 +138,14 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   try {
     res = await socketFetch(v.route, v.body)
   } catch (e) {
+    if (e instanceof HelperTimeoutError) {
+      return {
+        kind: "tool_result",
+        content: `Computer: ${e.message}`,
+        is_error: true,
+        displayHeader: red("helper timeout"),
+      }
+    }
     return {
       kind: "tool_result",
       content: `Computer: request failed: ${e instanceof Error ? e.message : String(e)}`,

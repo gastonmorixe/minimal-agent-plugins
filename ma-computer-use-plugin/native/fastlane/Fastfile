@@ -1,8 +1,10 @@
-# Fastlane build/sign automation for ComputerUseHelper.app.
+# Fastlane build/sign automation for the legacy ComputerUseHelper.app.
 #
-# The primary path is `bun run bin/cud.ts build` (xcodegen + xcodebuild), which is
-# what the plugin uses day to day. This Fastfile is the heavier, CI-friendly path
-# and the seam for future notarization. Run from the plugin's native/ dir:
+# The primary path is `bun run bin/cud.ts build` (plain swiftc, one Mach-O file,
+# ad-hoc linker signature), which is what the plugin uses day to day. This
+# Fastfile is the legacy, opt-in .app path and the seam for notarization. The
+# signature does not change the grants when a terminal starts the helper: macOS
+# uses the grants of the terminal app. Run from the plugin's native/ dir:
 #
 #   cd native && fastlane mac build
 #

@@ -3,15 +3,18 @@ import Foundation
 
 /// ComputerUseHelper daemon entry point.
 ///
-/// A signed, LSUIElement background-agent .app that listens on a unix domain
-/// socket and serves the computer-use route set (AX inspect/interact, CGEvent
-/// mouse/keyboard, ScreenCaptureKit screenshots). TCC grants attach to this
-/// signed bundle so they persist across rebuilds.
+/// One Mach-O file (plain swiftc, ad-hoc linker signature) that runs as an
+/// accessory process, listens on a unix domain socket and serves the
+/// computer-use route set (AX inspect/interact, CGEvent mouse/keyboard,
+/// ScreenCaptureKit screenshots). When a terminal starts it, macOS uses the
+/// Accessibility and Screen Recording grants of that terminal app. The helper
+/// signature does not change the grants.
 ///
 /// Modes:
 ///   ComputerUseHelper            → run the daemon (default)
 ///   ComputerUseHelper --check    → print permission status as JSON and exit
 ///   ComputerUseHelper --prompt   → fire permission prompts + open Settings, exit
+///   ComputerUseHelper --selftest → run the offline geometry checks, exit 0 or 1
 
 func socketPath() -> String {
     if let s = ProcessInfo.processInfo.environment["CUD_SOCK"] { return s }
@@ -25,6 +28,10 @@ func logLine(_ s: String) {
 }
 
 let args = CommandLine.arguments
+
+if args.contains("--selftest") {
+    exit(SelfTest.run())
+}
 
 if args.contains("--check") {
     let status = Permissions.status()
@@ -80,8 +87,8 @@ let sigTerm = installSignal(SIGTERM)
 let sigInt = installSignal(SIGINT)
 _ = (sigTerm, sigInt)  // keep alive
 
-// Run as an accessory app (no Dock icon). LSUIElement already does this; set
-// activation policy explicitly for safety.
+// Run as an accessory app (no Dock icon). The binary has no Info.plist, so set
+// the activation policy here.
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 app.run()

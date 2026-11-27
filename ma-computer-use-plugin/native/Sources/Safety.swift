@@ -30,6 +30,15 @@ final class Safety {
         return FileManager.default.fileExists(atPath: disabledFlagPath)
     }
 
+    /// The kill switch error. It names the switch that is on, because a user
+    /// of the compiled CLI has no `cud enable`.
+    func disabledMessage() -> String {
+        if ProcessInfo.processInfo.environment["CUD_DISABLED"] == "1" {
+            return "computer-use is disabled (kill switch: CUD_DISABLED=1). Unset CUD_DISABLED to enable it."
+        }
+        return "computer-use is disabled (kill switch file: \(disabledFlagPath)). Delete that file to enable it."
+    }
+
     /// Routes that mutate state (input + AX writes). Reads are always allowed.
     static let mutatingRoutes: Set<String> = [
         "perform", "setValue", "mouse", "type", "key", "keypress",
@@ -39,7 +48,7 @@ final class Safety {
     func gate(route: String) -> [String: Any]? {
         guard Safety.mutatingRoutes.contains(route) else { return nil }
         if disabled {
-            return ["error": "computer-use is disabled (kill switch active). Run: cud enable"]
+            return ["error": disabledMessage()]
         }
         // Rate limit.
         lock.lock()

@@ -66,6 +66,17 @@ struct Body {
         if let d = double(key) { return CGFloat(d) }
         return nil
     }
+    /// True when `key` is absent, or when its number (after `int` truncation)
+    /// is in `range`. A number that does not fit, or is not finite, gives
+    /// false. A string that is not an integer counts as absent, as in `int`.
+    func intFits(_ key: String, _ range: ClosedRange<Int64>) -> Bool {
+        if let n = raw[key] as? NSNumber {
+            let d = n.doubleValue.rounded(.towardZero)
+            return d.isFinite && d >= Double(range.lowerBound) && d <= Double(range.upperBound)
+        }
+        if let s = raw[key] as? String, let v = Int64(s) { return range.contains(v) }
+        return true
+    }
     func stringArray(_ key: String) -> [String]? { raw[key] as? [String] }
     /// A value that may be string/number/bool, for setValue.
     func any(_ key: String) -> Any? { raw[key] }

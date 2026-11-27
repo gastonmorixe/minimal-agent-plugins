@@ -7,6 +7,12 @@ import Foundation
 enum Router {
     static let version = "0.1.0"
 
+    /// The route protocol. The TS client (lib/client.ts `HELPER_PROTOCOL`)
+    /// stops a helper that gives a lower number or none. Increase it when a
+    /// route or a field changes in a way that an old helper cannot serve.
+    /// 2: the `targets` route and the screenshot modes.
+    static let protocolVersion = 2
+
     static func handle(route: String, rawBody: [String: Any]) -> (status: Int, json: Any) {
         let body = Body(rawBody)
 
@@ -16,6 +22,7 @@ enum Router {
             return (200, [
                 "ok": true,
                 "version": version,
+                "protocol": protocolVersion,
                 "pid": Int(ProcessInfo.processInfo.processIdentifier),
                 "perms": Permissions.status(),
                 "disabled": Safety.shared.disabled,
@@ -29,12 +36,12 @@ enum Router {
 
         // `apps` only needs NSWorkspace; `screenshot` checks Screen Recording
         // itself. Everything else (AX reads + event posting) needs Accessibility.
-        let noAXNeeded: Set<String> = ["apps", "screenshot"]
+        let noAXNeeded: Set<String> = ["apps", "screenshot", "targets"]
         if !noAXNeeded.contains(route), !Permissions.accessibilityTrusted(prompt: false) {
             return (403, [
-                "error": "Accessibility permission not granted to ComputerUseHelper",
+                "error": "Accessibility permission not granted",
                 "perms": Permissions.status(),
-                "hint": "Call Computer{action:\"perms\",prompt:true} then enable ComputerUseHelper in System Settings → Accessibility, then run: cud restart.",
+                "hint": "Call Computer{action:\"perms\",prompt:true}. " + Permissions.grantHint,
             ])
         }
 
@@ -42,6 +49,12 @@ enum Router {
         if let blocked = Safety.shared.gate(route: route) {
             Safety.shared.log(route: route, body: rawBody, status: 429)
             return (429, blocked)
+        }
+
+        // A number that does not fit its native type must not trap the daemon.
+        if let message = rangeError(body) {
+            Safety.shared.log(route: route, body: rawBody, status: 400)
+            return (400, ["error": message])
         }
 
         // For input routes, optionally bring a target app frontmost first so
@@ -112,6 +125,10 @@ enum Router {
             result = handleKey(body)
         case "screenshot":
             result = handleScreenshot(body)
+        case "targets":
+            result = wrap(TargetsService.targets(
+                pid: pidArg(body), bundleId: body.string("bundleId"), title: body.string("title"),
+                visibleOnly: body.bool("visibleOnly") ?? true, limit: body.int("limit") ?? 50))
         default:
             result = (404, ["error": "unknown route \(route)"])
         }
@@ -168,8 +185,9 @@ enum Router {
             InputService.drag(from: from, to: to, button: button, steps: body.int("steps") ?? 20)
             return (200, ["ok": true])
         case "scroll":
-            let dy = Int32(body.int("dy") ?? 0)
-            let dx = Int32(body.int("dx") ?? 0)
+            // rangeError already gave 400 for a value that does not fit.
+            let dy = body.int("dy").flatMap { Int32(exactly: $0) } ?? 0
+            let dx = body.int("dx").flatMap { Int32(exactly: $0) } ?? 0
             InputService.scroll(dyLines: dy, dxLines: dx, at: point())
             return (200, ["ok": true])
         default:
@@ -203,26 +221,94 @@ enum Router {
     }
 
     private static func handleScreenshot(_ body: Body) -> (status: Int, json: Any) {
-        let mode = body.string("mode") ?? "screen"
-        let format = body.string("format") ?? "path"
-        var rect: CGRect?
-        if mode == "area",
-           let x = body.cgFloat("x"), let y = body.cgFloat("y"),
-           let w = body.cgFloat("w"), let h = body.cgFloat("h") {
-            rect = CGRect(x: x, y: y, width: w, height: h)
+        var req = ShotRequest()
+        req.mode = body.string("mode") ?? "screen"
+        guard ["screen", "area", "window", "app"].contains(req.mode) else {
+            return (400, ["error": "unknown screenshot mode \(req.mode)", "hint": "use screen, area, window or app"])
         }
-        let outputDir = body.string("outputDir") ?? defaultShotDir()
-        let r = ScreenshotService.capture(
-            mode: mode, rect: rect, displayIndex: body.int("display"),
-            format: format, outputDir: outputDir)
-        return wrap(r)
+        req.format = body.string("format") ?? "path"
+        req.displayIndex = body.int("display")
+        req.displayId = body.int("displayId").flatMap { UInt32(exactly: $0) }
+        req.windowId = body.int("windowId").flatMap { UInt32(exactly: $0) }
+        req.el = body.string("el")
+        req.pid = pidArg(body)
+        req.bundleId = body.string("bundleId")
+        req.title = body.string("title")
+        req.cursor = body.bool("cursor")
+        if body.any("maxSize") != nil {
+            guard let m = body.int("maxSize"), m >= 64 else {
+                return (400, ["error": "maxSize must be a number of 64 or more (long edge in pixels)"])
+            }
+            req.maxSize = m
+        }
+        switch req.mode {
+        case "area":
+            guard let x = body.double("x"), let y = body.double("y"),
+                  let w = body.double("w"), let h = body.double("h") else {
+                return (400, ["error": "area requires x, y, w and h (global points)"])
+            }
+            guard w > 0, h > 0 else { return (400, ["error": "area requires w > 0 and h > 0"]) }
+            req.rect = CGRect(x: x, y: y, width: w, height: h)
+        case "window":
+            guard req.windowId != nil || req.el != nil || req.pid != nil || req.bundleId != nil else {
+                return (400, ["error": "window mode requires windowId, el, pid or bundleId",
+                              "hint": "call Computer{action:\"targets\"} to list windows"])
+            }
+        case "app":
+            guard req.pid != nil || req.bundleId != nil else {
+                return (400, ["error": "app mode requires pid or bundleId",
+                              "hint": "call Computer{action:\"targets\"} to list apps and windows"])
+            }
+        default:
+            break
+        }
+        guard let out = resolveOutputDir(body.string("outputDir"), defaultDir: defaultShotDir()) else {
+            return (400, ["error": "outputDir must be an absolute path",
+                          "hint": "pass a path that starts with / or ~/"])
+        }
+        req.outputDir = out.dir
+        req.defaultDir = out.isDefault
+        let r = ScreenshotService.capture(req)
+        if r.status != 200 { return (r.status, r.json) }
+        return wrap(r.json)
     }
 
     // MARK: - utils
 
-    private static func pidArg(_ body: Body) -> pid_t? {
-        if let p = body.int("pid") { return pid_t(p) }
+    /// The body keys that become a fixed-size native integer, with the range
+    /// of that type.
+    static let ranged: [(key: String, range: ClosedRange<Int64>, type: String)] = [
+        ("pid", Int64(Int32.min)...Int64(Int32.max), "pid_t (Int32)"),
+        ("windowId", 0...Int64(UInt32.max), "CGWindowID (UInt32)"),
+        ("displayId", 0...Int64(UInt32.max), "CGDirectDisplayID (UInt32)"),
+        ("dx", Int64(Int32.min)...Int64(Int32.max), "Int32"),
+        ("dy", Int64(Int32.min)...Int64(Int32.max), "Int32"),
+    ]
+
+    /// A 400 error text when a number in the body does not fit its native
+    /// type, else nil. Pure, so the self-test can call it.
+    static func rangeError(_ body: Body) -> String? {
+        for r in ranged where !body.intFits(r.key, r.range) {
+            return "\(r.key) is out of range: it must be an integer from \(r.range.lowerBound) to \(r.range.upperBound) (\(r.type))"
+        }
         return nil
+    }
+
+    /// The screenshot folder: `~` expanded. Nil when the result is not an
+    /// absolute path (a 400 error). `isDefault` compares the same expanded
+    /// path with the default folder.
+    static func resolveOutputDir(_ raw: String?, defaultDir: String) -> (dir: String, isDefault: Bool)? {
+        guard let raw else { return (defaultDir, true) }
+        let dir = (raw as NSString).expandingTildeInPath
+        guard dir.hasPrefix("/") else { return nil }
+        let same = (dir as NSString).standardizingPath == (defaultDir as NSString).standardizingPath
+        return (dir, same)
+    }
+
+    /// The body `pid`. `rangeError` gave 400 before for a value that does not
+    /// fit, so `Int32(exactly:)` never drops a valid pid here.
+    private static func pidArg(_ body: Body) -> pid_t? {
+        body.int("pid").flatMap { pid_t(exactly: $0) }
     }
 
     private static func parseButton(_ s: String?) -> CGMouseButton {

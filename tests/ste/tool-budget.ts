@@ -69,8 +69,16 @@ export const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-ha
  *
  * 2026-11-27 merge of the prompt diet with the tool attachments: 7409 to 7451
  * words (the 42 attachment words on top of the prompt diet).
+ *
+ * 2026-11-27 the Computer screenshot targets (`targets`, `window` and `app`
+ * modes, `windowId`, `displayId`, `maxSize`, `cursor`): 6842 to 6951 words. Review
+ * R11 (a window `el` selects the window, `mode` names `windowId` and `el`):
+ * 6951 to 6970 words.
+ *
+ * 2026-11-27 rebase of the screenshot targets on the prompt diet merge: 7451
+ * to 7569 words (Computer 696 to 819).
  */
-export const TOOL_BLOCK_WORDS = 7451
+export const TOOL_BLOCK_WORDS = 7569
 
 /** How far below {@link TOOL_BLOCK_WORDS} the tree may drift before it must be lowered. */
 export const LOOSE_WORDS = 50
@@ -100,7 +108,7 @@ export const TOOL_WORDS: Readonly<Record<string, number>> = {
   CloudPush: 65,
   CloudStatus: 58,
   CompactContext: 162,
-  Computer: 696,
+  Computer: 819,
   DiffViewerShowDiff: 111,
   Edit: 24,
   Fetch: 439,
@@ -200,6 +208,14 @@ export const RAISES: readonly Raise[] = [
       "review A: combo, key and modifiers apply to key AND keypress (one handler, Router.swift:111,184-202)",
   },
   {
+    tool: "Computer",
+    from: 647,
+    to: 775,
+    date: "2026-11-27",
+    reason:
+      "screenshot targets: new `targets` action, `window` and `app` modes, `windowId`, `displayId`, `maxSize` and `cursor`, the occluded hint (use `activate` before a click), and pid, bundleId, title, visibleOnly, limit, display and x texts that name `targets` and `screenshot` (SPEC section 10). Review R11 (+19): the `el` text tells that a window `el` from `windows` selects the window, and the `mode` text names `windowId` and `el`",
+  },
+  {
     tool: "SubAgentsSpawnAgent",
     from: 504,
     to: 515,
@@ -261,6 +277,14 @@ export const RAISES: readonly Raise[] = [
     date: "2026-11-27",
     reason:
       "review m3 clearer security wording: a password or permission change, not a safety value",
+  },
+  {
+    tool: "Computer",
+    from: 647,
+    to: 819,
+    date: "2026-11-27",
+    reason:
+      "rebase of the screenshot targets on the prompt diet (696 on main): the 4 screenshot params, the `targets` action, the `window` and `app` modes and their texts, plus 'Set it for a small image.' in `maxSize`. The description keeps the safety rule and loses the screenshot sentence",
   },
   {
     tool: "DiffViewerShowDiff",
@@ -461,6 +485,19 @@ export const BLOCK_RAISES: readonly BlockRaise[] = [
     date: "2026-11-27",
     reason:
       "merge: prompt diet + media attachments (7409 from the prompt diet, +42 words of the tool attachments in ChromeCDP and Fetch)",
+  },
+  {
+    from: 6842,
+    to: 6970,
+    date: "2026-11-27",
+    reason: "Computer screenshot targets (see the Computer row in RAISES, 647 to 775)",
+  },
+  {
+    from: 6842,
+    to: 7569,
+    date: "2026-11-27",
+    reason:
+      "rebase of the screenshot targets on the prompt diet merge: 7451 from main, +123 words of Computer (696 to 819)",
   },
 ]
 

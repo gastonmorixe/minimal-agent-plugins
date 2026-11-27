@@ -70,23 +70,34 @@ enum AXService {
         }
         _ = appEl.role  // wake the tree
         var wins: [[String: Any]] = []
+        var axKeys: [(frame: CGRect?, title: String?)] = []
         for w in appEl.windows {
             let handle = Registry.shared.put(w)
+            let title = w.title
+            let frame = w.frame
             var entry: [String: Any] = [
                 "el": handle,
-                "title": w.title ?? NSNull(),
+                "title": title ?? NSNull(),
                 "subrole": w.subrole ?? NSNull(),
             ]
-            if let f = w.frame { entry["bbox"] = [f.origin.x, f.origin.y, f.size.width, f.size.height] }
+            if let f = frame { entry["bbox"] = [f.origin.x, f.origin.y, f.size.width, f.size.height] }
             if let minimized: Bool = w.value(kAXMinimizedAttribute as String) {
                 entry["minimized"] = minimized
             }
             wins.append(entry)
+            axKeys.append((frame, title))
         }
-        return [
+        // Window ids for capture. Never prompts for Screen Recording.
+        let lookup = TargetsService.windowIds(pid: app.processIdentifier, axWindows: axKeys)
+        for (i, id) in lookup.ids.enumerated() where i < wins.count {
+            if let id { wins[i]["windowId"] = Int(id) }
+        }
+        var out: [String: Any] = [
             "app": appInfo(app),
             "windows": wins,
         ]
+        if let e = lookup.error { out["windowIdError"] = e }
+        return out
     }
 
     // MARK: - Snapshot

@@ -17,7 +17,7 @@ agent ──Computer tool──► handlers/computer.ts (bun, thin client)
                               ▼
                        cud.sock (unix domain socket)
                               ▼
-              ComputerUseHelper.app  (signed Swift daemon, LSUIElement)
+              ComputerUseHelper  (one Swift Mach-O binary, ad-hoc signed)
                 ├─ HTTPServer   tiny HTTP/1.1 over AF_UNIX
                 ├─ Router       route → service, JSON in/out, perms + safety gates
                 ├─ Permissions  AX / Screen Recording / Input Monitoring
@@ -27,11 +27,11 @@ agent ──Computer tool──► handlers/computer.ts (bun, thin client)
                 └─ Safety       kill switch, bounds clamp, rate limit, action log
 ```
 
-The daemon is a **signed `.app`** because macOS TCC keys permission grants on the
-code signature (bundle id (`MA_CU_BUNDLE_ID`) + team (`MA_CU_TEAM_ID`)). A
-long-running signed helper is granted Accessibility + Screen Recording **once** and
-the grant survives rebuilds. The bun side never touches AX/CGEvent, so `bun` never
-appears in the privacy panes (which would mis-attribute the grant and silently fail).
+The daemon is one Mach-O binary that `swiftc` makes. It needs no `.app` bundle
+and no `Info.plist`. When a terminal (or the CLI in a terminal) starts the helper,
+macOS uses the Accessibility and Screen Recording grants of that **terminal app**.
+The helper signature does not change the grants. So give the grants to the
+terminal app that runs minimal-agent, not to `ComputerUseHelper`.
 
 IPC is HTTP-over-unix-socket, mirroring `ma-chrome-cdp-plugin`, so the bun client
 (`lib/client.ts`) is the proven pattern. A unix socket is a filesystem object, not
@@ -40,30 +40,33 @@ IPC is HTTP-over-unix-socket, mirroring `ma-chrome-cdp-plugin`, so the bun clien
 ## Requirements
 
 - macOS 14+ (ScreenCaptureKit floor; built/tested on macOS 26).
-- Xcode + command-line tools, `xcodegen`, `bun`. `fastlane` optional (CI path).
-- An Apple **Development** signing identity in the login keychain for the local
-  Debug build. The build reads its signing values from env vars (placeholder defaults, so set them for a real build):
-  `MA_CU_TEAM_ID` (Apple team id, default `TEAMID0000`), `MA_CU_BUNDLE_ID` (default
-  `dev.example.computeruse`) and `MA_CU_SIGN_IDENTITY` (Fastlane / notarize identity, e.g.
-  `Apple Development: Your Name (CERTID)`). See `native/project.yml`.
-- For the **notarized** build (optional, `cud notarize`): a **Developer ID
-  Application** identity in the keychain + App Store Connect API key credentials
-  (see "Notarization" below).
+- `swiftc` (Xcode or the Command Line Tools) and `bun`. `build` needs nothing more.
+- Signing is off by default. The linker gives the binary an ad-hoc signature, the
+  same on a dev Mac and on CI. `build` never reads the keychain for an identity.
+- To sign, set `MA_CU_SIGN_IDENTITY` (for example
+  `Developer ID Application: Your Name (TEAMID)`). Then `build` runs
+  `codesign --force --options runtime --sign "$MA_CU_SIGN_IDENTITY"`.
+- Legacy and optional: `cud notarize` makes a Release `.app` with `xcodegen` +
+  `xcodebuild`. It needs a **Developer ID Application** identity in the keychain,
+  App Store Connect API key credentials (see "Notarization" below), and the
+  `MA_CU_TEAM_ID` and `MA_CU_BUNDLE_ID` values of `native/project.yml`.
+  `fastlane` is optional.
 
 ## One-time setup
 
 ```bash
 cd ma-computer-use-plugin
 
-# 1. Build + sign the helper .app (xcodegen + xcodebuild).
+# 1. Compile native/build/ComputerUseHelper (swiftc) and run its --selftest.
 bun run bin/cud.ts build
 
 # 2. Fire the permission prompts and open the right Settings panes.
 bun run bin/cud.ts prompt
 
-# 3. In System Settings → Privacy & Security, enable "ComputerUseHelper" under:
-#      - Accessibility            (drive + read the UI; required)
-#      - Screen & System Audio Recording  (screenshots; required for screenshot)
+# 3. In System Settings > Privacy & Security, enable the TERMINAL app that runs
+#    minimal-agent (for example iTerm or Terminal) under:
+#      - Accessibility            (drive + read the UI, required)
+#      - Screen & System Audio Recording  (required for screenshot)
 #    Input Monitoring is NOT needed (we post events, we don't read the live stream).
 
 # 4. Restart the helper so the new grant takes effect.
@@ -81,21 +84,41 @@ ln -s "$PWD" <project>/.agents/minimal-agent/plugins/ma-computer-use-plugin
 
 ## Control CLI (`bin/cud.ts`)
 
-| command              | what                                                                             |
-| -------------------- | -------------------------------------------------------------------------------- |
-| `build`              | xcodegen generate + xcodebuild + dev-sign → `native/build/ComputerUseHelper.app` |
-| `notarize`           | Release build + Developer ID sign + notarytool submit + staple                   |
-| `start`              | launch the signed `.app` as a detached daemon                                    |
-| `stop`               | terminate the daemon                                                             |
-| `restart`            | stop + start (needed after granting TCC)                                         |
-| `status`             | running? + ping the socket (shows version + perms)                               |
-| `logs [N]`           | tail the daemon log                                                              |
-| `perms`              | print permission status (runs the app `--check`)                                 |
-| `prompt`             | fire permission prompts + open Settings (runs `--prompt`)                        |
-| `disable` / `enable` | the kill switch (refuse / allow mutating actions)                                |
+| command              | what                                                                            |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `build`              | `swiftc` → `native/build/ComputerUseHelper` (ad-hoc), then `--selftest`         |
+| `notarize`           | legacy, opt-in: Release `.app` + Developer ID sign + notarytool submit + staple |
+| `start`              | launch the helper binary as a detached daemon                                   |
+| `stop`               | terminate the daemon                                                            |
+| `restart`            | stop + start (needed after a permission grant)                                  |
+| `status`             | running? + ping the socket (shows version, protocol + perms)                    |
+| `logs [N]`           | tail the daemon log                                                             |
+| `perms`              | print permission status (runs the binary `--check`)                             |
+| `prompt`             | fire permission prompts + open Settings (runs `--prompt`)                       |
+| `disable` / `enable` | the kill switch (refuse / allow mutating actions)                               |
+
+The handler and the CLI start the first helper that exists: `CUD_HELPER` (env),
+then `native/build/ComputerUseHelper`, then the legacy
+`native/build/ComputerUseHelper.app/Contents/MacOS/ComputerUseHelper`.
 
 The handler also **auto-starts** the daemon on first tool use, so the agent doesn't
 have to call `start`. You still must `build` and grant permissions once.
+
+### Protocol handshake
+
+`ping` gives `protocol` (`Router.protocolVersion` in Swift, `HELPER_PROTOCOL` in
+`lib/client.ts`, now `2`). An old helper (an older build, for example the legacy
+`.app`) can still hold the socket. Its ping gives no `protocol` or a lower one, and
+it has no `targets` route and no new screenshot modes. Then the handler:
+
+1. Sends `SIGTERM` to the pid that the ping gave. It never kills another pid, pid 1
+   or its own pid.
+2. Waits up to 2 s until the socket stops answering.
+3. Starts the new helper and pings it again.
+
+If the kill fails, or the old helper does not stop in 2 s, the tool gives an error
+that tells the user to quit the `ComputerUseHelper` process. Increase both numbers
+together when a route or a field changes in a way that an old helper cannot serve.
 
 ## Tool usage (`Computer`)
 
@@ -110,20 +133,53 @@ AX-first. The tool and parameter descriptions in `manifest.json` are the agent-f
 {"action":"mouse","op":"click","x":260,"y":150}       // raw click (points, top-left)
 {"action":"type","text":"hello world"}                // inject text into focus
 {"action":"key","combo":"cmd+s"}                      // shortcut
-{"action":"screenshot"}                               // PNG path (+ width/height/scale)
+{"action":"targets","bundleId":"com.apple.TextEdit"} // display + window ids
+{"action":"screenshot","maxSize":1200}                // main display, long edge <= 1200 px
+{"action":"screenshot","mode":"area","x":0,"y":0,"w":800,"h":600}
+{"action":"screenshot","mode":"window","windowId":4711} // one window, also covered parts
+{"action":"screenshot","mode":"app","bundleId":"com.apple.finder"}
 {"action":"perms","prompt":true}                      // request missing permissions
 ```
 
 Coordinates are **logical points, top-left origin**, across all displays. AX `bbox`
 is `[x,y,w,h]` in the same space, so click an element at `x=bbox[0]+bbox[2]/2`,
-`y=bbox[1]+bbox[3]/2`. Screenshots report device-pixel size + `scale` (halve on 2x).
+`y=bbox[1]+bbox[3]/2`.
+
+### Screenshots
+
+1. `targets` lists the displays (`index`, `displayId`, `bbox`, `scale`, `main`) and
+   the windows (`windowId`, `pid`, `bundleId`, `app`, `title`, `bbox`, `layer`,
+   `onScreen`, `display`), front to back. Filters: `pid`, `bundleId`, `title`
+   (case-insensitive text), `visibleOnly` (default `true`), `limit` (default 50).
+2. `screenshot` modes: `screen` (`display` index or `displayId`, default the main
+   display), `area` (`x`, `y`, `w`, `h` in global points, all four necessary),
+   `window` (`windowId`, `el`, or `pid`/`bundleId` with an optional `title`), and
+   `app` (`pid` or `bundleId`). `window` and `app` have no default target.
+3. `maxSize` (64 or more) limits the long edge in pixels. `cursor` shows the
+   pointer (default on for `screen` and `area`).
+4. The result has `mode`, `bbox` (global points), `scale` (output pixels per
+   point, `width / bbox.w`), `display` and `displayId`. A pixel `(px, py)` is the
+   point `(bbox[0] + px / scale, bbox[1] + py / scale)`.
+5. A `window` capture shows the window content also when another window covers
+   it. Then the result has `occluded: true`. Raise the window (`activate`, or
+   `perform` with `AXRaise`) before a click.
+6. `windows` gives a `windowId` for each window when Screen Recording is granted.
+   Else it adds `windowIdError` and never prompts.
+7. A display index is valid only until the display setup changes. `displayId` is
+   stable.
+8. Stage Manager: a window in the side strip is a small thumbnail for the window
+   server. A `window` capture then gives the thumbnail, and its `bbox` is the
+   thumbnail frame, not the AX frame. Use `activate` on the app first to capture
+   the full window.
 
 ## Safety
 
 This controls the real machine, unsandboxed. Built-in guardrails (defaults on):
 
 - **Kill switch** - `cud disable` (or `CUD_DISABLED=1`) makes the daemon refuse all
-  mutating actions; reads still work. `cud enable` clears it.
+  mutating actions; reads still work. `cud enable` clears it. The tool error names
+  the switch that is on (the env var or the flag file), so a user with no `cud`
+  can clear it.
 - **Coordinate clamp** - mouse ops are clamped to the union of display bounds.
 - **Rate limit** - mutating actions are capped (~20/s).
 - **Audit log** - every mutating action is appended (JSONL) to
@@ -171,9 +227,8 @@ NOTARY_KEY_FILE=AuthKey_XXXXXXXXXX.p8   # relative to this file's dir, or absolu
 TEAM_ID=TEAMID0000
 ```
 
-Note: switching from Apple Development to Developer ID changes the signature, but
-because the **bundle id is unchanged and both are team-anchored**, the existing
-Accessibility/Screen-Recording TCC grants carry over (no re-approval needed).
+Note: the signature does not change the grants when a terminal starts the helper.
+macOS uses the grants of the terminal app.
 
 The fastlane equivalent is `cd native && fastlane mac notarize`.
 
@@ -186,18 +241,20 @@ bin/cud.ts               # control CLI + auto-spawn
 lib/{client,routes,render,paths,style,types}.ts
 ui/setup.ts              # CLI only: installs the terminal kit into the style slots
 native/
-  project.yml            # XcodeGen spec
-  Sources/*.swift        # the daemon
-  Sources/ComputerUseHelper.entitlements
-  fastlane/Fastfile      # CI build/sign (+ notarization seam)
-  build/                 # ComputerUseHelper.app (gitignored)
+  Sources/*.swift        # the daemon (build compiles these with swiftc)
+  Sources/ComputerUseHelper*.entitlements   # legacy notarize only
+  project.yml            # XcodeGen spec, legacy notarize only
+  fastlane/Fastfile      # legacy .app build/sign (+ notarization seam)
+  build/ComputerUseHelper   # the helper binary (gitignored)
 ```
 
 ## Testing & dev
 
 ```bash
 bun test            # bun-side unit tests
-bun run bin/cud.ts build && bun run bin/cud.ts restart
-tccutil reset Accessibility dev.example.computeruse   # reset to re-test the grant flow
-tccutil reset ScreenCapture dev.example.computeruse
+bun run bin/cud.ts build      # swiftc + --selftest + codesign -dv
+bun run bin/cud.ts restart
 ```
+
+To test the grant flow again, remove the terminal app from the Accessibility and
+Screen Recording lists in System Settings > Privacy & Security.

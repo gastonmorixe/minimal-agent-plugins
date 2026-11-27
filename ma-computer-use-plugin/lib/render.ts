@@ -37,6 +37,38 @@ export function red(s: string): string {
   return `${sgr().red}${s}${sgr().fgReset}`
 }
 
+/**
+ * The target part of a screenshot summary: the mode, then the window id and
+ * title, the app, or the display. Empty when the daemon sent no `mode`.
+ */
+function screenshotTarget(o: Record<string, unknown>): string {
+  switch (o.mode) {
+    case "window": {
+      const title = typeof o.title === "string" && o.title ? ` ${JSON.stringify(o.title)}` : ""
+      const covered = o.occluded === true ? " occluded" : ""
+      return `window ${o.windowId ?? "?"}${title}${covered}`
+    }
+    case "app":
+      return `app ${o.bundleId ?? o.pid ?? "?"} (${o.windows ?? 0} window(s))`
+    case "screen":
+    case "area":
+      return typeof o.display === "number" ? `${o.mode} display ${o.display}` : o.mode
+    default:
+      return typeof o.mode === "string" ? o.mode : ""
+  }
+}
+
+/** One-line summary of a screenshot result: mode, target, size and scale, then the path. */
+function summarizeScreenshot(o: Record<string, unknown>): string {
+  const target = screenshotTarget(o)
+  const lead = target ? `${target} ` : ""
+  const scale = typeof o.scale === "number" ? ` @${Number(o.scale.toFixed(2))}x` : ""
+  const size = `${o.width}×${o.height}${scale}`
+  if (typeof o.path === "string") return `${lead}${size} · ${o.path}`
+  if (typeof o.bytes === "number") return `${lead}${size} · ${o.bytes}B base64`
+  return target ? `${target} captured` : "captured"
+}
+
 /** One-line summary of a route result for the transcript footer. */
 export function summarize(route: Route, body: unknown): string {
   if (!body || typeof body !== "object") return "ok"
@@ -60,9 +92,12 @@ export function summarize(route: Route, body: unknown): string {
     case "find":
       return `${o.count ?? 0} match(es)`
     case "screenshot":
-      if (typeof o.path === "string") return `${o.path} (${o.width}×${o.height} @${o.scale}x)`
-      if (typeof o.bytes === "number") return `${o.bytes}B base64 (${o.width}×${o.height})`
-      return "captured"
+      return summarizeScreenshot(o)
+    case "targets": {
+      const displays = (o.displays as unknown[] | undefined)?.length ?? 0
+      const windows = (o.windows as unknown[] | undefined)?.length ?? 0
+      return `${displays} display(s), ${windows} window(s)${o.truncated ? " (truncated)" : ""}`
+    }
     case "type":
       return o.ok ? `typed ${o.typed ?? ""} chars` : "blocked"
     default:

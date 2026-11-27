@@ -121,7 +121,7 @@ const ALLOWLIST: readonly AllowEntry[] = [
     rule: "import-meta-path",
     line: "fileURLToPath(import.meta.url)",
     reason:
-      "macOS developer tool (xcodegen/xcodebuild of the helper app), never a runtime path. " +
+      "macOS developer tool (swiftc build of the helper binary), never a runtime path. " +
       "W2 section 5 leaves it as is.",
   },
   {

@@ -55,6 +55,72 @@ describe("summarize", () => {
     expect(s).toContain("3024×1964")
     expect(s).toContain("@2x")
   })
+  test("screenshot window shows the mode, id, title, size and path", () => {
+    const s = summarize("screenshot", {
+      mode: "window",
+      windowId: 4711,
+      title: "Notes.txt",
+      path: "/x/shot.png",
+      width: 1600,
+      height: 1200,
+      scale: 2,
+      occluded: false,
+    })
+    expect(s).toBe('window 4711 "Notes.txt" 1600×1200 @2x · /x/shot.png')
+  })
+  test("screenshot window marks an occluded window", () => {
+    const s = summarize("screenshot", {
+      mode: "window",
+      windowId: 7,
+      title: "",
+      path: "/x/a.png",
+      width: 10,
+      height: 10,
+      scale: 1,
+      occluded: true,
+    })
+    expect(s).toBe("window 7 occluded 10×10 @1x · /x/a.png")
+  })
+  test("screenshot app shows the app and the window count", () => {
+    const s = summarize("screenshot", {
+      mode: "app",
+      pid: 400,
+      bundleId: "com.apple.finder",
+      windows: 3,
+      path: "/x/b.png",
+      width: 800,
+      height: 500,
+      scale: 0.5,
+    })
+    expect(s).toBe("app com.apple.finder (3 window(s)) 800×500 @0.5x · /x/b.png")
+  })
+  test("screenshot screen and area show the display, scale is rounded", () => {
+    expect(
+      summarize("screenshot", {
+        mode: "area",
+        display: 1,
+        path: "/x/c.png",
+        width: 800,
+        height: 533,
+        scale: 1.333333,
+      }),
+    ).toBe("area display 1 800×533 @1.33x · /x/c.png")
+    expect(
+      summarize("screenshot", { mode: "screen", display: 0, bytes: 99, width: 4, height: 2 }),
+    ).toBe("screen display 0 4×2 · 99B base64")
+  })
+  test("screenshot with no mode keeps the old shape", () => {
+    expect(summarize("screenshot", {})).toBe("captured")
+    expect(summarize("screenshot", { mode: "window", windowId: 9 })).toBe("window 9 captured")
+  })
+  test("targets counts displays and windows", () => {
+    expect(summarize("targets", { displays: [{}, {}], windows: new Array(14).fill({}) })).toBe(
+      "2 display(s), 14 window(s)",
+    )
+    expect(summarize("targets", { displays: [{}], windows: [], truncated: true })).toBe(
+      "1 display(s), 0 window(s) (truncated)",
+    )
+  })
   test("error field surfaces in the summary", () => {
     expect(summarize("perform", { error: "stale handle e1" })).toContain("stale")
   })
