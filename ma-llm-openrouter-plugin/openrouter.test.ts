@@ -106,6 +106,7 @@ describe("llm-openrouter (OpenAI-compatible gateway, reuses llm-openai's wire la
       "openai/gpt-6.2-sol",
       "x-ai/grok-4.7",
       "openai/gpt-4o-mini",
+      "inclusionai/ling-3.0-tiny",
     ])
     setup()
     const kimi = resolveModel("moonshotai/kimi-k3.1-pro")

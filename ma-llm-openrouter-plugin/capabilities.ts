@@ -110,6 +110,9 @@ const M_TIV = { image: true, audio: false, pdf: true, video: true } as const
 /** Text + image + file (documents → pdf). */
 const M_TIP = { image: true, audio: false, pdf: true, video: false } as const
 
+/** Text only (+ PDF: OpenRouter parses a PDF `file` part on any model). */
+const M_T = { image: false, audio: false, pdf: true, video: false } as const
+
 /**
  * Common OpenRouter `reasoning_effort` values when the live row lists the
  * parameter but not the enum. Upstream may accept a wider set.
@@ -325,6 +328,27 @@ export const CAPS_OR_GROK_47: Capabilities = {
     structured: true,
   }),
   ...thinkReasoning(true),
+}
+
+/**
+ * inclusionai/ling-3.0-tiny (live 2026-11-27, created 2026-08-06): ctx
+ * 262_144, max out 250_000, text input only, tools + structured outputs,
+ * temperature/top_p/seed/stop (no top_k in `supported_parameters`). The row
+ * lists `reasoning` but not `reasoning_effort` and has no `supported_efforts`
+ * (`reasoning.default_enabled: true`), so the adapter has no effort to send:
+ * THINK_OFF, and the model reasons at its default.
+ */
+export const CAPS_OR_LING_30_TINY: Capabilities = {
+  ...orChatBase(262_144, 250_000, M_T, {
+    temperature: true,
+    topP: true,
+    topK: false,
+    seed: true,
+    stop: true,
+    tools: true,
+    structured: true,
+  }),
+  ...THINK_OFF,
 }
 
 /**

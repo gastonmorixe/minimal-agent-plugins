@@ -43,7 +43,12 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
+import type {
+  ModelRegistrar,
+  ProviderAdapterView,
+  ProviderPlugin,
+  ProviderSetupContext,
+} from "./lib/provider-plugin.ts"
 import { listMetaLiveModels } from "./live-models.ts"
 import { findMetaModelByTags, registerMetaModel, registerMetaModels } from "./models.ts"
 import { buildOpenAIResponsesBody } from "./responses/request-body.ts"
@@ -66,10 +71,30 @@ import {
 } from "./wire-constants.ts"
 
 /** Meta Model API adapter. Chat Completions + Responses on api.meta.ai. */
-export const metaAdapter: ProviderAdapter = {
+export const metaAdapter: ProviderAdapter &
+  Required<Pick<ProviderAdapterView, "recommendUtilityModel">> = {
   id: "meta",
   displayName: "Meta (Model API)",
   surfaces: ["openai-chat-completions", "openai-responses"] satisfies ReadonlyArray<SurfaceId>,
+
+  /**
+   * Session title profile. Muse Ember 1.0 is the small, cheap Muse model
+   * ($0.10 in / $0.50 out per 1M tokens) and takes JSON-schema output on
+   * Responses. One profile serves both credentials: a Muse Code OAuth login
+   * keeps a minted Model API key and sends it as an api-key, the same as a
+   * Model API key (`readMuseOAuthAuth`). Effort `low` is required: with no
+   * effort, Ember reasons at `max`. The Muse effort list has no `none` (see
+   * `capabilities.ts`), so there is no `thinkingOff`. `run()` reads only a
+   * stream, so `stream` is `required`.
+   */
+  recommendUtilityModel() {
+    return {
+      modelId: "muse-ember-1.0",
+      structured: "json_schema",
+      effort: "low",
+      stream: "required",
+    }
+  },
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)

@@ -22,7 +22,12 @@ import { opencodeApiKeyAuth } from "./auth.ts"
 import { opencodeMediaLimits } from "./input-formats.ts"
 import { buildAnthropicRequestBody, validateAnthropicRequest } from "./lib/anthropic-request.ts"
 import type { ModelEntry, ProviderAdapter, SurfaceId, ValidationResult } from "./lib/host-types.ts"
-import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
+import type {
+  ModelRegistrar,
+  ProviderAdapterView,
+  ProviderPlugin,
+  ProviderSetupContext,
+} from "./lib/provider-plugin.ts"
 import {
   registerOpencodeZenModelInto,
   registerOpencodeZenModels,
@@ -272,7 +277,8 @@ function loginRequiredError(model: ModelEntry): ProviderError {
   )
 }
 
-export const opencodeZenAdapter: ProviderAdapter = {
+export const opencodeZenAdapter: ProviderAdapter &
+  Required<Pick<ProviderAdapterView, "recommendUtilityModel">> = {
   id: PROVIDER_ID,
   displayName: "OpenCode Zen",
   surfaces: [
@@ -280,6 +286,24 @@ export const opencodeZenAdapter: ProviderAdapter = {
     "anthropic-messages",
     "openai-responses",
   ] satisfies ReadonlyArray<SurfaceId>,
+
+  /**
+   * Session title profile. DeepSeek V4.1 Flash (the 2026-10-17 release, paid)
+   * on Chat Completions. The live Zen catalog
+   * (https://opencode.ai/zen/v1/models, 2026-11-27) gives
+   * `structured_output: true` and the effort list low, high, max. `effort` is
+   * `low`, the lowest level that the Chat body can send. `run()` always
+   * streams, so `stream` is `required`. A paid model: with the anonymous
+   * `public` key, `run()` refuses it (`opencode.login_required`).
+   */
+  recommendUtilityModel() {
+    return {
+      modelId: "deepseek-v4.1-flash",
+      structured: "json_schema",
+      effort: "low",
+      stream: "required",
+    }
+  },
   validate(req: CanonicalRequest, model: ModelEntry): ValidationResult {
     if (model.surfaceId === "anthropic-messages") return validateAnthropicRequest(req, model)
     return validateOpenAIRequest(req, model)

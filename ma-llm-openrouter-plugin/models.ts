@@ -27,6 +27,7 @@ import {
   CAPS_OR_GPT_62_SOL,
   CAPS_OR_GROK_47,
   CAPS_OR_KIMI_K31_PRO,
+  CAPS_OR_LING_30_TINY,
 } from "./capabilities.ts"
 import type { MTokRate } from "./lib/host-types.ts"
 import {
@@ -38,6 +39,7 @@ import {
   PRICING_OR_GPT_62_SOL,
   PRICING_OR_GROK_47,
   PRICING_OR_KIMI_K31_PRO,
+  PRICING_OR_LING_30_TINY,
 } from "./pricing.ts"
 
 /**
@@ -123,6 +125,15 @@ export function registerOpenRouterModels(models: ModelRegistrar): string[] {
     tags: ["openrouter", "openai-compatible", "cheap"],
     capabilities: CAPS_OR_GPT_4O_MINI,
     pricing: PRICING_OR_GPT_4O_MINI,
+  })
+  // Session title model (live 2026-11-27). Last, and with no `cheap` tag,
+  // so the sub-agent role picks stay the same.
+  add({
+    id: "inclusionai/ling-3.0-tiny",
+    displayName: "Ling 3.0 Tiny (OpenRouter)",
+    tags: ["openrouter", "openai-compatible"],
+    capabilities: CAPS_OR_LING_30_TINY,
+    pricing: PRICING_OR_LING_30_TINY,
   })
   return ids
 }

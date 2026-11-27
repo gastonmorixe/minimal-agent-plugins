@@ -129,6 +129,28 @@ export function withEffort(
   }
 }
 
+/**
+ * Ids that take a JSON schema reply: the four Gemini 4 families and their
+ * level ids. The Gemini API structured output doc names `gemini-4-carbon`,
+ * `gemini-4-argon`, `gemini-4-neon` and `gemini-4-hydrogen`
+ * (https://ai.google.dev/gemini-api/docs/structured-output). gemini-cli sends
+ * the same fields on this `v1internal` API (`code_assist/converter.ts`). The
+ * Claude, GPT-OSS, orchestrator, tiered and sonar rows have no proof, so they
+ * stay off.
+ */
+const STRUCTURED_OUTPUT_IDS =
+  /^gemini-4-(?:neon|carbon|hydrogen|argon)(?:-(?:low|medium|high|xhigh))?$/
+
+/** True when `modelId` takes `responseMimeType` plus `responseJsonSchema`. */
+export function antigravityHasStructuredOutputs(modelId: string): boolean {
+  return STRUCTURED_OUTPUT_IDS.test(modelId)
+}
+
+/** A copy of `caps` with `structuredOutputs` set for one catalog id. */
+export function withStructuredOutputs(caps: Capabilities, modelId: string): Capabilities {
+  return { ...caps, structuredOutputs: antigravityHasStructuredOutputs(modelId) }
+}
+
 /** Gemini 4 family (Neon, Carbon, Hydrogen, Argon): 1M context, 262144 out. */
 export const CAPS_GEMINI_4: Capabilities = family({
   contextWindow: 1_048_576,

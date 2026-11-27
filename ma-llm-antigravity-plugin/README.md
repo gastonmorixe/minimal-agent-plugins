@@ -127,8 +127,14 @@ quota except `streamGenerateContent`.
 3. Images and PDF input on the models that declare them.
 4. Prompt caching is automatic and the backend reports cache hits.
 5. No assistant prefill, no server-side history.
-6. No structured outputs: the request body sends no JSON schema, so
-   `structuredOutputs` is false and a `json_schema` request fails validation.
+6. Structured outputs on the Gemini 4 families only (Neon, Carbon, Hydrogen,
+   Argon). A `json_schema` request sends `generationConfig.responseMimeType`
+   (`application/json`) and `generationConfig.responseJsonSchema`, the fields
+   that gemini-cli sends on this API. On every other row `structuredOutputs`
+   is false and a `json_schema` request fails validation.
+7. Title model (`recommendUtilityModel`): `gemini-4-hydrogen` at effort
+   `low`, thinking off, streamed. Gemini 4 has no thinking off level, so the
+   wire model is `gemini-4-hydrogen-low` with no `thinkingConfig`.
 
 ## Test
 

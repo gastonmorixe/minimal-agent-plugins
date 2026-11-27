@@ -183,10 +183,34 @@ export function requestHasImages(req: CanonicalRequest): boolean {
 }
 
 /** Antigravity adapter. One wire surface: the Cloud Code Assist envelope. */
-export const antigravityAdapter: ProviderAdapterView = {
+export const antigravityAdapter: ProviderAdapterView &
+  Required<Pick<ProviderAdapterView, "recommendUtilityModel">> = {
   id: "antigravity",
   displayName: "Google Antigravity",
   surfaces: ["custom"],
+
+  /**
+   * The title model: the Gemini 4 Hydrogen family row. Pure: no network.
+   *
+   * 1. Hydrogen is the one Gemini 4 model on every plan
+   *    (https://antigravity.google/docs/models/), and it takes a JSON schema
+   *    reply (`structuredOutputs`, see `capabilities.ts`).
+   * 2. Gemini 4 has no thinking off and no `minimal` level: `low` is the
+   *    lowest (https://ai.google.dev/gemini-api/docs/thinking). `effort: "low"`
+   *    sends the `gemini-4-hydrogen-low` SKU. `thinkingOff` sends no
+   *    `thinkingConfig`, so no thought text streams back.
+   * 3. `stream: "required"`: the adapter only calls `streamGenerateContent`.
+   * 4. Price 0: plan quota (`pricing.ts`).
+   */
+  recommendUtilityModel() {
+    return {
+      modelId: "gemini-4-hydrogen",
+      structured: "json_schema",
+      thinkingOff: true,
+      effort: "low",
+      stream: "required",
+    }
+  },
 
   validate(req: CanonicalRequest, model: ModelView): ProviderValidationResult {
     return validateAntigravityRequest(req, model)

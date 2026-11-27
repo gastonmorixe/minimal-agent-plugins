@@ -76,7 +76,10 @@ export const ZEN_PRICING: Record<string, MTokRate> = {
   "gemini-4-carbon": rate(2, 10, 0.1),
   "gemini-4-hydrogen": rate(1.5, 7.5, 0.075),
   "mistral-large-4": rate(0.68, 2.09, 0.07),
-  "deepseek-v4.1-flash": rate(0.3, 1.2, 0.006),
+  // 60% off the list price 0.30/1.20/0.006 (https://opencode.ai/docs/zen/,
+  // 2026-11-27, no end date given). The live catalog
+  // https://opencode.ai/zen/v1/models gives the same 0.12/0.48/0.0024.
+  "deepseek-v4.1-flash": rate(0.12, 0.48, 0.0024),
   "deepseek-v4.1-flash-free": rate(0, 0),
   "deepseek-v4-pro": rate(0.66, 1.98, 0.022),
   "deepseek-v4-flash": rate(0.22, 0.66, 0.007),

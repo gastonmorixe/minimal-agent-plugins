@@ -49,7 +49,12 @@ import type {
   SurfaceId,
   ValidationResult,
 } from "./lib/host-types.ts"
-import type { ModelRegistrar, ProviderPlugin, ProviderSetupContext } from "./lib/provider-plugin.ts"
+import type {
+  ModelRegistrar,
+  ProviderAdapterView,
+  ProviderPlugin,
+  ProviderSetupContext,
+} from "./lib/provider-plugin.ts"
 import {
   findOpencodeModelByTags,
   registerOpencodeModelInto,
@@ -241,7 +246,8 @@ function buildMessagesHeaders(auth: ProviderAuth): Record<string, string> {
   return headers
 }
 
-export const opencodeAdapter: ProviderAdapter = {
+export const opencodeAdapter: ProviderAdapter &
+  Required<Pick<ProviderAdapterView, "recommendUtilityModel">> = {
   id: PROVIDER_ID,
   displayName: "OpenCode Go",
   surfaces: [
@@ -249,6 +255,23 @@ export const opencodeAdapter: ProviderAdapter = {
     "anthropic-messages",
     "openai-responses",
   ] satisfies ReadonlyArray<SurfaceId>,
+
+  /**
+   * Session title profile. DeepSeek V4.1 Flash (the 2026-10-17 release) on
+   * Chat Completions. The live Go catalog
+   * (https://opencode.ai/zen/go/v1/models, 2026-11-27) gives
+   * `structured_output: true` and the effort list low, high, max (no off).
+   * So `effort` is `low`, the lowest level. `run()` always streams, so
+   * `stream` is `required`.
+   */
+  recommendUtilityModel() {
+    return {
+      modelId: "deepseek-v4.1-flash",
+      structured: "json_schema",
+      effort: "low",
+      stream: "required",
+    }
+  },
 
   validate(req: CanonicalRequest, model: ModelEntry): ValidationResult {
     if (model.surfaceId === "anthropic-messages") return validateAnthropicRequest(req, model)

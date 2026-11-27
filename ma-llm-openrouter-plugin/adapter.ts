@@ -33,6 +33,7 @@ import type { RunContext } from "@minimal-agent/core/plugin-api/llm/provider-aut
 import type {
   MediaLimits,
   ModelRegistrar,
+  ProviderAdapterView,
   ProviderPlugin,
   ProviderSetupContext,
 } from "@minimal-agent/core/plugin-api/llm/provider-plugin"
@@ -68,10 +69,28 @@ const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
 const OPENROUTER_CHAT_ENCODE: OpenAIChatEncodeOptions = { video: true, fileUrl: true }
 
 /** OpenRouter adapter. Speaks the OpenAI Chat surface against OpenRouter's host. */
-export const openrouterAdapter: ProviderAdapter = {
+export const openrouterAdapter: ProviderAdapter &
+  Required<Pick<ProviderAdapterView, "recommendUtilityModel">> = {
   id: "openrouter",
   displayName: "OpenRouter",
   surfaces: ["openai-chat-completions"] satisfies ReadonlyArray<SurfaceId>,
+
+  /**
+   * Session title profile. Ling 3.0 Tiny (inclusionAI, created 2026-08-06)
+   * is a small current model with structured outputs and a low price:
+   * $0.015 in / $0.045 out per 1M tokens (live /api/v1/models, 2026-11-27).
+   * No effort: the live row has no `reasoning_effort` parameter and no
+   * effort list, and `buildOpenAIChatBody` cannot send the `reasoning`
+   * object (`enabled: false` or `effort`). So the model reasons at its
+   * default (on). `run()` reads only a stream, so `stream` is `required`.
+   */
+  recommendUtilityModel() {
+    return {
+      modelId: "inclusionai/ling-3.0-tiny",
+      structured: "json_schema",
+      stream: "required",
+    }
+  },
 
   validate(req, model): ValidationResult {
     return validateOpenAIRequest(req, model)

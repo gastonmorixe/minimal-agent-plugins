@@ -38,6 +38,7 @@ import {
   CAPS_GPT_OSS,
   CAPS_IMAGE_GEN,
   withEffort,
+  withStructuredOutputs,
 } from "./capabilities.ts"
 import type { ModelRegistrar, ProviderModelSpec } from "./lib/provider-plugin.ts"
 import { PRICING_ANTIGRAVITY_PLAN } from "./pricing.ts"
@@ -246,7 +247,10 @@ function tagsFor(capabilities: Capabilities, img: boolean, recommended?: boolean
 /** Spec of one id with no family. */
 function singleSpec(r: NormalRow): ProviderModelSpec {
   const levels = singleEffortLevels(r.id)
-  const capabilities = withEffort(antigravityCapabilitiesFor(r), levels, levels[0])
+  const capabilities = withStructuredOutputs(
+    withEffort(antigravityCapabilitiesFor(r), levels, levels[0]),
+    r.id,
+  )
   return {
     id: r.id,
     providerId: ANTIGRAVITY_PROVIDER_ID,
@@ -262,10 +266,9 @@ function singleSpec(r: NormalRow): ProviderModelSpec {
 
 /** Spec of one family. `rep` is the backend row of the default effort. */
 function groupSpec(group: AntigravityModelGroup, rep: NormalRow): ProviderModelSpec {
-  const capabilities = withEffort(
-    antigravityCapabilitiesFor(rep),
-    group.levels,
-    group.defaultEffort,
+  const capabilities = withStructuredOutputs(
+    withEffort(antigravityCapabilitiesFor(rep), group.levels, group.defaultEffort),
+    group.base,
   )
   return {
     id: group.base,

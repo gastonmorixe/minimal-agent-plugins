@@ -222,6 +222,15 @@ export function resolveAntigravityWireTarget(
  * `maxOutputTokens` is the smaller of the request value and the model limit.
  * The thinking shape is per family: a number budget for GPT-OSS, a level
  * string for everyone else.
+ *
+ * A `json_schema` output format on a model with `structuredOutputs` sends
+ * `responseMimeType: "application/json"` and `responseJsonSchema`, the two
+ * fields gemini-cli sends on this `v1internal` API
+ * (https://github.com/google-gemini/gemini-cli,
+ * `packages/core/src/code_assist/converter.ts` `toVertexGenerationConfig`).
+ * The schema goes as standard lower-case JSON Schema, not through the
+ * upper-case tool schema path. The JSON mime type makes the reply raw JSON
+ * text, which core parses with `JSON.parse`.
  */
 export function buildGenerationConfig(
   req: CanonicalRequest,
@@ -256,6 +265,10 @@ export function buildGenerationConfig(
   if (gen?.topP !== undefined && caps.acceptsTopP) config.topP = gen.topP
   if (gen?.topK !== undefined && caps.acceptsTopK) config.topK = gen.topK
   if (gen?.stop && gen.stop.length > 0 && caps.acceptsStopSequences) config.stopSequences = gen.stop
+  if (req.outputFormat?.type === "json_schema" && caps.structuredOutputs) {
+    config.responseMimeType = "application/json"
+    config.responseJsonSchema = req.outputFormat.schema
+  }
   return { config, generation }
 }
 

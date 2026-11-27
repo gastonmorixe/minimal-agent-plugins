@@ -96,6 +96,19 @@ export const PRICING_OR_GPT_62_SOL: MTokRate = {
   webSearchPerCallUSD: 0.01,
 }
 
+/**
+ * inclusionai/ling-3.0-tiny via OpenRouter (live GET
+ * https://openrouter.ai/api/v1/models, 2026-11-27): prompt 0.000000015,
+ * completion 0.000000045, input_cache_read 0.000000003 USD per token.
+ */
+export const PRICING_OR_LING_30_TINY: MTokRate = {
+  inputUSD: 0.015,
+  outputUSD: 0.045,
+  cacheWriteUSD: 0,
+  cacheReadUSD: 0.003,
+  webSearchPerCallUSD: 0,
+}
+
 /** x-ai/grok-4.7 via OpenRouter (2026-11-15). */
 export const PRICING_OR_GROK_47: MTokRate = {
   inputUSD: 2,
