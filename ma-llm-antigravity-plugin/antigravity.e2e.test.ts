@@ -314,4 +314,59 @@ describeLive("antigravity live", () => {
     console.log(`mixed tail answer: "${textOf(done).slice(0, 80)}"`)
     expect(textOf(done)).toContain("ZEBRA-7731")
   }, 120_000)
+
+  // A tool result can hold an image (Read, a ChromeCDP screenshot). The
+  // encoder moves the image after the functionResponse parts, and the model
+  // must see it.
+  test("gemini-4-neon (low) sees an image in a tool result", async () => {
+    const { secrets } = loaded!
+    const networkClient = await hostNetwork()
+    const fresh = await refreshTokens({ refreshToken: secrets.refreshToken, networkClient })
+    const model = modelFor("gemini-4-neon")!
+    const tools: CanonicalRequest["tools"] = [
+      {
+        name: "screenshot",
+        description: "Take a screenshot of the page.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ]
+    const history: CanonicalMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Take a screenshot. Then name its one color in one word." },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_e2e_image", name: "screenshot", input: {} }],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            toolUseId: "call_e2e_image",
+            content: [
+              { type: "text", text: "screenshot 32x32" },
+              { type: "image", source: { kind: "base64", mediaType: "image/png", data: RED_PNG } },
+            ],
+          },
+        ],
+      },
+    ]
+    const done = await collect(
+      { modelId: "gemini-4-neon", effort: "low", messages: history, tools },
+      model,
+      fresh.accessToken,
+      networkClient,
+    )
+    expect(done.some((event) => event.type === "message_stop")).toBe(true)
+    console.log(`image answer: "${textOf(done).slice(0, 80)}"`)
+    expect(textOf(done).toLowerCase()).toContain("red")
+  }, 120_000)
 })
+
+/** A 32x32 PNG of solid red (255, 0, 0). */
+const RED_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAMklEQVR4nGP4z8BAU0Rb00ctGA2i0VQ0mg9Gi4rR0nS0PhitMkdbFaPtotGm43/q5QMAMsP8LqKijEUAAAAASUVORK5CYII="

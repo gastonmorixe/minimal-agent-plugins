@@ -38,6 +38,7 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
 import type { EffortLevel } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
+import { hoistToolResultMedia } from "@minimal-agent/core/plugin-api/llm/tool-result-media"
 
 import type { ModelView } from "./lib/host-types.ts"
 
@@ -214,7 +215,9 @@ function buildOllamaMessages(req: CanonicalRequest, modelId: string): OllamaWire
     if (text) out.push({ role: "system", content: text })
   }
 
-  for (const msg of req.messages) {
+  // An Ollama tool message takes only text. Move tool result images to the
+  // user message that follows the tool messages, in its images[] field.
+  for (const msg of hoistToolResultMedia(req.messages)) {
     appendMessage(out, msg, modelId)
   }
   return out

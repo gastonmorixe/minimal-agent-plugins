@@ -25,6 +25,7 @@ import type {
 import type { ServerToolId } from "@minimal-agent/core/plugin-api/llm/capabilities"
 import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
 import { chatAudioFormat } from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import { hoistToolResultMedia } from "@minimal-agent/core/plugin-api/llm/tool-result-media"
 
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
@@ -259,7 +260,9 @@ function buildInstructions(req: CanonicalRequest): string {
 
 function buildInputItems(req: CanonicalRequest, modelId: string): OpenAIResponsesInputItem[] {
   const items: OpenAIResponsesInputItem[] = []
-  for (const msg of req.messages) {
+  // A function_call_output takes only text here. Move tool result media to
+  // the message item that follows the tool outputs.
+  for (const msg of hoistToolResultMedia(req.messages)) {
     appendCanonicalMessage(items, msg, modelId)
   }
   return items

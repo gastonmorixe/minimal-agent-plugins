@@ -23,6 +23,7 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/canonical-messages"
 import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canonical-request"
 import type { Capabilities } from "@minimal-agent/core/plugin-api/llm/capabilities"
+import { hoistToolResultMedia } from "@minimal-agent/core/plugin-api/llm/tool-result-media"
 
 import type { ModelView } from "./lib/host-types.ts"
 import { sanitizeGeminiSchema } from "./schema-sanitize.ts"
@@ -487,7 +488,9 @@ export function buildAntigravityBody(
   }
 
   const contents: GeminiRequestContent[] = []
-  for (const message of messages) {
+  // `response.output` takes only text. Move tool result media to the text and
+  // media parts that follow the functionResponse parts of the same content.
+  for (const message of hoistToolResultMedia(messages)) {
     if (message.role === "assistant") {
       const content = assistantContent(message, family, signatures)
       if (content.parts.length > 0) contents.push(content)

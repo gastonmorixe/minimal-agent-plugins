@@ -31,6 +31,7 @@ import type {
 } from "@minimal-agent/core/plugin-api/llm/canonical-tools"
 import { unsupportedAttachmentText } from "@minimal-agent/core/plugin-api/llm/modality-check"
 import { chatAudioFormat } from "@minimal-agent/core/plugin-api/llm/openai-chat"
+import { hoistToolResultMedia } from "@minimal-agent/core/plugin-api/llm/tool-result-media"
 
 import type { CanonicalRequest } from "../lib/canonical-request.ts"
 import type { ModelEntry } from "../lib/host-types.ts"
@@ -194,7 +195,9 @@ function buildChatMessages(req: CanonicalRequest, modelId: string): OpenAIChatMe
       .join("\n\n")
     if (text) out.push({ role: "system", content: text })
   }
-  for (const msg of req.messages) {
+  // A Chat tool message takes only text. Move tool result media to the user
+  // message that the sibling path sends after the tool messages.
+  for (const msg of hoistToolResultMedia(req.messages)) {
     // Canonical form embeds tool results as tool_result blocks inside
     // role:"user" messages. The OpenAI Chat API requires them as
     // separate role:"tool" messages with matching tool_call_id.

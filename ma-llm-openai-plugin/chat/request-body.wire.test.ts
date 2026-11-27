@@ -24,11 +24,9 @@ const MODEL = {
 
 // A non-text, non-tool_result block: a tool_result in any message takes the
 // separate tool_result path (request-body.ts buildChatMessages), so only
-// these blocks reach the JSON text of a role "tool" message.
-const PLAIN: CanonicalBlock = {
-  type: "image",
-  source: { kind: "url", url: "https://example.test/a.png" },
-}
+// these blocks reach the JSON text of a role "tool" message. It is not a
+// media block: an image there moves to a user message (tool-result-media).
+const PLAIN: CanonicalBlock = { type: "thinking", text: "plan" }
 
 /** The string content of the role "tool" message. */
 function toolText(block: CanonicalBlock): string {
