@@ -54,7 +54,9 @@ function isFile(path: string): boolean {
  * Order:
  * 1. `env.CUD_HELPER`, when set.
  * 2. `<packageDir>/native/build/ComputerUseHelper`, the one Mach-O file that
- *    `cud build` makes with `swiftc`. Only a file counts, not a directory.
+ *    `cud build` makes with `swiftc`. In a compiled CLI, it is also the copy
+ *    that `extractHelper` (lib/embedded-helper.ts) writes from the embedded
+ *    table. Only a file counts, not a directory.
  * 3. The legacy `.app` executable,
  *    `<packageDir>/native/build/ComputerUseHelper.app/Contents/MacOS/ComputerUseHelper`.
  *

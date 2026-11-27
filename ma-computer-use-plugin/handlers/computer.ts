@@ -3,7 +3,10 @@
  *
  * Talks to the ComputerUseHelper daemon over its unix domain socket. If the
  * daemon isn't running it auto-spawns the helper binary, then forwards the
- * validated action and shapes the response into a TUIResult. macOS gives the
+ * validated action and shapes the response into a TUIResult. In a compiled
+ * CLI, the handler first extracts the embedded helper to
+ * `<packageDir>/native/build/ComputerUseHelper` (lib/embedded-helper.ts), so
+ * the normal lookup finds it. macOS gives the
  * helper the Accessibility and Screen Recording grants of the terminal app that
  * runs minimal-agent. The helper signature does not change that.
  *
@@ -26,6 +29,7 @@ import {
   parsePing,
   type SocketFetch,
 } from "../lib/client.ts"
+import { type ExtractResult, extractHelper } from "../lib/embedded-helper.ts"
 import { isSourceCheckout, missingHelperText } from "../lib/missing-helper.ts"
 import { helperBinary, logPath, socketPath, supportDir } from "../lib/paths.ts"
 import { dim, isErrorBody, red, renderContent, summarize } from "../lib/render.ts"
@@ -66,6 +70,8 @@ export interface HandlerDeps {
   socketFetch?: SocketFetch
   ensure?: typeof ensureDaemon
   spawnDaemon?: (packageDir: string) => void
+  /** Extracts the embedded helper. Default: `extractHelper`. */
+  extract?: (packageDir: string) => ExtractResult
 }
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
@@ -95,6 +101,19 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   const socketFetch = deps.socketFetch ?? makeBunSocketFetch(SOCK)
   const ensure = deps.ensure ?? ensureDaemon
   const doSpawn = deps.spawnDaemon ?? spawnDaemon
+  const extract = deps.extract ?? extractHelper
+
+  // A compiled CLI keeps the helper in its embedded table. Write it to disk
+  // before the lookup. A dev checkout and a build with no helper write nothing.
+  const got = extract(ctx.packageDir)
+  if (!got.ok) {
+    return {
+      kind: "tool_result",
+      content: `Computer: ${got.error}. Check the helper log: ${LOG}`,
+      is_error: true,
+      displayHeader: red("helper extract failed"),
+    }
+  }
 
   // If the helper is missing, give a precise instruction instead of a generic
   // "unreachable" (auto-spawn would silently fail). Only a dev checkout can
