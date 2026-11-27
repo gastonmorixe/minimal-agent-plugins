@@ -1,0 +1,25 @@
+{
+  "id": "fixture-cdpshot",
+  "name": "Fixture cdpshot",
+  "version": "0.1.0",
+  "description": "Test fixture for the request golden harness. Its tool runs the real ChromeCDP handler with a fake daemon that gives a PNG screenshot.",
+  "headless": {
+    "tools": [
+      {
+        "id": "fixture_cdpshot",
+        "trigger": {
+          "type": "tool",
+          "tool": {
+            "name": "FixtureCdpShot",
+            "description": "Test fixture tool. Runs ChromeCDP with a fake daemon.",
+            "input_schema": { "type": "object", "properties": {}, "additionalProperties": true },
+            "explicitName": true,
+            "reason": "fixture name is explicit"
+          }
+        },
+        "handler": { "type": "module", "path": "./handler.ts", "export": "default" },
+        "interactive": false
+      }
+    ]
+  }
+}

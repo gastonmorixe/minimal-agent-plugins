@@ -63,7 +63,7 @@
                 },
                 "method": {
                   "type": "string",
-                  "description": "Necessary for `send`: a CDP method `Domain.method`, for example `Network.enable`, `Performance.getMetrics`, `Page.captureScreenshot` or `Tracing.start`."
+                  "description": "Necessary for `send`: a CDP method `Domain.method`, for example `Network.enable`, `Performance.getMetrics`, `Page.captureScreenshot` or `Tracing.start`. A `Page.captureScreenshot` or `Page.printToPDF` result comes as an image or a file. Do not write its base64 to a file."
                 },
                 "params": {
                   "type": "object",

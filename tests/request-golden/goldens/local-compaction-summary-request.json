@@ -503,7 +503,7 @@
                 "type": "number"
               },
               "method": {
-                "description": "Necessary for `send`: a CDP method `Domain.method`, for example `Network.enable`, `Performance.getMetrics`, `Page.captureScreenshot` or `Tracing.start`.",
+                "description": "Necessary for `send`: a CDP method `Domain.method`, for example `Network.enable`, `Performance.getMetrics`, `Page.captureScreenshot` or `Tracing.start`. A `Page.captureScreenshot` or `Page.printToPDF` result comes as an image or a file. Do not write its base64 to a file.",
                 "type": "string"
               },
               "on": {
@@ -816,7 +816,7 @@
           "name": "DiffViewerShowDiff"
         },
         {
-          "description": "Get a web page after a browser loads it, for example a page that must run JavaScript. Use it only with a URL. Do not use it for a local file or for contents that the user gave you. The browser always tries to look the same as a browser that a person operates. No parameter changes this. The tool gives the page text in `content`.",
+          "description": "Get a web page after a browser loads it, for example a page that must run JavaScript. Use it only with a URL. Do not use it for a local file or for contents that the user gave you. The browser always tries to look the same as a browser that a person operates. No parameter changes this. The tool gives the page text in `content`.\n\nFor an image URL, the tool gives the image, or the path of a saved file when the model cannot read images.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {

@@ -32,6 +32,8 @@ import {
   formatBinaryOptedIn,
   formatBytes as formatBinarySize,
   formatBinaryWithheld,
+  formatImageAttached,
+  isAttachableImage,
   persistBinaryBody,
 } from "../lib/binary.ts"
 import { CLEANUP_LEVELS, type CleanupLevel } from "../lib/cleanup.ts"
@@ -659,6 +661,27 @@ export async function runWithDeps(
   // the tag shape is shared so core will not double-wrap our message.
   const rawBytes = result.stdoutBytes
   const binaryVerdict = classifyBinaryBytes(rawBytes)
+  // An image (png, jpeg, gif, webp) goes to core as an attachment. Core saves
+  // it and gates it like `Read`, so Fetch writes no `.bin` here. With
+  // `binary: true` the caller asked for base64 text: keep that path.
+  const attachImage = binaryVerdict.binary && !binaryOptIn && isAttachableImage(binaryVerdict.mime)
+  if (attachImage) {
+    const sizeBytes = rawBytes.byteLength
+    return {
+      kind: "tool_result",
+      content: formatImageAttached({ url: input.url, mime: binaryVerdict.mime, sizeBytes }),
+      attachments: [{ bytes: rawBytes, mimeType: binaryVerdict.mime, label: input.url }],
+      display: dim(`${binaryVerdict.mime} · ${formatBinarySize(sizeBytes)} (image attachment)`),
+      displayHeader: input.url,
+      displayFooter: buildDisplayFooter({
+        format: input.format,
+        size: sizeBytes,
+        lineCount: 0,
+        sessionName: sessionLeafName(input.storageDir),
+        workerPid,
+      }),
+    }
+  }
   if (binaryVerdict.binary) {
     const toolUseId =
       ctx.trigger.type === "tool" && "tool_use_id" in ctx.trigger

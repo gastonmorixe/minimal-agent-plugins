@@ -188,4 +188,35 @@ describe("ChromeCDP handler", () => {
     })
     expect(seen).toEqual({ target: "T1", expr: "21*2" })
   })
+
+  test("a screenshot result gives an attachment and no base64 in content or display", async () => {
+    const png = new Uint8Array(4096)
+    png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0)
+    const data = Buffer.from(png).toString("base64")
+    const socketFetch = async (route: string): Promise<DaemonResponse> =>
+      route === "ping"
+        ? { status: 200, body: { ok: true } }
+        : { status: 200, body: { result: { data }, sessionId: "S1" } }
+    const r = await run(
+      ctxFor({ action: "send", target: "T1", method: "Page.captureScreenshot", params: {} }),
+      { ensure: ensureUp, socketFetch },
+    )
+    if (r.kind !== "tool_result") throw new Error("expected tool_result")
+    expect(r.is_error).toBe(false)
+    expect(r.attachments).toHaveLength(1)
+    expect(r.attachments?.[0]?.mimeType).toBe("image/png")
+    expect(Array.from(r.attachments?.[0]?.bytes ?? [])).toEqual(Array.from(png))
+    expect(r.content).toContain("[attachment 1: image/png 4.0 KB")
+    expect(r.content).not.toContain(data.slice(0, 40))
+    expect(r.display ?? "").not.toContain(data.slice(0, 40))
+  })
+
+  test("a result with no media has no attachments field", async () => {
+    const r = await run(ctxFor({ action: "ping" }), {
+      ensure: ensureUp,
+      socketFetch: async () => ({ status: 200, body: { ok: true, connected: true } }),
+    })
+    if (r.kind !== "tool_result") throw new Error("expected tool_result")
+    expect("attachments" in r).toBe(false)
+  })
 })

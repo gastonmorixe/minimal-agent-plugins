@@ -97,6 +97,31 @@ export function classifyBinaryBytes(bytes: Uint8Array): { binary: boolean; mime:
   return { binary: false, mime: "text/plain" }
 }
 
+/** The image types that core can give to the model as an image block. */
+const ATTACHABLE_IMAGE_MIMES: ReadonlySet<string> = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+])
+
+/** True when Fetch returns the body as a core attachment, not as a saved `.bin`. */
+export function isAttachableImage(mime: string): boolean {
+  return ATTACHABLE_IMAGE_MIMES.has(mime)
+}
+
+/**
+ * Model-facing text for an image body that Fetch gives as an attachment.
+ * Core adds the image block (or the gate text) and the saved path after it.
+ */
+export function formatImageAttached(opts: {
+  url: string
+  mime: string
+  sizeBytes: number
+}): string {
+  return `Fetch got an image from ${opts.url} (${opts.mime}, ${formatBytes(opts.sizeBytes)}). The harness gives the image or its saved path below.`
+}
+
 /** Compact byte formatter matching the Fetch footer style. */
 export function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`

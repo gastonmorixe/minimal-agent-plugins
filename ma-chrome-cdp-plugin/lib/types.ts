@@ -36,6 +36,8 @@ export type TUIResult =
       display?: string
       displayHeader?: string
       displayFooter?: string
+      /** Binary files for core (a screenshot, a PDF). Mirrors core `ToolAttachment`. */
+      attachments?: ReadonlyArray<{ bytes: Uint8Array; mimeType?: string; label?: string }>
     }
   | { kind: "rendered"; ansi: string }
   | { kind: "interactive_result"; value: unknown }

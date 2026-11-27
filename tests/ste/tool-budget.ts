@@ -59,8 +59,10 @@ export const GOLDEN = join(PLUGINS_ROOT, "tests/request-golden/goldens/plugin-ha
  *
  * 2026-11-23 the new SessionTitle tool (ma-title-plugin, 112 words) ships in
  * every golden: 6747 to 6842 words (see {@link BLOCK_RAISES}).
+ *
+ * 2026-11-27 tool attachments (ChromeCDP screenshot and PDF, Fetch image URL): 6842 to 6884 words.
  */
-export const TOOL_BLOCK_WORDS = 6842
+export const TOOL_BLOCK_WORDS = 6884
 
 /** How far below {@link TOOL_BLOCK_WORDS} the tree may drift before it must be lowered. */
 export const LOOSE_WORDS = 50
@@ -84,7 +86,7 @@ export const TOOL_WORDS: Readonly<Record<string, number>> = {
   BackgroundStatus: 60,
   BackgroundStop: 84,
   Bash: 117,
-  ChromeCDP: 340,
+  ChromeCDP: 360,
   // CloudLogin, CloudPush, CloudStatus: ma-agent-cloud (enabled: false), not in a golden.
   CloudLogin: 62,
   CloudPush: 67,
@@ -93,7 +95,7 @@ export const TOOL_WORDS: Readonly<Record<string, number>> = {
   Computer: 647,
   DiffViewerShowDiff: 89,
   Edit: 24,
-  Fetch: 396,
+  Fetch: 417,
   FilesStats: 62,
   Glob: 119,
   Grep: 168,
@@ -197,6 +199,22 @@ export const RAISES: readonly Raise[] = [
     reason:
       "review A: the tool rejects an incorrect effort level when it knows the levels; only an unknown level stops the worker",
   },
+  {
+    tool: "ChromeCDP",
+    from: 340,
+    to: 360,
+    date: "2026-11-27",
+    reason:
+      "a screenshot or PDF result now comes as an image or a file (tool attachments), so the model must not write the base64 itself",
+  },
+  {
+    tool: "Fetch",
+    from: 396,
+    to: 417,
+    date: "2026-11-27",
+    reason:
+      "an image URL now comes as an image, or as a saved file when the model cannot read images (tool attachments)",
+  },
 ]
 
 /** One raise of {@link TOOL_BLOCK_WORDS}. */
@@ -217,6 +235,13 @@ export const BLOCK_RAISES: readonly BlockRaise[] = [
     to: 6842,
     date: "2026-11-23",
     reason: "SessionTitle tool, ma-title-plugin (new tool, 112 words, ships in every golden)",
+  },
+  {
+    from: 6842,
+    to: 6884,
+    date: "2026-11-27",
+    reason:
+      "tool attachments: ChromeCDP `method` text, a screenshot or PDF result comes as an image or a file (+20 words). Fetch text, an image URL comes as an image or a saved file (+22 words)",
   },
 ]
 

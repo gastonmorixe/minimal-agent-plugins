@@ -19,6 +19,7 @@ import { ensureDaemon, makeBunSocketFetch, type SocketFetch } from "../lib/clien
 import { daemonEnv, serverArgv } from "../lib/daemon-spawn.ts"
 import { validateToolInput } from "../lib/input.ts"
 import { leaseDirFor, writeLease } from "../lib/lifetime.ts"
+import { extractMedia } from "../lib/media-extract.ts"
 import {
   describeRequest,
   dim,
@@ -174,13 +175,21 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   }
 
   const isErr = isErrorBody(res.status, res.body)
+  // Base64 media (a screenshot, a PDF, screencast frames) goes to core as
+  // attachments. The model and the TUI get a short placeholder, not base64.
+  const media = extractMedia(res.body, {
+    action: v.route,
+    method: typeof v.body.method === "string" ? v.body.method : undefined,
+    params: v.body.params,
+  })
   return {
     kind: "tool_result",
-    content: renderContent(res.body),
+    content: renderContent(media.body),
     is_error: isErr,
     displayHeader: reqHeader,
-    display: renderDisplay(v.route, v.body, res.body),
-    displayFooter: dim(summarize(v.route, res.body)),
+    display: renderDisplay(v.route, v.body, media.body),
+    displayFooter: dim(summarize(v.route, media.body)),
+    ...(media.attachments.length > 0 ? { attachments: media.attachments } : {}),
   }
 }
 

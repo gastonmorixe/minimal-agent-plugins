@@ -42,6 +42,17 @@ export interface TUIContext {
   sideband?: SidebandApi
 }
 
+/**
+ * A binary file on a tool result. Mirrors core `ToolAttachment`
+ * (`plugin-api/src/types/plugin.ts`). Core saves it to the session blob dir
+ * and gives an accepted image to the model as an image block.
+ */
+export interface ToolAttachment {
+  bytes: Uint8Array
+  mimeType?: string
+  label?: string
+}
+
 export type TUIResult =
   | {
       kind: "tool_result"
@@ -54,6 +65,8 @@ export type TUIResult =
       displayHeader?: string
       /** Optional footer content slot (after the closing glyph). */
       displayFooter?: string
+      /** Binary files for core to save and gate, for example an image. */
+      attachments?: ReadonlyArray<ToolAttachment>
     }
   | { kind: "rendered"; ansi: string }
   | { kind: "interactive_result"; value: unknown }

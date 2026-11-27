@@ -6,6 +6,8 @@
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { registerTestProvider } from "@minimal-agent/core/testing/provider-fixture"
+
 import type { Scenario } from "./harness.ts"
 
 const FIXTURES = join(import.meta.dir, "fixtures")
@@ -93,6 +95,33 @@ export const GAP_SCENARIOS: Scenario[] = [
       modes.setMode("ask")
       await turn("read a file as a budgeted worker")
     },
+    keep: [-1],
+  },
+  {
+    // A plugin tool attachment: the real ChromeCDP handler (in the fixture,
+    // with a fake daemon) gives a PNG screenshot. The tool_result must be
+    // `[text, image/png]`, and the text must hold no base64.
+    name: "cdp-screenshot",
+    script: [
+      {
+        tools: [
+          {
+            name: "FixtureCdpShot",
+            input: { action: "send", target: "T1", method: "Page.captureScreenshot", params: {} },
+          },
+        ],
+      },
+    ],
+    pluginRoots: () => [join(FIXTURES, "cdpshot")],
+    blobStore: true,
+    coreDeps: () => {
+      registerTestProvider({
+        id: "golden-cdp-prov",
+        models: [{ id: "golden-cdp-model", capabilities: { modalities: { image: true } } }],
+      })
+      return { model: "golden-cdp-model", providerId: "golden-cdp-prov" }
+    },
+    run: async ({ turn }) => turn("take a screenshot"),
     keep: [-1],
   },
 ]
