@@ -196,6 +196,9 @@
         },
         "tool": {
           "type": "string"
+        },
+        "label": {
+          "type": "string"
         }
       },
       "body": "raw",
