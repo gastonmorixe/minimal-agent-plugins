@@ -584,7 +584,7 @@
             "additionalProperties": false,
             "properties": {
               "action": {
-                "description": "Necessary. Start with `ping` or `perms`. Then use `apps`, `windows`, `snapshot`, `find`, then `perform` or `setValue`, then mouse or key input. The text of each other field gives its operations.\n- `ping`: daemon and permission status.\n- `apps`: GUI apps with `pid` and `bundleId`.\n- `activate`: move an app to the front for input.\n- `snapshot`: read the tree and get element ids.\n- `focused`: the element with the keyboard input.\n- `keypress`: the same as `key`.",
+                "description": "Necessary. Start with `ping` or `perms`. Then use `apps`, `windows`, `snapshot`, `find`, then `perform` or `setValue`, then mouse or key input. The text of each other field gives its operations.\n- `ping`: daemon and permission status.\n- `apps`: GUI apps with `pid` and `bundleId`.\n- `activate`: move an app to the front for input.\n- `targets`: display and window ids.\n- `snapshot`: read the tree and get element ids.\n- `focused`: the element with the keyboard input.\n- `keypress`: the same as `key`.",
                 "enum": [
                   "ping",
                   "perms",
@@ -603,7 +603,8 @@
                   "type",
                   "key",
                   "keypress",
-                  "screenshot"
+                  "screenshot",
+                  "targets"
                 ],
                 "type": "string"
               },
@@ -612,7 +613,7 @@
                 "type": "string"
               },
               "bundleId": {
-                "description": "The app bundle id, for example `com.apple.TextEdit`, or use `pid`. For `type`, `key`, `keypress` and `mouse`, the tool first moves the app to the front.",
+                "description": "The app bundle id, for example `com.apple.TextEdit`, or use `pid` (also for `targets` and `screenshot`). For `type`, `key`, `keypress` and `mouse`, the tool first moves the app to the front.",
                 "type": "string"
               },
               "button": {
@@ -632,8 +633,16 @@
                 "description": "For `key` and `keypress`: modifiers, then the key, for example `cmd+c`. Modifiers are `cmd` (`command`), `shift`, `alt` (`option`), `ctrl` (`control`) and `fn`.",
                 "type": "string"
               },
+              "cursor": {
+                "description": "For `screenshot`: show the pointer. The default is `false` for `window` and `app`.",
+                "type": "boolean"
+              },
               "display": {
-                "description": "For `screenshot`: the display index. 0 is usually the primary.",
+                "description": "For `screenshot`: the display index from `targets`. 0 is usually the primary.",
+                "type": "number"
+              },
+              "displayId": {
+                "description": "For `screenshot`: the stable display id from `targets`.",
                 "type": "number"
               },
               "dx": {
@@ -645,7 +654,7 @@
                 "type": "number"
               },
               "el": {
-                "description": "Necessary for `describe`, `getValue`, `setValue` and `perform`: an element id (`e7`) from `snapshot`, `find`, `elementAtPoint` or `focused`. `snapshot` and `find` give each id with role, title, value and area (`bbox: [x,y,w,h]`). After a UI change, the tool gives the error 409 for this id. Then use `snapshot` again.",
+                "description": "Necessary for `describe`, `getValue`, `setValue` and `perform`: an element id (`e7`) from `snapshot`, `find`, `elementAtPoint` or `focused`. `snapshot` and `find` give each id with role, title, value and area (`bbox: [x,y,w,h]`). A window `el` from `windows` also selects the window for a `window` screenshot. After a UI change, the tool gives the error 409 for this id. Then use `snapshot` again.",
                 "type": "string"
               },
               "flatten": {
@@ -677,7 +686,7 @@
                 "type": "string"
               },
               "limit": {
-                "description": "For `find`: the maximum results. The default is 25.",
+                "description": "The maximum results. For `find`, the default is 25. For `targets`, 50.",
                 "type": "number"
               },
               "maxDepth": {
@@ -688,11 +697,17 @@
                 "description": "For `snapshot`: the maximum nodes. The default is 2000. Decrease it for a smaller result.",
                 "type": "number"
               },
+              "maxSize": {
+                "description": "For `screenshot`: the maximum width or height in pixels, 64 or more. Set it for a small image.",
+                "type": "number"
+              },
               "mode": {
-                "description": "For `screenshot`: `screen` (full display, the default) or `area` (`x`, `y`, `w`, `h`).",
+                "description": "For `screenshot`: `screen` (a display, the default), `area` (`x`, `y`, `w`, `h`), `window` (also the parts below other windows) or `app` (`pid` or `bundleId`). For `window`, give `windowId` or `el`. If the window is occluded, use `activate` before a click.",
                 "enum": [
                   "screen",
-                  "area"
+                  "area",
+                  "window",
+                  "app"
                 ],
                 "type": "string"
               },
@@ -732,7 +747,7 @@
                 "type": "string"
               },
               "pid": {
-                "description": "The app process id for `windows`, `snapshot` and `find`. The default is the front app.",
+                "description": "The app process id for `windows`, `snapshot`, `find`, `targets` and `screenshot`. For `windows`, `snapshot` and `find`, the default is the front app.",
                 "type": "number"
               },
               "prompt": {
@@ -752,7 +767,7 @@
                 "type": "string"
               },
               "title": {
-                "description": "For `find`: case-insensitive text in the `AXTitle` only.",
+                "description": "For `find`: case-insensitive text in the `AXTitle` only. For `targets` and `screenshot`: text in the window title.",
                 "type": "string"
               },
               "toX": {
@@ -771,15 +786,19 @@
                 "type": "string"
               },
               "visibleOnly": {
-                "description": "For `snapshot`: only the elements on the screen. The default is `true`.",
+                "description": "For `snapshot` and `targets`: only the elements or windows on the screen. The default is `true`.",
                 "type": "boolean"
               },
               "w": {
                 "description": "For `area`: the width in points.",
                 "type": "number"
               },
+              "windowId": {
+                "description": "For a `window` screenshot: the id from `targets` or `windows`.",
+                "type": "number"
+              },
               "x": {
-                "description": "The X coordinate in points from the left, on all displays. To click an AX element, use `bbox[0]+bbox[2]/2`. On a 2x screenshot, divide the pixel value by 2.",
+                "description": "The X coordinate in points from the left, on all displays. To click an AX element, use `bbox[0]+bbox[2]/2`. A screenshot pixel `px` is the point `bbox[0]+px/scale`.",
                 "type": "number"
               },
               "y": {

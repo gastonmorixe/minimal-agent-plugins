@@ -235,7 +235,8 @@ export const TOOL_SCHEMA_CHANGES: readonly ToolSchemaChange[] = [
         name: "maxSize",
         schema: {
           type: "number",
-          description: "For `screenshot`: the maximum width or height in pixels, 64 or more. Set it for a small image.",
+          description:
+            "For `screenshot`: the maximum width or height in pixels, 64 or more. Set it for a small image.",
         },
       },
       {

@@ -1634,10 +1634,6 @@
     "files": ["ma-intercom-plugin/manifest.json"]
   },
   {
-    "word": "persist",
-    "files": ["ma-computer-use-plugin/manifest.json"]
-  },
-  {
     "word": "persistent",
     "files": [
       "ma-chrome-cdp-plugin/manifest.json",
@@ -2154,10 +2150,6 @@
   {
     "word": "sibling",
     "files": ["ma-file-lock-plugin/manifest.json"]
-  },
-  {
-    "word": "signed",
-    "files": ["ma-computer-use-plugin/manifest.json"]
   },
   {
     "word": "significance",
