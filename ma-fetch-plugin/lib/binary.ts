@@ -112,14 +112,15 @@ export function isAttachableImage(mime: string): boolean {
 
 /**
  * Model-facing text for an image body that Fetch gives as an attachment.
- * Core adds the image block (or the gate text) and the saved path after it.
+ * Core adds the image block, or a gate note on where it is saved. With the
+ * blob store off, core saves no file, so the text does not promise a path.
  */
 export function formatImageAttached(opts: {
   url: string
   mime: string
   sizeBytes: number
 }): string {
-  return `Fetch got an image from ${opts.url} (${opts.mime}, ${formatBytes(opts.sizeBytes)}). The harness gives the image or its saved path below.`
+  return `Fetch got an image from ${opts.url} (${opts.mime}, ${formatBytes(opts.sizeBytes)}). The harness adds the image, or a note on where it is saved.`
 }
 
 /** Compact byte formatter matching the Fetch footer style. */

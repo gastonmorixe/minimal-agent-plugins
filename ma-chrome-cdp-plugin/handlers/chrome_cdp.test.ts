@@ -206,7 +206,7 @@ describe("ChromeCDP handler", () => {
     expect(r.attachments).toHaveLength(1)
     expect(r.attachments?.[0]?.mimeType).toBe("image/png")
     expect(Array.from(r.attachments?.[0]?.bytes ?? [])).toEqual(Array.from(png))
-    expect(r.content).toContain("[attachment 1: image/png 4.0 KB")
+    expect(r.content).toContain("attachment 1 (image/png, 4.0 KB)")
     expect(r.content).not.toContain(data.slice(0, 40))
     expect(r.display ?? "").not.toContain(data.slice(0, 40))
   })

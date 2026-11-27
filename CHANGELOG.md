@@ -8,6 +8,25 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-27: **`ma-chrome-cdp-plugin`: media comes to the model as tool
+  attachments** (`lib/media-extract.ts`). Known fields: `result.data` of
+  `Page.captureScreenshot` (MIME type from `params.format`, png by
+  default) and of `Page.printToPDF`, and `params.data` of each
+  `Page.screencastFrame` event. Generic: any other string over 1024 chars
+  that is plain base64 or a `data:<mime>;base64,` URI with a full png,
+  jpeg, gif, webp or pdf header (`sniffHeader`: PNG needs `IHDR`, JPEG
+  needs a real marker byte). The cap is 8 for each response, and the
+  newest stay. Each taken string becomes a plain placeholder value, for
+  example `attachment 1 (image/png, 40 B): sent as an image or a saved
+  file` or `frame dropped (2.0 KB)`.
+- 2026-11-27: **`ma-fetch-plugin`: an image URL comes as an attachment.**
+  A png, jpeg, gif or webp body goes to core as a tool attachment, and
+  Fetch writes no `.bin`. With `binary: true` the old base64 path stays. A
+  PDF keeps the saved `.bin` path.
+- 2026-11-27: **request goldens: the `cdp-screenshot` golden** (fixture
+  `tests/request-golden/fixtures/cdpshot`) records the wire form of a
+  ChromeCDP screenshot attachment.
+
 - 2026-11-23: **`ma-paste-plugin`: a display handler for the `paste`
   kind** (`handlers/display.ts`, manifest `sideband[0].display`). A dump
   shows each paste ref as its chip label and, in full mode, the file text
@@ -25,6 +44,9 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-27: **STE budget raise** (`tests/ste/tool-budget.ts`): ChromeCDP
+  340 to 360 words, Fetch 396 to 417 words, and the tool block 6842 to
+  6884 words, for the new attachment text.
 - 2026-11-23: **`ma-session-history-plugin`: the XML dump removes each char
   that XML 1.0 does not allow** (`xmlSafe` in `escapeXml`): C0 controls
   other than TAB, LF and CR, U+FFFE, U+FFFF and a lone surrogate. This is

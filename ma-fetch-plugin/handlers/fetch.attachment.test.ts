@@ -95,7 +95,7 @@ describe("runWithDeps - image attachment", () => {
       expect(Array.from(att.bytes)).toEqual(Array.from(pngBytes))
       expect(r.content).toContain(url)
       expect(r.content).toContain("image/png")
-      expect(r.content).not.toContain("<ma::agent::binary-result")
+      expect(sb.has(r.content, { kinds: ["binary-result"] })).toBe(false)
       expect(r.content).not.toContain(Buffer.from(pngBytes).toString("base64"))
       expect(existsSync(join(home, "sessions", "img-sid.blobs", "toolu_img.bin"))).toBe(false)
       expect(existsSync(join(home, "sessions", "img-sid.blobs"))).toBe(false)
@@ -112,8 +112,8 @@ describe("runWithDeps - image attachment", () => {
     try {
       const r = await runImage(true, home, "img-sid2")
       expect(r.attachments).toBeUndefined()
-      expect(r.content).toContain("<ma::agent::binary-result")
-      expect(r.content).toContain('encoding="base64"')
+      const [tag] = sb.find(r.content, { kinds: ["binary-result"] })
+      expect(tag?.attrs.encoding).toBe("base64")
       expect(r.content).toContain(Buffer.from(pngBytes).toString("base64"))
       expect(existsSync(join(home, "sessions", "img-sid2.blobs", "toolu_img.bin"))).toBe(true)
     } finally {
@@ -142,7 +142,7 @@ describe("runWithDeps - image attachment", () => {
       )
       expectToolResult(r)
       expect(r.attachments).toBeUndefined()
-      expect(r.content).toContain("<ma::agent::binary-result")
+      expect(sb.has(r.content, { kinds: ["binary-result"] })).toBe(true)
       expect(r.content).toContain("did not put the binary body")
       expect(existsSync(join(home, "sessions", "pdf-sid.blobs", "toolu_pdf.bin"))).toBe(true)
     } finally {

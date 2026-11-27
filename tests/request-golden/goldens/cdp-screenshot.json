@@ -37,7 +37,7 @@
               },
               "content": [
                 {
-                  "text": "{\n  \"result\": {\n    \"data\": \"[attachment 1: image/png 24 B, sent as an image or a saved file]\"\n  },\n  \"sessionId\": \"golden-session\"\n}\n\n[PNG image 16x16 24B shown to the model below]\n<ma::agent::binary-result mime=\"image/png\" size=\"24B\" path=\"<ROOT>/blobs/call-1-0-1.png\" sha256=\"bf2f0ca3935efb3b\" tool=\"FixtureCdpShot\" />",
+                  "text": "{\n  \"result\": {\n    \"data\": \"attachment 1 (image/png, 24 B): sent as an image or a saved file\"\n  },\n  \"sessionId\": \"golden-session\"\n}\n\n[PNG image 16x16 24B shown to the model below]\n<ma::agent::binary-result mime=\"image/png\" size=\"24B\" path=\"<ROOT>/blobs/call-1-0-1.png\" sha256=\"bf2f0ca3935efb3b\" tool=\"FixtureCdpShot\" />",
                   "type": "text"
                 },
                 {

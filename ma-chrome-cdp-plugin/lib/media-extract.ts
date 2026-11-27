@@ -9,8 +9,8 @@
  *    (`result.data`, a PDF), and each `Page.screencastFrame` event of
  *    `events` (`params.data`, jpeg by default).
  * 2. Generic: any other string longer than {@link MIN_GENERIC_CHARS} that is
- *    plain base64, or a `data:<mime>;base64,` URI, and whose first bytes have
- *    the magic of a png, jpeg, gif, webp or pdf file.
+ *    plain base64, or a `data:<mime>;base64,` URI, and whose first bytes are
+ *    a full png, jpeg, gif, webp or pdf header ({@link sniffHeader}).
  * 3. Each taken string becomes a short placeholder.
  * 4. At most {@link MAX_ATTACHMENTS} per response. The newest (the last in
  *    walk order) stay. An older one gets a "dropped" placeholder.
@@ -96,13 +96,44 @@ export function sniffMagic(b: Uint8Array): string | null {
   return null
 }
 
-function decode(base64: string): Uint8Array {
-  return Uint8Array.from(Buffer.from(base64, "base64"))
+/**
+ * The MIME type from a full file header, or null. Stricter than
+ * {@link sniffMagic}: the generic path uses it, because a bad image block
+ * can stay in history and make later API requests fail.
+ *
+ * - PNG: the 8 byte signature, then the `IHDR` chunk type at byte 12.
+ * - JPEG: `FF D8 FF`, then a marker byte in `E0`..`EF`, `DB` or `C0`..`C3`.
+ * - GIF: `GIF87a` or `GIF89a`. WebP: `RIFF....WEBP`. PDF: `%PDF-`.
+ */
+export function sniffHeader(b: Uint8Array): string | null {
+  const mime = sniffMagic(b)
+  if (mime === "image/png") {
+    return b[12] === 0x49 && b[13] === 0x48 && b[14] === 0x44 && b[15] === 0x52 ? mime : null
+  }
+  if (mime === "image/jpeg") {
+    const m = b[3] ?? 0
+    return (m >= 0xe0 && m <= 0xef) || m === 0xdb || (m >= 0xc0 && m <= 0xc3) ? mime : null
+  }
+  return mime
 }
 
-/** The magic MIME type of a base64 string, from its first 16 chars only. */
+/** Decode base64 with one copy only: a view on the Buffer memory. */
+function decode(base64: string): Uint8Array {
+  const b = Buffer.from(base64, "base64")
+  return new Uint8Array(b.buffer, b.byteOffset, b.byteLength)
+}
+
+/** Base64 chars to decode for a sniff: 88 chars give 66 bytes. */
+const SNIFF_CHARS = 88
+
+/** The loose magic MIME type of a base64 string (known fields). */
 function sniffBase64(base64: string): string | null {
-  return sniffMagic(decode(base64.slice(0, 16)))
+  return sniffMagic(decode(base64.slice(0, SNIFF_CHARS)))
+}
+
+/** The strict header MIME type of a base64 string (generic path). */
+function sniffBase64Strict(base64: string): string | null {
+  return sniffHeader(decode(base64.slice(0, SNIFF_CHARS)))
 }
 
 /** The decoded size of a base64 string, in bytes. */
@@ -116,16 +147,19 @@ export function formatKB(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 }
 
-/** The placeholder of a kept attachment. */
+/**
+ * The placeholder of a kept attachment. It replaces a JSON string value, so
+ * it is a plain data value with no brackets.
+ */
 export function attachmentPlaceholder(n: number, mime: string, bytes: number): string {
-  return `[attachment ${n}: ${mime} ${formatKB(bytes)}, sent as an image or a saved file]`
+  return `attachment ${n} (${mime}, ${formatKB(bytes)}): sent as an image or a saved file`
 }
 
-/** The placeholder of an attachment over the cap. */
+/** The placeholder of an attachment over the cap. A plain data value too. */
 export function droppedPlaceholder(frame: boolean, mime: string, bytes: number): string {
   return frame
-    ? `[frame dropped: ${formatKB(bytes)}]`
-    : `[attachment dropped: ${mime} ${formatKB(bytes)}]`
+    ? `frame dropped (${formatKB(bytes)})`
+    : `attachment dropped (${mime}, ${formatKB(bytes)})`
 }
 
 function screenshotMime(params: unknown): string {
@@ -163,11 +197,11 @@ function genericCandidate(s: string): { base64: string; mime: string } | null {
   if (uri) {
     const base64 = s.slice(uri[0].length)
     if (!isBase64(base64)) return null
-    const mime = sniffBase64(base64)
+    const mime = sniffBase64Strict(base64)
     return mime ? { base64, mime } : null
   }
   if (!isBase64(s)) return null
-  const mime = sniffBase64(s)
+  const mime = sniffBase64Strict(s)
   return mime ? { base64: s, mime } : null
 }
 
