@@ -8,6 +8,20 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Added
 
+- 2026-11-27 `94f0edd`: **STE gate reads the prose of each prompt fragment
+  handler** (`tests/ste/ste-fragment-prose.test.ts`). The test fails on a
+  string literal, or an `echo`/`printf` literal of a shell handler, of 4 or
+  more words in a `promptFragments` handler that does not come from a
+  `prompts/*.md` file. The env-info shell header is a new `shell-echo` STE
+  surface, because a subprocess cannot read a prompts file in the compiled
+  binary. New prompt files: `ma-agent-identity-plugin/prompts/identity.md`,
+  `ma-skills-plugin/prompts/catalog-intro.md` and `catalog-cap.md`,
+  `ma-memory-plugin/prompts/inject.{summary,latest,verbatim}.md`.
+- 2026-11-27 `94f0edd`: **golden gate: block lists**
+  (`tests/ste/golden-removals.ts`). `BLOCK_REMOVALS` lets a request golden
+  lose a whole listed `<ma::sys::ROLE name="N">` block, and `BLOCK_TRIMS`
+  lets a listed block change its words. Each entry needs a source. Text out
+  of the listed blocks must stay byte-identical.
 - 2026-11-27: **`ma-chrome-cdp-plugin`: media comes to the model as tool
   attachments** (`lib/media-extract.ts`). Known fields: `result.data` of
   `Page.captureScreenshot` (MIME type from `params.format`, png by
@@ -44,6 +58,36 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Changed
 
+- 2026-11-27 `94f0edd`: **BREAKING: plugin usage text moves out of the system
+  prompt.** 13 plugins with tools no longer add a system prompt section:
+  background, chrome-cdp, computer-use, diff-view, fetch, intercom, prompts,
+  schedule, speak, sub-agents, tasks, web-search and agent-cloud. Their
+  facts are in their own tool and param descriptions (500 chars or less
+  each), or they are gone as a copy of a tool text. The system prompt is
+  about 7,600 tokens smaller here (31,412 to 23,813 in the in-repo
+  estimate), and the tool text about 700 tokens larger. A live A/B probe
+  (12 scenarios, 4 of them safety, 5 runs each) gives 12 of 12 OK against
+  the old main. The prompt cache misses one time after the update.
+- 2026-11-27 `94f0edd`: **Shorter system text** for the plugins that keep a
+  section. `ma-skills-plugin`: the catalog has one heading for each root
+  and `- name: desc` rows clipped to 120 chars (19.4 KB to 9 KB on a host
+  with 64 skills), no broken or shadowed rows (`Skill` with `list` shows
+  them). `ma-memory-plugin`: `PROMPT.md` is gone, the save rules are in the
+  `MemoryTool` params, the entries stay. `ma-ask-mode-plugin`: 4 short
+  sentences that apply only while the mode is active (no claim that the
+  model "can only read"), and `refusalHint` has the diff rule.
+  `ma-env-info-plugin`: `plugin_dir`, `date_iso`, `term_cols`, `term_lines`
+  and `model` are gone. `ma-agent-identity-plugin`, `ma-emit-output-plugin`
+  and `ma-file-lock-plugin` (1 shell-write rule stays): STE rewrites.
+- 2026-11-27 `94f0edd`: **Tool text facts.** `Task` says that most operations
+  give the board (start, done and status give only the OK line).
+  `ma-agent-cloud`: the "stub transport" text is gone (the transport uses
+  graphql-ws), and its `PROMPT.md` is now `README.md`. `WebSearch`: a
+  missing or wrong API key tells the user to set the key.
+- 2026-11-27 `94f0edd`: **STE budget raise** (`tests/ste/tool-budget.ts`): a
+  RAISES row with a reason for each tool that grew, because facts moved
+  from the system prompt into the tool text. The pending dictionary debt
+  shrinks from 743 to 607 words.
 - 2026-11-27: **STE budget raise** (`tests/ste/tool-budget.ts`): ChromeCDP
   340 to 360 words, Fetch 396 to 417 words, and the tool block 6842 to
   6884 words, for the new attachment text.
@@ -82,6 +126,12 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Removed
 
+- 2026-11-27 `94f0edd`: **Prompt fragments and files with no use.** The tasks
+  `planning` fragment (`handlers/planning_fragment.ts`,
+  `prompts/planning.md`, `prompts/results-compact.md`,
+  `prompts/results-full.md`), the prompts `prompts-catalog` fragment, and
+  the reflection-checkpoint `loop_safety` fragment with its 5 prompt files.
+  Their facts are in the tool text, or in the checkpoint attachment.
 - 2026-11-21: **BREAKING: remove the tool-output-conventions system-prompt part.**
   Removed: the tool-output-conventions system-prompt part, its slot, the
   `--system-tool-output-conventions` / `-file` / `--no-` flags, the env vars
@@ -310,6 +360,11 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-27 `98c8e0a`: **The per golden removals test failed on main after
+  the prompt diet.** It pinned 798 removals against the merge base, a count
+  that is true only on a branch. The count now comes from the list, and a
+  new test fails on a listed block that is not in the merge base.
+  `BLOCK_REMOVALS` and `BLOCK_TRIMS` are empty again.
 - 2026-11-27 `6e5cf6f`: **tool_result images reach the model in every
   encoder that takes only text in a tool output.** 8 encoders call core
   `hoistToolResultMedia` (`@minimal-agent/core/plugin-api/llm/tool-result-media`)
