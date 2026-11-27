@@ -5,8 +5,8 @@
  * @module sub-agents/lib/profile-io
  */
 
-import { chmodSync, renameSync, rmSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { chmodSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
 
 import type { StartupProfile } from "./host-types.ts"
 
@@ -22,6 +22,7 @@ export function profilePathFor(sessionsDir: string, sid: string): string {
  * IO error the tmp file is removed and the error is thrown.
  */
 export function writeStartupProfile(path: string, profile: StartupProfile): void {
+  mkdirSync(dirname(path), { recursive: true })
   const tmp = `${path}.${process.pid}.tmp`
   try {
     writeFileSync(tmp, `${JSON.stringify(profile, null, 2)}\n`, { mode: 0o600 })

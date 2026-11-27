@@ -59,33 +59,31 @@ const TAIL = [
 
 const upTo = (lines: readonly string[]): string => lines.join("\n")
 
-describe("lane view of a wave (current behavior, D12)", () => {
-  it("while the 3 calls run: phase tool, the inFlight slot shows the newest started call", () => {
-    const p = streamProgress(parseStream(upTo(HEAD)))
+describe("lane view of a concurrent tool wave", () => {
+  it("while the 3 calls run: phase tool, inFlightCount is 3 and inFlight shows newest call", () => {
+    const s = parseStream(upTo(HEAD))
+    const p = streamProgress(s)
     expect(p).toMatchObject({ tools: 3, phase: "tool", lastTool: "Fetch", toolSince: 2000 })
-    // One slot: the label of call 3 only, not "3 running".
+    expect(s.inFlightCount).toBe(3)
     expect(p?.lastActivity).toContain("example.test/3")
   })
 
-  it("after the result of call 1: phase waiting, while calls 2 and 3 have no result", () => {
+  it("after the result of call 1: stays phase tool while calls 2 and 3 remain in flight", () => {
     const s = parseStream(upTo([...HEAD, ...RESULTS.slice(0, 1)]))
     const p = streamProgress(s)
-    // Current behavior: one tool_result sets the phase to waiting, while
-    // calls 2 and 3 have no result yet. The inFlight slot stays on call 3
-    // (its id is not call 1), so toolSince stays, but the activity text is
-    // no longer the running call.
-    expect(p?.phase).toBe("waiting")
+    expect(p?.phase).toBe("tool")
+    expect(s.inFlightCount).toBe(2)
     expect(p?.toolSince).toBe(2000)
     expect(s.inFlight?.id).toBe("toolu_3")
   })
 
-  it("after all 3 results: the slot is empty and toolMs is the sum of the runs", () => {
+  it("after all 3 results: the slot is empty and toolMs merges overlapping wave wall time", () => {
     const s = parseStream(upTo([...HEAD, ...RESULTS]))
     expect(s.inFlight).toBeUndefined()
+    expect(s.inFlightCount).toBe(0)
     expect(s.phase).toBe("waiting")
-    // durationMs of each call adds up (5000 ms), more than the wall time of
-    // the wave (3000 ms).
-    expect(s.toolMs).toBe(5000)
+    // All 3 started at ts=2000 and ended by ts=5002 (3002 ms wall span, not 5000 ms sum).
+    expect(s.toolMs).toBe(3002)
     expect(s.toolErrors).toBe(0)
   })
 

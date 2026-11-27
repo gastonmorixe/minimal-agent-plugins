@@ -15,7 +15,8 @@
  * @module sub-agents/lib/store
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { randomBytes } from "node:crypto"
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
@@ -115,10 +116,21 @@ export class SubagentStore {
     return this.all().find((r) => r.id === id) ?? null
   }
 
-  /** Replace the entire fleet (used by the supervisor after a tick). */
+  /** Replace the entire fleet atomically via temp file + rename. */
   replaceAll(records: readonly SubagentRecord[]): void {
     mkdirSync(dirname(this.path), { recursive: true })
-    writeFileSync(this.path, serializeRecords(records))
+    const tmp = `${this.path}.tmp.${process.pid}.${randomBytes(6).toString("hex")}`
+    try {
+      writeFileSync(tmp, serializeRecords(records))
+      renameSync(tmp, this.path)
+    } catch (err) {
+      try {
+        unlinkSync(tmp)
+      } catch {
+        // best-effort cleanup
+      }
+      throw err
+    }
   }
 
   /**

@@ -7,6 +7,7 @@
  */
 
 import { supervisorDepsFromCtx } from "../lib/handler-deps.ts"
+import { noteHeartbeatTick } from "../lib/headless-supervisor.ts"
 import type { LiveAreaHandlerContext } from "../lib/host-types.ts"
 import { runSupervisor } from "../lib/supervisor-shell.ts"
 
@@ -18,5 +19,6 @@ export default async function heartbeat(ctx: LiveAreaHandlerContext): Promise<st
   if (ctx.env.MINIMAL_AGENT_DISABLE_SUBAGENTS === "1") return null
   const deps = supervisorDepsFromCtx(ctx)
   if (!deps) return null
+  noteHeartbeatTick(deps.leadSid)
   return runSupervisor(deps)
 }

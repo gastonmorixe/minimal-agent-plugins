@@ -390,6 +390,13 @@ export interface SubagentRecord {
    * worker with its own id. Absent on a worker of an older build.
    */
   readonly controlKeyId?: string
+  /**
+   * True when the supervisor finalized this worker (`done` or `incomplete`)
+   * and the lead has not yet pulled it with `SubAgentsAgentResult`. Keeps
+   * `SubagentsAttachment` visible even after the last active worker exits so a
+   * lost completion digest cannot leave the lead blind.
+   */
+  readonly uncollected?: boolean
 }
 
 /** Per-status counts across a fleet. */

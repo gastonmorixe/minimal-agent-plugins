@@ -11,12 +11,36 @@
  * @module sub-agents/lib/supervisor-shell
  */
 
+import { drainUnreadMessages, mailboxPathFor } from "./mailbox.ts"
 import { buildPresenceRows, writeLeadPresence } from "./presence.ts"
 import { type ProbeDeps, probeWorker, streamPathFor } from "./spawn.ts"
 import { type SubagentStore } from "./store.ts"
 import { type Effect, supervisorTick, type WorkerProbe } from "./supervisor.ts"
 import { isActive } from "./types.ts"
 import { renderWidget } from "./widget.ts"
+
+/** Default flush window (ms) before killing a pid that already wrote its result sentinel. */
+export const SENTINEL_FLUSH_MS = 500
+
+/**
+ * Wrap a synchronous `kill` into a delayed stopper that gives a completed
+ * worker a brief flush window without keeping the lead event loop alive.
+ */
+export function delayedKill(kill: (pid: number) => void): (pid: number, delayMs: number) => void {
+  return (pid, delayMs) => {
+    const timer = setTimeout(
+      () => {
+        try {
+          kill(pid)
+        } catch {
+          // pid already gone
+        }
+      },
+      Math.max(0, delayMs),
+    )
+    timer.unref?.()
+  }
+}
 
 /** Injected collaborators for {@link runSupervisor}. */
 export interface SupervisorDeps {
@@ -26,6 +50,13 @@ export interface SupervisorDeps {
   readonly emit: (channel: string, payload?: unknown) => void
   /** Kill a pid (SIGKILL: the grace ended, or the worker already reported). */
   readonly kill: (pid: number) => void
+  /**
+   * Optional graceful/delayed stopper used only when `reason === "result sentinel written"`,
+   * letting the finished worker flush before SIGKILL. Falls back to `kill` when omitted.
+   */
+  readonly stopAfterFlush?: (pid: number, delayMs: number) => void
+  /** Flush delay (ms) passed to {@link stopAfterFlush}. Default {@link SENTINEL_FLUSH_MS}. */
+  readonly sentinelFlushMs?: number
   /**
    * Send SIGTERM to a pid at a limit, so the worker can report before the
    * grace ends. Optional: without it, no SIGTERM goes out, and the SIGKILL at
@@ -100,6 +131,24 @@ export function runSupervisor(deps: SupervisorDeps): string | null {
   if (out.changed) deps.store.replaceAll(out.records)
   for (const e of out.effects) runEffect(e, deps)
 
+  // Surface urgent worker-to-lead mailbox messages (blocker / interrupt) so an
+  // idle lead wakes up instead of waiting for the worker's deadline.
+  try {
+    const mailPath = mailboxPathFor(deps.sessionsDir, deps.leadSid)
+    const urgent = drainUnreadMessages(mailPath, "lead").filter(
+      (m) => m.kind === "blocker" || m.kind === "interrupt",
+    )
+    if (urgent.length > 0) {
+      const lines = urgent.map((m, i) => `${i + 1}. [${m.from} ${m.kind}] ${m.body}`).join("\n")
+      deps.emit("prompt.inject", {
+        text: `Sub-agent mailbox alert:\n${lines}`,
+        source: "subagents:mailbox",
+      })
+    }
+  } catch {
+    // best-effort
+  }
+
   // Publish presence (the agent-mesh): the lead reports itself + its fleet.
   // Best-effort — a write failure must never break the supervisor.
   if (deps.presenceDir) {
@@ -146,7 +195,11 @@ function runEffect(e: Effect, deps: SupervisorDeps): void {
       break
     case "stop":
       try {
-        deps.kill(e.pid)
+        if (e.reason === "result sentinel written" && deps.stopAfterFlush) {
+          deps.stopAfterFlush(e.pid, deps.sentinelFlushMs ?? SENTINEL_FLUSH_MS)
+        } else {
+          deps.kill(e.pid)
+        }
       } catch {
         // pid already gone — the next tick reaps it.
       }

@@ -131,6 +131,10 @@ export interface BudgetFacts {
   readonly turnsUsed: number
   /** The turn limit, if set. */
   readonly maxTurns?: number
+  /** Generated output tokens so far, if known. */
+  readonly outputTokens?: number
+  /** The token limit, if set. */
+  readonly maxTokens?: number
 }
 
 /**
@@ -141,13 +145,27 @@ export interface BudgetFacts {
  */
 export function budgetLevel(f: BudgetFacts): BudgetLevel | null {
   const frac = f.deadlineMs > 0 ? f.elapsedMs / f.deadlineMs : 0
+  const tokFrac =
+    positive(f.maxTokens) && typeof f.outputTokens === "number" && f.outputTokens > 0
+      ? f.outputTokens / f.maxTokens
+      : 0
   const left = positive(f.maxTurns) ? turnsLeftOf(f.turnsUsed, f.maxTurns) : undefined
   const max = positive(f.maxTurns) ? f.maxTurns : 0
   // A small turn budget gives no turn-based `final` (maxTurns <= 2), and the
   // turn-based `warn` comes at most at half of the budget (no noise at turn 1).
-  if (frac >= FINAL_TIME_FRACTION || (left !== undefined && left <= 1 && max > 2)) return "final"
+  if (
+    frac >= FINAL_TIME_FRACTION ||
+    tokFrac >= FINAL_TIME_FRACTION ||
+    (left !== undefined && left <= 1 && max > 2)
+  )
+    return "final"
   const warnTurns = Math.min(Math.max(3, Math.ceil(max * 0.1)), Math.floor(max / 2))
-  if (frac >= WARN_TIME_FRACTION || (left !== undefined && left <= warnTurns)) return "warn"
+  if (
+    frac >= WARN_TIME_FRACTION ||
+    tokFrac >= WARN_TIME_FRACTION ||
+    (left !== undefined && left <= warnTurns)
+  )
+    return "warn"
   return null
 }
 
@@ -178,6 +196,7 @@ export function nextBudgetWarning(
   nowMs: number,
   turnsUsed: number,
   latch: BudgetLatch,
+  outputTokens?: number,
 ): BudgetWarning | null {
   const read = readBudgetEnv(env)
   if (!read) return null
@@ -189,6 +208,8 @@ export function nextBudgetWarning(
     deadlineMs,
     turnsUsed,
     ...(budget.maxTurns !== undefined ? { maxTurns: budget.maxTurns } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(budget.maxTokens !== undefined ? { maxTokens: budget.maxTokens } : {}),
   })
   if (!level) return null
   if (latch.last && RANK[latch.last] >= RANK[level]) return null

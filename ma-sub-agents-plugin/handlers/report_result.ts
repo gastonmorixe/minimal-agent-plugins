@@ -20,6 +20,12 @@ import { dirname } from "node:path"
 
 import type { ToolAvailability, TUIContext, TUIResult } from "../lib/host-types.ts"
 import {
+  drainUnreadMessages,
+  formatMailboxPush,
+  isSteeringMessage,
+  mailboxPathFor,
+} from "../lib/mailbox.ts"
+import {
   buildDigest,
   checkDeliverables,
   type Deliverable,
@@ -29,6 +35,7 @@ import {
   serializeDigest,
 } from "../lib/report.ts"
 import { ENV_EXPECT_ARTIFACTS, ENV_RESULT_PATH } from "../lib/spawn.ts"
+import { ENV_ID, ENV_LEAD } from "../lib/spawn-plan.ts"
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
@@ -62,13 +69,34 @@ function writeAtomic(path: string, text: string): void {
   }
 }
 
-/** True when the path exists as a symbolic link (lstat does not follow it). */
+/** macOS root symlinks (`/var`, `/tmp`, `/etc` pointing under `/private`). */
+const DARWIN_ROOT_SYMLINKS = new Set(["/tmp", "/var", "/etc"])
+
+/**
+ * True when `path` itself OR an ancestor directory segment (excluding macOS
+ * sealed root symlinks `/var`, `/tmp`, `/etc` when they are non-leaf ancestors)
+ * is a symbolic link.
+ */
 function isSymlink(path: string): boolean {
   try {
-    return lstatSync(path).isSymbolicLink()
+    if (lstatSync(path).isSymbolicLink()) return true
   } catch {
-    return false
+    // leaf may not exist yet; still check existing ancestors below
   }
+  let cur = dirname(path)
+  while (true) {
+    if (!(process.platform === "darwin" && DARWIN_ROOT_SYMLINKS.has(cur))) {
+      try {
+        if (lstatSync(cur).isSymbolicLink()) return true
+      } catch {
+        // non-existent parent dir will be created
+      }
+    }
+    const parent = dirname(cur)
+    if (parent === cur) break
+    cur = parent
+  }
+  return false
 }
 
 /**
@@ -151,6 +179,23 @@ export default async function reportResult(ctx: TUIContext): Promise<TUIResult> 
         "This session is not a sub-agent (no result path in the environment), so there is nothing to report. " +
         "If you are the lead, reply normally. To read the result of a finished sub-agent, use SubAgentsAgentResult.",
       is_error: true,
+    }
+  }
+
+  // Pre-exit steering check: if the lead posted an unread steering/interrupt
+  // message while this worker was preparing its final turn, deliver it now and
+  // hold the sentinel so the worker can apply the update before finishing.
+  const leadSid = ctx.env[ENV_LEAD]?.trim()
+  const workerId = ctx.env[ENV_ID]?.trim()
+  if (leadSid && workerId && !parsed.value.incomplete) {
+    const mailPath = mailboxPathFor(dirname(resultPath), leadSid)
+    const unread = drainUnreadMessages(mailPath, workerId).filter(isSteeringMessage)
+    if (unread.length > 0) {
+      return fail(
+        `${formatMailboxPush(workerId, unread)}\n\n` +
+          "No result was recorded yet because a new steering message arrived. " +
+          "Apply the update, then call SubAgentsReportResult again.",
+      )
     }
   }
 

@@ -10,12 +10,15 @@ import { existsSync, readFileSync } from "node:fs"
 
 import { statusDetail } from "../lib/content.ts"
 import { sessionsDirFromCtx, storeFromCtx } from "../lib/handler-deps.ts"
-import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import type { ToolAvailability, TUIContext, TUIResult } from "../lib/host-types.ts"
 import { transcriptTail } from "../lib/output.ts"
-import { streamPathFor } from "../lib/spawn.ts"
+import { ENV_RESULT_PATH, streamPathFor } from "../lib/spawn.ts"
 import { activityLines, parseStream } from "../lib/stream.ts"
 import { ANSI, color, GLYPHS } from "../lib/style.ts"
 import { parseIdArg } from "../lib/validate.ts"
+
+/** Lead-only tool: hide from leaf sub-agents. */
+export const available: ToolAvailability = (ctx) => !ctx.env[ENV_RESULT_PATH]?.trim()
 
 /**
  * Tool handler for `AgentOutput`: tails a worker's recent activity (latest

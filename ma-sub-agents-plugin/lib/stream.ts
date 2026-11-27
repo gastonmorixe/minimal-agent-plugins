@@ -101,7 +101,12 @@ export interface StreamState {
   /** Reasoning tokens summed over turns (absent until a turn reports any). */
   thinkingTokens?: number
   phase: StreamPhase
+  /** Newest still-active in-flight tool call, or `undefined` when idle. */
   inFlight?: InFlightTool
+  /** Count of currently in-flight tool calls. */
+  inFlightCount: number
+  /** Active in-flight tool calls keyed by call id (insertion order). */
+  inFlightTools: Map<string, InFlightTool>
   lastTool?: string
   /** A one-line digest of the newest activity. */
   lastActivity?: string
@@ -125,6 +130,59 @@ export const ACTIVITY_CAP = 40
 /** How much live text (chars) the state keeps. */
 const LIVE_TEXT_CAP = 240
 
+interface WaveTracker {
+  baseToolMs: number
+  intervals: Array<[number, number]>
+}
+
+const waveTrackers = new WeakMap<StreamState, WaveTracker>()
+
+function waveTrackerFor(s: StreamState): WaveTracker {
+  let tracker = waveTrackers.get(s)
+  if (!tracker) {
+    tracker = { baseToolMs: s.toolMs, intervals: [] }
+    waveTrackers.set(s, tracker)
+  }
+  return tracker
+}
+
+function mergedIntervalMs(intervals: readonly [number, number][]): number {
+  if (intervals.length === 0) return 0
+  const sorted = [...intervals].sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  let total = 0
+  let curStart = sorted[0]![0]
+  let curEnd = sorted[0]![1]
+  for (let i = 1; i < sorted.length; i++) {
+    const [start, end] = sorted[i]!
+    if (start <= curEnd) {
+      if (end > curEnd) curEnd = end
+    } else {
+      total += curEnd - curStart
+      curStart = start
+      curEnd = end
+    }
+  }
+  return total + (curEnd - curStart)
+}
+
+function syncInFlightSummary(s: StreamState): void {
+  s.inFlightCount = s.inFlightTools.size
+  let newest: InFlightTool | undefined
+  for (const tool of s.inFlightTools.values()) newest = tool
+  s.inFlight = newest
+}
+
+function clearInFlight(s: StreamState): void {
+  const tracker = waveTrackers.get(s)
+  if (tracker) {
+    tracker.baseToolMs = s.toolMs
+    tracker.intervals = []
+  }
+  s.inFlightTools.clear()
+  s.inFlight = undefined
+  s.inFlightCount = 0
+}
+
 /** A fresh, empty state. */
 export function createStreamState(): StreamState {
   return {
@@ -136,6 +194,8 @@ export function createStreamState(): StreamState {
     contextTokens: 0,
     outputTokens: 0,
     phase: "starting",
+    inFlightCount: 0,
+    inFlightTools: new Map(),
     liveText: "",
     turnTexts: [],
     activity: [],
@@ -255,11 +315,18 @@ export function applyStreamLine(s: StreamState, e: MaybeLine): void {
       if (e.itemType === "tool_use") {
         const name = e.toolName ?? e.name ?? "tool"
         const label = toolLabel(name, e.input)
+        const id = e.id ?? `__anon_${s.tools}`
         s.tools++
         s.lastTool = name
         s.lastActivity = label
         s.phase = "tool"
-        s.inFlight = { id: e.id ?? "", name, label, since: at }
+        if (s.inFlightTools.size === 0) {
+          const tracker = waveTrackerFor(s)
+          tracker.baseToolMs = s.toolMs
+          tracker.intervals = []
+        }
+        s.inFlightTools.set(id, { id: e.id ?? "", name, label, since: at })
+        syncInFlightSummary(s)
         pushActivity(s, { ts: at, kind: "tool", text: label })
       }
       break
@@ -277,14 +344,33 @@ export function applyStreamLine(s: StreamState, e: MaybeLine): void {
       }
       break
     case "tool_result": {
-      s.toolMs += num(e.durationMs)
+      const dur = num(e.durationMs)
       if (e.isError === true) {
         s.toolErrors++
         const what = `${e.name ?? "tool"} failed${e.outputSummary ? `: ${oneLine(e.outputSummary, 140)}` : ""}`
         pushActivity(s, { ts: at, kind: "tool_error", text: what })
       }
-      if (s.inFlight && (e.id === undefined || e.id === s.inFlight.id)) s.inFlight = undefined
-      s.phase = "waiting"
+      let finished: InFlightTool | undefined
+      if (e.id !== undefined && s.inFlightTools.has(e.id)) {
+        finished = s.inFlightTools.get(e.id)
+        s.inFlightTools.delete(e.id)
+      } else if (e.id === undefined && s.inFlightTools.size > 0) {
+        const firstKey = s.inFlightTools.keys().next().value
+        if (firstKey !== undefined) {
+          finished = s.inFlightTools.get(firstKey)
+          s.inFlightTools.delete(firstKey)
+        }
+      }
+      const tracker = waveTrackerFor(s)
+      if (finished && finished.since > 0 && at >= finished.since && dur > 0) {
+        tracker.intervals.push([finished.since, Math.max(finished.since + dur, at)])
+        s.toolMs = tracker.baseToolMs + mergedIntervalMs(tracker.intervals)
+      } else {
+        s.toolMs += dur
+        tracker.baseToolMs = s.toolMs
+      }
+      syncInFlightSummary(s)
+      s.phase = s.inFlightTools.size > 0 ? "tool" : "waiting"
       break
     }
     case "turn_completed": {
@@ -294,6 +380,7 @@ export function applyStreamLine(s: StreamState, e: MaybeLine): void {
       if (typeof u.reasoningTokens === "number") {
         s.thinkingTokens = (s.thinkingTokens ?? 0) + u.reasoningTokens
       }
+      clearInFlight(s)
       s.phase = "waiting"
       break
     }
@@ -320,7 +407,7 @@ export function applyStreamLine(s: StreamState, e: MaybeLine): void {
     case "run_finished":
       if (typeof e.outcome === "string") s.outcome = e.outcome
       s.phase = "finished"
-      s.inFlight = undefined
+      clearInFlight(s)
       break
     case "result": {
       const u = e.usage ?? {}
@@ -337,7 +424,7 @@ export function applyStreamLine(s: StreamState, e: MaybeLine): void {
       }
       if (s.outcome === undefined) s.outcome = outcome
       s.phase = "finished"
-      s.inFlight = undefined
+      clearInFlight(s)
       break
     }
     default:
@@ -388,7 +475,11 @@ export function parseStream(text: string): StreamState {
  */
 export function streamEnded(s: StreamState): boolean {
   if (s.result !== undefined) return true
-  return s.outcome === "failed" || s.outcome === "aborted"
+  return (
+    s.outcome === "failed" ||
+    s.outcome === "aborted" ||
+    (s.outcome === "waiting" && s.error !== undefined)
+  )
 }
 
 /**
@@ -475,10 +566,22 @@ export interface StreamReaderDeps {
   readonly size: (path: string) => number | null
   /** Read `length` bytes at `offset` as UTF-8. */
   readonly readRange: (path: string, offset: number, length: number) => string
+  /** Optional raw-byte reader so newline byte offsets never drift on invalid UTF-8. */
+  readonly readBytes?: (path: string, offset: number, length: number) => Buffer
 }
 
 /** Production deps: `statSync` + a positioned `readSync`. */
 export function realStreamReaderDeps(): StreamReaderDeps {
+  const readBytes = (p: string, offset: number, length: number): Buffer => {
+    const fd = openSync(p, "r")
+    try {
+      const buf = Buffer.alloc(length)
+      const n = readSync(fd, buf, 0, length, offset)
+      return buf.subarray(0, n)
+    } finally {
+      closeSync(fd)
+    }
+  }
   return {
     size: (p) => {
       try {
@@ -487,16 +590,8 @@ export function realStreamReaderDeps(): StreamReaderDeps {
         return null
       }
     },
-    readRange: (p, offset, length) => {
-      const fd = openSync(p, "r")
-      try {
-        const buf = Buffer.alloc(length)
-        const n = readSync(fd, buf, 0, length, offset)
-        return buf.subarray(0, n).toString("utf-8")
-      } finally {
-        closeSync(fd)
-      }
-    },
+    readBytes,
+    readRange: (p, offset, length) => readBytes(p, offset, length).toString("utf-8"),
   }
 }
 
@@ -511,27 +606,81 @@ const MAX_READ_BYTES = 4 * 1024 * 1024
  *
  * A UTF-8 character split across two reads would decode as U+FFFD, so the
  * reader only consumes up to the last `\n` byte it saw and re-reads the tail.
+ * If a single line exceeds {@link MAX_READ_BYTES}, the reader skips past that
+ * oversized line instead of wedging forever.
  */
 export function streamReader(
   deps: StreamReaderDeps = realStreamReaderDeps(),
 ): (path: string) => StreamState | undefined {
-  const cache = new Map<string, { offset: number; state: StreamState }>()
+  const cache = new Map<
+    string,
+    { offset: number; state: StreamState; skippingOversized: boolean }
+  >()
   return (path) => {
     const size = deps.size(path)
     if (size === null) return cache.get(path)?.state
     let entry = cache.get(path)
     if (!entry || size < entry.offset) {
-      entry = { offset: 0, state: createStreamState() }
+      entry = { offset: 0, state: createStreamState(), skippingOversized: false }
       cache.set(path, entry)
     }
     if (size > entry.offset) {
       const length = Math.min(size - entry.offset, MAX_READ_BYTES)
-      const chunk = deps.readRange(path, entry.offset, length)
-      const cut = chunk.lastIndexOf("\n")
-      if (cut >= 0) {
-        const whole = chunk.slice(0, cut + 1)
-        feedStream(entry.state, whole)
-        entry.offset += Buffer.byteLength(whole, "utf-8")
+      if (deps.readBytes) {
+        const buf = deps.readBytes(path, entry.offset, length)
+        if (entry.skippingOversized) {
+          const nl = buf.indexOf(0x0a)
+          if (nl >= 0) {
+            entry.offset += nl + 1
+            entry.skippingOversized = false
+            const rest = buf.subarray(nl + 1)
+            const lastNl = rest.lastIndexOf(0x0a)
+            if (lastNl >= 0) {
+              feedStream(entry.state, rest.subarray(0, lastNl + 1).toString("utf-8"))
+              entry.offset += lastNl + 1
+            }
+          } else if (buf.length === MAX_READ_BYTES) {
+            entry.offset += buf.length
+          }
+        } else {
+          const cut = buf.lastIndexOf(0x0a)
+          if (cut >= 0) {
+            feedStream(entry.state, buf.subarray(0, cut + 1).toString("utf-8"))
+            entry.offset += cut + 1
+          } else if (buf.length === MAX_READ_BYTES) {
+            // Single NDJSON line exceeds MAX_READ_BYTES; skip past it so offset never wedges.
+            entry.offset += buf.length
+            entry.skippingOversized = true
+          }
+        }
+      } else {
+        const chunk = deps.readRange(path, entry.offset, length)
+        if (entry.skippingOversized) {
+          const nl = chunk.indexOf("\n")
+          if (nl >= 0) {
+            entry.offset += Buffer.byteLength(chunk.slice(0, nl + 1), "utf-8")
+            entry.skippingOversized = false
+            const rest = chunk.slice(nl + 1)
+            const lastNl = rest.lastIndexOf("\n")
+            if (lastNl >= 0) {
+              const whole = rest.slice(0, lastNl + 1)
+              feedStream(entry.state, whole)
+              entry.offset += Buffer.byteLength(whole, "utf-8")
+            }
+          } else if (length === MAX_READ_BYTES) {
+            entry.offset += length
+          }
+        } else {
+          const cut = chunk.lastIndexOf("\n")
+          if (cut >= 0) {
+            const whole = chunk.slice(0, cut + 1)
+            feedStream(entry.state, whole)
+            entry.offset += Buffer.byteLength(whole, "utf-8")
+          } else if (length === MAX_READ_BYTES) {
+            entry.offset += length
+            entry.skippingOversized = true
+          }
+        }
       }
     }
     return entry.state

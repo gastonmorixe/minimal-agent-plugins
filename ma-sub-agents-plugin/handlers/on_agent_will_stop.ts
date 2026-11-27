@@ -13,7 +13,10 @@
  * @module sub-agents/handlers/on_agent_will_stop
  */
 
+import { clearProbeDepsCache } from "../lib/handler-deps.ts"
+import { stopHeadlessSupervisor } from "../lib/headless-supervisor.ts"
 import type { HookHandlerContext } from "../lib/host-types.ts"
+import { presenceDir, removeLeadPresence } from "../lib/presence.ts"
 import { resolveSessionsDir } from "../lib/runtime.ts"
 import { stopAllAgents } from "../lib/service.ts"
 import { SubagentStore } from "../lib/store.ts"
@@ -32,7 +35,13 @@ const handler = (_payload: unknown, ctx: HookHandlerContext): void => {
       }
     },
     now: () => new Date(),
+    ...(ctx.emit ? { emit: ctx.emit } : {}),
   })
+  if (ctx.env.MINIMAL_AGENT_SUBAGENT_NO_PRESENCE !== "1") {
+    removeLeadPresence(presenceDir(ctx.env), leadSid)
+  }
+  clearProbeDepsCache(leadSid)
+  stopHeadlessSupervisor(leadSid)
 }
 
 export default handler

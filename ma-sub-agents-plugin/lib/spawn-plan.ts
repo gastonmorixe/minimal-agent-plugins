@@ -120,6 +120,12 @@ export interface SpawnInput {
   readonly mode: string
   /** Context isolation tier. */
   readonly isolation: Isolation
+  /**
+   * Optional existing child session id to resume (`--resume <resumeChildSid>`).
+   * Used by `resumeAgent` to continue a terminal worker with its full prior
+   * conversation and prompt cache instead of spawning a cold child.
+   */
+  readonly resumeChildSid?: string
   /** Specialization preamble (the worker definition body), folded into the prompt. */
   readonly systemPreamble?: string
   /**
@@ -237,7 +243,9 @@ export function buildSpawnPlan(input: SpawnInput): Result<SpawnPlan> {
   // context AND shares its prompt cache, with no extra core machinery. `fresh`
   // opens a brand-new session with only the task. Both pin `--session-id` so
   // the supervisor knows the sid up front.
-  if (input.isolation === "fork") {
+  if (input.resumeChildSid && input.resumeChildSid.trim().length > 0) {
+    flags.push("--resume", input.resumeChildSid.trim())
+  } else if (input.isolation === "fork") {
     flags.push("--resume", input.leadSid)
   }
   flags.push("--session-id", input.childSid, "--no-header", "--mode", input.mode)

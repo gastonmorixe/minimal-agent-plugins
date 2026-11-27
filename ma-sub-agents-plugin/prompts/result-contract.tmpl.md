@@ -1,9 +1,5 @@
-The lead requires these files. Each one must exist and not be empty at the end of your work:
+The lead requires these files (each must exist and not be empty):
 
 %%paths%%
 
-Deliver each required file through `SubAgentsReportResult.deliverables`. Give the full file text, and the tool writes the file for you:
-
-   "deliverables": [{ "path": "<one required path>", "content": "<full file text>" }]
-
-You can do this in every mode, also read-only. If you can edit files, you can write a required file first. Then list it in `artifacts` only. `SubAgentsReportResult` returns an error and records nothing while a required file is missing. If you cannot make the file, set `"incomplete": true` and give the reason.
+Give each file in `SubAgentsReportResult.deliverables` as `[{"path":"<required path>","content":"<full text>"}]` (works in read-only mode too). If you can edit files, you can write the file first and list it in `artifacts`. `SubAgentsReportResult` returns an error while a required file is missing unless `"incomplete": true`.

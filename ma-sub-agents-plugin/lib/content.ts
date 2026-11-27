@@ -15,6 +15,11 @@ import {
   type SubagentStatus,
 } from "./types.ts"
 
+function clip(text: string, max: number): string {
+  const flat = text.replace(/\s+/g, " ").trim()
+  return flat.length <= max ? flat : `${flat.slice(0, max - 1).trimEnd()}…`
+}
+
 /** `· 4 turns` / `· 2 failed` / `· 1m12`, the stream facts a status line adds. */
 function streamFacts(c: { turns?: number; toolErrors?: number; durationMs?: number }): string {
   const parts: string[] = []
@@ -108,9 +113,8 @@ export function statusDetail(r: SubagentRecord, nowMs: number): string {
     `status: ${statusText(r.status, nowMs)}`,
     `session: ${r.sid}`,
     ...(r.inherit ? [r.inherit] : []),
-    `task: ${r.task}`,
+    `task: ${clip(r.task, 160)}`,
   ]
-  if (r.status.kind === "done") lines.push(`result: ${r.status.result.short}`)
   return lines.join("\n")
 }
 

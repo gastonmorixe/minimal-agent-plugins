@@ -14,7 +14,16 @@
  * @module sub-agents/lib/presence
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { randomBytes } from "node:crypto"
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { join } from "node:path"
 
 import { resolveAgentHome } from "@minimal-agent/core/plugin-api/utils/agent-paths"
@@ -181,14 +190,45 @@ export function liveness(
 // IO shell
 // ---------------------------------------------------------------------------
 
-/** Rewrite a lead's presence file (small; cheap to rewrite each tick). */
+const lastWrittenPresence = new Map<string, string>()
+
+/**
+ * Atomically rewrite a lead's presence file (temp + rename). Caches the last
+ * written content per path so identical 1s ticks perform zero disk writes.
+ */
 export function writeLeadPresence(
   dir: string,
   leadSid: string,
   rows: readonly PresenceRow[],
 ): void {
+  const target = join(dir, `${leadSid}.jsonl`)
+  const text = serializeRows(rows)
+  if (lastWrittenPresence.get(target) === text) return
   mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, `${leadSid}.jsonl`), serializeRows(rows))
+  const tmp = `${target}.tmp.${process.pid}.${randomBytes(6).toString("hex")}`
+  try {
+    writeFileSync(tmp, text)
+    renameSync(tmp, target)
+    lastWrittenPresence.set(target, text)
+  } catch (err) {
+    try {
+      unlinkSync(tmp)
+    } catch {
+      // best-effort cleanup
+    }
+    throw err
+  }
+}
+
+/** Remove a lead's presence file on exit and drop its cached snapshot. */
+export function removeLeadPresence(dir: string, leadSid: string): void {
+  const target = join(dir, `${leadSid}.jsonl`)
+  lastWrittenPresence.delete(target)
+  try {
+    unlinkSync(target)
+  } catch {
+    // already absent or unreadable
+  }
 }
 
 /** Read + merge the whole mesh (all per-lead files). Empty when absent. */

@@ -5,10 +5,14 @@
  */
 
 import { storeFromCtx } from "../lib/handler-deps.ts"
-import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import type { ToolAvailability, TUIContext, TUIResult } from "../lib/host-types.ts"
 import { renderStopDisplay } from "../lib/render.ts"
 import { stopAgent } from "../lib/service.ts"
+import { ENV_RESULT_PATH } from "../lib/spawn.ts"
 import { parseIdArg } from "../lib/validate.ts"
+
+/** Lead-only tool: hide from leaf sub-agents. */
+export const available: ToolAvailability = (ctx) => !ctx.env[ENV_RESULT_PATH]?.trim()
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined
@@ -31,12 +35,14 @@ export default async function stop(ctx: TUIContext): Promise<TUIResult> {
   if (!store)
     return { kind: "tool_result", content: "StopAgent: no session id available.", is_error: true }
 
+  const emit = (ctx as { emit?: (channel: string, payload?: unknown) => void }).emit
   const r = stopAgent(id, reason, {
     store,
     // SIGKILL so Fetch's (or any other) SIGTERM swallower cannot leave a
     // zombie bun + obscura-worker behind. Pipes close → worker exits.
     kill: (pid) => process.kill(pid, "SIGKILL"),
     now: () => new Date(),
+    ...(emit ? { emit } : {}),
   })
   if (!r.ok) return { kind: "tool_result", content: r.error, is_error: true }
 

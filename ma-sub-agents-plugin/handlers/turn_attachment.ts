@@ -17,6 +17,9 @@
 import type { SidebandApi } from "@minimal-agent/core/plugin-api/types/sideband"
 
 import { SubagentsAttachment } from "../lib/attachment.ts"
+import { createWorkerMailboxDrain, mailboxPathFor } from "../lib/mailbox.ts"
+import { resolveSessionsDir } from "../lib/runtime.ts"
+import { ENV_ID, ENV_LEAD } from "../lib/spawn-plan.ts"
 
 /** Local structural slice of the host's `TurnAttachmentContext`. */
 interface TurnAttachmentContext {
@@ -27,11 +30,27 @@ interface TurnAttachmentContext {
 }
 
 /**
- * Build the fleet digest producer for this session.
- * `SubagentsAttachment` already returns `null` from `toAttachment()`
- * when the sid is missing or no worker is active, so construction is
- * unconditional (mirrors the host's old direct construction).
+ * Build the fleet digest producer (for a lead) or the push mailbox drain (for
+ * a worker).
+ *
+ * Inside a worker (`ENV_LEAD` + `ENV_ID` set), returns a `TurnContentDrain`
+ * (`consumeAll`) so core automatically injects unread steering/handoff mailbox
+ * messages between tool rounds at zero idle token cost.
  */
-export default function makeSubagentsAttachment(ctx: TurnAttachmentContext): SubagentsAttachment {
+export default function makeSubagentsAttachment(
+  ctx: TurnAttachmentContext,
+):
+  | SubagentsAttachment
+  | { toAttachment: () => null; consumeAll: () => { type: "text"; text: string }[] } {
+  const leadSid = process.env[ENV_LEAD]?.trim()
+  const workerId = process.env[ENV_ID]?.trim()
+  if (leadSid && workerId) {
+    const path = mailboxPathFor(resolveSessionsDir(process.env), leadSid)
+    const drain = createWorkerMailboxDrain(path, workerId)
+    return {
+      toAttachment: () => null,
+      consumeAll: drain.consumeAll,
+    }
+  }
   return new SubagentsAttachment(ctx.sessionId, {}, Date.now, ctx.sideband)
 }

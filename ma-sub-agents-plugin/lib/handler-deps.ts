@@ -27,7 +27,14 @@ import {
   resolveTokenBudget,
 } from "./runtime.ts"
 import { type ServiceDeps } from "./service.ts"
-import { realProbeDeps, realSpawnDeps } from "./spawn.ts"
+import {
+  isTrackedExited,
+  type ProbeDeps,
+  realProbeDeps,
+  realSpawnDeps,
+  waitExitOrKill,
+} from "./spawn.ts"
+import { ENV_LEAD } from "./spawn-plan.ts"
 import { SubagentStore } from "./store.ts"
 import { type SupervisorDeps } from "./supervisor-shell.ts"
 import { sessionId } from "./types.ts"
@@ -199,7 +206,9 @@ function makeEffortLevelsForModel(
   const live = ctx.queryModelInfo?.()
   const liveModelId = live?.modelId?.trim() || ctx.agent?.model?.trim() || ""
   const liveLevels = live?.effort?.levels
-  const hasRegistry = Boolean(ctx.host?.models?.find)
+  const leadProvider = resolveLeadProvider(ctx)
+  const models = ctx.host?.models
+  const hasRegistry = Boolean(models?.find || models?.findForProvider)
   // Wire when we have ANY live levels array (including empty = no-effort model)
   // or a registry to consult. Only skip when both are absent.
   if (liveLevels === undefined && !hasRegistry) return undefined
@@ -214,9 +223,11 @@ function makeEffortLevelsForModel(
     if (liveModelId && id === liveModelId && liveLevels) {
       return liveLevels
     }
-    const entry = ctx.host?.models?.find(id) as
-      | { capabilities?: { effort?: { levels?: readonly string[] } } }
-      | undefined
+    const entry = (
+      leadProvider && models?.findForProvider
+        ? (models.findForProvider(id, leadProvider) ?? models.find?.(id))
+        : models?.find?.(id)
+    ) as { capabilities?: { effort?: { levels?: readonly string[] } } } | undefined
     if (!entry) return undefined
     const levels = entry.capabilities?.effort?.levels
     // Registry hit: missing/empty levels → known no support (`[]`), not unknown.
@@ -289,7 +300,7 @@ export function serviceDepsFromCtx(ctx: TUIContext): ServiceDeps | null {
 
 /** A store bound to the lead session (for read-only handlers), or `null`. */
 export function storeFromCtx(ctx: TUIContext): SubagentStore | null {
-  const leadSid = ctx.agent?.sessionId
+  const leadSid = ctx.env[ENV_LEAD]?.trim() || ctx.agent?.sessionId
   if (!leadSid) return null
   return new SubagentStore(leadSid, { dir: resolveSessionsDir(ctx.env) })
 }
@@ -299,6 +310,30 @@ export function sessionsDirFromCtx(ctx: TUIContext): string {
   return resolveSessionsDir(ctx.env)
 }
 
+const probeDepsCache = new Map<string, ProbeDeps>()
+
+function cachedProbeDepsFor(sessionsDir: string, leadSid: string): ProbeDeps {
+  const key = `${sessionsDir}\0${leadSid}`
+  let deps = probeDepsCache.get(key)
+  if (!deps) {
+    deps = realProbeDeps()
+    probeDepsCache.set(key, deps)
+  }
+  return deps
+}
+
+/** Drop cached incremental stream/progress readers for a lead (or all leads). */
+export function clearProbeDepsCache(leadSid?: string): void {
+  if (!leadSid) {
+    probeDepsCache.clear()
+    return
+  }
+  const suffix = `\0${leadSid}`
+  for (const key of probeDepsCache.keys()) {
+    if (key.endsWith(suffix)) probeDepsCache.delete(key)
+  }
+}
+
 /** Build {@link SupervisorDeps} for the heartbeat slot, or `null` when no session id. */
 export function supervisorDepsFromCtx(ctx: LiveAreaHandlerContext): SupervisorDeps | null {
   const leadSid = ctx.agent?.sessionId
@@ -306,17 +341,21 @@ export function supervisorDepsFromCtx(ctx: LiveAreaHandlerContext): SupervisorDe
   const sessionsDir = resolveSessionsDir(ctx.env)
   return {
     store: new SubagentStore(leadSid, { dir: sessionsDir }),
-    probeDeps: realProbeDeps(),
+    probeDeps: cachedProbeDepsFor(sessionsDir, leadSid),
     emit: (channel, payload) => ctx.emit?.(channel, payload),
     // SIGKILL (not SIGTERM): a worker that has used Fetch may have installed
     // signal listeners that swallow SIGTERM. SIGKILL always reaps the bun
     // process; its detached obscura-worker then exits on stdin EOF.
     kill: (pid) => {
+      if (isTrackedExited(pid)) return
       try {
         process.kill(pid, "SIGKILL")
       } catch {
         // already gone
       }
+    },
+    stopAfterFlush: (pid, delayMs) => {
+      void waitExitOrKill(pid, delayMs)
     },
     // SIGTERM at a limit: the worker runs one final turn that calls
     // ReportResult, then exits. The SIGKILL above is the fallback at the grace

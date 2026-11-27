@@ -17,11 +17,13 @@
  * @module sub-agents/handlers/on_agent_did_start
  */
 
+import { startHeadlessSupervisor } from "../lib/headless-supervisor.ts"
 import type { HookHandlerContext } from "../lib/host-types.ts"
 import { startLeadWatchFromEnv } from "../lib/lead-watch.ts"
 
 const handler = (_payload: unknown, ctx: HookHandlerContext): void => {
   startLeadWatchFromEnv(ctx.env)
+  startHeadlessSupervisor(ctx)
 }
 
 export default handler

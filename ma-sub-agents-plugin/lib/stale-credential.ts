@@ -100,19 +100,38 @@ export function nameStaleCredential(failure: string, readLog: () => string | und
 /**
  * The stale credential when a failed worker of this fleet showed that `name`
  * is not stored for `provider`, else `undefined`. An unknown `provider`
- * matches on the name only.
+ * matches on the name only. If a later worker succeeded (`done`) without
+ * falling back from that credential (e.g. the user re-added the credential),
+ * the earlier failure is considered superseded.
  */
 export function findKnownStale(
   records: readonly SubagentRecord[],
   name: string,
   provider: string | undefined,
 ): StaleCredential | undefined {
+  let latestStale: StaleCredential | undefined
   for (const r of records) {
-    if (r.status.kind !== "failed") continue
-    const stale = fromMatch(REASON.exec(r.status.error))
-    if (stale?.name === name && (!provider || stale.provider === provider)) return stale
+    if (r.status.kind === "failed") {
+      const stale = fromMatch(REASON.exec(r.status.error))
+      if (stale?.name === name && (!provider || stale.provider === provider)) {
+        latestStale = stale
+      }
+      continue
+    }
+    if (latestStale && r.status.kind === "done") {
+      const fellBack =
+        r.credentialFallback?.from === name &&
+        (!provider || r.credentialFallback.provider === provider)
+      const otherProvider =
+        provider !== undefined &&
+        r.profileProvider?.worker !== undefined &&
+        r.profileProvider.worker !== provider
+      if (!fellBack && !otherProvider) {
+        latestStale = undefined
+      }
+    }
   }
-  return undefined
+  return latestStale
 }
 
 /**

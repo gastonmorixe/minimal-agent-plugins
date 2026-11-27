@@ -57,6 +57,8 @@ export interface BudgetStageDeps {
   readonly now: () => number
   /** The newest started turn of this worker (0 when unknown). */
   readonly turnsUsed: (env: Env) => number
+  /** Generated output tokens of this worker so far, when known. */
+  readonly outputTokens?: (env: Env) => number
   /** The once-per-level latch of this boot. */
   readonly latch: BudgetLatch
 }
@@ -84,16 +86,23 @@ export function ownStreamPath(env: Env): string | undefined {
  * very large append, the turn count can be late by some calls. Late only, not
  * wrong: the next calls read the rest.
  */
-function realTurnsUsed(): (env: Env) => number {
+function realStreamMetrics(): {
+  turnsUsed: (env: Env) => number
+  outputTokens: (env: Env) => number
+} {
   const read = streamReader()
-  return (env) => {
+  const readState = (env: Env) => {
     const path = ownStreamPath(env)
-    if (!path) return 0
+    if (!path) return undefined
     try {
-      return read(path)?.turns ?? 0
+      return read(path)
     } catch {
-      return 0
+      return undefined
     }
+  }
+  return {
+    turnsUsed: (env) => readState(env)?.turns ?? 0,
+    outputTokens: (env) => readState(env)?.outputTokens ?? 0,
   }
 }
 
@@ -129,7 +138,13 @@ export function createBudgetStage(deps: BudgetStageDeps): ToolResultTransformDec
     transform: (s) => {
       const env = deps.env()
       if (!isWorker(env)) return s
-      const w = nextBudgetWarning(env, deps.now(), deps.turnsUsed(env), deps.latch)
+      const w = nextBudgetWarning(
+        env,
+        deps.now(),
+        deps.turnsUsed(env),
+        deps.latch,
+        deps.outputTokens?.(env),
+      )
       if (!w) return s
       return { ...s, annotations: [...s.annotations, budgetAnnotation(w)] }
     },
@@ -146,11 +161,13 @@ export default function budgetTransforms(
   env: Env = process.env,
 ): readonly ToolResultTransformDecl[] {
   if (!isWorker(env)) return []
+  const metrics = realStreamMetrics()
   return [
     createBudgetStage({
-      env: () => process.env,
+      env: () => env,
       now: () => Date.now(),
-      turnsUsed: realTurnsUsed(),
+      turnsUsed: metrics.turnsUsed,
+      outputTokens: metrics.outputTokens,
       // One latch per boot: core calls this factory once per plugin load, so
       // each level fires at most once in a worker process. A module-global
       // latch would leak between loads in one test process.

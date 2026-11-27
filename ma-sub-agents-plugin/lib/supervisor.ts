@@ -115,8 +115,9 @@ export interface TickOutput {
 export function completionDigest(r: SubagentRecord): string {
   switch (r.status.kind) {
     case "done": {
+      const rawShort = r.status.result.short.trim()
       // The sentence below adds its own period, so drop a trailing one.
-      const short = clip(r.status.result.short, 220).replace(/[.。]+$/, "")
+      const short = clip(rawShort, 600).replace(/[.。]+$/, "")
       const facts = runFacts(r.status.result)
       return `Sub-agent ${r.id} (${r.label}) finished${facts}: ${short}. Pull the full result with SubAgentsAgentResult ${r.id}.`
     }
@@ -197,20 +198,38 @@ export const DEFAULT_DEADLINE_SEC = 30 * 60 // 30 minutes
 export const DEFAULT_GRACE_SEC = 60
 
 /**
- * Shorter no-progress window after which a worker would be treated as stalled.
- *
- * FOLLOW-UP (B-083, stall watchdog): a true stall watchdog needs a
- * last-progress timestamp on the record (e.g. `Progress.lastProgressAt` or a
- * `SubagentRecord` field the heartbeat stamps when tools/tokens advance). The
- * current `Progress` type ({@link types.ts}) carries `tools`/`tokens`/`lastTool`/
- * `lastActivity` but NO timestamp, and this reducer is pure (it only gets `now`
- * each tick), so it cannot measure "no progress for N seconds" without that
- * field. Rather than invent a whole tracking system here, the watchdog is left
- * as a follow-up: add a progress timestamp, then gate a stall kill on it through
- * the SAME terminal path as the deadline below. The default hard deadline
- * (above) already stops the unbounded slot leak in the meantime.
+ * Shorter no-progress window (seconds) after which an alive worker with stream
+ * telemetry (`progress.lastEventAt`) is treated as stalled and enters grace.
  */
-export const DEFAULT_STALL_SEC = 5 * 60 // 5 minutes (reserved for the follow-up watchdog)
+export const DEFAULT_STALL_SEC = 5 * 60 // 5 minutes
+
+/**
+ * Effective stall threshold (seconds): {@link DEFAULT_STALL_SEC}, capped at an
+ * explicit positive `budget.deadlineSec` when that deadline is shorter.
+ */
+export function effectiveStallSec(r: Pick<SubagentRecord, "budget">): number {
+  const explicit = r.budget?.deadlineSec
+  return explicit !== undefined && explicit > 0
+    ? Math.min(DEFAULT_STALL_SEC, explicit)
+    : DEFAULT_STALL_SEC
+}
+
+/** Parse a `Progress.lastEventAt` epoch ms (or legacy ISO string) into positive finite ms. */
+function lastEventMs(v: unknown): number | undefined {
+  if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : undefined
+  if (typeof v === "string") {
+    const ms = Date.parse(v)
+    return Number.isFinite(ms) && ms > 0 ? ms : undefined
+  }
+  return undefined
+}
+
+/** True when `progress.lastEventAt` is valid and idle for at least `stallSec`. */
+function stallExceeded(p: Progress, stallSec: number, nowMs: number): boolean {
+  const lastMs = lastEventMs(p.lastEventAt)
+  if (lastMs === undefined) return false
+  return nowMs - lastMs >= stallSec * 1000
+}
 
 /**
  * The effective wall-clock deadline (seconds) for a worker: its explicit
@@ -357,6 +376,22 @@ function step(
     }
   }
 
+  // 1b'. CLEAN EXIT WITH DELIVERABLE TEXT: if the worker already exited cleanly
+  //      with a distillable final message (and no non-zero exit, stream failure,
+  //      or crash), finalize it before budget/deadline checks, matching step 1b.
+  //      An already-gone worker with no deliverable text still falls through to
+  //      limit checks (so a worker already gone at the deadline fails timed out).
+  if (
+    probe &&
+    !probe.alive &&
+    (probe.exitCode === undefined || probe.exitCode === 0) &&
+    !probe.runFailed &&
+    !probe.crash &&
+    Boolean(probe.distilled && probe.distilled.trim().length > 0)
+  ) {
+    return finalizeRunning(r, s, probe, now)
+  }
+
   // 1c. TURN / TOKEN BUDGET: stream telemetry gives live counts. Checked after
   //     the sentinel and run-ended paths, so a worker that already handed its
   //     work back is never stopped for its budget.
@@ -384,6 +419,14 @@ function step(
       ? "timed out (budget deadline exceeded)"
       : `timed out (no progress, exceeded ${DEFAULT_DEADLINE_SEC}s default hard deadline, likely wedged)`
     return startGrace(r, s, probe, error, "deadline", now, nowMs)
+  }
+
+  // 2a. Stall watchdog: an alive worker whose stream telemetry (`lastEventAt`)
+  //     has been silent for `effectiveStallSec` enters grace with a clear stall
+  //     error instead of waiting for the 30m default hard deadline.
+  const stallSec = effectiveStallSec(r)
+  if (probe?.alive && stallExceeded(probe.progress ?? s.progress, stallSec, nowMs)) {
+    return startGrace(r, s, probe, `stalled (no activity for ${stallSec}s)`, "stall", now, nowMs)
   }
   // 3. No probe this tick → leave unchanged (transient: shell couldn't read).
   if (!probe) return { status: s, effects: [] }
@@ -508,8 +551,11 @@ function stepGrace(
   }
   const untilMs = Date.parse(grace.until)
   if (!Number.isFinite(untilMs) || nowMs >= untilMs) {
-    // The probe of an alive worker has no distilled text, so no salvage here.
-    return limitFailedAndStop(r, s, grace.error, undefined, "grace ended", now)
+    // Preserve final tick spend when a probe exists; an alive worker has no distilled text.
+    const spendProbe: WorkerProbe | undefined = probe?.progress
+      ? { alive: true, progress: probe.progress }
+      : undefined
+    return limitFailedAndStop(r, s, grace.error, spendProbe, "grace ended", now)
   }
   if (!probe?.progress) return { status: s, effects: [] }
   return { status: { ...s, progress: probe.progress }, effects: [] }
@@ -710,7 +756,7 @@ export function spendOf(
 export const SALVAGED_TASK_NOTE = " (final message salvaged; read it with SubAgentsAgentResult)"
 
 /** Effects emitted on any active→terminal transition: a bus signal + a lead digest. */
-function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string): Effect[] {
+export function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string): Effect[] {
   const withStatus: SubagentRecord = { ...r, status: next }
   const effects: Effect[] = [
     {
@@ -766,6 +812,7 @@ function terminalEffects(r: SubagentRecord, next: SubagentStatus, _now: string):
 export function supervisorTick(input: TickInput): TickOutput {
   const out: SubagentRecord[] = []
   const effects: Effect[] = []
+  const injects: Extract<Effect, { type: "inject" }>[] = []
   let changed = false
   for (const r of input.records) {
     const probe = input.probes.get(r.id)
@@ -773,11 +820,33 @@ export function supervisorTick(input: TickInput): TickOutput {
     if (status !== r.status) {
       changed = true
       const lastPid = r.status.kind === "running" ? r.status.pid : r.lastPid
-      out.push({ ...r, status, ...(lastPid !== undefined ? { lastPid } : {}) })
+      const becameUncollected = status.kind === "done" || status.kind === "incomplete"
+      out.push({
+        ...r,
+        status,
+        ...(lastPid !== undefined ? { lastPid } : {}),
+        ...(becameUncollected ? { uncollected: true } : {}),
+      })
     } else {
       out.push(r)
     }
-    for (const e of fx) effects.push(e)
+    for (const e of fx) {
+      if (e.type === "inject") injects.push(e)
+      else effects.push(e)
+    }
+  }
+  // Wave coalescing: when 2+ workers finish in the same tick, merge their
+  // completion digests into one prompt.inject so the lead pays 1 wake turn
+  // instead of N. Single completions keep their exact source and format.
+  if (injects.length === 1) {
+    effects.push(injects[0] as Effect)
+  } else if (injects.length > 1) {
+    const body = injects.map((inj, i) => `${i + 1}. ${inj.text}`).join("\n")
+    effects.push({
+      type: "inject",
+      text: `${injects.length} sub-agents finished:\n${body}`,
+      source: "subagents:wave",
+    })
   }
   return { records: out, effects, changed }
 }

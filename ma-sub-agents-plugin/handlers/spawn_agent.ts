@@ -7,13 +7,17 @@
  */
 
 import { serviceDepsFromCtx } from "../lib/handler-deps.ts"
-import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import type { ToolAvailability, TUIContext, TUIResult } from "../lib/host-types.ts"
 import { type PromptRender } from "../lib/prompts.ts"
 import { renderSpawnDisplay } from "../lib/render.ts"
 import { spawnAgent } from "../lib/service.ts"
+import { ENV_RESULT_PATH } from "../lib/spawn.ts"
 import { credentialFallbackText } from "../lib/stale-credential.ts"
 import type { SubagentRecord } from "../lib/types.ts"
 import { parseSpawnRequest } from "../lib/validate.ts"
+
+/** Lead-only tool: hide from leaf sub-agents so workers do not spend tokens on unusable schemas. */
+export const available: ToolAvailability = (ctx) => !ctx.env[ENV_RESULT_PATH]?.trim()
 
 /**
  * The SPEC R13 line: one extra line when the mode clamp lowered the worker's
@@ -70,9 +74,8 @@ export default async function spawn(ctx: TUIContext): Promise<TUIResult> {
   const rec = r.value
   const disp = renderSpawnDisplay(rec, true)
   const content =
-    `Spawned sub-agent ${rec.id} (${rec.type} · ${rec.model} · ${rec.isolation}), running in background as session ${rec.sid}. ` +
-    `It works concurrently. You are not blocked. Track it with SubAgentsListAgents or SubAgentsAgentStatus ${rec.id}. ` +
-    `When it finishes you'll get a one-line digest between turns and can pull the full deliverable with SubAgentsAgentResult ${rec.id}.` +
+    `Spawned ${rec.id} (${rec.type} · ${rec.model} · ${rec.isolation}, sid ${rec.sid}). ` +
+    `Runs in background. A digest arrives between turns (pull full output with SubAgentsAgentResult ${rec.id}).` +
     loweredLine(rec.modeLowered, deps.renderPrompt) +
     providerLine(rec.profileProvider, deps.renderPrompt) +
     credentialLine(rec.credentialFallback, deps.renderPrompt)

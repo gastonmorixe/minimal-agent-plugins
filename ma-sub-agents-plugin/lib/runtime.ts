@@ -85,6 +85,22 @@ export function resolveModelOverride(env: NodeJS.ProcessEnv = process.env): stri
   return env.MINIMAL_AGENT_SUBAGENT_MODEL?.trim() || ""
 }
 
+/** Read a `--flag value` or `--flag=value` CLI argument from `argv`. */
+function readLongFlag(argv: readonly string[], flag: string): string {
+  const prefix = `${flag}=`
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === flag) {
+      const v = argv[i + 1]?.trim()
+      if (v && !v.startsWith("-")) return v
+    } else if (arg?.startsWith(prefix)) {
+      const v = arg.slice(prefix.length).trim()
+      if (v) return v
+    }
+  }
+  return ""
+}
+
 /**
  * Lead's named auth credential (`--credential-name`), or `""` when unset.
  *
@@ -105,12 +121,7 @@ export function resolveCredentialName(
 ): string {
   const fromEnv = env.MINIMAL_AGENT_CREDENTIAL_NAME?.trim()
   if (fromEnv) return fromEnv
-  const idx = argv.indexOf("--credential-name")
-  if (idx >= 0) {
-    const v = argv[idx + 1]?.trim()
-    if (v && !v.startsWith("-")) return v
-  }
-  return ""
+  return readLongFlag(argv, "--credential-name")
 }
 
 /**
@@ -128,11 +139,8 @@ export function resolveLeadEffort(
 ): string {
   const fromEnv = env.MINIMAL_AGENT_EFFORT?.trim()
   if (fromEnv) return fromEnv
-  const idx = argv.indexOf("--effort")
-  if (idx >= 0) {
-    const v = argv[idx + 1]?.trim()
-    if (v && !v.startsWith("-")) return v
-  }
+  const fromLong = readLongFlag(argv, "--effort")
+  if (fromLong) return fromLong
   // short form `-e` used by some launchers
   const short = argv.indexOf("-e")
   if (short >= 0) {

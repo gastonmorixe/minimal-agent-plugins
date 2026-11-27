@@ -11,6 +11,8 @@
  * @module sub-agents/lib/service
  */
 
+import { rmSync } from "node:fs"
+
 import { budgetEnv } from "./budget-warning.ts"
 import { approvalFailureText } from "./error-text.ts"
 import { DEFAULT_POLICY, evaluateSpawnGuard, type GuardPolicy } from "./guard.ts"
@@ -29,7 +31,7 @@ import {
 import { buildSpawnPlan } from "./spawn-plan.ts"
 import { credentialFallbackText, ENV_CREDENTIAL_NAME, findKnownStale } from "./stale-credential.ts"
 import { type SubagentStore } from "./store.ts"
-import { spendOf } from "./supervisor.ts"
+import { type Effect, spendOf, terminalEffects } from "./supervisor.ts"
 import { childControlOrNone } from "./target-control-lead.ts"
 import { clampTools } from "./tool-clamp.ts"
 import {
@@ -69,6 +71,11 @@ export interface WorkerDefinition {
   readonly isolation?: Isolation
   readonly color?: string
   readonly budget?: SubagentRecord["budget"]
+  /**
+   * Optional role tool allow-list (narrowed against the lead's tools via
+   * `clampTools` on `fresh` isolation; omitted on `fork` to preserve KV cache).
+   */
+  readonly tools?: readonly string[]
   /**
    * Operating mode the worker boots in (e.g. `"ask"` to deny Edit/Write at
    * dispatch, `"none"` for an unrestricted writer). READ-ONLY specialists
@@ -405,6 +412,14 @@ export async function spawnAgent(
     } catch {
       /* chain failure must not brick spawn */
     }
+    // Re-check the spawn guard after the async `willSpawn` await to close the
+    // check-then-act race (concurrent spawns could have filled the cap).
+    const freshCounts = counts(deps.store.all())
+    const recheck = evaluateSpawnGuard(
+      { childDepth, type, activeCount: freshCounts.active, totalCount: freshCounts.total },
+      deps.policy ?? DEFAULT_POLICY,
+    )
+    if (!recheck.allowed) return err(recheck.allowed ? "" : recheck.reason)
   }
 
   const childSid = sessionId(deps.newSid())
@@ -438,7 +453,9 @@ export async function spawnAgent(
   // Lead tools: live snapshot, else the startup profile (CONTRACT 3), else none.
   const lead = deps.startupProfile?.()
   const leadTools = snap?.tools ?? lead?.profile.tools
-  const toolArgs = leadTools ? clampTools(leadTools) : undefined
+  // Narrow fresh workers to the role's tool allow-list; keep fork invariant for KV cache.
+  const roleTools = isolation === "fork" ? undefined : def?.tools
+  const toolArgs = leadTools ? clampTools(leadTools, roleTools) : undefined
   // Startup profile (SPEC 4.4, R11). Off: old behavior, clamps still apply.
   const inherit = deps.inherit !== false
   const profileChoice = inherit && lead ? chooseProfile(lead, provider, childSid, deps) : undefined
@@ -517,6 +534,7 @@ export async function spawnAgent(
       state: profileChoice ? "on" : inherit ? "absent" : "off",
       ...(profileChoice ? { profile: profileChoice.profile } : {}),
       ...(leadTools ? { leadTools } : {}),
+      ...(roleTools ? { roleTools } : {}),
       mode,
     }),
     ...(clamp.lowered ? { modeLowered: { from: roleMode, to: mode } } : {}),
@@ -565,11 +583,34 @@ function chooseProfile(
   return { path, profile, derivedFrom: { lead: leadProv, worker: provider } }
 }
 
+/** Dispatch terminal emit effects (task cancellation, didExit, didReport). */
+function dispatchTerminalEmits(
+  effects: readonly Effect[],
+  emit?: (channel: string, payload?: unknown) => void,
+): void {
+  if (!emit) return
+  for (const e of effects) {
+    if (e.type === "emit") emit(e.channel, e.payload)
+  }
+}
+
+/** Return a copy of `rec` with `lastPid` cleared once reaped, avoiding later PID-reuse kills. */
+function withoutLastPid(rec: SubagentRecord): SubagentRecord {
+  if (rec.lastPid === undefined) return rec
+  const { lastPid: _drop, ...rest } = rec
+  return rest
+}
+
 /** Mark a worker stopped + signal its pid (idempotent on an already-terminal worker). */
 export function stopAgent(
   id: string,
   reason: string | undefined,
-  deps: { store: SubagentStore; kill: (pid: number) => void; now: () => Date },
+  deps: {
+    store: SubagentStore
+    kill: (pid: number) => void
+    now: () => Date
+    emit?: (channel: string, payload?: unknown) => void
+  },
 ): Result<SubagentRecord> {
   const rec = deps.store.get(id)
   if (!rec) return err(`unknown sub-agent ${id}`)
@@ -582,19 +623,26 @@ export function stopAgent(
     }
   }
   if (rec.status.kind !== "running" && rec.status.kind !== "queued") {
+    if (rec.lastPid !== undefined) {
+      const cleaned = withoutLastPid(rec)
+      deps.store.upsert(cleaned)
+      return ok(cleaned)
+    }
     return ok(rec) // already terminal — pid reaped, status stays
   }
+  const endedAt = deps.now().toISOString()
+  const stoppedStatus: SubagentStatus = {
+    kind: "stopped",
+    endedAt,
+    ...(reason ? { reason } : {}),
+    ...runningSpend(rec.status),
+  }
   const stopped: SubagentRecord = {
-    ...rec,
-    ...(rec.status.kind === "running" ? { lastPid: rec.status.pid } : {}),
-    status: {
-      kind: "stopped",
-      endedAt: deps.now().toISOString(),
-      ...(reason ? { reason } : {}),
-      ...runningSpend(rec.status),
-    },
+    ...withoutLastPid(rec),
+    status: stoppedStatus,
   }
   deps.store.upsert(stopped)
+  dispatchTerminalEmits(terminalEffects(stopped, stoppedStatus, endedAt), deps.emit)
   return ok(stopped)
 }
 
@@ -603,17 +651,27 @@ export function stopAgent(
  * so a clean lead exit cannot leave orphaned bun processes (and their
  * detached obscura-worker children) under launchd.
  *
- * Running/queued records are marked stopped. Terminal records (especially
- * `done` after ReportResult) KEEP their status — the work already finished —
- * but `lastPid` is still SIGKILL'd if present. Returns how many pids were
- * signaled.
+ * Running/queued records are marked stopped and emit terminal effects (such as
+ * linked task cancellation). Terminal records (especially `done` after
+ * ReportResult) KEEP their status, reap `lastPid` once, and clear `lastPid` so
+ * a recycled OS pid is never signaled later. Returns how many pids were signaled.
  */
 export function stopAllAgents(
   reason: string,
-  deps: { store: SubagentStore; kill: (pid: number) => void; now: () => Date },
+  deps: {
+    store: SubagentStore
+    kill: (pid: number) => void
+    now: () => Date
+    emit?: (channel: string, payload?: unknown) => void
+  },
 ): number {
   let signaled = 0
-  for (const rec of deps.store.all()) {
+  const all = deps.store.all()
+  if (all.length === 0) return 0
+  let dirty = false
+  const pendingEffects: Effect[] = []
+  const next: SubagentRecord[] = []
+  for (const rec of all) {
     const pid = rec.status.kind === "running" ? rec.status.pid : rec.lastPid
     if (typeof pid === "number" && pid > 0) {
       try {
@@ -623,19 +681,133 @@ export function stopAllAgents(
         // already gone
       }
     }
-    if (!isActive(rec.status)) continue
-    deps.store.upsert({
-      ...rec,
-      ...(typeof pid === "number" && pid > 0 ? { lastPid: pid } : {}),
-      status: {
-        kind: "stopped",
-        endedAt: deps.now().toISOString(),
-        reason,
-        ...runningSpend(rec.status),
-      },
-    })
+    if (!isActive(rec.status)) {
+      if (rec.lastPid !== undefined) {
+        next.push(withoutLastPid(rec))
+        dirty = true
+      } else {
+        next.push(rec)
+      }
+      continue
+    }
+    const endedAt = deps.now().toISOString()
+    const stoppedStatus: SubagentStatus = {
+      kind: "stopped",
+      endedAt,
+      reason,
+      ...runningSpend(rec.status),
+    }
+    const stopped: SubagentRecord = {
+      ...withoutLastPid(rec),
+      status: stoppedStatus,
+    }
+    next.push(stopped)
+    dirty = true
+    pendingEffects.push(...terminalEffects(stopped, stoppedStatus, endedAt))
   }
+  if (dirty) deps.store.replaceAll(next)
+  dispatchTerminalEmits(pendingEffects, deps.emit)
   return signaled
+}
+
+/**
+ * Resume a terminal sub-agent (`done`, `incomplete`, `failed`, or `stopped`)
+ * with a follow-up prompt, reusing its existing session (`--resume <childSid>`)
+ * and KV prompt cache instead of booting a cold worker.
+ */
+export async function resumeAgent(
+  id: string,
+  followUp: string,
+  deps: ServiceDeps,
+): Promise<Result<SubagentRecord>> {
+  const rec = deps.store.get(id)
+  if (!rec) return err(`unknown sub-agent ${id}`)
+  if (isActive(rec.status)) {
+    return err(`sub-agent ${id} is already running. Send a steer mailbox message instead.`)
+  }
+  const text = followUp.trim()
+  if (text.length === 0) return err("follow-up message is empty")
+
+  const childDepth = deps.depth + 1
+  const { active, total } = counts(deps.store.all())
+  const guard = evaluateSpawnGuard(
+    { childDepth, type: rec.type, activeCount: active, totalCount: total },
+    deps.policy ?? DEFAULT_POLICY,
+  )
+  if (!guard.allowed) return err(guard.reason)
+
+  const def = rec.type !== "inline" ? deps.resolveDefinition?.(rec.type) : undefined
+  const provider = rec.model ? deps.resolveProvider?.(rec.model) : undefined
+  const snap = deps.queryHostPolicy?.()
+  const roleMode = def?.mode ?? "none"
+  const clamp = clampMode(roleMode, snap, deps.leadModeEnv)
+  const mode = clamp.mode ?? roleMode
+  const lead = deps.startupProfile?.()
+  const leadTools = snap?.tools ?? lead?.profile.tools
+  const roleTools = rec.isolation === "fork" ? undefined : def?.tools
+  const toolArgs = leadTools ? clampTools(leadTools, roleTools) : undefined
+  const inherit = deps.inherit !== false
+  const profileChoice = inherit && lead ? chooseProfile(lead, provider, rec.sid, deps) : undefined
+  if (profileChoice && "error" in profileChoice) return err(profileChoice.error)
+
+  const resultPath = `${deps.sessionsDir}/${rec.sid}.result.json`
+  // Clear any prior sentinel so the supervisor does not finalize on attempt 1's result.
+  try {
+    rmSync(resultPath, { force: true })
+  } catch {
+    // ignore missing file
+  }
+  const logPath = `${deps.sessionsDir}/${rec.sid}.log`
+  const streamPath = streamPathFor(deps.sessionsDir, rec.sid)
+  const resultProtocol = renderResultProtocol(deps.renderPrompt, resultPath, rec.expectArtifacts)
+  const control = childControlOrNone(deps.sessionsDir, rec.sid, deps.warn)
+  const budgetStartIso = deps.now().toISOString()
+
+  const planResult = buildSpawnPlan({
+    agentBin: deps.agentBin,
+    childSid: rec.sid,
+    leadSid: deps.leadSid,
+    id: rec.id,
+    task: text,
+    model: rec.model,
+    ...(rec.type !== "inline" ? { role: rec.type } : {}),
+    ...(provider ? { provider } : {}),
+    ...(rec.effort ? { effort: rec.effort } : {}),
+    scrubInheritedEffort: !rec.effort,
+    mode,
+    ...(toolArgs ? { toolArgs } : {}),
+    isolation: rec.isolation,
+    resumeChildSid: rec.sid,
+    resultProtocol,
+    depth: rec.depth,
+    cwd: deps.cwd,
+    extraEnv: {
+      ...control?.env,
+      [ENV_RESULT_PATH]: resultPath,
+      ...(rec.expectArtifacts
+        ? { [ENV_EXPECT_ARTIFACTS]: JSON.stringify(rec.expectArtifacts) }
+        : {}),
+    },
+    budgetEnv: budgetEnv(rec.budget, budgetStartIso),
+    ...(deps.disabledPlugins ? { inheritedDisabledPlugins: deps.disabledPlugins } : {}),
+    ...(profileChoice ? { startupProfilePath: profileChoice.path } : {}),
+    inherit,
+  })
+  if (!planResult.ok) return err(planResult.error)
+
+  const launched = launchWorker(planResult.value, deps.spawnDeps, logPath, streamPath)
+  if (!launched.ok) return err(launched.error)
+
+  const nowIso = deps.now().toISOString()
+  const { uncollected: _drop, ...base } = rec
+  const resumed: SubagentRecord = {
+    ...base,
+    status: { kind: "running", pid: launched.value, startedAt: nowIso, progress: ZERO_PROGRESS },
+    lastPid: launched.value,
+    ...(control ? { controlKeyId: control.keyId } : {}),
+  }
+  deps.store.upsert(resumed)
+  return ok(resumed)
 }
 
 /** The spend of a running worker's last progress, for its `stopped` status. Empty for other kinds. */

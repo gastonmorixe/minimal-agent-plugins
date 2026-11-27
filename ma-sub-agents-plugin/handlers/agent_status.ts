@@ -7,9 +7,13 @@
 
 import { fleetText, statusDetail } from "../lib/content.ts"
 import { storeFromCtx } from "../lib/handler-deps.ts"
-import type { TUIContext, TUIResult } from "../lib/host-types.ts"
+import type { ToolAvailability, TUIContext, TUIResult } from "../lib/host-types.ts"
 import { renderFleetDisplay, renderStatusDisplay } from "../lib/render.ts"
+import { ENV_RESULT_PATH } from "../lib/spawn.ts"
 import { parseIdArg } from "../lib/validate.ts"
+
+/** Lead-only tool: hide from leaf sub-agents. */
+export const available: ToolAvailability = (ctx) => !ctx.env[ENV_RESULT_PATH]?.trim()
 
 /**
  * Tool handler for `AgentStatus`: reports one worker's detail (status,

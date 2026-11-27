@@ -17,7 +17,15 @@
  * @module sub-agents/lib/spawn
  */
 
-import { existsSync, mkdirSync, openSync, readFileSync, statSync } from "node:fs"
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readSync,
+  statSync,
+} from "node:fs"
 import { dirname } from "node:path"
 
 import { childEnv } from "@minimal-agent/core/plugin-api/utils/self-spawn"
@@ -412,6 +420,125 @@ export function workerEnv(
   return childEnv({ ...base, ...overlay })
 }
 
+/** Minimal structural view of a `Bun.Subprocess` handle tracked by the parent. */
+export interface BunSubprocess {
+  readonly pid: number
+  readonly exited?: Promise<number>
+  readonly exitCode?: number | null
+  readonly kill?: (signal?: number | NodeJS.Signals) => void
+}
+
+interface TrackedSubprocess {
+  readonly proc: BunSubprocess
+  exitCode?: number
+}
+
+const MAX_EXITED_TRACKED = 256
+const trackedSubprocesses = new Map<number, TrackedSubprocess>()
+
+function pruneExitedTracked(): void {
+  let exitedCount = 0
+  for (const entry of trackedSubprocesses.values()) {
+    if (entry.exitCode !== undefined) exitedCount++
+  }
+  if (exitedCount <= MAX_EXITED_TRACKED) return
+  for (const [pid, entry] of trackedSubprocesses) {
+    if (entry.exitCode === undefined) continue
+    trackedSubprocesses.delete(pid)
+    exitedCount--
+    if (exitedCount <= MAX_EXITED_TRACKED) break
+  }
+}
+
+function trackSubprocess(proc: BunSubprocess): void {
+  const entry: TrackedSubprocess = {
+    proc,
+    ...(typeof proc.exitCode === "number" ? { exitCode: proc.exitCode } : {}),
+  }
+  trackedSubprocesses.set(proc.pid, entry)
+  if (proc.exited) {
+    void proc.exited.then(
+      (code) => {
+        if (trackedSubprocesses.get(proc.pid) !== entry) return
+        entry.exitCode = code
+        // Move to end so oldest exited entries are evicted first.
+        trackedSubprocesses.delete(proc.pid)
+        trackedSubprocesses.set(proc.pid, entry)
+        pruneExitedTracked()
+      },
+      () => {
+        // Ignore unexpected rejection on exited promise.
+      },
+    )
+  }
+}
+
+/** True when `pid` was spawned by this process and its exit is already confirmed. */
+export function isTrackedExited(pid: number): boolean {
+  const entry = trackedSubprocesses.get(pid)
+  if (!entry) return false
+  return entry.exitCode !== undefined || typeof entry.proc.exitCode === "number"
+}
+
+function trackedExitCode(pid: number): number | undefined {
+  const entry = trackedSubprocesses.get(pid)
+  if (!entry) return undefined
+  if (entry.exitCode !== undefined) return entry.exitCode
+  return typeof entry.proc.exitCode === "number" ? entry.proc.exitCode : undefined
+}
+
+function sendSigkill(pid: number, proc?: BunSubprocess): void {
+  if (isTrackedExited(pid)) return
+  try {
+    if (proc?.kill) {
+      proc.kill("SIGKILL")
+    } else {
+      process.kill(pid, "SIGKILL")
+    }
+  } catch {
+    // already gone
+  }
+}
+
+/**
+ * Wait up to `graceMs` for a tracked subprocess to exit before sending `SIGKILL`.
+ * Falls back to `process.kill(pid, "SIGKILL")` when `pid` is not tracked.
+ * Never signals a pid whose exit is already confirmed.
+ */
+export async function waitExitOrKill(pid: number, graceMs: number): Promise<void> {
+  if (isTrackedExited(pid)) return
+  const entry = trackedSubprocesses.get(pid)
+  if (!entry?.proc.exited) {
+    sendSigkill(pid, entry?.proc)
+    return
+  }
+  let exited = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      entry.proc.exited.then(
+        () => {
+          exited = true
+        },
+        () => {
+          exited = true
+        },
+      ),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, Math.max(0, graceMs))
+        if (typeof timer === "object" && timer !== null && "unref" in timer) {
+          ;(timer as { unref?: () => void }).unref?.()
+        }
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+  if (!exited && !isTrackedExited(pid)) {
+    sendSigkill(pid, entry.proc)
+  }
+}
+
 /**
  * Production spawn deps: `Bun.spawn` with stdout → the stream file (the
  * child's stream-json events) and stderr → the log file. Without a
@@ -421,27 +548,67 @@ export function realSpawnDeps(): SpawnDeps {
   return {
     launch: (argv, opts) => {
       mkdirSync(dirname(opts.logPath), { recursive: true })
+      if (opts.streamPath) mkdirSync(dirname(opts.streamPath), { recursive: true })
       const fd = openSync(opts.logPath, "a")
-      const outFd = opts.streamPath ? openSync(opts.streamPath, "a") : fd
-      // Not detached: the worker stays a real child of the lead so a forced
-      // lead exit still closes its stdio. (Detached was previously claimed in
-      // a comment but never set — and would make lead-exit reaping harder.)
-      // The supervisor / agent.willStop path SIGKILLs lingering pids explicitly.
-      const proc = (
-        globalThis as unknown as { Bun: { spawn: (cmd: string[], o: object) => { pid: number } } }
-      ).Bun.spawn(
-        [...argv],
-        // The plan env is an OVERLAY over process.env (see workerEnv).
-        {
-          cwd: opts.cwd,
-          env: workerEnv(opts.env),
-          stdin: "ignore",
-          stdout: outFd,
-          stderr: fd,
-        },
-      )
-      return proc.pid
+      let outFd: number | undefined
+      try {
+        outFd = opts.streamPath ? openSync(opts.streamPath, "a") : fd
+        // Not detached: the worker stays a real child of the lead so a forced
+        // lead exit still closes its stdio. (Detached was previously claimed in
+        // a comment but never set — and would make lead-exit reaping harder.)
+        // The supervisor / agent.willStop path SIGKILLs lingering pids explicitly.
+        const proc = (
+          globalThis as unknown as { Bun: { spawn: (cmd: string[], o: object) => BunSubprocess } }
+        ).Bun.spawn(
+          [...argv],
+          // The plan env is an OVERLAY over process.env (see workerEnv).
+          {
+            cwd: opts.cwd,
+            env: workerEnv(opts.env),
+            stdin: "ignore",
+            stdout: outFd,
+            stderr: fd,
+          },
+        )
+        trackSubprocess(proc)
+        return proc.pid
+      } finally {
+        if (outFd !== undefined && outFd !== fd) {
+          try {
+            closeSync(outFd)
+          } catch {
+            // ignore close error
+          }
+        }
+        try {
+          closeSync(fd)
+        } catch {
+          // ignore close error
+        }
+      }
     },
+  }
+}
+
+const CRASH_TAIL_BYTES = 64 * 1024
+
+function readCrashTail(logPath: string): string | undefined {
+  try {
+    const size = statSync(logPath).size
+    if (size === 0) return undefined
+    const length = Math.min(size, CRASH_TAIL_BYTES)
+    const offset = size - length
+    const fd = openSync(logPath, "r")
+    try {
+      const buf = Buffer.alloc(length)
+      const n = readSync(fd, buf, 0, length, offset)
+      if (n <= 0) return undefined
+      return extractCrashSignature(buf.subarray(0, n).toString("utf-8"))
+    } finally {
+      closeSync(fd)
+    }
+  } catch {
+    return undefined
   }
 }
 
@@ -491,6 +658,7 @@ export function realProbeDeps(): ProbeDeps {
   return {
     readStream,
     pidAlive: (pid) => {
+      if (isTrackedExited(pid)) return false
       try {
         process.kill(pid, 0)
         return true
@@ -498,6 +666,7 @@ export function realProbeDeps(): ProbeDeps {
         return false
       }
     },
+    exitCode: (pid) => trackedExitCode(pid),
     readResult: (path) => {
       if (!existsSync(path)) return undefined
       try {
@@ -518,15 +687,8 @@ export function realProbeDeps(): ProbeDeps {
     // Missing: absent, empty, or not a regular file (same check as ReportResult).
     missingArtifacts: (paths) => paths.filter((p) => !isContractedFilePresent(p)),
     readCrash: (logPath) => {
-      try {
-        if (!existsSync(logPath)) return undefined
-        // Logs are tiny for a boot crash (a line or two). Cap the read so a
-        // chatty worker's multi-MB log never blocks the 1s supervisor tick.
-        const text = readFileSync(logPath, "utf-8")
-        return extractCrashSignature(text.length > 64_000 ? text.slice(0, 64_000) : text)
-      } catch {
-        return undefined
-      }
+      if (!existsSync(logPath)) return undefined
+      return readCrashTail(logPath)
     },
   }
 }

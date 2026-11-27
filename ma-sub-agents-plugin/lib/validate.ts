@@ -28,15 +28,33 @@ function strArray(v: unknown, max = 32): string[] | undefined {
   return out.length > 0 ? out.slice(0, max) : undefined
 }
 
-function parseBudget(v: unknown): Budget | undefined {
-  if (!v || typeof v !== "object") return undefined
-  const o = v as Record<string, unknown>
-  const b: Budget = {
-    ...(posInt(o.maxTurns) !== undefined ? { maxTurns: posInt(o.maxTurns) } : {}),
-    ...(posInt(o.deadlineSec) !== undefined ? { deadlineSec: posInt(o.deadlineSec) } : {}),
-    ...(posInt(o.maxTokens) !== undefined ? { maxTokens: posInt(o.maxTokens) } : {}),
+function parseBudgetField(name: string, raw: unknown): Result<number | undefined> {
+  if (raw === undefined) return ok(undefined)
+  const n = posInt(raw)
+  if (n === undefined || n < 1) {
+    return err(`\`budget.${name}\` must be a positive integer (>= 1), got ${JSON.stringify(raw)}.`)
   }
-  return Object.keys(b).length > 0 ? b : undefined
+  return ok(n)
+}
+
+function parseBudget(v: unknown): Result<Budget | undefined> {
+  if (v === undefined) return ok(undefined)
+  if (!v || typeof v !== "object" || Array.isArray(v)) {
+    return err("`budget` must be an object with positive integer fields.")
+  }
+  const o = v as Record<string, unknown>
+  const maxTurns = parseBudgetField("maxTurns", o.maxTurns)
+  if (!maxTurns.ok) return maxTurns
+  const deadlineSec = parseBudgetField("deadlineSec", o.deadlineSec)
+  if (!deadlineSec.ok) return deadlineSec
+  const maxTokens = parseBudgetField("maxTokens", o.maxTokens)
+  if (!maxTokens.ok) return maxTokens
+  const b: Budget = {
+    ...(maxTurns.value !== undefined ? { maxTurns: maxTurns.value } : {}),
+    ...(deadlineSec.value !== undefined ? { deadlineSec: deadlineSec.value } : {}),
+    ...(maxTokens.value !== undefined ? { maxTokens: maxTokens.value } : {}),
+  }
+  return ok(Object.keys(b).length > 0 ? b : undefined)
 }
 
 /**
@@ -77,6 +95,7 @@ export function parseSpawnRequest(input: Record<string, unknown>): Result<SpawnR
   const isolation = isoRaw as Isolation | undefined
 
   const budget = parseBudget(input.budget)
+  if (!budget.ok) return budget
   const expect = normalizeExpectArtifacts(strArray(input.expectArtifacts))
   if (!expect.ok) return expect
   const req: SpawnRequest = {
@@ -87,7 +106,7 @@ export function parseSpawnRequest(input: Record<string, unknown>): Result<SpawnR
     ...(str(input.effort) ? { effort: str(input.effort) } : {}),
     ...(isolation ? { isolation } : {}),
     ...(str(input.label) ? { label: str(input.label) } : {}),
-    ...(budget ? { budget } : {}),
+    ...(budget.value ? { budget: budget.value } : {}),
     ...(str(input.taskId) ? { taskId: str(input.taskId) } : {}),
     ...(expect.value ? { expectArtifacts: expect.value } : {}),
   }

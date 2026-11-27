@@ -34,6 +34,15 @@ interface AttachmentTextBlock {
 
 const MAX_ROWS = 8
 
+function endedAtMs(r: SubagentRecord): number {
+  const s = r.status
+  if ("endedAt" in s) {
+    const ms = Date.parse(s.endedAt)
+    return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY
+  }
+  return Number.NEGATIVE_INFINITY
+}
+
 function row(r: SubagentRecord, nowMs: number): string {
   const s = r.status
   let state: string
@@ -84,12 +93,15 @@ export class SubagentsAttachment {
     if (this.sid === null || this.sid.trim().length === 0) return null
     const records = new SubagentStore(this.sid, this.deps).all()
     const active = records.filter((r) => isActive(r.status))
-    if (active.length === 0) return null
+    const hasUncollected = records.some((r) => !isActive(r.status) && r.uncollected === true)
+    if (active.length === 0 && !hasUncollected) return null
 
     const s = fleetStats(records)
     const nowMs = this.now()
-    // Show active workers first, then the most recent terminal ones, capped.
-    const terminal = records.filter((r) => !isActive(r.status))
+    // Show active workers first, then the most recent terminal ones (newest endedAt first), capped.
+    const terminal = records
+      .filter((r) => !isActive(r.status))
+      .sort((a, b) => endedAtMs(b) - endedAtMs(a))
     const shown = [...active, ...terminal].slice(0, MAX_ROWS)
     const body = shown.map((r) => row(r, nowMs)).join("\n")
     const overflow =
