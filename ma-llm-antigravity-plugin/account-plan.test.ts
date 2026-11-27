@@ -178,6 +178,47 @@ describe("buildAntigravityAccountPlan", () => {
     expect(plan.windows?.[2]?.utilization).toBe(0)
     expect(plan.windows?.[2]?.resetAtMs).toBeUndefined()
   })
+
+  it("surfaces claimable and ineligible bankedResets in details", () => {
+    const plan = buildAntigravityAccountPlan(
+      LCA_PAID,
+      {
+        ...QUOTA,
+        bankedResets: [
+          {
+            resetId: "reset-1",
+            displayLabel: "Weekly reset",
+            claimable: true,
+            remainingCount: 2,
+            bucketIds: ["gemini-5h", "3p-5h"],
+            expireTime: "2030-01-15T00:00:00Z",
+          },
+          {
+            resetId: "reset-2",
+            displayLabel: "Bonus reset",
+            claimable: false,
+            ineligibleReason: "QUOTA_SUMMARY_BANKED_RESET_INELIGIBLE_REASON_USAGE_BELOW_THRESHOLD",
+            remainingCount: 1,
+          },
+          {},
+        ],
+      },
+      null,
+    )
+    const banked = plan.details?.filter((d) => d.key === "banked_reset")
+    expect(banked).toEqual([
+      {
+        key: "banked_reset",
+        label: "banked reset",
+        value: "Weekly reset (claimable, 2 left, gemini-5h+3p-5h, expires 2030-01-15)",
+      },
+      {
+        key: "banked_reset",
+        label: "banked reset",
+        value: "Bonus reset (usage below threshold, 1 left)",
+      },
+    ])
+  })
 })
 
 describe("fetchAntigravityAccountPlan", () => {

@@ -74,12 +74,12 @@ describe("grouped catalog", () => {
     const rows = ANTIGRAVITY_MODEL_GROUPS.map((g) => [g.base, g.levels.join(","), g.defaultEffort])
     expect(rows).toEqual([
       ["gemini-4-neon", "low,medium,high,xhigh", "high"],
-      ["gemini-3.8-flash", "low,medium,high", "medium"],
       ["claude-opus-5-5", "low,medium,high", "medium"],
       ["gemini-4-carbon", "low,medium,high", "medium"],
       ["gemini-4-hydrogen", "low,medium,high,xhigh", "medium"],
       ["claude-sonnet-5-5", "low,medium,high", "medium"],
       ["gemini-4-argon", "low,medium,high", "medium"],
+      ["gemini-3.8-flash", "low,medium,high", "medium"],
     ])
   })
 

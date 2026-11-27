@@ -47,6 +47,8 @@ export {
   type LoadCodeAssistResponse,
   listAntigravityLiveModels,
   loadCodeAssist,
+  type QuotaSummaryBankedReset,
+  type QuotaSummaryBankedResetIneligibleReason,
   type QuotaSummaryResponse,
   resolveProject,
 } from "./live-models.ts"

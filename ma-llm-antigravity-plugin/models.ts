@@ -165,15 +165,16 @@ const LMH = ["low", "medium", "high"]
 const LMHX = ["low", "medium", "high", "xhigh"]
 
 // `groupedModels` of the same snapshot, in catalog order. Only neon and
-// hydrogen list xhigh.
+// hydrogen list xhigh. `gemini-3.8-flash` is placed last: agy 1.5.18 marks it
+// "Leaving Soon" (2026-11-30) in favor of Hydrogen.
 const SNAPSHOT_GROUPS: ReadonlyArray<{ base: string; name: string; levels: string[] }> = [
   { base: "gemini-4-neon", name: "Gemini 4 Neon", levels: LMHX },
-  { base: "gemini-3.8-flash", name: "Gemini 3.8 Flash", levels: LMH },
   { base: "claude-opus-5-5", name: "Claude Opus 5.5", levels: LMH },
   { base: "gemini-4-carbon", name: "Gemini 4 Carbon", levels: LMH },
   { base: "gemini-4-hydrogen", name: "Gemini 4 Hydrogen", levels: LMHX },
   { base: "claude-sonnet-5-5", name: "Claude Sonnet 5.5", levels: LMH },
   { base: "gemini-4-argon", name: "Gemini 4 Argon", levels: LMH },
+  { base: "gemini-3.8-flash", name: "Gemini 3.8 Flash", levels: LMH },
 ]
 
 /** A vision row of the snapshot. `prov` is the suffix of `MODEL_PROVIDER_*`. */

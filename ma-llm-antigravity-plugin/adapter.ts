@@ -334,9 +334,7 @@ export const antigravityProviderPlugin: AntigravityProviderPlugin = {
   async fetchSessionInfo() {
     return fetchAntigravitySessionInfo() ?? null
   },
-  async primeSessionInfo(ctx) {
-    await primeAntigravitySessionInfo(ctx)
-  },
+  primeSessionInfo: primeAntigravitySessionInfo,
   modelShortLabel: antigravityModelShortLabel,
   modelVersionToken: antigravityModelVersionToken,
 }

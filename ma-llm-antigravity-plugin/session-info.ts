@@ -14,15 +14,25 @@
  * @module llm/providers/antigravity/session-info
  */
 
+import { readFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
+
 import type { ProviderAuth } from "@minimal-agent/core/plugin-api/llm/provider-auth"
+import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
+import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
+
+// Cycle with account-plan.ts is safe: each side reads the other at call time.
+import { fetchNetworkClient } from "./account-plan.ts"
+import { type AntigravitySecrets, isExpired, readAntigravitySecrets } from "./auth.ts"
 import type {
   ProviderSessionContext,
   ProviderSessionInfo,
   QuotaWindow,
-} from "@minimal-agent/core/plugin-api/llm/provider-plugin"
-import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
-
+} from "./lib/provider-plugin.ts"
 import { fetchQuotaSummary, type QuotaSummaryResponse } from "./live-models.ts"
+import { refreshTokens } from "./oauth-login.ts"
+import { ANTIGRAVITY_CREDENTIAL_NAME, ANTIGRAVITY_SERVICE_ID } from "./wire-constants.ts"
 
 /** Accumulated usage of this process. */
 let sessionUsage: { inputTokens: number; outputTokens: number; at: number } | null = null
@@ -30,8 +40,24 @@ let sessionUsage: { inputTokens: number; outputTokens: number; at: number } | nu
 /** Cached plan quota. */
 let quotaCache: { at: number; info: ProviderSessionInfo } | null = null
 
+/** Single-flight guard for concurrent cold-start probes. */
+let inFlightPrime: Promise<void> | null = null
+
 /** Cache lifetime of the quota probe. */
 const QUOTA_TTL_MS = 60_000
+
+/** Upper bound on a cold-start quota probe. */
+const PRIME_TIMEOUT_MS = 15_000
+
+interface StoredAuthEntry {
+  id?: string
+  name?: string
+  secrets?: Record<string, string>
+}
+
+interface StoredAuthFile {
+  entries?: StoredAuthEntry[]
+}
 
 /** Add one response's usage to the process totals. Non-throwing. */
 export function accumulateAntigravityUsage(usage: {
@@ -56,6 +82,67 @@ export function getAntigravitySessionUsage(): typeof sessionUsage {
 export function clearAntigravitySessionUsage(): void {
   sessionUsage = null
   quotaCache = null
+  inFlightPrime = null
+}
+
+/** Resolve the host auth store path. */
+function authStorePath(): string {
+  const override = process.env.MINIMAL_AGENT_AUTH_FILE?.trim()
+  if (override) return override
+  const home = process.env.MINIMAL_AGENT_HOME?.trim() || join(homedir(), ".minimal-agent")
+  return join(home, "auth.jsonc")
+}
+
+/** Read one stored Antigravity OAuth credential from `auth.jsonc`. */
+function readStoredSecrets(credentialName?: string): AntigravitySecrets | null {
+  try {
+    const raw = readFileSync(authStorePath(), "utf8")
+    const parsed = parseJsonc(raw) as StoredAuthFile | null
+    const entries = (parsed?.entries ?? []).filter((e) => e.id === ANTIGRAVITY_SERVICE_ID)
+    if (entries.length === 0) return null
+    const selected = credentialName
+      ? entries.find((e) => e.name === credentialName)
+      : (entries.find((e) => e.name === ANTIGRAVITY_CREDENTIAL_NAME) ?? entries[0])
+    if (!selected?.secrets) return null
+    return readAntigravitySecrets(selected.secrets)
+  } catch {
+    return null
+  }
+}
+
+/** Combine an optional caller abort signal with the cold-start timeout. */
+function primeSignal(caller?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(PRIME_TIMEOUT_MS)
+  return caller ? AbortSignal.any([caller, timeout]) : timeout
+}
+
+/** Resolve token and optional project for the cold-start quota probe. */
+async function resolvePrimeTarget(
+  ctx: ProviderSessionContext,
+  auth: ProviderAuth | undefined,
+  networkClient: NetworkClient,
+  signal: AbortSignal,
+  now: number,
+): Promise<{ token: string; project?: string } | null> {
+  if (auth) {
+    const token = auth.kind === "oauth" ? auth.token : auth.kind === "api-key" ? auth.key : ""
+    return token ? { token } : null
+  }
+  if (ctx.authKind === "api-key") return null
+  const secrets = readStoredSecrets(ctx.credentialName)
+  if (!secrets) return null
+  if (!isExpired(secrets, now)) {
+    return { token: secrets.accessToken, ...(secrets.project ? { project: secrets.project } : {}) }
+  }
+  const refreshed = await refreshTokens({
+    refreshToken: secrets.refreshToken,
+    networkClient,
+    signal,
+  })
+  return {
+    token: refreshed.accessToken,
+    ...(secrets.project ? { project: secrets.project } : {}),
+  }
 }
 
 /** Convert a quota bucket to a canonical window. The label is the bucket id. */
@@ -101,8 +188,8 @@ export function fetchAntigravitySessionInfo(): ProviderSessionInfo | undefined {
 
 /**
  * Background probe: fill the quota cache from the backend.
- * Never throws. A 401 or 403 leaves the cache as it is, and the host refreshes
- * the token on the next inference call.
+ * Never throws. Resolves the stored OAuth credential when `auth` is omitted,
+ * deduplicates concurrent probes, and falls back to `fetchNetworkClient`.
  */
 export async function primeAntigravitySessionInfo(
   ctx: ProviderSessionContext,
@@ -111,17 +198,31 @@ export async function primeAntigravitySessionInfo(
   if (ctx.signal?.aborted) return
   const now = Date.now()
   if (quotaCache && now - quotaCache.at < QUOTA_TTL_MS) return
-  const token = auth?.kind === "oauth" ? auth.token : auth?.kind === "api-key" ? auth.key : ""
-  if (!token) return
+  if (inFlightPrime) return inFlightPrime
+
+  const run = (async () => {
+    const networkClient = (ctx.networkClient as NetworkClient | undefined) ?? fetchNetworkClient
+    const signal = primeSignal(ctx.signal)
+    try {
+      const target = await resolvePrimeTarget(ctx, auth, networkClient, signal, now)
+      if (!target) return
+      const response = await fetchQuotaSummary({
+        token: target.token,
+        ...(target.project ? { project: target.project } : {}),
+        networkClient,
+        signal,
+        nowMs: now,
+      })
+      quotaCache = { at: Date.now(), info: antigravitySessionInfoFromQuota(response) }
+    } catch {
+      // A quota probe never breaks a session.
+    }
+  })()
+
+  inFlightPrime = run
   try {
-    const response = await fetchQuotaSummary({
-      token,
-      networkClient: ctx.networkClient as NetworkClient | undefined,
-      signal: ctx.signal,
-      nowMs: now,
-    })
-    quotaCache = { at: now, info: antigravitySessionInfoFromQuota(response) }
-  } catch {
-    // A quota probe never breaks a session.
+    await run
+  } finally {
+    if (inFlightPrime === run) inFlightPrime = null
   }
 }

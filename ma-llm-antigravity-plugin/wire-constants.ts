@@ -1,7 +1,7 @@
 /**
  * Wire constants for the Google Antigravity backend.
  *
- * Reverse-engineered from `agy` v1.5.17 (see the research notes in the
+ * Reverse-engineered from `agy` v1.5.18 (see the research notes in the
  * worktree: `research/2026-11-25-antigravity-plugin/notes/oauth.md` and
  * `wire.md`). The OAuth client is Google's own installed-app client, so the
  * secret is public by design. The plugin reads it from the environment when a
@@ -86,10 +86,10 @@ export const FETCH_MODELS_PATH = "/v1internal:fetchAvailableModels"
 export const QUOTA_PATH = "/v1internal:retrieveUserQuotaSummary"
 
 /** `agy` version this plugin reports in its User-Agent. */
-export const ANTIGRAVITY_CLI_VERSION = "1.5.17"
+export const ANTIGRAVITY_CLI_VERSION = "1.5.18"
 
 /** Changelist of that `agy` build. */
-export const ANTIGRAVITY_CLI_CHANGELIST = "1029496841"
+export const ANTIGRAVITY_CLI_CHANGELIST = "1030252320"
 
 /** `request.userAgent` value the backend expects. */
 export const ANTIGRAVITY_REQUEST_USER_AGENT = "antigravity"

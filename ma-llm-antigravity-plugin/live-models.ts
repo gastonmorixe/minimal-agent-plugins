@@ -40,6 +40,7 @@ import {
   antigravityUserAgent,
   FETCH_MODELS_PATH,
   LOAD_CODE_ASSIST_PATH,
+  QUOTA_PATH,
 } from "./wire-constants.ts"
 
 /** One `models[id]` row of `fetchAvailableModels`. */
@@ -94,6 +95,23 @@ export interface QuotaBucket {
   remainingFraction?: number
 }
 
+/** Reason a banked quota reset cannot be claimed yet (`v1internal`). */
+export type QuotaSummaryBankedResetIneligibleReason =
+  | "QUOTA_SUMMARY_BANKED_RESET_INELIGIBLE_REASON_UNSPECIFIED"
+  | "QUOTA_SUMMARY_BANKED_RESET_INELIGIBLE_REASON_USAGE_BELOW_THRESHOLD"
+  | (string & {})
+
+/** One banked quota reset returned by `retrieveUserQuotaSummary` (`agy` 1.5.18+). */
+export interface QuotaSummaryBankedReset {
+  resetId?: string
+  displayLabel?: string
+  expireTime?: string
+  claimable?: boolean
+  ineligibleReason?: QuotaSummaryBankedResetIneligibleReason
+  remainingCount?: number
+  bucketIds?: string[]
+}
+
 /** Response of `retrieveUserQuotaSummary`. */
 export interface QuotaSummaryResponse {
   description?: string
@@ -102,6 +120,7 @@ export interface QuotaSummaryResponse {
     description?: string
     buckets?: QuotaBucket[]
   }>
+  bankedResets?: QuotaSummaryBankedReset[]
 }
 
 /** Input of one catalog or bootstrap call. */
@@ -244,7 +263,7 @@ export async function fetchQuotaSummary(deps: LiveModelsDeps): Promise<QuotaSumm
   const project = await resolveProject(deps)
   return postControl<QuotaSummaryResponse>(
     { ...deps, project },
-    "/v1internal:retrieveUserQuotaSummary",
+    QUOTA_PATH,
     { project },
     "antigravity.retrieveUserQuotaSummary",
   )

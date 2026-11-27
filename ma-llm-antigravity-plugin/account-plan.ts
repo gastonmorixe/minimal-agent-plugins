@@ -30,6 +30,7 @@ import {
   fetchQuotaSummary,
   type LoadCodeAssistResponse,
   loadCodeAssist,
+  type QuotaSummaryBankedReset,
   type QuotaSummaryResponse,
 } from "./live-models.ts"
 import { antigravitySessionInfoFromQuota } from "./session-info.ts"
@@ -143,6 +144,31 @@ async function fetchUserInfo(
   }
 }
 
+/** Format one banked quota reset entry for the plan details list. */
+function formatBankedReset(reset: QuotaSummaryBankedReset): string | null {
+  const name = reset.displayLabel?.trim() || reset.resetId?.trim()
+  const hasCount = typeof reset.remainingCount === "number" && Number.isFinite(reset.remainingCount)
+  if (!name && !hasCount && reset.claimable === undefined) return null
+
+  const parts: string[] = []
+  if (reset.claimable === true) {
+    parts.push("claimable")
+  } else if (reset.claimable === false) {
+    const belowThreshold =
+      reset.ineligibleReason ===
+        "QUOTA_SUMMARY_BANKED_RESET_INELIGIBLE_REASON_USAGE_BELOW_THRESHOLD" ||
+      reset.ineligibleReason === "USAGE_BELOW_THRESHOLD"
+    parts.push(belowThreshold ? "usage below threshold" : "unavailable")
+  }
+  if (hasCount) parts.push(`${reset.remainingCount} left`)
+  if (reset.bucketIds && reset.bucketIds.length > 0) parts.push(reset.bucketIds.join("+"))
+  if (reset.expireTime && Number.isFinite(Date.parse(reset.expireTime))) {
+    parts.push(`expires ${reset.expireTime.slice(0, 10)}`)
+  }
+  const label = name || "reset"
+  return parts.length > 0 ? `${label} (${parts.join(", ")})` : label
+}
+
 /** Pure: fold the three endpoint bodies into the neutral plan view. */
 export function buildAntigravityAccountPlan(
   lca: PlanLoadCodeAssist,
@@ -182,6 +208,10 @@ export function buildAntigravityAccountPlan(
       label: "credits",
       value: min ? `${credit.creditType} (min ${min})` : credit.creditType,
     })
+  }
+  for (const reset of quota?.bankedResets ?? []) {
+    const value = formatBankedReset(reset)
+    if (value) details.push({ key: "banked_reset", label: "banked reset", value })
   }
   if (details.length > 0) plan.details = details
   return plan

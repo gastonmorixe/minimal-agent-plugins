@@ -257,7 +257,9 @@ describe("adapter wiring of the signature cache", () => {
     await drain(request([{ role: "user", content: [{ type: "text", text: "hi" }] }]), net.client)
     const stream = net.requests.find((r) => r.url.includes("streamGenerateContent"))
     const ua = stream?.headers?.["user-agent"] ?? ""
+    expect(ua).toContain("antigravity/cli/1.5.18")
     expect(ua).toContain("aidev_client")
+    expect(ua).toContain("cl=1030252320")
   })
 })
 
