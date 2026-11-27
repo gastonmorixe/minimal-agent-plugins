@@ -176,6 +176,37 @@ describe("adapter wiring of the signature cache", () => {
     expect(call?.thoughtSignature).toBe("SIG-ABC")
   })
 
+  // Regression, session 51282a5c (2026-11-27): a completion digest that the
+  // host queued during a tool round never reached the model. See
+  // research/2026-11-27-lost-subagent-digest/REPORT.md.
+  test("the tool-loop turn sends the queued text that follows the tool result", async () => {
+    const net = fakeNetwork(["data: {}\r\n\r\n"])
+    const history: CanonicalRequest["messages"] = [
+      { role: "user", content: [{ type: "text", text: "read a.txt" }] },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_9", name: "Read", input: { path: "a.txt" } }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", toolUseId: "call_9", content: [{ type: "text", text: "hello" }] },
+          { type: "text", text: "Sub-agent A2 (audit-prompts-tokens) finished" },
+        ],
+      },
+    ]
+    await drain(request(history), net.client)
+
+    const stream = net.requests.find((r) => r.url.includes("streamGenerateContent"))
+    const sent = JSON.parse(stream?.body ?? "{}") as {
+      request?: { contents?: Array<{ role: string; parts: Array<Record<string, unknown>> }> }
+    }
+    const tail = sent.request?.contents?.at(-1)
+    expect(tail?.role).toBe("user")
+    expect(tail?.parts.some((p) => "functionResponse" in p)).toBe(true)
+    expect(tail?.parts).toContainEqual({ text: "Sub-agent A2 (audit-prompts-tokens) finished" })
+  })
+
   test("every turn carries the agy User-Agent", async () => {
     const net = fakeNetwork([SIGNED_CALL])
     clearAntigravityAdapterState()

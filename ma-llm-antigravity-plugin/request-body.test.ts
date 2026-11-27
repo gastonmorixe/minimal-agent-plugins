@@ -155,6 +155,100 @@ describe("buildAntigravityBody tool results", () => {
     }
     expect(part.functionResponse.response.output).toBe("error")
   })
+
+  // Regression, session 51282a5c (2026-11-27): core puts text that the host
+  // queues during a tool round (a sub-agent completion digest, a mode or save
+  // attachment) in the SAME user message as the tool results. The builder
+  // sent only the functionResponse parts, so the lead never saw the digest
+  // of A2 and waited for a worker that was done.
+  // Evidence: research/2026-11-27-lost-subagent-digest/REPORT.md.
+  it("keeps the text that follows a tool result in the same message", () => {
+    const body = build({
+      messages: [
+        userText("audit"),
+        {
+          role: "assistant",
+          content: [{ type: "tool_use", id: "c1", name: "SubAgentsAgentResult", input: {} }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              toolUseId: "c1",
+              content: [{ type: "text", text: "A4 result" }],
+            },
+            { type: "text", text: "Sub-agent A3 finished" },
+          ],
+        },
+      ],
+    })
+    const last = body.request.contents.at(-1)
+    expect(last?.role).toBe("user")
+    expect(last?.parts).toEqual([
+      {
+        functionResponse: {
+          id: "c1",
+          name: "SubAgentsAgentResult",
+          response: { output: "A4 result" },
+        },
+      },
+      { text: "Sub-agent A3 finished" },
+    ])
+  })
+
+  it("puts every functionResponse first, then the text and media in order", () => {
+    const body = build({
+      messages: [
+        userText("audit"),
+        {
+          role: "assistant",
+          content: [
+            { type: "tool_use", id: "c1", name: "SubAgentsAgentResult", input: { id: "A1" } },
+            { type: "tool_use", id: "c2", name: "SubAgentsAgentResult", input: { id: "A3" } },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            { type: "tool_result", toolUseId: "c1", content: [{ type: "text", text: "A1" }] },
+            { type: "text", text: "" },
+            { type: "tool_result", toolUseId: "c2", content: [{ type: "text", text: "A3" }] },
+            { type: "text", text: "Sub-agent A2 finished" },
+            {
+              type: "image",
+              source: { kind: "base64", mediaType: "image/png", data: "iVBORw0KGgo=" },
+            },
+          ],
+        },
+      ],
+    })
+    const parts = body.request.contents.at(-1)?.parts ?? []
+    expect(parts.map((p) => Object.keys(p)[0])).toEqual([
+      "functionResponse",
+      "functionResponse",
+      "text",
+      "inlineData",
+    ])
+    expect(parts[2]).toEqual({ text: "Sub-agent A2 finished" })
+  })
+
+  it("keeps the tail sentinel when text follows the tool result in the same message", () => {
+    const body = build({
+      messages: [
+        userText("read a"),
+        { role: "assistant", content: [{ type: "tool_use", id: "c1", name: "Read", input: {} }] },
+        {
+          role: "user",
+          content: [
+            { type: "tool_result", toolUseId: "c1", content: [{ type: "text", text: "A" }] },
+            { type: "text", text: "note" },
+          ],
+        },
+      ],
+    })
+    expect(body.request.contents[1].parts[0].thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+  })
 })
 
 describe("buildAntigravityBody thought signatures", () => {

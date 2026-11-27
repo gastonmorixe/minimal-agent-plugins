@@ -306,8 +306,8 @@ function assistantContent(
   return { role: "model", parts }
 }
 
-/** Build one `user` content from the text and media blocks of a message. */
-function userContent(message: CanonicalMessage): GeminiRequestContent {
+/** The text and media parts of a message, in order. An empty text adds no part. */
+function textAndMediaParts(message: CanonicalMessage): GeminiRequestPart[] {
   const parts: GeminiRequestPart[] = []
   for (const block of message.content) {
     if (block.type === "text") {
@@ -317,6 +317,12 @@ function userContent(message: CanonicalMessage): GeminiRequestContent {
     const media = mediaPart(block)
     if (media) parts.push(media)
   }
+  return parts
+}
+
+/** Build one `user` content from the text and media blocks of a message. */
+function userContent(message: CanonicalMessage): GeminiRequestContent {
+  const parts = textAndMediaParts(message)
   if (parts.length === 0) parts.push({ text: "" })
   return { role: "user", parts }
 }
@@ -388,7 +394,9 @@ export const THOUGHT_SIGNATURE_SENTINEL = "skip_thought_signature_validator"
  * with an unsigned call answers 400 "Function call is missing a
  * thought_signature". With the sentinel it answers 200. A wrong base64 value
  * answers 400 "Corrupted thought signature", so the sentinel is the only safe
- * filler. A history that has user text after the result needs nothing.
+ * filler. A history that has a separate user content after the result needs
+ * nothing. A tail content with tool parts and text keeps the sentinel, because
+ * it still ends at a tool result.
  */
 function repairUnsignedTail(
   contents: GeminiRequestContent[],
@@ -431,8 +439,8 @@ function findLastUnsignedCall(
  * Build the `functionResponse` parts of a message, whatever its role is.
  *
  * A canonical tool result is a `tool_result` block, and the host puts it in a
- * `role:"user"` message. Text in the same message stays behind it, so the tool
- * output is never lost.
+ * `role:"user"` message. This returns only the tool parts. The caller adds the
+ * text and media of the same message after them.
  */
 function toolResponseParts(
   message: CanonicalMessage,
@@ -491,7 +499,12 @@ export function buildAntigravityBody(
     // the tool output and the model then sees an empty user turn.
     const toolParts = toolResponseParts(message, toolNames)
     if (toolParts.length > 0) {
-      contents.push({ role: "user", parts: toolParts })
+      // Keep the text and media of the same message after the tool parts.
+      // Core puts the text that the host queues during a tool round (a
+      // sub-agent digest, a mode or save attachment) in this message. When
+      // it was dropped, a lead waited for a worker that was done (session
+      // 51282a5c, 2026-11-27).
+      contents.push({ role: "user", parts: [...toolParts, ...textAndMediaParts(message)] })
       continue
     }
     contents.push(userContent(message))

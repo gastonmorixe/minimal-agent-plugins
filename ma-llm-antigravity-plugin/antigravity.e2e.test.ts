@@ -256,4 +256,62 @@ describeLive("antigravity live", () => {
     expect(textOf(done).length).toBeGreaterThan(0)
     console.log(`after the tool result: "${textOf(done).slice(0, 80)}"`)
   }, 120_000)
+
+  // Regression, session 51282a5c (2026-11-27): core puts queued host text in
+  // the same user message as the tool results. The backend must accept the
+  // mixed tail, and the model must see the text.
+  test("gemini-4-neon (low) sees text that shares a message with a tool result", async () => {
+    const { secrets } = loaded!
+    const networkClient = await hostNetwork()
+    const fresh = await refreshTokens({ refreshToken: secrets.refreshToken, networkClient })
+    const model = modelFor("gemini-4-neon")!
+    const tools: CanonicalRequest["tools"] = [
+      {
+        name: "read_file",
+        description: "Read a file from the workspace.",
+        inputSchema: {
+          type: "object",
+          properties: { path: { type: "string", description: "File path." } },
+          required: ["path"],
+        },
+      },
+    ]
+    const history: CanonicalMessage[] = [
+      { role: "user", content: [{ type: "text", text: "Read README.md with the tool." }] },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "call_e2e_mixed",
+            name: "read_file",
+            input: { path: "README.md" },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            toolUseId: "call_e2e_mixed",
+            content: [{ type: "text", text: "# Demo project." }],
+          },
+          {
+            type: "text",
+            text: "Host note: the code word is ZEBRA-7731. Reply with only the code word.",
+          },
+        ],
+      },
+    ]
+    const done = await collect(
+      { modelId: "gemini-4-neon", effort: "low", messages: history, tools },
+      model,
+      fresh.accessToken,
+      networkClient,
+    )
+    expect(done.some((event) => event.type === "message_stop")).toBe(true)
+    console.log(`mixed tail answer: "${textOf(done).slice(0, 80)}"`)
+    expect(textOf(done)).toContain("ZEBRA-7731")
+  }, 120_000)
 })
