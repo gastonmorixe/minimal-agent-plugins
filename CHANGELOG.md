@@ -310,6 +310,21 @@ Each entry is prefixed with a local-time timestamp (`HH:MM:SS ±HHMM`) and the s
 
 ### Fixed
 
+- 2026-11-27 `6e5cf6f`: **tool_result images reach the model in every
+  encoder that takes only text in a tool output.** 8 encoders call core
+  `hoistToolResultMedia` (`@minimal-agent/core/plugin-api/llm/tool-result-media`)
+  at the start of their message loop: OpenAI Chat (`ma-llm-openai-plugin`
+  `chat/request-body.ts`), the Responses encoders of openai, grok, meta,
+  opencode-go and opencode-zen (`responses/request-body.ts`), Ollama
+  (`request-body.ts`) and Antigravity (`request-body.ts`). A marker such as
+  `image 1 is attached after the tool results` stays in the tool output,
+  and the image goes after all the tool outputs: `image_url` in a user
+  message (Chat), `input_image` in a user item (Responses), `images[]` on a
+  user message (Ollama), `inlineData` after every `functionResponse`
+  (Antigravity). Anthropic, the opencode anthropic lib and cursor have no
+  change. New tests: `request-body.tool-media.test.ts` in each plugin, and
+  an E2E case in `antigravity.e2e.test.ts` (runs only with `E2E=1`).
+
 - 2026-11-20: **Title fixes** (`ma-title-plugin`). (1) An injected prompt
   (`source: "inject"`, from core `PromptSource`) makes no title. Before, an
   intercom or background-job wake could become the title. (2) A fork gets
