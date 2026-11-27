@@ -13,6 +13,7 @@
 import { serviceDepsFromCtx, storeFromCtx } from "../lib/handler-deps.ts"
 import type { TUIContext, TUIResult } from "../lib/host-types.ts"
 import {
+  CONTINUE_KINDS,
   DEFAULT_MAIL_KIND,
   type MailMessage,
   makeMailId,
@@ -63,7 +64,7 @@ export default async function mailbox(ctx: TUIContext): Promise<TUIResult> {
     const kind = str(input.kind) ?? DEFAULT_MAIL_KIND
     // Lead-initiated resume of a terminal worker: continue its existing session
     // (--resume <childSid>) with the follow-up message instead of cold-spawning.
-    if (me === "lead" && kind === "resume" && to !== "*") {
+    if (me === "lead" && CONTINUE_KINDS.has(kind) && to !== "*") {
       const store = storeFromCtx(ctx)
       const target = store?.get(to)
       if (target && !isActive(target.status)) {

@@ -1576,7 +1576,7 @@
           "name": "SubAgentsAgentOutput"
         },
         {
-          "description": "Send and read short messages between the sub-agents and the lead. Use it only when your task tells you to. Use it to give a result, or to tell the agents that you use a file or cannot continue. Do not use it for general messages.\n\nThe tool gives a line for `post`, or your messages after `since` for `read`.",
+          "description": "Send and read short messages between the lead and its sub-agents. A sub-agent that runs gets new messages after each tool step. Do not use it for general messages.\n\nThe tool gives a line for `post`, or your messages after `since` for `read`.",
           "input_schema": {
             "additionalProperties": false,
             "properties": {
@@ -1593,7 +1593,7 @@
                 "type": "string"
               },
               "kind": {
-                "description": "For `post`: the message type, for example `note` (default), `claim`, `blocker` or `handoff`.",
+                "description": "For `post`: `note` (default), `claim`, `blocker`, `handoff` or `continue`. `blocker` starts a lead turn. `continue` starts a stopped sub-agent again, with `body` as its task.",
                 "type": "string"
               },
               "since": {

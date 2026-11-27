@@ -32,7 +32,10 @@ import { dirname, join } from "node:path"
  * stays free-form (the handler keeps any string); these are the documented
  * values, and `DEFAULT_MAIL_KIND` is the one the handler sets.
  */
-export const MAIL_KINDS = ["note", "claim", "blocker", "handoff", "steer", "resume"] as const
+export const MAIL_KINDS = ["note", "claim", "blocker", "handoff", "continue"] as const
+
+/** Kinds that start a terminal sub-agent again (`resume` is the old alias). */
+export const CONTINUE_KINDS: ReadonlySet<string> = new Set(["continue", "resume"])
 
 /** The kind of a message posted with no `kind`. */
 export const DEFAULT_MAIL_KIND = "note"
