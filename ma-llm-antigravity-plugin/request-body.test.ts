@@ -326,6 +326,97 @@ describe("buildAntigravityBody thought signatures", () => {
   })
 })
 
+// Regression, session 51282a5c (2026-11-27): the adapter keeps signatures in
+// memory only. After a restart in the middle of a turn, every earlier step was
+// unsigned, the builder signed only the last one, and the backend answered 400
+// "Function call is missing a thought_signature ... position 58". Gemini checks
+// the FIRST functionCall of EACH step in the current turn. The turn starts
+// after the newest user content that has no functionResponse.
+// https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures
+describe("buildAntigravityBody signatures after a lost cache", () => {
+  const call = (id: string, name = "read_file"): CanonicalMessage => ({
+    role: "assistant",
+    content: [{ type: "tool_use", id, name, input: {} }],
+  })
+  const result = (id: string, text = "ok"): CanonicalMessage => ({
+    role: "user",
+    content: [{ type: "tool_result", toolUseId: id, content: [{ type: "text", text }] }],
+  })
+  const firstCall = (body: Body, index: number) =>
+    body.request.contents[index].parts.find((p) => "functionCall" in p)
+
+  it("signs the first call of every unsigned step of the current turn", () => {
+    const body = build({
+      messages: [userText("go"), call("c1"), result("c1"), call("c2"), result("c2")],
+    })
+    expect(firstCall(body, 1)?.thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+    expect(firstCall(body, 3)?.thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+  })
+
+  it("puts the sentinel on the first call of a parallel step, not the last", () => {
+    const body = build({
+      messages: [
+        userText("go"),
+        {
+          role: "assistant",
+          content: [
+            { type: "tool_use", id: "p1", name: "Edit", input: {} },
+            { type: "tool_use", id: "p2", name: "Bash", input: {} },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            { type: "tool_result", toolUseId: "p1", content: [{ type: "text", text: "a" }] },
+            { type: "tool_result", toolUseId: "p2", content: [{ type: "text", text: "b" }] },
+          ],
+        },
+      ],
+    })
+    const parts = body.request.contents[1].parts
+    expect(parts[0].thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+    expect(parts[1]).not.toHaveProperty("thoughtSignature")
+  })
+
+  it("does not start a new turn at a user content with tool results and text", () => {
+    const body = build({
+      messages: [
+        userText("go"),
+        call("c1", "SubAgentsAgentResult"),
+        {
+          role: "user",
+          content: [
+            { type: "tool_result", toolUseId: "c1", content: [{ type: "text", text: "A4" }] },
+            { type: "text", text: "Sub-agent A5 finished" },
+          ],
+        },
+        call("c2"),
+        result("c2"),
+      ],
+    })
+    expect(firstCall(body, 1)?.thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+    expect(firstCall(body, 3)?.thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+  })
+
+  it("keeps a real signature and leaves the steps of an earlier turn alone", () => {
+    const body = build(
+      {
+        messages: [
+          userText("old"),
+          call("old1"),
+          result("old1"),
+          userText("new"),
+          call("new1"),
+          result("new1"),
+        ],
+      },
+      { signatures: new Map([["new1", "SIG_NEW"]]) },
+    )
+    expect(firstCall(body, 1)).not.toHaveProperty("thoughtSignature")
+    expect(firstCall(body, 4)?.thoughtSignature).toBe("SIG_NEW")
+  })
+})
+
 describe("buildAntigravityBody tools", () => {
   it("declares tools with sanitized upper-case parameter types", () => {
     const body = build({

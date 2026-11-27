@@ -387,54 +387,52 @@ function buildToolConfig(req: CanonicalRequest): Record<string, unknown> | undef
 export const THOUGHT_SIGNATURE_SENTINEL = "skip_thought_signature_validator"
 
 /**
- * Put the sentinel on an unsigned Gemini call when the history ends at a tool
- * result.
+ * Put the sentinel on the first call of every unsigned Gemini step of the
+ * current turn, when the history ends at a tool result.
+ *
+ * The rule (https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures):
+ * the current turn starts after the newest user content that has standard
+ * content and no `functionResponse`. The first `functionCall` part of EACH
+ * model step after it must carry a signature, or the backend answers 400.
+ *
+ * The adapter keeps signatures in memory only. After a restart or resume in
+ * the middle of a turn, every earlier step has none. Signing only the last
+ * step then answered 400 at the first earlier step (session 51282a5c,
+ * 2026-11-27, "position 58").
  *
  * Live probe in `research/2026-11-25-antigravity-plugin/logs/`, file
- * `probe-signature-ends-20261125.log`: a history that ends at a tool result
- * with an unsigned call answers 400 "Function call is missing a
- * thought_signature". With the sentinel it answers 200. A wrong base64 value
- * answers 400 "Corrupted thought signature", so the sentinel is the only safe
- * filler. A history that has a separate user content after the result needs
- * nothing. A tail content with tool parts and text keeps the sentinel, because
- * it still ends at a tool result.
+ * `probe-signature-ends-20261125.log`: a wrong base64 value answers 400
+ * "Corrupted thought signature", so the sentinel is the only safe filler. A
+ * history that has a separate user text content after the result starts a new
+ * turn and needs nothing. A content with tool parts and text does not start a
+ * turn, because it has a `functionResponse`.
  */
-function repairUnsignedTail(
-  contents: GeminiRequestContent[],
-  family: AntigravityFamily,
-  signatures: ReadonlyMap<string, string>,
-  toolNames: Map<string, string>,
-): void {
+function repairUnsignedTail(contents: GeminiRequestContent[], family: AntigravityFamily): void {
   if (family !== "gemini") return
   const tail = contents[contents.length - 1]
   if (!tail || tail.role !== "user") return
   const isToolResultTail = tail.parts.some((p) => p.functionResponse !== undefined)
   if (!isToolResultTail) return
-  const lastCall = findLastUnsignedCall(contents, signatures)
-  if (lastCall && lastCall.id) {
-    lastCall.part.thoughtSignature = THOUGHT_SIGNATURE_SENTINEL
-    void toolNames
+  for (let i = currentTurnStart(contents); i < contents.length; i++) {
+    const content = contents[i]
+    if (content.role !== "model") continue
+    const first = content.parts.find((part) => part.functionCall !== undefined)
+    if (first && !first.thoughtSignature) first.thoughtSignature = THOUGHT_SIGNATURE_SENTINEL
   }
 }
 
-/** The last `functionCall` part that carries no signature, and its id. */
-function findLastUnsignedCall(
-  contents: GeminiRequestContent[],
-  signatures: ReadonlyMap<string, string>,
-): { part: GeminiRequestPart; id?: string } | null {
+/**
+ * Index of the first content of the current Gemini turn: the one after the
+ * newest user content that has no `functionResponse`. 0 when there is none.
+ */
+function currentTurnStart(contents: GeminiRequestContent[]): number {
   for (let i = contents.length - 1; i >= 0; i--) {
     const content = contents[i]
-    if (content.role !== "model") continue
-    for (let j = content.parts.length - 1; j >= 0; j--) {
-      const part = content.parts[j]
-      if (!part.functionCall) continue
-      if (part.thoughtSignature) return null
-      const id = part.functionCall.id
-      if (id && signatures.has(id)) return null
-      return { part, id }
-    }
+    if (content.role !== "user") continue
+    if (content.parts.some((part) => part.functionResponse !== undefined)) continue
+    return i + 1
   }
-  return null
+  return 0
 }
 /**
  * Build the `functionResponse` parts of a message, whatever its role is.
@@ -467,9 +465,9 @@ function toolResponseParts(
  * @param req - Canonical request from the host.
  * @param model - Registered model view, for limits and thinking support.
  * @param input - Locator fields and the signature map the adapter owns.
- * @returns The wire body plus the generation settings used.
- * @throws Error when a Gemini tool call has no signature in the map. A body
- *   without it always fails with 400, so a clear local error is better.
+ * @returns The wire body plus the generation settings used. A Gemini step of
+ *   the current turn with no known signature gets the sentinel (see
+ *   `repairUnsignedTail`).
  */
 export function buildAntigravityBody(
   req: CanonicalRequest,
@@ -513,7 +511,7 @@ export function buildAntigravityBody(
     contents.push(userContent(message))
   }
 
-  repairUnsignedTail(contents, family, signatures, toolNames)
+  repairUnsignedTail(contents, family)
   // A family row names its base id; the wire id is `<base>-<effort>`.
   const target = resolveAntigravityWireTarget(req, model, input.modelId)
   const { config, generation } = buildGenerationConfig(req, model, target)

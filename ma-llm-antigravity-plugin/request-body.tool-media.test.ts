@@ -80,8 +80,12 @@ describe("antigravity tool_result image", () => {
       { inlineData: { mimeType: "image/png", data: PNG } },
       { text: "host note" },
     ])
-    // The tail still ends at a tool result, so the unsigned call keeps the sentinel.
-    const call = all.at(-2)?.parts.at(-1)
-    expect(call?.thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+    // The tail still ends at a tool result, so the unsigned step keeps the
+    // sentinel. Gemini checks the FIRST call of a parallel step, so the
+    // sentinel goes there (live e2e "continues a turn whose signatures were
+    // lost" has a parallel step).
+    const step = all.at(-2)?.parts ?? []
+    expect(step[0]?.thoughtSignature).toBe(THOUGHT_SIGNATURE_SENTINEL)
+    expect(step[1]).not.toHaveProperty("thoughtSignature")
   })
 })

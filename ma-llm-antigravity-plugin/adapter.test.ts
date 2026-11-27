@@ -207,6 +207,49 @@ describe("adapter wiring of the signature cache", () => {
     expect(tail?.parts).toContainEqual({ text: "Sub-agent A2 (audit-prompts-tokens) finished" })
   })
 
+  // Regression, session 51282a5c (2026-11-27): a restart empties the
+  // in-memory cache. The resumed turn had 60 unsigned steps, the builder
+  // signed only the last one, and the backend answered 400.
+  test("after a lost cache every step of the current turn is signed on the wire", async () => {
+    clearAntigravityAdapterState()
+    const net = fakeNetwork(["data: {}\r\n\r\n"])
+    const history: CanonicalRequest["messages"] = [
+      { role: "user", content: [{ type: "text", text: "read a.txt and b.txt" }] },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_r1", name: "Read", input: { path: "a.txt" } }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", toolUseId: "call_r1", content: [{ type: "text", text: "A" }] },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_r2", name: "Read", input: { path: "b.txt" } }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", toolUseId: "call_r2", content: [{ type: "text", text: "B" }] },
+        ],
+      },
+    ]
+    await drain(request(history), net.client)
+
+    const stream = net.requests.find((r) => r.url.includes("streamGenerateContent"))
+    const sent = JSON.parse(stream?.body ?? "{}") as {
+      request?: { contents?: Array<{ role: string; parts: Array<Record<string, unknown>> }> }
+    }
+    const steps = (sent.request?.contents ?? []).filter((c) => c.role === "model")
+    expect(steps.length).toBe(2)
+    for (const step of steps) {
+      const first = step.parts.find((p) => "functionCall" in p)
+      expect(typeof first?.thoughtSignature).toBe("string")
+    }
+  })
+
   test("every turn carries the agy User-Agent", async () => {
     const net = fakeNetwork([SIGNED_CALL])
     clearAntigravityAdapterState()

@@ -34,7 +34,7 @@ import type { CanonicalRequest } from "@minimal-agent/core/plugin-api/llm/canoni
 import type { NetworkClient } from "@minimal-agent/core/plugin-api/net/types"
 import { parseJsonc } from "@minimal-agent/core/plugin-api/utils/jsonc"
 
-import { antigravityAdapter } from "./adapter.ts"
+import { antigravityAdapter, clearAntigravityAdapterState } from "./adapter.ts"
 import {
   type AntigravitySecrets,
   isExpired,
@@ -364,6 +364,77 @@ describeLive("antigravity live", () => {
     expect(done.some((event) => event.type === "message_stop")).toBe(true)
     console.log(`image answer: "${textOf(done).slice(0, 80)}"`)
     expect(textOf(done).toLowerCase()).toContain("red")
+  }, 120_000)
+
+  // Regression, session 51282a5c (2026-11-27): a restart in the middle of a
+  // turn empties the in-memory signature cache. The backend checks the first
+  // call of every step of the current turn, so a history with 2 unsigned
+  // steps answered 400 "Function call is missing a thought_signature".
+  test("gemini-4-neon (low) continues a turn whose signatures were lost", async () => {
+    const { secrets } = loaded!
+    const networkClient = await hostNetwork()
+    const fresh = await refreshTokens({ refreshToken: secrets.refreshToken, networkClient })
+    const model = modelFor("gemini-4-neon")!
+    const tools: CanonicalRequest["tools"] = [
+      {
+        name: "read_file",
+        description: "Read a file from the workspace.",
+        inputSchema: {
+          type: "object",
+          properties: { path: { type: "string", description: "File path." } },
+          required: ["path"],
+        },
+      },
+    ]
+    // No tool_use id below was ever in the cache: the same as after a restart.
+    clearAntigravityAdapterState()
+    const history: CanonicalMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Read a.txt, then b.txt and c.txt, then reply with only done." },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "call_lost_1", name: "read_file", input: { path: "a.txt" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", toolUseId: "call_lost_1", content: [{ type: "text", text: "A" }] },
+        ],
+      },
+      // A parallel step: the backend checks only its FIRST call.
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "call_lost_2", name: "read_file", input: { path: "b.txt" } },
+          { type: "tool_use", id: "call_lost_3", name: "read_file", input: { path: "c.txt" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", toolUseId: "call_lost_2", content: [{ type: "text", text: "B" }] },
+          { type: "tool_result", toolUseId: "call_lost_3", content: [{ type: "text", text: "C" }] },
+        ],
+      },
+    ]
+    const done = await collect(
+      { modelId: "gemini-4-neon", effort: "low", messages: history, tools },
+      model,
+      fresh.accessToken,
+      networkClient,
+    )
+    const failure = done.find((event) => event.type === "stream_error") as
+      | { message?: string }
+      | undefined
+    expect(failure?.message ?? "").not.toContain("thought_signature")
+    expect(done.some((event) => event.type === "message_stop")).toBe(true)
+    console.log(`lost-signature answer: "${textOf(done).slice(0, 80)}"`)
   }, 120_000)
 })
 
