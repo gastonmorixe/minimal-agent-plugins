@@ -221,6 +221,54 @@ export async function* translateAntigravityStream(
   yield { type: "message_stop" }
 }
 
+/** One Markdown code fence (three backticks, an optional `json` tag) around the whole text. */
+const WHOLE_FENCE = /^\s*```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n?```\s*$/u
+
+/**
+ * Remove one code fence around the whole reply of a JSON schema call.
+ *
+ * Gemini can wrap a schema reply in a fence even with `responseMimeType`
+ * set (live reply on 2026-11-27). gemini-cli also strips it before it parses
+ * (`packages/core/src/core/baseLlmClient.ts` `generateJson`,
+ * https://github.com/google-gemini/gemini-cli). A text with no fence, or
+ * with a fence inside other text, does not change.
+ */
+export function stripJsonFence(text: string): string {
+  const m = WHOLE_FENCE.exec(text)
+  return m ? (m[1] ?? "").trim() : text
+}
+
+/**
+ * The events of a JSON schema call: the text of the turn goes out as one
+ * text block with the fence removed ({@link stripJsonFence}). Thinking and
+ * tool events pass through. The text block opens at the index of the first
+ * text event, and closes before `message_delta`.
+ */
+export async function* unfenceJsonText(
+  events: AsyncIterable<CanonicalEvent>,
+): AsyncIterable<CanonicalEvent> {
+  let textIndex: number | null = null
+  let text = ""
+  for await (const ev of events) {
+    if (ev.type === "text_start") {
+      if (textIndex === null) textIndex = ev.index
+      continue
+    }
+    if (ev.type === "text_delta") {
+      text += ev.text
+      continue
+    }
+    if (ev.type === "text_stop") continue
+    if (ev.type === "message_delta" && textIndex !== null) {
+      yield { type: "text_start", index: textIndex }
+      yield { type: "text_delta", index: textIndex, text: stripJsonFence(text) }
+      yield { type: "text_stop", index: textIndex }
+      textIndex = null
+    }
+    yield ev
+  }
+}
+
 /** Parse a non-2xx body into a tagged error, for the adapter's fetch path. */
 export function antigravityHttpError(
   status: number,

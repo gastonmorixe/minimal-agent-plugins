@@ -49,7 +49,11 @@ import {
 } from "./models.ts"
 import { antigravityOAuthLogin } from "./oauth-login.ts"
 import { buildAntigravityBody } from "./request-body.ts"
-import { type GeminiSseFrame, translateAntigravityStream } from "./response-stream.ts"
+import {
+  type GeminiSseFrame,
+  translateAntigravityStream,
+  unfenceJsonText,
+} from "./response-stream.ts"
 import {
   accumulateAntigravityUsage,
   fetchAntigravitySessionInfo,
@@ -287,10 +291,16 @@ export const antigravityAdapter: ProviderAdapterView &
       contentEncoding: response.headers.get("content-encoding"),
     })
 
-    for await (const ev of translateAntigravityStream(frames, {
+    const translated = translateAntigravityStream(frames, {
       modelId: model.id,
       signatureSink: rememberToolSignature,
-    })) {
+    })
+    // A JSON schema call: core parses the text as JSON, so drop a fence.
+    const events =
+      req.outputFormat?.type === "json_schema" && model.capabilities.structuredOutputs
+        ? unfenceJsonText(translated)
+        : translated
+    for await (const ev of events) {
       if (isEvent(ev, "message_delta")) {
         accumulateAntigravityUsage({
           inputTokens: ev.usage.inputTokens,

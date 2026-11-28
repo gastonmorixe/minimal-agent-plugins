@@ -130,13 +130,29 @@ describe("core resolveUtilityModel for antigravity", () => {
 describe("JSON schema on the wire", () => {
   it("sends the JSON mime type and the schema in generationConfig for a title request", () => {
     const body = bodyOf(titleRequest(), row("gemini-4-hydrogen"))
-    // Effort low on the family row, and no thinkingConfig for thinking off.
+    // Effort low on the family row. Gemini 4 cannot turn thinking off: with
+    // no thinkingConfig the backend uses the family default (high), which
+    // spent all 256 output tokens on thought in a live call on 2026-11-27
+    // (finish MAX_TOKENS, 253 thought tokens, no text). So a schema call with
+    // thinking off sends the lowest level, with thoughts hidden.
     expect(body.model).toBe("gemini-4-hydrogen-low")
     expect(body.request.generationConfig).toEqual({
       maxOutputTokens: 256,
+      thinkingConfig: { includeThoughts: false, thinkingLevel: "LOW" },
       responseMimeType: "application/json",
       responseJsonSchema: SCHEMA,
     })
+  })
+
+  it("keeps a normal turn with thinking off as it was: no thinkingConfig", () => {
+    const req: CanonicalRequest = {
+      modelId: "gemini-4-hydrogen",
+      messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      generation: { maxOutputTokens: 256 },
+      thinking: { mode: "off" },
+    }
+    const config = bodyOf(req, row("gemini-4-hydrogen")).request.generationConfig
+    expect(config).not.toHaveProperty("thinkingConfig")
   })
 
   it("sends standard lower-case JSON Schema, not the upper-case tool schema", () => {
@@ -155,6 +171,62 @@ describe("JSON schema on the wire", () => {
     const config = bodyOf(req, row("gemini-4-hydrogen")).request.generationConfig
     expect(config).not.toHaveProperty("responseMimeType")
     expect(config).not.toHaveProperty("responseJsonSchema")
+  })
+
+  /** Run a title request on a fake backend that answers `parts`; return the wire body and the text. */
+  async function runTitle(parts: Array<{ text: string }>): Promise<{ wire: Body; text: string }> {
+    clearAntigravityAdapterState()
+    clearAntigravityLiveModelsCache()
+    const sent: string[] = []
+    const frame = `data: ${JSON.stringify({
+      response: {
+        candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }],
+        usageMetadata: { promptTokenCount: 40, candidatesTokenCount: 8, totalTokenCount: 48 },
+      },
+    })}\r\n\r\n`
+    const client = {
+      async request(opts: { url: string; body?: string }): Promise<Response> {
+        if (opts.url.includes("loadCodeAssist")) {
+          return new Response(JSON.stringify({ cloudaicompanionProject: "test-project" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          })
+        }
+        sent.push(opts.body ?? "")
+        return new Response(frame, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        })
+      },
+    }
+    let text = ""
+    for await (const ev of antigravityAdapter.run(titleRequest(), row("gemini-4-hydrogen"), {
+      auth: { kind: "oauth", token: "test-token" },
+      sessionId: "test-session",
+      networkClient: client,
+    } as never)) {
+      if (ev.type === "text_delta") text += ev.text
+    }
+    return { wire: JSON.parse(sent[0] ?? "{}") as Body, text }
+  }
+
+  it("strips one json fence from a schema reply, as gemini-cli does (live reply 2026-11-27)", async () => {
+    // The live Hydrogen reply had a fenced body even with responseMimeType set.
+    const { text } = await runTitle([
+      { text: '```json\n{\n  "title": "Swift strict concurrency' },
+      { text: ' migration"\n}\n```' },
+    ])
+    expect(JSON.parse(text)).toEqual({ title: "Swift strict concurrency migration" })
+  })
+
+  it("strips only a fence around the whole reply", async () => {
+    const mod = (await import("./response-stream.ts")) as Record<string, unknown>
+    const strip = mod.stripJsonFence as ((s: string) => string) | undefined
+    expect(typeof strip).toBe("function")
+    expect(strip?.("```json\n{}\n```")).toBe("{}")
+    expect(strip?.("```\n{}\n```")).toBe("{}")
+    expect(strip?.("plain text")).toBe("plain text")
+    expect(strip?.("text ```json\n{}\n``` text")).toBe("text ```json\n{}\n``` text")
   })
 
   it("sends the fields on the wire and reads the raw JSON text back (adapter run)", async () => {

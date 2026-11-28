@@ -268,6 +268,19 @@ export function buildGenerationConfig(
   if (req.outputFormat?.type === "json_schema" && caps.structuredOutputs) {
     config.responseMimeType = "application/json"
     config.responseJsonSchema = req.outputFormat.schema
+    // Gemini 4 cannot turn thinking off (https://ai.google.dev/gemini-api/docs/thinking).
+    // With no thinkingConfig the backend thinks at the family default (high
+    // on Hydrogen and Neon), and a short schema call (a title, 256 tokens)
+    // ends at MAX_TOKENS with no text. So a schema call with thinking off
+    // sends the level of the wire model when it has one (a family row sends
+    // `<base>-low` for effort low), else the lowest level that the model
+    // lists, with thoughts hidden. The level always matches the model suffix.
+    const suffix = THINKING_LEVELS.find((level) => target.model.endsWith(`-${level}`))
+    const lowest = suffix ?? caps.effort.levels[0]
+    if (req.thinking?.mode === "off" && caps.thinking.visible && lowest) {
+      generation.thinkingLevel = lowest.toUpperCase()
+      config.thinkingConfig = { includeThoughts: false, thinkingLevel: generation.thinkingLevel }
+    }
   }
   return { config, generation }
 }
