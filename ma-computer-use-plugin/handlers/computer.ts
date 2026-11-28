@@ -22,16 +22,17 @@ import { closeSync, existsSync, mkdirSync, openSync } from "node:fs"
 import { dirname } from "node:path"
 
 import {
+  binaryKeyOf,
   ensureDaemon,
   HelperTimeoutError,
   makeBunSocketFetch,
-  PING_TIMEOUT_MS,
-  parsePing,
+  probePing,
+  RELEASE_HINT,
   type SocketFetch,
 } from "../lib/client.ts"
-import { type ExtractResult, extractHelper } from "../lib/embedded-helper.ts"
-import { isSourceCheckout, missingHelperText } from "../lib/missing-helper.ts"
-import { helperBinary, logPath, socketPath, supportDir } from "../lib/paths.ts"
+import { type ExtractResult, extractHelper, isCompiledHost } from "../lib/embedded-helper.ts"
+import { isSourceCheckout, missingHelperText, REBUILD_HINT } from "../lib/missing-helper.ts"
+import { logPath, socketPath, spawnLockPath, supportDir } from "../lib/paths.ts"
 import { dim, isErrorBody, red, renderContent, summarize } from "../lib/render.ts"
 import { validateToolInput } from "../lib/routes.ts"
 import type { TUIContext, TUIResult } from "../lib/types.ts"
@@ -42,9 +43,10 @@ const LOG = logPath()
 /**
  * Spawn the helper binary detached so it outlives this tool call. Its
  * stdout+stderr append to LOG.
+ *
+ * @param bin - The helper binary that the handler found.
  */
-function spawnDaemon(packageDir: string): void {
-  const bin = helperBinary(packageDir)
+function spawnDaemon(bin: string): void {
   try {
     mkdirSync(supportDir(), { recursive: true })
     mkdirSync(dirname(LOG), { recursive: true })
@@ -69,9 +71,15 @@ function spawnDaemon(packageDir: string): void {
 export interface HandlerDeps {
   socketFetch?: SocketFetch
   ensure?: typeof ensureDaemon
-  spawnDaemon?: (packageDir: string) => void
+  /** Starts the helper binary `bin`. Default: a detached spawn. */
+  spawnDaemon?: (bin: string) => void
   /** Extracts the embedded helper. Default: `extractHelper`. */
   extract?: (packageDir: string) => ExtractResult
+  /**
+   * True when the host is a compiled CLI. Then the tool never gives the dev
+   * build text (review H2). Default: `isCompiledHost`.
+   */
+  compiledHost?: () => boolean
 }
 
 const handler = async (ctx: TUIContext): Promise<TUIResult> => {
@@ -115,12 +123,16 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
     }
   }
 
+  // The dev text (a build hint) is only for a run from source in a dev
+  // checkout. A compiled CLI user has no build tools, also when a user-tier
+  // clone of the plugins repo (with native/Sources) is the package dir (H2).
+  const source = !(deps.compiledHost ?? isCompiledHost)() && isSourceCheckout(ctx.packageDir)
+
   // If the helper is missing, give a precise instruction instead of a generic
-  // "unreachable" (auto-spawn would silently fail). Only a dev checkout can
-  // build it. A compiled CLI user has no build tools.
-  const bin = helperBinary(ctx.packageDir)
+  // "unreachable" (auto-spawn would silently fail). This check comes BEFORE
+  // ensure, so a missing helper never kills the helper on the socket (H3).
+  const bin = got.path
   if (!deps.socketFetch && !existsSync(bin)) {
-    const source = isSourceCheckout(ctx.packageDir)
     return {
       kind: "tool_result",
       content: missingHelperText(bin, source),
@@ -130,18 +142,17 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   }
 
   // A ping that gives an old protocol (or none) means an old helper holds the
-  // socket. ensure stops it (SIGTERM to the pid of its ping) and starts this one.
+  // socket. ensure stops it (SIGTERM to the pid of its ping) and starts this
+  // one. A ping with no answer in time means a busy helper: no kill, no spawn
+  // (H1). The spawn lock lets one caller at a time stop or start a helper.
   const up = await ensure({
     sock: SOCK,
-    probe: async () => {
-      try {
-        return parsePing(await socketFetch("ping", undefined, { timeoutMs: PING_TIMEOUT_MS }))
-      } catch {
-        return null
-      }
-    },
-    spawn: () => doSpawn(ctx.packageDir),
+    lockPath: spawnLockPath(),
+    probe: () => probePing(socketFetch),
+    spawn: () => doSpawn(bin),
     logPath: LOG,
+    binaryKey: binaryKeyOf(bin),
+    oldBinaryHint: source ? REBUILD_HINT : RELEASE_HINT,
   })
 
   if (!up.ok) {

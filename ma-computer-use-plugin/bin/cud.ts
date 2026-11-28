@@ -240,7 +240,9 @@ switch (cmd) {
     break
   }
   case "stop": {
-    spawnSync("pkill", ["-f", "ComputerUseHelper"])
+    // -x: exact process name, so no other process with this text in its
+    // command line gets the signal (review L1).
+    spawnSync("pkill", ["-x", "ComputerUseHelper"])
     try {
       rmSync(SOCK)
     } catch {
@@ -250,7 +252,7 @@ switch (cmd) {
     break
   }
   case "restart": {
-    spawnSync("pkill", ["-f", "ComputerUseHelper"])
+    spawnSync("pkill", ["-x", "ComputerUseHelper"])
     await new Promise((r) => setTimeout(r, 800))
     startDaemon()
     await new Promise((r) => setTimeout(r, 1200))

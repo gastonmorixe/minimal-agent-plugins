@@ -12,10 +12,12 @@ import Foundation
 /// does not change the result. Give the grants to the terminal app.
 enum Permissions {
     /// The grant hint for every "not granted" result. The user has no build
-    /// tools and no `cud`, so the hint names only System Settings.
+    /// tools and no `cud`, so the hint names only System Settings. A new grant
+    /// can apply only after the terminal app starts again. Keep it the same as
+    /// `GRANT_HINT` in `lib/missing-helper.ts` (a test compares the two).
     static let grantHint =
-        "Give the grant to the terminal app that runs minimal-agent " +
-        "(System Settings > Privacy & Security), then try again."
+        "Give Accessibility and Screen Recording to the terminal app that runs minimal-agent " +
+        "(System Settings > Privacy & Security). Then quit the terminal app, open it again, and try again."
 
     static func accessibilityTrusted(prompt: Bool) -> Bool {
         if prompt {

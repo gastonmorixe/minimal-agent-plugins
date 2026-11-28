@@ -11,15 +11,22 @@ import { describe, expect, test } from "bun:test"
 import { runWithDeps } from "../handlers/computer.ts"
 
 import {
+  ABSENT,
   type EnsureDeps,
   ensureDaemon,
   HELPER_PROTOCOL,
   isCurrent,
   type PingInfo,
+  type ProbeResult,
   parsePing,
   type SocketFetch,
 } from "./client.ts"
 import type { TUIContext } from "./types.ts"
+
+/** A ping info as a probe result. Null is no helper. */
+function toProbe(info: PingInfo | null): ProbeResult {
+  return info === null ? ABSENT : { kind: "answer", info }
+}
 
 /** A fake daemon world: the helper that answers, and a record of the effects. */
 function world(initial: PingInfo | null) {
@@ -32,7 +39,7 @@ function world(initial: PingInfo | null) {
     sock: "/x.sock",
     socketExists: () => true,
     wait: async () => {},
-    probe: async () => state.answer,
+    probe: async () => toProbe(state.answer),
     spawn: () => {
       state.spawns++
       state.answer = { protocol: HELPER_PROTOCOL, pid: 222 }
@@ -233,7 +240,7 @@ describe("runWithDeps: handshake errors", () => {
       status: 200,
       body: { ok: true, protocol: 2, pid: 42 },
     })
-    const seen: { info?: PingInfo | null } = {}
+    const seen: { info?: ProbeResult } = {}
     await runWithDeps(ctx({ action: "apps" }), {
       socketFetch,
       ensure: async (deps) => {
@@ -241,14 +248,14 @@ describe("runWithDeps: handshake errors", () => {
         return { ok: true }
       },
     })
-    expect(seen.info).toEqual({ protocol: 2, pid: 42 })
+    expect(seen.info).toEqual({ kind: "answer", info: { protocol: 2, pid: 42 } })
   })
 
-  test("a ping that throws is no answer", async () => {
+  test("a ping that throws ECONNREFUSED is absent", async () => {
     const socketFetch: SocketFetch = async () => {
       throw new Error("ECONNREFUSED")
     }
-    const seen: { info?: PingInfo | null } = {}
+    const seen: { info?: ProbeResult } = {}
     await runWithDeps(ctx({ action: "apps" }), {
       socketFetch,
       ensure: async (deps) => {
@@ -256,6 +263,6 @@ describe("runWithDeps: handshake errors", () => {
         return { ok: false, header: "x", error: "x" }
       },
     })
-    expect(seen.info).toBeNull()
+    expect(seen.info).toEqual(ABSENT)
   })
 })

@@ -11,10 +11,19 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 
-/** The grant sentence. macOS gives the helper the grants of the terminal app. */
+/**
+ * The grant sentence. macOS gives the helper the grants of the terminal app.
+ * A new grant can apply only after the terminal app starts again (review M1).
+ * Keep it the same as `Permissions.grantHint` in `native/Sources/Permissions.swift`
+ * (a test compares the two).
+ */
 export const GRANT_HINT =
   "Give Accessibility and Screen Recording to the terminal app that runs minimal-agent " +
-  "(System Settings > Privacy & Security)."
+  "(System Settings > Privacy & Security). Then quit the terminal app, open it again, and try again."
+
+/** The last sentence of an "old helper binary" error in a dev checkout (review H3). */
+export const REBUILD_HINT =
+  "Build the helper again: cd ma-computer-use-plugin && bun run bin/cud.ts build"
 
 /**
  * True when `packageDir` is a source checkout (it holds `native/Sources`).

@@ -69,7 +69,8 @@ bun run bin/cud.ts prompt
 #      - Screen & System Audio Recording  (required for screenshot)
 #    Input Monitoring is NOT needed (we post events, we don't read the live stream).
 
-# 4. Restart the helper so the new grant takes effect.
+# 4. Quit the terminal app and open it again, then restart the helper, so the
+#    new grant takes effect.
 bun run bin/cud.ts restart
 
 # 5. Confirm.
@@ -97,9 +98,9 @@ ln -s "$PWD" <project>/.agents/minimal-agent/plugins/ma-computer-use-plugin
 | `prompt`             | fire permission prompts + open Settings (runs `--prompt`)                       |
 | `disable` / `enable` | the kill switch (refuse / allow mutating actions)                               |
 
-The handler and the CLI start the first helper that exists: `CUD_HELPER` (env),
-then `native/build/ComputerUseHelper`, then the legacy
-`native/build/ComputerUseHelper.app/Contents/MacOS/ComputerUseHelper`.
+The handler and the CLI start `CUD_HELPER` (env) when it is set, else
+`native/build/ComputerUseHelper`. They never start the legacy `.app`: it gives no
+`protocol`, so the handshake would stop it on each call.
 
 The handler also **auto-starts** the daemon on first tool use, so the agent doesn't
 have to call `start`. You still must `build` and grant permissions once.
@@ -115,6 +116,13 @@ it has no `targets` route and no new screenshot modes. Then the handler:
    or its own pid.
 2. Waits up to 2 s until the socket stops answering.
 3. Starts the new helper and pings it again.
+
+A ping with no answer in 2 s (the helper is busy with a long request) gives the
+error "the computer-use helper is busy with another request, try again". The
+handler does not kill it and does not start a second helper. A spawn lock
+(`<socket>.spawn.lock`) lets one caller at a time stop or start a helper. When a
+helper that this handler started is old itself, later calls give the same error
+and do not stop it again.
 
 If the kill fails, or the old helper does not stop in 2 s, the tool gives an error
 that tells the user to quit the `ComputerUseHelper` process. Increase both numbers
@@ -238,7 +246,7 @@ The fastlane equivalent is `cd native && fastlane mac notarize`.
 manifest.json            # declares the Computer tool
 handlers/computer.ts     # tool handler (thin unix-socket client)
 bin/cud.ts               # control CLI + auto-spawn
-lib/{client,routes,render,paths,style,types}.ts
+lib/{client,embedded-helper,missing-helper,paths,render,routes,spawn-lock,style,types}.ts
 ui/setup.ts              # CLI only: installs the terminal kit into the style slots
 native/
   Sources/*.swift        # the daemon (build compiles these with swiftc)

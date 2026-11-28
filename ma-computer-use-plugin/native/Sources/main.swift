@@ -50,6 +50,10 @@ if args.contains("--prompt") {
 }
 
 // Daemon mode.
+// A client that stops waiting (a ping time limit while the queue is busy)
+// closes its connection. The answer write then gets EPIPE. Without this
+// line, SIGPIPE stops the whole helper. writeResponse stops on the error.
+signal(SIGPIPE, SIG_IGN)
 let sock = socketPath()
 let server = HTTPServer(socketPath: sock) { route, body in
     Router.handle(route: route, rawBody: body)
