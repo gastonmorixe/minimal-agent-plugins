@@ -128,6 +128,22 @@ If the kill fails, or the old helper does not stop in 2 s, the tool gives an err
 that tells the user to quit the `ComputerUseHelper` process. Increase both numbers
 together when a route or a field changes in a way that an old helper cannot serve.
 
+All checkouts and the compiled CLI share one socket. So `ping` also gives
+`helperVersion` (`Router.helperVersion` in Swift, `HELPER_VERSION` in
+`lib/client.ts`, now `3`), and the handler uses these rules in this sequence:
+
+1. A lower `protocol`, or none: stop the helper and start this one.
+2. A higher `protocol`: keep the helper. A client never stops a newer helper.
+3. A lower `helperVersion` (none counts as `0`): stop the helper and start this one.
+4. A higher `helperVersion`: keep the helper.
+5. The same `helperVersion` at the same path, with another size or mtime: stop
+   the helper and start this one. This is a rebuild of the same version.
+6. The same `helperVersion` at another path: keep the helper. The code is the same.
+
+The handler does not compare the mtime of two paths. The mtime is the time of the
+build or of the extract, not the age of the code. Increase both `helperVersion`
+numbers together on each change to the helper code that clients must get.
+
 ## Tool usage (`Computer`)
 
 AX-first. The tool and parameter descriptions in `manifest.json` are the agent-facing guide. Quick tour:

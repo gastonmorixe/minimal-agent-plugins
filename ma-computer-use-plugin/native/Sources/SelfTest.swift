@@ -143,6 +143,10 @@ enum SelfTest {
         let ping = Router.handle(route: "ping", rawBody: [:])
         check(ping.status == 200 && (ping.json as? [String: Any])?["protocol"] as? Int == 2,
               "ping gives protocol 2")
+        // N1: the client orders helpers by this number, not by the file mtime.
+        let helperVersion = (ping.json as? [String: Any])?["helperVersion"] as? Int
+        check(helperVersion == Router.helperVersion && Router.helperVersion >= 3,
+              "ping gives helperVersion")
         binaryChecks(ping.json as? [String: Any])
 
         let total = passed + failed.count

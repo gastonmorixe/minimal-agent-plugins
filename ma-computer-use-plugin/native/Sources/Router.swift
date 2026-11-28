@@ -45,6 +45,13 @@ enum Router {
     /// 2: the `targets` route and the screenshot modes.
     static let protocolVersion = 2
 
+    /// The version of the helper code (review N1). The TS client
+    /// (lib/client.ts `HELPER_VERSION`) replaces a helper with a lower number
+    /// and keeps a helper with a higher number. It does not compare the file
+    /// mtime of two paths. Bump it on each change to the helper code that
+    /// clients must get, and bump `HELPER_VERSION` to the same number.
+    static let helperVersion = 3
+
     static func handle(route: String, rawBody: [String: Any]) -> (status: Int, json: Any) {
         let body = Body(rawBody)
 
@@ -55,6 +62,7 @@ enum Router {
                 "ok": true,
                 "version": version,
                 "protocol": protocolVersion,
+                "helperVersion": helperVersion,
                 "pid": Int(ProcessInfo.processInfo.processIdentifier),
                 "perms": Permissions.status(),
                 "disabled": Safety.shared.disabled,

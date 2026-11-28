@@ -31,6 +31,7 @@ import {
   type EnsureDeps,
   ensureDaemon,
   HELPER_PROTOCOL,
+  HELPER_VERSION,
   judgePing,
   MTIME_TOLERANCE_S,
   type PingInfo,
@@ -81,11 +82,15 @@ function world(answer: PingInfo | null, spawned: PingInfo) {
   return { state, deps }
 }
 
-/** A current helper (protocol 2) that started from `binary`. */
+/**
+ * A current helper (protocol 2, helperVersion {@link HELPER_VERSION}) that
+ * started from `binary`. With no `binary`: an older build with no identity
+ * and no helperVersion.
+ */
 function helper(pid: number, binary?: BinaryIdentity): PingInfo {
   return binary === undefined
     ? { protocol: HELPER_PROTOCOL, pid }
-    : { protocol: HELPER_PROTOCOL, pid, binary }
+    : { protocol: HELPER_PROTOCOL, helperVersion: HELPER_VERSION, pid, binary }
 }
 
 describe("M3: ensureDaemon compares the binary identity", () => {
@@ -116,12 +121,12 @@ describe("M3: ensureDaemon compares the binary identity", () => {
     }
   })
 
-  test("another path with an older mtime is replaced", async () => {
+  test("N1: another path with an older mtime and the same helperVersion is kept", async () => {
     const other = { ...BIN, path: "/old/native/build/ComputerUseHelper", mtime: BIN.mtime - 60 }
     const { state, deps } = world(helper(111, other), helper(222, BIN))
     expect(await ensureDaemon(deps)).toEqual({ ok: true })
-    expect(state.kills).toEqual([{ pid: 111, signal: "SIGTERM" }])
-    expect(state.spawns).toBe(1)
+    expect(state.kills).toEqual([])
+    expect(state.spawns).toBe(0)
   })
 
   test("another path with the same or a newer mtime is kept (no ping-pong of 2 checkouts)", async () => {
@@ -141,7 +146,7 @@ describe("M3: ensureDaemon compares the binary identity", () => {
     expect(state.kills).toEqual([])
   })
 
-  test("a protocol-2 ping with no binary field is an older build and is replaced", async () => {
+  test("a protocol-2 ping with no binary and no helperVersion is an older build and is replaced", async () => {
     const { state, deps } = world(helper(111), helper(222, BIN))
     expect(await ensureDaemon(deps)).toEqual({ ok: true })
     expect(state.kills).toEqual([{ pid: 111, signal: "SIGTERM" }])
@@ -228,7 +233,7 @@ describe("M3: ensureDaemon compares the binary identity", () => {
     expect(state.spawns).toBe(0)
   })
 
-  test("a helper with no identity after the spawn gives the rebuild hint, no second kill", async () => {
+  test("a helper with no helperVersion after the spawn gives the rebuild hint, no second kill", async () => {
     let nextPid = 201
     const { state, deps } = world(helper(111), helper(0))
     deps.binary = NEWER
@@ -244,20 +249,74 @@ describe("M3: ensureDaemon compares the binary identity", () => {
       expect(r.ok).toBe(false)
       if (r.ok) continue
       expect(r.error).toBe(
-        "the computer-use helper gives no binary identity in its ping. The helper binary is older than the plugin. Build the helper again.",
+        `the computer-use helper answers with no helperVersion, but this plugin ships helperVersion ${HELPER_VERSION}. The helper binary is older than the plugin. Build the helper again.`,
       )
     }
   })
 })
 
-describe("M3: judgePing", () => {
-  test("the verdict of each case", () => {
-    expect(judgePing({ protocol: 1, binary: BIN }, 2, BIN)).toBe("protocol")
-    expect(judgePing({ protocol: 2 }, 2, BIN)).toBe("no-identity")
+describe("M3 and N1: judgePing, one test for each rule", () => {
+  const V = HELPER_VERSION
+  const OTHER: BinaryIdentity = { ...BIN, path: "/other/native/build/ComputerUseHelper" }
+
+  test("a: no protocol, or a lower protocol, is replaced", () => {
+    expect(judgePing({ helperVersion: V, binary: BIN }, 2, BIN, V)).toBe("protocol")
+    expect(judgePing({ protocol: 1, helperVersion: V, binary: BIN }, 2, BIN, V)).toBe("protocol")
+    expect(judgePing({ protocol: 1 }, 2)).toBe("protocol")
+  })
+
+  test("b: a higher protocol is kept, also with a lower helperVersion or a rebuild", () => {
+    expect(judgePing({ protocol: 3, binary: NEWER }, 2, BIN, V)).toBe("ok")
+    expect(judgePing({ protocol: 3, helperVersion: 1, binary: BIN }, 2, BIN, V)).toBe("ok")
+  })
+
+  test("c: no helperVersion reads as 0", () => {
+    expect(judgePing({ protocol: 2, binary: BIN }, 2, BIN, 1)).toBe("old-version")
+    expect(judgePing({ protocol: 2, binary: BIN }, 2, BIN, 0)).toBe("ok")
+    expect(judgePing({ protocol: 2 }, 2, BIN, V)).toBe("old-version")
+  })
+
+  test("d: a lower helperVersion is replaced, at any path and mtime", () => {
+    for (const binary of [BIN, OTHER, { ...OTHER, mtime: BIN.mtime + 600 }]) {
+      expect(judgePing({ protocol: 2, helperVersion: V - 1, binary }, 2, BIN, V)).toBe(
+        "old-version",
+      )
+    }
+  })
+
+  test("e: a higher helperVersion is kept, at any path and mtime", () => {
+    for (const binary of [BIN, NEWER, { ...OTHER, mtime: BIN.mtime - 600 }]) {
+      expect(judgePing({ protocol: 2, helperVersion: V + 1, binary }, 2, BIN, V)).toBe("ok")
+    }
+  })
+
+  test("f: the same version at the same path with another size or mtime is replaced", () => {
+    expect(judgePing({ protocol: 2, helperVersion: V, binary: BIN }, 2, NEWER, V)).toBe(
+      "other-build",
+    )
+    const bigger = { ...BIN, size: BIN.size + 1 }
+    expect(judgePing({ protocol: 2, helperVersion: V, binary: bigger }, 2, BIN, V)).toBe(
+      "other-build",
+    )
+    expect(judgePing({ protocol: 2, helperVersion: V, binary: BIN }, 2, BIN, V)).toBe("ok")
+  })
+
+  test("g: the same version at another path is kept, older or newer mtime", () => {
+    for (const mtime of [BIN.mtime - 600, BIN.mtime, BIN.mtime + 600]) {
+      const binary = { ...OTHER, mtime }
+      expect(judgePing({ protocol: 2, helperVersion: V, binary }, 2, BIN, V)).toBe("ok")
+    }
+  })
+
+  test("with no binary to compare, only the protocol counts", () => {
     expect(judgePing({ protocol: 2 }, 2)).toBe("ok")
-    expect(judgePing({ protocol: 2, binary: BIN }, 2, BIN)).toBe("ok")
-    expect(judgePing({ protocol: 2, binary: BIN }, 2, NEWER)).toBe("other-build")
-    expect(judgePing({ protocol: 3, binary: NEWER }, 2, BIN)).toBe("other-build")
+    expect(judgePing({ protocol: 2, helperVersion: 0 }, 2, undefined, V)).toBe("ok")
+  })
+
+  test("the default version is HELPER_VERSION", () => {
+    expect(HELPER_VERSION).toBe(3)
+    expect(judgePing({ protocol: 2, helperVersion: 2, binary: BIN }, 2, BIN)).toBe("old-version")
+    expect(judgePing({ protocol: 2, helperVersion: 3, binary: BIN }, 2, BIN)).toBe("ok")
   })
 })
 
@@ -265,6 +324,13 @@ describe("M3: parsePing reads the binary field", () => {
   test("a full field is read", () => {
     const body = { ok: true, protocol: 2, pid: 9, binary: { ...BIN, extra: 1 } }
     expect(parsePing({ status: 200, body })).toEqual({ protocol: 2, pid: 9, binary: BIN })
+  })
+
+  test("N1: helperVersion is read when it is a number", () => {
+    const body = { ok: true, protocol: 2, helperVersion: 3, pid: 9 }
+    expect(parsePing({ status: 200, body })).toEqual({ protocol: 2, helperVersion: 3, pid: 9 })
+    const bad = { ok: true, protocol: 2, helperVersion: "3", pid: 9 }
+    expect(parsePing({ status: 200, body: bad })).toEqual({ protocol: 2, pid: 9 })
   })
 
   test("a field with a missing or wrong part is ignored", () => {
@@ -352,6 +418,13 @@ describe("M3: the Swift side", () => {
     expect(router).toContain("static let protocolVersion = 2")
     expect(router).toContain('info["binary"] = binary')
     expect(router).toContain('"path": resolved, "size": size, "mtime": mtime.timeIntervalSince1970')
+  })
+
+  test("N1: ping gives helperVersion, the same number as HELPER_VERSION", () => {
+    const router = src("Router.swift")
+    expect(router).toContain(`static let helperVersion = ${HELPER_VERSION}`)
+    expect(router).toContain('"helperVersion": helperVersion')
+    expect(src("SelfTest.swift")).toContain('"ping gives helperVersion"')
   })
 
   test("the daemon reads the identity at start, and the selftest checks it", () => {
