@@ -54,6 +54,9 @@ if args.contains("--prompt") {
 // closes its connection. The answer write then gets EPIPE. Without this
 // line, SIGPIPE stops the whole helper. writeResponse stops on the error.
 signal(SIGPIPE, SIG_IGN)
+// M3: read the identity of this binary now, before a rebuild can change the
+// file. A Swift static is lazy, so the first ping would read it too late.
+if HelperBinary.identity == nil { logLine("warning: cannot read the identity of this binary") }
 let sock = socketPath()
 let server = HTTPServer(socketPath: sock) { route, body in
     Router.handle(route: route, rawBody: body)

@@ -22,6 +22,7 @@ import { closeSync, existsSync, mkdirSync, openSync } from "node:fs"
 import { dirname } from "node:path"
 
 import {
+  binaryIdentityOf,
   binaryKeyOf,
   ensureDaemon,
   HelperTimeoutError,
@@ -113,11 +114,13 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
 
   // A compiled CLI keeps the helper in its embedded table. Write it to disk
   // before the lookup. A dev checkout and a build with no helper write nothing.
+  // The extract runs in this process and writes nothing to the helper log
+  // (review L5), so the error has no log hint.
   const got = extract(ctx.packageDir)
   if (!got.ok) {
     return {
       kind: "tool_result",
-      content: `Computer: ${got.error}. Check the helper log: ${LOG}`,
+      content: `Computer: ${got.error}`,
       is_error: true,
       displayHeader: red("helper extract failed"),
     }
@@ -142,15 +145,18 @@ export async function runWithDeps(ctx: TUIContext, deps: HandlerDeps): Promise<T
   }
 
   // A ping that gives an old protocol (or none) means an old helper holds the
-  // socket. ensure stops it (SIGTERM to the pid of its ping) and starts this
-  // one. A ping with no answer in time means a busy helper: no kill, no spawn
-  // (H1). The spawn lock lets one caller at a time stop or start a helper.
+  // socket. A ping of the current protocol from another build of the binary
+  // (no `binary` field, or another path, size or mtime) also counts (M3).
+  // ensure stops it (SIGTERM to the pid of its ping) and starts this one. A
+  // ping with no answer in time means a busy helper: no kill, no spawn (H1).
+  // The spawn lock lets one caller at a time stop or start a helper.
   const up = await ensure({
     sock: SOCK,
     lockPath: spawnLockPath(),
     probe: () => probePing(socketFetch),
     spawn: () => doSpawn(bin),
     logPath: LOG,
+    binary: binaryIdentityOf(bin),
     binaryKey: binaryKeyOf(bin),
     oldBinaryHint: source ? REBUILD_HINT : RELEASE_HINT,
   })

@@ -2,6 +2,38 @@ import CoreGraphics
 import AppKit
 import Foundation
 
+/// The identity of the binary file of this process (review M3): the path
+/// with no symlinks, the size and the mtime. `ping` gives it as `binary`.
+/// The TS client (lib/client.ts `judgePing`) compares it with the file that
+/// it would start, and replaces a helper from another build. Daemon mode
+/// reads it one time at start (main.swift), so a later rebuild or `touch` of
+/// the file does not change the value of a running helper.
+enum HelperBinary {
+    static let identity: [String: Any]? = read(CommandLine.arguments.first ?? "")
+
+    /// The identity of the file at `arg0`, or nil when it cannot be read.
+    /// A relative `arg0` resolves against the current directory, the same as
+    /// the exec. An `arg0` with no slash (a PATH lookup) uses the executable
+    /// path of the main bundle.
+    static func read(_ arg0: String) -> [String: Any]? {
+        var path = arg0
+        if !path.contains("/") {
+            guard let exe = Bundle.main.executablePath else { return nil }
+            path = exe
+        }
+        if !path.hasPrefix("/") {
+            path = (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent(path)
+        }
+        guard let real = realpath(path, nil) else { return nil }
+        defer { free(real) }
+        let resolved = String(cString: real)
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: resolved),
+              let size = (attrs[.size] as? NSNumber)?.int64Value,
+              let mtime = attrs[.modificationDate] as? Date else { return nil }
+        return ["path": resolved, "size": size, "mtime": mtime.timeIntervalSince1970]
+    }
+}
+
 /// Maps an HTTP route + JSON body to a service call and a JSON response.
 /// Enforces the permission gate and safety guardrails before any action.
 enum Router {
@@ -19,14 +51,18 @@ enum Router {
         // Always-available meta routes.
         switch route {
         case "ping":
-            return (200, [
+            var info: [String: Any] = [
                 "ok": true,
                 "version": version,
                 "protocol": protocolVersion,
                 "pid": Int(ProcessInfo.processInfo.processIdentifier),
                 "perms": Permissions.status(),
                 "disabled": Safety.shared.disabled,
-            ])
+            ]
+            // M3: the build identity. The protocol stays 2, so an old plugin
+            // still accepts this helper and ignores the new field.
+            if let binary = HelperBinary.identity { info["binary"] = binary }
+            return (200, info)
         case "perms":
             let r = Permissions.handle(prompt: body.bool("prompt") ?? false, pane: body.string("pane"))
             return (200, r)

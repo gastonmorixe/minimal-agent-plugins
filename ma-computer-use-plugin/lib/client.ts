@@ -10,7 +10,7 @@
  * @module lib/client
  */
 
-import { existsSync, statSync } from "node:fs"
+import { existsSync, realpathSync, statSync } from "node:fs"
 
 import { logPath } from "./paths.ts"
 import { acquireLockWait } from "./spawn-lock.ts"
@@ -119,12 +119,46 @@ export const HELPER_PROTOCOL = 2
 /** The time limit for an old helper to stop after SIGTERM. */
 export const STOP_TIMEOUT_MS = 2_000
 
+/**
+ * One version of a helper binary file (review M3). The helper `ping` gives
+ * the identity of the file that it runs, read one time at its start
+ * (Router.swift `HelperBinary`). The client compares it with the file that
+ * it would start.
+ */
+export interface BinaryIdentity {
+  /** The absolute path with no symlinks (`realpath`). */
+  path: string
+  /** The file size in bytes. */
+  size: number
+  /** The modification time in seconds since 1970, with a fraction. */
+  mtime: number
+}
+
+/**
+ * Two mtimes closer than this many seconds are the same. Swift gives the
+ * mtime as a Double of seconds and Bun as a float of ms, so an exact compare
+ * can fail on the last bit.
+ */
+export const MTIME_TOLERANCE_S = 0.001
+
 /** The parts of a `ping` answer that the lifecycle reads. */
 export interface PingInfo {
   /** The helper protocol. Absent in a helper older than protocol 2. */
   protocol?: number
   /** The pid of the helper process, as the helper gives it. */
   pid?: number
+  /** The binary that the helper runs. Absent in an older protocol-2 build. */
+  binary?: BinaryIdentity
+}
+
+/** The binary identity in a ping body, or undefined when a field is missing. */
+function parseBinary(v: unknown): BinaryIdentity | undefined {
+  if (v === null || typeof v !== "object") return undefined
+  const { path, size, mtime } = v as { path?: unknown; size?: unknown; mtime?: unknown }
+  if (typeof path !== "string" || typeof size !== "number" || typeof mtime !== "number") {
+    return undefined
+  }
+  return { path, size, mtime }
 }
 
 /**
@@ -138,15 +172,65 @@ export function parsePing(res: DaemonResponse): PingInfo | null {
   const b = res.body
   if (b === null || typeof b !== "object") return {}
   const info: PingInfo = {}
-  const { protocol, pid } = b as { protocol?: unknown; pid?: unknown }
+  const { protocol, pid, binary } = b as { protocol?: unknown; pid?: unknown; binary?: unknown }
   if (typeof protocol === "number") info.protocol = protocol
   if (typeof pid === "number") info.pid = pid
+  const id = parseBinary(binary)
+  if (id !== undefined) info.binary = id
   return info
 }
 
 /** True when the helper speaks protocol `need` or newer. */
 export function isCurrent(info: PingInfo, need: number = HELPER_PROTOCOL): boolean {
   return typeof info.protocol === "number" && info.protocol >= need
+}
+
+/** True when two identities name the same file version. */
+export function sameBinary(a: BinaryIdentity, b: BinaryIdentity): boolean {
+  return a.path === b.path && a.size === b.size && Math.abs(a.mtime - b.mtime) < MTIME_TOLERANCE_S
+}
+
+/**
+ * Why a helper that answers the ping cannot serve this client:
+ * 1. `ok`: it can serve.
+ * 2. `protocol`: an old protocol, or none.
+ * 3. `no-identity`: a current protocol, but no `binary` in its ping (an older
+ *    protocol-2 build).
+ * 4. `other-build`: a current protocol, but it runs another version of the
+ *    binary (an upgrade, a rebuild, or a new extract).
+ */
+export type PingVerdict = "ok" | "protocol" | "no-identity" | "other-build"
+
+/**
+ * Judge a ping answer (review M3).
+ *
+ * 1. The same path with another size or mtime: `other-build`. The file
+ *    changed after the helper started.
+ * 2. Another path: `other-build` only when the running file is older. All
+ *    checkouts and the compiled CLI share the default socket. If each one
+ *    replaced every other path, two sessions would stop the helper of the
+ *    other on each call. With "newer wins", the helper moves only forward.
+ *
+ * With no `binary` to compare (the file cannot be read), only the protocol
+ * counts.
+ *
+ * @param info - The ping info.
+ * @param need - The protocol that this client needs.
+ * @param binary - The binary that this client would start.
+ */
+export function judgePing(info: PingInfo, need: number, binary?: BinaryIdentity): PingVerdict {
+  if (!isCurrent(info, need)) return "protocol"
+  if (binary === undefined) return "ok"
+  const running = info.binary
+  if (running === undefined) return "no-identity"
+  if (sameBinary(running, binary)) return "ok"
+  if (running.path === binary.path) return "other-build"
+  return running.mtime < binary.mtime - MTIME_TOLERANCE_S ? "other-build" : "ok"
+}
+
+/** `<path> (<size> bytes, mtime <mtime>)`, for an error. */
+function describeBinary(b: BinaryIdentity): string {
+  return `${b.path} (${b.size} bytes, mtime ${b.mtime})`
 }
 
 /**
@@ -233,9 +317,15 @@ export interface EnsureDeps {
   /** The time limit of one ping, for the stop wait. Default {@link PING_TIMEOUT_MS}. */
   pingTimeoutMs?: number
   /**
+   * The identity of the helper binary that `spawn` starts (review M3). A
+   * current helper whose ping gives no identity, or an identity with an older
+   * mtime, is stopped and replaced. Unset: only the protocol counts.
+   */
+  binary?: BinaryIdentity
+  /**
    * The key of the helper binary that `spawn` starts (path, size, mtime).
    * When a spawn of this key gave an old helper, a later call does not stop
-   * the old helper again (review H3).
+   * the old helper again (review H3). Default: a key made from `binary`.
    */
   binaryKey?: string
   /** The keys of binaries that gave an old helper. Default: one set for the process. */
@@ -260,18 +350,41 @@ function errnoCode(e: unknown): string | undefined {
 }
 
 /**
+ * The first part of a stop error: which old helper holds the socket.
+ *
+ * @param verdict - Why the helper cannot serve (not `ok`).
+ */
+function oldHelperText(
+  verdict: PingVerdict,
+  info: PingInfo,
+  deps: EnsureDeps,
+  need: number,
+): string {
+  if (verdict === "protocol" || deps.binary === undefined) {
+    return `an old computer-use helper (${protocolText(info)}, this plugin needs protocol ${need}) holds the socket ${deps.sock}`
+  }
+  const runs =
+    info.binary === undefined
+      ? "its ping gives no binary identity"
+      : `it runs ${describeBinary(info.binary)}`
+  return `a computer-use helper from another build (${runs}, this plugin starts ${describeBinary(deps.binary)}) holds the socket ${deps.sock}`
+}
+
+/**
  * Stop an old helper that holds the socket. Kill only the pid that its ping
  * gave. Then wait until the socket stops answering.
  *
+ * @param info - The ping of the old helper. Only its pid gets the signal.
+ * @param deps - The effects.
+ * @param what - The first part of each error text ({@link oldHelperText}).
  * @returns Null when the old helper stopped, else the error result.
  */
 async function stopOldDaemon(
   info: PingInfo,
   deps: EnsureDeps,
-  need: number,
+  what: string,
 ): Promise<EnsureResult | null> {
   const header = "old helper"
-  const what = `an old computer-use helper (${protocolText(info)}, this plugin needs protocol ${need}) holds the socket ${deps.sock}`
   const pid = info.pid
   const selfPid = deps.selfPid ?? process.pid
   if (pid === undefined || !Number.isInteger(pid) || pid <= 1 || pid === selfPid) {
@@ -343,6 +456,48 @@ function oldBinaryError(info: PingInfo, deps: EnsureDeps, need: number): EnsureR
 }
 
 /**
+ * The error for a current helper that is not the binary of this plugin, when
+ * a stop and a new spawn do not help (review M3).
+ *
+ * @param verdict - `no-identity` or `other-build`.
+ */
+function mismatchError(verdict: PingVerdict, info: PingInfo, deps: EnsureDeps): EnsureResult {
+  const header = "old helper"
+  if (verdict === "no-identity" || info.binary === undefined) {
+    return {
+      ok: false,
+      header,
+      error: `the computer-use helper gives no binary identity in its ping. The helper binary is older than the plugin. ${deps.oldBinaryHint ?? RELEASE_HINT}`,
+    }
+  }
+  const expected = deps.binary === undefined ? "" : `, expected ${describeBinary(deps.binary)}`
+  return {
+    ok: false,
+    header,
+    error: `the computer-use helper on the socket ${deps.sock} does not give the binary that this plugin starts: it runs ${describeBinary(info.binary)}${expected}. Quit the ComputerUseHelper process (Activity Monitor), then try again.`,
+  }
+}
+
+/** The error for a helper that cannot serve and must not be stopped again. */
+function cannotServeError(
+  verdict: PingVerdict,
+  info: PingInfo,
+  deps: EnsureDeps,
+  need: number,
+): EnsureResult {
+  return verdict === "protocol"
+    ? oldBinaryError(info, deps, need)
+    : mismatchError(verdict, info, deps)
+}
+
+/** The key of one binary version for the H3 memory: path, size, mtime. */
+function identityKey(deps: EnsureDeps): string | undefined {
+  if (deps.binaryKey !== undefined) return deps.binaryKey
+  const b = deps.binary
+  return b === undefined ? undefined : `${b.path}:${b.size}:${b.mtime}`
+}
+
+/**
  * The steps after the first ping, while the spawn lock is held.
  *
  * @param state - The ping result to act on.
@@ -356,18 +511,21 @@ async function ensureFrom(
   const wait = deps.wait ?? sleep
   const attempts = deps.attempts ?? 12
   const oldBinaries = deps.oldBinaries ?? OLD_BINARIES
+  const key = identityKey(deps)
 
   // H1: a ping with no answer in time while the socket file exists means a
   // busy helper. Do not start a second helper over it, and do not kill it.
   if (state.kind === "timeout") return busyError(deps)
   if (state.kind === "answer") {
-    if (isCurrent(state.info, need)) return { ok: true }
-    // H3: this binary started an old helper before. A kill and a new spawn
-    // give the same old helper again, so stop here.
-    if (deps.binaryKey !== undefined && oldBinaries.has(deps.binaryKey)) {
-      return oldBinaryError(state.info, deps, need)
+    const verdict = judgePing(state.info, need, deps.binary)
+    if (verdict === "ok") return { ok: true }
+    // H3 and M3: this binary started a helper that could not serve before. A
+    // kill and a new spawn give the same helper again, so stop here.
+    if (key !== undefined && oldBinaries.has(key)) {
+      return cannotServeError(verdict, state.info, deps, need)
     }
-    const stopped = await stopOldDaemon(state.info, deps, need)
+    const what = oldHelperText(verdict, state.info, deps, need)
+    const stopped = await stopOldDaemon(state.info, deps, what)
     if (stopped !== null) return stopped
   }
   deps.spawn?.()
@@ -375,10 +533,11 @@ async function ensureFrom(
     await wait(300)
     const r = await probe()
     if (r.kind !== "answer") continue
-    if (isCurrent(r.info, need)) return { ok: true }
-    // Do not kill again: the helper that we started is old itself.
-    if (deps.binaryKey !== undefined) oldBinaries.add(deps.binaryKey)
-    return oldBinaryError(r.info, deps, need)
+    const verdict = judgePing(r.info, need, deps.binary)
+    if (verdict === "ok") return { ok: true }
+    // Do not kill again: the helper that we started cannot serve itself.
+    if (key !== undefined) oldBinaries.add(key)
+    return cannotServeError(verdict, r.info, deps, need)
   }
   return {
     ok: false,
@@ -391,10 +550,12 @@ async function ensureFrom(
  * Ensure a current daemon is up.
  *
  * Strategy: ping first. A current helper (protocol {@link HELPER_PROTOCOL} or
- * newer) is kept. A ping with no answer in time gives a "busy" error (no kill,
- * no spawn). Else take the spawn lock (when `lockPath` is set) and ping again,
- * because another caller can have started a helper meanwhile. An old helper
- * is stopped with SIGTERM to the pid of its ping, then a new helper starts.
+ * newer, and the binary of this plugin by {@link judgePing}) is kept. A ping
+ * with no answer in time gives a "busy" error (no kill, no spawn). Else take
+ * the spawn lock (when `lockPath` is set) and ping again, because another
+ * caller can have started a helper meanwhile. An old helper (an old protocol,
+ * or another build) is stopped with SIGTERM to the pid of its ping, then a
+ * new helper starts.
  * With no answer, spawn, then ping again up to `attempts` times. The lock is
  * released on every path. Pure control flow with injected effects.
  *
@@ -408,7 +569,9 @@ export async function ensureDaemon(deps: EnsureDeps): Promise<EnsureResult> {
   const ping = async (): Promise<ProbeResult> => (socketExists(deps.sock) ? probe() : ABSENT)
 
   const first = await ping()
-  if (first.kind === "answer" && isCurrent(first.info, need)) return { ok: true }
+  if (first.kind === "answer" && judgePing(first.info, need, deps.binary) === "ok") {
+    return { ok: true }
+  }
   if (first.kind === "timeout") return busyError(deps)
   if (deps.lockPath === undefined) return ensureFrom(first, deps, need)
   const release = await acquireLockWait(deps.lockPath)
@@ -433,6 +596,35 @@ export function binaryKeyOf(
   try {
     const s = stat(path)
     return `${path}:${s.size}:${s.mtimeMs}`
+  } catch {
+    return undefined
+  }
+}
+
+/** The file calls of {@link binaryIdentityOf}. Tests inject them. */
+export interface IdentityFs {
+  /** The path with no symlinks. Default: `realpathSync`. */
+  realpath?: (p: string) => string
+  /** The size and mtime. Default: `statSync`. */
+  stat?: (p: string) => { size: number; mtimeMs: number }
+}
+
+/**
+ * The identity of the helper binary that the handler would start (review
+ * M3), in the same form as the `binary` field of the helper ping: the path
+ * with no symlinks, the size, and the mtime in seconds. Undefined when the
+ * file cannot be read.
+ *
+ * @param path - The helper binary (`helperBinary`, or `CUD_HELPER`).
+ * @param fs - The file calls. Tests inject them.
+ */
+export function binaryIdentityOf(path: string, fs: IdentityFs = {}): BinaryIdentity | undefined {
+  const realpath = fs.realpath ?? realpathSync
+  const stat = fs.stat ?? statSync
+  try {
+    const real = realpath(path)
+    const s = stat(real)
+    return { path: real, size: s.size, mtime: s.mtimeMs / 1000 }
   } catch {
     return undefined
   }

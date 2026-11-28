@@ -143,6 +143,7 @@ enum SelfTest {
         let ping = Router.handle(route: "ping", rawBody: [:])
         check(ping.status == 200 && (ping.json as? [String: Any])?["protocol"] as? Int == 2,
               "ping gives protocol 2")
+        binaryChecks(ping.json as? [String: Any])
 
         let total = passed + failed.count
         if failed.isEmpty {
@@ -152,6 +153,26 @@ enum SelfTest {
         print("selftest: \(passed)/\(total) passed, \(failed.count) failed")
         for name in failed { print("FAIL: \(name)") }
         return 1
+    }
+
+    /// M3: `ping` gives the identity of this binary. The path is absolute
+    /// with no symlinks, and the size and mtime are the values of that file.
+    private static func binaryChecks(_ ping: [String: Any]?) {
+        let b = ping?["binary"] as? [String: Any]
+        let path = b?["path"] as? String ?? ""
+        let size = (b?["size"] as? NSNumber)?.int64Value ?? -1
+        let mtime = b?["mtime"] as? Double ?? -1
+        var real = ""
+        if let r = realpath(path, nil) {
+            real = String(cString: r)
+            free(r)
+        }
+        check(path.hasPrefix("/") && real == path, "ping binary path is absolute and resolved")
+        let attrs = try? FileManager.default.attributesOfItem(atPath: path)
+        let fileSize = (attrs?[.size] as? NSNumber)?.int64Value ?? -2
+        let fileMtime = (attrs?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? -2
+        check(size > 0 && size == fileSize && mtime > 0 && mtime == fileMtime,
+              "ping binary size and mtime are the file values")
     }
 
     /// R14: `Retention.prune` on a real folder. 3 old shot files, 1 other

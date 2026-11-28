@@ -143,13 +143,15 @@ function fakes(extract?: (dir: string) => ExtractResult) {
 }
 
 describe("runWithDeps: helper extract", () => {
-  test("an extract failure gives a tool error with the log path and no spawn", async () => {
+  test("an extract failure gives a tool error with no log hint and no spawn", async () => {
     const { order, deps } = fakes(() => ({ ok: false, error: "could not extract: disk full" }))
     const r = await runWithDeps(ctx("/pkg"), deps)
     expect(r.kind).toBe("tool_result")
     if (r.kind !== "tool_result") return
     expect(r.is_error).toBe(true)
-    expect(r.content).toStartWith("Computer: could not extract: disk full. Check the helper log: ")
+    // L5: the extract runs in the CLI process and writes nothing to the helper log.
+    expect(r.content).toBe("Computer: could not extract: disk full")
+    expect(r.content).not.toContain("log")
     expect(r.displayHeader).toContain("helper extract failed")
     expect(r.content).not.toContain("cud")
     expect(r.content).not.toContain("bun ")
